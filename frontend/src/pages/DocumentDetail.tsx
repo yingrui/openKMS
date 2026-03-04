@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Image as ImageIcon, Maximize2, Minimize2, Info } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
@@ -16,16 +16,30 @@ interface ParsingResultItem {
   image_path?: string;
 }
 
+interface LayoutBox {
+  coordinate?: number[];
+  polygon_points?: number[][] | [number, number][];
+  label?: string;
+  block_index?: number;
+}
+
 interface LayoutDetItem {
   _images?: { res?: string };
   input_img?: string;
-  boxes?: unknown[];
+  boxes?: LayoutBox[];
 }
 
 interface ParsingResult {
   file_hash: string;
   parsing_res_list: ParsingResultItem[];
   layout_det_res?: LayoutDetItem[];
+}
+
+interface PageBlock {
+  pageIndex: number;
+  coordinate: number[];
+  label: string;
+  parsingItem: ParsingResultItem;
 }
 
 // Map document id to example folder (folder hash + markdown filename)
@@ -47,6 +61,10 @@ export function DocumentDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [extendedPanel, setExtendedPanel] = useState<'images' | 'markdown' | null>(null);
+  const [hoveredBlockKey, setHoveredBlockKey] = useState<string | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<PageBlock | null>(null);
+  const [pageDimensions, setPageDimensions] = useState<Record<number, { w: number; h: number }>>({});
+  const [infoVisible, setInfoVisible] = useState(true);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -78,6 +96,72 @@ export function DocumentDetail() {
     ? `/examples/${folderId}/markdown_out`
     : '';
 
+  // Build page blocks: for each layout box, find parsing item by matching coordinates
+  const pageBlocks = (() => {
+    if (!parsingResult?.layout_det_res || !parsingResult.parsing_res_list) return [];
+    const list: PageBlock[] = [];
+    const parsingList = parsingResult.parsing_res_list;
+
+    const coordMatch = (a: number[], b: number[], tol = 2) =>
+      a.length >= 4 && b.length >= 4 &&
+      Math.abs(a[0] - b[0]) <= tol && Math.abs(a[1] - b[1]) <= tol &&
+      Math.abs(a[2] - b[2]) <= tol && Math.abs(a[3] - b[3]) <= tol;
+
+    const layout = parsingResult.layout_det_res;
+    for (let pi = 0; pi < layout.length; pi++) {
+      const item = layout[pi];
+      const boxes = item?.boxes ?? [];
+      for (let bi = 0; bi < boxes.length; bi++) {
+        const box = boxes[bi];
+        let coordFlat: number[] | null = null;
+        if (Array.isArray(box?.coordinate) && box.coordinate.length >= 4) {
+          coordFlat = box.coordinate.slice(0, 4);
+        } else if (Array.isArray(box?.polygon_points) && box.polygon_points.length >= 2) {
+          const pts = box.polygon_points.flat() as number[];
+          const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
+          if (xs.length && ys.length) coordFlat = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+        }
+        if (!coordFlat) continue;
+
+        const parsingIdx = parsingList.findIndex((p) => {
+          const bbox = p.bbox;
+          return Array.isArray(bbox) && coordMatch(coordFlat!, bbox as number[]);
+        });
+        const parsingItem = parsingIdx >= 0 ? parsingList[parsingIdx] : undefined;
+        list.push({
+          pageIndex: pi,
+          coordinate: coordFlat,
+          label: box?.label ?? parsingItem?.label ?? 'block',
+          parsingItem: parsingItem ?? { label: 'unknown', content: '' },
+        });
+      }
+    }
+    return list;
+  })();
+
+  const onPageImageLoad = useCallback((pageIndex: number, img: HTMLImageElement) => {
+    if (img?.naturalWidth && img?.naturalHeight) {
+      setPageDimensions((p) => ({ ...p, [pageIndex]: { w: img.naturalWidth, h: img.naturalHeight } }));
+    }
+  }, []);
+
+  const handlePageMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, pageIndex: number) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const dims = pageDimensions[pageIndex];
+      if (!dims) return;
+      const x = ((e.clientX - rect.left) / rect.width) * dims.w;
+      const y = ((e.clientY - rect.top) / rect.height) * dims.h;
+      const blocks = pageBlocks.filter((b) => b.pageIndex === pageIndex);
+      const idx = blocks.findIndex((b) => {
+        const [x1, y1, x2, y2] = b.coordinate;
+        return x >= x1 && x <= x2 && y >= y1 && y <= y2;
+      });
+      setHoveredBlockKey(idx >= 0 ? `${pageIndex}-${idx}` : null);
+    },
+    [pageDimensions, pageBlocks]
+  );
+
   return (
     <div className="document-detail">
       <Link to="/documents" className="document-detail-back">
@@ -88,12 +172,28 @@ export function DocumentDetail() {
         <div className="document-detail-loading">Loading...</div>
       ) : (
         <>
-          {document && (
-            <section className="document-detail-info">
-              <h2 className="document-detail-info-title">
+          {document && !extendedPanel && (
+            <section className={`document-detail-info ${infoVisible ? '' : 'document-detail-info--collapsed'}`}>
+              <h2
+                className="document-detail-info-title document-detail-info-toggle"
+                onClick={() => setInfoVisible((v) => !v)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setInfoVisible((v) => !v)}
+                aria-expanded={infoVisible}
+              >
                 <Info size={20} />
-                Document Information
+                <span>Document Information</span>
+                <button
+                  type="button"
+                  className="document-detail-info-toggle-btn"
+                  onClick={(e) => { e.stopPropagation(); setInfoVisible((v) => !v); }}
+                  aria-label={infoVisible ? 'Hide document information' : 'Show document information'}
+                >
+                  {infoVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
               </h2>
+              {infoVisible && (
               <dl className={`document-detail-info-list ${parsingResult?.file_hash ? 'document-detail-info-list--with-hash' : ''}`}>
                 <div className="document-detail-info-item document-detail-info-item--name">
                   <dt>Name</dt>
@@ -126,6 +226,7 @@ export function DocumentDetail() {
                   </div>
                 )}
               </dl>
+              )}
             </section>
           )}
           {error ? (
@@ -138,7 +239,7 @@ export function DocumentDetail() {
         >
           <section className="document-detail-panel document-detail-images">
             <h2 className="document-detail-panel-header">
-              <ImageIcon size={20} />
+              <ImageIcon size={16} />
               <span>Document Pages</span>
               <button
                 type="button"
@@ -147,23 +248,59 @@ export function DocumentDetail() {
                 title={extendedPanel === 'images' ? 'Restore split view' : 'Extend to view larger'}
                 aria-label={extendedPanel === 'images' ? 'Restore split view' : 'Extend document pages'}
               >
-                {extendedPanel === 'images' ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                {extendedPanel === 'images' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
             </h2>
             <div className="document-detail-images-body">
               {parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
                 parsingResult.layout_det_res
                   .filter((item) => item.input_img)
-                  .map((item, i) => (
-                    <div key={i} className="document-detail-page-item">
-                      <span className="document-detail-page-no">Page {i + 1}</span>
-                      <img
-                        src={`/examples/${item.input_img}`}
-                        alt={`Page ${i + 1}`}
-                        className="document-detail-layout-img"
-                      />
-                    </div>
-                  ))
+                  .map((item, pageIndex) => {
+                    const dims = pageDimensions[pageIndex];
+                    const blocks = pageBlocks.filter((b) => b.pageIndex === pageIndex);
+                    return (
+                      <div key={pageIndex} className="document-detail-page-item">
+                        <span className="document-detail-page-no">Page {pageIndex + 1}</span>
+                        <div
+                          className="document-detail-page-img-wrap"
+                          onMouseMove={(e) => handlePageMouseMove(e, pageIndex)}
+                          onMouseLeave={() => setHoveredBlockKey(null)}
+                        >
+                          <img
+                            onLoad={(e) => onPageImageLoad(pageIndex, e.currentTarget)}
+                            src={`/examples/${item.input_img}`}
+                            alt={`Page ${pageIndex + 1}`}
+                            className="document-detail-layout-img"
+                          />
+                          {dims && blocks.map((block, bi) => {
+                            const [x1, y1, x2, y2] = block.coordinate;
+                            const left = (x1 / dims.w) * 100;
+                            const top = (y1 / dims.h) * 100;
+                            const width = ((x2 - x1) / dims.w) * 100;
+                            const height = ((y2 - y1) / dims.h) * 100;
+                            const blockKey = `${pageIndex}-${bi}`;
+                            const isSelected = selectedBlock === block;
+                            const isHovered = hoveredBlockKey === blockKey;
+                            const isHighlighted = isSelected || isHovered;
+                            return (
+                              <div
+                                key={bi}
+                                className={`document-detail-bbox ${isHighlighted ? 'document-detail-bbox--visible' : ''} ${isSelected ? 'document-detail-bbox--selected' : ''}`}
+                                style={{ left: `${left}%`, top: `${top}%`, width: `${width}%`, height: `${height}%` }}
+                                onMouseEnter={() => setHoveredBlockKey(blockKey)}
+                                onMouseLeave={() => setHoveredBlockKey(null)}
+                                onClick={(e) => { e.stopPropagation(); setSelectedBlock(block); }}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => e.key === 'Enter' && setSelectedBlock(block)}
+                                title={block.parsingItem.content?.slice(0, 50) || block.label}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
               ) : (
                 <p className="document-detail-muted">No layout images</p>
               )}
@@ -171,7 +308,7 @@ export function DocumentDetail() {
           </section>
           <section className="document-detail-panel document-detail-markdown">
             <h2 className="document-detail-panel-header">
-              <FileText size={20} />
+              <FileText size={16} />
               <span>Markdown Content</span>
               <button
                 type="button"
@@ -180,11 +317,50 @@ export function DocumentDetail() {
                 title={extendedPanel === 'markdown' ? 'Restore split view' : 'Extend to view larger'}
                 aria-label={extendedPanel === 'markdown' ? 'Restore split view' : 'Extend markdown content'}
               >
-                {extendedPanel === 'markdown' ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                {extendedPanel === 'markdown' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
             </h2>
             <div className="document-detail-markdown-body">
-              {markdown ? (
+              {selectedBlock ? (
+                <div className="document-detail-block-view">
+                  <button
+                    type="button"
+                    className="document-detail-block-back"
+                    onClick={() => setSelectedBlock(null)}
+                  >
+                    ← Show full content
+                  </button>
+                  <div className="document-detail-block-meta">
+                    <span className="document-detail-block-label">{selectedBlock.label}</span>
+                  </div>
+                  {selectedBlock.parsingItem.image_path ? (
+                    <img
+                      src={`/examples/${selectedBlock.parsingItem.image_path}`}
+                      alt={selectedBlock.parsingItem.label || 'Block'}
+                      className="document-detail-block-img"
+                    />
+                  ) : selectedBlock.parsingItem.content ? (
+                    <div className="document-detail-block-content">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                        components={{
+                          img: ({ src, ...props }) => (
+                            <img
+                              src={src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`}
+                              {...props}
+                            />
+                          ),
+                        }}
+                      >
+                        {selectedBlock.parsingItem.content}
+                      </ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="document-detail-muted">No content</p>
+                  )}
+                </div>
+              ) : markdown ? (
                 <ReactMarkdown
                   remarkPlugins={[remarkMath]}
                   rehypePlugins={[rehypeRaw, rehypeKatex]}

@@ -1,15 +1,17 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import '../../App.css';
 
 export function MainLayout() {
+  const location = useLocation();
+  const isDocumentDetail = location.pathname.startsWith('/documents/view');
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="app-main">
         <Header />
-        <div className="app-content">
+        <div className={`app-content ${isDocumentDetail ? 'app-content--compact' : ''}`}>
           <Outlet />
         </div>
       </main>

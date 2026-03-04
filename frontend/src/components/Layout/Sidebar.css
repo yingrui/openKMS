@@ -11,44 +11,50 @@
 }
 
 .sidebar-header {
-  padding: 20px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--color-border);
+  min-height: 56px;
+  display: flex;
+  align-items: center;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   color: var(--color-accent);
 }
 
 .sidebar-logo svg {
   flex-shrink: 0;
+  width: 24px;
+  height: 24px;
 }
 
 .sidebar-title {
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
+  line-height: 24px;
   color: var(--color-text);
   letter-spacing: -0.02em;
 }
 
 .sidebar-nav {
   flex: 1;
-  padding: 16px 12px;
+  padding: 10px 8px;
   overflow-y: auto;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   transition: background 0.15s, color 0.15s;
 }
 
@@ -68,15 +74,15 @@
 
 /* Menu group: parent + nested channels */
 .sidebar-menu-group {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .sidebar-subnav {
-  padding-left: 14px;
+  padding-left: 10px;
   margin-top: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   border-left: 2px solid var(--color-border);
-  margin-left: 14px;
+  margin-left: 10px;
 }
 
 .sidebar-channel-tree {
@@ -86,13 +92,13 @@
 .sidebar-channel-item {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   margin-bottom: 1px;
   border-radius: var(--radius-sm);
 }
 
 .sidebar-channel-toggle {
-  padding: 4px;
+  padding: 2px;
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -103,18 +109,18 @@
 }
 
 .sidebar-channel-spacer {
-  width: 20px;
+  width: 18px;
   flex-shrink: 0;
 }
 
 .sidebar-channel-label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 1;
-  padding: 6px 10px;
+  padding: 4px 8px;
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
   border-radius: var(--radius-sm);
   min-width: 0;

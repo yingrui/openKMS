@@ -35,7 +35,7 @@ function SidebarChannelTree({
   depth?: number;
 }) {
   return (
-    <ul className="sidebar-channel-tree" style={{ paddingLeft: depth > 0 ? 12 : 0 }}>
+    <ul className="sidebar-channel-tree" style={{ paddingLeft: depth > 0 ? 8 : 0 }}>
       {channels.map((ch) => (
         <li key={ch.id}>
           <div className={`sidebar-channel-item ${selectedId === ch.id ? 'selected' : ''}`}>
@@ -46,7 +46,7 @@ function SidebarChannelTree({
                 onClick={() => onToggle(ch.id)}
                 aria-label={expanded[ch.id] ? 'Collapse' : 'Expand'}
               >
-                <ChevronRight size={14} className={expanded[ch.id] ? 'expanded' : ''} />
+                <ChevronRight size={12} className={expanded[ch.id] ? 'expanded' : ''} />
               </button>
             ) : (
               <span className="sidebar-channel-spacer" />
@@ -57,9 +57,9 @@ function SidebarChannelTree({
               onClick={() => onSelect(ch.id)}
             >
               {ch.children && expanded[ch.id] ? (
-                <FolderOpen size={16} />
+                <FolderOpen size={14} />
               ) : (
-                <Folder size={16} />
+                <Folder size={14} />
               )}
               <span>{ch.name}</span>
             </button>
@@ -124,7 +124,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
           </svg>
           <span className="sidebar-title">openKMS</span>
@@ -137,7 +137,7 @@ export function Sidebar() {
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }
         >
-          <LayoutDashboard size={20} strokeWidth={1.75} />
+          <LayoutDashboard size={18} strokeWidth={1.75} />
           <span>Dashboard</span>
         </NavLink>
         <div className="sidebar-menu-group">
@@ -147,7 +147,7 @@ export function Sidebar() {
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
           >
-            <FileStack size={20} strokeWidth={1.75} />
+            <FileStack size={18} strokeWidth={1.75} />
             <span>Documents</span>
           </NavLink>
           {onDocuments && (
@@ -169,7 +169,7 @@ export function Sidebar() {
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
           >
-            <FileText size={20} strokeWidth={1.75} />
+            <FileText size={18} strokeWidth={1.75} />
             <span>Articles</span>
           </NavLink>
           {onArticles && (
@@ -190,7 +190,7 @@ export function Sidebar() {
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }
         >
-          <Database size={20} strokeWidth={1.75} />
+          <Database size={18} strokeWidth={1.75} />
           <span>Knowledge Bases</span>
         </NavLink>
       </nav>
