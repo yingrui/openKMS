@@ -5,13 +5,13 @@ import '../../App.css';
 
 export function MainLayout() {
   const location = useLocation();
-  const isDocumentDetail = location.pathname.startsWith('/documents/view');
+  const isDetailPage = location.pathname.startsWith('/documents/view') || location.pathname.startsWith('/articles/view');
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="app-main">
         <Header />
-        <div className={`app-content ${isDocumentDetail ? 'app-content--compact' : ''}`}>
+        <div className={`app-content ${isDetailPage ? 'app-content--compact' : ''}`}>
           <Outlet />
         </div>
       </main>

@@ -117,14 +117,18 @@
   gap: 4px;
 }
 
-.articles-table-btns button {
+.articles-table-btns button,
+.articles-table-btns a {
+  display: inline-flex;
   padding: 6px;
   border-radius: var(--radius-sm);
   color: var(--color-text-muted);
   transition: background 0.15s, color 0.15s;
+  text-decoration: none;
 }
 
-.articles-table-btns button:hover {
+.articles-table-btns button:hover,
+.articles-table-btns a:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }

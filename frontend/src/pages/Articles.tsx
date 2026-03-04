@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   FileText,
   Plus,
@@ -114,9 +114,9 @@ export function Articles() {
                     <td>{article.fields.category ?? '—'}</td>
                     <td className="articles-table-actions">
                       <div className="articles-table-btns">
-                        <button type="button" title="View" aria-label="View">
+                        <Link to={`/articles/view/${article.id}`} title="View" aria-label="View">
                           <Eye size={16} />
-                        </button>
+                        </Link>
                         <button type="button" title="Edit" aria-label="Edit">
                           <Pencil size={16} />
                         </button>

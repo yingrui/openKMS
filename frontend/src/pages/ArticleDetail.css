@@ -1,0 +1,198 @@
+.article-detail {
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--header-height, 56px) - 48px);
+  min-height: 400px;
+}
+
+.article-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.article-detail-back:hover {
+  color: var(--color-accent);
+}
+
+.article-detail-error {
+  padding: 48px;
+  text-align: center;
+  color: var(--color-error);
+  flex-shrink: 0;
+}
+
+.article-detail-info {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.article-detail-info--collapsed {
+  padding: 8px 14px;
+}
+
+.article-detail-info--collapsed .article-detail-info-title {
+  margin-bottom: 0;
+}
+
+.article-detail-info-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--color-text);
+}
+
+.article-detail-info-toggle {
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0;
+}
+
+.article-detail-info-toggle ~ .article-detail-info-list {
+  margin-top: 12px;
+}
+
+.article-detail-info-title span {
+  flex: 1;
+}
+
+.article-detail-info-toggle-btn {
+  display: inline-flex;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.article-detail-info-toggle-btn:hover {
+  color: var(--color-accent);
+  background: var(--color-bg-elevated);
+}
+
+.article-detail-info-title svg:first-of-type {
+  color: var(--color-accent);
+}
+
+.article-detail-info-list {
+  display: grid;
+  grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(56px, 0.7fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.article-detail-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.article-detail-info-item dt {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.article-detail-info-item dd {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--color-text);
+}
+
+.article-detail-info-item--compact dd {
+  font-size: 0.8125rem;
+}
+
+.article-detail-info-item--name dd {
+  word-break: break-word;
+}
+
+.article-detail-content {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.article-detail-content-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  margin: 0;
+  background: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.article-detail-content-body {
+  padding: 12px 16px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  font-family: var(--font-serif);
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.article-detail-content-body h1 { font-size: 1.35rem; margin: 0.75em 0 0.4em; }
+.article-detail-content-body h2 { font-size: 1.15rem; margin: 0.75em 0 0.4em; }
+.article-detail-content-body h3 { font-size: 1.05rem; margin: 0.75em 0 0.4em; }
+.article-detail-content-body p { margin: 0.4em 0; }
+.article-detail-content-body ul, .article-detail-content-body ol { margin: 0.4em 0; padding-left: 1.25em; }
+.article-detail-content-body pre { background: var(--color-bg-muted); padding: 12px; border-radius: var(--radius-sm); overflow-x: auto; }
+
+.article-detail-content-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.article-detail-content-body th,
+.article-detail-content-body td {
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.article-detail-content-body th {
+  background: var(--color-bg-muted);
+  font-weight: 600;
+}
+
+.article-detail-muted {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+@media (max-width: 768px) {
+  .article-detail-info-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .article-detail-info-list {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -342,7 +343,7 @@ export function DocumentDetail() {
                   ) : selectedBlock.parsingItem.content ? (
                     <div className="document-detail-block-content">
                       <ReactMarkdown
-                        remarkPlugins={[remarkMath]}
+                        remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeRaw, rehypeKatex]}
                         components={{
                           img: ({ src, ...props }) => (
@@ -362,7 +363,7 @@ export function DocumentDetail() {
                 </div>
               ) : markdown ? (
                 <ReactMarkdown
-                  remarkPlugins={[remarkMath]}
+                  remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeRaw, rehypeKatex]}
                   components={{
                     img: ({ src, ...props }) => (
