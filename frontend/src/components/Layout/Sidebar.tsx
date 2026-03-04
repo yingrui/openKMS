@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+import logo from '../../assets/logo.svg';
 import {
   documentChannels,
   articleChannels,
@@ -124,9 +125,7 @@ export function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-          </svg>
+          <img src={logo} alt="" className="sidebar-logo-icon" />
           <span className="sidebar-title">openKMS</span>
         </div>
       </div>
