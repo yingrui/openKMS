@@ -1,6 +1,6 @@
 import { FileStack, FileText, Database } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import './Dashboard.css';
+import './Home.css';
 
 const stats = [
   { label: 'Documents', value: '42', icon: FileStack, color: 'teal', path: '/documents' },
@@ -14,16 +14,16 @@ const recentActivity = [
   { title: 'Product KB', type: 'Knowledge Base', time: '2 hours ago', path: '/knowledge-bases/kb1' },
 ];
 
-export function Dashboard() {
+export function Home() {
   return (
-    <div className="dashboard">
+    <div className="home">
       <div className="page-header">
-        <h1>Dashboard</h1>
+        <h1>Home</h1>
         <p className="page-subtitle">
           Documents and articles in channel trees (like Google Drive), plus knowledge bases with RAG Q&A.
         </p>
       </div>
-      <section className="dashboard-stats">
+      <section className="home-stats">
         {stats.map(({ label, value, icon: Icon, color, path }) => (
           <Link key={label} to={path} className={`stat-card stat-card-${color}`}>
             <div className="stat-icon">
@@ -36,8 +36,8 @@ export function Dashboard() {
           </Link>
         ))}
       </section>
-      <div className="dashboard-grid">
-        <section className="dashboard-card">
+      <div className="home-grid">
+        <section className="home-card">
           <h2>Recent Activity</h2>
           <ul className="activity-list">
             {recentActivity.map(({ title, type, time, path }) => (
@@ -52,7 +52,7 @@ export function Dashboard() {
             ))}
           </ul>
         </section>
-        <section className="dashboard-card">
+        <section className="home-card">
           <h2>Quick Actions</h2>
           <div className="quick-actions">
             <Link to="/documents" className="quick-action">

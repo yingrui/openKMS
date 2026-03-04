@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { MainLayout } from './components/Layout/MainLayout';
-import { Dashboard } from './pages/Dashboard';
+import { Home } from './pages/Home';
 import { Documents } from './pages/Documents';
 import { Articles } from './pages/Articles';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
@@ -13,7 +13,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<MainLayout />}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<Home />} />
           <Route path="documents" element={<Documents />} />
           <Route path="documents/view/:id" element={<DocumentDetail />} />
           <Route path="articles" element={<Articles />} />

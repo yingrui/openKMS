@@ -1,6 +1,6 @@
 import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  LayoutDashboard,
+  Home as HomeIcon,
   FileStack,
   FileText,
   Database,
@@ -137,8 +137,8 @@ export function Sidebar() {
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }
         >
-          <LayoutDashboard size={18} strokeWidth={1.75} />
-          <span>Dashboard</span>
+          <HomeIcon size={18} strokeWidth={1.75} />
+          <span>Home</span>
         </NavLink>
         <div className="sidebar-menu-group">
           <NavLink

@@ -55,11 +55,8 @@ export function KnowledgeBaseDetail() {
   const { id: _kbId } = useParams();
   const [activeTab, setActiveTab] = useState<TabId>('documents');
   const [searchQuery, setSearchQuery] = useState('');
-  const [chunkFilter, setChunkFilter] = useState<string>('documents');
 
-  const filteredChunks = mockChunks.filter((c) =>
-    chunkFilter === 'documents' ? c.sourceType === 'document' : c.sourceType === 'article'
-  );
+  const filteredChunks = mockChunks;
 
   const hasSearched = searchQuery.trim().length > 0;
 
