@@ -14,6 +14,7 @@ import {
   Folder,
 } from 'lucide-react';
 import { defaultDocumentChannel, getDocumentLeafChannelIds } from '../data/channels';
+import { mockDocumentsByChannel } from '../data/documents';
 import './Documents.css';
 
 const fileTypeIcons: Record<string, typeof FileText> = {
@@ -24,41 +25,6 @@ const fileTypeIcons: Record<string, typeof FileText> = {
   JPG: Image,
 };
 
-interface DocumentItem {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  uploaded: string;
-  markdown: boolean;
-}
-
-const mockDocumentsByChannel: Record<string, DocumentItem[]> = {
-  dc1a: [
-    { id: '1', name: 'Life_Insurance_Brochure.pdf', type: 'PDF', size: '1.2 MB', uploaded: '2 days ago', markdown: true },
-    { id: '2', name: 'Auto_Coverage_Guide.html', type: 'HTML', size: '256 KB', uploaded: '1 week ago', markdown: true },
-  ],
-  dc1b: [
-    { id: '3', name: 'Commission_Structure_2024.pdf', type: 'PDF', size: '456 KB', uploaded: '3 days ago', markdown: true },
-  ],
-  dc2a: [
-    { id: '4', name: 'Risk_Selection_Guidelines.pdf', type: 'PDF', size: '892 KB', uploaded: '2 weeks ago', markdown: true },
-  ],
-  dc2b: [
-    { id: '5', name: 'Policy_Terms_Standard.pdf', type: 'PDF', size: '1.5 MB', uploaded: '1 week ago', markdown: true },
-  ],
-  dc3a: [
-    { id: '6', name: 'Claims_Process_Flow.pdf', type: 'PDF', size: '324 KB', uploaded: '5 days ago', markdown: true },
-  ],
-  dc3b: [
-    { id: '7', name: 'Renewal_Checklist.pdf', type: 'PDF', size: '128 KB', uploaded: '3 days ago', markdown: true },
-  ],
-  dc3c: [],
-  root: [],
-  dc1: [],
-  dc2: [],
-  dc3: [],
-};
 
 export function Documents() {
   const [searchParams] = useSearchParams();

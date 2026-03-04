@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Image as ImageIcon, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, FileText, Image as ImageIcon, Maximize2, Minimize2, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import { getDocumentById } from '../data/documents';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -49,11 +50,12 @@ export function DocumentDetail() {
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
+  const document = id ? getDocumentById(id) : undefined;
 
   useEffect(() => {
     if (!docConfig) {
       setLoading(false);
-      setError('No example content for this document');
+      setError('Document is not parsed');
       return;
     }
 
@@ -84,9 +86,51 @@ export function DocumentDetail() {
       </Link>
       {loading ? (
         <div className="document-detail-loading">Loading...</div>
-      ) : error ? (
-        <div className="document-detail-error">{error}</div>
       ) : (
+        <>
+          {document && (
+            <section className="document-detail-info">
+              <h2 className="document-detail-info-title">
+                <Info size={20} />
+                Document Information
+              </h2>
+              <dl className={`document-detail-info-list ${parsingResult?.file_hash ? 'document-detail-info-list--with-hash' : ''}`}>
+                <div className="document-detail-info-item document-detail-info-item--name">
+                  <dt>Name</dt>
+                  <dd>{document.name}</dd>
+                </div>
+                <div className="document-detail-info-item document-detail-info-item--compact">
+                  <dt>Type</dt>
+                  <dd>{document.type}</dd>
+                </div>
+                <div className="document-detail-info-item document-detail-info-item--compact">
+                  <dt>Size</dt>
+                  <dd>{document.size}</dd>
+                </div>
+                <div className="document-detail-info-item document-detail-info-item--compact">
+                  <dt>Uploaded</dt>
+                  <dd>{document.uploaded}</dd>
+                </div>
+                <div className="document-detail-info-item document-detail-info-item--compact">
+                  <dt>Markdown</dt>
+                  <dd>{markdown ? 'Yes' : 'No'}</dd>
+                </div>
+                {parsingResult?.file_hash && (
+                  <div className="document-detail-info-item document-detail-info-item--compact">
+                    <dt>File hash</dt>
+                    <dd className="document-detail-info-hash" title={parsingResult.file_hash}>
+                      {parsingResult.file_hash.length > 12
+                        ? `${parsingResult.file_hash.slice(0, 10)}...`
+                        : parsingResult.file_hash}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+          )}
+          {error ? (
+            <div className="document-detail-error">{error}</div>
+          ) : (
         <div
           className="document-detail-split"
           data-extended-images={extendedPanel === 'images'}
@@ -161,6 +205,8 @@ export function DocumentDetail() {
             </div>
           </section>
         </div>
+          )}
+        </>
       )}
     </div>
   );
