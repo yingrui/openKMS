@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, FileText, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, FileText, Image as ImageIcon, Maximize2, Minimize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -42,6 +45,7 @@ export function DocumentDetail() {
   const [parsingResult, setParsingResult] = useState<ParsingResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [extendedPanel, setExtendedPanel] = useState<'images' | 'markdown' | null>(null);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -83,11 +87,24 @@ export function DocumentDetail() {
       ) : error ? (
         <div className="document-detail-error">{error}</div>
       ) : (
-        <div className="document-detail-split">
+        <div
+          className="document-detail-split"
+          data-extended-images={extendedPanel === 'images'}
+          data-extended-markdown={extendedPanel === 'markdown'}
+        >
           <section className="document-detail-panel document-detail-images">
-            <h2>
+            <h2 className="document-detail-panel-header">
               <ImageIcon size={20} />
-              Document Pages
+              <span>Document Pages</span>
+              <button
+                type="button"
+                className="document-detail-extend-btn"
+                onClick={() => setExtendedPanel((p) => (p === 'images' ? null : 'images'))}
+                title={extendedPanel === 'images' ? 'Restore split view' : 'Extend to view larger'}
+                aria-label={extendedPanel === 'images' ? 'Restore split view' : 'Extend document pages'}
+              >
+                {extendedPanel === 'images' ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              </button>
             </h2>
             <div className="document-detail-images-body">
               {parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
@@ -109,14 +126,24 @@ export function DocumentDetail() {
             </div>
           </section>
           <section className="document-detail-panel document-detail-markdown">
-            <h2>
+            <h2 className="document-detail-panel-header">
               <FileText size={20} />
-              Markdown Content
+              <span>Markdown Content</span>
+              <button
+                type="button"
+                className="document-detail-extend-btn"
+                onClick={() => setExtendedPanel((p) => (p === 'markdown' ? null : 'markdown'))}
+                title={extendedPanel === 'markdown' ? 'Restore split view' : 'Extend to view larger'}
+                aria-label={extendedPanel === 'markdown' ? 'Restore split view' : 'Extend markdown content'}
+              >
+                {extendedPanel === 'markdown' ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+              </button>
             </h2>
             <div className="document-detail-markdown-body">
               {markdown ? (
                 <ReactMarkdown
-                  rehypePlugins={[rehypeRaw]}
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeRaw, rehypeKatex]}
                   components={{
                     img: ({ src, ...props }) => (
                       <img
