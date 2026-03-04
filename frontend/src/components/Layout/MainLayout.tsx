@@ -5,7 +5,7 @@ import '../../App.css';
 
 export function MainLayout() {
   const location = useLocation();
-  const isDetailPage = location.pathname.startsWith('/documents/view') || location.pathname.startsWith('/articles/view');
+  const isDetailPage = location.pathname.startsWith('/documents/view') || location.pathname.startsWith('/articles/view') || location.pathname.startsWith('/knowledge-bases/');
   return (
     <div className="app-layout">
       <Sidebar />

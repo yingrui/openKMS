@@ -23,7 +23,8 @@
 }
 
 .app-content--compact .document-detail,
-.app-content--compact .article-detail {
+.app-content--compact .article-detail,
+.app-content--compact .kb-detail {
   height: calc(100vh - var(--header-height, 56px) - 24px);
 }
 
