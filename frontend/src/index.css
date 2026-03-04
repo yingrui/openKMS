@@ -1,0 +1,112 @@
+:root {
+  /* Palette: Warm stone base with teal accent - editorial, enterprise */
+  --color-bg: #faf9f7;
+  --color-bg-elevated: #ffffff;
+  --color-bg-muted: #f3f2ef;
+  --color-border: #e8e6e1;
+  --color-border-strong: #d4d1c9;
+  
+  --color-text: #2c2925;
+  --color-text-secondary: #5c5750;
+  --color-text-muted: #8a8379;
+  
+  --color-accent: #0d9488;
+  --color-accent-hover: #0f766e;
+  --color-accent-muted: #ccfbf1;
+  --color-accent-subtle: #f0fdfa;
+  
+  --color-warning: #d97706;
+  --color-success: #059669;
+  --color-error: #dc2626;
+  
+  /* Typography */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  
+  /* Spacing & radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --sidebar-width: 260px;
+  --header-height: 56px;
+  
+  --shadow-sm: 0 1px 2px rgba(44, 41, 37, 0.06);
+  --shadow-md: 0 4px 12px rgba(44, 41, 37, 0.08);
+  --shadow-lg: 0 12px 40px rgba(44, 41, 37, 0.1);
+}
+
+[data-theme="dark"] {
+  --color-bg: #1a1816;
+  --color-bg-elevated: #242220;
+  --color-bg-muted: #2d2a27;
+  --color-border: #3d3935;
+  --color-border-strong: #524d47;
+  
+  --color-text: #f5f3f0;
+  --color-text-secondary: #c4bfb6;
+  --color-text-muted: #8a857c;
+  
+  --color-accent-muted: #134e4a;
+  --color-accent-subtle: #0d3d3a;
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+/* Utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

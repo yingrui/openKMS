@@ -1,0 +1,136 @@
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--color-bg-elevated);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-accent);
+}
+
+.sidebar-logo svg {
+  flex-shrink: 0;
+}
+
+.sidebar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 16px 12px;
+  overflow-y: auto;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  margin-bottom: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-link:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.sidebar-link-active {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+[data-theme="dark"] .sidebar-link-active {
+  background: var(--color-accent-muted);
+}
+
+/* Menu group: parent + nested channels */
+.sidebar-menu-group {
+  margin-bottom: 4px;
+}
+
+.sidebar-subnav {
+  padding-left: 14px;
+  margin-top: 2px;
+  margin-bottom: 8px;
+  border-left: 2px solid var(--color-border);
+  margin-left: 14px;
+}
+
+.sidebar-channel-tree {
+  list-style: none;
+}
+
+.sidebar-channel-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 1px;
+  border-radius: var(--radius-sm);
+}
+
+.sidebar-channel-toggle {
+  padding: 4px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.sidebar-channel-toggle .expanded {
+  transform: rotate(90deg);
+  display: inline-block;
+}
+
+.sidebar-channel-spacer {
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.sidebar-channel-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.sidebar-channel-label:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.sidebar-channel-label svg {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.sidebar-channel-item.selected .sidebar-channel-label {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
