@@ -1,4 +1,4 @@
-import { NavLink, useLocation, useSearchParams } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileStack,
@@ -82,9 +82,10 @@ function SidebarChannelTree({
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const onDocuments = location.pathname === '/documents';
-  const onArticles = location.pathname === '/articles';
+  const onDocuments = location.pathname === '/documents' || location.pathname.startsWith('/documents/');
+  const onArticles = location.pathname === '/articles' || location.pathname.startsWith('/articles/');
 
   const docChannel = onDocuments
     ? searchParams.get('channel') || defaultDocumentChannel
@@ -105,10 +106,18 @@ export function Sidebar() {
   });
 
   const setDocumentChannel = (id: string) => {
-    setSearchParams({ channel: id });
+    if (location.pathname.startsWith('/documents')) {
+      navigate(`/documents?channel=${id}`);
+    } else {
+      setSearchParams({ channel: id });
+    }
   };
   const setArticleChannel = (id: string) => {
-    setSearchParams({ channel: id });
+    if (location.pathname.startsWith('/articles')) {
+      navigate(`/articles?channel=${id}`);
+    } else {
+      setSearchParams({ channel: id });
+    }
   };
 
   return (
