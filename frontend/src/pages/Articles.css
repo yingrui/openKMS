@@ -87,6 +87,10 @@
   letter-spacing: 0.03em;
 }
 
+.articles-table-row-clickable {
+  cursor: pointer;
+}
+
 .articles-table tbody tr:hover {
   background: var(--color-bg-muted);
 }

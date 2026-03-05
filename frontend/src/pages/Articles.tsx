@@ -1,9 +1,8 @@
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   FileText,
   Plus,
   Search,
-  Eye,
   Pencil,
   FolderInput,
   Copy,
@@ -49,6 +48,7 @@ const mockArticlesByChannel: Record<string, ArticleItem[]> = {
 };
 
 export function Articles() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const channelId = searchParams.get('channel') || defaultArticleChannel;
   const leafIds = getArticleLeafChannelIds(channelId);
@@ -96,7 +96,14 @@ export function Articles() {
               </thead>
               <tbody>
                 {articles.map((article) => (
-                  <tr key={article.id}>
+                  <tr
+                    key={article.id}
+                    className="articles-table-row-clickable"
+                    onClick={() => navigate(`/articles/view/${article.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/articles/view/${article.id}`)}
+                  >
                     <td>
                       <div className="articles-table-title">
                         <FileText size={18} strokeWidth={1.5} />
@@ -112,11 +119,8 @@ export function Articles() {
                     </td>
                     <td>{article.updated}</td>
                     <td>{article.fields.category ?? '—'}</td>
-                    <td className="articles-table-actions">
+                    <td className="articles-table-actions" onClick={(e) => e.stopPropagation()}>
                       <div className="articles-table-btns">
-                        <Link to={`/articles/view/${article.id}`} title="View" aria-label="View">
-                          <Eye size={16} />
-                        </Link>
                         <button type="button" title="Edit" aria-label="Edit">
                           <Pencil size={16} />
                         </button>

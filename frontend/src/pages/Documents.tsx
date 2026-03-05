@@ -1,9 +1,8 @@
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   FileText,
   Upload,
   Search,
-  Eye,
   Pencil,
   FolderInput,
   Download,
@@ -27,6 +26,7 @@ const fileTypeIcons: Record<string, typeof FileText> = {
 
 
 export function Documents() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const channelId = searchParams.get('channel') || defaultDocumentChannel;
   const leafIds = getDocumentLeafChannelIds(channelId);
@@ -77,7 +77,14 @@ export function Documents() {
                 {documents.map((doc) => {
                   const Icon = fileTypeIcons[doc.type] || FileText;
                   return (
-                    <tr key={doc.id}>
+                    <tr
+                      key={doc.id}
+                      className="documents-table-row-clickable"
+                      onClick={() => navigate(`/documents/view/${doc.id}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && navigate(`/documents/view/${doc.id}`)}
+                    >
                       <td>
                         <div className="documents-table-name">
                           <Icon size={18} strokeWidth={1.5} />
@@ -94,11 +101,8 @@ export function Documents() {
                           <span className="documents-table-muted">—</span>
                         )}
                       </td>
-                      <td className="documents-table-actions">
+                      <td className="documents-table-actions" onClick={(e) => e.stopPropagation()}>
                         <div className="documents-table-btns">
-                          <Link to={`/documents/view/${doc.id}`} title="View" aria-label="View">
-                            <Eye size={16} />
-                          </Link>
                           <button type="button" title="Edit" aria-label="Edit">
                             <Pencil size={16} />
                           </button>

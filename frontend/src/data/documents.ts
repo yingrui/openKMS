@@ -11,8 +11,8 @@ export interface DocumentItem {
 
 const mockDocumentsByChannel: Record<string, DocumentItem[]> = {
   dc1a: [
-    { id: '1', name: 'Life_Insurance_Brochure.pdf', type: 'PDF', size: '1.2 MB', uploaded: '2 days ago', markdown: true, channelId: 'dc1a' },
-    { id: '2', name: 'Auto_Coverage_Guide.html', type: 'HTML', size: '256 KB', uploaded: '1 week ago', markdown: true, channelId: 'dc1a' },
+    { id: '1', name: 'Life-Shield-Brochure.pdf', type: 'PDF', size: '5.2 MB', uploaded: '2 days ago', markdown: true, channelId: 'dc1a' },
+    { id: '2', name: 'Paper_Demo.pdf', type: 'PDF', size: '337 KB', uploaded: '1 week ago', markdown: true, channelId: 'dc1a' },
   ],
   dc1b: [
     { id: '3', name: 'Commission_Structure_2024.pdf', type: 'PDF', size: '456 KB', uploaded: '3 days ago', markdown: true, channelId: 'dc1b' },
