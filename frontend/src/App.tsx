@@ -5,6 +5,9 @@ import { Documents } from './pages/Documents';
 import { Articles } from './pages/Articles';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
 import { KnowledgeBaseDetail } from './pages/KnowledgeBaseDetail';
+import { Pipelines } from './pages/Pipelines';
+import { Jobs } from './pages/Jobs';
+import { Models } from './pages/Models';
 import { DocumentDetail } from './pages/DocumentDetail';
 import { ArticleDetail } from './pages/ArticleDetail';
 
@@ -20,6 +23,9 @@ function App() {
           <Route path="articles/view/:id" element={<ArticleDetail />} />
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
+          <Route path="pipelines" element={<Pipelines />} />
+          <Route path="jobs" element={<Jobs />} />
+          <Route path="models" element={<Models />} />
         </Route>
       </Routes>
     </BrowserRouter>

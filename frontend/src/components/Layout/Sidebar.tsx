@@ -7,6 +7,9 @@ import {
   Folder,
   FolderOpen,
   ChevronRight,
+  GitBranch,
+  ListTodo,
+  Cpu,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -191,6 +194,33 @@ export function Sidebar() {
         >
           <Database size={18} strokeWidth={1.75} />
           <span>Knowledge Bases</span>
+        </NavLink>
+        <NavLink
+          to="/pipelines"
+          className={({ isActive }) =>
+            `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <GitBranch size={18} strokeWidth={1.75} />
+          <span>Pipelines</span>
+        </NavLink>
+        <NavLink
+          to="/jobs"
+          className={({ isActive }) =>
+            `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <ListTodo size={18} strokeWidth={1.75} />
+          <span>Jobs</span>
+        </NavLink>
+        <NavLink
+          to="/models"
+          className={({ isActive }) =>
+            `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Cpu size={18} strokeWidth={1.75} />
+          <span>Models</span>
         </NavLink>
       </nav>
     </aside>
