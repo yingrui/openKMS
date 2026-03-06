@@ -58,6 +58,17 @@
   transition: background 0.15s, color 0.15s;
 }
 
+.sidebar-link-exit {
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sidebar-link-exit:hover {
+  color: var(--color-accent);
+}
+
 .sidebar-link:hover {
   background: var(--color-bg-muted);
   color: var(--color-text);

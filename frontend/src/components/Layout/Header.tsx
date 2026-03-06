@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { NavLink } from 'react-router-dom';
 import { Search, Sun, Moon, User, UserCircle, Settings, LogOut } from 'lucide-react';
 import './Header.css';
 
@@ -36,6 +37,14 @@ export function Header() {
         <kbd className="header-search-kbd">⌘K</kbd>
       </div>
       <div className="header-actions">
+        <NavLink
+          to="/console"
+          className={({ isActive }) =>
+            `header-console-link ${isActive ? 'header-console-link-active' : ''}`
+          }
+        >
+          <span>Console</span>
+        </NavLink>
         <button
           type="button"
           onClick={toggleTheme}

@@ -68,6 +68,29 @@
   gap: 8px;
 }
 
+.header-console-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.header-console-link:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.header-console-link-active {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
 .header-theme-btn {
   padding: 8px;
   border-radius: var(--radius-sm);

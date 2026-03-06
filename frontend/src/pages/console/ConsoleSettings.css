@@ -1,0 +1,58 @@
+.console-settings {
+  width: 100%;
+}
+
+.console-settings-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.console-settings-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+}
+
+.console-settings-card h2 svg {
+  color: var(--color-accent);
+}
+
+.console-settings-section {
+  margin-bottom: 16px;
+}
+
+.console-settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.console-settings-section label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.console-settings-input,
+.console-settings-select {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.console-settings-input:focus,
+.console-settings-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}

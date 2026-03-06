@@ -1,0 +1,73 @@
+.console-overview {
+  width: 100%;
+}
+
+.console-overview-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.console-overview-stat {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.console-overview-stat-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  border-radius: var(--radius-md);
+}
+
+.console-overview-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.console-overview-stat-label {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.console-overview-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.console-overview-card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.console-overview-activity {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--color-text-muted);
+}
+
+.console-overview-activity svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.console-overview-activity p {
+  margin: 0;
+  font-size: 0.9375rem;
+}

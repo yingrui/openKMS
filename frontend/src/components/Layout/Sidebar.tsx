@@ -1,4 +1,4 @@
-import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Home as HomeIcon,
   FileStack,
@@ -10,6 +10,11 @@ import {
   GitBranch,
   ListTodo,
   Cpu,
+  LayoutDashboard,
+  Settings,
+  Users,
+  ArrowLeft,
+  ToggleLeft,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -21,6 +26,7 @@ import {
   defaultArticleChannel,
   type ChannelNode,
 } from '../../data/channels';
+import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './Sidebar.css';
 
 function SidebarChannelTree({
@@ -124,6 +130,9 @@ export function Sidebar() {
     }
   };
 
+  const onConsole = location.pathname.startsWith('/console');
+  const { toggles } = useFeatureToggles();
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -133,6 +142,31 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="sidebar-nav">
+        {onConsole ? (
+          <>
+            <Link to="/" className="sidebar-link sidebar-link-exit">
+              <ArrowLeft size={18} strokeWidth={1.75} />
+              <span>Exit Console</span>
+            </Link>
+            <NavLink to="/console" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <LayoutDashboard size={18} strokeWidth={1.75} />
+              <span>Overview</span>
+            </NavLink>
+            <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Settings size={18} strokeWidth={1.75} />
+              <span>Settings</span>
+            </NavLink>
+            <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Users size={18} strokeWidth={1.75} />
+              <span>Users & Roles</span>
+            </NavLink>
+            <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <ToggleLeft size={18} strokeWidth={1.75} />
+              <span>Feature Toggles</span>
+            </NavLink>
+          </>
+        ) : (
+          <>
         <NavLink
           to="/"
           className={({ isActive }) =>
@@ -164,37 +198,41 @@ export function Sidebar() {
             </div>
           )}
         </div>
-        <div className="sidebar-menu-group">
+        {toggles.articles && (
+          <div className="sidebar-menu-group">
+            <NavLink
+              to="/articles"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+              }
+            >
+              <FileText size={18} strokeWidth={1.75} />
+              <span>Articles</span>
+            </NavLink>
+            {onArticles && (
+              <div className="sidebar-subnav">
+                <SidebarChannelTree
+                  channels={articleChannels[0]?.children ?? []}
+                  selectedId={artChannel}
+                  expanded={artExpanded}
+                  onSelect={setArticleChannel}
+                  onToggle={(id) => setArtExpanded((p) => ({ ...p, [id]: !p[id] }))}
+                />
+              </div>
+            )}
+          </div>
+        )}
+        {toggles.knowledgeBases && (
           <NavLink
-            to="/articles"
+            to="/knowledge-bases"
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
           >
-            <FileText size={18} strokeWidth={1.75} />
-            <span>Articles</span>
+            <Database size={18} strokeWidth={1.75} />
+            <span>Knowledge Bases</span>
           </NavLink>
-          {onArticles && (
-            <div className="sidebar-subnav">
-              <SidebarChannelTree
-                channels={articleChannels[0]?.children ?? []}
-                selectedId={artChannel}
-                expanded={artExpanded}
-                onSelect={setArticleChannel}
-                onToggle={(id) => setArtExpanded((p) => ({ ...p, [id]: !p[id] }))}
-              />
-            </div>
-          )}
-        </div>
-        <NavLink
-          to="/knowledge-bases"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-          }
-        >
-          <Database size={18} strokeWidth={1.75} />
-          <span>Knowledge Bases</span>
-        </NavLink>
+        )}
         <NavLink
           to="/pipelines"
           className={({ isActive }) =>
@@ -222,6 +260,8 @@ export function Sidebar() {
           <Cpu size={18} strokeWidth={1.75} />
           <span>Models</span>
         </NavLink>
+          </>
+        )}
       </nav>
     </aside>
   );
