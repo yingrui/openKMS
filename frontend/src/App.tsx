@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
 import { Documents } from './pages/Documents';
@@ -9,6 +9,7 @@ import { Pipelines } from './pages/Pipelines';
 import { Jobs } from './pages/Jobs';
 import { Models } from './pages/Models';
 import { DocumentDetail } from './pages/DocumentDetail';
+import { DocumentChannelSettings } from './pages/DocumentChannelSettings';
 import { ArticleDetail } from './pages/ArticleDetail';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
 import { ConsoleOverview } from './pages/console/ConsoleOverview';
@@ -23,8 +24,11 @@ function App() {
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
-          <Route path="documents" element={<Documents />} />
-          <Route path="documents/view/:id" element={<DocumentDetail />} />
+          <Route path="documents" element={<Outlet />}>
+            <Route index element={<Documents />} />
+            <Route path="settings" element={<DocumentChannelSettings />} />
+            <Route path="view/:id" element={<DocumentDetail />} />
+          </Route>
           <Route path="articles" element={<FeatureGate feature="articles"><Articles /></FeatureGate>} />
           <Route path="articles/view/:id" element={<FeatureGate feature="articles"><ArticleDetail /></FeatureGate>} />
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />

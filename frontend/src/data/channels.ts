@@ -115,3 +115,18 @@ export function getArticleLeafChannelIds(channelId: string): string[] {
   collectLeafIds(articleChannels, channelId, found);
   return found.length > 0 ? found : [channelId];
 }
+
+function findChannelName(nodes: ChannelNode[], targetId: string): string | null {
+  for (const node of nodes) {
+    if (node.id === targetId) return node.name;
+    if (node.children) {
+      const found = findChannelName(node.children, targetId);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+export function getDocumentChannelName(channelId: string): string {
+  return findChannelName(documentChannels, channelId) ?? channelId;
+}

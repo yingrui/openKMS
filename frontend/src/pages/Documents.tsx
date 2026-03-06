@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
   Upload,
@@ -11,6 +11,7 @@ import {
   FileCode,
   Archive,
   Folder,
+  Settings,
 } from 'lucide-react';
 import { defaultDocumentChannel, getDocumentLeafChannelIds } from '../data/channels';
 import { mockDocumentsByChannel } from '../data/documents';
@@ -41,10 +42,19 @@ export function Documents() {
             Select a channel in the sidebar. Upload PDF, HTML, ZIP, or images → Markdown.
           </p>
         </div>
-        <button type="button" className="btn btn-primary">
-          <Upload size={18} />
-          <span>Upload</span>
-        </button>
+        <div className="documents-header-actions">
+          <Link
+            to={`/documents/settings?channel=${channelId}`}
+            className="btn btn-secondary"
+          >
+            <Settings size={18} />
+            <span>Channel settings</span>
+          </Link>
+          <button type="button" className="btn btn-primary">
+            <Upload size={18} />
+            <span>Upload</span>
+          </button>
+        </div>
       </div>
       <div className="documents-main">
         <div className="documents-toolbar">

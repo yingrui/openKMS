@@ -1,0 +1,95 @@
+.document-channel-settings {
+  width: 100%;
+  max-width: 640px;
+}
+
+.document-channel-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+  transition: color 0.15s;
+}
+
+.document-channel-settings-back:hover {
+  color: var(--color-accent);
+}
+
+.document-channel-settings-form {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.document-channel-settings-section {
+  margin-bottom: 24px;
+}
+
+.document-channel-settings-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.document-channel-settings-section h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: var(--color-text);
+}
+
+.document-channel-settings-field {
+  margin-bottom: 16px;
+}
+
+.document-channel-settings-field:last-child {
+  margin-bottom: 0;
+}
+
+.document-channel-settings-field label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.document-channel-settings-field label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.document-channel-settings-field input[type="number"],
+.document-channel-settings-field select {
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  width: 100%;
+  max-width: 200px;
+}
+
+.document-channel-settings-field input[type="number"]:focus,
+.document-channel-settings-field select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.document-channel-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+}
+
+.document-channel-settings-saved {
+  font-size: 0.875rem;
+  color: var(--color-success);
+}

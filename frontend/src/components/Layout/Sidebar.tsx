@@ -117,7 +117,8 @@ export function Sidebar() {
 
   const setDocumentChannel = (id: string) => {
     if (location.pathname.startsWith('/documents')) {
-      navigate(`/documents?channel=${id}`);
+      const base = location.pathname; // preserve /documents or /documents/settings
+      navigate(`${base}?channel=${id}`);
     } else {
       setSearchParams({ channel: id });
     }
