@@ -283,9 +283,9 @@ export function KnowledgeBaseDetail() {
 
         {activeTab === 'search' && (
           <section className="kb-section kb-search-section">
-            <h2>Search or ask a question</h2>
+            <h2>Search</h2>
             <p className="kb-section-desc">
-              Semantic search over documents, articles, and FAQs. Ask a question to get an AI-generated answer.
+              Advanced search over documents, articles, and FAQs, with semantic search and traditional search capabilities.
             </p>
             <form
               className="kb-search-form"

@@ -11,65 +11,8 @@
   margin-bottom: 24px;
 }
 
-.pipelines-main {
-  display: flex;
-  gap: 24px;
-}
-
-.pipelines-categories {
-  flex-shrink: 0;
-  width: 200px;
-}
-
-.pipelines-categories h3 {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin: 0 0 12px 0;
-}
-
-.pipelines-category-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.pipelines-category-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px 12px;
-  font-size: 0.9375rem;
-  color: var(--color-text-secondary);
-  background: none;
-  border: none;
-  border-radius: var(--radius-sm);
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.pipelines-category-item:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.pipelines-category-item.selected {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
-}
-
-.pipelines-category-item svg {
-  color: inherit;
-  flex-shrink: 0;
-}
-
 .pipelines-content {
-  flex: 1;
-  min-width: 0;
+  width: 100%;
 }
 
 .pipelines-toolbar {
