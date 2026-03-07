@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { defaultDocumentChannel, getDocumentChannelName } from '../data/channels';
+import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
+import { getDocumentChannelName } from '../data/channelUtils';
 import {
   getDocumentChannelSettings,
   setDocumentChannelSettings,
@@ -14,8 +15,9 @@ const pipelines = [
 ];
 
 export function DocumentChannelSettings() {
-  const [searchParams] = useSearchParams();
-  const channelId = searchParams.get('channel') || defaultDocumentChannel;
+  const navigate = useNavigate();
+  const { channelId = '' } = useParams<{ channelId: string }>();
+  const { channels } = useDocumentChannels();
   const saved = getDocumentChannelSettings(channelId);
 
   const [pipelineId, setPipelineId] = useState(saved.pipelineId ?? '');
@@ -23,7 +25,13 @@ export function DocumentChannelSettings() {
   const [extractTables, setExtractTables] = useState(saved.extractTables);
   const [savedMsg, setSavedMsg] = useState(false);
 
-  const channelName = getDocumentChannelName(channelId);
+  const channelName = getDocumentChannelName(channels, channelId);
+
+  useEffect(() => {
+    if (!channelId) navigate('/documents/channels');
+  }, [channelId, navigate]);
+
+  if (!channelId) return null;
 
   const handleSave = () => {
     setDocumentChannelSettings({
@@ -38,7 +46,7 @@ export function DocumentChannelSettings() {
 
   return (
     <div className="document-channel-settings">
-      <Link to={`/documents?channel=${channelId}`} className="document-channel-settings-back">
+      <Link to={`/documents/channels/${channelId}`} className="document-channel-settings-back">
         <ArrowLeft size={18} />
         <span>Back to Documents</span>
       </Link>

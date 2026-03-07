@@ -10,6 +10,8 @@ sys.path.insert(0, ".")
 from app.config import settings
 from app.database import Base
 import app.models.document  # noqa: F401 - register models with Base.metadata
+import app.models.document_channel  # noqa: F401 - register models with Base.metadata
+import app.models.document_channel  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

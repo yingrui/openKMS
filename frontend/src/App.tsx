@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
-import { Documents } from './pages/Documents';
+import { DocumentChannel } from './pages/DocumentChannel';
+import { DocumentsIndex } from './pages/DocumentsIndex';
 import { Articles } from './pages/Articles';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
 import { KnowledgeBaseDetail } from './pages/KnowledgeBaseDetail';
@@ -10,6 +11,7 @@ import { Jobs } from './pages/Jobs';
 import { Models } from './pages/Models';
 import { DocumentDetail } from './pages/DocumentDetail';
 import { DocumentChannelSettings } from './pages/DocumentChannelSettings';
+import { DocumentChannels } from './pages/DocumentChannels';
 import { ArticleDetail } from './pages/ArticleDetail';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
 import { ConsoleOverview } from './pages/console/ConsoleOverview';
@@ -25,8 +27,10 @@ function App() {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="documents" element={<Outlet />}>
-            <Route index element={<Documents />} />
-            <Route path="settings" element={<DocumentChannelSettings />} />
+            <Route index element={<DocumentsIndex />} />
+            <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />
+            <Route path="channels/:channelId" element={<DocumentChannel />} />
+            <Route path="channels" element={<DocumentChannels />} />
             <Route path="view/:id" element={<DocumentDetail />} />
           </Route>
           <Route path="articles" element={<FeatureGate feature="articles"><Articles /></FeatureGate>} />

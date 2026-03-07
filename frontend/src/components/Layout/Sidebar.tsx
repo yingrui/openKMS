@@ -19,15 +19,14 @@ import {
 import { useState } from 'react';
 
 import logo from '../../assets/logo.svg';
-import {
-  documentChannels,
-  articleChannels,
-  defaultDocumentChannel,
-  defaultArticleChannel,
-  type ChannelNode,
-} from '../../data/channels';
+import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { getFirstLeafChannelId } from '../../data/channelUtils';
+import type { ChannelNode } from '../../data/channelUtils';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './Sidebar.css';
+
+/** Article channels: placeholder (no backend yet) */
+const articleChannels: ChannelNode[] = [];
 
 function SidebarChannelTree({
   channels,
@@ -94,33 +93,27 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { channels } = useDocumentChannels();
   const onDocuments = location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onArticles = location.pathname === '/articles' || location.pathname.startsWith('/articles/');
 
+  const defaultDocChannel = getFirstLeafChannelId(channels);
+  const docChannelMatch = location.pathname.match(/^\/documents\/channels\/([^/]+)/);
   const docChannel = onDocuments
-    ? searchParams.get('channel') || defaultDocumentChannel
+    ? (docChannelMatch?.[1] ?? defaultDocChannel)
     : null;
   const artChannel = onArticles
-    ? searchParams.get('channel') || defaultArticleChannel
+    ? searchParams.get('channel') || ''
     : null;
 
-  const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({
-    dc1: true,
-    dc2: true,
-    dc3: true,
-  });
-  const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({
-    ac1: true,
-    ac2: true,
-    ac3: true,
-  });
+  const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
+  const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
 
   const setDocumentChannel = (id: string) => {
     if (location.pathname.startsWith('/documents')) {
-      const base = location.pathname; // preserve /documents or /documents/settings
-      navigate(`${base}?channel=${id}`);
+      navigate(`/documents/channels/${id}`);
     } else {
-      setSearchParams({ channel: id });
+      navigate(`/documents/channels/${id}`);
     }
   };
   const setArticleChannel = (id: string) => {
@@ -187,10 +180,10 @@ export function Sidebar() {
             <FileStack size={18} strokeWidth={1.75} />
             <span>Documents</span>
           </NavLink>
-          {onDocuments && (
+          {onDocuments && channels.length > 0 && (
             <div className="sidebar-subnav">
               <SidebarChannelTree
-                channels={documentChannels[0]?.children ?? []}
+                channels={channels}
                 selectedId={docChannel}
                 expanded={docExpanded}
                 onSelect={setDocumentChannel}
@@ -210,10 +203,10 @@ export function Sidebar() {
               <FileText size={18} strokeWidth={1.75} />
               <span>Articles</span>
             </NavLink>
-            {onArticles && (
+            {onArticles && articleChannels.length > 0 && (
               <div className="sidebar-subnav">
                 <SidebarChannelTree
-                  channels={articleChannels[0]?.children ?? []}
+                  channels={articleChannels}
                   selectedId={artChannel}
                   expanded={artExpanded}
                   onSelect={setArticleChannel}

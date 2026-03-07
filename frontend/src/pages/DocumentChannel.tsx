@@ -1,4 +1,4 @@
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
   Upload,
@@ -13,9 +13,14 @@ import {
   Folder,
   Settings,
 } from 'lucide-react';
-import { defaultDocumentChannel, getDocumentLeafChannelIds } from '../data/channels';
+import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
+import {
+  getDocumentChannelName,
+  getDocumentChannelDescription,
+  getDocumentLeafChannelIds,
+} from '../data/channelUtils';
 import { mockDocumentsByChannel } from '../data/documents';
-import './Documents.css';
+import './DocumentChannel.css';
 
 const fileTypeIcons: Record<string, typeof FileText> = {
   PDF: FileText,
@@ -25,26 +30,66 @@ const fileTypeIcons: Record<string, typeof FileText> = {
   JPG: Image,
 };
 
-
-export function Documents() {
+export function DocumentChannel() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const channelId = searchParams.get('channel') || defaultDocumentChannel;
-  const leafIds = getDocumentLeafChannelIds(channelId);
+  const { channelId = '' } = useParams<{ channelId: string }>();
+  const { channels, loading, error } = useDocumentChannels();
+
+  const channelName = getDocumentChannelName(channels, channelId);
+  const channelDescription = getDocumentChannelDescription(channels, channelId);
+  const leafIds = getDocumentLeafChannelIds(channels, channelId);
   const documents = leafIds.flatMap((id) => mockDocumentsByChannel[id] ?? []);
+
+  if (loading) {
+    return (
+      <div className="documents">
+        <div className="page-header">
+          <p className="page-subtitle">Loading channels…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="documents">
+        <div className="page-header">
+          <p className="page-subtitle" style={{ color: 'var(--color-error)' }}>{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (channels.length === 0) {
+    return (
+      <div className="documents">
+        <div className="documents-empty-state">
+          <Folder size={64} />
+          <h2>No channels yet</h2>
+          <p>Create your first channel to organize documents.</p>
+          <Link to="/documents/channels" className="btn btn-primary">
+            <Folder size={18} />
+            <span>Create channel</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="documents">
       <div className="page-header documents-header">
         <div>
-          <h1>Documents</h1>
+          <div className="documents-header-title">
+            <h1>{channelName}</h1>
+          </div>
           <p className="page-subtitle">
-            Select a channel in the sidebar. Upload PDF, HTML, ZIP, or images → Markdown.
+            {channelDescription ?? 'Upload PDF, HTML, ZIP, or images. Documents are converted to Markdown. Organize by channel.'}
           </p>
         </div>
         <div className="documents-header-actions">
           <Link
-            to={`/documents/settings?channel=${channelId}`}
+            to={`/documents/channels/${channelId}/settings`}
             className="btn btn-secondary"
           >
             <Settings size={18} />
@@ -56,6 +101,7 @@ export function Documents() {
           </button>
         </div>
       </div>
+
       <div className="documents-main">
         <div className="documents-toolbar">
           <div className="documents-search">

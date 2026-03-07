@@ -1,5 +1,13 @@
 """Application configuration."""
+from pathlib import Path
+
+from dotenv import load_dotenv
+from pydantic import Field
 from pydantic_settings import BaseSettings
+
+# .env next to backend root (parent of app/)
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_ENV_FILE)
 
 
 class Settings(BaseSettings):
@@ -26,12 +34,18 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
 
+    # Keycloak (env vars: KEYCLOAK_*, no OPENKMS_ prefix)
+    keycloak_auth_server_url: str = Field(default="http://localhost:8081", validation_alias="KEYCLOAK_AUTH_SERVER_URL")
+    keycloak_realm: str = Field(default="openkms", validation_alias="KEYCLOAK_REALM")
+    keycloak_client_id: str = Field(default="openkms-backend", validation_alias="KEYCLOAK_CLIENT_ID")
+    keycloak_client_secret: str = Field(default="", validation_alias="KEYCLOAK_CLIENT_SECRET")
+
     @property
     def database_url(self) -> str:
-        """Build async PostgreSQL connection URL."""
+        """Build async PostgreSQL connection URL. ssl=prefer for local dev."""
         return (
             f"postgresql+asyncpg://{self.database_user}:{self.database_password}"
-            f"@{self.database_host}:{self.database_port}/{self.database_name}"
+            f"@{self.database_host}:{self.database_port}/{self.database_name}?ssl=prefer"
         )
 
     @property
@@ -42,7 +56,7 @@ class Settings(BaseSettings):
             f"@{self.database_host}:{self.database_port}/{self.database_name}"
         )
 
-    model_config = {"env_prefix": "OPENKMS_", "env_file": ".env"}
+    model_config = {"env_prefix": "OPENKMS_", "env_file": _ENV_FILE, "extra": "ignore"}
 
 
 settings = Settings()

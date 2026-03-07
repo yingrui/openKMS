@@ -29,7 +29,7 @@ async_session_maker = async_sessionmaker(
 
 async def init_db() -> None:
     """Create database tables."""
-    from app.models import document  # noqa: F401
+    from app.models import document, document_channel  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
