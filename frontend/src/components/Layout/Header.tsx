@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Search, Sun, Moon, User, UserCircle, Settings, LogOut } from 'lucide-react';
+import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
 
 export function Header() {
+  const { isAuthenticated, isLoading, user, login, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -58,37 +60,55 @@ export function Header() {
           )}
         </button>
         <div className="header-user-menu" ref={userMenuRef}>
-          <button
-            type="button"
-            onClick={() => setUserMenuOpen((v) => !v)}
-            className="header-user-btn"
-            aria-label="User menu"
-            aria-expanded={userMenuOpen}
-            aria-haspopup="true"
-          >
-            <User size={20} strokeWidth={1.75} />
-          </button>
-          {userMenuOpen && (
-            <div className="header-user-dropdown">
-              <div className="header-user-dropdown-header">
-                <span className="header-user-name">User</span>
-                <span className="header-user-email">user@example.com</span>
-              </div>
-              <div className="header-user-dropdown-divider" />
-              <button type="button" className="header-user-dropdown-item">
-                <UserCircle size={18} />
-                <span>Profile</span>
+          {!isLoading && !isAuthenticated ? (
+            <button
+              type="button"
+              onClick={login}
+              className="header-login-btn"
+              aria-label="Log in"
+            >
+              <LogIn size={20} strokeWidth={1.75} />
+              <span>Log in</span>
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="header-user-btn"
+                aria-label="User menu"
+                aria-expanded={userMenuOpen}
+                aria-haspopup="true"
+              >
+                <User size={20} strokeWidth={1.75} />
               </button>
-              <button type="button" className="header-user-dropdown-item">
-                <Settings size={18} />
-                <span>Settings</span>
-              </button>
-              <div className="header-user-dropdown-divider" />
-              <button type="button" className="header-user-dropdown-item header-user-dropdown-item--danger">
-                <LogOut size={18} />
-                <span>Log out</span>
-              </button>
-            </div>
+              {userMenuOpen && (
+                <div className="header-user-dropdown">
+                  <div className="header-user-dropdown-header">
+                    <span className="header-user-name">{user?.name ?? user?.username ?? 'User'}</span>
+                    <span className="header-user-email">{user?.email ?? ''}</span>
+                  </div>
+                  <div className="header-user-dropdown-divider" />
+                  <button type="button" className="header-user-dropdown-item">
+                    <UserCircle size={18} />
+                    <span>Profile</span>
+                  </button>
+                  <button type="button" className="header-user-dropdown-item">
+                    <Settings size={18} />
+                    <span>Settings</span>
+                  </button>
+                  <div className="header-user-dropdown-divider" />
+                  <button
+                    type="button"
+                    className="header-user-dropdown-item header-user-dropdown-item--danger"
+                    onClick={logout}
+                  >
+                    <LogOut size={18} />
+                    <span>Log out</span>
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

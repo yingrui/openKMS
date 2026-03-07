@@ -48,11 +48,11 @@ Tables are created automatically on startup via `init_db()`.
 cd ../vlm-server && ./start.sh
 
 # Start backend
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8102
 ```
 
-API: http://localhost:8000  
-Docs: http://localhost:8000/docs
+API: http://localhost:8102  
+Docs: http://localhost:8102/docs
 
 ## Endpoints
 
