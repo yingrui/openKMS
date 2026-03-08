@@ -7,7 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { getDocumentById } from '../data/documents';
+import { fetchDocumentById, getStorageFileUrl, getMarkdownBaseUrl, type DocumentResponse } from '../data/documentsApi';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -66,36 +66,78 @@ export function DocumentDetail() {
   const [selectedBlock, setSelectedBlock] = useState<PageBlock | null>(null);
   const [pageDimensions, setPageDimensions] = useState<Record<number, { w: number; h: number }>>({});
   const [infoVisible, setInfoVisible] = useState(true);
+  const [document, setDocument] = useState<DocumentResponse | null>(null);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
-  const document = id ? getDocumentById(id) : undefined;
 
   useEffect(() => {
-    if (!docConfig) {
-      setLoading(false);
-      setError('Document is not parsed');
-      return;
-    }
+    if (!id) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const signal = controller.signal;
 
-    const baseUrl = `/examples/${docConfig.folderId}`;
-    const markdownUrl = `${baseUrl}/markdown_out/${docConfig.markdownFile}`;
+    const load = () => {
+      if (docConfig) {
+        const baseUrl = `/examples/${docConfig.folderId}`;
+        const markdownUrl = `${baseUrl}/markdown_out/${docConfig.markdownFile}`;
+        Promise.all([
+          fetch(`${baseUrl}/result.json`, { signal }).then((r) => (r.ok ? r.json() : null)),
+          fetch(markdownUrl, { signal }).then((r) => (r.ok ? r.text() : null)),
+        ])
+          .then(([result, md]) => {
+            if (!cancelled) {
+              setParsingResult(result);
+              setMarkdown(md);
+              setDocument({
+                id: id!,
+                name: docConfig!.markdownFile,
+                file_type: 'MD',
+                size_bytes: 0,
+                channel_id: '',
+                created_at: '',
+                updated_at: '',
+              });
+            }
+          })
+          .catch((e) => {
+            if (!cancelled && e?.name !== 'AbortError') setError('Failed to load document content');
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
+      } else {
+        fetchDocumentById(id, signal)
+          .then((doc) => {
+            if (!cancelled && doc) {
+              setDocument(doc);
+              setParsingResult((doc.parsing_result ?? null) as ParsingResult | null);
+              setMarkdown(doc.markdown ?? '');
+            }
+          })
+          .catch((e) => {
+            if (!cancelled && e?.name !== 'AbortError') setError(e instanceof Error ? e.message : 'Failed to load document');
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false);
+          });
+      }
+    };
 
-    Promise.all([
-      fetch(`${baseUrl}/result.json`).then((r) => (r.ok ? r.json() : null)),
-      fetch(markdownUrl).then((r) => (r.ok ? r.text() : null)),
-    ])
-      .then(([result, md]) => {
-        setParsingResult(result);
-        setMarkdown(md);
-      })
-      .catch(() => setError('Failed to load document content'))
-      .finally(() => setLoading(false));
-  }, [docConfig]);
+    const timeoutId = setTimeout(load, 0);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [id, docConfig]);
+
+  /** Images: examples use /examples/, backend docs use direct storage URL. */
+  const getImageUrl = (path: string) => getStorageFileUrl(path);
 
   const markdownBaseUrl = folderId
     ? `/examples/${folderId}/markdown_out`
-    : '';
+    : (parsingResult?.file_hash ? getMarkdownBaseUrl(parsingResult.file_hash) : '');
 
   // Build page blocks: for each layout box, find parsing item by matching coordinates
   const pageBlocks = (() => {
@@ -202,15 +244,15 @@ export function DocumentDetail() {
                 </div>
                 <div className="document-detail-info-item document-detail-info-item--compact">
                   <dt>Type</dt>
-                  <dd>{document.type}</dd>
+                  <dd>{document.file_type}</dd>
                 </div>
                 <div className="document-detail-info-item document-detail-info-item--compact">
                   <dt>Size</dt>
-                  <dd>{document.size}</dd>
+                  <dd>{document.size_bytes ? `${(document.size_bytes / 1024).toFixed(1)} KB` : '—'}</dd>
                 </div>
                 <div className="document-detail-info-item document-detail-info-item--compact">
                   <dt>Uploaded</dt>
-                  <dd>{document.uploaded}</dd>
+                  <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
                 </div>
                 <div className="document-detail-info-item document-detail-info-item--compact">
                   <dt>Markdown</dt>
@@ -269,7 +311,7 @@ export function DocumentDetail() {
                         >
                           <img
                             onLoad={(e) => onPageImageLoad(pageIndex, e.currentTarget)}
-                            src={`/examples/${item.input_img}`}
+                            src={folderId ? `/examples/${item.input_img}` : (item.input_img ? getImageUrl(item.input_img) : '')}
                             alt={`Page ${pageIndex + 1}`}
                             className="document-detail-layout-img"
                           />
@@ -336,7 +378,7 @@ export function DocumentDetail() {
                   </div>
                   {selectedBlock.parsingItem.image_path ? (
                     <img
-                      src={`/examples/${selectedBlock.parsingItem.image_path}`}
+                      src={folderId ? `/examples/${selectedBlock.parsingItem.image_path}` : getImageUrl(selectedBlock.parsingItem.image_path)}
                       alt={selectedBlock.parsingItem.label || 'Block'}
                       className="document-detail-block-img"
                     />

@@ -8,9 +8,9 @@
 |---------|--------|-------------|
 | Document overview | ✅ | Dashboard at `/documents` with channel stats, quick actions, channel list |
 | Channel management | ✅ | Create/manage channels at `/documents/channels` (tree structure) |
-| Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId` |
+| Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
 | Channel settings | ✅ | Per-channel pipeline, chunk size, extract tables at `/documents/channels/:channelId/settings` |
-| Document upload | ✅ | POST `/api/documents/upload` – parse via PaddleOCR-VL, store in DB |
+| Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; parse via PaddleOCR-VL, store in DB |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id` |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
@@ -74,15 +74,21 @@ Use cases:
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
+| GET | `/login` | Redirect to Keycloak login |
+| GET | `/login/oauth2/code/keycloak` | OAuth2 callback (Keycloak redirect URI) |
+| GET | `/logout` | Clear session, redirect to Keycloak logout |
 | GET | `/api/channels/documents` | List document channels (tree) |
 | POST | `/api/channels/documents` | Create channel |
 | POST | `/api/documents/upload` | Upload and parse document |
+| GET | `/api/documents?channel_id=` | List documents in channel and descendants |
 | GET | `/api/documents/{id}` | Get document metadata |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
+| GET | `/api/documents/{id}/files/{path}` | Serve file from storage (images, markdown) |
+| DELETE | `/api/documents/{id}` | Delete document and its storage files |
 
 ## Configuration
 
-- **S3/MinIO** (optional): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`, `AWS_BUCKET_NAME` for object storage. See `backend/.env.example`.
+- **S3/MinIO** (required for upload): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`, `AWS_BUCKET_NAME`. Uploaded files, parsed images, result.json, and markdown are stored under `{file_hash}/` in the bucket.
 - **Cursor rules**: `.cursor/rules/` – e.g. `docs-before-commit` (update docs before commit).
 
 ## Data Models

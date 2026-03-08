@@ -3,9 +3,12 @@
 ## Current State (as of latest commit)
 
 - Document channels: CRUD, tree, description
-- Document upload + parsing via PaddleOCR-VL
-- Document detail view with Markdown
+- Document upload + parsing via PaddleOCR-VL; store in S3/MinIO under `{file_hash}/`
+- Document detail view with Markdown, layout images, block images; loads files directly from object storage (VITE_STORAGE_BASE_URL)
+- Document list by channel: `GET /api/documents?channel_id=`
+- Delete document: `DELETE /api/documents/{id}`
 - Documents overview, channel management, channel settings
+- OAuth2 Keycloak (backend); frontend auth integration
 - Articles & Knowledge Bases: UI placeholders with feature toggles
 - Console: settings, users, feature toggles
 
@@ -22,9 +25,9 @@
 
 ### 1. Document List Integration
 
-- [ ] Replace `mockDocumentsByChannel` with backend API
-- [ ] Add `GET /api/documents?channel_id=...` (filter by channel + descendants)
-- [ ] Wire DocumentChannel page to real document list
+- [x] Replace `mockDocumentsByChannel` with backend API
+- [x] Add `GET /api/documents?channel_id=...` (filter by channel + descendants)
+- [x] Wire DocumentChannel page to real document list
 
 ### 2. Channel Description Editing
 
@@ -34,7 +37,7 @@
 ### 3. Document Operations
 
 - [ ] Move document between channels
-- [ ] Delete document
+- [x] Delete document
 - [ ] Search/filter in channel
 
 ### 4. Authentication

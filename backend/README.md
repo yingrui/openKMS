@@ -29,6 +29,12 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
 | `OPENKMS_VLM_SERVER_URL` | http://localhost:8101 | vlm-server URL |
+| `KEYCLOAK_AUTH_SERVER_URL` | http://localhost:8081 | Keycloak server |
+| `KEYCLOAK_REALM` | openkms | Keycloak realm |
+| `KEYCLOAK_CLIENT_ID` | openkms-backend | OAuth2 client ID |
+| `KEYCLOAK_CLIENT_SECRET` | (empty) | OAuth2 client secret |
+| `KEYCLOAK_REDIRECT_URI` | http://localhost:8102/login/oauth2/code/keycloak | OAuth2 callback (add to Keycloak client Valid Redirect URIs) |
+| `KEYCLOAK_FRONTEND_URL` | http://localhost:5173 | Redirect after login/logout |
 
 ## Database
 
@@ -56,6 +62,9 @@ Docs: http://localhost:8102/docs
 ## Endpoints
 
 - `GET /health` – Health check
+- `GET /login` – Redirect to Keycloak login (OAuth2)
+- `GET /login/oauth2/code/keycloak` – OAuth2 callback (Keycloak redirect URI)
+- `GET /logout` – Clear session, redirect to Keycloak logout
 - `POST /api/documents/upload` – Upload document (PDF/image), parse via VLM, store in DB
 - `GET /api/documents/{id}` – Get document metadata
 - `GET /api/documents/{id}/parsing` – Get parsing result (result.json format)

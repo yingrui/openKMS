@@ -39,6 +39,29 @@ class Settings(BaseSettings):
     keycloak_realm: str = Field(default="openkms", validation_alias="KEYCLOAK_REALM")
     keycloak_client_id: str = Field(default="openkms-backend", validation_alias="KEYCLOAK_CLIENT_ID")
     keycloak_client_secret: str = Field(default="", validation_alias="KEYCLOAK_CLIENT_SECRET")
+    keycloak_redirect_uri: str = Field(
+        default="http://localhost:8102/login/oauth2/code/keycloak",
+        validation_alias="KEYCLOAK_REDIRECT_URI",
+    )
+    keycloak_frontend_url: str = Field(
+        default="http://localhost:5173",
+        validation_alias="KEYCLOAK_FRONTEND_URL",
+    )
+
+    # Session (for OAuth2 state and post-login)
+    secret_key: str = "openkms-dev-secret-change-in-production"
+
+    # S3/MinIO (env vars: AWS_*, no OPENKMS_ prefix)
+    aws_access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")
+    aws_endpoint_url: str | None = Field(default=None, validation_alias="AWS_ENDPOINT_URL")
+    aws_bucket_name: str = Field(default="openkms", validation_alias="AWS_BUCKET_NAME")
+    aws_region: str = Field(default="us-east-1", validation_alias="AWS_REGION")
+
+    @property
+    def storage_enabled(self) -> bool:
+        """True if S3/MinIO credentials are configured."""
+        return bool(self.aws_access_key_id and self.aws_secret_access_key)
 
     @property
     def database_url(self) -> str:

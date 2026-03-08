@@ -8,7 +8,11 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 python-multipart>=0.0.12
 httpx>=0.28.0
+boto3>=1.35.0
+botocore>=1.35.0
+pymupdf>=1.24.0
 python-dotenv>=1.0.0
+itsdangerous>=2.0.0
 openai>=1.0.0
 # PaddleOCRVL for document parsing (uses mlx-vlm-server as VLM backend)
 paddleocr==3.4.0
@@ -16,3 +20,4 @@ paddlepaddle==3.3.0
 paddlex[ocr]==3.4.2
 # For PaddleOCR-VL, numpy should be < 2.4
 numpy>=2.0,<2.4
+Pillow>=10.0.0

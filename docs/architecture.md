@@ -55,8 +55,9 @@ backend/app/
 ├── config.py                # Settings (env: OPENKMS_*)
 ├── database.py              # Async engine, get_db, init_db
 ├── api/
+│   ├── auth.py               # OAuth2 Keycloak login/logout
 │   ├── channels.py          # GET/POST /api/channels/documents
-│   └── documents.py         # POST upload, GET document, GET parsing
+│   └── documents.py         # POST upload, GET document, GET parsing, DELETE
 ├── models/
 │   ├── document.py          # Document model
 │   └── document_channel.py  # DocumentChannel model
@@ -64,7 +65,10 @@ backend/app/
 │   ├── document.py
 │   └── channel.py           # ChannelNode, ChannelCreate
 └── services/
-    └── document_parser.py    # PaddleOCR-VL integration (inline)
+    ├── document_parser.py       # PaddleOCR-VL integration
+    ├── document_storage.py      # parse_and_store → S3/MinIO
+    ├── document_extraction_utils.py
+    └── storage.py               # S3/MinIO client (upload, delete)
 ```
 
 ## document_parsing (Planned)
@@ -89,10 +93,15 @@ document_parsing/
 
 ### Document Upload (Current)
 
-1. Frontend → `POST /api/documents/upload` (file + channel_id)
-2. Backend saves file to temp, calls `parse_document()` (PaddleOCR-VL via mlx-vlm-server)
-3. Backend stores Document in PostgreSQL (metadata + parsing_result JSONB)
+1. Frontend opens upload modal on channel page; user selects files (or drag-and-drop); `POST /api/documents/upload` (multipart: file + channel_id)
+2. Backend validates channel exists; parses via PaddleOCR-VL (mlx-vlm-server); stores in S3/MinIO under `{file_hash}/`: original, layout images, block images, result.json, markdown, markdown_out
+3. Backend creates Document in PostgreSQL with parsing_result and markdown
 4. Response: DocumentResponse
+
+### Document Detail (Current)
+
+1. Frontend fetches `GET /api/documents/{id}` – document includes parsing_result and markdown (single request)
+2. Document files (images, markdown assets) load directly from object storage via `VITE_STORAGE_BASE_URL` – no backend proxy
 
 ### Document Upload via Async Job (Planned)
 
@@ -110,15 +119,24 @@ document_parsing/
 
 ### Document List by Channel
 
-- Frontend uses `getDocumentLeafChannelIds(channels, channelId)` to resolve channel + descendants
-- Document list: currently mock `mockDocumentsByChannel`; backend integration planned
+- Frontend fetches `GET /api/documents?channel_id=` for the current channel
+- Backend returns documents in channel and descendants
+
+## OAuth2 Keycloak (Backend)
+
+- `GET /login` – redirects to Keycloak authorization; stores `state` in session
+- Keycloak redirect URI: `http://localhost:8102/login/oauth2/code/keycloak` (configurable via `KEYCLOAK_REDIRECT_URI`)
+- `GET /login/oauth2/code/keycloak` – exchanges code for tokens; stores access/refresh tokens in session; redirects to frontend
+- `GET /logout` – clears session; redirects to Keycloak logout
+- Session: `SessionMiddleware` with signed cookie (`openkms_session`)
 
 ## Configuration
 
 | Layer | Config |
 |-------|--------|
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR |
+| Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl` (default localhost:8102) |
+| Frontend | `config/index.ts` – `apiUrl`, `storageBaseUrl` (VITE_STORAGE_BASE_URL for direct S3/MinIO access) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit) |
