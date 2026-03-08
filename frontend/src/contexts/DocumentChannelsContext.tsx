@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { fetchDocumentChannels, type ChannelNode } from '../data/channelsApi';
+import { useAuth } from './AuthContext';
 
 interface DocumentChannelsContextValue {
   channels: ChannelNode[];
@@ -11,6 +12,7 @@ interface DocumentChannelsContextValue {
 const DocumentChannelsContext = createContext<DocumentChannelsContextValue | null>(null);
 
 export function DocumentChannelsProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [channels, setChannels] = useState<ChannelNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +32,14 @@ export function DocumentChannelsProvider({ children }: { children: React.ReactNo
   }, []);
 
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    if (!authLoading && isAuthenticated) {
+      refetch();
+    } else if (!authLoading && !isAuthenticated) {
+      setChannels([]);
+      setError(null);
+      setLoading(false);
+    }
+  }, [isAuthenticated, authLoading, refetch]);
 
   return (
     <DocumentChannelsContext.Provider value={{ channels, loading, error, refetch }}>

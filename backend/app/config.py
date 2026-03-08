@@ -47,6 +47,10 @@ class Settings(BaseSettings):
         default="http://localhost:5173",
         validation_alias="KEYCLOAK_FRONTEND_URL",
     )
+    keycloak_logout_client_id: str = Field(
+        default="openkms-frontend",
+        validation_alias="KEYCLOAK_LOGOUT_CLIENT_ID",
+    )
 
     # Session (for OAuth2 state and post-login)
     secret_key: str = "openkms-dev-secret-change-in-production"

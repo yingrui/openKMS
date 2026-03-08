@@ -84,3 +84,35 @@ The backend (`backend/app/services/document_parser.py`) uses PaddleOCRVL with th
    ```bash
    cd backend && alembic upgrade head && uvicorn app.main:app --reload --port 8000
    ```
+
+### Keycloak Setup (Authentication)
+
+The frontend uses the Keycloak JavaScript adapter (Authorization Code + PKCE). Configure a **public** client in Keycloak:
+
+1. **Create client** `openkms-frontend`:
+   - Client authentication: **Off**
+   - Standard flow: **Enabled**
+   - Direct access grants: Off
+
+2. **Valid Redirect URIs** (where Keycloak redirects after login):
+   - Dev: `http://localhost:5173`, `http://localhost:5173/*`
+   - Prod: your frontend origin (e.g. `https://app.example.com`, `https://app.example.com/*`)
+
+3. **Valid Post Logout Redirect URIs** (for full logout):
+   - Dev: `http://localhost:5173`
+   - Prod: your frontend origin
+
+4. **Web Origins**: add the same origin(s) as above.
+
+5. **Frontend env** (`.env` or `frontend/.env`):
+   ```
+   VITE_KEYCLOAK_URL=http://localhost:8081
+   VITE_KEYCLOAK_REALM=openkms
+   VITE_KEYCLOAK_CLIENT_ID=openkms-frontend
+   ```
+
+6. **Backend env**: see `backend/.env.example` for `KEYCLOAK_*` (realm, server URL, backend client for sync-session verification).
+
+**If logout shows Keycloak 400**: ensure the frontend origin is in "Valid Post Logout Redirect URIs" for `openkms-frontend`.
+
+**Console access**: only users with the realm role `admin` can see and access the Console. In Keycloak: Realm → Roles → create `admin` if needed, then assign it to users or groups.

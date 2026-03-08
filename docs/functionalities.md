@@ -44,7 +44,13 @@
 ### 5. Console (Admin)
 
 - Overview, Settings, Users & Roles, Feature Toggles
+- **Admin-only**: visible and accessible only to users with Keycloak realm role `admin`
 - Feature toggles: `articles`, `knowledgeBases`
+
+### 5b. Authentication
+
+- Keycloak login/logout (SSO, full logout via Keycloak)
+- Protected routes: all except home require auth; unauthenticated users see "Authentication Required" message
 
 ### 6. Other Pages
 
@@ -77,7 +83,8 @@ Use cases:
 | GET | `/login` | Redirect to Keycloak login |
 | GET | `/login/oauth2/code/keycloak` | OAuth2 callback (Keycloak redirect URI) |
 | POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
-| GET | `/logout` | Clear session, redirect to Keycloak logout |
+| POST | `/clear-session` | Clear backend session (called by frontend before Keycloak logout) |
+| GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
 | GET | `/api/channels/documents` | List document channels (tree) |
 | POST | `/api/channels/documents` | Create channel |
 | POST | `/api/documents/upload` | Upload and parse document |

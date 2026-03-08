@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
 import { DocumentChannel } from './pages/DocumentChannel';
@@ -23,6 +25,8 @@ import { FeatureGate } from './components/FeatureGate';
 function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
+      <DocumentChannelsProvider>
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
@@ -48,6 +52,8 @@ function App() {
           </Route>
         </Route>
       </Routes>
+      </DocumentChannelsProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

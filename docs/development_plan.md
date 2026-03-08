@@ -8,9 +8,10 @@
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`
 - Documents overview, channel management, channel settings
-- OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img
+- OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
+- Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles & Knowledge Bases: UI placeholders with feature toggles
-- Console: settings, users, feature toggles
+- Console: settings, users, feature toggles; admin-only (realm role `admin`)
 
 ## Short-Term (Next Steps)
 
@@ -44,7 +45,7 @@
 
 - [x] Integrate Keycloak with frontend (login/logout)
 - [x] Protect backend routes with JWT Bearer or session
-- [ ] Role-based access (admin vs user)
+- [x] Role-based access: Console restricted to users with realm role `admin`
 
 ## Medium-Term
 

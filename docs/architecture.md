@@ -125,11 +125,16 @@ document_parsing/
 ## Authentication (Keycloak)
 
 - **Backend**: Requires auth for `/api/*` (channels, documents). Accepts either session cookie (from backend OAuth flow) or `Authorization: Bearer <JWT>`. JWT validated via Keycloak JWKS.
-- **Frontend**: Keycloak JS adapter; sends Bearer token in API requests; calls `POST /sync-session` after login to sync JWT to backend session (for img requests that use cookies).
-- `GET /login` – redirects to Keycloak (backend OAuth)
+- **Frontend**: Keycloak JS adapter (Authorization Code + PKCE); sends Bearer token in API requests; calls `POST /sync-session` after login to sync JWT to backend session (for img requests that use cookies).
+- **Login**: Uses `kc.login()` (SSO if user already has Keycloak session).
+- **Logout**: Uses `kc.logout()` – redirects to Keycloak logout, then back to frontend. Requires frontend origin in Keycloak "Valid Post Logout Redirect URIs".
+- `GET /login` – redirects to Keycloak (backend OAuth, optional)
 - `GET /login/oauth2/code/keycloak` – OAuth callback; stores tokens in session
 - `POST /sync-session` – accepts Bearer JWT; stores in session (for frontend Keycloak JS flow)
-- `GET /logout` – clears session; redirects to Keycloak logout
+- `POST /clear-session` – clears backend session only (called before Keycloak logout)
+- `GET /logout` – clears session; redirects to Keycloak logout (legacy)
+- **Route protection**: All pages except home require auth; unauthenticated users see "Authentication Required" with Sign in button.
+- **Console**: Only users with realm role `admin` can access (Header link, Sidebar, routes). Non-admins redirected to home.
 
 ## Configuration
 
@@ -138,7 +143,7 @@ document_parsing/
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR |
 | Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId) |
-| Vite dev | Proxy `/buckets/openkms` → MinIO (avoids S3 CORS for image loads) |
+| Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId). In dev, `apiUrl` defaults to '' (uses proxy). |
+| Vite dev | Proxy `/api`, `/sync-session`, `/clear-session` → backend; `/buckets/openkms` → MinIO |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit) |

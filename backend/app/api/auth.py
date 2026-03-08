@@ -162,14 +162,20 @@ async def oauth2_callback(
     return RedirectResponse(url=frontend, status_code=302)
 
 
+@router.post("/clear-session")
+async def clear_session(request: Request) -> dict:
+    """Clear backend session only. No redirect to Keycloak."""
+    request.session.clear()
+    return {"ok": True}
+
+
 @router.get("/logout")
 async def logout(request: Request) -> RedirectResponse:
-    """Clear session and redirect to Keycloak logout."""
+    """Clear session and redirect to Keycloak logout (legacy; use clear-session for local logout)."""
     request.session.clear()
-
     params = {
         "post_logout_redirect_uri": settings.keycloak_frontend_url.rstrip("/"),
-        "client_id": settings.keycloak_client_id,
+        "client_id": settings.keycloak_logout_client_id,
     }
     url = f"{_logout_url()}?{urlencode(params)}"
     return RedirectResponse(url=url, status_code=302)

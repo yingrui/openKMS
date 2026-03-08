@@ -6,6 +6,12 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api': {
+        target: 'http://localhost:8102',
+        changeOrigin: true,
+      },
+      '/sync-session': { target: 'http://localhost:8102', changeOrigin: true },
+      '/clear-session': { target: 'http://localhost:8102', changeOrigin: true },
       '/buckets/openkms': {
         target: 'http://localhost:9000',
         changeOrigin: true,

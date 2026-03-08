@@ -19,6 +19,7 @@ import {
 import { useState } from 'react';
 
 import logo from '../../assets/logo.svg';
+import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
@@ -125,6 +126,7 @@ export function Sidebar() {
   };
 
   const onConsole = location.pathname.startsWith('/console');
+  const { isAdmin } = useAuth();
   const { toggles } = useFeatureToggles();
 
   return (
@@ -136,7 +138,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="sidebar-nav">
-        {onConsole ? (
+        {onConsole && isAdmin ? (
           <>
             <Link to="/" className="sidebar-link sidebar-link-exit">
               <ArrowLeft size={18} strokeWidth={1.75} />

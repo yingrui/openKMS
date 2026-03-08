@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
 
 export function Header() {
-  const { isAuthenticated, isLoading, user, login, logout } = useAuth();
+  const { isAuthenticated, isLoading, user, isAdmin, login, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -39,14 +39,16 @@ export function Header() {
         <kbd className="header-search-kbd">⌘K</kbd>
       </div>
       <div className="header-actions">
-        <NavLink
-          to="/console"
-          className={({ isActive }) =>
-            `header-console-link ${isActive ? 'header-console-link-active' : ''}`
-          }
-        >
-          <span>Console</span>
-        </NavLink>
+        {isAdmin && (
+          <NavLink
+            to="/console"
+            className={({ isActive }) =>
+              `header-console-link ${isActive ? 'header-console-link-active' : ''}`
+            }
+          >
+            <span>Console</span>
+          </NavLink>
+        )}
         <button
           type="button"
           onClick={toggleTheme}
