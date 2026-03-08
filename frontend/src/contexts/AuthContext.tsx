@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import Keycloak from 'keycloak-js';
 import { config } from '../config';
+import { setAuthTokenProvider } from '../data/apiClient';
 
 export interface AuthUser {
   username: string;
@@ -40,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const kc = getKeycloak();
     kc.init({ onLoad: 'check-sso' })
-      .then((auth) => {
+      .then(async (auth) => {
         setIsAuthenticated(auth);
         if (auth && kc.tokenParsed) {
           const parsed = kc.tokenParsed as Record<string, unknown>;
@@ -49,6 +50,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: parsed.email as string | undefined,
             name: (parsed.name as string) || (parsed.preferred_username as string),
           });
+          // Sync JWT to backend session so img/fetch with credentials work
+          const token = await kc.updateToken(30).then(() => kc.token);
+          if (token) {
+            fetch(`${config.apiUrl}/sync-session`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: 'include',
+            }).catch(() => {});
+          }
         }
       })
       .catch(() => setIsAuthenticated(false))
@@ -74,12 +84,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: parsed.email as string | undefined,
           name: (parsed.name as string) || (parsed.preferred_username as string),
         });
+        // Re-sync to backend when token is refreshed (for img/cookie-based requests)
+        const token = kc.token;
+        if (token) {
+          fetch(`${config.apiUrl}/sync-session`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: 'include',
+          }).catch(() => {});
+        }
       }
-      return kc.token;
+      return kc.token ?? undefined;
     } catch {
       return undefined;
     }
   }, []);
+
+  useEffect(() => {
+    setAuthTokenProvider(getToken);
+  }, [getToken]);
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, getToken }}>

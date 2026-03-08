@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi.responses import RedirectResponse
 
+from app.api.auth import require_auth
 from app.config import settings
 from app.database import get_db
 from app.models.document import Document
@@ -20,7 +21,7 @@ from app.schemas.document import (
 from app.services.document_storage import parse_and_store
 from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists
 
-router = APIRouter(prefix="/documents", tags=["documents"])
+router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
 
 def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id: str, out: set[str]) -> None:

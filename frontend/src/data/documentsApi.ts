@@ -1,5 +1,6 @@
 /** API for documents (backend). */
 import { config } from '../config';
+import { getAuthHeaders } from './apiClient';
 
 export interface DocumentResponse {
   id: string;
@@ -35,8 +36,10 @@ export function isAcceptedFile(file: File): boolean {
 }
 
 export async function fetchDocumentsByChannel(channelId: string): Promise<DocumentListResponse> {
+  const headers = await getAuthHeaders();
   const res = await fetch(
-    `${config.apiUrl}/api/documents?channel_id=${encodeURIComponent(channelId)}`
+    `${config.apiUrl}/api/documents?channel_id=${encodeURIComponent(channelId)}`,
+    { headers: { ...headers }, credentials: 'include' }
   );
   if (!res.ok) {
     const msg = await res.text();
@@ -49,7 +52,12 @@ export async function fetchDocumentById(
   documentId: string,
   signal?: AbortSignal
 ): Promise<DocumentResponse> {
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, { signal });
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
+    headers: { ...headers },
+    signal,
+    credentials: 'include',
+  });
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(msg || `Failed to fetch document: ${res.status}`);
@@ -78,7 +86,12 @@ export async function fetchParsingResult(
   markdown: string;
   page_count: number;
 }> {
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/parsing`, { signal });
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/parsing`, {
+    headers: { ...headers },
+    signal,
+    credentials: 'include',
+  });
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(msg || `Failed to fetch parsing result: ${res.status}`);
@@ -94,9 +107,12 @@ export async function uploadDocument(
   formData.append('file', file);
   formData.append('channel_id', channelId);
 
+  const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/documents/upload`, {
     method: 'POST',
+    headers: { ...headers },
     body: formData,
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -107,8 +123,11 @@ export async function uploadDocument(
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
+  const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
     method: 'DELETE',
+    headers: { ...headers },
+    credentials: 'include',
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));

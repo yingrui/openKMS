@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document_channel import DocumentChannel
 from app.schemas.channel import ChannelCreate, ChannelNode
 
-router = APIRouter(prefix="/channels", tags=["channels"])
+router = APIRouter(prefix="/channels", tags=["channels"], dependencies=[Depends(require_auth)])
 
 
 def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -> list[ChannelNode]:

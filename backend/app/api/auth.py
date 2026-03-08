@@ -3,11 +3,75 @@
 import secrets
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Request, Response
+import jwt
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
+from jwt import PyJWKClient
+
 from app.config import settings
 
+_JWKS_CLIENT: PyJWKClient | None = None
+
+
+def _get_jwks_client() -> PyJWKClient:
+    global _JWKS_CLIENT
+    if _JWKS_CLIENT is None:
+        base = settings.keycloak_auth_server_url.rstrip("/")
+        jwks_url = f"{base}/realms/{settings.keycloak_realm}/protocol/openid-connect/certs"
+        _JWKS_CLIENT = PyJWKClient(jwks_url)
+    return _JWKS_CLIENT
+
+
+def _verify_jwt(token: str) -> dict:
+    """Verify Keycloak JWT and return payload. Raises on invalid token."""
+    try:
+        jwks = _get_jwks_client()
+        header = jwt.get_unverified_header(token)
+        key = jwks.get_signing_key_from_jwt(token)
+        return jwt.decode(
+            token,
+            key.key,
+            algorithms=["RS256"],
+            options={"verify_aud": False},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from e
+
+
+async def require_auth(request: Request) -> str:
+    """Verify user is authenticated. Accepts session cookie OR Authorization Bearer JWT. Returns token."""
+    # 1. Check Authorization Bearer (frontend Keycloak JS)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+        if token:
+            _verify_jwt(token)
+            return token
+
+    # 2. Check session (backend OAuth flow)
+    token = request.session.get("access_token")
+    if token:
+        return token
+
+    raise HTTPException(status_code=401, detail="Authentication required")
+
+
 router = APIRouter(tags=["auth"])
+
+
+@router.post("/sync-session")
+async def sync_session(request: Request) -> dict:
+    """Sync frontend Keycloak JWT to backend session. Call after login so img/cookie-based requests work."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Bearer token required")
+    token = auth_header[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Bearer token required")
+    _verify_jwt(token)
+    request.session["access_token"] = token
+    return {"ok": True}
+
 
 _KEYCLOAK_AUTH = "{base}/realms/{realm}/protocol/openid-connect/auth"
 _KEYCLOAK_TOKEN = "{base}/realms/{realm}/protocol/openid-connect/token"

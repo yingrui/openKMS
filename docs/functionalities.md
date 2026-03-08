@@ -76,6 +76,7 @@ Use cases:
 | GET | `/health` | Health check |
 | GET | `/login` | Redirect to Keycloak login |
 | GET | `/login/oauth2/code/keycloak` | OAuth2 callback (Keycloak redirect URI) |
+| POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | GET | `/logout` | Clear session, redirect to Keycloak logout |
 | GET | `/api/channels/documents` | List document channels (tree) |
 | POST | `/api/channels/documents` | Create channel |
@@ -83,12 +84,12 @@ Use cases:
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
 | GET | `/api/documents/{id}` | Get document metadata |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
-| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL (verifies document+file_hash; frontend fetches from S3) |
+| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to `{frontend}/buckets/openkms/{key}` (Vite proxy → MinIO; avoids CORS) |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
 
 ## Configuration
 
-- **S3/MinIO** (required for upload): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`, `AWS_BUCKET_NAME`. Uploaded files, parsed images, result.json, and markdown are stored under `{file_hash}/` in the bucket.
+- **S3/MinIO** (required for upload): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`, `AWS_BUCKET_NAME`. Uploaded files stored under `{file_hash}/`. Dev: Vite proxies `/buckets/openkms` to MinIO for image loads.
 - **Cursor rules**: `.cursor/rules/` – e.g. `docs-before-commit` (update docs before commit).
 
 ## Data Models

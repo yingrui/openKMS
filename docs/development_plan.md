@@ -8,7 +8,7 @@
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`
 - Documents overview, channel management, channel settings
-- OAuth2 Keycloak (backend); frontend auth integration
+- OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img
 - Articles & Knowledge Bases: UI placeholders with feature toggles
 - Console: settings, users, feature toggles
 
@@ -42,8 +42,8 @@
 
 ### 4. Authentication
 
-- [ ] Integrate Keycloak with frontend (login/logout)
-- [ ] Protect backend routes with Keycloak JWT
+- [x] Integrate Keycloak with frontend (login/logout)
+- [x] Protect backend routes with JWT Bearer or session
 - [ ] Role-based access (admin vs user)
 
 ## Medium-Term

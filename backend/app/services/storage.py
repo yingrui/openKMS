@@ -62,22 +62,39 @@ def get_object_stream(key: str):
 
 
 def get_redirect_url(key: str, expires_in: int = 3600) -> str:
-    """Generate a presigned GET URL for direct S3/MinIO access. Frontend can redirect to fetch from S3."""
+    """Generate presigned GET URL. Rewrites to frontend proxy URL if configured (avoids S3 CORS)."""
     if not settings.storage_enabled:
         raise RuntimeError("S3 storage is not configured")
     client = _client()
-    return client.generate_presigned_url(
+    raw_url = client.generate_presigned_url(
         "get_object",
         Params={"Bucket": _bucket(), "Key": key},
         ExpiresIn=expires_in,
     )
+    # Rewrite to frontend proxy (/buckets/openkms) so img loads avoid S3 CORS
+    frontend = settings.keycloak_frontend_url.rstrip("/")
+    bucket = _bucket()
+    from urllib.parse import urlparse, urlunparse
+
+    parsed = urlparse(raw_url)
+    path = parsed.path
+    prefix = f"/{bucket}/"
+    if path.startswith(prefix):
+        key_path = path[len(prefix) :]
+        proxy_path = f"/buckets/{bucket}/{key_path}"
+        proxy_url = f"{frontend}{proxy_path}"
+        if parsed.query:
+            proxy_url += f"?{parsed.query}"
+        return proxy_url
+    return raw_url
 
 
 def ensure_bucket() -> None:
-    """Create bucket if it does not exist. Call at startup if needed."""
+    """Create bucket if it does not exist. Configure CORS for frontend image loading (redirect to S3)."""
     if not settings.storage_enabled:
         return
     from botocore.exceptions import ClientError
+
     client = _client()
     try:
         client.head_bucket(Bucket=_bucket())
@@ -85,6 +102,23 @@ def ensure_bucket() -> None:
         code = e.response.get("Error", {}).get("Code", "")
         if code in ("404", "NoSuchBucket"):
             client.create_bucket(Bucket=_bucket())
+
+    # CORS: allow frontend origin for GET (img loads after backend redirect to presigned URL)
+    frontend_origin = settings.keycloak_frontend_url.rstrip("/")
+    cors_config = {
+        "CORSRules": [
+            {
+                "AllowedOrigins": [frontend_origin],
+                "AllowedMethods": ["GET", "HEAD"],
+                "AllowedHeaders": ["*"],
+                "ExposeHeaders": [],
+            }
+        ]
+    }
+    try:
+        client.put_bucket_cors(Bucket=_bucket(), CORSConfiguration=cors_config)
+    except ClientError:
+        pass  # Some backends don't support CORS; ignore
 
 
 def delete_objects_by_prefix(prefix: str) -> None:

@@ -101,7 +101,7 @@ document_parsing/
 ### Document Detail (Current)
 
 1. Frontend fetches `GET /api/documents/{id}` – document includes parsing_result and markdown (single request)
-2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend verifies document+file_hash match and redirects (302) to presigned S3 URL; browser fetches directly from S3
+2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend verifies document+file_hash and redirects (302) to `{frontend}/buckets/openkms/{key}?params`; Vite dev proxy forwards `/buckets/openkms` to MinIO, avoiding S3/MinIO CORS
 
 ### Document Upload via Async Job (Planned)
 
@@ -122,13 +122,14 @@ document_parsing/
 - Frontend fetches `GET /api/documents?channel_id=` for the current channel
 - Backend returns documents in channel and descendants
 
-## OAuth2 Keycloak (Backend)
+## Authentication (Keycloak)
 
-- `GET /login` – redirects to Keycloak authorization; stores `state` in session
-- Keycloak redirect URI: `http://localhost:8102/login/oauth2/code/keycloak` (configurable via `KEYCLOAK_REDIRECT_URI`)
-- `GET /login/oauth2/code/keycloak` – exchanges code for tokens; stores access/refresh tokens in session; redirects to frontend
+- **Backend**: Requires auth for `/api/*` (channels, documents). Accepts either session cookie (from backend OAuth flow) or `Authorization: Bearer <JWT>`. JWT validated via Keycloak JWKS.
+- **Frontend**: Keycloak JS adapter; sends Bearer token in API requests; calls `POST /sync-session` after login to sync JWT to backend session (for img requests that use cookies).
+- `GET /login` – redirects to Keycloak (backend OAuth)
+- `GET /login/oauth2/code/keycloak` – OAuth callback; stores tokens in session
+- `POST /sync-session` – accepts Bearer JWT; stores in session (for frontend Keycloak JS flow)
 - `GET /logout` – clears session; redirects to Keycloak logout
-- Session: `SessionMiddleware` with signed cookie (`openkms_session`)
 
 ## Configuration
 
@@ -137,6 +138,7 @@ document_parsing/
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR |
 | Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl` (default localhost:8102) |
+| Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId) |
+| Vite dev | Proxy `/buckets/openkms` → MinIO (avoids S3 CORS for image loads) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit) |

@@ -1,5 +1,6 @@
 /** API for document channels (backend). */
 import { config } from '../config';
+import { getAuthHeaders } from './apiClient';
 
 export interface ChannelNode {
   id: string;
@@ -10,7 +11,11 @@ export interface ChannelNode {
 
 export async function fetchDocumentChannels(): Promise<ChannelNode[]> {
   try {
-    const res = await fetch(`${config.apiUrl}/api/channels/documents`);
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${config.apiUrl}/api/channels/documents`, {
+      headers: { ...headers },
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`Failed to fetch channels (${res.status})`);
     return res.json();
   } catch (e) {
@@ -33,10 +38,12 @@ export async function createDocumentChannel(params: {
   parent_id?: string | null;
 }): Promise<ChannelNode> {
   try {
+    const authHeaders = await getAuthHeaders();
     const res = await fetch(`${config.apiUrl}/api/channels/documents`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(params),
+      credentials: 'include',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

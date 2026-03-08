@@ -149,6 +149,7 @@ export function DocumentDetail() {
         <img
           src={src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`}
           loading="lazy"
+          crossOrigin={markdownBaseUrl.startsWith('http') ? 'use-credentials' : undefined}
           {...props}
         />
       ),
@@ -332,6 +333,7 @@ export function DocumentDetail() {
                             alt={`Page ${pageIndex + 1}`}
                             className="document-detail-layout-img"
                             loading="lazy"
+                            crossOrigin={!folderId ? 'use-credentials' : undefined}
                           />
                           {dims && blocks.map((block, bi) => {
                             const [x1, y1, x2, y2] = block.coordinate;
@@ -400,6 +402,7 @@ export function DocumentDetail() {
                       alt={selectedBlock.parsingItem.label || 'Block'}
                       className="document-detail-block-img"
                       loading="lazy"
+                      crossOrigin={!folderId ? 'use-credentials' : undefined}
                     />
                   ) : selectedBlock.parsingItem.content ? (
                     <div className="document-detail-block-content">
