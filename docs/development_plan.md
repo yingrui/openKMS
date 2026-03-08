@@ -79,6 +79,10 @@
 - Plugin/extensibility
 - Mobile/responsive polish
 
+## Conventions
+
+- **Before commit**: Update `docs/architecture.md`, `docs/development_plan.md`, `docs/functionalities.md` to reflect changes. See `.cursor/rules/docs-before-commit.mdc`.
+
 ## Open Questions
 
 1. **All documents view** – Show documents from all channels when no channel selected?

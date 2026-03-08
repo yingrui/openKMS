@@ -118,5 +118,7 @@ document_parsing/
 | Layer | Config |
 |-------|--------|
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR |
+| Backend | `AWS_*` – S3/MinIO for file storage (optional) |
 | Frontend | `config/index.ts` – `apiUrl` (default localhost:8102) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
+| Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit) |

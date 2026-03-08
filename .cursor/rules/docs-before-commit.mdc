@@ -1,0 +1,28 @@
+---
+description: Before commit, check if need to update docs (architecture, development_plan, functionalities)
+alwaysApply: true
+---
+
+# Docs Before Commit
+
+Before committing code changes, **update these documentation files** to reflect the current state of the project:
+
+1. **`docs/architecture.md`** – Update if:
+   - New components, services, or modules were added
+   - Data flow changed
+   - Project structure (folders, files) changed
+   - Configuration changed
+
+2. **`docs/development_plan.md`** – Update if:
+   - Tasks were completed (check off items)
+   - New short-term or medium-term tasks were identified
+   - Current state changed
+   - Open questions were resolved or added
+
+3. **`docs/functionalities.md`** – Update if:
+   - New features were implemented (add to Implemented Features, mark ✅)
+   - API endpoints changed
+   - Data models changed
+   - Planned features became implemented
+
+**Workflow**: When the user asks to commit (or you are about to commit), first review the staged changes, then update the three docs above as needed, stage those doc changes, and then commit everything together.

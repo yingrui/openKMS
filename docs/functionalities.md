@@ -80,6 +80,11 @@ Use cases:
 | GET | `/api/documents/{id}` | Get document metadata |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
 
+## Configuration
+
+- **S3/MinIO** (optional): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL`, `AWS_BUCKET_NAME` for object storage. See `backend/.env.example`.
+- **Cursor rules**: `.cursor/rules/` – e.g. `docs-before-commit` (update docs before commit).
+
 ## Data Models
 
 ### Document Channel

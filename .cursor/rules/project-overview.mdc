@@ -1,0 +1,23 @@
+---
+description: openKMS project context and conventions
+alwaysApply: true
+---
+
+# openKMS Project
+
+**Open Knowledge Management System** – Document management, channel-based organization, PaddleOCR-VL parsing, articles, and RAG-ready knowledge bases.
+
+## Key Paths
+
+- **Backend**: `backend/app/` (FastAPI)
+- **Frontend**: `frontend/src/` (React/Vite)
+- **Docs**: `docs/` (README, functionalities, architecture, development_plan)
+- **VLM**: `vlm-server/` (mlx-vlm for document parsing)
+- **Planned**: `document_parsing/` (Typer CLI for pipeline/async jobs)
+
+## Conventions
+
+- Backend: Python, FastAPI, SQLAlchemy async, Pydantic
+- Frontend: TypeScript, React 19, React Router
+- Config: Backend `OPENKMS_*` in `.env`; Frontend `config/index.ts`
+- Ports: Backend 8102, Frontend 5173, VLM 8101

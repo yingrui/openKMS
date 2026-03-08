@@ -29,7 +29,6 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
 | `OPENKMS_VLM_SERVER_URL` | http://localhost:8101 | vlm-server URL |
-| `OPENKMS_VLM_MODEL` | mlx-community/Qwen2-VL-2B-Instruct-4bit | VLM model name |
 
 ## Database
 
