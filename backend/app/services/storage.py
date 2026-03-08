@@ -61,6 +61,18 @@ def get_object_stream(key: str):
     return resp["Body"]
 
 
+def get_redirect_url(key: str, expires_in: int = 3600) -> str:
+    """Generate a presigned GET URL for direct S3/MinIO access. Frontend can redirect to fetch from S3."""
+    if not settings.storage_enabled:
+        raise RuntimeError("S3 storage is not configured")
+    client = _client()
+    return client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": _bucket(), "Key": key},
+        ExpiresIn=expires_in,
+    )
+
+
 def ensure_bucket() -> None:
     """Create bucket if it does not exist. Call at startup if needed."""
     if not settings.storage_enabled:
@@ -98,13 +110,3 @@ def object_exists(key: str) -> bool:
         return False
 
 
-def generate_presigned_url(key: str, expires_in: int = 3600) -> str:
-    """Generate a presigned GET URL for direct S3/MinIO access. Bypasses backend proxy."""
-    if not settings.storage_enabled:
-        raise RuntimeError("S3 storage is not configured")
-    client = _client()
-    return client.generate_presigned_url(
-        "get_object",
-        Params={"Bucket": _bucket(), "Key": key},
-        ExpiresIn=expires_in,
-    )

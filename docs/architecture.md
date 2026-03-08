@@ -101,7 +101,7 @@ document_parsing/
 ### Document Detail (Current)
 
 1. Frontend fetches `GET /api/documents/{id}` – document includes parsing_result and markdown (single request)
-2. Document files (images, markdown assets) load directly from object storage via `VITE_STORAGE_BASE_URL` – no backend proxy
+2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend verifies document+file_hash match and redirects (302) to presigned S3 URL; browser fetches directly from S3
 
 ### Document Upload via Async Job (Planned)
 
@@ -137,6 +137,6 @@ document_parsing/
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR |
 | Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl`, `storageBaseUrl` (VITE_STORAGE_BASE_URL for direct S3/MinIO access) |
+| Frontend | `config/index.ts` – `apiUrl` (default localhost:8102) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit) |

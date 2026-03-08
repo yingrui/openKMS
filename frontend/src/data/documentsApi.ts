@@ -57,16 +57,15 @@ export async function fetchDocumentById(
   return res.json();
 }
 
-/** Direct URL for a document file in object storage. Path format: {file_hash}/filename. Requires VITE_STORAGE_BASE_URL. */
-export function getStorageFileUrl(path: string): string {
-  if (!config.storageBaseUrl) return '';
-  const encoded = path.split('/').map((s) => encodeURIComponent(s)).join('/');
-  return `${config.storageBaseUrl.replace(/\/$/, '')}/${encoded}`;
+/** Base URL for document files via backend proxy (no trailing slash). */
+export function getDocumentFilesBaseUrl(documentId: string): string {
+  return `${config.apiUrl}/api/documents/${documentId}/files`;
 }
 
-/** Base URL for markdown_out folder (relative refs in markdown). Path: {file_hash}/markdown_out */
-export function getMarkdownBaseUrl(fileHash: string): string {
-  return getStorageFileUrl(`${fileHash}/markdown_out`);
+/** Full URL for a document file by path (proxied via backend). */
+export function getDocumentFileUrl(documentId: string, filePath: string): string {
+  const encoded = filePath.split('/').map((s) => encodeURIComponent(s)).join('/');
+  return `${getDocumentFilesBaseUrl(documentId)}/${encoded}`;
 }
 
 export async function fetchParsingResult(

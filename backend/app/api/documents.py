@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse
 
 from app.config import settings
 from app.database import get_db
@@ -16,11 +16,9 @@ from app.schemas.document import (
     DocumentListResponse,
     DocumentResponse,
     ParsingResultResponse,
-    PresignRequest,
-    PresignResponse,
 )
 from app.services.document_storage import parse_and_store
-from app.services.storage import delete_objects_by_prefix, generate_presigned_url, get_object_stream
+from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -113,8 +111,7 @@ async def delete_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document and its files from storage."""
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
+    doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -123,7 +120,7 @@ async def delete_document(
 
     await db.delete(doc)
     await db.commit()
-
+    
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
@@ -131,10 +128,7 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Get document by ID."""
-    from sqlalchemy import select
-
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
+    doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     return DocumentResponse.model_validate(doc)
@@ -146,48 +140,12 @@ async def get_parsing_result(
     db: AsyncSession = Depends(get_db),
 ):
     """Get document parsing result (result.json format for frontend)."""
-    from sqlalchemy import select
-
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
+    doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     if not doc.parsing_result:
         raise HTTPException(status_code=404, detail="Parsing result not available")
     return ParsingResultResponse(**doc.parsing_result)
-
-@router.post("/{document_id}/files/presign", response_model=PresignResponse)
-async def get_presigned_urls(
-    document_id: str,
-    body: PresignRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """Return presigned S3 URLs for multiple paths. Frontend fetches directly from S3/MinIO, reducing backend load."""
-    from sqlalchemy import select
-    from urllib.parse import unquote
-
-    if not settings.storage_enabled:
-        raise HTTPException(503, "Storage not configured")
-
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(404, "Document not found")
-    file_hash = doc.file_hash or (doc.parsing_result or {}).get("file_hash") or ""
-    if not file_hash:
-        raise HTTPException(404, "Document not found")
-
-    urls: dict[str, str] = {}
-    for raw_path in body.paths:
-        path = unquote(raw_path).lstrip("/")
-        if ".." in path or not path:
-            continue
-        try:
-            key = _storage_key(file_hash, path)
-            urls[raw_path] = generate_presigned_url(key)
-        except ValueError:
-            continue
-    return PresignResponse(urls=urls)
 
 
 def _storage_key(file_hash: str, path: str) -> str:
@@ -206,29 +164,32 @@ def _storage_key(file_hash: str, path: str) -> str:
     return f"{file_hash}/{path}"
 
 
-@router.get("/{document_id}/files/{file_path:path}")
+async def _document_file_hash_matches(db: AsyncSession, document_id: str, file_hash: str) -> bool:
+    """Lightweight verification: document exists and file_hash matches. No full document load."""
+    stmt = (
+        select(1)
+        .where(Document.id == document_id)
+        .where(Document.file_hash.ilike(file_hash))
+        .limit(1)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none() is not None
+
+
+@router.get("/{document_id}/files/{file_hash}/{file_path:path}")
 async def get_document_file(
     document_id: str,
+    file_hash: str,
     file_path: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Serve a file from document storage (images, markdown, etc.) by path under file_hash folder."""
-    from sqlalchemy import select
-
+    """Redirect to presigned S3 URL. Verifies document_id+file_hash match; frontend fetches directly from S3."""
     from urllib.parse import unquote
 
     path = unquote(file_path).lstrip("/")
     if ".." in path or not path:
         raise HTTPException(status_code=400, detail="Invalid path")
 
-    result = await db.execute(select(Document).where(Document.id == document_id))
-    doc = result.scalar_one_or_none()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
-    # Prefer doc.file_hash; fallback to parsing_result.file_hash (e.g. migrated docs)
-    file_hash = doc.file_hash or (doc.parsing_result or {}).get("file_hash") or ""
-    if not file_hash:
+    if not await _document_file_hash_matches(db, document_id, file_hash):
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
@@ -236,22 +197,10 @@ async def get_document_file(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid path")
 
-    try:
-        stream = get_object_stream(key)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=f"File not found: {str(e)}")
+    if not object_exists(key):
+        raise HTTPException(status_code=404, detail="File not found")
 
-    # Content type based on extension
-    if path.endswith(".png"):
-        media_type = "image/png"
-    elif path.endswith(".jpg") or path.endswith(".jpeg"):
-        media_type = "image/jpeg"
-    elif path.endswith(".json"):
-        media_type = "application/json"
-    elif path.endswith(".md"):
-        media_type = "text/markdown"
-    else:
-        media_type = "application/octet-stream"
+    url = get_redirect_url(key)
 
-    return StreamingResponse(stream, media_type=media_type)
+    return RedirectResponse(url=url, status_code=302)
 

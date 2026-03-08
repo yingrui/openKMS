@@ -16,8 +16,10 @@ class Base(DeclarativeBase):
 engine = create_async_engine(
     settings.database_url,
     echo=settings.debug,
-    pool_pre_ping=True,  # Test connections before use; discard closed ones
-    pool_recycle=300,    # Recycle connections before PostgreSQL idle timeout
+    pool_pre_ping=True,   # Test connections before use; discard closed ones
+    pool_recycle=300,     # Recycle connections before PostgreSQL idle timeout
+    pool_size=10,         # Base pool size
+    max_overflow=20,      # Allow overflow connections under load
 )
 
 async_session_maker = async_sessionmaker(

@@ -4,7 +4,7 @@
 
 - Document channels: CRUD, tree, description
 - Document upload + parsing via PaddleOCR-VL; store in S3/MinIO under `{file_hash}/`
-- Document detail view with Markdown, layout images, block images; loads files directly from object storage (VITE_STORAGE_BASE_URL)
+- Document detail view with Markdown, layout images, block images; loads files via backend proxy
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`
 - Documents overview, channel management, channel settings

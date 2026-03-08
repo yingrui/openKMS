@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class DocumentBase(BaseModel):
@@ -42,15 +42,3 @@ class ParsingResultResponse(BaseModel):
     layout_det_res: list[dict[str, Any]] = []
     markdown: str = ""
     page_count: int = 0
-
-class PresignRequest(BaseModel):
-    """Request body for batch presigned URL generation."""
-
-    paths: list[str] = Field(..., min_length=1, max_length=200)
-
-
-class PresignResponse(BaseModel):
-    """Map of path -> presigned URL for direct S3/MinIO access."""
-
-    urls: dict[str, str]
-

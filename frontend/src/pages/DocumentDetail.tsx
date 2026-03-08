@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -7,7 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { fetchDocumentById, getStorageFileUrl, getMarkdownBaseUrl, type DocumentResponse } from '../data/documentsApi';
+import { fetchDocumentById, getDocumentFileUrl, getDocumentFilesBaseUrl, type DocumentResponse } from '../data/documentsApi';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -132,12 +132,29 @@ export function DocumentDetail() {
     };
   }, [id, docConfig]);
 
-  /** Images: examples use /examples/, backend docs use direct storage URL. */
-  const getImageUrl = (path: string) => getStorageFileUrl(path);
+  /** Images: examples use /examples/, backend docs use proxy. */
+  const getImageUrl = (path: string) => (id ? getDocumentFileUrl(id, path) : '');
 
+  const fileHash = parsingResult?.file_hash ?? document?.file_hash ?? '';
   const markdownBaseUrl = folderId
     ? `/examples/${folderId}/markdown_out`
-    : (parsingResult?.file_hash ? getMarkdownBaseUrl(parsingResult.file_hash) : '');
+    : (id && fileHash
+        ? `${getDocumentFilesBaseUrl(id)}/${encodeURIComponent(fileHash)}/markdown_out`
+        : '');
+
+  /** Memoized to avoid remounting img elements on every re-render (which cancels in-flight requests). */
+  const markdownComponents = useMemo(
+    () => ({
+      img: ({ src, ...props }: { src?: string }) => (
+        <img
+          src={src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`}
+          loading="lazy"
+          {...props}
+        />
+      ),
+    }),
+    [markdownBaseUrl]
+  );
 
   // Build page blocks: for each layout box, find parsing item by matching coordinates
   const pageBlocks = (() => {
@@ -237,7 +254,7 @@ export function DocumentDetail() {
                 </button>
               </h2>
               {infoVisible && (
-              <dl className={`document-detail-info-list ${parsingResult?.file_hash ? 'document-detail-info-list--with-hash' : ''}`}>
+              <dl className={`document-detail-info-list ${fileHash ? 'document-detail-info-list--with-hash' : ''}`}>
                 <div className="document-detail-info-item document-detail-info-item--name">
                   <dt>Name</dt>
                   <dd>{document.name}</dd>
@@ -258,13 +275,13 @@ export function DocumentDetail() {
                   <dt>Markdown</dt>
                   <dd>{markdown ? 'Yes' : 'No'}</dd>
                 </div>
-                {parsingResult?.file_hash && (
+                {fileHash && (
                   <div className="document-detail-info-item document-detail-info-item--compact">
                     <dt>File hash</dt>
-                    <dd className="document-detail-info-hash" title={parsingResult.file_hash}>
-                      {parsingResult.file_hash.length > 12
-                        ? `${parsingResult.file_hash.slice(0, 10)}...`
-                        : parsingResult.file_hash}
+                    <dd className="document-detail-info-hash" title={fileHash}>
+                      {fileHash.length > 12
+                        ? `${fileHash.slice(0, 10)}...`
+                        : fileHash}
                     </dd>
                   </div>
                 )}
@@ -314,6 +331,7 @@ export function DocumentDetail() {
                             src={folderId ? `/examples/${item.input_img}` : (item.input_img ? getImageUrl(item.input_img) : '')}
                             alt={`Page ${pageIndex + 1}`}
                             className="document-detail-layout-img"
+                            loading="lazy"
                           />
                           {dims && blocks.map((block, bi) => {
                             const [x1, y1, x2, y2] = block.coordinate;
@@ -381,20 +399,14 @@ export function DocumentDetail() {
                       src={folderId ? `/examples/${selectedBlock.parsingItem.image_path}` : getImageUrl(selectedBlock.parsingItem.image_path)}
                       alt={selectedBlock.parsingItem.label || 'Block'}
                       className="document-detail-block-img"
+                      loading="lazy"
                     />
                   ) : selectedBlock.parsingItem.content ? (
                     <div className="document-detail-block-content">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm, remarkMath]}
                         rehypePlugins={[rehypeRaw, rehypeKatex]}
-                        components={{
-                          img: ({ src, ...props }) => (
-                            <img
-                              src={src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`}
-                              {...props}
-                            />
-                          ),
-                        }}
+                        components={markdownComponents}
                       >
                         {selectedBlock.parsingItem.content}
                       </ReactMarkdown>
@@ -403,18 +415,11 @@ export function DocumentDetail() {
                     <p className="document-detail-muted">No content</p>
                   )}
                 </div>
-              ) : markdown ? (
+              ) : markdown && (folderId || markdownBaseUrl) ? (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeRaw, rehypeKatex]}
-                  components={{
-                    img: ({ src, ...props }) => (
-                      <img
-                        src={src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`}
-                        {...props}
-                      />
-                    ),
-                  }}
+                  components={markdownComponents}
                 >
                   {markdown}
                 </ReactMarkdown>

@@ -83,7 +83,7 @@ Use cases:
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
 | GET | `/api/documents/{id}` | Get document metadata |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
-| GET | `/api/documents/{id}/files/{path}` | Serve file from storage (images, markdown) |
+| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL (verifies document+file_hash; frontend fetches from S3) |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
 
 ## Configuration
