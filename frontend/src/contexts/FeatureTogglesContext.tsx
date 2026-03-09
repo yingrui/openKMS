@@ -1,37 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useAuth } from './AuthContext';
+import { fetchToggles, updateToggles, type FeatureToggles } from '../data/featureTogglesApi';
 
-const STORAGE_KEY = 'openkms-feature-toggles';
-
-export interface FeatureToggles {
-  articles: boolean;
-  knowledgeBases: boolean;
-}
+export type { FeatureToggles } from '../data/featureTogglesApi';
 
 const defaults: FeatureToggles = {
   articles: true,
   knowledgeBases: true,
 };
-
-function loadToggles(): FeatureToggles {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Partial<FeatureToggles>;
-      return { ...defaults, ...parsed };
-    }
-  } catch {
-    // ignore
-  }
-  return { ...defaults };
-}
-
-function saveToggles(toggles: FeatureToggles) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(toggles));
-  } catch {
-    // ignore
-  }
-}
 
 interface FeatureTogglesContextValue {
   toggles: FeatureToggles;
@@ -42,14 +18,26 @@ interface FeatureTogglesContextValue {
 const FeatureTogglesContext = createContext<FeatureTogglesContextValue | null>(null);
 
 export function FeatureTogglesProvider({ children }: { children: React.ReactNode }) {
-  const [toggles, setToggles] = useState<FeatureToggles>(loadToggles);
+  const { isAuthenticated, isLoading } = useAuth();
+  const [toggles, setToggles] = useState<FeatureToggles>(defaults);
 
   useEffect(() => {
-    saveToggles(toggles);
-  }, [toggles]);
+    if (isLoading || !isAuthenticated) return;
+    let cancelled = false;
+    fetchToggles()
+      .then((data) => { if (!cancelled) setToggles(data); })
+      .catch(() => { /* keep defaults on error */ });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isLoading]);
 
   const setToggle = useCallback((key: keyof FeatureToggles, enabled: boolean) => {
-    setToggles((prev) => ({ ...prev, [key]: enabled }));
+    setToggles((prev) => {
+      const next = { ...prev, [key]: enabled };
+      updateToggles({ [key]: enabled }).catch(() => {
+        setToggles(prev);
+      });
+      return next;
+    });
   }, []);
 
   const isEnabled = useCallback(

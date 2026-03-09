@@ -12,7 +12,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Backend (FastAPI)                            │
 │  /api/channels | /api/documents | /api/pipelines | /api/jobs   │
-│  /api/models                                                    │
+│  /api/models | /api/feature-toggles                              │
 │  (upload stores file only; jobs deferred via procrastinate)      │
 └───────┬────────────────┬──────────────────┬─────────────────────┘
         │                │                  │
@@ -23,6 +23,8 @@
 │ doc_channels │ │                │ │  openkms-cli subprocess)   │
 │ pipelines    │ │                │ │                            │
 │ api_models   │ │                │ │                            │
+│ feature_     │ │                │ │                            │
+│  toggles     │ │                │ │                            │
 │ procrastinate│ │                │ │ → openkms-cli pipeline run │
 │  _jobs       │ │                │ │ → mlx-vlm-server (VLM)    │
 └──────────────┘ └────────────────┘ └────────────────────────────┘
@@ -32,12 +34,12 @@
 
 ```
 frontend/src/
-├── main.tsx                 # Entry, providers (Auth, FeatureToggles, DocumentChannels)
-├── App.tsx                  # Routes
+├── main.tsx                 # Entry
+├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels)
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, modelsApi, channelUtils
+├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, modelsApi, featureTogglesApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -60,9 +62,10 @@ backend/
 │   ├── config.py                # Settings (env: OPENKMS_*)
 │   ├── database.py              # Async engine, get_db, init_db
 │   ├── api/
-│   │   ├── auth.py              # OAuth2 Keycloak login/logout
+│   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE
+│   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, POST test (API provider registry)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
@@ -70,7 +73,8 @@ backend/
 │   │   ├── document.py          # Document model (+ status field)
 │   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process)
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
-│   │   └── api_model.py        # ApiModel (API provider/model registry)
+│   │   ├── api_model.py        # ApiModel (API provider/model registry)
+│   │   └── feature_toggle.py  # FeatureToggle (key-value flags)
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate

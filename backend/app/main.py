@@ -10,6 +10,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.auth import router as auth_router
 from app.api.channels import router as channels_router
 from app.api.documents import router as documents_router
+from app.api.feature_toggles import router as feature_toggles_router
 from app.api.jobs import router as jobs_router
 from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
@@ -65,6 +66,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(channels_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
+app.include_router(feature_toggles_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(models_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")

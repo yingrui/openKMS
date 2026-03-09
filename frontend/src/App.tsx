@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
+import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
@@ -30,6 +31,7 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-right" richColors closeButton />
       <AuthProvider>
+      <FeatureTogglesProvider>
       <DocumentChannelsProvider>
       <Routes>
         <Route path="/" element={<MainLayout />}>
@@ -59,6 +61,7 @@ function App() {
         </Route>
       </Routes>
       </DocumentChannelsProvider>
+      </FeatureTogglesProvider>
       </AuthProvider>
     </BrowserRouter>
   );

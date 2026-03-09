@@ -13,6 +13,7 @@ import app.models.document  # noqa: F401 - register models with Base.metadata
 import app.models.document_channel  # noqa: F401 - register models with Base.metadata
 import app.models.pipeline  # noqa: F401 - register models with Base.metadata
 import app.models.api_model  # noqa: F401 - register models with Base.metadata
+import app.models.feature_toggle  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

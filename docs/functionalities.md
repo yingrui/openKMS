@@ -49,7 +49,9 @@
 
 - Overview, Settings, Users & Roles, Feature Toggles
 - **Admin-only**: visible and accessible only to users with Keycloak realm role `admin`
-- Feature toggles: `articles`, `knowledgeBases`
+- Feature toggles: `articles`, `knowledgeBases` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
+- `GET /api/feature-toggles` (authenticated) returns current toggle state
+- `PUT /api/feature-toggles` (admin-only) updates toggle state; backend `require_admin` checks JWT realm role
 
 ### 5b. Authentication
 
@@ -140,6 +142,8 @@
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |
 | POST | `/api/models/{id}/test` | Test model (proxies to model's base_url; supports chat/embedding/VL) |
+| GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |
+| PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ## Configuration
 
@@ -170,6 +174,12 @@
 
 - `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `created_at`, `updated_at`
 - Status: `uploaded` → `pending` → `running` → `completed` / `failed`
+
+### FeatureToggle
+
+- `key` (PK, string), `enabled` (boolean), `updated_at`
+- Stores feature flags shared across all users; seeded with `articles` and `knowledgeBases` (both enabled by default)
+- Read by all authenticated users; write restricted to admins
 
 ### Jobs (procrastinate_jobs)
 

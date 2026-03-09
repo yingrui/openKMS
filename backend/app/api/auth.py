@@ -56,6 +56,17 @@ async def require_auth(request: Request) -> str:
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
+async def require_admin(request: Request) -> str:
+    """Require authentication AND the 'admin' realm role from Keycloak JWT."""
+    token = await require_auth(request)
+    payload = _verify_jwt(token)
+    realm_access = payload.get("realm_access", {})
+    roles = realm_access.get("roles", [])
+    if "admin" not in roles:
+        raise HTTPException(status_code=403, detail="Admin role required")
+    return token
+
+
 router = APIRouter(tags=["auth"])
 
 

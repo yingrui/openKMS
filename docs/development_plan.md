@@ -11,7 +11,7 @@
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles & Knowledge Bases: UI placeholders with feature toggles
-- Console: settings, users, feature toggles; admin-only (realm role `admin`)
+- Console: settings, users, feature toggles (database-backed); admin-only (realm role `admin`)
 
 ## Short-Term (Next Steps)
 
@@ -47,6 +47,8 @@
 - [x] Integrate Keycloak with frontend (login/logout)
 - [x] Protect backend routes with JWT Bearer or session
 - [x] Role-based access: Console restricted to users with realm role `admin`
+- [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT admin-only)
+- [x] Backend `require_admin` dependency for admin-only endpoints (checks JWT `realm_access.roles`)
 
 ## Medium-Term
 
