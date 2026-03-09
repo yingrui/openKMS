@@ -61,3 +61,17 @@ class ApiModelResponse(BaseModel):
 class ApiModelListResponse(BaseModel):
     items: list[ApiModelResponse]
     total: int
+
+
+class ApiModelTestRequest(BaseModel):
+    prompt: str
+    image: str | None = None  # base64 data URI for vision-language models
+    max_tokens: int = 512
+    temperature: float = 0.7
+
+
+class ApiModelTestResponse(BaseModel):
+    success: bool
+    content: str | None = None
+    error: str | None = None
+    elapsed_ms: int = 0

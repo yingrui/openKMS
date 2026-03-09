@@ -12,6 +12,8 @@ from app.schemas.api_model import (
     ApiModelCreate,
     ApiModelListResponse,
     ApiModelResponse,
+    ApiModelTestRequest,
+    ApiModelTestResponse,
     ApiModelUpdate,
 )
 
@@ -104,3 +106,24 @@ async def delete_model(model_id: str, db: AsyncSession = Depends(get_db)):
 
     await db.delete(model)
     await db.commit()
+
+
+@router.post("/{model_id}/test", response_model=ApiModelTestResponse)
+async def test_model(model_id: str, body: ApiModelTestRequest, db: AsyncSession = Depends(get_db)):
+    """Proxy a test request to the model's API endpoint."""
+    from app.services.model_testing import execute_test
+
+    model = await db.get(ApiModel, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    return await execute_test(
+        base_url=model.base_url,
+        category=model.category,
+        api_key=model.api_key,
+        model_name=model.model_name,
+        prompt=body.prompt,
+        image=body.image,
+        max_tokens=body.max_tokens,
+        temperature=body.temperature,
+    )

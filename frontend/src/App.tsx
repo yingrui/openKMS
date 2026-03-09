@@ -13,6 +13,7 @@ import { Pipelines } from './pages/Pipelines';
 import { Jobs } from './pages/Jobs';
 import { JobDetail } from './pages/JobDetail';
 import { Models } from './pages/Models';
+import { ModelDetail } from './pages/ModelDetail';
 import { DocumentDetail } from './pages/DocumentDetail';
 import { DocumentChannelSettings } from './pages/DocumentChannelSettings';
 import { DocumentChannels } from './pages/DocumentChannels';
@@ -48,6 +49,7 @@ function App() {
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:jobId" element={<JobDetail />} />
           <Route path="models" element={<Models />} />
+          <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />
             <Route path="settings" element={<ConsoleSettings />} />

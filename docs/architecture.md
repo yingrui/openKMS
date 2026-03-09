@@ -47,7 +47,7 @@ frontend/src/
     ├── DocumentDetail.tsx
     ├── Articles.tsx, ArticleDetail.tsx
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx
+    ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles
 ```
 
@@ -64,7 +64,7 @@ backend/
 │   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
-│   │   ├── models.py           # CRUD /api/models (API provider registry)
+│   │   ├── models.py           # CRUD /api/models, POST test (API provider registry)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status field)
@@ -84,6 +84,7 @@ backend/
 │       ├── document_parser.py       # PaddleOCR-VL integration
 │       ├── document_storage.py      # parse_and_store → S3/MinIO (legacy)
 │       ├── document_extraction_utils.py
+│       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
 │       └── storage.py               # S3/MinIO client (upload, delete)
 └── worker.py                    # procrastinate worker entry point
 ```

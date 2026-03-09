@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -13,6 +14,7 @@ import {
 import './Models.css';
 
 export function Models() {
+  const navigate = useNavigate();
   const [models, setModels] = useState<ApiModelResponse[]>([]);
   const [categories, setCategories] = useState<ModelCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,7 +208,7 @@ export function Models() {
                     </tr>
                   ) : (
                     models.map((m) => (
-                      <tr key={m.id}>
+                      <tr key={m.id} className="models-table-row-clickable" onClick={() => navigate(`/models/${m.id}`)}>
                         <td>
                           <div className="models-table-name">
                             <Cpu size={18} strokeWidth={1.5} />
@@ -224,10 +226,10 @@ export function Models() {
                         <td className="models-table-muted">{m.api_key_set ? '••••••••' : '—'}</td>
                         <td className="models-table-actions-col">
                           <div className="models-table-btns">
-                            <button type="button" title="Edit" onClick={() => openEdit(m)}>
+                            <button type="button" title="Edit" onClick={(e) => { e.stopPropagation(); openEdit(m); }}>
                               <Pencil size={16} />
                             </button>
-                            <button type="button" title="Delete" onClick={() => handleDelete(m.id)}>
+                            <button type="button" title="Delete" onClick={(e) => { e.stopPropagation(); handleDelete(m.id); }}>
                               <Trash2 size={16} />
                             </button>
                           </div>

@@ -125,3 +125,32 @@ export async function deleteModel(id: string): Promise<void> {
     throw new Error(err.detail || 'Failed to delete model');
   }
 }
+
+export interface ModelTestRequest {
+  prompt: string;
+  image?: string | null;  // base64 data URI for VL models
+  max_tokens?: number;
+  temperature?: number;
+}
+
+export interface ModelTestResponse {
+  success: boolean;
+  content?: string | null;
+  error?: string | null;
+  elapsed_ms: number;
+}
+
+export async function testModel(id: string, data: ModelTestRequest): Promise<ModelTestResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/models/${id}/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to test model');
+  }
+  return res.json();
+}

@@ -98,6 +98,9 @@
 | Command resolution | ✅ | `{vlm_url}` and `{model_name}` template vars resolved from linked model at job creation |
 | Job detail model | ✅ | JobDetail.tsx shows model info card when job has a linked model |
 | Default seed | ✅ | PaddleOCR-VL-1.5 model seeded in migration and linked to default pipeline |
+| Model detail | ✅ | ModelDetail.tsx at `/models/:modelId` – connection info, config, timestamps |
+| Model playground | ✅ | Test models directly from the detail page; adapts per category: VL (form with image upload + prompt → markdown response), Embedding (text → dimension + values), LLM/other (chat conversation) |
+| Model test API | ✅ | `POST /api/models/{id}/test` proxies request to model's base_url; supports chat completions and embeddings |
 
 ## API Endpoints
 
@@ -136,6 +139,7 @@
 | GET | `/api/models/{id}` | Get model detail |
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |
+| POST | `/api/models/{id}/test` | Test model (proxies to model's base_url; supports chat/embedding/VL) |
 
 ## Configuration
 

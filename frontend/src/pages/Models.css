@@ -156,6 +156,10 @@
   background: var(--color-bg-muted);
 }
 
+.models-table-row-clickable {
+  cursor: pointer;
+}
+
 .models-table-name {
   display: flex;
   align-items: center;
