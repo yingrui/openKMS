@@ -95,6 +95,10 @@
   background: var(--color-bg-muted);
 }
 
+.jobs-table-row-clickable {
+  cursor: pointer;
+}
+
 .jobs-table-name {
   display: flex;
   align-items: center;
@@ -128,6 +132,127 @@
   color: #92400e;
 }
 
+.job-status-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 [data-theme="dark"] .job-status-running { background: #1e3a5f; color: #93c5fd; }
 [data-theme="dark"] .job-status-completed { background: #14532d; color: #86efac; }
 [data-theme="dark"] .job-status-pending { background: #422006; color: #fcd34d; }
+[data-theme="dark"] .job-status-failed { background: #450a0a; color: #fca5a5; }
+
+.jobs-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.jobs-table-actions-col {
+  width: 100px;
+  text-align: right;
+}
+
+.jobs-table-actions-btns {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.jobs-delete-btn:hover {
+  color: var(--color-error, #dc2626) !important;
+}
+
+.jobs-table-docid {
+  font-family: monospace;
+  font-size: 0.8125rem;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}
+
+.jobs-error {
+  padding: 8px 12px;
+  color: var(--color-error, #dc2626);
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+.jobs-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  gap: 12px;
+  color: var(--color-text-muted);
+}
+
+.jobs-loading-spinner {
+  animation: jobs-spin 1s linear infinite;
+}
+
+@keyframes jobs-spin {
+  to { transform: rotate(360deg); }
+}
+
+.jobs-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.jobs-modal {
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.jobs-modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.jobs-modal-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.jobs-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.jobs-modal-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.jobs-modal-body input,
+.jobs-modal-body select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.jobs-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--color-border);
+}

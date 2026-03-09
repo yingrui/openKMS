@@ -11,17 +11,19 @@
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Backend (FastAPI)                            │
-│  /api/channels/documents  |  /api/documents/upload  |  /health  │
-│  (async jobs → invoke document_parsing CLI)                     │
-└───────────────┬───────────────────────────┬─────────────────────┘
-                │                           │
-                ▼                           ▼
-┌───────────────────────┐     ┌────────────────────────────────────┐
-│   PostgreSQL          │     │  openkms-cli (CLI)                 │
-│   documents           │     │  Typer + PaddleOCR-VL              │
-│   document_channels   │     │  → mlx-vlm-server (VLM backend)    │
-└───────────────────────┘     │  Backend can invoke for async jobs │
-                              └────────────────────────────────────┘
+│  /api/channels | /api/documents | /api/pipelines | /api/jobs    │
+│  (upload stores file only; jobs deferred via procrastinate)      │
+└───────┬────────────────┬──────────────────┬─────────────────────┘
+        │                │                  │
+        ▼                ▼                  ▼
+┌──────────────┐ ┌────────────────┐ ┌────────────────────────────┐
+│ PostgreSQL   │ │ S3/MinIO       │ │ procrastinate worker       │
+│ documents    │ │ file storage   │ │ (picks up jobs, spawns     │
+│ doc_channels │ │                │ │  openkms-cli subprocess)   │
+│ pipelines    │ │                │ │                            │
+│ procrastinate│ │                │ │ → openkms-cli pipeline run │
+│  _jobs       │ │                │ │ → mlx-vlm-server (VLM)    │
+└──────────────┘ └────────────────┘ └────────────────────────────┘
 ```
 
 ## Frontend Structure
@@ -33,7 +35,7 @@ frontend/src/
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, channelUtils, documents
+├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -43,32 +45,42 @@ frontend/src/
     ├── DocumentDetail.tsx
     ├── Articles.tsx, ArticleDetail.tsx
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── Pipelines.tsx, Jobs.tsx, Models.tsx
+    ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx
     └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles
 ```
 
 ## Backend Structure
 
 ```
-backend/app/
-├── main.py                  # FastAPI app, CORS, routers
-├── config.py                # Settings (env: OPENKMS_*)
-├── database.py              # Async engine, get_db, init_db
-├── api/
-│   ├── auth.py               # OAuth2 Keycloak login/logout
-│   ├── channels.py          # GET/POST /api/channels/documents
-│   └── documents.py         # POST upload, GET document, GET parsing, DELETE
-├── models/
-│   ├── document.py          # Document model
-│   └── document_channel.py  # DocumentChannel model
-├── schemas/
-│   ├── document.py
-│   └── channel.py           # ChannelNode, ChannelCreate
-└── services/
-    ├── document_parser.py       # PaddleOCR-VL integration
-    ├── document_storage.py      # parse_and_store → S3/MinIO
-    ├── document_extraction_utils.py
-    └── storage.py               # S3/MinIO client (upload, delete)
+backend/
+├── app/
+│   ├── main.py                  # FastAPI app, CORS, routers, procrastinate lifespan
+│   ├── config.py                # Settings (env: OPENKMS_*)
+│   ├── database.py              # Async engine, get_db, init_db
+│   ├── api/
+│   │   ├── auth.py              # OAuth2 Keycloak login/logout
+│   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
+│   │   ├── documents.py        # POST upload (store only), GET, DELETE
+│   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
+│   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
+│   ├── models/
+│   │   ├── document.py          # Document model (+ status field)
+│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process)
+│   │   └── pipeline.py         # Pipeline model (name, command, default_args)
+│   ├── schemas/
+│   │   ├── document.py
+│   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
+│   │   ├── pipeline.py         # PipelineCreate/Update/Response
+│   │   └── job.py              # JobCreate/Response
+│   ├── jobs/
+│   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
+│   │   └── tasks.py            # run_pipeline task (subprocess openkms-cli)
+│   └── services/
+│       ├── document_parser.py       # PaddleOCR-VL integration
+│       ├── document_storage.py      # parse_and_store → S3/MinIO (legacy)
+│       ├── document_extraction_utils.py
+│       └── storage.py               # S3/MinIO client (upload, delete)
+└── worker.py                    # procrastinate worker entry point
 ```
 
 ## openkms-cli
@@ -96,25 +108,29 @@ openkms-cli/
 
 ## Data Flow
 
-### Document Upload (Current)
+### Document Upload (Decoupled)
 
-1. Frontend opens upload modal on channel page; user selects files (or drag-and-drop); `POST /api/documents/upload` (multipart: file + channel_id)
-2. Backend validates channel exists; parses via PaddleOCR-VL (mlx-vlm-server); stores in S3/MinIO under `{file_hash}/`: original, layout images, block images, result.json, markdown, markdown_out
-3. Backend creates Document in PostgreSQL with parsing_result and markdown
-4. Response: DocumentResponse
+1. Frontend opens upload modal on channel page; user selects files; `POST /api/documents/upload` (multipart: file + channel_id)
+2. Backend stores original file to S3/MinIO under `{file_hash}/original.{ext}`; creates Document with `status=uploaded` (no parsing at upload time)
+3. If channel has `auto_process=true` and a linked pipeline, a procrastinate job is deferred automatically (`status=pending`)
+4. Response: DocumentResponse with status
 
-### Document Detail (Current)
+### Document Processing (Job Queue)
 
-1. Frontend fetches `GET /api/documents/{id}` – document includes parsing_result and markdown (single request)
-2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend verifies document+file_hash and redirects (302) to `{frontend}/buckets/openkms/{key}?params`; Vite dev proxy forwards `/buckets/openkms` to MinIO, avoiding S3/MinIO CORS
+1. Jobs can be created: manually via `POST /api/jobs`, or automatically on upload (if channel has auto_process)
+2. The job references a Pipeline configuration (command template with `{variable}` placeholders, default_args)
+3. procrastinate worker picks up the job, renders the command template (substituting `{input}`, `{s3_prefix}`, etc.), sets `Document.status=running`
+4. Worker spawns the rendered command (e.g. `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/{file_hash}/original.{ext} --s3-prefix {file_hash}`)
+5. CLI parses document via PaddleOCR-VL, uploads results to S3
+6. Worker reads result.json from S3, updates Document (parsing_result, markdown, `status=completed`)
+7. On failure: `status=failed`; user can retry via `POST /api/jobs/{id}/retry`
 
-### Document Upload via Async Job (Planned)
+### Document Detail
 
-1. Frontend → `POST /api/documents/upload` (file + channel_id)
-2. Backend stores file, creates async job (e.g. "parse_document")
-3. Job runner invokes `openkms-cli parse run <path>` (CLI)
-4. CLI runs PaddleOCR-VL, writes result to output path
-5. Job runner reads result, updates Document in DB
+1. Frontend fetches `GET /api/documents/{id}` – document includes parsing_result, markdown, and status
+2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend redirects (302) to presigned S3 URL via frontend proxy
+3. If document status is `uploaded` or `failed`, a "Process" button appears to trigger processing
+4. If document status is `pending` or `failed`, a "Reset" button appears to reset status to `uploaded` (only if no active jobs exist)
 
 ### Channel Tree
 

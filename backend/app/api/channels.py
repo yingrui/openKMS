@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document_channel import DocumentChannel
-from app.schemas.channel import ChannelCreate, ChannelNode
+from app.schemas.channel import ChannelCreate, ChannelNode, ChannelUpdate
 
 router = APIRouter(prefix="/channels", tags=["channels"], dependencies=[Depends(require_auth)])
 
@@ -24,6 +24,8 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
                 id=c.id,
                 name=c.name,
                 description=c.description,
+                pipeline_id=c.pipeline_id,
+                auto_process=c.auto_process,
                 children=_build_tree(channels, c.id),
             )
         )
@@ -45,7 +47,7 @@ async def create_document_channel(
     body: ChannelCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a document channel (admin only)."""
+    """Create a document channel."""
     if body.parent_id:
         parent = await db.get(DocumentChannel, body.parent_id)
         if not parent:
@@ -61,4 +63,30 @@ async def create_document_channel(
     db.add(channel)
     await db.commit()
     await db.refresh(channel)
-    return ChannelNode(id=channel.id, name=channel.name, description=channel.description, children=[])
+    return ChannelNode(
+        id=channel.id, name=channel.name, description=channel.description,
+        pipeline_id=channel.pipeline_id, auto_process=channel.auto_process, children=[],
+    )
+
+
+@router.put("/documents/{channel_id}", response_model=ChannelNode)
+async def update_document_channel(
+    channel_id: str,
+    body: ChannelUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a document channel."""
+    channel = await db.get(DocumentChannel, channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(channel, key, value)
+
+    await db.commit()
+    await db.refresh(channel)
+    return ChannelNode(
+        id=channel.id, name=channel.name, description=channel.description,
+        pipeline_id=channel.pipeline_id, auto_process=channel.auto_process, children=[],
+    )

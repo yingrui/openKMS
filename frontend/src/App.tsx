@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
@@ -10,6 +11,7 @@ import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
 import { KnowledgeBaseDetail } from './pages/KnowledgeBaseDetail';
 import { Pipelines } from './pages/Pipelines';
 import { Jobs } from './pages/Jobs';
+import { JobDetail } from './pages/JobDetail';
 import { Models } from './pages/Models';
 import { DocumentDetail } from './pages/DocumentDetail';
 import { DocumentChannelSettings } from './pages/DocumentChannelSettings';
@@ -25,6 +27,7 @@ import { FeatureGate } from './components/FeatureGate';
 function App() {
   return (
     <BrowserRouter>
+      <Toaster position="top-right" richColors closeButton />
       <AuthProvider>
       <DocumentChannelsProvider>
       <Routes>
@@ -43,6 +46,7 @@ function App() {
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
           <Route path="pipelines" element={<Pipelines />} />
           <Route path="jobs" element={<Jobs />} />
+          <Route path="jobs/:jobId" element={<JobDetail />} />
           <Route path="models" element={<Models />} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />

@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { fetchDocumentById, getDocumentFileUrl, getDocumentFilesBaseUrl, type DocumentResponse } from '../data/documentsApi';
+import { toast } from 'sonner';
+import { fetchDocumentById, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, type DocumentResponse } from '../data/documentsApi';
+import { createJob } from '../data/jobsApi';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -67,6 +69,8 @@ export function DocumentDetail() {
   const [pageDimensions, setPageDimensions] = useState<Record<number, { w: number; h: number }>>({});
   const [infoVisible, setInfoVisible] = useState(true);
   const [document, setDocument] = useState<DocumentResponse | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -206,6 +210,35 @@ export function DocumentDetail() {
     }
   }, []);
 
+  const handleProcess = useCallback(async () => {
+    if (!id || !document) return;
+    setProcessing(true);
+    try {
+      await createJob({ document_id: id });
+      toast.success('Processing job created');
+      const updated = await fetchDocumentById(id);
+      setDocument(updated);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create processing job');
+    } finally {
+      setProcessing(false);
+    }
+  }, [id, document]);
+
+  const handleReset = useCallback(async () => {
+    if (!id || !document) return;
+    setResetting(true);
+    try {
+      const updated = await resetDocumentStatus(id);
+      setDocument(updated);
+      toast.success('Document status reset to uploaded');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to reset status');
+    } finally {
+      setResetting(false);
+    }
+  }, [id, document]);
+
   const handlePageMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, pageIndex: number) => {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -271,6 +304,38 @@ export function DocumentDetail() {
                 <div className="document-detail-info-item document-detail-info-item--compact">
                   <dt>Uploaded</dt>
                   <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
+                </div>
+                <div className="document-detail-info-item document-detail-info-item--compact">
+                  <dt>Status</dt>
+                  <dd>
+                    <span className={`doc-status doc-status-${document.status || 'completed'}`}>
+                      {document.status || 'completed'}
+                    </span>
+                    {(document.status === 'uploaded' || document.status === 'failed') && (
+                      <button
+                        type="button"
+                        className="document-detail-process-btn"
+                        onClick={handleProcess}
+                        disabled={processing}
+                        title="Process this document"
+                      >
+                        {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
+                        <span>{processing ? 'Processing…' : 'Process'}</span>
+                      </button>
+                    )}
+                    {(document.status === 'pending' || document.status === 'failed') && (
+                      <button
+                        type="button"
+                        className="document-detail-reset-btn"
+                        onClick={handleReset}
+                        disabled={resetting}
+                        title="Reset status to uploaded"
+                      >
+                        {resetting ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
+                        <span>{resetting ? 'Resetting…' : 'Reset'}</span>
+                      </button>
+                    )}
+                  </dd>
                 </div>
                 <div className="document-detail-info-item document-detail-info-item--compact">
                   <dt>Markdown</dt>

@@ -431,3 +431,80 @@
   color: var(--color-text-muted);
   font-size: 0.9375rem;
 }
+
+.document-detail-process-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.document-detail-process-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+}
+
+.document-detail-process-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.document-detail-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.document-detail-reset-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.document-detail-reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.doc-detail-spinner {
+  animation: doc-detail-spin 1s linear infinite;
+}
+
+@keyframes doc-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+.doc-status {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.doc-status-uploaded { background: #e5e7eb; color: #374151; }
+.doc-status-pending { background: #fef3c7; color: #92400e; }
+.doc-status-running { background: #dbeafe; color: #1d4ed8; }
+.doc-status-completed { background: #dcfce7; color: #166534; }
+.doc-status-failed { background: #fee2e2; color: #991b1b; }
+
+[data-theme="dark"] .doc-status-uploaded { background: #374151; color: #d1d5db; }
+[data-theme="dark"] .doc-status-pending { background: #422006; color: #fcd34d; }
+[data-theme="dark"] .doc-status-running { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .doc-status-completed { background: #14532d; color: #86efac; }
+[data-theme="dark"] .doc-status-failed { background: #450a0a; color: #fca5a5; }

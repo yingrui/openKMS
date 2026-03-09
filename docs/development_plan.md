@@ -23,7 +23,7 @@
 - [x] Configurable via CLI args, env vars, config file (VLM URL, model, concurrency)
 - [x] Design for backend integration: subprocess-invokable
 - [x] Pipeline CLI: `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
-- [ ] Backend async job spawns CLI for document parsing (offload from API process)
+- [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
 
 ### 1. Document List Integration
 
@@ -52,17 +52,29 @@
 
 ### 5. Pipelines
 
-- [ ] Pipeline CRUD and configuration
-- [ ] Register `document_parsing` CLI as a pipeline step (command, args, env)
-- [ ] Link pipelines to channels (DocumentChannelSettings)
-- [ ] Run extraction pipeline on upload (sync or async via job)
+- [x] Pipeline model (name, command, default_args) + CRUD API (`/api/pipelines`)
+- [x] Link pipelines to channels (`pipeline_id`, `auto_process` on DocumentChannel)
+- [x] DocumentChannelSettings fetches real pipelines from API
+- [x] Pipelines.tsx: CRUD UI with real API
+- [ ] Additional pipeline types beyond PaddleOCR
 
-### 6. Jobs
+### 6. Jobs (procrastinate)
 
-- [ ] Background job queue (e.g. Celery, ARQ)
-- [ ] Create async job type: "parse_document" → invokes `openkms-cli parse run ...`
-- [ ] Job status and logs
-- [ ] Retry/failure handling
+- [x] procrastinate (PostgreSQL-based job queue) integration
+- [x] Upload decoupled from parsing: stores file only, `status=uploaded`
+- [x] Document status field: uploaded → pending → running → completed/failed
+- [x] run_pipeline task: spawns `openkms-cli pipeline run` as subprocess
+- [x] Jobs API: list, detail, create, retry, delete (`/api/jobs`)
+- [x] Jobs.tsx: real API, status filter, create job, retry, delete
+- [x] JobDetail.tsx: full job detail page with timing, document link, pipeline info, rendered command, event log
+- [x] Process button on document list and detail for uploaded/failed docs
+- [x] Reset status button for pending/failed docs (resets to uploaded if no active jobs)
+- [x] Pipeline command template system: `{variable}` placeholders resolved at runtime
+- [x] Template variables API: `GET /api/pipelines/template-variables`
+- [x] Sonner toast system for project-wide notifications
+- [x] Worker entry point: `backend/worker.py`
+- [ ] Job logs/stdout capture
+- [ ] Configurable concurrency for worker
 
 ### 7. Knowledge Bases (RAG)
 

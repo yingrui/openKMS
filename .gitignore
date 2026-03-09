@@ -28,3 +28,4 @@ frontend/src/data/examples/
 npm-debug.log*
 
 **/tmp
+**/output

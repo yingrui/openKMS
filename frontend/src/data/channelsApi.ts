@@ -6,6 +6,8 @@ export interface ChannelNode {
   id: string;
   name: string;
   description?: string | null;
+  pipeline_id?: string | null;
+  auto_process?: boolean;
   children: ChannelNode[];
 }
 
@@ -48,6 +50,34 @@ export async function createDocumentChannel(params: {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || 'Failed to create channel');
+    }
+    return res.json();
+  } catch (e) {
+    handleNetworkError(e);
+  }
+}
+
+export async function updateChannel(
+  channelId: string,
+  params: {
+    name?: string;
+    description?: string | null;
+    pipeline_id?: string | null;
+    auto_process?: boolean;
+    sort_order?: number;
+  },
+): Promise<ChannelNode> {
+  try {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`${config.apiUrl}/api/channels/documents/${channelId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders },
+      body: JSON.stringify(params),
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to update channel');
     }
     return res.json();
   } catch (e) {

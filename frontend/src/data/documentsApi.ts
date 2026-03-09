@@ -9,6 +9,7 @@ export interface DocumentResponse {
   size_bytes: number;
   channel_id: string;
   file_hash?: string | null;
+  status?: string;
   markdown?: string | null;
   parsing_result?: Record<string, unknown> | null;
   created_at: string;
@@ -133,4 +134,18 @@ export async function deleteDocument(documentId: string): Promise<void> {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(typeof err.detail === 'string' ? err.detail : 'Delete failed');
   }
+}
+
+export async function resetDocumentStatus(documentId: string): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/reset-status`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Reset failed');
+  }
+  return res.json();
 }

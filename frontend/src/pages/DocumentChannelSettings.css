@@ -93,3 +93,23 @@
   font-size: 0.875rem;
   color: var(--color-success);
 }
+
+.document-channel-settings-error {
+  color: var(--color-error, #dc2626);
+  font-size: 0.875rem;
+  margin-top: 8px;
+}
+
+.document-channel-settings-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+.dcs-spinner {
+  animation: dcs-spin 1s linear infinite;
+}
+
+@keyframes dcs-spin {
+  to { transform: rotate(360deg); }
+}

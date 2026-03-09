@@ -10,7 +10,9 @@
 | Channel management | ✅ | Create/manage channels at `/documents/channels` (tree structure) |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
 | Channel settings | ✅ | Per-channel pipeline, chunk size, extract tables at `/documents/channels/:channelId/settings` |
-| Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; parse via PaddleOCR-VL, store in DB |
+| Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
+| Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
+| Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id` |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
@@ -61,28 +63,34 @@
 - Benefits: centralized hub, RAG-ready knowledge bases, enterprise security
 - Functionalities: document management, articles, knowledge bases, pipelines
 
-### 6. Other Pages
+### 6. Pipelines
 
-- **Pipelines** – Placeholder for extraction pipelines
-- **Jobs** – Placeholder for background jobs
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Pipeline management | ✅ | CRUD via `/api/pipelines`; Pipelines.tsx with create/edit/delete |
+| Command templates | ✅ | Pipeline `command` field supports `{variable}` placeholders (e.g. `{input}`, `{s3_prefix}`) resolved at runtime |
+| Template variables API | ✅ | `GET /api/pipelines/template-variables` returns available placeholders with descriptions |
+| Channel-pipeline link | ✅ | Each channel can have a pipeline_id and auto_process flag |
+| Default pipeline | ✅ | "PaddleOCR Document Parse" seeded in migration with command template |
+
+### 7. Jobs (procrastinate)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Job queue | ✅ | procrastinate (PostgreSQL-based); schema applied on startup |
+| Jobs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry` |
+| Jobs UI | ✅ | Jobs.tsx with real API, status filter, create job, retry failed, delete |
+| Job detail | ✅ | JobDetail.tsx at `/jobs/:jobId` – timing, document link, pipeline info, rendered command, event log |
+| run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; updates document status |
+| Worker | ✅ | `backend/worker.py` entry point for procrastinate worker |
+| Document status | ✅ | uploaded → pending → running → completed/failed; shown in list and detail |
+| Process button | ✅ | Visible for uploaded/failed documents in list and detail views |
+| Reset status | ✅ | Reset pending/failed documents to uploaded (if no active jobs); `POST /api/documents/{id}/reset-status` |
+| Toast notifications | ✅ | Project-wide toast system via sonner for success/error/warning messages |
+
+### 8. Other Pages
+
 - **Models** – Placeholder for model management
-
-## Planned: document_parsing CLI
-
-A standalone CLI module for document parsing, designed to be configurable as a pipeline and invoked by async jobs:
-
-| Aspect | Description |
-|--------|-------------|
-| **Framework** | Typer ≥0.9.0 |
-| **Engine** | PaddleOCR-VL (same as backend) |
-| **Purpose** | Configurable pipeline; run as async job (e.g. Celery, ARQ) |
-| **Location** | `document_parsing/` (project root) |
-
-Use cases:
-
-- Run parsing as a background job instead of blocking upload
-- Batch parse multiple documents
-- Integrate with pipeline configuration in channel settings
 
 ## API Endpoints
 
@@ -96,12 +104,25 @@ Use cases:
 | GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
 | GET | `/api/channels/documents` | List document channels (tree) |
 | POST | `/api/channels/documents` | Create channel |
-| POST | `/api/documents/upload` | Upload and parse document |
+| PUT | `/api/channels/documents/{id}` | Update channel (name, pipeline_id, auto_process) |
+| POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
-| GET | `/api/documents/{id}` | Get document metadata |
+| GET | `/api/documents/{id}` | Get document metadata (includes status) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
-| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to `{frontend}/buckets/openkms/{key}` (Vite proxy → MinIO; avoids CORS) |
+| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
+| POST | `/api/documents/{id}/reset-status` | Reset document status to uploaded (if no active jobs) |
+| GET | `/api/pipelines` | List pipeline configurations |
+| GET | `/api/pipelines/template-variables` | List available command template variables |
+| POST | `/api/pipelines` | Create pipeline |
+| GET | `/api/pipelines/{id}` | Get pipeline detail |
+| PUT | `/api/pipelines/{id}` | Update pipeline |
+| DELETE | `/api/pipelines/{id}` | Delete pipeline |
+| GET | `/api/jobs` | List jobs (optional `?document_id=`) |
+| GET | `/api/jobs/{id}` | Get job detail |
+| POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`) |
+| POST | `/api/jobs/{id}/retry` | Retry a failed job |
+| DELETE | `/api/jobs/{id}` | Delete a job (not running) |
 
 ## Configuration
 
@@ -110,11 +131,22 @@ Use cases:
 
 ## Data Models
 
+### Pipeline
+
+- `id`, `name`, `description`, `command` (template with `{variable}` placeholders), `default_args` (JSONB), `created_at`, `updated_at`
+- Defines how to process documents; command template resolved at runtime with variables like `{input}`, `{s3_prefix}`, `{bucket}`, etc.
+
 ### Document Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `created_at`
 - Tree structure: parent → children
+- When `auto_process=true`, uploads to this channel automatically defer a processing job
 
 ### Document
 
-- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `markdown`, `parsing_result`, `created_at`, `updated_at`
+- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `created_at`, `updated_at`
+- Status: `uploaded` → `pending` → `running` → `completed` / `failed`
+
+### Jobs (procrastinate_jobs)
+
+- Managed by procrastinate; stores task_name, args (document_id, pipeline_id, etc.), status, attempts, timestamps

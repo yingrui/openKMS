@@ -1,9 +1,11 @@
 """Document API routes."""
 
+import hashlib
+from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi.responses import RedirectResponse
@@ -18,8 +20,7 @@ from app.schemas.document import (
     DocumentResponse,
     ParsingResultResponse,
 )
-from app.services.document_storage import parse_and_store
-from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists
+from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
@@ -60,7 +61,7 @@ async def upload_document(
     channel_id: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """Upload a document and parse it using the VLM server."""
+    """Upload a document: store original to S3, create record. No parsing at upload time."""
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -77,29 +78,41 @@ async def upload_document(
             detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3/MinIO.",
         )
 
-    # Parse and store to bucket (original, images, result.json, markdown) under file_hash
-    try:
-        parsing_result = await parse_and_store(content, filename)
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        raise HTTPException(
-            status_code=502,
-            detail=f"VLM parsing failed: {str(e)}. Ensure vlm-server is running at {settings.vlm_server_url}",
-        )
+    file_hash = hashlib.sha256(content).hexdigest()
+    suffix = Path(filename).suffix.lower()
+    ext = suffix.lstrip(".") or "bin"
 
-    # Create document record
+    upload_object(f"{file_hash}/original.{ext}", content)
+
+    initial_status = "uploaded"
+
     doc = Document(
         id=str(uuid4()),
         name=filename,
         file_type=filename.split(".")[-1].upper() if "." in filename else "PDF",
         size_bytes=len(content),
         channel_id=channel_id,
-        file_hash=parsing_result.get("file_hash", ""),
-        parsing_result=parsing_result,
-        markdown=parsing_result.get("markdown", ""),
+        file_hash=file_hash,
+        status=initial_status,
     )
     db.add(doc)
+    await db.flush()
+
+    if channel.auto_process and channel.pipeline_id:
+        from app.models.pipeline import Pipeline
+        pipeline = await db.get(Pipeline, channel.pipeline_id)
+        if pipeline:
+            from app.jobs.tasks import run_pipeline
+            await run_pipeline.defer_async(
+                document_id=doc.id,
+                pipeline_id=pipeline.id,
+                file_hash=file_hash,
+                file_ext=ext,
+                command=pipeline.command,
+                default_args=pipeline.default_args,
+            )
+            doc.status = "pending"
+
     await db.commit()
     await db.refresh(doc)
 
@@ -122,6 +135,46 @@ async def delete_document(
     await db.delete(doc)
     await db.commit()
     
+
+@router.post("/{document_id}/reset-status", response_model=DocumentResponse)
+async def reset_document_status(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset document status to 'uploaded' if no active jobs exist for it."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    if doc.status not in ("pending", "failed"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot reset document with status '{doc.status}'",
+        )
+
+    has_table = await db.execute(
+        text("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'procrastinate_jobs')")
+    )
+    if has_table.scalar():
+        active = await db.execute(
+            text(
+                "SELECT COUNT(*) FROM procrastinate_jobs "
+                "WHERE args->>'document_id' = :doc_id "
+                "AND status IN ('todo', 'doing')"
+            ),
+            {"doc_id": document_id},
+        )
+        if active.scalar_one() > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Document has active jobs. Cancel or wait for them to finish.",
+            )
+
+    doc.status = "uploaded"
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(

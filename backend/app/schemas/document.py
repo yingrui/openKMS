@@ -21,6 +21,7 @@ class DocumentResponse(BaseModel):
     size_bytes: int = 0
     channel_id: str = "dc1a"
     file_hash: Optional[str] = None
+    status: str = "uploaded"
     markdown: Optional[str] = None
     parsing_result: Optional[dict[str, Any]] = None
     created_at: datetime

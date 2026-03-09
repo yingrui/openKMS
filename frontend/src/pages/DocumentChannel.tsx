@@ -15,6 +15,7 @@ import {
   Settings,
   X,
   Loader2,
+  Play,
 } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
@@ -28,6 +29,8 @@ import {
   isAcceptedFile,
   type DocumentResponse,
 } from '../data/documentsApi';
+import { toast } from 'sonner';
+import { createJob } from '../data/jobsApi';
 import './DocumentChannel.css';
 
 const fileTypeIcons: Record<string, typeof FileText> = {
@@ -71,6 +74,7 @@ export function DocumentChannel() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const channelName = getDocumentChannelName(channels, channelId);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
@@ -126,6 +130,7 @@ export function DocumentChannel() {
       }
       setSelectedFiles([]);
       setShowUploadModal(false);
+      toast.success(`${selectedFiles.length} document(s) uploaded`);
       await loadDocuments();
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload failed');
@@ -148,11 +153,26 @@ export function DocumentChannel() {
     setDeletingId(doc.id);
     try {
       await deleteDocument(doc.id);
+      toast.success(`"${doc.name}" deleted`);
       await loadDocuments();
     } catch (err) {
-      setDocsError(err instanceof Error ? err.message : 'Failed to delete document');
+      toast.error(err instanceof Error ? err.message : 'Failed to delete document');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleProcessClick = async (e: React.MouseEvent, doc: DocumentResponse) => {
+    e.stopPropagation();
+    setProcessingId(doc.id);
+    try {
+      await createJob({ document_id: doc.id });
+      toast.success('Processing job created');
+      await loadDocuments();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create processing job');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -253,8 +273,8 @@ export function DocumentChannel() {
                   <th>Name</th>
                   <th>Type</th>
                   <th>Size</th>
+                  <th>Status</th>
                   <th>Uploaded</th>
-                  <th>Markdown</th>
                   <th className="documents-table-actions">Actions</th>
                 </tr>
               </thead>
@@ -278,16 +298,29 @@ export function DocumentChannel() {
                       </td>
                       <td>{doc.file_type}</td>
                       <td>{formatSize(doc.size_bytes)}</td>
-                      <td>{formatDate(doc.created_at)}</td>
                       <td>
-                        {doc.markdown ? (
-                          <span className="documents-table-badge">Yes</span>
-                        ) : (
-                          <span className="documents-table-muted">—</span>
-                        )}
+                        <span className={`doc-status doc-status-${doc.status || 'completed'}`}>
+                          {doc.status || 'completed'}
+                        </span>
                       </td>
+                      <td>{formatDate(doc.created_at)}</td>
                       <td className="documents-table-actions" onClick={(e) => e.stopPropagation()}>
                         <div className="documents-table-btns">
+                          {(doc.status === 'uploaded' || doc.status === 'failed') && (
+                            <button
+                              type="button"
+                              title="Process"
+                              aria-label={`Process ${doc.name}`}
+                              onClick={(e) => handleProcessClick(e, doc)}
+                              disabled={processingId === doc.id}
+                            >
+                              {processingId === doc.id ? (
+                                <Loader2 size={16} className="documents-loading-spinner" />
+                              ) : (
+                                <Play size={16} />
+                              )}
+                            </button>
+                          )}
                           <button type="button" title="Edit" aria-label="Edit">
                             <Pencil size={16} />
                           </button>

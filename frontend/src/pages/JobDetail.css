@@ -1,0 +1,213 @@
+.job-detail {
+  width: 100%;
+  max-width: 960px;
+}
+
+.job-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  margin-bottom: 16px;
+}
+
+.job-detail-back:hover {
+  color: var(--color-accent);
+}
+
+.job-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.job-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.job-detail-title-row svg {
+  color: var(--color-accent);
+}
+
+.job-detail-title-row h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.job-detail-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.job-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.job-detail-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.job-detail-card h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.job-detail-card h2 svg {
+  color: var(--color-accent);
+  flex-shrink: 0;
+}
+
+.job-detail-dl {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.job-detail-dl dt {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.job-detail-dl dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.job-detail-mono {
+  font-family: monospace;
+  font-size: 0.8125rem;
+}
+
+.job-detail-link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-family: monospace;
+  font-size: 0.8125rem;
+}
+
+.job-detail-link:hover {
+  text-decoration: underline;
+}
+
+.job-detail-pre {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.job-detail-events {
+  grid-column: 1 / -1;
+}
+
+.job-detail-events-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.job-detail-events-table th,
+.job-detail-events-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.job-detail-events-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.job-detail-events-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.job-event-type {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.job-event-type-started {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.job-event-type-deferred {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.job-event-type-succeeded {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.job-event-type-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.job-event-type-cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+[data-theme="dark"] .job-event-type-started { background: #1e3a5f; color: #93c5fd; }
+[data-theme="dark"] .job-event-type-deferred { background: #422006; color: #fcd34d; }
+[data-theme="dark"] .job-event-type-succeeded { background: #14532d; color: #86efac; }
+[data-theme="dark"] .job-event-type-failed { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .job-event-type-cancelled { background: #374151; color: #9ca3af; }
+
+.job-detail-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 24px;
+  gap: 12px;
+  color: var(--color-text-muted);
+}
+
+.job-detail-spinner {
+  animation: job-detail-spin 1s linear infinite;
+}
+
+@keyframes job-detail-spin {
+  to { transform: rotate(360deg); }
+}
+
+.job-detail-not-found {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--color-text-muted);
+}

@@ -19,6 +19,7 @@ class Document(Base):
     size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
     channel_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     file_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="uploaded", server_default="completed")
     markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     parsing_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

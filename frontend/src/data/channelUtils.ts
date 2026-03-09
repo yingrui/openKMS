@@ -4,6 +4,8 @@ export interface ChannelNode {
   id: string;
   name: string;
   description?: string | null;
+  pipeline_id?: string | null;
+  auto_process?: boolean;
   children?: ChannelNode[];
 }
 
