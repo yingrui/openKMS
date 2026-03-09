@@ -52,6 +52,13 @@
 - Keycloak login/logout (SSO, full logout via Keycloak)
 - Protected routes: all except home require auth; unauthenticated users see "Authentication Required" message
 
+### 5c. Home (Landing Page)
+
+- Public landing page for non-authorized users
+- Pain points: knowledge scattered, unstructured content, manual work
+- Benefits: centralized hub, RAG-ready knowledge bases, enterprise security
+- Functionalities: document management, articles, knowledge bases, pipelines
+
 ### 6. Other Pages
 
 - **Pipelines** – Placeholder for extraction pipelines

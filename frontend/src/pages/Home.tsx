@@ -1,82 +1,132 @@
-import { FileStack, FileText, Database } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
+import { FileStack, FileText, Database, Search, Layers, Zap, Shield } from 'lucide-react';
 import './Home.css';
 
-const allStats = [
-  { label: 'Documents', value: '42', icon: FileStack, color: 'teal', path: '/documents', feature: null as 'articles' | 'knowledgeBases' | null },
-  { label: 'Articles', value: '28', icon: FileText, color: 'blue', path: '/articles', feature: 'articles' as const },
-  { label: 'Knowledge Bases', value: '3', icon: Database, color: 'green', path: '/knowledge-bases', feature: 'knowledgeBases' as const },
+const painPoints = [
+  {
+    icon: Search,
+    title: 'Knowledge scattered everywhere',
+    text: 'Documents, PDFs, and notes live in silos—email, shared drives, wikis—making it hard to find what you need.',
+  },
+  {
+    icon: Layers,
+    title: 'No structure for unstructured content',
+    text: 'PDFs and images stay as blobs. No way to search, extract, or link content across your organization.',
+  },
+  {
+    icon: Zap,
+    title: 'Manual work that should be automated',
+    text: 'Repetitive document parsing, layout extraction, and indexing drain time and introduce errors.',
+  },
 ];
 
-const allActivity = [
-  { title: 'User_Guide.pdf', type: 'Document', time: '2 min ago', path: '/documents', feature: null as 'articles' | 'knowledgeBases' | null },
-  { title: 'API Authentication', type: 'Article', time: '15 min ago', path: '/articles', feature: 'articles' as const },
-  { title: 'Product KB', type: 'Knowledge Base', time: '2 hours ago', path: '/knowledge-bases/kb1', feature: 'knowledgeBases' as const },
+const benefits = [
+  {
+    icon: FileStack,
+    title: 'Centralized document hub',
+    text: 'Organize everything in channel trees (like Google Drive). Upload PDF, images, HTML—AI parses and converts to searchable Markdown.',
+  },
+  {
+    icon: Database,
+    title: 'RAG-ready knowledge bases',
+    text: 'Build knowledge bases from your documents. Ask questions and get answers grounded in your own content.',
+  },
+  {
+    icon: Shield,
+    title: 'Enterprise-ready security',
+    text: 'Keycloak SSO, role-based access, and admin-only console. Control who sees what.',
+  },
 ];
 
-const allQuickActions = [
-  { label: 'Upload Document', icon: FileStack, path: '/documents', feature: null as 'articles' | 'knowledgeBases' | null },
-  { label: 'New Article', icon: FileText, path: '/articles', feature: 'articles' as const },
-  { label: 'New Knowledge Base', icon: Database, path: '/knowledge-bases', feature: 'knowledgeBases' as const },
+const functionalities = [
+  {
+    icon: FileStack,
+    title: 'Document management',
+    items: ['Channel-based organization (tree structure)', 'Upload PDF, PNG, JPG, WEBP', 'AI parsing to Markdown (PaddleOCR-VL)', 'Layout and block detection', 'S3/MinIO storage'],
+  },
+  {
+    icon: FileText,
+    title: 'Articles & content',
+    items: ['CMS-style articles', 'Channel tree organization', 'Feature toggles per deployment'],
+  },
+  {
+    icon: Database,
+    title: 'Knowledge bases',
+    items: ['RAG Q&A over your documents', 'Vector embeddings (planned)', 'Ask questions in natural language'],
+  },
+  {
+    icon: Layers,
+    title: 'Pipelines & automation',
+    items: ['Extraction pipelines (planned)', 'Async document parsing jobs', 'Configurable per-channel processing'],
+  },
 ];
 
 export function Home() {
-  const { isEnabled } = useFeatureToggles();
-
-  const visibleStats = allStats.filter((s) => !s.feature || isEnabled(s.feature));
-  const visibleActivity = allActivity.filter((a) => !a.feature || isEnabled(a.feature));
-  const visibleQuickActions = allQuickActions.filter((a) => !a.feature || isEnabled(a.feature));
-
   return (
-    <div className="home">
-      <div className="page-header">
-        <h1>Home</h1>
-        <p className="page-subtitle">
-          Documents and articles in channel trees (like Google Drive), plus knowledge bases with RAG Q&A.
+    <div className="home-landing">
+      <section className="home-hero">
+        <h1 className="home-hero-title">Open Knowledge Management System</h1>
+        <p className="home-hero-subtitle">
+          Organize documents in channel trees, parse with AI, and build RAG-ready knowledge bases. 
+          One platform for your team&apos;s knowledge.
         </p>
-      </div>
-      <section className="home-stats">
-        {visibleStats.map(({ label, value, icon: Icon, color, path }) => (
-          <Link key={label} to={path} className={`stat-card stat-card-${color}`}>
-            <div className="stat-icon">
-              <Icon size={24} strokeWidth={1.75} />
-            </div>
-            <div className="stat-content">
-              <span className="stat-value">{value}</span>
-              <span className="stat-label">{label}</span>
-            </div>
-          </Link>
-        ))}
       </section>
-      <div className="home-grid">
-        <section className="home-card">
-          <h2>Recent Activity</h2>
-          <ul className="activity-list">
-            {visibleActivity.map(({ title, type, time, path }) => (
-              <li key={title}>
-                <Link to={path} className="activity-item">
-                  <span className="activity-title">{title}</span>
-                  <span className="activity-meta">
-                    {type} · {time}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="home-card">
-          <h2>Quick Actions</h2>
-          <div className="quick-actions">
-            {visibleQuickActions.map(({ label, icon: Icon, path }) => (
-              <Link key={path} to={path} className="quick-action">
-                <Icon size={20} />
-                <span>{label}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
+
+      <section className="home-section">
+        <h2 className="home-section-title">Common Pain Points</h2>
+        <p className="home-section-desc">We built openKMS because teams struggle with:</p>
+        <div className="home-cards">
+          {painPoints.map(({ icon: Icon, title, text }) => (
+            <div key={title} className="home-card home-card-pain">
+              <div className="home-card-icon">
+                <Icon size={24} strokeWidth={1.75} />
+              </div>
+              <h3 className="home-card-title">{title}</h3>
+              <p className="home-card-text">{text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-section">
+        <h2 className="home-section-title">What You Get</h2>
+        <p className="home-section-desc">openKMS delivers:</p>
+        <div className="home-cards">
+          {benefits.map(({ icon: Icon, title, text }) => (
+            <div key={title} className="home-card home-card-benefit">
+              <div className="home-card-icon">
+                <Icon size={24} strokeWidth={1.75} />
+              </div>
+              <h3 className="home-card-title">{title}</h3>
+              <p className="home-card-text">{text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-section">
+        <h2 className="home-section-title">Functionalities</h2>
+        <p className="home-section-desc">Key features of the platform:</p>
+        <div className="home-func-grid">
+          {functionalities.map(({ icon: Icon, title, items }) => (
+            <div key={title} className="home-func-card">
+              <div className="home-func-header">
+                <Icon size={22} strokeWidth={1.75} />
+                <h3 className="home-func-title">{title}</h3>
+              </div>
+              <ul className="home-func-list">
+                {items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-cta">
+        <p>Ready to organize your knowledge?</p>
+        <p className="home-cta-hint">Sign in above to get started.</p>
+      </section>
     </div>
   );
 }
