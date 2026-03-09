@@ -8,6 +8,9 @@ export interface PipelineResponse {
   description?: string | null;
   command: string;
   default_args?: Record<string, unknown> | null;
+  model_id?: string | null;
+  model_name?: string | null;
+  model_base_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +25,7 @@ export interface PipelineCreate {
   description?: string | null;
   command?: string;
   default_args?: Record<string, unknown> | null;
+  model_id?: string | null;
 }
 
 export interface PipelineUpdate {
@@ -29,6 +33,7 @@ export interface PipelineUpdate {
   description?: string | null;
   command?: string;
   default_args?: Record<string, unknown> | null;
+  model_id?: string | null;
 }
 
 export async function fetchTemplateVariables(): Promise<Record<string, string>> {

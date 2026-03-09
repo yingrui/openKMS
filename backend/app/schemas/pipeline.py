@@ -10,6 +10,7 @@ class PipelineCreate(BaseModel):
     description: str | None = None
     command: str = "openkms-cli pipeline run"
     default_args: dict[str, Any] | None = None
+    model_id: str | None = None
 
 
 class PipelineUpdate(BaseModel):
@@ -17,6 +18,7 @@ class PipelineUpdate(BaseModel):
     description: str | None = None
     command: str | None = None
     default_args: dict[str, Any] | None = None
+    model_id: str | None = None
 
 
 class PipelineResponse(BaseModel):
@@ -25,6 +27,9 @@ class PipelineResponse(BaseModel):
     description: str | None = None
     command: str
     default_args: dict[str, Any] | None = None
+    model_id: str | None = None
+    model_name: str | None = None
+    model_base_url: str | None = None
     created_at: datetime
     updated_at: datetime
 

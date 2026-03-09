@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchJobById, retryJob, type JobResponse } from '../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../data/pipelinesApi';
+import { fetchModelById, type ApiModelResponse } from '../data/modelsApi';
 import './JobDetail.css';
 
 function formatDateTime(iso?: string | null): string {
@@ -29,6 +30,7 @@ export function JobDetail() {
   const { jobId } = useParams<{ jobId: string }>();
   const [job, setJob] = useState<JobResponse | null>(null);
   const [pipeline, setPipeline] = useState<PipelineResponse | null>(null);
+  const [model, setModel] = useState<ApiModelResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
 
@@ -46,6 +48,17 @@ export function JobDetail() {
         } catch {
           setPipeline(null);
         }
+      }
+      const modelId = String(j.args?.model_id || '');
+      if (modelId) {
+        try {
+          const m = await fetchModelById(modelId);
+          setModel(m);
+        } catch {
+          setModel(null);
+        }
+      } else {
+        setModel(null);
       }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load job');
@@ -201,6 +214,28 @@ export function JobDetail() {
             )}
           </dl>
         </section>
+
+        {model && (
+          <section className="job-detail-card">
+            <h2><Cpu size={18} /> Model</h2>
+            <dl className="job-detail-dl">
+              <dt>Name</dt>
+              <dd>{model.name}</dd>
+              <dt>Provider</dt>
+              <dd>{model.provider}</dd>
+              <dt>Category</dt>
+              <dd>{model.category}</dd>
+              <dt>Base URL</dt>
+              <dd className="job-detail-mono">{model.base_url}</dd>
+              {model.model_name && (
+                <>
+                  <dt>Model Name</dt>
+                  <dd className="job-detail-mono">{model.model_name}</dd>
+                </>
+              )}
+            </dl>
+          </section>
+        )}
 
         <section className="job-detail-card">
           <h2><ListTodo size={18} /> Task Info</h2>

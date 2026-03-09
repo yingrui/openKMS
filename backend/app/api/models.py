@@ -1,0 +1,106 @@
+"""Models API – CRUD for API provider / model registry."""
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.auth import require_auth
+from app.database import get_db
+from app.models.api_model import ApiModel, MODEL_CATEGORIES
+from app.schemas.api_model import (
+    ApiModelCreate,
+    ApiModelListResponse,
+    ApiModelResponse,
+    ApiModelUpdate,
+)
+
+router = APIRouter(prefix="/models", tags=["models"], dependencies=[Depends(require_auth)])
+
+
+@router.get("/categories")
+async def get_categories():
+    """Return the fixed list of model categories."""
+    return {"categories": [{"id": c[0], "label": c[1]} for c in MODEL_CATEGORIES]}
+
+
+@router.get("", response_model=ApiModelListResponse)
+async def list_models(
+    category: str | None = Query(None),
+    search: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """List registered models, optionally filtered by category or search term."""
+    stmt = select(ApiModel)
+    count_stmt = select(func.count(ApiModel.id))
+
+    if category:
+        stmt = stmt.where(ApiModel.category == category)
+        count_stmt = count_stmt.where(ApiModel.category == category)
+
+    if search:
+        like = f"%{search}%"
+        stmt = stmt.where(ApiModel.name.ilike(like) | ApiModel.provider.ilike(like))
+        count_stmt = count_stmt.where(ApiModel.name.ilike(like) | ApiModel.provider.ilike(like))
+
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar_one()
+
+    result = await db.execute(stmt.order_by(ApiModel.created_at.desc()))
+    items = [ApiModelResponse.model_validate(m) for m in result.scalars().all()]
+    return ApiModelListResponse(items=items, total=total)
+
+
+@router.post("", response_model=ApiModelResponse, status_code=201)
+async def create_model(body: ApiModelCreate, db: AsyncSession = Depends(get_db)):
+    """Register a new API model/endpoint."""
+    model = ApiModel(
+        id=f"model_{uuid.uuid4().hex[:8]}",
+        name=body.name,
+        provider=body.provider,
+        category=body.category,
+        base_url=body.base_url,
+        api_key=body.api_key,
+        model_name=body.model_name,
+        config=body.config,
+    )
+    db.add(model)
+    await db.commit()
+    await db.refresh(model)
+    return ApiModelResponse.model_validate(model)
+
+
+@router.get("/{model_id}", response_model=ApiModelResponse)
+async def get_model(model_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a model by ID."""
+    model = await db.get(ApiModel, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return ApiModelResponse.model_validate(model)
+
+
+@router.put("/{model_id}", response_model=ApiModelResponse)
+async def update_model(model_id: str, body: ApiModelUpdate, db: AsyncSession = Depends(get_db)):
+    """Update a registered model."""
+    model = await db.get(ApiModel, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(model, key, value)
+
+    await db.commit()
+    await db.refresh(model)
+    return ApiModelResponse.model_validate(model)
+
+
+@router.delete("/{model_id}", status_code=204)
+async def delete_model(model_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete a registered model."""
+    model = await db.get(ApiModel, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    await db.delete(model)
+    await db.commit()

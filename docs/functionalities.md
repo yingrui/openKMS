@@ -88,9 +88,16 @@
 | Reset status | ✅ | Reset pending/failed documents to uploaded (if no active jobs); `POST /api/documents/{id}/reset-status` |
 | Toast notifications | ✅ | Project-wide toast system via sonner for success/error/warning messages |
 
-### 8. Other Pages
+### 8. Models (API Provider Registry)
 
-- **Models** – Placeholder for model management
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Model registry | ✅ | CRUD via `/api/models`; Models.tsx with category filter, search, create/edit/delete |
+| Categories | ✅ | Fixed categories: OCR, VL, LLM, Embedding, Text Classification; `GET /api/models/categories` |
+| Pipeline link | ✅ | Pipelines can link to a model (`model_id` FK); model selector in pipeline create/edit form |
+| Command resolution | ✅ | `{vlm_url}` and `{model_name}` template vars resolved from linked model at job creation |
+| Job detail model | ✅ | JobDetail.tsx shows model info card when job has a linked model |
+| Default seed | ✅ | PaddleOCR-VL-1.5 model seeded in migration and linked to default pipeline |
 
 ## API Endpoints
 
@@ -123,6 +130,12 @@
 | POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`) |
 | POST | `/api/jobs/{id}/retry` | Retry a failed job |
 | DELETE | `/api/jobs/{id}` | Delete a job (not running) |
+| GET | `/api/models` | List models (optional `?category=`, `?search=`) |
+| GET | `/api/models/categories` | List model categories |
+| POST | `/api/models` | Register a new model/API endpoint |
+| GET | `/api/models/{id}` | Get model detail |
+| PUT | `/api/models/{id}` | Update model |
+| DELETE | `/api/models/{id}` | Delete model |
 
 ## Configuration
 
@@ -133,8 +146,15 @@
 
 ### Pipeline
 
-- `id`, `name`, `description`, `command` (template with `{variable}` placeholders), `default_args` (JSONB), `created_at`, `updated_at`
-- Defines how to process documents; command template resolved at runtime with variables like `{input}`, `{s3_prefix}`, `{bucket}`, etc.
+- `id`, `name`, `description`, `command` (template with `{variable}` placeholders), `default_args` (JSONB), `model_id` (FK → api_models, nullable), `created_at`, `updated_at`
+- Defines how to process documents; command template resolved at runtime with variables like `{input}`, `{s3_prefix}`, `{vlm_url}`, `{model_name}`, `{bucket}`, etc.
+- When linked to a model, `{vlm_url}` and `{model_name}` are resolved from the model's `base_url` and `model_name`
+
+### ApiModel
+
+- `id`, `name`, `provider`, `category`, `base_url`, `api_key` (masked in API responses), `model_name`, `config` (JSONB), `created_at`, `updated_at`
+- Represents an external API endpoint (VLM, LLM, Embedding, etc.) that pipelines can reference
+- Categories: `ocr`, `vl`, `llm`, `embedding`, `text-classification`
 
 ### Document Channel
 

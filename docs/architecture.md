@@ -11,7 +11,8 @@
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Backend (FastAPI)                            │
-│  /api/channels | /api/documents | /api/pipelines | /api/jobs    │
+│  /api/channels | /api/documents | /api/pipelines | /api/jobs   │
+│  /api/models                                                    │
 │  (upload stores file only; jobs deferred via procrastinate)      │
 └───────┬────────────────┬──────────────────┬─────────────────────┘
         │                │                  │
@@ -21,6 +22,7 @@
 │ documents    │ │ file storage   │ │ (picks up jobs, spawns     │
 │ doc_channels │ │                │ │  openkms-cli subprocess)   │
 │ pipelines    │ │                │ │                            │
+│ api_models   │ │                │ │                            │
 │ procrastinate│ │                │ │ → openkms-cli pipeline run │
 │  _jobs       │ │                │ │ → mlx-vlm-server (VLM)    │
 └──────────────┘ └────────────────┘ └────────────────────────────┘
@@ -35,7 +37,7 @@ frontend/src/
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, channelUtils
+├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, modelsApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -62,15 +64,18 @@ backend/
 │   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
+│   │   ├── models.py           # CRUD /api/models (API provider registry)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status field)
 │   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process)
-│   │   └── pipeline.py         # Pipeline model (name, command, default_args)
+│   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
+│   │   └── api_model.py        # ApiModel (API provider/model registry)
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
-│   │   ├── pipeline.py         # PipelineCreate/Update/Response
+│   │   ├── pipeline.py         # PipelineCreate/Update/Response (+ model_id)
+│   │   ├── api_model.py        # ApiModelCreate/Update/Response
 │   │   └── job.py              # JobCreate/Response
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
@@ -118,8 +123,8 @@ openkms-cli/
 ### Document Processing (Job Queue)
 
 1. Jobs can be created: manually via `POST /api/jobs`, or automatically on upload (if channel has auto_process)
-2. The job references a Pipeline configuration (command template with `{variable}` placeholders, default_args)
-3. procrastinate worker picks up the job, renders the command template (substituting `{input}`, `{s3_prefix}`, etc.), sets `Document.status=running`
+2. The job references a Pipeline configuration (command template with `{variable}` placeholders, default_args, optional linked model)
+3. procrastinate worker picks up the job, renders the command template (substituting `{input}`, `{s3_prefix}`, `{vlm_url}`, `{model_name}`, etc.; model-linked values override defaults), sets `Document.status=running`
 4. Worker spawns the rendered command (e.g. `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/{file_hash}/original.{ext} --s3-prefix {file_hash}`)
 5. CLI parses document via PaddleOCR-VL, uploads results to S3
 6. Worker reads result.json from S3, updates Document (parsing_result, markdown, `status=completed`)

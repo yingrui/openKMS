@@ -56,6 +56,7 @@
 - [x] Link pipelines to channels (`pipeline_id`, `auto_process` on DocumentChannel)
 - [x] DocumentChannelSettings fetches real pipelines from API
 - [x] Pipelines.tsx: CRUD UI with real API
+- [x] Model management: API provider registry (CRUD, linked to pipelines)
 - [ ] Additional pipeline types beyond PaddleOCR
 
 ### 6. Jobs (procrastinate)
@@ -73,6 +74,7 @@
 - [x] Template variables API: `GET /api/pipelines/template-variables`
 - [x] Sonner toast system for project-wide notifications
 - [x] Worker entry point: `backend/worker.py`
+- [x] Model-aware command template: `{vlm_url}`, `{model_name}` resolved from linked ApiModel
 - [ ] Job logs/stdout capture
 - [ ] Configurable concurrency for worker
 

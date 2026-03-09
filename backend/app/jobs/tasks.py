@@ -17,13 +17,26 @@ TEMPLATE_VARIABLES = {
     "bucket": "S3/MinIO bucket name",
     "endpoint_url": "S3/MinIO endpoint URL",
     "region": "AWS region",
-    "vlm_url": "VLM server URL for document parsing",
+    "vlm_url": "VLM server URL (from linked model or settings)",
+    "model_name": "Model identifier (from linked model or settings)",
     "document_id": "Document UUID",
 }
 
 
-def render_command(command: str, document_id: str, file_hash: str, file_ext: str) -> str:
-    """Render a command template by substituting known variables."""
+def render_command(
+    command: str,
+    document_id: str,
+    file_hash: str,
+    file_ext: str,
+    *,
+    model_base_url: str | None = None,
+    model_name: str | None = None,
+) -> str:
+    """Render a command template by substituting known variables.
+
+    If a model is linked, its base_url/model_name override the defaults
+    from settings.
+    """
     context = {
         "input": f"s3://{settings.aws_bucket_name}/{file_hash}/original.{file_ext}",
         "s3_prefix": file_hash,
@@ -32,7 +45,8 @@ def render_command(command: str, document_id: str, file_hash: str, file_ext: str
         "bucket": settings.aws_bucket_name,
         "endpoint_url": settings.aws_endpoint_url or "",
         "region": settings.aws_region,
-        "vlm_url": settings.paddleocr_vl_server_url,
+        "vlm_url": model_base_url or settings.paddleocr_vl_server_url,
+        "model_name": model_name or settings.paddleocr_vl_model,
         "document_id": document_id,
     }
     return command.format(**context)
@@ -47,6 +61,7 @@ async def run_pipeline(
     command: str,
     default_args: dict | None = None,
     rendered_command: str | None = None,
+    model_id: str | None = None,
 ) -> None:
     """
     Execute a document processing pipeline via openkms-cli subprocess.

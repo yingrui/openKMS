@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.models.api_model import ApiModel
 from app.models.pipeline import Pipeline
 from app.schemas.pipeline import (
     PipelineCreate,
@@ -16,6 +17,17 @@ from app.schemas.pipeline import (
 )
 
 router = APIRouter(prefix="/pipelines", tags=["pipelines"], dependencies=[Depends(require_auth)])
+
+
+async def _enrich_pipeline(pipeline: Pipeline, db: AsyncSession) -> PipelineResponse:
+    """Build a PipelineResponse, resolving linked model info."""
+    data = PipelineResponse.model_validate(pipeline)
+    if pipeline.model_id:
+        model = await db.get(ApiModel, pipeline.model_id)
+        if model:
+            data.model_name = model.name
+            data.model_base_url = model.base_url
+    return data
 
 
 @router.get("/template-variables")
@@ -32,7 +44,7 @@ async def list_pipelines(db: AsyncSession = Depends(get_db)):
     total = total_result.scalar_one()
 
     result = await db.execute(select(Pipeline).order_by(Pipeline.created_at.desc()))
-    items = [PipelineResponse.model_validate(p) for p in result.scalars().all()]
+    items = [await _enrich_pipeline(p, db) for p in result.scalars().all()]
     return PipelineListResponse(items=items, total=total)
 
 
@@ -45,11 +57,12 @@ async def create_pipeline(body: PipelineCreate, db: AsyncSession = Depends(get_d
         description=body.description,
         command=body.command,
         default_args=body.default_args,
+        model_id=body.model_id,
     )
     db.add(pipeline)
     await db.commit()
     await db.refresh(pipeline)
-    return PipelineResponse.model_validate(pipeline)
+    return await _enrich_pipeline(pipeline, db)
 
 
 @router.get("/{pipeline_id}", response_model=PipelineResponse)
@@ -58,7 +71,7 @@ async def get_pipeline(pipeline_id: str, db: AsyncSession = Depends(get_db)):
     pipeline = await db.get(Pipeline, pipeline_id)
     if not pipeline:
         raise HTTPException(status_code=404, detail="Pipeline not found")
-    return PipelineResponse.model_validate(pipeline)
+    return await _enrich_pipeline(pipeline, db)
 
 
 @router.put("/{pipeline_id}", response_model=PipelineResponse)
@@ -74,7 +87,7 @@ async def update_pipeline(pipeline_id: str, body: PipelineUpdate, db: AsyncSessi
 
     await db.commit()
     await db.refresh(pipeline)
-    return PipelineResponse.model_validate(pipeline)
+    return await _enrich_pipeline(pipeline, db)
 
 
 @router.delete("/{pipeline_id}", status_code=204)

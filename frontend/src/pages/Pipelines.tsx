@@ -9,6 +9,7 @@ import {
   updatePipeline,
   type PipelineResponse,
 } from '../data/pipelinesApi';
+import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import './Pipelines.css';
 
 export function Pipelines() {
@@ -25,17 +26,21 @@ export function Pipelines() {
   const [search, setSearch] = useState('');
   const [templateVars, setTemplateVars] = useState<Record<string, string>>({});
   const [showVarHelp, setShowVarHelp] = useState(false);
+  const [allModels, setAllModels] = useState<ApiModelResponse[]>([]);
+  const [formModelId, setFormModelId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [res, vars] = await Promise.all([
+      const [res, vars, modelsRes] = await Promise.all([
         fetchPipelines(),
         fetchTemplateVariables(),
+        fetchModels(),
       ]);
       setPipelines(res.items);
       setTemplateVars(vars);
+      setAllModels(modelsRes.items);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to load pipelines';
       setError(msg);
@@ -55,6 +60,7 @@ export function Pipelines() {
     setFormDescription('');
     setFormCommand('openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input {input} --s3-prefix {s3_prefix}');
     setFormArgs('');
+    setFormModelId('');
     setShowCreate(true);
   };
 
@@ -64,6 +70,7 @@ export function Pipelines() {
     setFormDescription(p.description || '');
     setFormCommand(p.command);
     setFormArgs(p.default_args ? JSON.stringify(p.default_args, null, 2) : '');
+    setFormModelId(p.model_id || '');
     setShowCreate(true);
   };
 
@@ -89,6 +96,7 @@ export function Pipelines() {
           description: formDescription || null,
           command: formCommand,
           default_args: parsedArgs ?? null,
+          model_id: formModelId || null,
         });
       } else {
         await createPipeline({
@@ -96,6 +104,7 @@ export function Pipelines() {
           description: formDescription || null,
           command: formCommand,
           default_args: parsedArgs ?? null,
+          model_id: formModelId || null,
         });
       }
       setShowCreate(false);
@@ -166,6 +175,7 @@ export function Pipelines() {
                 <tr>
                   <th>Name</th>
                   <th>Description</th>
+                  <th>Model</th>
                   <th>Command</th>
                   <th>Updated</th>
                   <th className="pipelines-table-actions">Actions</th>
@@ -174,7 +184,7 @@ export function Pipelines() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
                       {pipelines.length === 0 ? 'No pipelines yet. Create one to get started.' : 'No matches found.'}
                     </td>
                   </tr>
@@ -188,6 +198,7 @@ export function Pipelines() {
                         </div>
                       </td>
                       <td>{p.description || '—'}</td>
+                      <td>{p.model_name || '—'}</td>
                       <td><code>{p.command}</code></td>
                       <td>{new Date(p.updated_at).toLocaleDateString()}</td>
                       <td className="pipelines-table-actions">
@@ -251,6 +262,15 @@ export function Pipelines() {
                   </div>
                 )}
               </div>
+              <label>
+                Model (optional)
+                <select value={formModelId} onChange={(e) => setFormModelId(e.target.value)}>
+                  <option value="">No model linked</option>
+                  {allModels.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
+                  ))}
+                </select>
+              </label>
               <label>
                 Default Args (JSON)
                 <textarea rows={4} value={formArgs} onChange={(e) => setFormArgs(e.target.value)} />
