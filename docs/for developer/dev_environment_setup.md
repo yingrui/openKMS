@@ -62,11 +62,7 @@ for res in output:
 
 ### Backend Integration
 
-The backend (`backend/app/services/document_parser.py`) uses PaddleOCRVL with the mlx-vlm-server as the VLM backend. Configuration is via environment variables:
-
-- `OPENKMS_PADDLEOCR_VL_SERVER_URL` – mlx-vlm-server URL (default: `http://localhost:8101/`)
-- `OPENKMS_PADDLEOCR_VL_MODEL` – VLM model name (default: `PaddlePaddle/PaddleOCR-VL-1.5`)
-- `OPENKMS_PADDLEOCR_VL_MAX_CONCURRENCY` – max concurrent VLM requests (default: `3`)
+Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate jobs), which uses PaddleOCRVL with mlx-vlm-server as the VLM backend. Pipeline configurations can link to API models for VLM URL and model name. The backend itself does not run PaddleOCR directly.
 
 **Full stack setup:**
 
@@ -75,14 +71,15 @@ The backend (`backend/app/services/document_parser.py`) uses PaddleOCRVL with th
    cd vlm-server && ./start.sh
    ```
 
-2. Install backend dependencies (includes PaddleOCRVL):
+2. Install backend dependencies (pyproject.toml + uv.lock for reproducible installs):
    ```bash
-   cd backend && pip install -r requirements.txt
+   cd backend && uv sync
    ```
+   Or with pip: `pip install -e .` (installs from pyproject.toml). Regenerate lock: `uv lock`
 
-3. Run database migrations and start the backend:
+3. Run database migrations and start the backend (default port 8102):
    ```bash
-   cd backend && alembic upgrade head && uvicorn app.main:app --reload --port 8000
+   cd backend && alembic upgrade head && uvicorn app.main:app --reload --port 8102
    ```
 
 ### Keycloak Setup (Authentication)

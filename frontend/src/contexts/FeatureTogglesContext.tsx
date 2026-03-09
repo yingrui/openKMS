@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
 import { fetchToggles, updateToggles, type FeatureToggles } from '../data/featureTogglesApi';
 
@@ -26,15 +27,18 @@ export function FeatureTogglesProvider({ children }: { children: React.ReactNode
     let cancelled = false;
     fetchToggles()
       .then((data) => { if (!cancelled) setToggles(data); })
-      .catch(() => { /* keep defaults on error */ });
+      .catch((e) => {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : 'Failed to load feature toggles');
+      });
     return () => { cancelled = true; };
   }, [isAuthenticated, isLoading]);
 
   const setToggle = useCallback((key: keyof FeatureToggles, enabled: boolean) => {
     setToggles((prev) => {
       const next = { ...prev, [key]: enabled };
-      updateToggles({ [key]: enabled }).catch(() => {
+      updateToggles({ [key]: enabled }).catch((e) => {
         setToggles(prev);
+        toast.error(e instanceof Error ? e.message : 'Failed to update feature toggle');
       });
       return next;
     });

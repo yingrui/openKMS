@@ -175,6 +175,7 @@ export function Models() {
               <Search size={18} />
               <input
                 type="search"
+                aria-label="Search models"
                 placeholder="Search models..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

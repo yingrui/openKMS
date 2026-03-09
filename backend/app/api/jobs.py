@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
-from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.models.pipeline import Pipeline
@@ -143,20 +142,7 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
 
     file_ext = doc.name.rsplit(".", 1)[-1].lower() if "." in doc.name else "pdf"
 
-    from app.jobs.tasks import run_pipeline, render_command
-
-    model_base_url: str | None = None
-    model_name_val: str | None = None
-    if pipeline.model_id:
-        linked_model = await db.get(ApiModel, pipeline.model_id)
-        if linked_model:
-            model_base_url = linked_model.base_url
-            model_name_val = linked_model.model_name
-
-    rendered_command = render_command(
-        pipeline.command, doc.id, doc.file_hash or "", file_ext,
-        model_base_url=model_base_url, model_name=model_name_val,
-    )
+    from app.jobs.tasks import run_pipeline
 
     job_id = await run_pipeline.defer_async(
         document_id=doc.id,
@@ -165,7 +151,6 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
         file_ext=file_ext,
         command=pipeline.command,
         default_args=pipeline.default_args,
-        rendered_command=rendered_command,
         model_id=pipeline.model_id,
     )
 
@@ -213,27 +198,9 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
     if not document_id:
         raise HTTPException(status_code=400, detail="Job has no document_id in args")
 
-    from app.jobs.tasks import run_pipeline, render_command
+    from app.jobs.tasks import run_pipeline
 
     cmd_template = args.get("command", "openkms-cli pipeline run")
-    retry_model_id = args.get("model_id")
-
-    retry_model_base_url: str | None = None
-    retry_model_name: str | None = None
-    if retry_model_id:
-        retry_model = await db.get(ApiModel, retry_model_id)
-        if retry_model:
-            retry_model_base_url = retry_model.base_url
-            retry_model_name = retry_model.model_name
-
-    rendered = render_command(
-        cmd_template,
-        args.get("document_id", ""),
-        args.get("file_hash", ""),
-        args.get("file_ext", "pdf"),
-        model_base_url=retry_model_base_url,
-        model_name=retry_model_name,
-    )
 
     new_job_id = await run_pipeline.defer_async(
         document_id=args.get("document_id", ""),
@@ -242,8 +209,7 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
         file_ext=args.get("file_ext", "pdf"),
         command=cmd_template,
         default_args=args.get("default_args"),
-        rendered_command=rendered,
-        model_id=retry_model_id,
+        model_id=args.get("model_id"),
     )
 
     from sqlalchemy import update

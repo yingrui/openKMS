@@ -25,7 +25,7 @@ export function ConsoleUsers() {
       <div className="console-users-toolbar">
         <div className="console-users-search">
           <Search size={18} />
-          <input type="search" placeholder="Search users..." />
+          <input type="search" aria-label="Search users" placeholder="Search users..." />
         </div>
       </div>
       <div className="console-users-table-wrap">

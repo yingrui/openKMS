@@ -198,7 +198,7 @@ def run_parser(
 ) -> tuple[dict[str, Any], list[tuple[str, bytes]], list[tuple[str, bytes]]]:
     """
     Parse document. Returns (parsing_result, extra_files, markdown_out_files).
-    Output matches backend document_parser._run_paddleocr.
+    Output format is compatible with openKMS DocumentDetail (result.json, markdown.md, layout_det_*, block_*, markdown_out/*).
     """
     from paddleocr import PaddleOCRVL
 

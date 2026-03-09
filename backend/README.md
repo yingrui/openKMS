@@ -12,10 +12,10 @@ FastAPI backend for the Open Knowledge Management System. Uses PostgreSQL for st
 
 ```bash
 cd backend
-python -m venv .venv
-source .venv/bin/activate   # or `.venv\Scripts\activate` on Windows
-pip install -r requirements.txt
+uv sync   # creates .venv and installs dependencies from pyproject.toml + uv.lock
 ```
+
+Or with pip: `pip install -e .` (requires Python 3.10+).
 
 ## Configuration
 

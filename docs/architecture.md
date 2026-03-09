@@ -11,9 +11,9 @@
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Backend (FastAPI)                            │
-│  /api/channels | /api/documents | /api/pipelines | /api/jobs   │
-│  /api/models | /api/feature-toggles                              │
-│  (upload stores file only; jobs deferred via procrastinate)      │
+│  /api/channels | /api/documents | /api/pipelines | /api/jobs    │
+│  /api/models | /api/feature-toggles                             │
+│  (upload stores file only; jobs deferred via procrastinate)     │
 └───────┬────────────────┬──────────────────┬─────────────────────┘
         │                │                  │
         ▼                ▼                  ▼
@@ -26,7 +26,7 @@
 │ feature_     │ │                │ │                            │
 │  toggles     │ │                │ │                            │
 │ procrastinate│ │                │ │ → openkms-cli pipeline run │
-│  _jobs       │ │                │ │ → mlx-vlm-server (VLM)    │
+│  _jobs       │ │                │ │ → mlx-vlm-server (VLM)     │
 └──────────────┘ └────────────────┘ └────────────────────────────┘
 ```
 
@@ -85,11 +85,9 @@ backend/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
 │   │   └── tasks.py            # run_pipeline task (subprocess openkms-cli)
 │   └── services/
-│       ├── document_parser.py       # PaddleOCR-VL integration
-│       ├── document_storage.py      # parse_and_store → S3/MinIO (legacy)
-│       ├── document_extraction_utils.py
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
 │       └── storage.py               # S3/MinIO client (upload, delete)
+├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
 └── worker.py                    # procrastinate worker entry point
 ```
 

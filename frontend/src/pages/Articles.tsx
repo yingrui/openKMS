@@ -72,7 +72,7 @@ export function Articles() {
         <div className="articles-toolbar">
           <div className="articles-search">
             <Search size={18} />
-            <input type="search" placeholder="Search in channel..." />
+            <input type="search" aria-label="Search in channel" placeholder="Search in channel..." />
           </div>
           <select aria-label="Filter by status">
             <option>All status</option>

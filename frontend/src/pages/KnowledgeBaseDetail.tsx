@@ -294,6 +294,7 @@ export function KnowledgeBaseDetail() {
               <SearchIcon size={20} />
               <input
                 type="search"
+                aria-label="Search or ask a question"
                 placeholder="Search or ask a question..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

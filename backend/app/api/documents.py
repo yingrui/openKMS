@@ -110,6 +110,7 @@ async def upload_document(
                 file_ext=ext,
                 command=pipeline.command,
                 default_args=pipeline.default_args,
+                model_id=pipeline.model_id,
             )
             doc.status = "pending"
 

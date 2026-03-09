@@ -1,6 +1,7 @@
 """Procrastinate task definitions for document processing."""
 import json
 import logging
+import os
 import shlex
 import subprocess
 
@@ -60,28 +61,40 @@ async def run_pipeline(
     file_ext: str,
     command: str,
     default_args: dict | None = None,
-    rendered_command: str | None = None,
     model_id: str | None = None,
 ) -> None:
     """
     Execute a document processing pipeline via openkms-cli subprocess.
 
     The ``command`` field is a template string with {variable} placeholders
-    that are resolved from document metadata and system settings.
+    that are resolved from document metadata, linked model (if any), and settings.
 
     Updates document status in DB: running -> completed/failed.
     """
     from sqlalchemy import update
     from app.database import async_session_maker
     from app.models.document import Document
+    from app.models.api_model import ApiModel
+
+    model_base_url: str | None = None
+    model_name_val: str | None = None
+    if model_id:
+        async with async_session_maker() as session:
+            model_row = await session.get(ApiModel, model_id)
+            if model_row:
+                model_base_url = model_row.base_url
+                model_name_val = model_row.model_name
+
+    rendered = render_command(
+        command, document_id, file_hash, file_ext,
+        model_base_url=model_base_url, model_name=model_name_val,
+    )
 
     async with async_session_maker() as session:
         await session.execute(
             update(Document).where(Document.id == document_id).values(status="running")
         )
         await session.commit()
-
-    rendered = render_command(command, document_id, file_hash, file_ext)
     cmd = shlex.split(rendered)
 
     logger.info("Running pipeline for document %s: %s", document_id, rendered)
@@ -93,7 +106,7 @@ async def run_pipeline(
             text=True,
             timeout=600,
             env={
-                **__import__("os").environ,
+                **os.environ,
                 "AWS_ACCESS_KEY_ID": settings.aws_access_key_id,
                 "AWS_SECRET_ACCESS_KEY": settings.aws_secret_access_key,
             },

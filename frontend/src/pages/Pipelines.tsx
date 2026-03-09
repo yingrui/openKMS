@@ -156,6 +156,7 @@ export function Pipelines() {
             <Search size={18} />
             <input
               type="search"
+              aria-label="Search pipelines"
               placeholder="Search pipelines..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

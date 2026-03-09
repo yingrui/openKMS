@@ -129,6 +129,7 @@ export function Jobs() {
             <Search size={18} />
             <input
               type="search"
+              aria-label="Search by document ID"
               placeholder="Search by document ID..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

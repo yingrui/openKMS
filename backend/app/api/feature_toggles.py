@@ -41,7 +41,10 @@ async def update_feature_toggles(
     db: AsyncSession = Depends(get_db),
 ):
     updates = body.model_dump(exclude_none=True)
+    allowed = set(DEFAULTS.keys())
     for key, enabled in updates.items():
+        if key not in allowed:
+            continue
         toggle = await db.get(FeatureToggle, key)
         if toggle:
             toggle.enabled = enabled

@@ -34,7 +34,7 @@
 ### 2. Channel Description Editing
 
 - [ ] Add description field to channel create/edit UI
-- [ ] Backend: `PATCH /api/channels/documents/:id` for update (name, description)
+- [ ] Backend: `PUT /api/channels/documents/:id` for update (name, description)
 
 ### 3. Document Operations
 
@@ -49,6 +49,7 @@
 - [x] Role-based access: Console restricted to users with realm role `admin`
 - [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT admin-only)
 - [x] Backend `require_admin` dependency for admin-only endpoints (checks JWT `realm_access.roles`)
+- [x] Backend dependency management via pyproject.toml + uv.lock (replaces requirements.txt)
 
 ## Medium-Term
 

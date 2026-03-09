@@ -24,8 +24,7 @@ openKMS organizes content in **channel trees** (similar to Google Drive folders)
 
 - **Frontend**: React 19, Vite 7, TypeScript, React Router
 - **Backend**: FastAPI, SQLAlchemy (async), PostgreSQL
-- **Document Parsing**: PaddleOCR-VL with mlx-vlm-server as VLM backend
-- **document_parsing** (planned): CLI with Typer (≥0.9.0), PaddleOCR-VL; configurable as pipeline, invoked by async jobs
+- **Document Parsing**: PaddleOCR-VL with mlx-vlm-server as VLM backend; CLI (`openkms-cli`) configurable as pipeline, invoked by procrastinate jobs
 - **Auth**: Keycloak (optional)
 
 ### Project Structure
@@ -46,7 +45,7 @@ openKMS/
 cd vlm-server && ./start.sh
 
 # 2. Backend
-cd backend && pip install -r requirements.txt && alembic upgrade head && ./dev.sh
+cd backend && uv sync && alembic upgrade head && ./dev.sh
 
 # 3. Frontend
 cd frontend && npm install && npm run dev

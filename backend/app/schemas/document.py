@@ -1,12 +1,12 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
 
 class DocumentBase(BaseModel):
     name: str
-    channel_id: str = "dc1a"
+    channel_id: str
     file_type: str = "PDF"
 
 
@@ -19,11 +19,11 @@ class DocumentResponse(BaseModel):
     name: str
     file_type: str
     size_bytes: int = 0
-    channel_id: str = "dc1a"
-    file_hash: Optional[str] = None
+    channel_id: str
+    file_hash: str | None = None
     status: str = "uploaded"
-    markdown: Optional[str] = None
-    parsing_result: Optional[dict[str, Any]] = None
+    markdown: str | None = None
+    parsing_result: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 
