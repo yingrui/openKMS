@@ -121,9 +121,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     kc.onTokenExpired = onTokenExpired;
 
     const doInit = async (): Promise<boolean> => {
+      // Use current URL so refresh on /documents/view/xxx returns to same path (not /)
+      const redirectUri =
+        typeof window !== 'undefined'
+          ? window.location.origin + window.location.pathname + window.location.search
+          : config.origin;
       return kc.init({
         onLoad: 'check-sso',
-        redirectUri: config.origin,
+        redirectUri,
         pkceMethod: 'S256',
       });
     };
@@ -199,8 +204,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(() => {
     setAuthError(null);
-    // No prompt: 'login' – allows SSO if user already has Keycloak session
-    getKeycloak().login({ redirectUri: config.origin });
+    // Use current path so after login we return to the page user was on
+    const redirectUri =
+      typeof window !== 'undefined'
+        ? window.location.origin + window.location.pathname + window.location.search
+        : config.origin;
+    getKeycloak().login({ redirectUri });
   }, []);
 
   const logout = useCallback(async () => {

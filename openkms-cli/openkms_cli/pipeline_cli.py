@@ -1,0 +1,224 @@
+"""Pipeline CLI: run document parsing pipeline.
+
+Usage: openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/key/original.pdf --s3-prefix {file_hash}
+"""
+
+import json
+import os
+import re
+from pathlib import Path
+from typing import Optional
+
+import typer
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+
+console = Console()
+
+pipeline_app = typer.Typer(
+    help="Run document parsing pipeline (download from S3 → parse → upload to S3)",
+)
+
+
+def _is_s3_uri(s: str) -> bool:
+    """Return True if input looks like an S3 URI."""
+    return s.strip().lower().startswith("s3://")
+
+
+def _parse_s3_uri(uri: str) -> tuple[str, str]:
+    """Parse s3://bucket/key into (bucket, key)."""
+    m = re.match(r"^s3://([^/]+)/(.+)$", uri.strip())
+    if not m:
+        raise typer.BadParameter(f"Invalid S3 URI: {uri}. Use s3://bucket/key")
+    return m.group(1), m.group(2).rstrip("/")
+
+
+def _get_s3_client(endpoint_url: Optional[str], access_key: str, secret_key: str, region: str):
+    """Create boto3 S3 client."""
+    try:
+        import boto3
+        from botocore.config import Config
+    except ImportError:
+        console.print("[red]boto3 not installed. pip install openkms-cli[pipeline][/red]")
+        raise typer.Exit(1)
+
+    kwargs = {
+        "aws_access_key_id": access_key,
+        "aws_secret_access_key": secret_key,
+        "region_name": region,
+        "config": Config(signature_version="s3v4"),
+    }
+    if endpoint_url:
+        kwargs["endpoint_url"] = endpoint_url
+    return boto3.client("s3", **kwargs)
+
+
+def _content_type_for_path(path: str) -> str:
+    p = Path(path)
+    suffixes = {".md": "text/markdown", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+    return suffixes.get(p.suffix.lower(), "application/octet-stream")
+
+
+@pipeline_app.command("run")
+def pipeline_run(
+    pipeline_name: str = typer.Option(
+        "paddleocr-doc-parse",
+        "--pipeline-name",
+        help="Pipeline name (e.g. paddleocr-doc-parse)",
+    ),
+    input_uri: str = typer.Option(
+        ...,
+        "--input",
+        help="Input: S3 URI (s3://bucket/key) or local file path (skip download)",
+    ),
+    s3_prefix: Optional[str] = typer.Option(
+        None,
+        "--s3-prefix",
+        help="S3 output prefix. If omitted with S3 input, uses file hash (SHA256 of content).",
+    ),
+    vlm_url: str = typer.Option(
+        "http://localhost:8101/",
+        "--vlm-url",
+        envvar="OPENKMS_VLM_URL",
+        help="VLM server URL",
+    ),
+    bucket: str = typer.Option(
+        "openkms",
+        "--bucket",
+        envvar="AWS_BUCKET_NAME",
+        help="S3 bucket for output",
+    ),
+    endpoint_url: Optional[str] = typer.Option(
+        None,
+        "--endpoint-url",
+        envvar="AWS_ENDPOINT_URL",
+        help="S3/MinIO endpoint",
+    ),
+    region: str = typer.Option(
+        "us-east-1",
+        "--region",
+        envvar="AWS_REGION",
+        help="AWS region",
+    ),
+    output_dir: Path = typer.Option(
+        Path("output"),
+        "--output-dir",
+        "-o",
+        path_type=Path,
+        help="Local directory for temp files before upload (default: ./output)",
+    ),
+    skip_upload: bool = typer.Option(
+        False,
+        "--skip-upload",
+        help="Parse only; do not upload to S3 (no AWS credentials needed for upload)",
+    ),
+) -> None:
+    """
+    Run pipeline: download from S3 → parse → upload to S3.
+
+    Example:
+      openkms-cli pipeline run --pipeline-name paddleocr-doc-parse \\
+        --input s3://openkms/da46.../original.pdf \\
+        --s3-prefix da46...
+    """
+    if pipeline_name != "paddleocr-doc-parse":
+        console.print(f"[yellow]Unknown pipeline '{pipeline_name}', using paddleocr-doc-parse[/yellow]")
+
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+
+    is_local = not _is_s3_uri(input_uri)
+
+    if is_local:
+        input_path = Path(input_uri)
+        if not input_path.is_file():
+            console.print(f"[red]Local file not found: {input_path}[/red]")
+            raise typer.Exit(1)
+        pdf_path = input_path.resolve()
+        content = pdf_path.read_bytes()
+        console.print(f"[dim]Input: {pdf_path}[/dim] (local, skip download)")
+    else:
+        if not access_key or not secret_key:
+            console.print("[red]AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required for S3[/red]")
+            raise typer.Exit(1)
+        try:
+            input_bucket, input_key = _parse_s3_uri(input_uri)
+        except typer.BadParameter as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
+        work = output_dir.resolve()
+        work.mkdir(parents=True, exist_ok=True)
+        pdf_path = work / "input.pdf"
+        content = _get_s3_client(endpoint_url, access_key, secret_key, region).get_object(
+            Bucket=input_bucket, Key=input_key
+        )["Body"].read()
+        pdf_path.write_bytes(content)
+        console.print(f"[dim]Input: s3://{input_bucket}/{input_key}[/dim]")
+
+    if not skip_upload and (not access_key or not secret_key):
+        console.print("[red]AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required for upload[/red]")
+        raise typer.Exit(1)
+
+    out_base = output_dir.resolve() / "parsed"
+    out_base.mkdir(parents=True, exist_ok=True)
+    if skip_upload:
+        console.print(f"[dim]Output: {out_base}/ (local only, skip upload)[/dim]")
+    else:
+        prefix_hint = s3_prefix.rstrip("/") if s3_prefix else "<file_hash>"
+        console.print(f"[dim]Output: s3://{bucket}/{prefix_hint}/[/dim]")
+    console.print(f"[dim]Local temp: {output_dir.resolve()}[/dim]")
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Parsing...", total=None)
+
+        try:
+            from .parser import run_parser
+        except ImportError:
+            console.print("[red]Parser not available. pip install openkms-cli[parse][/red]")
+            raise typer.Exit(1)
+
+        result, _, _ = run_parser(
+            input_path=pdf_path,
+            output_dir=out_base,
+            vlm_url=vlm_url,
+        )
+        file_hash = result["file_hash"]
+        hash_dir = out_base / file_hash
+
+        # Use file hash as s3 prefix when not specified (S3 input) or for consistency
+        prefix = (s3_prefix.rstrip("/") if s3_prefix else file_hash)
+
+        ext = pdf_path.suffix.lstrip(".") or "pdf"
+        (hash_dir / f"original.{ext}").write_bytes(content)
+        result_json = json.dumps(result, indent=2, ensure_ascii=False)
+        (hash_dir / "result.json").write_text(result_json, encoding="utf-8")
+        if result.get("markdown"):
+            (hash_dir / "markdown.md").write_text(result["markdown"], encoding="utf-8")
+
+        if skip_upload:
+            count = sum(1 for f in hash_dir.rglob("*") if f.is_file())
+            console.print(f"[green]Pipeline done. {count} files in {hash_dir}[/green]")
+        else:
+            progress.update(task, description="Uploading to S3...")
+            client = _get_s3_client(endpoint_url, access_key, secret_key, region)
+            key_base = prefix
+            count = 0
+            for f in hash_dir.rglob("*"):
+                if f.is_file():
+                    rel = f.relative_to(hash_dir).as_posix()
+                    key = f"{key_base}/{rel}"
+                    ct = _content_type_for_path(rel)
+                    client.put_object(
+                        Bucket=bucket,
+                        Key=key,
+                        Body=f.read_bytes(),
+                        ContentType=ct,
+                    )
+                    count += 1
+            console.print(
+                f"[green]Pipeline done. {count} files uploaded to s3://{bucket}/{prefix}/[/green]"
+            )

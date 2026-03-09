@@ -15,13 +15,14 @@
 
 ## Short-Term (Next Steps)
 
-### 0. document_parsing CLI
+### 0. openkms-cli (document parsing CLI)
 
-- [ ] Create `document_parsing/` folder with Typer CLI (typer>=0.9.0)
-- [ ] Use PaddleOCR-VL for parsing (same logic as backend)
-- [ ] CLI commands: `parse <input_path> [--output <path>] [--config <path>]`
-- [ ] Configurable via CLI args / config file (VLM URL, model, concurrency)
-- [ ] Design as pipeline step: pipeline config references this CLI
+- [x] Create `openkms-cli/` folder with Typer CLI (typer>=0.9.0)
+- [x] Use PaddleOCR-VL for parsing (optional `pip install openkms-cli[parse]`)
+- [x] CLI commands: `openkms-cli parse run <input> [--output <path>] [--config <path>]`
+- [x] Configurable via CLI args, env vars, config file (VLM URL, model, concurrency)
+- [x] Design for backend integration: subprocess-invokable
+- [x] Pipeline CLI: `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
 - [ ] Backend async job spawns CLI for document parsing (offload from API process)
 
 ### 1. Document List Integration
@@ -59,7 +60,7 @@
 ### 6. Jobs
 
 - [ ] Background job queue (e.g. Celery, ARQ)
-- [ ] Create async job type: "parse_document" → invokes `document_parsing parse ...`
+- [ ] Create async job type: "parse_document" → invokes `openkms-cli parse run ...`
 - [ ] Job status and logs
 - [ ] Retry/failure handling
 

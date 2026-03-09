@@ -4,24 +4,24 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend (React/Vite)                     │
-│  Home | Documents | Articles | Knowledge Bases | Pipelines | ...  │
+│                         Frontend (React/Vite)                   │
+│  Home | Documents | Articles | Knowledge Bases | Pipelines | ...│
 └───────────────────────────────┬─────────────────────────────────┘
                                 │ HTTP (localhost:8102)
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Backend (FastAPI)                              │
+│                    Backend (FastAPI)                            │
 │  /api/channels/documents  |  /api/documents/upload  |  /health  │
-│  (async jobs → invoke document_parsing CLI)                       │
+│  (async jobs → invoke document_parsing CLI)                     │
 └───────────────┬───────────────────────────┬─────────────────────┘
                 │                           │
                 ▼                           ▼
 ┌───────────────────────┐     ┌────────────────────────────────────┐
-│   PostgreSQL          │     │  document_parsing (CLI, planned)    │
-│   documents           │     │  Typer + PaddleOCR-VL               │
-│   document_channels    │     │  → mlx-vlm-server (VLM backend)     │
-└───────────────────────┘     │  Configurable as pipeline           │
-                               └────────────────────────────────────┘
+│   PostgreSQL          │     │  openkms-cli (CLI)                 │
+│   documents           │     │  Typer + PaddleOCR-VL              │
+│   document_channels   │     │  → mlx-vlm-server (VLM backend)    │
+└───────────────────────┘     │  Backend can invoke for async jobs │
+                              └────────────────────────────────────┘
 ```
 
 ## Frontend Structure
@@ -71,23 +71,28 @@ backend/app/
     └── storage.py               # S3/MinIO client (upload, delete)
 ```
 
-## document_parsing (Planned)
+## openkms-cli
 
-Standalone CLI for document parsing, configurable as a pipeline step and invoked by async jobs.
+Standalone CLI for document parsing, designed for backend integration. Developers can add CLI tools for pipeline steps.
 
 ```
-document_parsing/
-├── pyproject.toml           # typer>=0.9.0, paddleocr, etc.
-├── document_parsing/        # or src/
-│   ├── __main__.py          # Entry point
-│   ├── cli.py               # Typer app, commands
-│   └── parser.py            # PaddleOCR-VL wrapper
+openkms-cli/
+├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline]
+├── openkms_cli/
+│   ├── __init__.py
+│   ├── __main__.py          # python -m openkms_cli
+│   ├── app.py               # Typer app, registers subcommands
+│   ├── parse_cli.py         # parse run command
+│   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
+│   └── pipeline_cli.py     # pipeline download, upload, run (optional [pipeline])
 └── README.md
 ```
 
-- **Purpose**: Decouple parsing from backend process; run in worker/job context
-- **Pipeline config**: Pipeline definition references this CLI (command, args, env)
-- **Async jobs**: Backend job runner spawns `document_parsing parse <input> [options]` for each document
+- **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
+- **Commands**: `parse run`, `pipeline run`
+- **Pipeline run**: Download from S3 → parse → upload to S3 (`--input s3://...`, `--s3-prefix {file_hash}`)
+- **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
+- **Extensible**: Add new Typer subapps in app.py for additional CLI tools
 
 ## Data Flow
 
@@ -107,7 +112,7 @@ document_parsing/
 
 1. Frontend → `POST /api/documents/upload` (file + channel_id)
 2. Backend stores file, creates async job (e.g. "parse_document")
-3. Job runner invokes `document_parsing parse <path>` (CLI)
+3. Job runner invokes `openkms-cli parse run <path>` (CLI)
 4. CLI runs PaddleOCR-VL, writes result to output path
 5. Job runner reads result, updates Document in DB
 

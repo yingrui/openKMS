@@ -35,7 +35,7 @@ openKMS/
 ├── frontend/          # React app
 ├── backend/           # FastAPI service
 ├── vlm-server/        # MLX-VLM server (VLM backend)
-├── document_parsing/  # CLI for document parsing (planned)
+├── openkms-cli/       # CLI for document parsing (Typer)
 └── docs/              # Documentation
 ```
 
