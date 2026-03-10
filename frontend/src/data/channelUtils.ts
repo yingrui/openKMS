@@ -18,9 +18,9 @@ export interface ExtractionSchemaDisplayField {
   enum?: string[];
 }
 
-/** extraction_schema is stored as JSON Schema dict (type/object, properties, required, fieldOrder) or legacy array. */
+/** extraction_schema is stored as JSON Schema dict (type/object, properties, required) or legacy array. PostgreSQL json type preserves key order. */
 export type ExtractionSchemaValue =
-  | { type: 'object'; properties: Record<string, Record<string, unknown>>; required?: string[]; fieldOrder?: string[] }
+  | { type: 'object'; properties: Record<string, Record<string, unknown>>; required?: string[] }
   | ExtractionSchemaField[];
 
 export interface ChannelNode {
@@ -50,11 +50,7 @@ export function normalizeExtractionSchemaToFields(
   const props = schema.properties;
   if (!props || typeof props !== 'object') return [];
   const required = new Set(schema.required || []);
-  const order = schema.fieldOrder;
-  const keys: string[] =
-    order && Array.isArray(order)
-      ? [...order.filter((k) => k in props), ...Object.keys(props).filter((k) => !order.includes(k))]
-      : Object.keys(props);
+  const keys = Object.keys(props);
   return keys.map((key) => {
     const prop = props[key] as Record<string, unknown>;
     const hasEnum = Array.isArray(prop?.enum);
@@ -86,11 +82,7 @@ export function extractionSchemaToEditorFields(
   const props = schema.properties;
   if (!props || typeof props !== 'object') return [];
   const required = new Set(schema.required || []);
-  const order = schema.fieldOrder;
-  const keys: string[] =
-    order && Array.isArray(order)
-      ? [...order.filter((k) => k in props), ...Object.keys(props).filter((k) => !order.includes(k))]
-      : Object.keys(props);
+  const keys = Object.keys(props);
   return keys.map((key) => {
     const p = props[key] as Record<string, unknown>;
     const hasEnum = Array.isArray(p?.enum);
@@ -107,18 +99,16 @@ export function extractionSchemaToEditorFields(
   });
 }
 
-/** Build JSON Schema dict from editor fields for saving. Includes fieldOrder to preserve order (JSONB does not). */
+/** Build JSON Schema dict from editor fields for saving. properties key order is preserved (PostgreSQL json type). */
 export function editorFieldsToJsonSchema(
   fields: ExtractionSchemaField[]
-): { type: 'object'; properties: Record<string, Record<string, unknown>>; required: string[]; fieldOrder: string[] } | null {
+): { type: 'object'; properties: Record<string, Record<string, unknown>>; required: string[] } | null {
   if (fields.length === 0) return null;
   const properties: Record<string, Record<string, unknown>> = {};
   const required: string[] = [];
-  const fieldOrder: string[] = [];
   for (const f of fields) {
     const key = f.key?.trim();
     if (!key) continue;
-    fieldOrder.push(key);
     let prop: Record<string, unknown>;
     if (f.type === 'date') {
       prop = { type: 'string', format: 'date' };
@@ -141,7 +131,7 @@ export function editorFieldsToJsonSchema(
     if (f.required) required.push(key);
   }
   if (Object.keys(properties).length === 0) return null;
-  return { type: 'object', properties, required, fieldOrder };
+  return { type: 'object', properties, required };
 }
 
 /** Find a channel by ID in the tree. */

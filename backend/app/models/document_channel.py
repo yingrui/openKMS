@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -21,7 +21,7 @@ class DocumentChannel(Base):
     extraction_model_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
     )
-    extraction_schema: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    extraction_schema: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["DocumentChannel | None"] = relationship("DocumentChannel", remote_side=[id], back_populates="children")

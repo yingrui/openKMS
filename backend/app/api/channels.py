@@ -1,5 +1,6 @@
 """Document channels API."""
 import uuid
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
@@ -11,6 +12,14 @@ from app.models.document_channel import DocumentChannel
 from app.schemas.channel import ChannelCreate, ChannelNode, ChannelUpdate
 
 router = APIRouter(prefix="/channels", tags=["channels"], dependencies=[Depends(require_auth)])
+
+
+def _strip_field_order(schema: dict[str, Any] | list | None) -> dict[str, Any] | list | None:
+    """Remove fieldOrder from extraction_schema; json type preserves properties key order."""
+    if schema is None or not isinstance(schema, dict):
+        return schema
+    out = {k: v for k, v in schema.items() if k != "fieldOrder"}
+    return out
 
 
 def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -> list[ChannelNode]:
@@ -27,7 +36,7 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
                 pipeline_id=c.pipeline_id,
                 auto_process=c.auto_process,
                 extraction_model_id=c.extraction_model_id,
-                extraction_schema=c.extraction_schema,
+                extraction_schema=_strip_field_order(c.extraction_schema),
                 children=_build_tree(channels, c.id),
             )
         )
@@ -72,7 +81,7 @@ async def create_document_channel(
         pipeline_id=channel.pipeline_id,
         auto_process=channel.auto_process,
         extraction_model_id=channel.extraction_model_id,
-        extraction_schema=channel.extraction_schema,
+        extraction_schema=_strip_field_order(channel.extraction_schema),
         children=[],
     )
 
@@ -89,6 +98,8 @@ async def update_document_channel(
         raise HTTPException(status_code=404, detail="Channel not found")
 
     update_data = body.model_dump(exclude_unset=True)
+    if "extraction_schema" in update_data and update_data["extraction_schema"] is not None:
+        update_data["extraction_schema"] = _strip_field_order(update_data["extraction_schema"])
     for key, value in update_data.items():
         setattr(channel, key, value)
 
@@ -101,6 +112,6 @@ async def update_document_channel(
         pipeline_id=channel.pipeline_id,
         auto_process=channel.auto_process,
         extraction_model_id=channel.extraction_model_id,
-        extraction_schema=channel.extraction_schema,
+        extraction_schema=_strip_field_order(channel.extraction_schema),
         children=[],
     )
