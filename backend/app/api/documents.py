@@ -314,7 +314,24 @@ async def extract_document_metadata(
         raise HTTPException(status_code=400, detail="Extraction model must be category=llm")
 
     schema = channel.extraction_schema if channel.extraction_schema else None
-    extracted = await extract_metadata(doc.markdown, model, schema)
+    try:
+        extracted = await extract_metadata(doc.markdown, model, schema)
+    except ValueError as e:
+        msg = str(e)
+        if "HTTP 401" in msg or "401" in msg:
+            raise HTTPException(
+                status_code=401,
+                detail="LLM API authorization failed. Check the extraction model's API key in model settings.",
+            )
+        if "HTTP 403" in msg or "403" in msg:
+            raise HTTPException(
+                status_code=403,
+                detail="LLM API access forbidden. Check the extraction model's API key and permissions.",
+            )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Extraction failed: {msg}",
+        )
 
     now = datetime.now(timezone.utc).isoformat()
     current = doc.doc_metadata or {}
