@@ -20,6 +20,7 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "itsdangerous>=2.0.0",
     "procrastinate>=2.0.0",
+    "psycopg[binary]>=3.0.0",
     "openai>=1.0.0",
     "pydantic-ai>=0.0.14",
     "PyJWT[crypto]>=2.8.0",

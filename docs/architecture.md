@@ -67,7 +67,7 @@ backend/
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
-│   │   ├── models.py           # CRUD /api/models, POST test (API provider registry)
+│   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status, metadata JSONB)
@@ -98,20 +98,22 @@ Standalone CLI for document parsing, designed for backend integration. Developer
 
 ```
 openkms-cli/
-├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline]
+├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline], [metadata]
 ├── openkms_cli/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m openkms_cli
 │   ├── app.py               # Typer app, registers subcommands
+│   ├── auth.py              # Keycloak client credentials (get_access_token)
+│   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
 │   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
-│   └── pipeline_cli.py     # pipeline download, upload, run (optional [pipeline])
+│   └── pipeline_cli.py      # pipeline download, upload, run, optional extract (optional [pipeline])
 └── README.md
 ```
 
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
 - **Commands**: `parse run`, `pipeline run`
-- **Pipeline run**: Download from S3 → parse → upload to S3 (`--input s3://...`, `--s3-prefix {file_hash}`)
+- **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
 
@@ -129,10 +131,11 @@ openkms-cli/
 1. Jobs can be created: manually via `POST /api/jobs`, or automatically on upload (if channel has auto_process)
 2. The job references a Pipeline configuration (command template with `{variable}` placeholders, default_args, optional linked model)
 3. procrastinate worker picks up the job, renders the command template (substituting `{input}`, `{s3_prefix}`, `{vlm_url}`, `{model_name}`, etc.; model-linked values override defaults), sets `Document.status=running`
-4. Worker spawns the rendered command (e.g. `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/{file_hash}/original.{ext} --s3-prefix {file_hash}`)
-5. CLI parses document via PaddleOCR-VL, uploads results to S3
-6. Worker reads result.json from S3, updates Document (parsing_result, markdown, `status=completed`)
-7. On failure: `status=failed`; user can retry via `POST /api/jobs/{id}/retry`
+4. If document's channel has extraction_model_id and extraction_schema, worker appends `--extract-metadata --document-id ... --api-url ... --extraction-schema-file ... --extraction-model-base-url ... --extraction-model-name ...` and passes `EXTRACTION_MODEL_API_KEY` in env
+5. Worker spawns the rendered command (e.g. `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/{file_hash}/original.{ext} --s3-prefix {file_hash}`)
+6. CLI gets Keycloak token (client credentials), parses document via PaddleOCR-VL, uploads results to S3; if extraction enabled, extracts metadata via pydantic-ai and PUTs to `PUT /api/documents/{id}/metadata`
+7. Worker reads result.json from S3, updates Document (parsing_result, markdown, `status=completed`)
+8. On failure: `status=failed`; user can retry via `POST /api/jobs/{id}/retry`
 
 ### Document Detail
 
@@ -173,8 +176,8 @@ openkms-cli/
 
 | Layer | Config |
 |-------|--------|
-| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id (optional default for metadata extraction) |
-| Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL |
+| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id, OPENKMS_BACKEND_URL (for CLI metadata extraction) |
+| Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL, KEYCLOAK_SERVICE_CLIENT_ID (openkms-cli) |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
 | Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId). In dev, `apiUrl` defaults to '' (uses proxy). |
 | Vite dev | Proxy `/api`, `/sync-session`, `/clear-session` → backend; `/buckets/openkms` → MinIO |

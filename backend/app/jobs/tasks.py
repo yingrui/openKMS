@@ -21,6 +21,10 @@ TEMPLATE_VARIABLES = {
     "vlm_url": "VLM server URL (from linked model or settings)",
     "model_name": "Model identifier (from linked model or settings)",
     "document_id": "Document UUID",
+    "api_url": "Backend API URL for metadata PUT",
+    "extraction_model_name": "LLM model name (e.g. qwen3.5) for metadata extraction (from channel)",
+    "extraction_schema": "Extraction schema as JSON string (from channel)",
+    "extraction_args": "Full extraction flags when channel has extraction; empty otherwise",
 }
 
 
@@ -32,12 +36,18 @@ def render_command(
     *,
     model_base_url: str | None = None,
     model_name: str | None = None,
+    api_url: str | None = None,
+    extraction_args: str = "",
+    extraction_model_name: str = "",
+    extraction_schema: str = "",
 ) -> str:
     """Render a command template by substituting known variables.
 
     If a model is linked, its base_url/model_name override the defaults
-    from settings.
+    from settings. extraction_args is the full extraction flags block when
+    channel has extraction config; empty otherwise.
     """
+    base_api_url = (api_url or settings.openkms_backend_url).rstrip("/")
     context = {
         "input": f"s3://{settings.aws_bucket_name}/{file_hash}/original.{file_ext}",
         "s3_prefix": file_hash,
@@ -49,6 +59,10 @@ def render_command(
         "vlm_url": model_base_url or settings.paddleocr_vl_server_url,
         "model_name": model_name or settings.paddleocr_vl_model,
         "document_id": document_id,
+        "api_url": base_api_url,
+        "extraction_args": extraction_args,
+        "extraction_model_name": extraction_model_name,
+        "extraction_schema": extraction_schema,
     }
     return command.format(**context)
 
@@ -67,28 +81,80 @@ async def run_pipeline(
     Execute a document processing pipeline via openkms-cli subprocess.
 
     The ``command`` field is a template string with {variable} placeholders
-    that are resolved from document metadata, linked model (if any), and settings.
+    that are resolved from document metadata, linked model (if any), channel
+    extraction config, and settings.
+
+    Template variables include: input, s3_prefix, document_id, api_url,
+    extraction_model, extraction_schema, extraction_args (full block when enabled).
 
     Updates document status in DB: running -> completed/failed.
     """
     from sqlalchemy import update
     from app.database import async_session_maker
     from app.models.document import Document
+    from app.models.document_channel import DocumentChannel
     from app.models.api_model import ApiModel
 
     model_base_url: str | None = None
     model_name_val: str | None = None
-    if model_id:
-        async with async_session_maker() as session:
+    extraction_args = ""
+    extraction_model_name = ""
+    extraction_schema_val = ""
+
+    async with async_session_maker() as session:
+        if model_id:
             model_row = await session.get(ApiModel, model_id)
             if model_row:
                 model_base_url = model_row.base_url
                 model_name_val = model_row.model_name
 
+        doc = await session.get(Document, document_id)
+        if doc and doc.channel_id:
+            channel = await session.get(DocumentChannel, doc.channel_id)
+            if channel and channel.extraction_model_id and channel.extraction_schema:
+                extraction_model_row = await session.get(ApiModel, channel.extraction_model_id)
+                if extraction_model_row and extraction_model_row.category == "llm":
+                    model_name = (extraction_model_row.model_name or "").strip()
+                    if not model_name:
+                        logger.warning(
+                            "ApiModel %s has no model_name; skipping extraction. Set model_name (e.g. qwen3.5) in Models.",
+                            channel.extraction_model_id,
+                        )
+                    else:
+                        schema_data = channel.extraction_schema
+                        if isinstance(schema_data, dict):
+                            schema_json = json.dumps(schema_data, ensure_ascii=False)
+                        else:
+                            schema_json = json.dumps(schema_data or [], ensure_ascii=False)
+                        extraction_schema_val = shlex.quote(schema_json)
+                        api_url_val = settings.openkms_backend_url.rstrip("/")
+                        extraction_model_name = model_name
+                        extraction_args = (
+                            f" --extract-metadata --api-url {api_url_val}"
+                            f" --extraction-model-name {model_name}"
+                            f" --extraction-schema {extraction_schema_val}"
+                        )
+                        logger.info("Including metadata extraction in pipeline for document %s", document_id)
+
     rendered = render_command(
-        command, document_id, file_hash, file_ext,
-        model_base_url=model_base_url, model_name=model_name_val,
+        command,
+        document_id,
+        file_hash,
+        file_ext,
+        model_base_url=model_base_url,
+        model_name=model_name_val,
+        api_url=settings.openkms_backend_url.rstrip("/"),
+        extraction_args=extraction_args,
+        extraction_model_name=extraction_model_name,
+        extraction_schema=extraction_schema_val if extraction_args else "",
     )
+
+    subprocess_env = {
+        **os.environ,
+        "AWS_ACCESS_KEY_ID": settings.aws_access_key_id,
+        "AWS_SECRET_ACCESS_KEY": settings.aws_secret_access_key,
+        "OPENKMS_API_URL": settings.openkms_backend_url.rstrip("/"),
+    }
 
     async with async_session_maker() as session:
         await session.execute(
@@ -105,11 +171,7 @@ async def run_pipeline(
             capture_output=True,
             text=True,
             timeout=600,
-            env={
-                **os.environ,
-                "AWS_ACCESS_KEY_ID": settings.aws_access_key_id,
-                "AWS_SECRET_ACCESS_KEY": settings.aws_secret_access_key,
-            },
+            env=subprocess_env,
         )
 
         if result.returncode != 0:

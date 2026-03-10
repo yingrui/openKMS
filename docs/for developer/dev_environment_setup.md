@@ -110,6 +110,21 @@ The frontend uses the Keycloak JavaScript adapter (Authorization Code + PKCE). C
 
 6. **Backend env**: see `backend/.env.example` for `KEYCLOAK_*` (realm, server URL, backend client for sync-session verification).
 
+7. **openkms-cli client** (for pipeline jobs and manual CLI runs with auth):
+
+   Create a confidential client in Keycloak for machine-to-machine auth:
+   - **Client ID**: `openkms-cli`
+   - **Client authentication**: **On**
+   - **Service accounts roles**: Enabled (or Standard flow disabled, Client credentials flow enabled)
+   - **Client secret**: create/regenerate in Credentials tab and set in `openkms-cli/.env`:
+     ```
+     AUTH_URL=http://localhost:8081
+     AUTH_REALM=openkms
+     AUTH_CLIENT_ID=openkms-cli
+     AUTH_CLIENT_SECRET=<your-secret-from-keycloak>
+     ```
+   - Ensure backend `KEYCLOAK_SERVICE_CLIENT_ID=openkms-cli` (default) so the backend accepts tokens from this client for service endpoints (e.g. `GET /api/models/{id}/config`).
+
 **If logout shows Keycloak 400**: ensure the frontend origin is in "Valid Post Logout Redirect URIs" for `openkms-frontend`.
 
 **Console access**: only users with the realm role `admin` can see and access the Console. In Keycloak: Realm → Roles → create `admin` if needed, then assign it to users or groups.

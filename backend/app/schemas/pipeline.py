@@ -5,10 +5,17 @@ from typing import Any
 from pydantic import BaseModel
 
 
+DEFAULT_PIPELINE_COMMAND = (
+    "openkms-cli pipeline run --pipeline-name paddleocr-doc-parse "
+    "--input {input} --s3-prefix {s3_prefix} --document-id {document_id} "
+    "--api-url {api_url}{extraction_args}"
+)
+
+
 class PipelineCreate(BaseModel):
     name: str
     description: str | None = None
-    command: str = "openkms-cli pipeline run"
+    command: str = DEFAULT_PIPELINE_COMMAND
     default_args: dict[str, Any] | None = None
     model_id: str | None = None
 

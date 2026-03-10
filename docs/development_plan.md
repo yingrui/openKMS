@@ -26,6 +26,7 @@
 - [x] Design for backend integration: subprocess-invokable
 - [x] Pipeline CLI: `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
+- [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from backend config-by-name, extracts via pydantic-ai, PUTs metadata to backend
 
 ### 1. Document List Integration
 
@@ -72,7 +73,7 @@
 - [x] procrastinate (PostgreSQL-based job queue) integration
 - [x] Upload decoupled from parsing: stores file only, `status=uploaded`
 - [x] Document status field: uploaded → pending → running → completed/failed
-- [x] run_pipeline task: spawns `openkms-cli pipeline run` as subprocess
+- [x] run_pipeline task: spawns `openkms-cli pipeline run` as subprocess; when channel has extraction config (model_name from ApiModel), renders extraction args into template and runs metadata extraction in CLI
 - [x] Jobs API: list, detail, create, retry, delete (`/api/jobs`)
 - [x] Jobs.tsx: real API, status filter, create job, retry, delete
 - [x] JobDetail.tsx: full job detail page with timing, document link, pipeline info, rendered command, event log

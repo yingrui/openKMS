@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
+import requests
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -112,6 +113,37 @@ def pipeline_run(
         "--skip-upload",
         help="Parse only; do not upload to S3 (no AWS credentials needed for upload)",
     ),
+    extract_metadata: bool = typer.Option(
+        False,
+        "--extract-metadata",
+        help="After upload, extract metadata via LLM and PUT to backend API",
+    ),
+    document_id: Optional[str] = typer.Option(
+        None,
+        "--document-id",
+        help="Document ID (required for --extract-metadata)",
+    ),
+    api_url: str = typer.Option(
+        "http://localhost:8102",
+        "--api-url",
+        envvar="OPENKMS_API_URL",
+        help="Backend API URL for PUT metadata",
+    ),
+    extraction_schema: Optional[str] = typer.Option(
+        None,
+        "--extraction-schema",
+        help="Extraction schema as JSON string (required for --extract-metadata)",
+    ),
+    extraction_model_base_url: Optional[str] = typer.Option(
+        None,
+        "--extraction-model-base-url",
+        help="LLM base URL (when not using --extraction-model-name)",
+    ),
+    extraction_model_name: Optional[str] = typer.Option(
+        None,
+        "--extraction-model-name",
+        help="LLM model name (e.g. qwen3.5); fetches base_url/api_key from backend",
+    ),
 ) -> None:
     """
     Run pipeline: download from S3 → parse → upload to S3.
@@ -123,6 +155,27 @@ def pipeline_run(
     """
     if pipeline_name != "paddleocr-doc-parse":
         console.print(f"[yellow]Unknown pipeline '{pipeline_name}', using paddleocr-doc-parse[/yellow]")
+
+    token: Optional[str] = None
+    if extract_metadata:
+        if not document_id or not extraction_schema:
+            console.print(
+                "[red]--extract-metadata requires --document-id and --extraction-schema[/red]"
+            )
+            raise typer.Exit(1)
+        if not extraction_model_name and not extraction_model_base_url:
+            console.print(
+                "[red]--extract-metadata requires --extraction-model-name or "
+                "--extraction-model-base-url[/red]"
+            )
+            raise typer.Exit(1)
+        try:
+            from .auth import get_access_token
+            token = get_access_token()
+            console.print("[dim]Got Keycloak token[/dim]")
+        except ValueError as e:
+            console.print(f"[red]Auth failed: {e}[/red]")
+            raise typer.Exit(1)
 
     access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
     secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
@@ -220,5 +273,57 @@ def pipeline_run(
                     )
                     count += 1
             console.print(
-                f"[green]Pipeline done. {count} files uploaded to s3://{bucket}/{prefix}/[/green]"
+                f"[green]Uploaded {count} files to s3://{bucket}/{prefix}/[/green]"
             )
+
+        if extract_metadata and token and document_id and result.get("markdown"):
+            progress.update(task, description="Extracting metadata...")
+            try:
+                from .extract import extract_metadata_sync
+            except ImportError:
+                console.print("[red]Metadata extraction requires pip install openkms-cli[metadata][/red]")
+                raise typer.Exit(1)
+
+            try:
+                schema_data = json.loads(extraction_schema)
+            except json.JSONDecodeError as e:
+                console.print(f"[red]Invalid --extraction-schema JSON: {e}[/red]")
+                raise typer.Exit(1)
+
+            if extraction_model_name:
+                from urllib.parse import quote
+                base = api_url.rstrip("/")
+                config_url = f"{base}/api/models/config-by-name?model_name={quote(extraction_model_name)}"
+                config_resp = requests.get(
+                    config_url,
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=30,
+                )
+                if not config_resp.ok:
+                    try:
+                        err = config_resp.json().get("detail", config_resp.text)
+                    except Exception:
+                        err = config_resp.text or str(config_resp.status_code)
+                    console.print(f"[red]Failed to fetch model config: {str(err)[:120]}[/red]")
+                    raise typer.Exit(1)
+                model_config = config_resp.json()
+            else:
+                model_config = {
+                    "base_url": extraction_model_base_url,
+                    "api_key": os.environ.get("EXTRACTION_MODEL_API_KEY", ""),
+                    "model_name": extraction_model_name or "gpt-4",
+                }
+            try:
+                extracted = extract_metadata_sync(result["markdown"], model_config, schema_data)
+            except ValueError as e:
+                console.print(f"[red]Metadata extraction failed: {e}[/red]")
+                raise typer.Exit(1)
+
+            base = api_url.rstrip("/")
+            put_url = f"{base}/api/documents/{document_id}/metadata"
+            headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+            resp = requests.put(put_url, json={"metadata": extracted}, headers=headers, timeout=30)
+            if not resp.ok:
+                console.print(f"[red]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/red]")
+                raise typer.Exit(1)
+            console.print("[green]Metadata updated via API[/green]")

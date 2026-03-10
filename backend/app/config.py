@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Metadata extraction (LLM for document metadata)
     extraction_model_id: str | None = None
 
+    # Backend URL for CLI (worker passes to openkms-cli --api-url)
+    openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
+
     # App
     app_title: str = "openKMS Backend"
     app_version: str = "0.1.0"
@@ -53,6 +56,10 @@ class Settings(BaseSettings):
     keycloak_logout_client_id: str = Field(
         default="openkms-frontend",
         validation_alias="KEYCLOAK_LOGOUT_CLIENT_ID",
+    )
+    keycloak_service_client_id: str = Field(
+        default="openkms-cli",
+        validation_alias="KEYCLOAK_SERVICE_CLIENT_ID",
     )
 
     # Session (for OAuth2 state and post-login)

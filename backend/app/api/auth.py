@@ -67,6 +67,16 @@ async def require_admin(request: Request) -> str:
     return token
 
 
+async def require_service_client(request: Request) -> str:
+    """Require authentication AND token from the configured service client (e.g. openkms-cli)."""
+    token = await require_auth(request)
+    payload = _verify_jwt(token)
+    azp = payload.get("azp") or payload.get("client_id")
+    if azp != settings.keycloak_service_client_id:
+        raise HTTPException(status_code=403, detail="Service client required")
+    return token
+
+
 router = APIRouter(tags=["auth"])
 
 

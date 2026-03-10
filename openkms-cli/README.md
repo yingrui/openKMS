@@ -15,7 +15,7 @@ pip install -e ".[parse]"
 pip install -e ".[pipeline]"
 
 # Full (parse + pipeline)
-pip install -e ".[parse,pipeline]"
+pip install -e ".[parse,pipeline,metadata]"
 ```
 
 ## Commands

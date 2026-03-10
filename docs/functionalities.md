@@ -31,10 +31,11 @@
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
 - **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`
 - **Pipeline**: `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
-- Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`
+- **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`
+- Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`
 - Output structure matches backend: `{file_hash}/original.{ext}`, `result.json`, `markdown.md`, `layout_det_*`, `block_*`, `markdown_out/*`
 - **Backend integration**: subprocess-invokable for async jobs
-- **Extensible**: developers can add new CLI tools; register in app.py
+- **Extensible**: developers can add new Typer subapps in app.py
 
 ### 3. Articles (Feature Toggle)
 
@@ -146,6 +147,7 @@
 | GET | `/api/models` | List models (optional `?category=`, `?search=`) |
 | GET | `/api/models/categories` | List model categories |
 | POST | `/api/models` | Register a new model/API endpoint |
+| GET | `/api/models/config-by-name` | Get model config by model_name (service client; for CLI extraction) |
 | GET | `/api/models/{id}` | Get model detail |
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |
