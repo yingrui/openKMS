@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
-import { findChannel, getDocumentChannelName, type ExtractionSchemaField } from '../data/channelUtils';
+import {
+  findChannel,
+  getDocumentChannelName,
+  extractionSchemaToEditorFields,
+  editorFieldsToJsonSchema,
+  type ExtractionSchemaField,
+} from '../data/channelUtils';
 import { fetchPipelines, type PipelineResponse } from '../data/pipelinesApi';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import { toast } from 'sonner';
@@ -24,6 +30,7 @@ const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
     { key: 'author', label: 'Author', type: 'string', description: 'Author or preparer of the report' },
     { key: 'date', label: 'Date', type: 'date', description: 'Report date in YYYY-MM-DD format' },
     { key: 'summary', label: 'Summary', type: 'string', description: 'Executive summary or brief overview' },
+    { key: 'status', label: 'Status', type: 'enum', description: 'Document status', enum: ['draft', 'in_review', 'published', 'archived'] },
     { key: 'tags', label: 'Tags', type: 'array', description: 'Tags or labels for categorization' },
   ],
   minimal: [
@@ -49,6 +56,7 @@ export function DocumentChannelSettings() {
   const [extractionModelId, setExtractionModelId] = useState('');
   const [extractionSchema, setExtractionSchema] = useState<ExtractionSchemaField[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showJsonPreview, setShowJsonPreview] = useState(false);
 
   const channelName = getDocumentChannelName(channels, channelId);
 
@@ -89,11 +97,7 @@ export function DocumentChannelSettings() {
       setPipelineId(channel.pipeline_id || '');
       setAutoProcess(channel.auto_process || false);
       setExtractionModelId(channel.extraction_model_id || '');
-      setExtractionSchema(
-        Array.isArray(channel.extraction_schema) && channel.extraction_schema.length > 0
-          ? channel.extraction_schema
-          : []
-      );
+      setExtractionSchema(extractionSchemaToEditorFields(channel.extraction_schema ?? null));
     }
   }, [channel]);
 
@@ -106,11 +110,12 @@ export function DocumentChannelSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const schemaDict = editorFieldsToJsonSchema(extractionSchema);
       await updateChannel(channelId, {
         pipeline_id: pipelineId || null,
         auto_process: autoProcess,
         extraction_model_id: extractionModelId || null,
-        extraction_schema: extractionSchema.length > 0 ? extractionSchema : null,
+        extraction_schema: schemaDict ?? null,
       });
       if (refreshChannels) await refreshChannels();
       toast.success('Channel settings saved');
@@ -122,8 +127,10 @@ export function DocumentChannelSettings() {
   };
 
   const addSchemaField = () => {
-    setExtractionSchema((prev) => [...prev, { key: '', label: '', type: 'string', description: '' }]);
+    setExtractionSchema((prev) => [...prev, { key: '', label: '', type: 'string', description: '', required: false }]);
   };
+
+  const jsonSchemaPreview = editorFieldsToJsonSchema(extractionSchema);
 
   const updateSchemaField = (index: number, field: Partial<ExtractionSchemaField>) => {
     setExtractionSchema((prev) => {
@@ -212,9 +219,9 @@ export function DocumentChannelSettings() {
         </section>
 
         <section className="document-channel-settings-section">
-          <h2>Metadata extraction</h2>
+          <h2>Metadata extraction (pydantic-ai)</h2>
           <p className="document-channel-settings-hint">
-            Configure an LLM to extract metadata (abstract, author, tags, etc.) from documents. Define which fields to extract.
+            Configure an LLM to extract metadata using pydantic-ai Agent with StructuredDict. Define the output schema (fields map to JSON Schema for StructuredDict).
           </p>
           <div className="document-channel-settings-field">
             <label htmlFor="extraction-model">Extraction model</label>
@@ -239,9 +246,9 @@ export function DocumentChannelSettings() {
             )}
           </div>
           <div className="document-channel-settings-field">
-            <label>Extraction schema</label>
+            <label>StructuredDict schema</label>
             <p className="document-channel-settings-hint">
-              Fields to extract: key, label, type, and description. Description is included in the LLM prompt to guide extraction.
+              Fields define the output schema for pydantic-ai StructuredDict. Key, label, type, description, and required. Descriptions are used in the JSON Schema to guide the model.
             </p>
             <div className="dcs-schema-presets">
               {Object.keys(SCHEMA_PRESETS).map((k) => (
@@ -295,13 +302,25 @@ export function DocumentChannelSettings() {
                     />
                     <select
                       value={field.type}
-                      onChange={(e) => updateSchemaField(i, { type: e.target.value as 'string' | 'date' | 'array' })}
+                      onChange={(e) => updateSchemaField(i, { type: e.target.value })}
                       className="dcs-schema-select"
                     >
                       <option value="string">string</option>
                       <option value="date">date</option>
                       <option value="array">array</option>
+                      <option value="enum">enum</option>
+                      <option value="integer">integer</option>
+                      <option value="number">number</option>
+                      <option value="boolean">boolean</option>
                     </select>
+                    <label className="dcs-schema-required">
+                      <input
+                        type="checkbox"
+                        checked={!!field.required}
+                        onChange={(e) => updateSchemaField(i, { required: e.target.checked })}
+                      />
+                      <span>Required</span>
+                    </label>
                     <button
                       type="button"
                       className="dcs-schema-remove"
@@ -313,11 +332,24 @@ export function DocumentChannelSettings() {
                   </div>
                   <input
                     type="text"
-                    placeholder="Description (included in LLM prompt to guide extraction)"
+                    placeholder="Description (used in JSON Schema to guide extraction)"
                     value={field.description ?? ''}
                     onChange={(e) => updateSchemaField(i, { description: e.target.value })}
                     className="dcs-schema-input dcs-schema-description"
                   />
+                  {field.type === 'enum' && (
+                    <input
+                      type="text"
+                      placeholder="Enum values (comma-separated, e.g. draft, published, archived)"
+                      value={(field.enum ?? []).join(', ')}
+                      onChange={(e) =>
+                        updateSchemaField(i, {
+                          enum: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                        })
+                      }
+                      className="dcs-schema-input dcs-schema-enum"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -325,9 +357,25 @@ export function DocumentChannelSettings() {
               <Plus size={14} />
               <span>Add field</span>
             </button>
+            <button
+              type="button"
+              className="btn btn-secondary dcs-view-json-btn"
+              onClick={() => setShowJsonPreview((v) => !v)}
+              title={showJsonPreview ? 'Hide JSON' : 'View JSON Schema'}
+            >
+              <Code size={14} />
+              <span>{showJsonPreview ? 'Hide JSON' : 'View JSON'}</span>
+            </button>
+            {showJsonPreview && (
+              <pre className="dcs-json-preview">
+                {jsonSchemaPreview
+                  ? JSON.stringify(jsonSchemaPreview, null, 2)
+                  : '{\n  "type": "object",\n  "properties": {},\n  "required": []\n}'}
+              </pre>
+            )}
             {extractionModelId && extractionSchema.length === 0 && (
               <p className="document-channel-settings-hint dcs-schema-empty-hint">
-                Add fields or choose a preset. If empty, the default schema (abstract, author, publish_date, source, tags, categories) will be used.
+                Add fields or choose a preset. If empty, the default StructuredDict schema (abstract, author, publish_date, source, tags, categories) will be used.
               </p>
             )}
           </div>

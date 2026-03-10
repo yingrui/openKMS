@@ -74,7 +74,7 @@ export async function updateChannel(
     pipeline_id?: string | null;
     auto_process?: boolean;
     extraction_model_id?: string | null;
-    extraction_schema?: { key: string; label: string; type: string; description?: string }[] | null;
+    extraction_schema?: Record<string, unknown> | { key: string; label: string; type: string; description?: string; required?: boolean }[] | null;
     sort_order?: number;
   },
 ): Promise<ChannelNode> {

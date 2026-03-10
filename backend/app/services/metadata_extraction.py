@@ -1,9 +1,12 @@
-"""Service for extracting document metadata using LLM."""
-import json
+"""Service for extracting document metadata using LLM via pydantic-ai."""
 import logging
 from typing import Any
 
-import httpx
+from openai import AsyncOpenAI
+from pydantic_ai import Agent, StructuredDict
+from pydantic_ai.exceptions import ModelAPIError
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.models.api_model import ApiModel
 
@@ -21,107 +24,119 @@ DEFAULT_SCHEMA = [
 TRUNCATE_CHARS = 8000
 
 
-def _build_prompt(markdown: str, schema: list[dict[str, Any]]) -> str:
-    """Build extraction prompt from schema."""
-    lines = [
-        "Extract metadata from the following document content. "
-        "Return a JSON object with these keys (use null for unknown):",
-        "",
-    ]
+def _array_schema_to_json_schema(schema: list[dict[str, Any]]) -> dict[str, Any]:
+    """Convert legacy array extraction_schema to JSON Schema for StructuredDict."""
+    properties: dict[str, dict[str, Any]] = {}
+    required: list[str] = []
     for field in schema:
         key = field.get("key", "unknown")
-        label = field.get("label", key)
+        if not key:
+            continue
         ftype = field.get("type", "string")
-        desc = field.get("description", "").strip()
-        type_hint = "YYYY-MM-DD" if ftype == "date" else "list of strings" if ftype == "array" else "text"
-        if desc:
-            lines.append(f"- {key} ({ftype}): {label} – {desc} (e.g. {type_hint})")
+        desc = (field.get("description") or "").strip()
+        if ftype == "date":
+            prop = {"type": "string", "format": "date"}
+        elif ftype == "array":
+            prop = {"type": "array", "items": {"type": "string"}}
+        elif ftype == "integer":
+            prop = {"type": "integer"}
+        elif ftype == "number":
+            prop = {"type": "number"}
+        elif ftype == "boolean":
+            prop = {"type": "boolean"}
+        elif ftype == "enum":
+            enum_vals = field.get("enum")
+            prop = {"type": "string", "enum": enum_vals if isinstance(enum_vals, list) else []}
         else:
-            lines.append(f"- {key} ({ftype}): {label} – e.g. {type_hint}")
+            prop = {"type": "string"}
+        if desc:
+            prop["description"] = desc
+        properties[key] = prop
+        if field.get("required"):
+            required.append(key)
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+    }
 
-    lines.extend([
-        "",
-        "Document:",
-        "---",
-        markdown[:TRUNCATE_CHARS],
-        "---",
-        "",
-        "JSON only, no other text.",
-    ])
-    return "\n".join(lines)
 
-
-def _extract_json_from_response(content: str) -> dict[str, Any]:
-    """Parse JSON from LLM response, handling markdown code blocks."""
-    text = content.strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        start = 1 if lines[0].startswith("```json") else 0
-        end = next((i for i, l in enumerate(lines) if i > 0 and l.strip() == "```"), len(lines))
-        text = "\n".join(lines[start:end])
-    return json.loads(text)
+def _schema_to_json_schema(schema: list[dict[str, Any]] | dict[str, Any] | None) -> dict[str, Any]:
+    """Convert extraction_schema (dict or legacy array) to JSON Schema for StructuredDict."""
+    if schema is None:
+        return _array_schema_to_json_schema(DEFAULT_SCHEMA)
+    if isinstance(schema, dict):
+        if schema.get("type") == "object" and "properties" in schema:
+            return schema
+        # Malformed dict, fall back to default
+        return _array_schema_to_json_schema(DEFAULT_SCHEMA)
+    if isinstance(schema, list):
+        if not schema:
+            return _array_schema_to_json_schema(DEFAULT_SCHEMA)
+        return _array_schema_to_json_schema(schema)
+    return _array_schema_to_json_schema(DEFAULT_SCHEMA)
 
 
 async def extract_metadata(
     markdown: str,
     model: ApiModel,
-    schema: list[dict[str, Any]] | None = None,
+    schema: list[dict[str, Any]] | dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
-    Extract metadata from document markdown using an LLM.
+    Extract metadata from document markdown using an LLM via pydantic-ai.
 
     Args:
         markdown: Document content in markdown.
         model: Registered ApiModel (category=llm).
-        schema: List of field definitions. If None/empty, uses default schema.
+        schema: JSON Schema dict (type/object, properties, required) or legacy array
+                of field definitions. If None/empty, uses default schema.
 
     Returns:
-        Extracted metadata dict. Keys from schema; values may be null.
+        Extracted metadata dict. Keys from schema properties; values may be null.
     """
     if not markdown or not markdown.strip():
         return {}
 
-    used_schema = schema if schema else DEFAULT_SCHEMA
-    prompt = _build_prompt(markdown, used_schema)
-    url = f"{model.base_url.rstrip('/')}/v1/chat/completions"
-    headers: dict[str, str] = {"Content-Type": "application/json"}
-    if model.api_key:
-        headers["Authorization"] = f"Bearer {model.api_key}"
-    payload = {
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 2048,
-        "temperature": 0.2,
-    }
-    if model.model_name:
-        payload["model"] = model.model_name
+    json_schema = _schema_to_json_schema(schema)
+
+    base_url = model.base_url.rstrip("/")
+    if not base_url.endswith("/v1"):
+        base_url = f"{base_url}/v1"
+
+    client = AsyncOpenAI(
+        base_url=base_url,
+        api_key=model.api_key or "dummy",
+    )
+    provider = OpenAIProvider(openai_client=client)
+    openai_model = OpenAIChatModel(
+        model.model_name or "gpt-4",
+        provider=provider,
+    )
+
+    output_type = StructuredDict(
+        json_schema,
+        name="DocumentMetadata",
+        description="Extracted document metadata",
+    )
+
+    agent = Agent(
+        openai_model,
+        output_type=output_type,
+        system_prompt="Extract metadata from the document content. Use null for unknown values.",
+    )
+
+    truncated = markdown[:TRUNCATE_CHARS]
+    prompt = f"Document:\n---\n{truncated}\n---\n\nExtract metadata from the above document."
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-
-        if resp.status_code >= 400:
-            logger.warning("Metadata extraction HTTP error: %s %s", resp.status_code, resp.text[:200])
-            raise ValueError(f"Extraction failed: HTTP {resp.status_code}")
-
-        data = resp.json()
-        choices = data.get("choices", [])
-        if not choices:
-            raise ValueError("Empty response from model")
-
-        content = choices[0].get("message", {}).get("content", "")
-        if not content:
-            raise ValueError("No content in model response")
-
-        result = _extract_json_from_response(content)
-
-        # Filter to schema keys only
-        schema_keys = {f["key"] for f in used_schema}
-        filtered = {k: v for k, v in result.items() if k in schema_keys}
-        return filtered
-
-    except json.JSONDecodeError as e:
-        logger.warning("Metadata extraction JSON parse error: %s", e)
-        raise ValueError(f"Invalid JSON in model response: {e}") from e
-    except httpx.ConnectError as e:
-        logger.warning("Metadata extraction connection error: %s", e)
-        raise ValueError(f"Connection failed: {e}") from e
+        result = await agent.run(prompt)
+        output = result.output or {}
+        schema_keys = set(json_schema.get("properties", {}).keys())
+        return {k: v for k, v in output.items() if k in schema_keys}
+    except ModelAPIError as e:
+        status = getattr(e, "status_code", 502)
+        logger.warning("Metadata extraction HTTP error: %s %s", status, str(e)[:200])
+        raise ValueError(f"Extraction failed: HTTP {status}") from e
+    except Exception as e:
+        logger.warning("Metadata extraction error: %s", e)
+        raise ValueError(f"Extraction failed: {e}") from e

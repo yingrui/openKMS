@@ -86,7 +86,7 @@ backend/
 │   │   └── tasks.py            # run_pipeline task (subprocess openkms-cli)
 │   └── services/
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
-│       ├── metadata_extraction.py   # LLM-based document metadata extraction (abstract, author, tags, etc.)
+│       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, etc.)
 │       └── storage.py               # S3/MinIO client (upload, delete)
 ├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
 └── worker.py                    # procrastinate worker entry point
@@ -140,7 +140,7 @@ openkms-cli/
 2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend redirects (302) to presigned S3 URL via frontend proxy
 3. If document status is `uploaded` or `failed`, a "Process" button appears to trigger processing
 4. If document status is `pending` or `failed`, a "Reset" button appears to reset status to `uploaded` (only if no active jobs exist)
-5. Metadata section: extract metadata via LLM (channel's extraction_model_id + extraction_schema); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata` (editable fields per schema)
+5. Metadata section: extract metadata via pydantic-ai Agent + StructuredDict (channel's extraction_model_id + extraction_schema); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata` (editable fields per schema)
 6. Document info: Name editable via Edit button; `PUT /api/documents/{id}` with `{ name }`
 7. Markdown edit: Edit/View toggle in markdown panel; edit mode shows textarea with Save (`PUT /api/documents/{id}/markdown`) and Restore (`POST /api/documents/{id}/restore-markdown`) from S3 `{file_hash}/markdown.md`; only for real documents (not examples)
 

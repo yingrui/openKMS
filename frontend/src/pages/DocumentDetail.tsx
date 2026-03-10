@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { fetchDocumentById, extractDocumentMetadata, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse } from '../data/documentsApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
-import { findChannel } from '../data/channelUtils';
+import { findChannel, normalizeExtractionSchemaToFields } from '../data/channelUtils';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -225,10 +225,10 @@ export function DocumentDetail() {
 
   const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
   const hasExtractionModel = !!channel?.extraction_model_id;
-  const extractionSchema = channel?.extraction_schema ?? [];
+  const extractionSchemaFields = normalizeExtractionSchemaToFields(channel?.extraction_schema ?? null);
   const meta = document?.metadata ?? {};
-  const metaKeys = extractionSchema.length > 0
-    ? extractionSchema.map((f) => f.key)
+  const metaKeys = extractionSchemaFields.length > 0
+    ? extractionSchemaFields.map((f) => f.key)
     : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
   const showMetadataSection = !docConfig && document?.channel_id;
 
@@ -338,8 +338,8 @@ export function DocumentDetail() {
 
   const handleEnterMetadataEdit = useCallback(() => {
     const meta = document?.metadata ?? {};
-    const keys = extractionSchema.length > 0
-      ? extractionSchema.map((f) => f.key)
+    const keys = extractionSchemaFields.length > 0
+      ? extractionSchemaFields.map((f) => f.key)
       : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
     const initial: Record<string, unknown> = {};
     for (const key of keys) {
@@ -347,7 +347,7 @@ export function DocumentDetail() {
     }
     setEditMeta(initial);
     setMetadataEditMode(true);
-  }, [document?.metadata, extractionSchema]);
+  }, [document?.metadata, extractionSchemaFields]);
 
   const handleSaveMetadata = useCallback(async () => {
     if (!id) return;
@@ -539,7 +539,7 @@ export function DocumentDetail() {
                         <h3 className="document-detail-metadata-subtitle">
                           <Sparkles size={16} />
                           Extracted metadata
-                          {(metaKeys.length > 0 || extractionSchema.length > 0) && !metadataEditMode ? (
+                          {(metaKeys.length > 0 || extractionSchemaFields.length > 0) && !metadataEditMode ? (
                             <button
                               type="button"
                               className="document-detail-metadata-edit-btn"
@@ -560,8 +560,8 @@ export function DocumentDetail() {
                         ) : metadataEditMode ? (
                           <div className="document-detail-metadata-edit">
                             <dl className="document-detail-info-list document-detail-metadata-list">
-                              {(extractionSchema.length > 0 ? extractionSchema.map((f) => f.key) : metaKeys).map((key) => {
-                                const field = extractionSchema.find((f) => f.key === key);
+                              {(extractionSchemaFields.length > 0 ? extractionSchemaFields.map((f) => f.key) : metaKeys).map((key) => {
+                                const field = extractionSchemaFields.find((f) => f.key === key);
                                 const label = field?.label ?? key;
                                 const fieldType = field?.type ?? 'string';
                                 const val = editMeta[key];
@@ -590,6 +590,62 @@ export function DocumentDetail() {
                                           placeholder="Comma-separated values"
                                           aria-label={label}
                                         />
+                                      ) : fieldType === 'enum' && field?.enum && field.enum.length > 0 ? (
+                                        <select
+                                          className="document-detail-metadata-input"
+                                          value={val != null ? String(val) : ''}
+                                          onChange={(e) => setEditMetaField(key, e.target.value || null)}
+                                          aria-label={label}
+                                        >
+                                          <option value="">—</option>
+                                          {field.enum.map((opt) => (
+                                            <option key={opt} value={opt}>
+                                              {opt}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      ) : fieldType === 'integer' ? (
+                                        <input
+                                          type="number"
+                                          step={1}
+                                          className="document-detail-metadata-input"
+                                          value={val == null || val === '' ? '' : (typeof val === 'number' ? val : parseInt(String(val), 10) || '')}
+                                          onChange={(e) => {
+                                            const s = e.target.value;
+                                            const n = parseInt(s, 10);
+                                            setEditMetaField(key, s === '' || Number.isNaN(n) ? null : n);
+                                          }}
+                                          placeholder="Integer"
+                                          aria-label={label}
+                                        />
+                                      ) : fieldType === 'number' ? (
+                                        <input
+                                          type="number"
+                                          step="any"
+                                          className="document-detail-metadata-input"
+                                          value={val == null || val === '' ? '' : (typeof val === 'number' ? val : parseFloat(String(val)) ?? '')}
+                                          onChange={(e) => {
+                                            const s = e.target.value;
+                                            const n = parseFloat(s);
+                                            setEditMetaField(key, s === '' || Number.isNaN(n) ? null : n);
+                                          }}
+                                          placeholder="Number"
+                                          aria-label={label}
+                                        />
+                                      ) : fieldType === 'boolean' ? (
+                                        <select
+                                          className="document-detail-metadata-input"
+                                          value={val === true ? 'true' : val === false ? 'false' : ''}
+                                          onChange={(e) => {
+                                            const v = e.target.value;
+                                            setEditMetaField(key, v === '' ? null : v === 'true');
+                                          }}
+                                          aria-label={label}
+                                        >
+                                          <option value="">—</option>
+                                          <option value="true">true</option>
+                                          <option value="false">false</option>
+                                        </select>
                                       ) : (
                                         <input
                                           type="text"
@@ -627,7 +683,7 @@ export function DocumentDetail() {
                         ) : (
                           <dl className="document-detail-info-list document-detail-metadata-list">
                             {metaKeys.map((key) => {
-                              const label = extractionSchema.find((f) => f.key === key)?.label ?? key;
+                              const label = extractionSchemaFields.find((f) => f.key === key)?.label ?? key;
                               const val = meta[key];
                               const isArray = Array.isArray(val);
                               return (

@@ -13,7 +13,7 @@
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
-| Document detail | ✅ | View parsed Markdown at `/documents/view/:id` |
+| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; scrollable layout (min-height 720px) for large content |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
 | Document metadata extraction | ✅ | Metadata card on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type, description for LLM prompt); combined with document info in one section |
 | Document info & metadata edit | ✅ | Edit document name (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); supports string, date, array types per extraction schema |
@@ -178,7 +178,7 @@
 - `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (JSONB), `created_at`
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
-- Metadata extraction: `extraction_model_id` designates LLM for extraction; `extraction_schema` defines fields (key, label, type: string/date/array)
+- Metadata extraction: pydantic-ai Agent + StructuredDict; `extraction_model_id` designates LLM; `extraction_schema` stored as JSON Schema dict (type, properties, required, fieldOrder); fieldOrder preserves display order (JSONB does not preserve key order)
 
 ### Document
 
