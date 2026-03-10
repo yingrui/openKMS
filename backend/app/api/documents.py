@@ -18,13 +18,15 @@ from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.schemas.document import (
+    DocumentInfoUpdateBody,
     DocumentListResponse,
     DocumentResponse,
+    MarkdownUpdateBody,
     MetadataUpdateBody,
     ParsingResultResponse,
 )
 from app.services.metadata_extraction import extract_metadata
-from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
+from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
@@ -190,6 +192,69 @@ async def get_document(
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    return DocumentResponse.model_validate(doc)
+
+
+@router.put("/{document_id}", response_model=DocumentResponse)
+async def update_document(
+    document_id: str,
+    body: DocumentInfoUpdateBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update document info (e.g. name)."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if body.name is not None:
+        doc.name = body.name.strip() or doc.name
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.put("/{document_id}/markdown", response_model=DocumentResponse)
+async def update_document_markdown(
+    document_id: str,
+    body: MarkdownUpdateBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update document markdown in database."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    doc.markdown = body.markdown
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/restore-markdown", response_model=DocumentResponse)
+async def restore_document_markdown(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore markdown from object storage (original parsed content)."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not doc.file_hash:
+        raise HTTPException(status_code=400, detail="Document has no file hash; restore not available")
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+    key = f"{doc.file_hash}/markdown.md"
+    if not object_exists(key):
+        raise HTTPException(status_code=404, detail="Markdown file not found in storage")
+    try:
+        content = get_object(key)
+        markdown = content.decode("utf-8")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read markdown: {e}") from e
+    doc.markdown = markdown
+    await db.commit()
+    await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
 
 

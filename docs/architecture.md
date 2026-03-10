@@ -64,7 +64,7 @@ backend/
 │   ├── api/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
-│   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, POST extract-metadata
+│   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, POST test (API provider registry)
@@ -140,7 +140,9 @@ openkms-cli/
 2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend redirects (302) to presigned S3 URL via frontend proxy
 3. If document status is `uploaded` or `failed`, a "Process" button appears to trigger processing
 4. If document status is `pending` or `failed`, a "Reset" button appears to reset status to `uploaded` (only if no active jobs exist)
-5. Metadata section: extract metadata via LLM (channel's extraction_model_id + extraction_schema); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata`
+5. Metadata section: extract metadata via LLM (channel's extraction_model_id + extraction_schema); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata` (editable fields per schema)
+6. Document info: Name editable via Edit button; `PUT /api/documents/{id}` with `{ name }`
+7. Markdown edit: Edit/View toggle in markdown panel; edit mode shows textarea with Save (`PUT /api/documents/{id}/markdown`) and Restore (`POST /api/documents/{id}/restore-markdown`) from S3 `{file_hash}/markdown.md`; only for real documents (not examples)
 
 ### Channel Tree
 

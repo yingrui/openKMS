@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -8,7 +8,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
-import { fetchDocumentById, extractDocumentMetadata, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, type DocumentResponse } from '../data/documentsApi';
+import { fetchDocumentById, extractDocumentMetadata, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse } from '../data/documentsApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { findChannel } from '../data/channelUtils';
@@ -75,6 +75,15 @@ export function DocumentDetail() {
   const [processing, setProcessing] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [markdownEditMode, setMarkdownEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [infoEditMode, setInfoEditMode] = useState(false);
+  const [metadataEditMode, setMetadataEditMode] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editMeta, setEditMeta] = useState<Record<string, unknown>>({});
+  const [savingInfo, setSavingInfo] = useState(false);
+  const [savingMetadata, setSavingMetadata] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -214,6 +223,15 @@ export function DocumentDetail() {
     }
   }, []);
 
+  const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
+  const hasExtractionModel = !!channel?.extraction_model_id;
+  const extractionSchema = channel?.extraction_schema ?? [];
+  const meta = document?.metadata ?? {};
+  const metaKeys = extractionSchema.length > 0
+    ? extractionSchema.map((f) => f.key)
+    : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
+  const showMetadataSection = !docConfig && document?.channel_id;
+
   const handleProcess = useCallback(async () => {
     if (!id || !document) return;
     setProcessing(true);
@@ -257,14 +275,102 @@ export function DocumentDetail() {
     }
   }, [id, document]);
 
-  const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
-  const hasExtractionModel = !!channel?.extraction_model_id;
-  const extractionSchema = channel?.extraction_schema ?? [];
-  const meta = document?.metadata ?? {};
-  const metaKeys = extractionSchema.length > 0
-    ? extractionSchema.map((f) => f.key)
-    : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
-  const showMetadataSection = !docConfig && document?.channel_id;
+  const handleSaveMarkdown = useCallback(async () => {
+    if (!id || markdown === null) return;
+    setSaving(true);
+    try {
+      const updated = await updateDocumentMarkdown(id, markdown);
+      setDocument(updated);
+      setMarkdown(updated.markdown ?? '');
+      setMarkdownEditMode(false);
+      toast.success('Markdown saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save markdown');
+    } finally {
+      setSaving(false);
+    }
+  }, [id, markdown]);
+
+  const handleRestoreMarkdown = useCallback(async () => {
+    if (!id) return;
+    if (!window.confirm('Restore from original? Unsaved edits will be lost.')) return;
+    setRestoring(true);
+    try {
+      const updated = await restoreDocumentMarkdown(id);
+      setDocument(updated);
+      setMarkdown(updated.markdown ?? '');
+      setMarkdownEditMode(false);
+      toast.success('Markdown restored from storage');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Restore failed');
+    } finally {
+      setRestoring(false);
+    }
+  }, [id]);
+
+  const handleEnterInfoEdit = useCallback(() => {
+    setEditName(document?.name ?? '');
+    setInfoEditMode(true);
+  }, [document?.name]);
+
+  const handleSaveInfo = useCallback(async () => {
+    if (!id || !document) return;
+    if (editName.trim() === document.name) {
+      setInfoEditMode(false);
+      return;
+    }
+    setSavingInfo(true);
+    try {
+      const updated = await updateDocument(id, { name: editName.trim() });
+      setDocument(updated);
+      setInfoEditMode(false);
+      toast.success('Document info saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setSavingInfo(false);
+    }
+  }, [id, document, editName]);
+
+  const handleCancelInfoEdit = useCallback(() => {
+    setInfoEditMode(false);
+  }, []);
+
+  const handleEnterMetadataEdit = useCallback(() => {
+    const meta = document?.metadata ?? {};
+    const keys = extractionSchema.length > 0
+      ? extractionSchema.map((f) => f.key)
+      : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
+    const initial: Record<string, unknown> = {};
+    for (const key of keys) {
+      initial[key] = meta[key] ?? '';
+    }
+    setEditMeta(initial);
+    setMetadataEditMode(true);
+  }, [document?.metadata, extractionSchema]);
+
+  const handleSaveMetadata = useCallback(async () => {
+    if (!id) return;
+    setSavingMetadata(true);
+    try {
+      const updated = await updateDocumentMetadata(id, editMeta);
+      setDocument(updated);
+      setMetadataEditMode(false);
+      toast.success('Metadata saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save metadata');
+    } finally {
+      setSavingMetadata(false);
+    }
+  }, [id, editMeta]);
+
+  const handleCancelMetadataEdit = useCallback(() => {
+    setMetadataEditMode(false);
+  }, []);
+
+  const setEditMetaField = useCallback((key: string, value: unknown) => {
+    setEditMeta((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   const handlePageMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, pageIndex: number) => {
@@ -319,7 +425,53 @@ export function DocumentDetail() {
                   <dl className={`document-detail-info-list ${fileHash ? 'document-detail-info-list--with-hash' : ''}`}>
                     <div className="document-detail-info-item document-detail-info-item--name">
                       <dt>Name</dt>
-                      <dd>{document.name}</dd>
+                      <dd>
+                        {infoEditMode && !docConfig ? (
+                          <div className="document-detail-info-edit-row">
+                            <input
+                              type="text"
+                              className="document-detail-info-input"
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              aria-label="Document name"
+                            />
+                            <div className="document-detail-info-edit-actions">
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={handleSaveInfo}
+                                disabled={savingInfo || !editName.trim()}
+                              >
+                                {savingInfo ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                <span>{savingInfo ? 'Saving…' : 'Save'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="document-detail-info-cancel-btn"
+                                onClick={handleCancelInfoEdit}
+                                disabled={savingInfo}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="document-detail-info-value">
+                            {document.name}
+                            {!docConfig && (
+                              <button
+                                type="button"
+                                className="document-detail-info-edit-btn"
+                                onClick={handleEnterInfoEdit}
+                                title="Edit document info"
+                                aria-label="Edit"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                            )}
+                          </span>
+                        )}
+                      </dd>
                     </div>
                     <div className="document-detail-info-item document-detail-info-item--compact">
                       <dt>Type</dt>
@@ -387,12 +539,91 @@ export function DocumentDetail() {
                         <h3 className="document-detail-metadata-subtitle">
                           <Sparkles size={16} />
                           Extracted metadata
+                          {(metaKeys.length > 0 || extractionSchema.length > 0) && !metadataEditMode ? (
+                            <button
+                              type="button"
+                              className="document-detail-metadata-edit-btn"
+                              onClick={handleEnterMetadataEdit}
+                              title="Edit metadata"
+                              aria-label="Edit metadata"
+                            >
+                              <Edit3 size={12} />
+                              <span>Edit</span>
+                            </button>
+                          ) : null}
                         </h3>
-                        {metaKeys.length === 0 ? (
+                        {metaKeys.length === 0 && !metadataEditMode ? (
                           <p className="document-detail-metadata-empty">
                             No metadata extracted. Click Extract to use LLM.
                             {!hasExtractionModel && ' (Configure an extraction model in channel settings.)'}
                           </p>
+                        ) : metadataEditMode ? (
+                          <div className="document-detail-metadata-edit">
+                            <dl className="document-detail-info-list document-detail-metadata-list">
+                              {(extractionSchema.length > 0 ? extractionSchema.map((f) => f.key) : metaKeys).map((key) => {
+                                const field = extractionSchema.find((f) => f.key === key);
+                                const label = field?.label ?? key;
+                                const fieldType = field?.type ?? 'string';
+                                const val = editMeta[key];
+                                const strVal = val == null ? '' : Array.isArray(val) ? (val as unknown[]).join(', ') : String(val);
+                                return (
+                                  <div key={key} className="document-detail-info-item document-detail-info-item--edit">
+                                    <dt>{label}</dt>
+                                    <dd>
+                                      {fieldType === 'date' ? (
+                                        <input
+                                          type="date"
+                                          className="document-detail-metadata-input"
+                                          value={typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val) ? (val as string).slice(0, 10) : ''}
+                                          onChange={(e) => setEditMetaField(key, e.target.value || null)}
+                                          aria-label={label}
+                                        />
+                                      ) : fieldType === 'array' ? (
+                                        <input
+                                          type="text"
+                                          className="document-detail-metadata-input"
+                                          value={Array.isArray(val) ? (val as unknown[]).join(', ') : (val ? String(val) : '')}
+                                          onChange={(e) => {
+                                            const s = e.target.value.trim();
+                                            setEditMetaField(key, s ? s.split(',').map((x) => x.trim()).filter(Boolean) : []);
+                                          }}
+                                          placeholder="Comma-separated values"
+                                          aria-label={label}
+                                        />
+                                      ) : (
+                                        <input
+                                          type="text"
+                                          className="document-detail-metadata-input"
+                                          value={strVal}
+                                          onChange={(e) => setEditMetaField(key, e.target.value || null)}
+                                          aria-label={label}
+                                        />
+                                      )}
+                                    </dd>
+                                  </div>
+                                );
+                              })}
+                            </dl>
+                            <div className="document-detail-metadata-edit-actions">
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={handleSaveMetadata}
+                                disabled={savingMetadata}
+                              >
+                                {savingMetadata ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                <span>{savingMetadata ? 'Saving…' : 'Save'}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="document-detail-metadata-cancel-btn"
+                                onClick={handleCancelMetadataEdit}
+                                disabled={savingMetadata}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           <dl className="document-detail-info-list document-detail-metadata-list">
                             {metaKeys.map((key) => {
@@ -423,6 +654,7 @@ export function DocumentDetail() {
                           </dl>
                         )}
                         <div className="document-detail-metadata-actions">
+                          {!metadataEditMode && (
                           <button
                             type="button"
                             className="btn btn-primary document-detail-extract-btn"
@@ -450,6 +682,7 @@ export function DocumentDetail() {
                             )}
                             <span>{extracting ? 'Extracting…' : 'Extract'}</span>
                           </button>
+                          )}
                         </div>
                       </div>
                     </>
@@ -541,6 +774,21 @@ export function DocumentDetail() {
             <h2 className="document-detail-panel-header">
               <FileText size={16} />
               <span>Markdown Content</span>
+              {!docConfig && (
+                <button
+                  type="button"
+                  className={`document-detail-edit-toggle ${markdownEditMode ? 'document-detail-edit-toggle--active' : ''}`}
+                  onClick={() => {
+                    if (!markdownEditMode) setSelectedBlock(null);
+                    setMarkdownEditMode((v) => !v);
+                  }}
+                  title={markdownEditMode ? 'Switch to view mode' : 'Edit markdown'}
+                  aria-pressed={markdownEditMode}
+                >
+                  {markdownEditMode ? <Eye size={14} /> : <Edit3 size={14} />}
+                  <span>{markdownEditMode ? 'View' : 'Edit'}</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="document-detail-extend-btn"
@@ -552,8 +800,8 @@ export function DocumentDetail() {
               </button>
             </h2>
             <div className="document-detail-markdown-body">
-              {selectedBlock ? (
-                <div className="document-detail-block-view">
+              {selectedBlock && !markdownEditMode ? (
+                <div key="block-view" className="document-detail-block-view">
                   <button
                     type="button"
                     className="document-detail-block-back"
@@ -586,7 +834,38 @@ export function DocumentDetail() {
                     <p className="document-detail-muted">No content</p>
                   )}
                 </div>
+              ) : markdownEditMode && !docConfig ? (
+                <div key="edit-view" className="document-detail-markdown-edit">
+                  <textarea
+                    className="document-detail-markdown-textarea"
+                    value={markdown ?? ''}
+                    onChange={(e) => setMarkdown(e.target.value)}
+                    placeholder="Markdown content..."
+                  />
+                  <div className="document-detail-markdown-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary document-detail-save-btn"
+                      onClick={handleSaveMarkdown}
+                      disabled={saving}
+                    >
+                      {saving ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
+                      <span>{saving ? 'Saving…' : 'Save'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="document-detail-restore-btn"
+                      onClick={handleRestoreMarkdown}
+                      disabled={restoring || !fileHash}
+                      title={!fileHash ? 'No file hash – restore not available' : 'Restore from original storage'}
+                    >
+                      {restoring ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
+                      <span>{restoring ? 'Restoring…' : 'Restore'}</span>
+                    </button>
+                  </div>
+                </div>
               ) : markdown && (folderId || markdownBaseUrl) ? (
+                <div key="markdown-view">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
                   rehypePlugins={[rehypeRaw, rehypeKatex]}
@@ -594,8 +873,9 @@ export function DocumentDetail() {
                 >
                   {markdown}
                 </ReactMarkdown>
+                </div>
               ) : (
-                <p className="document-detail-muted">No markdown content</p>
+                <p key="empty-view" className="document-detail-muted">No markdown content</p>
               )}
             </div>
           </section>

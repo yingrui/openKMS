@@ -58,6 +58,18 @@ class MetadataUpdateBody(BaseModel):
     metadata: dict[str, Any]
 
 
+class DocumentInfoUpdateBody(BaseModel):
+    """Body for PUT /documents/{id} (document info)."""
+
+    name: str | None = None
+
+
+class MarkdownUpdateBody(BaseModel):
+    """Body for PUT /documents/{id}/markdown."""
+
+    markdown: str
+
+
 class DocumentListResponse(BaseModel):
     items: list[DocumentResponse]
     total: int

@@ -7,6 +7,8 @@
 - Document detail view with Markdown, layout images, block images; loads files via backend proxy
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`
+- Document info & metadata: Edit name (`PUT /api/documents/{id}`), edit metadata (`PUT /metadata`), Extract via LLM
+- Document markdown: Edit and save (`PUT /markdown`), restore from S3 (`POST /restore-markdown`)
 - Documents overview, channel management, channel settings
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in

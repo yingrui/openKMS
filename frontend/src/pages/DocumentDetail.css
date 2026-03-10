@@ -103,6 +103,29 @@
   opacity: 0.9;
 }
 
+.document-detail-metadata-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.document-detail-metadata-edit-btn:hover {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: var(--color-bg-muted);
+}
+
 .document-detail-info-toggle ~ .document-detail-info-body {
   margin-top: 12px;
 }
@@ -269,6 +292,124 @@
   max-width: 140px;
 }
 
+.document-detail-info-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.document-detail-info-edit-btn {
+  display: inline-flex;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.document-detail-info-edit-btn:hover {
+  color: var(--color-accent);
+  background: var(--color-bg-muted);
+}
+
+.document-detail-info-edit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.document-detail-info-input {
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  width: 100%;
+  max-width: 400px;
+}
+
+.document-detail-info-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.document-detail-info-edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.document-detail-info-cancel-btn {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.document-detail-info-cancel-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.document-detail-metadata-edit {
+  margin-bottom: 12px;
+}
+
+.document-detail-metadata-input {
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  width: 100%;
+  min-width: 0;
+}
+
+.document-detail-metadata-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.document-detail-metadata-list .document-detail-info-item--edit {
+  align-items: flex-start;
+}
+
+.document-detail-metadata-list .document-detail-info-item--edit dt {
+  padding-top: 8px;
+}
+
+.document-detail-metadata-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.document-detail-metadata-cancel-btn {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.document-detail-metadata-cancel-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
 @media (max-width: 768px) {
   .document-detail-info {
     padding: 14px 18px;
@@ -331,6 +472,8 @@
   font-weight: 600;
   padding: 14px 18px;
   margin: 0;
+  min-height: 48px;
+  box-sizing: border-box;
   background: var(--color-bg-muted);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
@@ -361,6 +504,108 @@
 .document-detail-extend-btn:hover {
   color: var(--color-accent);
   background: var(--color-bg-elevated);
+}
+
+.document-detail-edit-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+
+.document-detail-edit-toggle:hover {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.document-detail-edit-toggle--active {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.document-detail-markdown-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+}
+
+.document-detail-markdown-textarea {
+  flex: 1;
+  min-height: 200px;
+  padding: 16px 18px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  resize: vertical;
+}
+
+.document-detail-markdown-textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+
+.document-detail-markdown-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.document-detail-save-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.document-detail-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.document-detail-restore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.document-detail-restore-btn:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+
+.document-detail-restore-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .document-detail-images-body {

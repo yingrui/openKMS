@@ -14,7 +14,9 @@
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id` |
+| Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
 | Document metadata extraction | ✅ | Metadata card on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type, description for LLM prompt); combined with document info in one section |
+| Document info & metadata edit | ✅ | Edit document name (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); supports string, date, array types per extraction schema |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
 ### 2. Document Parsing
@@ -120,12 +122,15 @@
 | PUT | `/api/channels/documents/{id}` | Update channel (name, pipeline_id, auto_process, extraction_model_id, extraction_schema) |
 | POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
-| GET | `/api/documents/{id}` | Get document metadata (includes status) |
+| GET | `/api/documents/{id}` | Get document by ID |
+| PUT | `/api/documents/{id}` | Update document info (e.g. name) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
 | GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
 | POST | `/api/documents/{id}/reset-status` | Reset document status to uploaded (if no active jobs) |
 | PUT | `/api/documents/{id}/metadata` | Update document metadata (partial merge) |
+| PUT | `/api/documents/{id}/markdown` | Update document markdown (DB only) |
+| POST | `/api/documents/{id}/restore-markdown` | Restore markdown from S3 `{file_hash}/markdown.md` |
 | POST | `/api/documents/{id}/extract-metadata` | Extract metadata from markdown using channel's LLM |
 | GET | `/api/pipelines` | List pipeline configurations |
 | GET | `/api/pipelines/template-variables` | List available command template variables |

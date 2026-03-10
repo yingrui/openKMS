@@ -165,6 +165,26 @@ export async function extractDocumentMetadata(documentId: string): Promise<Docum
   return res.json();
 }
 
+export async function updateDocument(
+  documentId: string,
+  params: { name?: string }
+): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const body: Record<string, string> = {};
+  if (params.name !== undefined) body.name = params.name;
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
+  }
+  return res.json();
+}
+
 export async function updateDocumentMetadata(
   documentId: string,
   metadata: Record<string, unknown>
@@ -179,6 +199,38 @@ export async function updateDocumentMetadata(
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
+  }
+  return res.json();
+}
+
+export async function updateDocumentMarkdown(
+  documentId: string,
+  markdown: string
+): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/markdown`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ markdown }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
+  }
+  return res.json();
+}
+
+export async function restoreDocumentMarkdown(documentId: string): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/restore-markdown`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Restore failed');
   }
   return res.json();
 }
