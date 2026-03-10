@@ -2,35 +2,74 @@
 
 ## High-Level Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Frontend (React/Vite)                   │
-│  Home | Documents | Articles | Knowledge Bases | Pipelines | ...│
-└───────────────────────────────┬─────────────────────────────────┘
-                                │ HTTP (localhost:8102)
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    Backend (FastAPI)                            │
-│  /api/channels | /api/documents | /api/pipelines | /api/jobs    │
-│  /api/models | /api/feature-toggles                             │
-│  (upload stores file only; jobs deferred via procrastinate)     │
-└───────┬────────────────┬──────────────────┬─────────────────────┘
-        │                │                  │
-        ▼                ▼                  ▼
-┌──────────────┐ ┌────────────────┐ ┌────────────────────────────┐
-│ PostgreSQL   │ │ S3/MinIO       │ │ procrastinate worker       │
-│ documents    │ │ file storage   │ │ (picks up jobs, spawns     │
-│ doc_channels │ │                │ │  openkms-cli subprocess)   │
-│ pipelines    │ │                │ │                            │
-│ api_models   │ │                │ │                            │
-│ feature_     │ │                │ │                            │
-│  toggles     │ │                │ │                            │
-│ procrastinate│ │                │ │ → openkms-cli pipeline run │
-│  _jobs       │ │                │ │ → mlx-vlm-server (VLM)     │
-└──────────────┘ └────────────────┘ └────────────────────────────┘
+```mermaid
+flowchart TB
+  subgraph Frontend["Frontend (React/Vite)"]
+    FE["Home, Documents, Articles, Pipelines, Jobs, Models"]
+  end
+
+  subgraph Backend["Backend (FastAPI)"]
+    API["channels, documents, pipelines, jobs, models, feature-toggles"]
+  end
+
+  subgraph Storage["Data & Processing"]
+    PG[(PostgreSQL)]
+    S3[(S3/MinIO)]
+    Worker["procrastinate worker"]
+  end
+
+  subgraph WorkerDetail["Worker execution"]
+    CLI["openkms-cli pipeline run"]
+    VLM["mlx-vlm-server"]
+  end
+
+  subgraph External["External Services"]
+    LLM["OpenAI compatible Service Provider"]
+  end
+
+  Frontend -->|HTTP :8102| Backend
+  Backend --> PG
+  Backend --> S3
+  Backend --> Worker
+  Backend -->|metadata extraction, model test| LLM
+  Worker --> S3
+  Worker --> CLI
+  CLI --> VLM
+  CLI -->|metadata extraction| LLM
 ```
 
+| Layer | Components |
+|-------|------------|
+| **PostgreSQL** | documents, doc_channels, pipelines, api_models, feature_toggles, procrastinate_jobs |
+| **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
+| **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status |
+| **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction and model playground (configured via api_models) |
+
 ## Frontend Structure
+
+```mermaid
+flowchart TB
+  subgraph Providers["Provider hierarchy"]
+    Auth[AuthContext]
+    FT[FeatureTogglesContext]
+    DC[DocumentChannelsContext]
+    Auth --> FT
+    FT --> DC
+  end
+
+  subgraph Pages["Routes"]
+    Home[Home]
+    Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
+    Articles[Articles, ArticleDetail]
+    KB[KnowledgeBaseList, KnowledgeBaseDetail]
+    Pipelines[Pipelines]
+    Jobs[Jobs, JobDetail]
+    Models[Models, ModelDetail]
+    Console[Console: Overview, Settings, Users, FeatureToggles]
+  end
+
+  Providers --> Pages
+```
 
 ```
 frontend/src/
@@ -121,12 +160,54 @@ openkms-cli/
 
 ### Document Upload (Decoupled)
 
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant FE as Frontend
+  participant BE as Backend
+  participant S3 as S3/MinIO
+  participant DB as PostgreSQL
+  participant Q as procrastinate
+
+  U->>FE: Select files, choose channel
+  FE->>BE: POST /api/documents/upload
+  BE->>S3: Store {file_hash}/original.{ext}
+  BE->>DB: Create Document (status=uploaded)
+  alt channel.auto_process && pipeline_id
+    BE->>Q: defer run_pipeline job
+    BE->>DB: status=pending
+  end
+  BE-->>FE: DocumentResponse
+```
+
 1. Frontend opens upload modal on channel page; user selects files; `POST /api/documents/upload` (multipart: file + channel_id)
 2. Backend stores original file to S3/MinIO under `{file_hash}/original.{ext}`; creates Document with `status=uploaded` (no parsing at upload time)
 3. If channel has `auto_process=true` and a linked pipeline, a procrastinate job is deferred automatically (`status=pending`)
 4. Response: DocumentResponse with status
 
 ### Document Processing (Job Queue)
+
+```mermaid
+sequenceDiagram
+  participant Q as procrastinate worker
+  participant DB as PostgreSQL
+  participant CLI as openkms-cli
+  participant S3 as S3/MinIO
+  participant VLM as mlx-vlm-server
+  participant BE as Backend API
+
+  Q->>DB: Pick up job, status=running
+  Q->>CLI: Spawn pipeline run (rendered command)
+  CLI->>S3: Download original
+  CLI->>VLM: Parse (PaddleOCR-VL)
+  VLM-->>CLI: Markdown, layout
+  CLI->>S3: Upload result.json, markdown.md, images
+  alt extraction enabled
+    CLI->>BE: PUT /api/documents/{id}/metadata
+  end
+  Q->>S3: Read result.json
+  Q->>DB: status=completed, parsing_result, markdown
+```
 
 1. Jobs can be created: manually via `POST /api/jobs`, or automatically on upload (if channel has auto_process)
 2. The job references a Pipeline configuration (command template with `{variable}` placeholders, default_args, optional linked model)
@@ -159,6 +240,26 @@ openkms-cli/
 - Backend returns documents in channel and descendants
 
 ## Authentication (Keycloak)
+
+```mermaid
+flowchart LR
+  subgraph UserFlow["User auth flow"]
+    U[User] -->|"kc.login()"| KC[Keycloak]
+    KC -->|"Auth Code + PKCE"| FE[Frontend]
+    FE -->|"Bearer JWT"| BE[Backend API]
+    FE -->|"POST /sync-session"| BE
+  end
+
+  subgraph BackendAuth["Backend accepts"]
+    BE
+    BE -->|"JWT or session cookie"| JWKS[Keycloak JWKS]
+  end
+
+  subgraph CLIAuth["openkms-cli (worker)"]
+    CLI[openkms-cli] -->|"Client credentials"| KC
+    CLI -->|"Bearer token"| BE
+  end
+```
 
 - **Backend**: Requires auth for `/api/*` (channels, documents). Accepts either session cookie (from backend OAuth flow) or `Authorization: Bearer <JWT>`. JWT validated via Keycloak JWKS.
 - **Frontend**: Keycloak JS adapter (Authorization Code + PKCE); sends Bearer token in API requests; calls `POST /sync-session` after login to sync JWT to backend session (for img requests that use cookies).
