@@ -268,7 +268,7 @@ export function Pipelines() {
                 <select value={formModelId} onChange={(e) => setFormModelId(e.target.value)}>
                   <option value="">No model linked</option>
                   {allModels.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name} ({m.provider})</option>
+                    <option key={m.id} value={m.id}>{m.name} ({m.provider_name})</option>
                   ))}
                 </select>
               </label>

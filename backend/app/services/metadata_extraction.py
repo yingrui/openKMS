@@ -99,13 +99,13 @@ async def extract_metadata(
 
     json_schema = _schema_to_json_schema(schema)
 
-    base_url = model.base_url.rstrip("/")
+    base_url = model.provider_rel.base_url.rstrip("/")
     if not base_url.endswith("/v1"):
         base_url = f"{base_url}/v1"
 
     client = AsyncOpenAI(
         base_url=base_url,
-        api_key=model.api_key or "dummy",
+        api_key=model.provider_rel.api_key or "dummy",
     )
     provider = OpenAIProvider(openai_client=client)
     openai_model = OpenAIChatModel(

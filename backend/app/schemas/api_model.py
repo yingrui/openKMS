@@ -7,12 +7,26 @@ from pydantic import BaseModel, field_validator, model_validator
 VALID_CATEGORIES = {"ocr", "vl", "llm", "embedding", "text-classification"}
 
 
+def _model_response_from_orm(model: Any) -> dict[str, Any]:
+    """Build ApiModelResponse dict from ORM with provider_rel loaded."""
+    return {
+        "id": model.id,
+        "provider_id": model.provider_id,
+        "provider_name": getattr(model.provider_rel, "name", ""),
+        "name": model.name,
+        "category": model.category,
+        "base_url": getattr(model.provider_rel, "base_url", ""),
+        "model_name": model.model_name,
+        "config": model.config,
+        "created_at": model.created_at,
+        "updated_at": model.updated_at,
+    }
+
+
 class ApiModelCreate(BaseModel):
+    provider_id: str
     name: str
-    provider: str
     category: str
-    base_url: str
-    api_key: str | None = None
     model_name: str | None = None
     config: dict[str, Any] | None = None
 
@@ -25,11 +39,9 @@ class ApiModelCreate(BaseModel):
 
 
 class ApiModelUpdate(BaseModel):
+    provider_id: str | None = None
     name: str | None = None
-    provider: str | None = None
     category: str | None = None
-    base_url: str | None = None
-    api_key: str | None = None
     model_name: str | None = None
     config: dict[str, Any] | None = None
 
@@ -43,8 +55,9 @@ class ApiModelUpdate(BaseModel):
 
 class ApiModelResponse(BaseModel):
     id: str
+    provider_id: str
+    provider_name: str
     name: str
-    provider: str
     category: str
     base_url: str
     api_key_set: bool = False
@@ -57,20 +70,11 @@ class ApiModelResponse(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def mask_api_key(cls, data: Any) -> Any:
-        """Set api_key_set flag and strip the actual key from responses."""
-        if hasattr(data, "api_key"):
-            obj = dict(
-                id=data.id, name=data.name, provider=data.provider,
-                category=data.category, base_url=data.base_url,
-                api_key_set=bool(data.api_key),
-                model_name=data.model_name, config=data.config,
-                created_at=data.created_at, updated_at=data.updated_at,
-            )
-            return obj
-        if isinstance(data, dict):
-            data["api_key_set"] = bool(data.get("api_key"))
-            data.pop("api_key", None)
+    def build_from_orm(cls, data: Any) -> Any:
+        if hasattr(data, "provider_rel") and data.provider_rel is not None:
+            d = _model_response_from_orm(data)
+            d["api_key_set"] = bool(getattr(data.provider_rel, "api_key", None))
+            return d
         return data
 
 

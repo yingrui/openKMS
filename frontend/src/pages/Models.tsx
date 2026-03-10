@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2 } from 'lucide-react';
+import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2, Server } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchModels,
@@ -11,105 +11,143 @@ import {
   type ApiModelResponse,
   type ModelCategory,
 } from '../data/modelsApi';
+import {
+  fetchProviders,
+  createProvider,
+  updateProvider,
+  deleteProvider,
+  type ApiProviderResponse,
+} from '../data/providersApi';
 import './Models.css';
+
+type ModalMode = 'provider' | 'model' | null;
 
 export function Models() {
   const navigate = useNavigate();
+  const [providers, setProviders] = useState<ApiProviderResponse[]>([]);
   const [models, setModels] = useState<ApiModelResponse[]>([]);
   const [categories, setCategories] = useState<ModelCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [editProvider, setEditProvider] = useState<ApiProviderResponse | null>(null);
   const [editModel, setEditModel] = useState<ApiModelResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Provider form
+  const [provFormName, setProvFormName] = useState('');
+  const [provFormBaseUrl, setProvFormBaseUrl] = useState('');
+  const [provFormApiKey, setProvFormApiKey] = useState('');
+
+  // Model form
+  const [formProviderId, setFormProviderId] = useState('');
   const [formName, setFormName] = useState('');
-  const [formProvider, setFormProvider] = useState('');
   const [formCategory, setFormCategory] = useState('');
-  const [formBaseUrl, setFormBaseUrl] = useState('');
-  const [formApiKey, setFormApiKey] = useState('');
   const [formModelName, setFormModelName] = useState('');
   const [formConfig, setFormConfig] = useState('');
+
+  const loadProviders = useCallback(async () => {
+    try {
+      const res = await fetchProviders();
+      setProviders(res.items);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load providers');
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [res, cats] = await Promise.all([
-        fetchModels({ category: activeCategory || undefined, search: search || undefined }),
+      const [modelsRes, cats, provsRes] = await Promise.all([
+        fetchModels({
+          category: activeCategory || undefined,
+          provider_id: activeProvider || undefined,
+          search: search || undefined,
+        }),
         fetchModelCategories(),
+        fetchProviders(),
       ]);
-      setModels(res.items);
+      setModels(modelsRes.items);
       setCategories(cats);
+      setProviders(provsRes.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load models');
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, search]);
+  }, [activeCategory, activeProvider, search]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  const openCreate = () => {
-    setEditModel(null);
-    setFormName('');
-    setFormProvider('');
-    setFormCategory(activeCategory || (categories[0]?.id ?? ''));
-    setFormBaseUrl('');
-    setFormApiKey('');
-    setFormModelName('');
-    setFormConfig('');
-    setShowModal(true);
+  const openAddProvider = () => {
+    setEditProvider(null);
+    setProvFormName('');
+    setProvFormBaseUrl('');
+    setProvFormApiKey('');
+    setModalMode('provider');
   };
 
-  const openEdit = (m: ApiModelResponse) => {
+  const openEditProvider = (p: ApiProviderResponse) => {
+    setEditProvider(p);
+    setProvFormName(p.name);
+    setProvFormBaseUrl(p.base_url);
+    setProvFormApiKey('');
+    setModalMode('provider');
+  };
+
+  const openAddModel = () => {
+    setEditModel(null);
+    setFormProviderId(activeProvider || (providers[0]?.id ?? ''));
+    setFormName('');
+    setFormCategory(categories[0]?.id ?? '');
+    setFormModelName('');
+    setFormConfig('');
+    setModalMode('model');
+  };
+
+  const openEditModel = (m: ApiModelResponse) => {
     setEditModel(m);
+    setFormProviderId(m.provider_id);
     setFormName(m.name);
-    setFormProvider(m.provider);
     setFormCategory(m.category);
-    setFormBaseUrl(m.base_url);
-    setFormApiKey('');
     setFormModelName(m.model_name || '');
     setFormConfig(m.config ? JSON.stringify(m.config, null, 2) : '');
-    setShowModal(true);
+    setModalMode('model');
   };
 
   const closeModal = () => {
     if (!submitting) {
-      setShowModal(false);
+      setModalMode(null);
+      setEditProvider(null);
       setEditModel(null);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!formName.trim() || !formProvider.trim() || !formCategory || !formBaseUrl.trim()) return;
+  const handleProviderSubmit = async () => {
+    if (!provFormName.trim() || !provFormBaseUrl.trim()) return;
     setSubmitting(true);
     try {
-      let parsedConfig: Record<string, unknown> | undefined;
-      if (formConfig.trim()) {
-        parsedConfig = JSON.parse(formConfig);
-      }
-
-      const payload = {
-        name: formName,
-        provider: formProvider,
-        category: formCategory,
-        base_url: formBaseUrl,
-        api_key: formApiKey || null,
-        model_name: formModelName || null,
-        config: parsedConfig ?? null,
-      };
-
-      if (editModel) {
-        await updateModel(editModel.id, payload);
+      if (editProvider) {
+        await updateProvider(editProvider.id, {
+          name: provFormName,
+          base_url: provFormBaseUrl,
+          api_key: provFormApiKey || undefined,
+        });
+        toast.success('Provider updated');
       } else {
-        await createModel(payload);
+        await createProvider({
+          name: provFormName,
+          base_url: provFormBaseUrl,
+          api_key: provFormApiKey || null,
+        });
+        toast.success('Provider added');
       }
-      setShowModal(false);
-      setEditModel(null);
-      toast.success(editModel ? 'Model updated' : 'Model registered');
+      closeModal();
+      await loadProviders();
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Operation failed');
@@ -118,7 +156,51 @@ export function Models() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleModelSubmit = async () => {
+    if (!formName.trim() || !formProviderId || !formCategory) return;
+    setSubmitting(true);
+    try {
+      let parsedConfig: Record<string, unknown> | undefined;
+      if (formConfig.trim()) {
+        parsedConfig = JSON.parse(formConfig);
+      }
+      const payload = {
+        provider_id: formProviderId,
+        name: formName,
+        category: formCategory,
+        model_name: formModelName || null,
+        config: parsedConfig ?? null,
+      };
+      if (editModel) {
+        await updateModel(editModel.id, payload);
+        toast.success('Model updated');
+      } else {
+        await createModel(payload);
+        toast.success('Model added');
+      }
+      closeModal();
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Operation failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteProvider = async (id: string) => {
+    if (!window.confirm('Delete this provider? Models under it must be deleted first.')) return;
+    try {
+      await deleteProvider(id);
+      toast.success('Provider deleted');
+      if (activeProvider === id) setActiveProvider(null);
+      await loadProviders();
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Delete failed');
+    }
+  };
+
+  const handleDeleteModel = async (id: string) => {
     if (!window.confirm('Delete this model? This cannot be undone.')) return;
     try {
       await deleteModel(id);
@@ -129,8 +211,9 @@ export function Models() {
     }
   };
 
-  const categoryLabel = (catId: string) =>
-    categories.find((c) => c.id === catId)?.label || catId;
+  const categoryLabel = (catId: string) => categories.find((c) => c.id === catId)?.label || catId;
+  const providerModelCount = (providerId: string) =>
+    models.filter((m) => m.provider_id === providerId).length;
 
   return (
     <div className="models">
@@ -138,48 +221,84 @@ export function Models() {
         <div>
           <h1>Models</h1>
           <p className="page-subtitle">
-            Manage external API providers and inference APIs: OCR, VL, LLM, Embedding, Text Classification, and more.
+            Manage service providers first, then add models under each provider.
           </p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={openCreate}>
-          <Plus size={18} />
-          <span>Add API</span>
-        </button>
       </div>
       <div className="models-main">
         <div className="models-categories">
-          <h3>API categories</h3>
+          <div className="models-categories-header">
+            <h3>Service Providers</h3>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={openAddProvider}>
+              <Plus size={14} />
+              Add
+            </button>
+          </div>
           <ul className="models-category-list">
             <li
-              className={`models-category-item ${activeCategory === null ? 'active' : ''}`}
-              onClick={() => setActiveCategory(null)}
+              className={`models-category-item ${activeProvider === null ? 'active' : ''}`}
+              onClick={() => setActiveProvider(null)}
             >
-              <Cpu size={16} />
+              <Server size={16} />
               <span>All</span>
             </li>
-            {categories.map((cat) => (
+            {providers.map((p) => (
               <li
-                key={cat.id}
-                className={`models-category-item ${activeCategory === cat.id ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat.id)}
+                key={p.id}
+                className={`models-category-item models-provider-item ${activeProvider === p.id ? 'active' : ''}`}
+                onClick={() => setActiveProvider(p.id)}
               >
-                <Cpu size={16} />
-                <span>{cat.label}</span>
+                <Server size={16} />
+                <span className="models-provider-name">{p.name}</span>
+                <span className="models-provider-count">({providerModelCount(p.id)})</span>
+                <div className="models-provider-actions" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" title="Edit provider" onClick={() => openEditProvider(p)}>
+                    <Pencil size={12} />
+                  </button>
+                  <button type="button" title="Delete provider" onClick={() => handleDeleteProvider(p.id)}>
+                    <Trash2 size={12} />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         </div>
         <div className="models-content">
           <div className="models-toolbar">
-            <div className="models-search">
-              <Search size={18} />
-              <input
-                type="search"
-                aria-label="Search models"
-                placeholder="Search models..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+            <div className="models-toolbar-row">
+              <div className="models-search">
+                <Search size={18} />
+                <input
+                  type="search"
+                  aria-label="Search models"
+                  placeholder="Search models..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="models-category-filters">
+                <button
+                  type="button"
+                  className={`models-filter-btn ${activeCategory === null ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(null)}
+                >
+                  All
+                </button>
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`models-filter-btn ${activeCategory === c.id ? 'active' : ''}`}
+                    onClick={() => setActiveCategory(c.id)}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="btn btn-primary models-toolbar-add" onClick={openAddModel} disabled={providers.length === 0}>
+                <Plus size={18} />
+                <span>Add Model</span>
+              </button>
             </div>
           </div>
           <div className="models-table-wrap">
@@ -196,20 +315,25 @@ export function Models() {
                     <th>Provider</th>
                     <th>Category</th>
                     <th>Base URL</th>
-                    <th>API Key</th>
                     <th className="models-table-actions-col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {models.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
-                        No models registered yet. Click "Add API" to get started.
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                        {providers.length === 0
+                          ? 'Add a provider first, then add models.'
+                          : 'No models yet. Click "Add Model" to get started.'}
                       </td>
                     </tr>
                   ) : (
                     models.map((m) => (
-                      <tr key={m.id} className="models-table-row-clickable" onClick={() => navigate(`/models/${m.id}`)}>
+                      <tr
+                        key={m.id}
+                        className="models-table-row-clickable"
+                        onClick={() => navigate(`/models/${m.id}`)}
+                      >
                         <td>
                           <div className="models-table-name">
                             <Cpu size={18} strokeWidth={1.5} />
@@ -221,16 +345,23 @@ export function Models() {
                             </div>
                           </div>
                         </td>
-                        <td>{m.provider}</td>
+                        <td>{m.provider_name}</td>
                         <td>{categoryLabel(m.category)}</td>
                         <td className="models-table-url">{m.base_url}</td>
-                        <td className="models-table-muted">{m.api_key_set ? '••••••••' : '—'}</td>
                         <td className="models-table-actions-col">
                           <div className="models-table-btns">
-                            <button type="button" title="Edit" onClick={(e) => { e.stopPropagation(); openEdit(m); }}>
+                            <button
+                              type="button"
+                              title="Edit"
+                              onClick={(e) => { e.stopPropagation(); openEditModel(m); }}
+                            >
                               <Pencil size={16} />
                             </button>
-                            <button type="button" title="Delete" onClick={(e) => { e.stopPropagation(); handleDelete(m.id); }}>
+                            <button
+                              type="button"
+                              title="Delete"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteModel(m.id); }}
+                            >
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -245,11 +376,11 @@ export function Models() {
         </div>
       </div>
 
-      {showModal && (
+      {modalMode === 'provider' && (
         <div className="models-modal-overlay" onClick={closeModal}>
           <div className="models-modal" onClick={(e) => e.stopPropagation()}>
             <div className="models-modal-header">
-              <h2>{editModel ? 'Edit Model' : 'Register New API'}</h2>
+              <h2>{editProvider ? 'Edit Provider' : 'Add Service Provider'}</h2>
               <button type="button" onClick={closeModal} disabled={submitting} aria-label="Close">
                 <X size={20} />
               </button>
@@ -257,11 +388,79 @@ export function Models() {
             <div className="models-modal-body">
               <label>
                 Name *
-                <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. PaddleOCR-VL-1.5" />
+                <input
+                  type="text"
+                  value={provFormName}
+                  onChange={(e) => setProvFormName(e.target.value)}
+                  placeholder="e.g. OpenAI, Anthropic"
+                />
               </label>
               <label>
+                Base URL *
+                <input
+                  type="text"
+                  value={provFormBaseUrl}
+                  onChange={(e) => setProvFormBaseUrl(e.target.value)}
+                  placeholder="e.g. https://api.openai.com/v1"
+                />
+              </label>
+              <label>
+                API Key
+                <input
+                  type="password"
+                  value={provFormApiKey}
+                  onChange={(e) => setProvFormApiKey(e.target.value)}
+                  placeholder={editProvider ? '(leave empty to keep current)' : '(optional)'}
+                />
+              </label>
+            </div>
+            <div className="models-modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleProviderSubmit}
+                disabled={!provFormName.trim() || !provFormBaseUrl.trim() || submitting}
+              >
+                {submitting ? 'Saving…' : editProvider ? 'Update' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalMode === 'model' && (
+        <div className="models-modal-overlay" onClick={closeModal}>
+          <div className="models-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="models-modal-header">
+              <h2>{editModel ? 'Edit Model' : 'Add Model'}</h2>
+              <button type="button" onClick={closeModal} disabled={submitting} aria-label="Close">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="models-modal-body">
+              <label>
                 Provider *
-                <input type="text" value={formProvider} onChange={(e) => setFormProvider(e.target.value)} placeholder="e.g. PaddlePaddle" />
+                <select
+                  value={formProviderId}
+                  onChange={(e) => setFormProviderId(e.target.value)}
+                >
+                  <option value="">Select provider</option>
+                  {providers.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Name *
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="e.g. GPT-4"
+                />
               </label>
               <label>
                 Category *
@@ -273,20 +472,22 @@ export function Models() {
                 </select>
               </label>
               <label>
-                Base URL *
-                <input type="text" value={formBaseUrl} onChange={(e) => setFormBaseUrl(e.target.value)} placeholder="e.g. http://localhost:8101/" />
-              </label>
-              <label>
-                API Key
-                <input type="password" value={formApiKey} onChange={(e) => setFormApiKey(e.target.value)} placeholder={editModel ? '(leave empty to keep current)' : '(optional)'} />
-              </label>
-              <label>
                 Model Name
-                <input type="text" value={formModelName} onChange={(e) => setFormModelName(e.target.value)} placeholder="e.g. PaddlePaddle/PaddleOCR-VL-1.5" />
+                <input
+                  type="text"
+                  value={formModelName}
+                  onChange={(e) => setFormModelName(e.target.value)}
+                  placeholder="e.g. gpt-4"
+                />
               </label>
               <label>
                 Config (JSON)
-                <textarea rows={3} value={formConfig} onChange={(e) => setFormConfig(e.target.value)} placeholder='{"max_concurrency": 3}' />
+                <textarea
+                  rows={3}
+                  value={formConfig}
+                  onChange={(e) => setFormConfig(e.target.value)}
+                  placeholder='{"max_concurrency": 3}'
+                />
               </label>
             </div>
             <div className="models-modal-actions">
@@ -296,10 +497,10 @@ export function Models() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={handleSubmit}
-                disabled={!formName.trim() || !formProvider.trim() || !formCategory || !formBaseUrl.trim() || submitting}
+                onClick={handleModelSubmit}
+                disabled={!formName.trim() || !formProviderId || !formCategory || submitting}
               >
-                {submitting ? 'Saving…' : editModel ? 'Update' : 'Register'}
+                {submitting ? 'Saving…' : editModel ? 'Update' : 'Add'}
               </button>
             </div>
           </div>

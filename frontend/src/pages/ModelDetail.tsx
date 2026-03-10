@@ -198,9 +198,9 @@ export function ModelDetail() {
             <dt>Base URL</dt>
             <dd className="model-detail-mono">{model.base_url}</dd>
             <dt>Provider</dt>
-            <dd>{model.provider}</dd>
+            <dd>{model.provider_name}</dd>
             <dt>API Key</dt>
-            <dd>{model.api_key_set ? <span className="model-detail-key-set">Configured</span> : <span className="model-detail-key-unset">Not set</span>}</dd>
+            <dd>{model.api_key_set ? <span className="model-detail-key-set">Configured (from provider)</span> : <span className="model-detail-key-unset">Not set</span>}</dd>
           </dl>
         </section>
 

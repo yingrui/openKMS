@@ -89,7 +89,7 @@ async def run_pipeline(
 
     Updates document status in DB: running -> completed/failed.
     """
-    from sqlalchemy import update
+    from sqlalchemy import select, update
     from app.database import async_session_maker
     from app.models.document import Document
     from app.models.document_channel import DocumentChannel
@@ -101,18 +101,26 @@ async def run_pipeline(
     extraction_model_name = ""
     extraction_schema_val = ""
 
+    from sqlalchemy.orm import selectinload
+
     async with async_session_maker() as session:
         if model_id:
-            model_row = await session.get(ApiModel, model_id)
+            result = await session.execute(
+                select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)
+            )
+            model_row = result.scalar_one_or_none()
             if model_row:
-                model_base_url = model_row.base_url
+                model_base_url = model_row.provider_rel.base_url
                 model_name_val = model_row.model_name
 
         doc = await session.get(Document, document_id)
         if doc and doc.channel_id:
             channel = await session.get(DocumentChannel, doc.channel_id)
             if channel and channel.extraction_model_id and channel.extraction_schema:
-                extraction_model_row = await session.get(ApiModel, channel.extraction_model_id)
+                ext_result = await session.execute(
+                    select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == channel.extraction_model_id)
+                )
+                extraction_model_row = ext_result.scalar_one_or_none()
                 if extraction_model_row and extraction_model_row.category == "llm":
                     model_name = (extraction_model_row.model_name or "").strip()
                     if not model_name:

@@ -222,7 +222,7 @@ export function JobDetail() {
               <dt>Name</dt>
               <dd>{model.name}</dd>
               <dt>Provider</dt>
-              <dd>{model.provider}</dd>
+              <dd>{model.provider_name}</dd>
               <dt>Category</dt>
               <dd>{model.category}</dd>
               <dt>Base URL</dt>

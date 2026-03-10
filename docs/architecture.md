@@ -40,7 +40,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL** | documents, doc_channels, pipelines, api_models, feature_toggles, procrastinate_jobs |
+| **PostgreSQL** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction and model playground (configured via api_models) |
@@ -78,7 +78,7 @@ frontend/src/
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, modelsApi, featureTogglesApi, channelUtils
+├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, modelsApi, providersApi, featureTogglesApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -107,18 +107,21 @@ backend/
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
+│   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status, metadata JSONB)
 │   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema)
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
-│   │   ├── api_model.py        # ApiModel (API provider/model registry)
+│   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
+│   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   └── feature_toggle.py  # FeatureToggle (key-value flags)
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
 │   │   ├── pipeline.py         # PipelineCreate/Update/Response (+ model_id)
-│   │   ├── api_model.py        # ApiModelCreate/Update/Response
+│   │   ├── api_model.py        # ApiModelCreate/Update/Response (+ provider_id)
+│   │   ├── api_provider.py     # ApiProviderCreate/Update/Response
 │   │   └── job.py              # JobCreate/Response
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)

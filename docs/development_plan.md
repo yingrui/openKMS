@@ -64,6 +64,7 @@
 - [x] DocumentChannelSettings fetches real pipelines from API
 - [x] Pipelines.tsx: CRUD UI with real API
 - [x] Model management: API provider registry (CRUD, linked to pipelines)
+- [x] Provider–model hierarchy: manage service providers first, then add models under them
 - [x] Model detail page with playground (test endpoint proxied through backend)
 - [x] Playground adapts per model category: form-based (VL with image upload), embedding (text input → vector output), chat (LLM/other)
 - [ ] Additional pipeline types beyond PaddleOCR

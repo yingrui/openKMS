@@ -4,6 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.auth import require_auth
 from app.database import get_db
@@ -23,10 +24,13 @@ async def _enrich_pipeline(pipeline: Pipeline, db: AsyncSession) -> PipelineResp
     """Build a PipelineResponse, resolving linked model info."""
     data = PipelineResponse.model_validate(pipeline)
     if pipeline.model_id:
-        model = await db.get(ApiModel, pipeline.model_id)
+        result = await db.execute(
+            select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == pipeline.model_id)
+        )
+        model = result.scalar_one_or_none()
         if model:
             data.model_name = model.name
-            data.model_base_url = model.base_url
+            data.model_base_url = model.provider_rel.base_url
     return data
 
 

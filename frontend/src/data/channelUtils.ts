@@ -49,7 +49,6 @@ export function normalizeExtractionSchemaToFields(
   }
   const props = schema.properties;
   if (!props || typeof props !== 'object') return [];
-  const required = new Set(schema.required || []);
   const keys = Object.keys(props);
   return keys.map((key) => {
     const prop = props[key] as Record<string, unknown>;

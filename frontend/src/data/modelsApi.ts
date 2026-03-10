@@ -9,11 +9,12 @@ export interface ModelCategory {
 
 export interface ApiModelResponse {
   id: string;
+  provider_id: string;
+  provider_name: string;
   name: string;
-  provider: string;
   category: string;
   base_url: string;
-  api_key_set: boolean;
+  api_key_set?: boolean;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
   created_at: string;
@@ -26,21 +27,17 @@ export interface ApiModelListResponse {
 }
 
 export interface ApiModelCreate {
+  provider_id: string;
   name: string;
-  provider: string;
   category: string;
-  base_url: string;
-  api_key?: string | null;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
 }
 
 export interface ApiModelUpdate {
+  provider_id?: string;
   name?: string;
-  provider?: string;
   category?: string;
-  base_url?: string;
-  api_key?: string | null;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
 }
@@ -58,11 +55,13 @@ export async function fetchModelCategories(): Promise<ModelCategory[]> {
 
 export async function fetchModels(params?: {
   category?: string;
+  provider_id?: string;
   search?: string;
 }): Promise<ApiModelListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
   if (params?.category) query.set('category', params.category);
+  if (params?.provider_id) query.set('provider_id', params.provider_id);
   if (params?.search) query.set('search', params.search);
   const qs = query.toString() ? `?${query.toString()}` : '';
   const res = await fetch(`${config.apiUrl}/api/models${qs}`, {

@@ -315,7 +315,12 @@ async def extract_document_metadata(
             detail="No extraction model configured. Set extraction_model_id on the channel or OPENKMS_EXTRACTION_MODEL_ID.",
         )
 
-    model = await db.get(ApiModel, model_id)
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)
+    )
+    model = result.scalar_one_or_none()
     if not model:
         raise HTTPException(status_code=404, detail="Extraction model not found")
     if model.category != "llm":

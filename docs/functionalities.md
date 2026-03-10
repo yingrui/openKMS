@@ -94,19 +94,21 @@
 | Reset status | ✅ | Reset pending/failed documents to uploaded (if no active jobs); `POST /api/documents/{id}/reset-status` |
 | Toast notifications | ✅ | Project-wide toast system via sonner for success/error/warning messages |
 
-### 8. Models (API Provider Registry)
+### 8. Models (Provider–Model Hierarchy)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Model registry | ✅ | CRUD via `/api/models`; Models.tsx with category filter, search, create/edit/delete |
+| Service providers | ✅ | CRUD via `/api/providers`; add OpenAI, Anthropic, etc. with base_url and api_key |
+| Model registry | ✅ | Models belong to providers; CRUD via `/api/models`; provider selector in Models.tsx sidebar |
+| Provider–model UI | ✅ | Models.tsx: left sidebar lists providers (filter models); Add Provider / Add Model modals |
 | Categories | ✅ | Fixed categories: OCR, VL, LLM, Embedding, Text Classification; `GET /api/models/categories` |
 | Pipeline link | ✅ | Pipelines can link to a model (`model_id` FK); model selector in pipeline create/edit form |
 | Command resolution | ✅ | `{vlm_url}` and `{model_name}` template vars resolved from linked model at job creation |
 | Job detail model | ✅ | JobDetail.tsx shows model info card when job has a linked model |
 | Default seed | ✅ | PaddleOCR-VL-1.5 model seeded in migration and linked to default pipeline |
-| Model detail | ✅ | ModelDetail.tsx at `/models/:modelId` – connection info, config, timestamps |
+| Model detail | ✅ | ModelDetail.tsx at `/models/:modelId` – connection info (from provider), config, timestamps |
 | Model playground | ✅ | Test models directly from the detail page; adapts per category: VL (form with image upload + prompt → markdown response), Embedding (text → dimension + values), LLM/other (chat conversation) |
-| Model test API | ✅ | `POST /api/models/{id}/test` proxies request to model's base_url; supports chat completions and embeddings |
+| Model test API | ✅ | `POST /api/models/{id}/test` proxies request to provider's base_url; supports chat completions and embeddings |
 
 ## API Endpoints
 
@@ -140,19 +142,24 @@
 | GET | `/api/pipelines/{id}` | Get pipeline detail |
 | PUT | `/api/pipelines/{id}` | Update pipeline |
 | DELETE | `/api/pipelines/{id}` | Delete pipeline |
+| GET | `/api/providers` | List service providers |
+| POST | `/api/providers` | Create provider |
+| GET | `/api/providers/{id}` | Get provider |
+| PUT | `/api/providers/{id}` | Update provider |
+| DELETE | `/api/providers/{id}` | Delete provider (fails if has models) |
+| GET | `/api/models` | List models (optional `?category=`, `?provider_id=`, `?search=`) |
+| GET | `/api/models/categories` | List model categories |
+| POST | `/api/models` | Create model under provider (provider_id, name, category, model_name) |
+| GET | `/api/models/config-by-name` | Get model config by model_name (service client; for CLI extraction) |
+| GET | `/api/models/{id}` | Get model detail |
+| PUT | `/api/models/{id}` | Update model |
+| DELETE | `/api/models/{id}` | Delete model |
+| POST | `/api/models/{id}/test` | Test model (proxies to provider's base_url; supports chat/embedding/VL) |
 | GET | `/api/jobs` | List jobs (optional `?document_id=`) |
 | GET | `/api/jobs/{id}` | Get job detail |
 | POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`) |
 | POST | `/api/jobs/{id}/retry` | Retry a failed job |
 | DELETE | `/api/jobs/{id}` | Delete a job (not running) |
-| GET | `/api/models` | List models (optional `?category=`, `?search=`) |
-| GET | `/api/models/categories` | List model categories |
-| POST | `/api/models` | Register a new model/API endpoint |
-| GET | `/api/models/config-by-name` | Get model config by model_name (service client; for CLI extraction) |
-| GET | `/api/models/{id}` | Get model detail |
-| PUT | `/api/models/{id}` | Update model |
-| DELETE | `/api/models/{id}` | Delete model |
-| POST | `/api/models/{id}/test` | Test model (proxies to model's base_url; supports chat/embedding/VL) |
 | GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 

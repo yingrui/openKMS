@@ -14,6 +14,7 @@ from app.api.feature_toggles import router as feature_toggles_router
 from app.api.jobs import router as jobs_router
 from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
+from app.api.providers import router as providers_router
 from app.config import settings
 from app.database import init_db
 
@@ -69,6 +70,7 @@ app.include_router(documents_router, prefix="/api")
 app.include_router(feature_toggles_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(models_router, prefix="/api")
+app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 
 
