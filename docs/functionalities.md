@@ -6,7 +6,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Document overview | ✅ | Dashboard at `/documents` with channel count, document count (from API stats), quick actions, channel list |
+| Document overview | ✅ | Dashboard at `/documents` with channel count, document count (from API stats), quick actions |
 | Channel management | ✅ | Create/manage channels at `/documents/channels` (tree structure) |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
 | Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema) at `/documents/channels/:channelId/settings` |

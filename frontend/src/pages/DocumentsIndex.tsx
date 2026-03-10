@@ -15,8 +15,7 @@ export function DocumentsIndex() {
       .then((stats) => setDocumentCount(stats.total))
       .catch(() => setDocumentCount(0));
   }, []);
-  const flatChannels = flattenChannels(channels);
-  const channelCount = flatChannels.length;
+  const channelCount = flattenChannels(channels).length;
   const firstLeafId = getFirstLeafChannelId(channels);
 
   if (loading) {
@@ -91,30 +90,6 @@ export function DocumentsIndex() {
               <span>Upload document</span>
             </Link>
           </div>
-        </section>
-
-        <section className="documents-index-card">
-          <h2>Channels</h2>
-          {flatChannels.length === 0 ? (
-            <div className="documents-index-empty">
-              <Folder size={40} />
-              <p>No channels yet</p>
-              <Link to="/documents/channels" className="btn btn-primary">
-                Create first channel
-              </Link>
-            </div>
-          ) : (
-            <ul className="documents-index-channel-list">
-              {flatChannels.map(({ id, name, depth }) => (
-                <li key={id} style={{ paddingLeft: depth * 16 }}>
-                  <Link to={`/documents/channels/${id}`} className="documents-index-channel-item">
-                    <Folder size={16} />
-                    <span>{name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
         </section>
       </div>
     </div>

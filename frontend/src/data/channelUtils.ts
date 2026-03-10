@@ -210,6 +210,21 @@ export function getDocumentChannelDescription(channels: ChannelNode[], channelId
   return findChannelDescription(channels, channelId);
 }
 
+/** Collect IDs of all channels that have children (expandable nodes). */
+export function getAllExpandableChannelIds(channels: ChannelNode[]): string[] {
+  const ids: string[] = [];
+  function walk(nodes: ChannelNode[]) {
+    for (const n of nodes) {
+      if (n.children && n.children.length > 0) {
+        ids.push(n.id);
+        walk(n.children);
+      }
+    }
+  }
+  walk(channels);
+  return ids;
+}
+
 /** Get first leaf channel ID from tree (for default selection). Returns null if empty. */
 export function getFirstLeafChannelId(channels: ChannelNode[]): string | null {
   for (const node of channels) {

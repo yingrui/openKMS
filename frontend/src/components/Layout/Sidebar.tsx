@@ -16,12 +16,12 @@ import {
   ArrowLeft,
   ToggleLeft,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import logo from '../../assets/logo.svg';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
-import { getFirstLeafChannelId } from '../../data/channelUtils';
+import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './Sidebar.css';
@@ -109,6 +109,19 @@ export function Sidebar() {
 
   const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
   const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (onDocuments && channels.length > 0) {
+      const expandableIds = getAllExpandableChannelIds(channels);
+      setDocExpanded((prev) => {
+        const next = { ...prev };
+        for (const id of expandableIds) {
+          next[id] = true;
+        }
+        return next;
+      });
+    }
+  }, [onDocuments, channels]);
 
   const setDocumentChannel = (id: string) => {
     if (location.pathname.startsWith('/documents')) {
