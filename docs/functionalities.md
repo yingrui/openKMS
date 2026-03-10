@@ -6,7 +6,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Document overview | ✅ | Dashboard at `/documents` with channel stats, quick actions, channel list |
+| Document overview | ✅ | Dashboard at `/documents` with channel count, document count (from API stats), quick actions, channel list |
 | Channel management | ✅ | Create/manage channels at `/documents/channels` (tree structure) |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
 | Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema) at `/documents/channels/:channelId/settings` |
@@ -123,6 +123,7 @@
 | PUT | `/api/channels/documents/{id}` | Update channel (name, pipeline_id, auto_process, extraction_model_id, extraction_schema) |
 | POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
+| GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
 | PUT | `/api/documents/{id}` | Update document info (e.g. name) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |

@@ -1,17 +1,20 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileStack, Folder, Upload } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../data/channelUtils';
-import { mockDocumentsByChannel } from '../data/documents';
+import { fetchDocumentStats } from '../data/documentsApi';
 import './DocumentsIndex.css';
-
-const totalDocuments = Object.values(mockDocumentsByChannel).reduce(
-  (sum, arr) => sum + arr.length,
-  0
-);
 
 export function DocumentsIndex() {
   const { channels, loading, error } = useDocumentChannels();
+  const [documentCount, setDocumentCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchDocumentStats()
+      .then((stats) => setDocumentCount(stats.total))
+      .catch(() => setDocumentCount(0));
+  }, []);
   const flatChannels = flattenChannels(channels);
   const channelCount = flatChannels.length;
   const firstLeafId = getFirstLeafChannelId(channels);
@@ -66,7 +69,7 @@ export function DocumentsIndex() {
             <FileStack size={24} strokeWidth={1.75} />
           </div>
           <div className="documents-index-stat-content">
-            <span className="documents-index-stat-value">{totalDocuments}</span>
+            <span className="documents-index-stat-value">{documentCount ?? '–'}</span>
             <span className="documents-index-stat-label">Documents</span>
           </div>
         </Link>

@@ -6,7 +6,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi.responses import RedirectResponse
@@ -37,6 +37,14 @@ def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id
     for c in channels:
         if c.parent_id == channel_id:
             _collect_channel_and_descendants(channels, c.id, out)
+
+
+@router.get("/stats")
+async def get_document_stats(db: AsyncSession = Depends(get_db)):
+    """Return document counts for the documents index (e.g. total)."""
+    result = await db.execute(select(func.count(Document.id)))
+    total = result.scalar_one()
+    return {"total": total}
 
 
 @router.get("", response_model=DocumentListResponse)

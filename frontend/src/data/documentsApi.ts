@@ -37,6 +37,19 @@ export function isAcceptedFile(file: File): boolean {
   return ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
+export async function fetchDocumentStats(): Promise<{ total: number }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/stats`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || `Failed to fetch document stats: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchDocumentsByChannel(channelId: string): Promise<DocumentListResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(
