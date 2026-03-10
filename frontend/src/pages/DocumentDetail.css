@@ -133,18 +133,24 @@
 
 .document-detail-info-list {
   display: grid;
-  grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(56px, 0.7fr));
-  gap: 12px 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 32px;
   margin: 0;
 }
+
+.document-detail-info-list .document-detail-info-item--name {
+  grid-column: 1 / -1;
+}
+
 .document-detail-info-list--with-hash {
-  grid-template-columns: minmax(200px, 2fr) repeat(4, minmax(56px, 0.7fr)) minmax(100px, 0.5fr);
+  grid-template-columns: 1fr 1fr;
 }
 
 .document-detail-info-item {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
 }
 
 .document-detail-info-item dt {
@@ -154,6 +160,7 @@
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  flex-shrink: 0;
 }
 
 .document-detail-info-item dd {
@@ -173,6 +180,7 @@
 .document-detail-info-item--name dd {
   word-break: break-word;
   font-weight: 500;
+  min-width: 0;
 }
 
 /* Metadata subsection (inside combined info section) */
