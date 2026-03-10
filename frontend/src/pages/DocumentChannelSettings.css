@@ -1,6 +1,6 @@
 .document-channel-settings {
   width: 100%;
-  max-width: 640px;
+  max-width: 900px;
 }
 
 .document-channel-settings-back {
@@ -112,4 +112,130 @@
 
 @keyframes dcs-spin {
   to { transform: rotate(360deg); }
+}
+
+.dcs-schema-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.dcs-preset-btn {
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+}
+
+.dcs-schema-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.dcs-schema-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.dcs-schema-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dcs-schema-description {
+  width: 100%;
+  margin-left: 0;
+}
+
+.dcs-schema-move {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.dcs-schema-move-btn {
+  padding: 2px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.dcs-schema-move-btn:hover:not(:disabled) {
+  color: var(--color-accent);
+  background: var(--color-bg-muted);
+}
+
+.dcs-schema-move-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dcs-schema-input {
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.dcs-schema-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.dcs-schema-key {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.dcs-schema-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.dcs-schema-select {
+  width: 90px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.dcs-schema-remove {
+  padding: 6px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.dcs-schema-remove:hover {
+  color: var(--color-error, #dc2626);
+  background: var(--color-bg-muted);
+}
+
+.dcs-add-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dcs-schema-empty-hint {
+  margin-top: 8px;
 }

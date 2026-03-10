@@ -1,6 +1,7 @@
 """Document API routes."""
 
 import hashlib
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -13,13 +14,16 @@ from fastapi.responses import RedirectResponse
 from app.api.auth import require_auth
 from app.config import settings
 from app.database import get_db
+from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.schemas.document import (
     DocumentListResponse,
     DocumentResponse,
+    MetadataUpdateBody,
     ParsingResultResponse,
 )
+from app.services.metadata_extraction import extract_metadata
 from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
@@ -186,6 +190,73 @@ async def get_document(
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
+    return DocumentResponse.model_validate(doc)
+
+
+@router.put("/{document_id}/metadata", response_model=DocumentResponse)
+async def update_document_metadata(
+    document_id: str,
+    body: MetadataUpdateBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update document metadata (partial merge)."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    current = doc.doc_metadata or {}
+    merged = {**current, **body.metadata}
+    doc.doc_metadata = merged
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/extract-metadata", response_model=DocumentResponse)
+async def extract_document_metadata(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Extract metadata from document markdown using channel's LLM."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not doc.markdown or not doc.markdown.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Document has no markdown content to extract from",
+        )
+    if doc.status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document must be fully parsed (status=completed). Current: {doc.status}",
+        )
+
+    channel = await db.get(DocumentChannel, doc.channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+    model_id = channel.extraction_model_id or settings.extraction_model_id
+    if not model_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No extraction model configured. Set extraction_model_id on the channel or OPENKMS_EXTRACTION_MODEL_ID.",
+        )
+
+    model = await db.get(ApiModel, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Extraction model not found")
+    if model.category != "llm":
+        raise HTTPException(status_code=400, detail="Extraction model must be category=llm")
+
+    schema = channel.extraction_schema if channel.extraction_schema else None
+    extracted = await extract_metadata(doc.markdown, model, schema)
+
+    now = datetime.now(timezone.utc).isoformat()
+    current = doc.doc_metadata or {}
+    merged = {**current, **extracted, "extracted_at": now, "extraction_model_id": model_id}
+    doc.doc_metadata = merged
+    await db.commit()
+    await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
 
 

@@ -12,6 +12,7 @@ export interface DocumentResponse {
   status?: string;
   markdown?: string | null;
   parsing_result?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 }
@@ -146,6 +147,38 @@ export async function resetDocumentStatus(documentId: string): Promise<DocumentR
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(typeof err.detail === 'string' ? err.detail : 'Reset failed');
+  }
+  return res.json();
+}
+
+export async function extractDocumentMetadata(documentId: string): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/extract-metadata`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Extraction failed');
+  }
+  return res.json();
+}
+
+export async function updateDocumentMetadata(
+  documentId: string,
+  metadata: Record<string, unknown>
+): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/metadata`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ metadata }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
   }
   return res.json();
 }

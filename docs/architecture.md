@@ -64,14 +64,14 @@ backend/
 │   ├── api/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
-│   │   ├── documents.py        # POST upload (store only), GET, DELETE
+│   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, POST extract-metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, POST test (API provider registry)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
-│   │   ├── document.py          # Document model (+ status field)
-│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process)
+│   │   ├── document.py          # Document model (+ status, metadata JSONB)
+│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema)
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
 │   │   ├── api_model.py        # ApiModel (API provider/model registry)
 │   │   └── feature_toggle.py  # FeatureToggle (key-value flags)
@@ -86,6 +86,7 @@ backend/
 │   │   └── tasks.py            # run_pipeline task (subprocess openkms-cli)
 │   └── services/
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
+│       ├── metadata_extraction.py   # LLM-based document metadata extraction (abstract, author, tags, etc.)
 │       └── storage.py               # S3/MinIO client (upload, delete)
 ├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
 └── worker.py                    # procrastinate worker entry point
@@ -139,6 +140,7 @@ openkms-cli/
 2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend redirects (302) to presigned S3 URL via frontend proxy
 3. If document status is `uploaded` or `failed`, a "Process" button appears to trigger processing
 4. If document status is `pending` or `failed`, a "Reset" button appears to reset status to `uploaded` (only if no active jobs exist)
+5. Metadata section: extract metadata via LLM (channel's extraction_model_id + extraction_schema); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata`
 
 ### Channel Tree
 
@@ -169,7 +171,7 @@ openkms-cli/
 
 | Layer | Config |
 |-------|--------|
-| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR |
+| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id (optional default for metadata extraction) |
 | Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
 | Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId). In dev, `apiUrl` defaults to '' (uses proxy). |

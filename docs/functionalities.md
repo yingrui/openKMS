@@ -9,11 +9,12 @@
 | Document overview | ✅ | Dashboard at `/documents` with channel stats, quick actions, channel list |
 | Channel management | ✅ | Create/manage channels at `/documents/channels` (tree structure) |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
-| Channel settings | ✅ | Per-channel pipeline, chunk size, extract tables at `/documents/channels/:channelId/settings` |
+| Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema) at `/documents/channels/:channelId/settings` |
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id` |
+| Document metadata extraction | ✅ | Metadata card on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type, description for LLM prompt); combined with document info in one section |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
 ### 2. Document Parsing
@@ -116,7 +117,7 @@
 | GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
 | GET | `/api/channels/documents` | List document channels (tree) |
 | POST | `/api/channels/documents` | Create channel |
-| PUT | `/api/channels/documents/{id}` | Update channel (name, pipeline_id, auto_process) |
+| PUT | `/api/channels/documents/{id}` | Update channel (name, pipeline_id, auto_process, extraction_model_id, extraction_schema) |
 | POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
 | GET | `/api/documents/{id}` | Get document metadata (includes status) |
@@ -124,6 +125,8 @@
 | GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
 | POST | `/api/documents/{id}/reset-status` | Reset document status to uploaded (if no active jobs) |
+| PUT | `/api/documents/{id}/metadata` | Update document metadata (partial merge) |
+| POST | `/api/documents/{id}/extract-metadata` | Extract metadata from markdown using channel's LLM |
 | GET | `/api/pipelines` | List pipeline configurations |
 | GET | `/api/pipelines/template-variables` | List available command template variables |
 | POST | `/api/pipelines` | Create pipeline |
@@ -167,14 +170,16 @@
 
 ### Document Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (JSONB), `created_at`
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
+- Metadata extraction: `extraction_model_id` designates LLM for extraction; `extraction_schema` defines fields (key, label, type: string/date/array)
 
 ### Document
 
-- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `created_at`, `updated_at`
+- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB), `created_at`, `updated_at`
 - Status: `uploaded` → `pending` → `running` → `completed` / `failed`
+- `metadata`: extracted or manually edited (abstract, author, publish_date, tags, etc.)
 
 ### FeatureToggle
 

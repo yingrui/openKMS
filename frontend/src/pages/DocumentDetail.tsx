@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -8,8 +8,10 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
-import { fetchDocumentById, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, type DocumentResponse } from '../data/documentsApi';
+import { fetchDocumentById, extractDocumentMetadata, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, type DocumentResponse } from '../data/documentsApi';
 import { createJob } from '../data/jobsApi';
+import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
+import { findChannel } from '../data/channelUtils';
 import './DocumentDetail.css';
 
 interface ParsingResultItem {
@@ -59,6 +61,7 @@ const documentToFolder: Record<string, { folderId: string; markdownFile: string 
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
+  const { channels } = useDocumentChannels();
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [parsingResult, setParsingResult] = useState<ParsingResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +74,7 @@ export function DocumentDetail() {
   const [document, setDocument] = useState<DocumentResponse | null>(null);
   const [processing, setProcessing] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [extracting, setExtracting] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -239,6 +243,29 @@ export function DocumentDetail() {
     }
   }, [id, document]);
 
+  const handleExtract = useCallback(async () => {
+    if (!id || !document) return;
+    setExtracting(true);
+    try {
+      const updated = await extractDocumentMetadata(id);
+      setDocument(updated);
+      toast.success('Metadata extracted');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Extraction failed');
+    } finally {
+      setExtracting(false);
+    }
+  }, [id, document]);
+
+  const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
+  const hasExtractionModel = !!channel?.extraction_model_id;
+  const extractionSchema = channel?.extraction_schema ?? [];
+  const meta = document?.metadata ?? {};
+  const metaKeys = extractionSchema.length > 0
+    ? extractionSchema.map((f) => f.key)
+    : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
+  const showMetadataSection = !docConfig && document?.channel_id;
+
   const handlePageMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, pageIndex: number) => {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -267,7 +294,7 @@ export function DocumentDetail() {
       ) : (
         <>
           {document && !extendedPanel && (
-            <section className={`document-detail-info ${infoVisible ? '' : 'document-detail-info--collapsed'}`}>
+            <section className={`document-detail-info document-detail-info-combined ${infoVisible ? '' : 'document-detail-info--collapsed'}`}>
               <h2
                 className="document-detail-info-title document-detail-info-toggle"
                 onClick={() => setInfoVisible((v) => !v)}
@@ -277,81 +304,157 @@ export function DocumentDetail() {
                 aria-expanded={infoVisible}
               >
                 <Info size={20} />
-                <span>Document Information</span>
+                <span>Document Information{showMetadataSection ? ' & Metadata' : ''}</span>
                 <button
                   type="button"
                   className="document-detail-info-toggle-btn"
                   onClick={(e) => { e.stopPropagation(); setInfoVisible((v) => !v); }}
-                  aria-label={infoVisible ? 'Hide document information' : 'Show document information'}
+                  aria-label={infoVisible ? 'Hide' : 'Show'}
                 >
                   {infoVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
               </h2>
               {infoVisible && (
-              <dl className={`document-detail-info-list ${fileHash ? 'document-detail-info-list--with-hash' : ''}`}>
-                <div className="document-detail-info-item document-detail-info-item--name">
-                  <dt>Name</dt>
-                  <dd>{document.name}</dd>
-                </div>
-                <div className="document-detail-info-item document-detail-info-item--compact">
-                  <dt>Type</dt>
-                  <dd>{document.file_type}</dd>
-                </div>
-                <div className="document-detail-info-item document-detail-info-item--compact">
-                  <dt>Size</dt>
-                  <dd>{document.size_bytes ? `${(document.size_bytes / 1024).toFixed(1)} KB` : '—'}</dd>
-                </div>
-                <div className="document-detail-info-item document-detail-info-item--compact">
-                  <dt>Uploaded</dt>
-                  <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
-                </div>
-                <div className="document-detail-info-item document-detail-info-item--compact">
-                  <dt>Status</dt>
-                  <dd>
-                    <span className={`doc-status doc-status-${document.status || 'completed'}`}>
-                      {document.status || 'completed'}
-                    </span>
-                    {(document.status === 'uploaded' || document.status === 'failed') && (
-                      <button
-                        type="button"
-                        className="document-detail-process-btn"
-                        onClick={handleProcess}
-                        disabled={processing}
-                        title="Process this document"
-                      >
-                        {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
-                        <span>{processing ? 'Processing…' : 'Process'}</span>
-                      </button>
+                <div className="document-detail-info-body">
+                  <dl className={`document-detail-info-list ${fileHash ? 'document-detail-info-list--with-hash' : ''}`}>
+                    <div className="document-detail-info-item document-detail-info-item--name">
+                      <dt>Name</dt>
+                      <dd>{document.name}</dd>
+                    </div>
+                    <div className="document-detail-info-item document-detail-info-item--compact">
+                      <dt>Type</dt>
+                      <dd>{document.file_type}</dd>
+                    </div>
+                    <div className="document-detail-info-item document-detail-info-item--compact">
+                      <dt>Size</dt>
+                      <dd>{document.size_bytes ? `${(document.size_bytes / 1024).toFixed(1)} KB` : '—'}</dd>
+                    </div>
+                    <div className="document-detail-info-item document-detail-info-item--compact">
+                      <dt>Uploaded</dt>
+                      <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
+                    </div>
+                    <div className="document-detail-info-item document-detail-info-item--compact">
+                      <dt>Status</dt>
+                      <dd>
+                        <span className={`doc-status doc-status-${document.status || 'completed'}`}>
+                          {document.status || 'completed'}
+                        </span>
+                        {(document.status === 'uploaded' || document.status === 'failed') && (
+                          <button
+                            type="button"
+                            className="document-detail-process-btn"
+                            onClick={handleProcess}
+                            disabled={processing}
+                            title="Process this document"
+                          >
+                            {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
+                            <span>{processing ? 'Processing…' : 'Process'}</span>
+                          </button>
+                        )}
+                        {(document.status === 'pending' || document.status === 'failed') && (
+                          <button
+                            type="button"
+                            className="document-detail-reset-btn"
+                            onClick={handleReset}
+                            disabled={resetting}
+                            title="Reset status to uploaded"
+                          >
+                            {resetting ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
+                            <span>{resetting ? 'Resetting…' : 'Reset'}</span>
+                          </button>
+                        )}
+                      </dd>
+                    </div>
+                    <div className="document-detail-info-item document-detail-info-item--compact">
+                      <dt>Markdown</dt>
+                      <dd>{markdown ? 'Yes' : 'No'}</dd>
+                    </div>
+                    {fileHash && (
+                      <div className="document-detail-info-item document-detail-info-item--compact">
+                        <dt>File hash</dt>
+                        <dd className="document-detail-info-hash" title={fileHash}>
+                          {fileHash.length > 12
+                            ? `${fileHash.slice(0, 10)}...`
+                            : fileHash}
+                        </dd>
+                      </div>
                     )}
-                    {(document.status === 'pending' || document.status === 'failed') && (
-                      <button
-                        type="button"
-                        className="document-detail-reset-btn"
-                        onClick={handleReset}
-                        disabled={resetting}
-                        title="Reset status to uploaded"
-                      >
-                        {resetting ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
-                        <span>{resetting ? 'Resetting…' : 'Reset'}</span>
-                      </button>
-                    )}
-                  </dd>
+                  </dl>
+                  {showMetadataSection && (
+                    <>
+                      <hr className="document-detail-info-divider" />
+                      <div className="document-detail-metadata-body">
+                        <h3 className="document-detail-metadata-subtitle">
+                          <Sparkles size={16} />
+                          Extracted metadata
+                        </h3>
+                        {metaKeys.length === 0 ? (
+                          <p className="document-detail-metadata-empty">
+                            No metadata extracted. Click Extract to use LLM.
+                            {!hasExtractionModel && ' (Configure an extraction model in channel settings.)'}
+                          </p>
+                        ) : (
+                          <dl className="document-detail-info-list document-detail-metadata-list">
+                            {metaKeys.map((key) => {
+                              const label = extractionSchema.find((f) => f.key === key)?.label ?? key;
+                              const val = meta[key];
+                              const isArray = Array.isArray(val);
+                              return (
+                                <div key={key} className="document-detail-info-item">
+                                  <dt>{label}</dt>
+                                  <dd>
+                                    {val == null ? (
+                                      '—'
+                                    ) : isArray ? (
+                                      <span className="document-detail-metadata-pills">
+                                        {val.map((v: unknown, i: number) => (
+                                          <span key={i} className="document-detail-metadata-pill">
+                                            {String(v)}
+                                          </span>
+                                        ))}
+                                      </span>
+                                    ) : (
+                                      String(val)
+                                    )}
+                                  </dd>
+                                </div>
+                              );
+                            })}
+                          </dl>
+                        )}
+                        <div className="document-detail-metadata-actions">
+                          <button
+                            type="button"
+                            className="btn btn-primary document-detail-extract-btn"
+                            onClick={handleExtract}
+                            disabled={
+                              extracting ||
+                              !markdown ||
+                              document?.status !== 'completed' ||
+                              !hasExtractionModel
+                            }
+                            title={
+                              !hasExtractionModel
+                                ? 'Configure extraction model in channel settings'
+                                : !markdown
+                                  ? 'Document has no markdown'
+                                  : document?.status !== 'completed'
+                                    ? 'Document must be fully parsed'
+                                    : 'Extract metadata using LLM'
+                            }
+                          >
+                            {extracting ? (
+                              <Loader2 size={14} className="doc-detail-spinner" />
+                            ) : (
+                              <Sparkles size={14} />
+                            )}
+                            <span>{extracting ? 'Extracting…' : 'Extract'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="document-detail-info-item document-detail-info-item--compact">
-                  <dt>Markdown</dt>
-                  <dd>{markdown ? 'Yes' : 'No'}</dd>
-                </div>
-                {fileHash && (
-                  <div className="document-detail-info-item document-detail-info-item--compact">
-                    <dt>File hash</dt>
-                    <dd className="document-detail-info-hash" title={fileHash}>
-                      {fileHash.length > 12
-                        ? `${fileHash.slice(0, 10)}...`
-                        : fileHash}
-                    </dd>
-                  </div>
-                )}
-              </dl>
               )}
             </section>
           )}

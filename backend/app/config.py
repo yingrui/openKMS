@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     paddleocr_vl_model: str = "PaddlePaddle/PaddleOCR-VL-1.5"
     paddleocr_vl_max_concurrency: int = 3
 
+    # Metadata extraction (LLM for document metadata)
+    extraction_model_id: str | None = None
+
     # App
     app_title: str = "openKMS Backend"
     app_version: str = "0.1.0"

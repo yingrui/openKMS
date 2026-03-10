@@ -22,6 +22,7 @@ class Document(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="uploaded", server_default="completed")
     markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     parsing_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    doc_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

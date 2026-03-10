@@ -1,12 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
-import { getDocumentChannelName } from '../data/channelUtils';
+import { findChannel, getDocumentChannelName, type ExtractionSchemaField } from '../data/channelUtils';
 import { fetchPipelines, type PipelineResponse } from '../data/pipelinesApi';
+import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import { toast } from 'sonner';
 import { updateChannel } from '../data/channelsApi';
 import './DocumentChannelSettings.css';
+
+const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
+  academic: [
+    { key: 'abstract', label: 'Abstract', type: 'string', description: 'One-sentence summary of the document\'s main content' },
+    { key: 'author', label: 'Author', type: 'string', description: 'Primary author or first author name' },
+    { key: 'authors', label: 'Authors', type: 'array', description: 'Full list of all authors in order' },
+    { key: 'publish_date', label: 'Publish Date', type: 'date', description: 'Publication date in YYYY-MM-DD format' },
+    { key: 'source', label: 'Source', type: 'string', description: 'Journal, conference, or publisher name' },
+    { key: 'keywords', label: 'Keywords', type: 'array', description: 'Keywords or key phrases describing the content' },
+    { key: 'categories', label: 'Categories', type: 'array', description: 'Subject categories or topic classifications' },
+  ],
+  report: [
+    { key: 'title', label: 'Title', type: 'string', description: 'Document title or headline' },
+    { key: 'author', label: 'Author', type: 'string', description: 'Author or preparer of the report' },
+    { key: 'date', label: 'Date', type: 'date', description: 'Report date in YYYY-MM-DD format' },
+    { key: 'summary', label: 'Summary', type: 'string', description: 'Executive summary or brief overview' },
+    { key: 'tags', label: 'Tags', type: 'array', description: 'Tags or labels for categorization' },
+  ],
+  minimal: [
+    { key: 'abstract', label: 'Abstract', type: 'string', description: 'Brief summary of the document' },
+    { key: 'author', label: 'Author', type: 'string', description: 'Author name' },
+    { key: 'tags', label: 'Tags', type: 'array', description: 'Relevant tags or keywords' },
+  ],
+};
 
 export function DocumentChannelSettings() {
   const navigate = useNavigate();
@@ -15,10 +40,14 @@ export function DocumentChannelSettings() {
 
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
   const [pipelinesLoading, setPipelinesLoading] = useState(true);
+  const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
 
   const channel = channels.length > 0 ? findChannel(channels, channelId) : null;
   const [pipelineId, setPipelineId] = useState('');
   const [autoProcess, setAutoProcess] = useState(false);
+  const [extractionModelId, setExtractionModelId] = useState('');
+  const [extractionSchema, setExtractionSchema] = useState<ExtractionSchemaField[]>([]);
   const [saving, setSaving] = useState(false);
 
   const channelName = getDocumentChannelName(channels, channelId);
@@ -35,14 +64,36 @@ export function DocumentChannelSettings() {
     }
   }, []);
 
+  const loadModels = useCallback(async () => {
+    setModelsLoading(true);
+    try {
+      const res = await fetchModels({ category: 'llm' });
+      setLlmModels(res.items);
+    } catch {
+      setLlmModels([]);
+    } finally {
+      setModelsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPipelines();
   }, [loadPipelines]);
 
   useEffect(() => {
+    loadModels();
+  }, [loadModels]);
+
+  useEffect(() => {
     if (channel) {
       setPipelineId(channel.pipeline_id || '');
       setAutoProcess(channel.auto_process || false);
+      setExtractionModelId(channel.extraction_model_id || '');
+      setExtractionSchema(
+        Array.isArray(channel.extraction_schema) && channel.extraction_schema.length > 0
+          ? channel.extraction_schema
+          : []
+      );
     }
   }, [channel]);
 
@@ -58,6 +109,8 @@ export function DocumentChannelSettings() {
       await updateChannel(channelId, {
         pipeline_id: pipelineId || null,
         auto_process: autoProcess,
+        extraction_model_id: extractionModelId || null,
+        extraction_schema: extractionSchema.length > 0 ? extractionSchema : null,
       });
       if (refreshChannels) await refreshChannels();
       toast.success('Channel settings saved');
@@ -66,6 +119,37 @@ export function DocumentChannelSettings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addSchemaField = () => {
+    setExtractionSchema((prev) => [...prev, { key: '', label: '', type: 'string', description: '' }]);
+  };
+
+  const updateSchemaField = (index: number, field: Partial<ExtractionSchemaField>) => {
+    setExtractionSchema((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...field };
+      return next;
+    });
+  };
+
+  const removeSchemaField = (index: number) => {
+    setExtractionSchema((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveSchemaField = (index: number, dir: 'up' | 'down') => {
+    setExtractionSchema((prev) => {
+      const next = [...prev];
+      const j = dir === 'up' ? index - 1 : index + 1;
+      if (j < 0 || j >= next.length) return prev;
+      [next[index], next[j]] = [next[j], next[index]];
+      return next;
+    });
+  };
+
+  const applyPreset = (presetKey: string) => {
+    const preset = SCHEMA_PRESETS[presetKey];
+    if (preset) setExtractionSchema([...preset]);
   };
 
   return (
@@ -127,6 +211,128 @@ export function DocumentChannelSettings() {
           </div>
         </section>
 
+        <section className="document-channel-settings-section">
+          <h2>Metadata extraction</h2>
+          <p className="document-channel-settings-hint">
+            Configure an LLM to extract metadata (abstract, author, tags, etc.) from documents. Define which fields to extract.
+          </p>
+          <div className="document-channel-settings-field">
+            <label htmlFor="extraction-model">Extraction model</label>
+            {modelsLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Loader2 size={16} className="dcs-spinner" />
+                <span>Loading models…</span>
+              </div>
+            ) : (
+              <select
+                id="extraction-model"
+                value={extractionModelId}
+                onChange={(e) => setExtractionModelId(e.target.value)}
+              >
+                <option value="">None</option>
+                {llmModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="document-channel-settings-field">
+            <label>Extraction schema</label>
+            <p className="document-channel-settings-hint">
+              Fields to extract: key, label, type, and description. Description is included in the LLM prompt to guide extraction.
+            </p>
+            <div className="dcs-schema-presets">
+              {Object.keys(SCHEMA_PRESETS).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className="btn btn-secondary dcs-preset-btn"
+                  onClick={() => applyPreset(k)}
+                >
+                  {k === 'academic' ? 'Academic paper' : k === 'report' ? 'Report' : 'Minimal'}
+                </button>
+              ))}
+            </div>
+            <div className="dcs-schema-list">
+              {extractionSchema.map((field, i) => (
+                <div key={i} className="dcs-schema-item">
+                  <div className="dcs-schema-row">
+                    <div className="dcs-schema-move">
+                      <button
+                        type="button"
+                        className="dcs-schema-move-btn"
+                        onClick={() => moveSchemaField(i, 'up')}
+                        disabled={i === 0}
+                        aria-label="Move up"
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="dcs-schema-move-btn"
+                        onClick={() => moveSchemaField(i, 'down')}
+                        disabled={i === extractionSchema.length - 1}
+                        aria-label="Move down"
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="key"
+                      value={field.key}
+                      onChange={(e) => updateSchemaField(i, { key: e.target.value })}
+                      className="dcs-schema-input dcs-schema-key"
+                    />
+                    <input
+                      type="text"
+                      placeholder="label"
+                      value={field.label}
+                      onChange={(e) => updateSchemaField(i, { label: e.target.value })}
+                      className="dcs-schema-input dcs-schema-label"
+                    />
+                    <select
+                      value={field.type}
+                      onChange={(e) => updateSchemaField(i, { type: e.target.value as 'string' | 'date' | 'array' })}
+                      className="dcs-schema-select"
+                    >
+                      <option value="string">string</option>
+                      <option value="date">date</option>
+                      <option value="array">array</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="dcs-schema-remove"
+                      onClick={() => removeSchemaField(i)}
+                      aria-label="Remove field"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Description (included in LLM prompt to guide extraction)"
+                    value={field.description ?? ''}
+                    onChange={(e) => updateSchemaField(i, { description: e.target.value })}
+                    className="dcs-schema-input dcs-schema-description"
+                  />
+                </div>
+              ))}
+            </div>
+            <button type="button" className="btn btn-secondary dcs-add-field" onClick={addSchemaField}>
+              <Plus size={14} />
+              <span>Add field</span>
+            </button>
+            {extractionModelId && extractionSchema.length === 0 && (
+              <p className="document-channel-settings-hint dcs-schema-empty-hint">
+                Add fields or choose a preset. If empty, the default schema (abstract, author, publish_date, source, tags, categories) will be used.
+              </p>
+            )}
+          </div>
+        </section>
+
         <div className="document-channel-settings-actions">
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
@@ -137,20 +343,3 @@ export function DocumentChannelSettings() {
   );
 }
 
-interface ChannelLike {
-  id: string;
-  pipeline_id?: string | null;
-  auto_process?: boolean;
-  children?: ChannelLike[];
-}
-
-function findChannel(nodes: ChannelLike[], id: string): ChannelLike | null {
-  for (const n of nodes) {
-    if (n.id === id) return n;
-    if (n.children) {
-      const found = findChannel(n.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}

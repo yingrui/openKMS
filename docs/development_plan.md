@@ -40,6 +40,7 @@
 
 - [ ] Move document between channels
 - [x] Delete document
+- [x] Document metadata extraction: LLM extracts abstract, author, publish_date, tags, etc.; configurable schema per channel in settings; Extract button on detail page
 - [ ] Search/filter in channel
 
 ### 4. Authentication

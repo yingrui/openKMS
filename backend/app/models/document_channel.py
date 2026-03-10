@@ -2,6 +2,7 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,6 +18,10 @@ class DocumentChannel(Base):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     pipeline_id: Mapped[str | None] = mapped_column(String(64), ForeignKey("pipelines.id", ondelete="SET NULL"), nullable=True)
     auto_process: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    extraction_model_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
+    )
+    extraction_schema: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["DocumentChannel | None"] = relationship("DocumentChannel", remote_side=[id], back_populates="children")

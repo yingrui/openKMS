@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 class DocumentBase(BaseModel):
@@ -24,10 +24,38 @@ class DocumentResponse(BaseModel):
     status: str = "uploaded"
     markdown: str | None = None
     parsing_result: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_doc_metadata(cls, data: Any) -> Any:
+        """Map Document.doc_metadata to metadata (SQLAlchemy reserves 'metadata')."""
+        if hasattr(data, "doc_metadata"):
+            return {
+                "id": data.id,
+                "name": data.name,
+                "file_type": data.file_type,
+                "size_bytes": data.size_bytes,
+                "channel_id": data.channel_id,
+                "file_hash": data.file_hash,
+                "status": data.status,
+                "markdown": data.markdown,
+                "parsing_result": data.parsing_result,
+                "metadata": data.doc_metadata,
+                "created_at": data.created_at,
+                "updated_at": data.updated_at,
+            }
+        return data
+
+
+class MetadataUpdateBody(BaseModel):
+    """Body for PUT /documents/{id}/metadata."""
+
+    metadata: dict[str, Any]
 
 
 class DocumentListResponse(BaseModel):

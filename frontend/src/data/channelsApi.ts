@@ -2,12 +2,21 @@
 import { config } from '../config';
 import { getAuthHeaders } from './apiClient';
 
+export interface ExtractionSchemaField {
+  key: string;
+  label: string;
+  type: string;
+  description?: string;
+}
+
 export interface ChannelNode {
   id: string;
   name: string;
   description?: string | null;
   pipeline_id?: string | null;
   auto_process?: boolean;
+  extraction_model_id?: string | null;
+  extraction_schema?: ExtractionSchemaField[] | null;
   children: ChannelNode[];
 }
 
@@ -64,6 +73,8 @@ export async function updateChannel(
     description?: string | null;
     pipeline_id?: string | null;
     auto_process?: boolean;
+    extraction_model_id?: string | null;
+    extraction_schema?: { key: string; label: string; type: string; description?: string }[] | null;
     sort_order?: number;
   },
 ): Promise<ChannelNode> {

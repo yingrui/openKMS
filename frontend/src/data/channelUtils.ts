@@ -1,12 +1,33 @@
 /** Utilities for channel trees. No mock data - channels come from API. */
 
+export interface ExtractionSchemaField {
+  key: string;
+  label: string;
+  type: string;
+  description?: string;
+}
+
 export interface ChannelNode {
   id: string;
   name: string;
   description?: string | null;
   pipeline_id?: string | null;
   auto_process?: boolean;
+  extraction_model_id?: string | null;
+  extraction_schema?: ExtractionSchemaField[] | null;
   children?: ChannelNode[];
+}
+
+/** Find a channel by ID in the tree. */
+export function findChannel(nodes: ChannelNode[], targetId: string): ChannelNode | null {
+  for (const node of nodes) {
+    if (node.id === targetId) return node;
+    if (node.children) {
+      const found = findChannel(node.children, targetId);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 /** Collect all leaf channel IDs under a channel (or the channel itself if it's a leaf) */

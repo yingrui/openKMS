@@ -26,6 +26,8 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
                 description=c.description,
                 pipeline_id=c.pipeline_id,
                 auto_process=c.auto_process,
+                extraction_model_id=c.extraction_model_id,
+                extraction_schema=c.extraction_schema,
                 children=_build_tree(channels, c.id),
             )
         )
@@ -64,8 +66,14 @@ async def create_document_channel(
     await db.commit()
     await db.refresh(channel)
     return ChannelNode(
-        id=channel.id, name=channel.name, description=channel.description,
-        pipeline_id=channel.pipeline_id, auto_process=channel.auto_process, children=[],
+        id=channel.id,
+        name=channel.name,
+        description=channel.description,
+        pipeline_id=channel.pipeline_id,
+        auto_process=channel.auto_process,
+        extraction_model_id=channel.extraction_model_id,
+        extraction_schema=channel.extraction_schema,
+        children=[],
     )
 
 
@@ -87,6 +95,12 @@ async def update_document_channel(
     await db.commit()
     await db.refresh(channel)
     return ChannelNode(
-        id=channel.id, name=channel.name, description=channel.description,
-        pipeline_id=channel.pipeline_id, auto_process=channel.auto_process, children=[],
+        id=channel.id,
+        name=channel.name,
+        description=channel.description,
+        pipeline_id=channel.pipeline_id,
+        auto_process=channel.auto_process,
+        extraction_model_id=channel.extraction_model_id,
+        extraction_schema=channel.extraction_schema,
+        children=[],
     )
