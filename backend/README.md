@@ -28,7 +28,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_USER` | postgres | Database user |
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
-| `OPENKMS_VLM_SERVER_URL` | http://localhost:8101 | vlm-server URL |
+| `OPENKMS_VLM_URL` | http://localhost:8101 | vlm-server URL |
 | `KEYCLOAK_AUTH_SERVER_URL` | http://localhost:8081 | Keycloak server |
 | `KEYCLOAK_REALM` | openkms | Keycloak realm |
 | `KEYCLOAK_CLIENT_ID` | openkms-backend | OAuth2 client ID |

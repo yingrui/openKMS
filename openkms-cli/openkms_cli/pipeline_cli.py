@@ -83,6 +83,12 @@ def pipeline_run(
         envvar="OPENKMS_VLM_URL",
         help="VLM server URL",
     ),
+    vlm_api_key: Optional[str] = typer.Option(
+        None,
+        "--vlm-api-key",
+        envvar="OPENKMS_VLM_API_KEY",
+        help="VLM API key (for authenticated VLM endpoints)",
+    ),
     bucket: str = typer.Option(
         "openkms",
         "--bucket",
@@ -238,6 +244,7 @@ def pipeline_run(
             input_path=pdf_path,
             output_dir=out_base,
             vlm_url=vlm_url,
+            vlm_api_key=vlm_api_key,
         )
         file_hash = result["file_hash"]
         hash_dir = out_base / file_hash

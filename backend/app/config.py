@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     database_name: str = "openkms"
 
     # VLM Server (mlx-vlm for document parsing)
-    vlm_server_url: str = "http://localhost:8101"
+    vlm_url: str = "http://localhost:8101"
     vlm_model: str = "mlx-community/Qwen2-VL-2B-Instruct-4bit"
 
     # PaddleOCRVL (uses mlx-vlm-server as VLM backend for document parsing)

@@ -193,6 +193,7 @@ def run_parser(
     input_path: Path,
     output_dir: Path,
     vlm_url: str = "http://localhost:8101/",
+    vlm_api_key: str | None = None,
     model: str = "PaddlePaddle/PaddleOCR-VL-1.5",
     max_concurrency: int = 3,
 ) -> tuple[dict[str, Any], list[tuple[str, bytes]], list[tuple[str, bytes]]]:
@@ -211,6 +212,7 @@ def run_parser(
         use_queues=False,
         vl_rec_backend="mlx-vlm-server",
         vl_rec_server_url=vlm_url.rstrip("/") + "/",
+        vl_rec_api_key=vlm_api_key,
         vl_rec_api_model_name=model,
         vl_rec_max_concurrency=max_concurrency,
     )

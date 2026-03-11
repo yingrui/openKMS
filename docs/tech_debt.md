@@ -221,7 +221,7 @@ flowchart TB
 | `backend/app/services/storage.py` | Presigned URL `expires_in=3600` |
 | `backend/app/services/model_testing.py` | HTTP timeout `timeout=120.0` |
 | `backend/app/jobs/tasks.py` | Subprocess `timeout=600` |
-| `backend/app/config.py` | Both `vlm_server_url` and `paddleocr_vl_server_url` default to `http://localhost:8101` (duplicate config) |
+| `backend/app/config.py` | Both `vlm_url` and `paddleocr_vl_server_url` default to `http://localhost:8101` (duplicate config) |
 | `backend/app/config.py` | `paddleocr_vl_max_concurrency` is defined but never used |
 
 ### 8. Missing type hints
