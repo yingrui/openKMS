@@ -7,7 +7,7 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Document overview | ✅ | Dashboard at `/documents` with channel count, document count (from API stats), quick actions |
-| Channel management | ✅ | Create/manage channels at `/documents/channels` (tree structure) |
+| Channel management | ✅ | Create channels at `/documents/channels` (tree structure); rename, description, move, merge, delete; settings per channel |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
 | Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema) at `/documents/channels/:channelId/settings` |
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
@@ -16,7 +16,7 @@
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; scrollable layout (min-height 720px) for large content |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
 | Document metadata extraction | ✅ | Metadata card on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type, description for LLM prompt); combined with document info in one section |
-| Document info & metadata edit | ✅ | Edit document name (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); supports string, date, array types per extraction schema |
+| Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
 ### 2. Document Parsing
@@ -120,14 +120,17 @@
 | POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | POST | `/clear-session` | Clear backend session (called by frontend before Keycloak logout) |
 | GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
-| GET | `/api/channels/documents` | List document channels (tree) |
-| POST | `/api/channels/documents` | Create channel |
-| PUT | `/api/channels/documents/{id}` | Update channel (name, pipeline_id, auto_process, extraction_model_id, extraction_schema) |
+| GET | `/api/document-channels` | List document channels (tree) |
+| POST | `/api/document-channels` | Create channel |
+| PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema) |
+| POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
+| POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
+| DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
 | POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
 | GET | `/api/documents?channel_id=` | List documents in channel and descendants |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
-| PUT | `/api/documents/{id}` | Update document info (e.g. name) |
+| PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
 | GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |

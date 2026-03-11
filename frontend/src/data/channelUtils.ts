@@ -27,6 +27,7 @@ export interface ChannelNode {
   id: string;
   name: string;
   description?: string | null;
+  sort_order?: number;
   pipeline_id?: string | null;
   auto_process?: boolean;
   extraction_model_id?: string | null;
@@ -143,6 +144,20 @@ export function findChannel(nodes: ChannelNode[], targetId: string): ChannelNode
     }
   }
   return null;
+}
+
+/** Collect channel ID and all descendant IDs into a set. */
+export function getDescendantIds(nodes: ChannelNode[], channelId: string): Set<string> {
+  const out = new Set<string>();
+  function addWithChildren(n: ChannelNode) {
+    out.add(n.id);
+    if (n.children) {
+      for (const c of n.children) addWithChildren(c);
+    }
+  }
+  const found = findChannel(nodes, channelId);
+  if (found) addWithChildren(found);
+  return out;
 }
 
 /** Collect all leaf channel IDs under a channel (or the channel itself if it's a leaf) */

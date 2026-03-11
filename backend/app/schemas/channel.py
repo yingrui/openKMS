@@ -16,6 +16,7 @@ class ChannelNode(BaseModel):
     id: str
     name: str
     description: str | None = None
+    sort_order: int = 0
     pipeline_id: str | None = None
     auto_process: bool = False
     extraction_model_id: str | None = None
@@ -29,13 +30,25 @@ ChannelNode.model_rebuild()
 
 class ChannelCreate(BaseModel):
     name: str
+    description: str | None = None
     parent_id: str | None = None
     sort_order: int = 0
+
+
+class ChannelMergeBody(BaseModel):
+    source_channel_id: str
+    target_channel_id: str
+    include_descendants: bool = True
+
+
+class ChannelReorderBody(BaseModel):
+    direction: str  # "up" | "down"
 
 
 class ChannelUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    parent_id: str | None = None
     pipeline_id: str | None = None
     auto_process: bool | None = None
     extraction_model_id: str | None = None

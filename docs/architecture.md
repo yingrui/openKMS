@@ -102,7 +102,7 @@ backend/
 │   ├── database.py              # Async engine, get_db, init_db
 │   ├── api/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
-│   │   ├── channels.py         # GET/POST/PUT /api/channels/documents
+│   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
@@ -233,7 +233,7 @@ sequenceDiagram
 
 ### Channel Tree
 
-1. Frontend `DocumentChannelsContext` fetches `GET /api/channels/documents`
+1. Frontend `DocumentChannelsContext` fetches `GET /api/document-channels`
 2. Backend returns nested `ChannelNode[]` (id, name, description, children)
 3. Sidebar and Documents pages use `channelUtils` (flattenChannels, getDocumentChannelName, etc.)
 

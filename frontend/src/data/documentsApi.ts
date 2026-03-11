@@ -180,11 +180,12 @@ export async function extractDocumentMetadata(documentId: string): Promise<Docum
 
 export async function updateDocument(
   documentId: string,
-  params: { name?: string }
+  params: { name?: string; channel_id?: string }
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
   const body: Record<string, string> = {};
   if (params.name !== undefined) body.name = params.name;
+  if (params.channel_id !== undefined) body.channel_id = params.channel_id;
   const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },

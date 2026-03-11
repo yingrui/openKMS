@@ -844,6 +844,28 @@
   color: var(--color-error);
 }
 
+.documents-move-form {
+  margin-bottom: 20px;
+}
+
+.documents-move-form label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.documents-move-select {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
 .documents-upload-modal-actions {
   display: flex;
   justify-content: flex-end;

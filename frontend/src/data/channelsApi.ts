@@ -13,6 +13,7 @@ export interface ChannelNode {
   id: string;
   name: string;
   description?: string | null;
+  sort_order?: number;
   pipeline_id?: string | null;
   auto_process?: boolean;
   extraction_model_id?: string | null;
@@ -23,7 +24,7 @@ export interface ChannelNode {
 export async function fetchDocumentChannels(): Promise<ChannelNode[]> {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${config.apiUrl}/api/channels/documents`, {
+    const res = await fetch(`${config.apiUrl}/api/document-channels`, {
       headers: { ...headers },
       credentials: 'include',
     });
@@ -46,11 +47,12 @@ function handleNetworkError(e: unknown): never {
 
 export async function createDocumentChannel(params: {
   name: string;
+  description?: string | null;
   parent_id?: string | null;
 }): Promise<ChannelNode> {
   try {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`${config.apiUrl}/api/channels/documents`, {
+    const res = await fetch(`${config.apiUrl}/api/document-channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(params),
@@ -71,6 +73,7 @@ export async function updateChannel(
   params: {
     name?: string;
     description?: string | null;
+    parent_id?: string | null;
     pipeline_id?: string | null;
     auto_process?: boolean;
     extraction_model_id?: string | null;
@@ -80,7 +83,7 @@ export async function updateChannel(
 ): Promise<ChannelNode> {
   try {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`${config.apiUrl}/api/channels/documents/${channelId}`, {
+    const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(params),
@@ -93,5 +96,54 @@ export async function updateChannel(
     return res.json();
   } catch (e) {
     handleNetworkError(e);
+  }
+}
+
+export async function mergeChannels(params: {
+  source_channel_id: string;
+  target_channel_id: string;
+  include_descendants?: boolean;
+}): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/document-channels/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    body: JSON.stringify({
+      source_channel_id: params.source_channel_id,
+      target_channel_id: params.target_channel_id,
+      include_descendants: params.include_descendants ?? true,
+    }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to merge channels');
+  }
+}
+
+export async function deleteChannel(channelId: string): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
+    method: 'DELETE',
+    headers: authHeaders,
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete channel');
+  }
+}
+
+export async function reorderChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
+  const authHeaders = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}/reorder`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    body: JSON.stringify({ direction }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to reorder channel');
   }
 }

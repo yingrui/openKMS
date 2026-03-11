@@ -51,6 +51,8 @@ export function DocumentChannelSettings() {
   const [modelsLoading, setModelsLoading] = useState(true);
 
   const channel = channels.length > 0 ? findChannel(channels, channelId) : null;
+  const [channelNameField, setChannelNameField] = useState('');
+  const [channelDescription, setChannelDescription] = useState('');
   const [pipelineId, setPipelineId] = useState('');
   const [autoProcess, setAutoProcess] = useState(false);
   const [extractionModelId, setExtractionModelId] = useState('');
@@ -94,6 +96,8 @@ export function DocumentChannelSettings() {
 
   useEffect(() => {
     if (channel) {
+      setChannelNameField(channel.name || '');
+      setChannelDescription(channel.description ?? '');
       setPipelineId(channel.pipeline_id || '');
       setAutoProcess(channel.auto_process || false);
       setExtractionModelId(channel.extraction_model_id || '');
@@ -112,6 +116,8 @@ export function DocumentChannelSettings() {
     try {
       const schemaDict = editorFieldsToJsonSchema(extractionSchema);
       await updateChannel(channelId, {
+        name: channelNameField.trim() || channel?.name,
+        description: channelDescription.trim() || null,
         pipeline_id: pipelineId || null,
         auto_process: autoProcess,
         extraction_model_id: extractionModelId || null,
@@ -174,6 +180,30 @@ export function DocumentChannelSettings() {
       </div>
 
       <div className="document-channel-settings-form">
+        <section className="document-channel-settings-section">
+          <h2>General</h2>
+          <div className="document-channel-settings-field">
+            <label htmlFor="channel-name">Name</label>
+            <input
+              id="channel-name"
+              type="text"
+              value={channelNameField}
+              onChange={(e) => setChannelNameField(e.target.value)}
+              placeholder="Channel name"
+            />
+          </div>
+          <div className="document-channel-settings-field">
+            <label htmlFor="channel-description">Description</label>
+            <textarea
+              id="channel-description"
+              value={channelDescription}
+              onChange={(e) => setChannelDescription(e.target.value)}
+              placeholder="Optional description"
+              rows={2}
+            />
+          </div>
+        </section>
+
         <section className="document-channel-settings-section">
           <h2>Document processing pipeline</h2>
           <div className="document-channel-settings-field">

@@ -62,6 +62,7 @@ class DocumentInfoUpdateBody(BaseModel):
     """Body for PUT /documents/{id} (document info)."""
 
     name: str | None = None
+    channel_id: str | None = None
 
 
 class MarkdownUpdateBody(BaseModel):

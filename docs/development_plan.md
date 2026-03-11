@@ -34,14 +34,17 @@
 - [x] Add `GET /api/documents?channel_id=...` (filter by channel + descendants)
 - [x] Wire DocumentChannel page to real document list
 
-### 2. Channel Description Editing
+### 2. Channel Management (Rename, Move, Merge, Delete)
 
-- [ ] Add description field to channel create/edit UI
-- [ ] Backend: `PUT /api/channels/documents/:id` for update (name, description)
+- [x] **Rename channel**: Name field in channel settings; backend `PUT` supports `name`
+- [x] **Edit description**: Description in channel create form and settings; backend supports it
+- [x] **Move channel**: `parent_id` in `ChannelUpdate`; Move button in manage UI with parent dropdown
+- [x] **Delete channel**: `DELETE /api/document-channels/{id}`; blocks if has documents or sub-channels; confirm UI
+- [x] **Merge channels**: `POST /api/document-channels/merge`; move docs to target, delete source; optional include_descendants
 
 ### 3. Document Operations
 
-- [ ] Move document between channels
+- [x] Move document between channels (`PUT /api/documents/{id}` with `channel_id`; Move modal in document list)
 - [x] Delete document
 - [x] Document metadata extraction: LLM extracts abstract, author, publish_date, tags, etc.; configurable schema per channel in settings; Extract button on detail page
 - [ ] Search/filter in channel

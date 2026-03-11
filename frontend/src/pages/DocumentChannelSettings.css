@@ -62,7 +62,9 @@
   cursor: pointer;
 }
 
+.document-channel-settings-field input[type="text"],
 .document-channel-settings-field input[type="number"],
+.document-channel-settings-field textarea,
 .document-channel-settings-field select {
   padding: 10px 14px;
   font-size: 0.9375rem;
@@ -70,11 +72,21 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   color: var(--color-text);
-  width: 100%;
+}
+
+.document-channel-settings-field input[type="number"],
+.document-channel-settings-field select {
   max-width: 200px;
 }
 
+.document-channel-settings-field textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+.document-channel-settings-field input[type="text"]:focus,
 .document-channel-settings-field input[type="number"]:focus,
+.document-channel-settings-field textarea:focus,
 .document-channel-settings-field select:focus {
   outline: none;
   border-color: var(--color-accent);
@@ -131,6 +143,7 @@
   flex-direction: column;
   gap: 12px;
   margin: 12px 0;
+  min-width: 0;
 }
 
 .dcs-schema-item {
@@ -141,12 +154,14 @@
   background: var(--color-bg-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  min-width: 0;
 }
 
 .dcs-schema-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .dcs-schema-description {
@@ -158,12 +173,13 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  flex-shrink: 0;
 }
 
 .dcs-schema-move-btn {
-  padding: 2px;
-  background: transparent;
-  border: none;
+  padding: 6px;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -172,7 +188,8 @@
 
 .dcs-schema-move-btn:hover:not(:disabled) {
   color: var(--color-accent);
-  background: var(--color-bg-muted);
+  border-color: var(--color-accent);
+  background: var(--color-bg-elevated);
 }
 
 .dcs-schema-move-btn:disabled {
@@ -207,6 +224,17 @@
 .dcs-schema-select {
   width: 90px;
   flex-shrink: 0;
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.dcs-schema-select:focus {
+  outline: none;
+  border-color: var(--color-accent);
 }
 
 .dcs-schema-required {

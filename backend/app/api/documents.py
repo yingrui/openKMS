@@ -209,12 +209,17 @@ async def update_document(
     body: DocumentInfoUpdateBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update document info (e.g. name)."""
+    """Update document info (e.g. name, channel)."""
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     if body.name is not None:
         doc.name = body.name.strip() or doc.name
+    if body.channel_id is not None:
+        channel = await db.get(DocumentChannel, body.channel_id)
+        if not channel:
+            raise HTTPException(status_code=404, detail="Channel not found")
+        doc.channel_id = body.channel_id
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)

@@ -21,11 +21,13 @@ import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
   getDocumentChannelName,
   getDocumentChannelDescription,
+  flattenChannels,
 } from '../data/channelUtils';
 import {
   fetchDocumentsByChannel,
   uploadDocument,
   deleteDocument,
+  updateDocument,
   isAcceptedFile,
   type DocumentResponse,
 } from '../data/documentsApi';
@@ -63,7 +65,7 @@ function formatDate(iso: string): string {
 export function DocumentChannel() {
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
-  const { channels, loading, error } = useDocumentChannels();
+  const { channels, loading, error, refetch: refetchChannels } = useDocumentChannels();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
@@ -75,8 +77,12 @@ export function DocumentChannel() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [moveDoc, setMoveDoc] = useState<DocumentResponse | null>(null);
+  const [moveTargetChannelId, setMoveTargetChannelId] = useState('');
+  const [moveLoading, setMoveLoading] = useState(false);
 
   const channelName = getDocumentChannelName(channels, channelId);
+  const channelOptions = flattenChannels(channels);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
 
   const loadDocuments = useCallback(async () => {
@@ -173,6 +179,38 @@ export function DocumentChannel() {
       toast.error(err instanceof Error ? err.message : 'Failed to create processing job');
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleMoveClick = (e: React.MouseEvent, doc: DocumentResponse) => {
+    e.stopPropagation();
+    setMoveDoc(doc);
+    setMoveTargetChannelId(doc.channel_id);
+  };
+
+  const closeMoveModal = () => {
+    if (!moveLoading) {
+      setMoveDoc(null);
+      setMoveTargetChannelId('');
+    }
+  };
+
+  const handleMoveConfirm = async () => {
+    if (!moveDoc || !moveTargetChannelId || moveTargetChannelId === moveDoc.channel_id) {
+      closeMoveModal();
+      return;
+    }
+    setMoveLoading(true);
+    try {
+      await updateDocument(moveDoc.id, { channel_id: moveTargetChannelId });
+      toast.success(`"${moveDoc.name}" moved`);
+      await loadDocuments();
+      if (refetchChannels) await refetchChannels();
+      closeMoveModal();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to move document');
+    } finally {
+      setMoveLoading(false);
     }
   };
 
@@ -324,7 +362,12 @@ export function DocumentChannel() {
                           <button type="button" title="Edit" aria-label="Edit">
                             <Pencil size={16} />
                           </button>
-                          <button type="button" title="Move" aria-label="Move to channel">
+                          <button
+                            type="button"
+                            title="Move"
+                            aria-label={`Move ${doc.name} to channel`}
+                            onClick={(e) => handleMoveClick(e, doc)}
+                          >
                             <FolderInput size={16} />
                           </button>
                           <button type="button" title="Download" aria-label="Download">
@@ -466,6 +509,81 @@ export function DocumentChannel() {
                   <>
                     <Upload size={18} />
                     <span>Upload</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveDoc && (
+        <div
+          className="documents-upload-modal-overlay"
+          onClick={closeMoveModal}
+          onKeyDown={(e) => e.key === 'Escape' && closeMoveModal()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="move-modal-title"
+        >
+          <div
+            className="documents-upload-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="documents-upload-modal-header">
+              <h2 id="move-modal-title">Move document</h2>
+              <button
+                type="button"
+                className="documents-upload-modal-close"
+                onClick={closeMoveModal}
+                disabled={moveLoading}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="documents-upload-modal-hint">
+              Move &quot;{moveDoc.name}&quot; to another channel.
+            </p>
+            <div className="documents-move-form">
+              <label htmlFor="move-target-channel">Target channel</label>
+              <select
+                id="move-target-channel"
+                value={moveTargetChannelId}
+                onChange={(e) => setMoveTargetChannelId(e.target.value)}
+                className="documents-move-select"
+              >
+                {channelOptions.map((ch) => (
+                  <option key={ch.id} value={ch.id}>
+                    {'—'.repeat(ch.depth)} {ch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="documents-upload-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={closeMoveModal}
+                disabled={moveLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleMoveConfirm}
+                disabled={moveLoading || moveTargetChannelId === moveDoc.channel_id}
+              >
+                {moveLoading ? (
+                  <>
+                    <Loader2 size={18} className="documents-upload-spinner" />
+                    <span>Moving…</span>
+                  </>
+                ) : (
+                  <>
+                    <FolderInput size={18} />
+                    <span>Move</span>
                   </>
                 )}
               </button>
