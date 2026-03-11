@@ -15,6 +15,8 @@ def _build_url(base_url: str, category: str) -> str:
         return f"{base}/v1/embeddings"
     elif category == "llm":
         return f"{base}/v1/chat/completions"
+    elif category == "vl":
+        return f"{base}/v1/chat/completions"
     # Otherwise, use url as is
     return base
 
