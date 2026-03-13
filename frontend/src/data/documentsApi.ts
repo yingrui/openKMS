@@ -50,6 +50,28 @@ export async function fetchDocumentStats(): Promise<{ total: number }> {
   return res.json();
 }
 
+export async function fetchDocuments(params?: {
+  channel_id?: string;
+  search?: string;
+  limit?: number;
+}): Promise<DocumentListResponse> {
+  const headers = await getAuthHeaders();
+  const query = new URLSearchParams();
+  if (params?.channel_id) query.set('channel_id', params.channel_id);
+  if (params?.search) query.set('search', params.search);
+  if (params?.limit) query.set('limit', String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`${config.apiUrl}/api/documents${qs}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || `Failed to fetch documents: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function fetchDocumentsByChannel(channelId: string): Promise<DocumentListResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(

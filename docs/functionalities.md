@@ -30,7 +30,7 @@
 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
 - **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`
-- **Pipeline**: `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
+- **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
 - **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`
 - Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`
 - Output structure matches backend: `{file_hash}/original.{ext}`, `result.json`, `markdown.md`, `layout_det_*`, `block_*`, `markdown_out/*`
@@ -49,12 +49,12 @@
 |---------|--------|-------------|
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying |
-| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents |
-| FAQ generation | ✅ | `POST /api/knowledge-bases/{id}/faqs/generate` with document_ids and model_id; uses OpenAI-compatible LLM |
+| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document |
+| FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal |
 | Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph) |
 | Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
-| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap configuration |
+| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt |
 | KB indexing (CLI) | ✅ | `openkms-cli kb index` – chunk documents, generate embeddings, bulk insert to pgvector |
 | KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
 | QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG with pgvector retrieval |
@@ -140,7 +140,7 @@
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
 | POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
-| GET | `/api/documents?channel_id=` | List documents in channel and descendants |
+| GET | `/api/documents?channel_id=&search=&limit=` | List documents; channel_id optional (all if omitted); search filters by name |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
 | PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
@@ -179,7 +179,7 @@
 | GET | `/api/knowledge-bases` | List knowledge bases |
 | POST | `/api/knowledge-bases` | Create knowledge base |
 | GET | `/api/knowledge-bases/{id}` | Get KB with stats |
-| PUT | `/api/knowledge-bases/{id}` | Update KB (name, description, agent_url, chunk_config, embedding_model_id) |
+| PUT | `/api/knowledge-bases/{id}` | Update KB (name, description, agent_url, chunk_config, embedding_model_id, faq_prompt) |
 | DELETE | `/api/knowledge-bases/{id}` | Delete KB (cascades documents, FAQs, chunks) |
 | GET | `/api/knowledge-bases/{id}/documents` | List documents in KB |
 | POST | `/api/knowledge-bases/{id}/documents` | Add document to KB |
@@ -188,7 +188,8 @@
 | POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |
 | PUT | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Update FAQ |
 | DELETE | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Delete FAQ |
-| POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQs from documents via LLM |
+| POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |
+| POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
 | GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated) |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
 | POST | `/api/knowledge-bases/{id}/search` | Semantic search over chunks and FAQs |
@@ -237,7 +238,7 @@
 
 ### KnowledgeBase
 
-- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `created_at`, `updated_at`
+- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `faq_prompt` (optional default for FAQ generation), `created_at`, `updated_at`
 - Groups documents, FAQs, and chunks for RAG Q&A
 
 ### KBDocument

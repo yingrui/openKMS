@@ -24,7 +24,7 @@ dependencies = [
     "openai>=1.0.0",
     "pydantic-ai>=0.0.14",
     "PyJWT[crypto]>=2.8.0",
-    "pgvector>=0.3.0",
+    "pgvector>=0.4.2",
 ]
 
 [build-system]

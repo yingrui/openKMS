@@ -13,6 +13,7 @@ class KnowledgeBaseCreate(BaseModel):
     embedding_model_id: str | None = None
     agent_url: str | None = None
     chunk_config: dict[str, Any] | None = None
+    faq_prompt: str | None = None
 
 
 class KnowledgeBaseUpdate(BaseModel):
@@ -21,6 +22,7 @@ class KnowledgeBaseUpdate(BaseModel):
     embedding_model_id: str | None = None
     agent_url: str | None = None
     chunk_config: dict[str, Any] | None = None
+    faq_prompt: str | None = None
 
 
 class KnowledgeBaseResponse(BaseModel):
@@ -30,6 +32,7 @@ class KnowledgeBaseResponse(BaseModel):
     embedding_model_id: str | None = None
     agent_url: str | None = None
     chunk_config: dict[str, Any] | None = None
+    faq_prompt: str | None = None
     document_count: int = 0
     faq_count: int = 0
     chunk_count: int = 0
@@ -78,12 +81,32 @@ class FAQUpdate(BaseModel):
 class FAQGenerateRequest(BaseModel):
     document_ids: list[str]
     model_id: str
+    prompt: str | None = None
+
+
+class FAQGenerateResult(BaseModel):
+    """Generated FAQ pair (preview, not yet saved)."""
+    document_id: str
+    document_name: str | None = None
+    question: str
+    answer: str
+
+
+class FAQBatchItem(BaseModel):
+    document_id: str
+    question: str
+    answer: str
+
+
+class FAQBatchCreateRequest(BaseModel):
+    items: list[FAQBatchItem]
 
 
 class FAQResponse(BaseModel):
     id: str
     knowledge_base_id: str
     document_id: str | None = None
+    document_name: str | None = None
     question: str
     answer: str
     has_embedding: bool = False

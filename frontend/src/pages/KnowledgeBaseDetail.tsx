@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,6 +14,10 @@ import {
   Settings,
   MessageSquare,
   Pencil,
+  X,
+  FileText,
+  Check,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -27,15 +31,18 @@ import {
   updateFAQ,
   deleteFAQ,
   generateFAQs,
+  saveFAQs,
   searchKnowledgeBase,
   askQuestion,
   updateKnowledgeBase,
   type KnowledgeBaseResponse,
   type KBDocumentResponse,
   type FAQResponse,
+  type FAQGenerateResult,
   type ChunkResponse,
   type SearchResult,
 } from '../data/knowledgeBasesApi';
+import { fetchDocuments, type DocumentResponse } from '../data/documentsApi';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import './KnowledgeBaseDetail.css';
 
@@ -64,8 +71,13 @@ export function KnowledgeBaseDetail() {
 
   // Documents
   const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
-  const [showAddDoc, setShowAddDoc] = useState(false);
-  const [addDocId, setAddDocId] = useState('');
+  const [showDocPicker, setShowDocPicker] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerResults, setPickerResults] = useState<DocumentResponse[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
+  const [pickerAdding, setPickerAdding] = useState(false);
+  const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // FAQs
   const [faqs, setFaqs] = useState<FAQResponse[]>([]);
@@ -73,10 +85,14 @@ export function KnowledgeBaseDetail() {
   const [editFaq, setEditFaq] = useState<FAQResponse | null>(null);
   const [faqQuestion, setFaqQuestion] = useState('');
   const [faqAnswer, setFaqAnswer] = useState('');
-  const [showGenerateForm, setShowGenerateForm] = useState(false);
-  const [genDocIds, setGenDocIds] = useState('');
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [genSelectedDocs, setGenSelectedDocs] = useState<Set<string>>(new Set());
   const [genModelId, setGenModelId] = useState('');
+  const [genPrompt, setGenPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [genStep, setGenStep] = useState<'config' | 'review'>('config');
+  const [genPreviewFaqs, setGenPreviewFaqs] = useState<FAQGenerateResult[]>([]);
+  const [genSaving, setGenSaving] = useState(false);
 
   // Chunks
   const [chunks, setChunks] = useState<ChunkResponse[]>([]);
@@ -96,6 +112,7 @@ export function KnowledgeBaseDetail() {
   // Settings
   const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
   const [settingsEmbeddingModelId, setSettingsEmbeddingModelId] = useState('');
+  const [settingsFaqPrompt, setSettingsFaqPrompt] = useState('');
   const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
   const [settingsChunkSize, setSettingsChunkSize] = useState(512);
   const [settingsChunkOverlap, setSettingsChunkOverlap] = useState(50);
@@ -114,6 +131,7 @@ export function KnowledgeBaseDetail() {
       setSettingsChunkStrategy((cc.strategy as string) || 'fixed_size');
       setSettingsChunkSize((cc.chunk_size as number) || 512);
       setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
+      setSettingsFaqPrompt(data.faq_prompt || '');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load KB');
     } finally {
@@ -157,18 +175,65 @@ export function KnowledgeBaseDetail() {
     if (activeTab === 'chunks') loadChunks();
   }, [activeTab, loadDocs, loadFaqs, loadChunks]);
 
-  // --- Document handlers ---
-  const handleAddDocument = async () => {
-    if (!kbId || !addDocId.trim()) return;
+  // --- Document picker ---
+  const alreadyAddedIds = new Set(docs.map((d) => d.document_id));
+
+  const openDocPicker = async () => {
+    setShowDocPicker(true);
+    setPickerSearch('');
+    setPickerSelected(new Set());
+    setPickerLoading(true);
     try {
-      await addKBDocument(kbId, addDocId.trim());
-      setAddDocId('');
-      setShowAddDoc(false);
-      toast.success('Document added');
+      const res = await fetchDocuments({ limit: 50 });
+      setPickerResults(res.items);
+    } catch { /* noop */ }
+    finally { setPickerLoading(false); }
+  };
+
+  const handlePickerSearch = (query: string) => {
+    setPickerSearch(query);
+    if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);
+    pickerDebounceRef.current = setTimeout(async () => {
+      setPickerLoading(true);
+      try {
+        const res = await fetchDocuments({ search: query || undefined, limit: 50 });
+        setPickerResults(res.items);
+      } catch { /* noop */ }
+      finally { setPickerLoading(false); }
+    }, 300);
+  };
+
+  const togglePickerDoc = (docId: string) => {
+    setPickerSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
+
+  const handleAddSelectedDocuments = async () => {
+    if (!kbId || pickerSelected.size === 0) return;
+    setPickerAdding(true);
+    let added = 0;
+    for (const docId of pickerSelected) {
+      try {
+        await addKBDocument(kbId, docId);
+        added++;
+      } catch { /* skip duplicates */ }
+    }
+    setPickerAdding(false);
+    setShowDocPicker(false);
+    if (added > 0) {
+      toast.success(`${added} document${added > 1 ? 's' : ''} added`);
       loadDocs();
       loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to add document');
+    }
+  };
+
+  const closeDocPicker = () => {
+    if (!pickerAdding) {
+      setShowDocPicker(false);
     }
   };
 
@@ -218,27 +283,80 @@ export function KnowledgeBaseDetail() {
     }
   };
 
+  const openGenerateModal = () => {
+    setGenSelectedDocs(new Set(docs.map((d) => d.document_id)));
+    setGenModelId('');
+    setGenPrompt(kb?.faq_prompt || '');
+    setGenStep('config');
+    setGenPreviewFaqs([]);
+    setShowGenerateModal(true);
+  };
+
+  const closeGenerateModal = () => {
+    if (!generating && !genSaving) setShowGenerateModal(false);
+  };
+
+  const toggleGenDoc = (docId: string) => {
+    setGenSelectedDocs((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  };
+
   const handleGenerateFaqs = async () => {
     if (!kbId || !genModelId) return;
+    const docIds = Array.from(genSelectedDocs);
+    if (docIds.length === 0) {
+      toast.error('Select at least one document');
+      return;
+    }
     setGenerating(true);
     try {
-      const docIds = genDocIds.trim()
-        ? genDocIds.split(',').map((s) => s.trim()).filter(Boolean)
-        : docs.map((d) => d.document_id);
-      if (docIds.length === 0) {
-        toast.error('No documents to generate from');
-        return;
-      }
-      const result = await generateFAQs(kbId, { document_ids: docIds, model_id: genModelId });
-      toast.success(`Generated ${result.length} FAQ pairs`);
-      setShowGenerateForm(false);
-      loadFaqs();
-      loadKb();
+      const result = await generateFAQs(kbId, {
+        document_ids: docIds,
+        model_id: genModelId,
+        prompt: genPrompt.trim() || undefined,
+      });
+      setGenPreviewFaqs(result);
+      setGenStep('review');
+      toast.success(`Generated ${result.length} FAQ pairs. Review and remove any you don't want, then Save.`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'FAQ generation failed');
     } finally {
       setGenerating(false);
     }
+  };
+
+  const removeGenPreviewFaq = (idx: number) => {
+    setGenPreviewFaqs((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSaveGeneratedFaqs = async () => {
+    if (!kbId || genPreviewFaqs.length === 0) return;
+    setGenSaving(true);
+    try {
+      const items = genPreviewFaqs.map((f) => ({
+        document_id: f.document_id,
+        question: f.question,
+        answer: f.answer,
+      }));
+      await saveFAQs(kbId, items);
+      toast.success(`Saved ${items.length} FAQs`);
+      setShowGenerateModal(false);
+      loadFaqs();
+      loadKb();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save FAQs');
+    } finally {
+      setGenSaving(false);
+    }
+  };
+
+  const handleGenBackToConfig = () => {
+    setGenStep('config');
+    setGenPreviewFaqs([]);
   };
 
   // --- Search ---
@@ -292,6 +410,7 @@ export function KnowledgeBaseDetail() {
           chunk_size: settingsChunkSize,
           chunk_overlap: settingsChunkOverlap,
         },
+        faq_prompt: settingsFaqPrompt.trim() || null,
       });
       toast.success('Settings saved');
       loadKb();
@@ -344,24 +463,11 @@ export function KnowledgeBaseDetail() {
           <section className="kb-section">
             <div className="kb-section-header">
               <h2>Documents</h2>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowAddDoc(true)}>
+              <button type="button" className="btn btn-primary btn-sm" onClick={openDocPicker}>
                 <Plus size={16} />
                 <span>Add document</span>
               </button>
             </div>
-            {showAddDoc && (
-              <div className="kb-inline-form">
-                <input
-                  type="text"
-                  placeholder="Paste document ID"
-                  value={addDocId}
-                  onChange={(e) => setAddDocId(e.target.value)}
-                  autoFocus
-                />
-                <button type="button" className="btn btn-primary btn-sm" onClick={handleAddDocument}>Add</button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowAddDoc(false); setAddDocId(''); }}>Cancel</button>
-              </div>
-            )}
             {docs.length === 0 ? (
               <p className="kb-empty-text">No documents added yet.</p>
             ) : (
@@ -411,7 +517,7 @@ export function KnowledgeBaseDetail() {
             <div className="kb-section-header">
               <h2>FAQs</h2>
               <div className="kb-section-header-btns">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGenerateForm(true)}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={openGenerateModal}>
                   <Sparkles size={16} />
                   <span>Generate FAQ</span>
                 </button>
@@ -426,35 +532,6 @@ export function KnowledgeBaseDetail() {
                 </button>
               </div>
             </div>
-
-            {showGenerateForm && (
-              <div className="kb-inline-form kb-generate-form">
-                <label>
-                  <span>LLM Model</span>
-                  <select value={genModelId} onChange={(e) => setGenModelId(e.target.value)}>
-                    <option value="">Select a model...</option>
-                    {llmModels.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Document IDs (comma-separated, leave empty for all)</span>
-                  <input
-                    type="text"
-                    placeholder="doc-id-1, doc-id-2 (optional)"
-                    value={genDocIds}
-                    onChange={(e) => setGenDocIds(e.target.value)}
-                  />
-                </label>
-                <div className="kb-inline-form-actions">
-                  <button type="button" className="btn btn-primary btn-sm" disabled={!genModelId || generating} onClick={handleGenerateFaqs}>
-                    {generating ? 'Generating...' : 'Generate'}
-                  </button>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGenerateForm(false)}>Cancel</button>
-                </div>
-              </div>
-            )}
 
             {showFaqForm && (
               <div className="kb-inline-form">
@@ -489,6 +566,7 @@ export function KnowledgeBaseDetail() {
                     <tr>
                       <th>Question</th>
                       <th>Answer</th>
+                      <th className="kb-table-source-col">Source</th>
                       <th className="kb-table-actions">Actions</th>
                     </tr>
                   </thead>
@@ -502,6 +580,14 @@ export function KnowledgeBaseDetail() {
                           </div>
                         </td>
                         <td className="kb-table-excerpt">{faq.answer}</td>
+                        <td className="kb-table-source-col">
+                          <span
+                            className="kb-table-source"
+                            title={faq.document_name || faq.document_id || undefined}
+                          >
+                            {faq.document_name || faq.document_id || '—'}
+                          </span>
+                        </td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
                             <button type="button" title="Edit" aria-label="Edit" onClick={() => {
@@ -741,6 +827,17 @@ export function KnowledgeBaseDetail() {
                 )}
               </fieldset>
 
+              <label>
+                <span>FAQ Generation Prompt</span>
+                <textarea
+                  placeholder="Custom system prompt for FAQ generation (leave empty for default)"
+                  value={settingsFaqPrompt}
+                  onChange={(e) => setSettingsFaqPrompt(e.target.value)}
+                  rows={6}
+                />
+                <small>System prompt sent to the LLM when generating FAQ pairs from documents</small>
+              </label>
+
               <div className="kb-settings-actions">
                 <button type="button" className="btn btn-primary" disabled={settingsSaving} onClick={handleSaveSettings}>
                   {settingsSaving ? 'Saving...' : 'Save Settings'}
@@ -750,6 +847,326 @@ export function KnowledgeBaseDetail() {
           </section>
         )}
       </div>
+
+      {showGenerateModal && (
+        <div
+          className="kb-doc-picker-overlay"
+          onClick={closeGenerateModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="gen-faq-title"
+        >
+          <div className="kb-doc-picker" onClick={(e) => e.stopPropagation()}>
+            <div className="kb-doc-picker-header">
+              <h2 id="gen-faq-title">{genStep === 'config' ? 'Generate FAQs' : 'Review FAQs'}</h2>
+              <button
+                type="button"
+                className="kb-doc-picker-close"
+                onClick={closeGenerateModal}
+                disabled={generating || genSaving}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="kb-doc-picker-hint">
+              {genStep === 'config'
+                ? 'Select an LLM model and choose which documents to generate Q&A pairs from.'
+                : 'Review the generated FAQs. Remove any you do not want to keep, then Save.'}
+            </p>
+
+            {genStep === 'config' ? (
+              <>
+                <div className="kb-gen-model-select">
+                  <label>
+                    <span>LLM Model</span>
+                    <select value={genModelId} onChange={(e) => setGenModelId(e.target.value)}>
+                      <option value="">Select a model...</option>
+                      {llmModels.map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Prompt</span>
+                    <textarea
+                      placeholder="Leave empty to use default prompt"
+                      value={genPrompt}
+                      onChange={(e) => setGenPrompt(e.target.value)}
+                      rows={4}
+                    />
+                  </label>
+                </div>
+
+                <div className="kb-gen-doc-header">
+                  <span className="kb-gen-doc-label">Documents</span>
+                  <button
+                    type="button"
+                    className="kb-gen-toggle-all"
+                    onClick={() => {
+                      if (genSelectedDocs.size === docs.length) setGenSelectedDocs(new Set());
+                      else setGenSelectedDocs(new Set(docs.map((d) => d.document_id)));
+                    }}
+                  >
+                    {genSelectedDocs.size === docs.length ? 'Deselect all' : 'Select all'}
+                  </button>
+                </div>
+
+                <div className="kb-doc-picker-list">
+                  {docs.length === 0 ? (
+                    <div className="kb-doc-picker-empty">
+                      <p>No documents in this knowledge base</p>
+                    </div>
+                  ) : (
+                    docs.map((doc) => {
+                      const selected = genSelectedDocs.has(doc.document_id);
+                      return (
+                        <div
+                          key={doc.document_id}
+                          className={`kb-doc-picker-item${selected ? ' selected' : ''}`}
+                          onClick={() => toggleGenDoc(doc.document_id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && toggleGenDoc(doc.document_id)}
+                        >
+                          <div className="kb-doc-picker-item-check">
+                            {selected ? (
+                              <Check size={16} />
+                            ) : (
+                              <div className="kb-doc-picker-item-checkbox" />
+                            )}
+                          </div>
+                          <FileText size={18} className="kb-doc-picker-item-icon" />
+                          <div className="kb-doc-picker-item-info">
+                            <span className="kb-doc-picker-item-name">{doc.document_name || doc.document_id}</span>
+                            <span className="kb-doc-picker-item-meta">
+                              {doc.document_file_type} · {doc.document_status || 'completed'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="kb-gen-review-list">
+                {genPreviewFaqs.length === 0 ? (
+                  <div className="kb-doc-picker-empty">
+                    <p>No FAQs to save. Go back and generate again.</p>
+                  </div>
+                ) : (
+                  genPreviewFaqs.map((faq, idx) => (
+                    <div key={idx} className="kb-gen-review-item">
+                      <div className="kb-gen-review-content">
+                        <span className="kb-gen-review-source">{faq.document_name || faq.document_id}</span>
+                        <p className="kb-gen-review-q">{faq.question}</p>
+                        <p className="kb-gen-review-a">{faq.answer}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="kb-gen-review-remove"
+                        onClick={() => removeGenPreviewFaq(idx)}
+                        aria-label="Remove this FAQ"
+                        title="Remove"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            <div className="kb-doc-picker-footer">
+              <span className="kb-doc-picker-count">
+                {genStep === 'config'
+                  ? (genSelectedDocs.size > 0
+                      ? `${genSelectedDocs.size} document${genSelectedDocs.size > 1 ? 's' : ''} selected`
+                      : 'No documents selected')
+                  : `${genPreviewFaqs.length} FAQ${genPreviewFaqs.length !== 1 ? 's' : ''} to save`}
+              </span>
+              <div className="kb-doc-picker-actions">
+                {genStep === 'config' ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={closeGenerateModal}
+                      disabled={generating}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleGenerateFaqs}
+                      disabled={!genModelId || genSelectedDocs.size === 0 || generating}
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 size={18} className="kb-doc-picker-spinner" />
+                          <span>Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={18} />
+                          <span>Generate</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleGenBackToConfig}
+                      disabled={genSaving}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleSaveGeneratedFaqs}
+                      disabled={genPreviewFaqs.length === 0 || genSaving}
+                    >
+                      {genSaving ? (
+                        <>
+                          <Loader2 size={18} className="kb-doc-picker-spinner" />
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check size={18} />
+                          <span>Save {genPreviewFaqs.length} FAQ{genPreviewFaqs.length !== 1 ? 's' : ''}</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDocPicker && (
+        <div
+          className="kb-doc-picker-overlay"
+          onClick={closeDocPicker}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doc-picker-title"
+        >
+          <div className="kb-doc-picker" onClick={(e) => e.stopPropagation()}>
+            <div className="kb-doc-picker-header">
+              <h2 id="doc-picker-title">Add Documents</h2>
+              <button
+                type="button"
+                className="kb-doc-picker-close"
+                onClick={closeDocPicker}
+                disabled={pickerAdding}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="kb-doc-picker-hint">
+              Search and select documents to add to this knowledge base.
+            </p>
+            <div className="kb-doc-picker-search">
+              <SearchIcon size={18} />
+              <input
+                type="search"
+                placeholder="Search documents by name..."
+                value={pickerSearch}
+                onChange={(e) => handlePickerSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="kb-doc-picker-list">
+              {pickerLoading ? (
+                <div className="kb-doc-picker-loading">
+                  <Loader2 size={24} className="kb-doc-picker-spinner" />
+                  <span>Loading documents...</span>
+                </div>
+              ) : pickerResults.length === 0 ? (
+                <div className="kb-doc-picker-empty">
+                  <p>No documents found</p>
+                </div>
+              ) : (
+                pickerResults.map((doc) => {
+                  const added = alreadyAddedIds.has(doc.id);
+                  const selected = pickerSelected.has(doc.id);
+                  return (
+                    <div
+                      key={doc.id}
+                      className={`kb-doc-picker-item${selected ? ' selected' : ''}${added ? ' already-added' : ''}`}
+                      onClick={() => !added && togglePickerDoc(doc.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && !added && togglePickerDoc(doc.id)}
+                    >
+                      <div className="kb-doc-picker-item-check">
+                        {added ? (
+                          <Check size={16} />
+                        ) : selected ? (
+                          <Check size={16} />
+                        ) : (
+                          <div className="kb-doc-picker-item-checkbox" />
+                        )}
+                      </div>
+                      <FileText size={18} className="kb-doc-picker-item-icon" />
+                      <div className="kb-doc-picker-item-info">
+                        <span className="kb-doc-picker-item-name">{doc.name}</span>
+                        <span className="kb-doc-picker-item-meta">
+                          {doc.file_type} · {doc.status || 'completed'}
+                        </span>
+                      </div>
+                      {added && <span className="kb-doc-picker-item-badge">Added</span>}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="kb-doc-picker-footer">
+              <span className="kb-doc-picker-count">
+                {pickerSelected.size > 0 ? `${pickerSelected.size} selected` : 'No documents selected'}
+              </span>
+              <div className="kb-doc-picker-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={closeDocPicker}
+                  disabled={pickerAdding}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAddSelectedDocuments}
+                  disabled={pickerSelected.size === 0 || pickerAdding}
+                >
+                  {pickerAdding ? (
+                    <>
+                      <Loader2 size={18} className="kb-doc-picker-spinner" />
+                      <span>Adding...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={18} />
+                      <span>Add {pickerSelected.size > 0 ? `(${pickerSelected.size})` : ''}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

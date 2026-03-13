@@ -1,0 +1,33 @@
+---
+description: Use Alembic for database schema changes; never rely on create_all for new columns/tables
+alwaysApply: true
+---
+
+# Alembic Database Migrations
+
+Backend schema changes **must** go through Alembic migrations. Do not rely on `Base.metadata.create_all()` for new columns or tables—it only creates missing tables, not alterations.
+
+## When to Create a Migration
+
+- Adding/removing/altering columns on existing tables
+- Adding new tables
+- Adding indexes, constraints, or FKs
+- Any change to SQLAlchemy models in `backend/app/models/`
+
+## Workflow
+
+1. **Edit models** in `backend/app/models/`
+2. **Create migration**: `cd backend && alembic revision --autogenerate -m "description"`
+3. **Review** the generated migration; remove unwanted changes (e.g. procrastinate tables)
+4. **Run migration**: `alembic upgrade head`
+
+## Key Paths
+
+- **Alembic config**: `backend/alembic.ini`
+- **Migrations**: `backend/alembic/versions/`
+- **Env & metadata**: `backend/alembic/env.py` (registers models, excludes procrastinate tables)
+
+## Autogenerate Notes
+
+- KB models are registered in `env.py`; ensure new models are imported there
+- Procrastinate tables are excluded via `include_name`; don't include their drops in migrations

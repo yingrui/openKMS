@@ -25,7 +25,7 @@
 - [x] CLI commands: `openkms-cli parse run <input> [--output <path>] [--config <path>]`
 - [x] Configurable via CLI args, env vars, config file (VLM URL, model, concurrency)
 - [x] Design for backend integration: subprocess-invokable
-- [x] Pipeline CLI: `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
+- [x] Pipeline CLI: `openkms-cli pipeline list` (list supported pipelines), `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
 - [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from backend config-by-name, extracts via pydantic-ai, PUTs metadata to backend
 
@@ -48,7 +48,8 @@
 - [x] Move document between channels (`PUT /api/documents/{id}` with `channel_id`; Move modal in document list)
 - [x] Delete document
 - [x] Document metadata extraction: LLM extracts abstract, author, publish_date, tags, etc.; configurable schema per channel in settings; Extract button on detail page
-- [ ] Search/filter in channel
+- [x] Search in document list (`GET /api/documents?search=...`; optional when no channel)
+- [ ] Advanced filter in channel
 
 ### 4. Authentication
 
@@ -97,18 +98,18 @@
 - [x] Knowledge base CRUD API (`/api/knowledge-bases`)
 - [x] Add/remove documents to/from knowledge base (join table `kb_documents`)
 - [x] FAQ CRUD (manual create/edit/delete)
-- [x] FAQ generation from documents via LLM (`POST /faqs/generate`)
+- [x] FAQ generation from documents via LLM (`POST /faqs/generate` returns preview; `POST /faqs/batch` saves selected; UI: review step with remove unqualified before save)
 - [x] Chunk model with pgvector embeddings
 - [x] pgvector extension enabled in database.py
 - [x] Semantic search over chunks and FAQs (`POST /search`)
 - [x] QA proxy to external agent service (`POST /ask`)
-- [x] KB settings: agent URL, embedding model, chunking config
+- [x] KB settings: agent URL, embedding model, chunking config, FAQ generation prompt
 - [x] openkms-cli `kb index` command: chunk documents, generate embeddings, bulk insert to pgvector
 - [x] `run_kb_index` procrastinate task for background indexing
 - [x] Frontend: KnowledgeBaseList with real CRUD (create, edit, delete)
 - [x] Frontend: KnowledgeBaseDetail with Documents, FAQs, Chunks, Search, Q&A, Settings tabs
 - [x] QA Agent Service project (`qa-agent/`): FastAPI + LangGraph, pgvector retriever
-- [ ] Batch document selection for FAQ generation in the UI
+- [x] Batch document selection for FAQ generation in the UI (modal with doc picker, review generated FAQs, remove unqualified, save)
 - [ ] Re-index button triggers job via procrastinate (currently settings only saves config)
 
 ### 8. Articles Backend

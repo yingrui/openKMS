@@ -13,8 +13,17 @@ import requests
 import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 console = Console()
+
+# Built-in pipelines the CLI can run. Key: --pipeline-name value, value: (display name, description)
+SUPPORTED_PIPELINES: dict[str, tuple[str, str]] = {
+    "paddleocr-doc-parse": (
+        "PaddleOCR Document Parse",
+        "Parse PDF/document with PaddleOCR-VL; output markdown and images to S3.",
+    ),
+}
 
 pipeline_app = typer.Typer(
     help="Run document parsing pipeline (download from S3 → parse → upload to S3)",
@@ -58,6 +67,18 @@ def _content_type_for_path(path: str) -> str:
     p = Path(path)
     suffixes = {".md": "text/markdown", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
     return suffixes.get(p.suffix.lower(), "application/octet-stream")
+
+
+@pipeline_app.command("list")
+def pipeline_list() -> None:
+    """List supported pipelines that can be run with `pipeline run`."""
+    table = Table(title="Supported Pipelines")
+    table.add_column("Pipeline Name", style="cyan", no_wrap=True)
+    table.add_column("Description", style="dim")
+    for name, (display, desc) in SUPPORTED_PIPELINES.items():
+        table.add_row(name, f"{display}: {desc}")
+    console.print(table)
+    console.print("\n[dim]Use: openkms-cli pipeline run --pipeline-name <name> --input <uri> --s3-prefix <prefix>[/dim]")
 
 
 @pipeline_app.command("run")
@@ -159,8 +180,12 @@ def pipeline_run(
         --input s3://openkms/da46.../original.pdf \\
         --s3-prefix da46...
     """
-    if pipeline_name != "paddleocr-doc-parse":
-        console.print(f"[yellow]Unknown pipeline '{pipeline_name}', using paddleocr-doc-parse[/yellow]")
+    if pipeline_name not in SUPPORTED_PIPELINES:
+        console.print(
+            f"[yellow]Unknown pipeline '{pipeline_name}'. "
+            f"Use 'openkms-cli pipeline list' to see supported pipelines. Using paddleocr-doc-parse.[/yellow]"
+        )
+        pipeline_name = "paddleocr-doc-parse"
 
     token: Optional[str] = None
     if extract_metadata:

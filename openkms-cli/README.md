@@ -58,6 +58,14 @@ parsed/
     markdown_out/*.md, imgs/*.jpg
 ```
 
+### `pipeline list`
+
+List supported pipelines that can be run with `pipeline run`:
+
+```bash
+openkms-cli pipeline list
+```
+
 ### `pipeline run`
 
 Download from S3 (or use local file) → parse → upload to S3.

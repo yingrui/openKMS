@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 TRUNCATE_CHARS = 12000
 
-SYSTEM_PROMPT = """You are an expert at reading documents and generating useful FAQ pairs.
+DEFAULT_FAQ_PROMPT = """You are an expert at reading documents and generating useful FAQ pairs.
 Given document content, generate question-answer pairs that capture the key information.
 Each pair should have a clear, standalone question and a concise, accurate answer.
 
@@ -22,6 +22,7 @@ async def generate_faq_pairs(
     markdown: str,
     model_config: dict[str, Any],
     max_pairs: int = 10,
+    custom_prompt: str | None = None,
 ) -> list[dict[str, str]]:
     """
     Generate FAQ pairs from document markdown using an LLM.
@@ -30,6 +31,7 @@ async def generate_faq_pairs(
         markdown: Document content in markdown.
         model_config: Dict with base_url, api_key, model_name.
         max_pairs: Maximum number of FAQ pairs to generate.
+        custom_prompt: Optional custom system prompt; falls back to DEFAULT_FAQ_PROMPT.
 
     Returns:
         List of dicts with "question" and "answer" keys.
@@ -46,6 +48,8 @@ async def generate_faq_pairs(
         api_key=model_config.get("api_key") or "no-key",
     )
 
+    system_prompt = custom_prompt.strip() if custom_prompt and custom_prompt.strip() else DEFAULT_FAQ_PROMPT
+
     truncated = markdown[:TRUNCATE_CHARS]
     user_prompt = (
         f"Document:\n---\n{truncated}\n---\n\n"
@@ -57,7 +61,7 @@ async def generate_faq_pairs(
         response = await client.chat.completions.create(
             model=model_config.get("model_name", "gpt-4"),
             messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,

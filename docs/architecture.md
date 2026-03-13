@@ -126,7 +126,7 @@ backend/
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
-│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, agent_url, chunk_config)
+│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, agent_url, chunk_config, faq_prompt)
 │   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
 │   │   └── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
@@ -172,7 +172,7 @@ openkms-cli/
 ```
 
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
-- **Commands**: `parse run`, `pipeline run`, `kb index`
+- **Commands**: `parse run`, `pipeline list`, `pipeline run`, `kb index`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
 - **KB indexing**: `openkms-cli kb index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), generates embeddings via OpenAI-compatible API, bulk inserts into pgvector, indexes FAQ embeddings
@@ -279,8 +279,9 @@ sequenceDiagram
 
 ### Document List by Channel
 
-- Frontend fetches `GET /api/documents?channel_id=` for the current channel
-- Backend returns documents in channel and descendants
+- Frontend fetches `GET /api/documents?channel_id=` for the current channel; `channel_id` optional (all documents)
+- Optional `search` param filters by document name; `limit` defaults to 200
+- Backend returns documents in channel and descendants (or all if no channel)
 
 ## Authentication (Keycloak)
 
@@ -326,4 +327,4 @@ flowchart LR
 | Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId). In dev, `apiUrl` defaults to '' (uses proxy). |
 | Vite dev | Proxy `/api`, `/sync-session`, `/clear-session` → backend; `/buckets/openkms` → MinIO |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
-| Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit) |
+| Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit, alembic-migrations) |

@@ -19,8 +19,10 @@ from app.schemas.knowledge_base import (
     AskResponse,
     ChunkListResponse,
     ChunkResponse,
+    FAQBatchCreateRequest,
     FAQCreate,
     FAQGenerateRequest,
+    FAQGenerateResult,
     FAQResponse,
     FAQUpdate,
     KBDocumentAdd,
@@ -64,6 +66,7 @@ def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRe
         embedding_model_id=kb.embedding_model_id,
         agent_url=kb.agent_url,
         chunk_config=kb.chunk_config,
+        faq_prompt=kb.faq_prompt,
         created_at=kb.created_at,
         updated_at=kb.updated_at,
         **stats,
@@ -95,6 +98,7 @@ async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = De
     )
     db.add(kb)
     await db.flush()
+    await db.refresh(kb)
     stats = await _kb_stats(db, kb.id)
     return _kb_to_response(kb, stats)
 
@@ -117,6 +121,7 @@ async def update_knowledge_base(kb_id: str, body: KnowledgeBaseUpdate, db: Async
     for field, value in update_data.items():
         setattr(kb, field, value)
     await db.flush()
+    await db.refresh(kb)
     stats = await _kb_stats(db, kb.id)
     return _kb_to_response(kb, stats)
 
@@ -182,6 +187,7 @@ async def add_kb_document(kb_id: str, body: KBDocumentAdd, db: AsyncSession = De
     )
     db.add(kbd)
     await db.flush()
+    await db.refresh(kbd)
     return KBDocumentResponse(
         id=kbd.id,
         knowledge_base_id=kbd.knowledge_base_id,
@@ -212,21 +218,25 @@ async def remove_kb_document(kb_id: str, document_id: str, db: AsyncSession = De
 @router.get("/{kb_id}/faqs", response_model=list[FAQResponse])
 async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(FAQ).where(FAQ.knowledge_base_id == kb_id).order_by(FAQ.created_at.desc())
+        select(FAQ, Document.name)
+        .outerjoin(Document, FAQ.document_id == Document.id)
+        .where(FAQ.knowledge_base_id == kb_id)
+        .order_by(FAQ.created_at.desc())
     )
-    faqs = result.scalars().all()
+    rows = result.all()
     return [
         FAQResponse(
             id=f.id,
             knowledge_base_id=f.knowledge_base_id,
             document_id=f.document_id,
+            document_name=doc_name,
             question=f.question,
             answer=f.answer,
             has_embedding=f.embedding is not None,
             created_at=f.created_at,
             updated_at=f.updated_at,
         )
-        for f in faqs
+        for f, doc_name in rows
     ]
 
 
@@ -244,6 +254,7 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
     )
     db.add(faq)
     await db.flush()
+    await db.refresh(faq)
     return FAQResponse(
         id=faq.id,
         knowledge_base_id=faq.knowledge_base_id,
@@ -265,6 +276,7 @@ async def update_faq(kb_id: str, faq_id: str, body: FAQUpdate, db: AsyncSession 
     for field, value in update_data.items():
         setattr(faq, field, value)
     await db.flush()
+    await db.refresh(faq)
     return FAQResponse(
         id=faq.id,
         knowledge_base_id=faq.knowledge_base_id,
@@ -285,15 +297,14 @@ async def delete_faq(kb_id: str, faq_id: str, db: AsyncSession = Depends(get_db)
     await db.delete(faq)
 
 
-@router.post("/{kb_id}/faqs/generate", response_model=list[FAQResponse])
+@router.post("/{kb_id}/faqs/generate", response_model=list[FAQGenerateResult])
 async def generate_faqs(kb_id: str, body: FAQGenerateRequest, db: AsyncSession = Depends(get_db)):
-    """Generate FAQ pairs from documents using an LLM."""
+    """Generate FAQ pairs from documents using an LLM. Returns preview only; use batch save to persist."""
     kb = await db.get(KnowledgeBase, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
 
     from app.models.api_model import ApiModel
-    from app.models.api_provider import ApiProvider
     from sqlalchemy.orm import selectinload
 
     model_result = await db.execute(
@@ -311,33 +322,52 @@ async def generate_faqs(kb_id: str, body: FAQGenerateRequest, db: AsyncSession =
 
     from app.services.faq_generation import generate_faq_pairs
 
-    created_faqs = []
+    effective_prompt = body.prompt or kb.faq_prompt
+    results = []
     for doc_id in body.document_ids:
         doc = await db.get(Document, doc_id)
         if not doc or not doc.markdown:
             continue
-        pairs = await generate_faq_pairs(doc.markdown, model_config)
+        pairs = await generate_faq_pairs(doc.markdown, model_config, custom_prompt=effective_prompt)
         for pair in pairs:
-            faq = FAQ(
-                id=str(uuid.uuid4()),
-                knowledge_base_id=kb_id,
+            results.append(FAQGenerateResult(
                 document_id=doc_id,
+                document_name=doc.name,
                 question=pair["question"],
                 answer=pair["answer"],
-            )
-            db.add(faq)
-            await db.flush()
-            created_faqs.append(FAQResponse(
-                id=faq.id,
-                knowledge_base_id=faq.knowledge_base_id,
-                document_id=faq.document_id,
-                question=faq.question,
-                answer=faq.answer,
-                has_embedding=False,
-                created_at=faq.created_at,
-                updated_at=faq.updated_at,
             ))
-    return created_faqs
+    return results
+
+
+@router.post("/{kb_id}/faqs/batch", response_model=list[FAQResponse])
+async def create_faqs_batch(kb_id: str, body: FAQBatchCreateRequest, db: AsyncSession = Depends(get_db)):
+    """Save selected FAQ pairs to the knowledge base."""
+    kb = await db.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    created = []
+    for item in body.items:
+        faq = FAQ(
+            id=str(uuid.uuid4()),
+            knowledge_base_id=kb_id,
+            document_id=item.document_id,
+            question=item.question,
+            answer=item.answer,
+        )
+        db.add(faq)
+        await db.flush()
+        await db.refresh(faq)
+        created.append(FAQResponse(
+            id=faq.id,
+            knowledge_base_id=faq.knowledge_base_id,
+            document_id=faq.document_id,
+            question=faq.question,
+            answer=faq.answer,
+            has_embedding=False,
+            created_at=faq.created_at,
+            updated_at=faq.updated_at,
+        ))
+    return created
 
 
 # --- Chunks ---

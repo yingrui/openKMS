@@ -49,22 +49,29 @@ async def get_document_stats(db: AsyncSession = Depends(get_db)):
 
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
-    channel_id: str,
+    channel_id: str | None = None,
+    search: str | None = None,
+    limit: int = 200,
     db: AsyncSession = Depends(get_db),
 ):
-    """List documents in a channel and its descendants."""
-    target = await db.get(DocumentChannel, channel_id)
-    if not target:
-        raise HTTPException(status_code=404, detail="Channel not found")
+    """List documents, optionally filtered by channel and/or name search."""
+    query = select(Document)
 
-    result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
-    all_channels = list(result.scalars().all())
-    ids_to_include: set[str] = set()
-    _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
+    if channel_id:
+        target = await db.get(DocumentChannel, channel_id)
+        if not target:
+            raise HTTPException(status_code=404, detail="Channel not found")
+        result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
+        all_channels = list(result.scalars().all())
+        ids_to_include: set[str] = set()
+        _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
+        query = query.where(Document.channel_id.in_(ids_to_include))
 
-    docs_result = await db.execute(
-        select(Document).where(Document.channel_id.in_(ids_to_include)).order_by(Document.created_at.desc())
-    )
+    if search:
+        query = query.where(Document.name.ilike(f"%{search}%"))
+
+    query = query.order_by(Document.created_at.desc()).limit(limit)
+    docs_result = await db.execute(query)
     docs = list(docs_result.scalars().all())
     return DocumentListResponse(items=[DocumentResponse.model_validate(d) for d in docs], total=len(docs))
 

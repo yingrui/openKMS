@@ -11,6 +11,7 @@ export interface KnowledgeBaseResponse {
   embedding_model_id?: string | null;
   agent_url?: string | null;
   chunk_config?: Record<string, unknown> | null;
+  faq_prompt?: string | null;
   document_count: number;
   faq_count: number;
   chunk_count: number;
@@ -37,11 +38,20 @@ export interface FAQResponse {
   id: string;
   knowledge_base_id: string;
   document_id?: string | null;
+  document_name?: string | null;
   question: string;
   answer: string;
   has_embedding: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** Generated FAQ pair (preview, not yet saved). */
+export interface FAQGenerateResult {
+  document_id: string;
+  document_name?: string | null;
+  question: string;
+  answer: string;
 }
 
 export interface ChunkResponse {
@@ -129,6 +139,7 @@ export async function updateKnowledgeBase(
     embedding_model_id?: string | null;
     agent_url?: string | null;
     chunk_config?: Record<string, unknown> | null;
+    faq_prompt?: string | null;
   }
 ): Promise<KnowledgeBaseResponse> {
   const headers = await getAuthHeaders();
@@ -260,10 +271,11 @@ export async function deleteFAQ(kbId: string, faqId: string): Promise<void> {
   }
 }
 
+/** Generate FAQ pairs (preview only; use saveFAQs to persist). */
 export async function generateFAQs(
   kbId: string,
-  data: { document_ids: string[]; model_id: string }
-): Promise<FAQResponse[]> {
+  data: { document_ids: string[]; model_id: string; prompt?: string }
+): Promise<FAQGenerateResult[]> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/generate`, {
     method: 'POST',
@@ -274,6 +286,25 @@ export async function generateFAQs(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to generate FAQs');
+  }
+  return res.json();
+}
+
+/** Save selected FAQ pairs to the knowledge base. */
+export async function saveFAQs(
+  kbId: string,
+  items: { document_id: string; question: string; answer: string }[]
+): Promise<FAQResponse[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/batch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ items }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to save FAQs');
   }
   return res.json();
 }
