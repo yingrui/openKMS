@@ -5,6 +5,7 @@ from rich.console import Console
 
 from .parse_cli import parse_app
 from .pipeline_cli import pipeline_app
+from .kb_cli import kb_app
 
 console = Console()
 
@@ -16,6 +17,7 @@ app = typer.Typer(
 
 app.add_typer(parse_app, name="parse", help="Document parsing commands")
 app.add_typer(pipeline_app, name="pipeline", help="Pipeline: run (S3 → parse → S3)")
+app.add_typer(kb_app, name="kb", help="Knowledge base indexing commands")
 
 
 @app.command()

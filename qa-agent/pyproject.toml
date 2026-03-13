@@ -1,0 +1,27 @@
+[project]
+name = "qa-agent"
+version = "0.1.0"
+description = "QA Agent Service for openKMS - RAG-based question answering with LangGraph"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "psycopg[binary]>=3.0.0",
+    "pgvector>=0.3.0",
+    "openai>=1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["qa_agent*"]

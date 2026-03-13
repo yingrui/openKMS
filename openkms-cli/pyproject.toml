@@ -28,6 +28,11 @@ metadata = [
     "pydantic-ai>=0.0.14",
     "openai>=1.0.0",
 ]
+kb = [
+    "psycopg[binary]>=3.0.0",
+    "pgvector>=0.3.0",
+    "openai>=1.0.0",
+]
 
 [project.scripts]
 openkms-cli = "openkms_cli.__main__:run"

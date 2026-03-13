@@ -12,7 +12,8 @@
 - Documents overview, channel management, channel settings
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in
-- Articles & Knowledge Bases: UI placeholders with feature toggles
+- Articles: UI placeholder with feature toggle
+- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli kb index; QA Agent service (FastAPI + LangGraph)
 - Console: settings, users, feature toggles (database-backed); admin-only (realm role `admin`)
 
 ## Short-Term (Next Steps)
@@ -93,9 +94,22 @@
 
 ### 7. Knowledge Bases (RAG)
 
-- [ ] Chunk documents, store embeddings
-- [ ] Vector store (e.g. pgvector)
-- [ ] Q&A API and UI
+- [x] Knowledge base CRUD API (`/api/knowledge-bases`)
+- [x] Add/remove documents to/from knowledge base (join table `kb_documents`)
+- [x] FAQ CRUD (manual create/edit/delete)
+- [x] FAQ generation from documents via LLM (`POST /faqs/generate`)
+- [x] Chunk model with pgvector embeddings
+- [x] pgvector extension enabled in database.py
+- [x] Semantic search over chunks and FAQs (`POST /search`)
+- [x] QA proxy to external agent service (`POST /ask`)
+- [x] KB settings: agent URL, embedding model, chunking config
+- [x] openkms-cli `kb index` command: chunk documents, generate embeddings, bulk insert to pgvector
+- [x] `run_kb_index` procrastinate task for background indexing
+- [x] Frontend: KnowledgeBaseList with real CRUD (create, edit, delete)
+- [x] Frontend: KnowledgeBaseDetail with Documents, FAQs, Chunks, Search, Q&A, Settings tabs
+- [x] QA Agent Service project (`qa-agent/`): FastAPI + LangGraph, pgvector retriever
+- [ ] Batch document selection for FAQ generation in the UI
+- [ ] Re-index button triggers job via procrastinate (currently settings only saves config)
 
 ### 8. Articles Backend
 

@@ -45,9 +45,22 @@
 
 ### 4. Knowledge Bases (Feature Toggle)
 
-- List and detail views
-- RAG Q&A placeholder
-- Toggle via Console → Feature Toggles
+| Feature | Status | Description |
+|---------|--------|-------------|
+| KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
+| KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying |
+| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents |
+| FAQ generation | ✅ | `POST /api/knowledge-bases/{id}/faqs/generate` with document_ids and model_id; uses OpenAI-compatible LLM |
+| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph) |
+| Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs |
+| QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
+| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap configuration |
+| KB indexing (CLI) | ✅ | `openkms-cli kb index` – chunk documents, generate embeddings, bulk insert to pgvector |
+| KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
+| QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG with pgvector retrieval |
+| Q&A tab | ✅ | Chat-like interface in KB detail page for asking questions against the knowledge base |
+
+- Toggle visibility via Console → Feature Toggles
 
 ### 5. Console (Admin)
 
@@ -163,6 +176,23 @@
 | POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`) |
 | POST | `/api/jobs/{id}/retry` | Retry a failed job |
 | DELETE | `/api/jobs/{id}` | Delete a job (not running) |
+| GET | `/api/knowledge-bases` | List knowledge bases |
+| POST | `/api/knowledge-bases` | Create knowledge base |
+| GET | `/api/knowledge-bases/{id}` | Get KB with stats |
+| PUT | `/api/knowledge-bases/{id}` | Update KB (name, description, agent_url, chunk_config, embedding_model_id) |
+| DELETE | `/api/knowledge-bases/{id}` | Delete KB (cascades documents, FAQs, chunks) |
+| GET | `/api/knowledge-bases/{id}/documents` | List documents in KB |
+| POST | `/api/knowledge-bases/{id}/documents` | Add document to KB |
+| DELETE | `/api/knowledge-bases/{id}/documents/{doc_id}` | Remove document from KB |
+| GET | `/api/knowledge-bases/{id}/faqs` | List FAQs |
+| POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |
+| PUT | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Update FAQ |
+| DELETE | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Delete FAQ |
+| POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQs from documents via LLM |
+| GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated) |
+| DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
+| POST | `/api/knowledge-bases/{id}/search` | Semantic search over chunks and FAQs |
+| POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service |
 | GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
@@ -205,6 +235,26 @@
 - Stores feature flags shared across all users; seeded with `articles` and `knowledgeBases` (both enabled by default)
 - Read by all authenticated users; write restricted to admins
 
+### KnowledgeBase
+
+- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `created_at`, `updated_at`
+- Groups documents, FAQs, and chunks for RAG Q&A
+
+### KBDocument
+
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `created_at`
+- Join table with unique constraint on (knowledge_base_id, document_id)
+
+### FAQ
+
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents, nullable), `question`, `answer`, `embedding` (pgvector), `created_at`, `updated_at`
+- Q&A pairs; embedding on question for semantic search
+
+### Chunk
+
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB), `created_at`
+- Document segments with vector embeddings for semantic search
+
 ### Jobs (procrastinate_jobs)
 
-- Managed by procrastinate; stores task_name, args (document_id, pipeline_id, etc.), status, attempts, timestamps
+- Managed by procrastinate; stores task_name, args (document_id, pipeline_id, knowledge_base_id, etc.), status, attempts, timestamps

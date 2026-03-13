@@ -5,22 +5,26 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home, Documents, Articles, Pipelines, Jobs, Models"]
+    FE["Home, Documents, Articles, Knowledge Bases, Pipelines, Jobs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["channels, documents, pipelines, jobs, models, feature-toggles"]
+    API["channels, documents, knowledge-bases, pipelines, jobs, models, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
-    PG[(PostgreSQL)]
+    PG[("PostgreSQL + pgvector")]
     S3[(S3/MinIO)]
     Worker["procrastinate worker"]
   end
 
   subgraph WorkerDetail["Worker execution"]
-    CLI["openkms-cli pipeline run"]
+    CLI["openkms-cli pipeline run / kb index"]
     VLM["mlx-vlm-server"]
+  end
+
+  subgraph QAAgent["QA Agent (FastAPI + LangGraph)"]
+    Agent["RAG Agent: retrieve + generate"]
   end
 
   subgraph External["External Services"]
@@ -31,19 +35,24 @@ flowchart TB
   Backend --> PG
   Backend --> S3
   Backend --> Worker
-  Backend -->|metadata extraction, model test| LLM
+  Backend -->|metadata extraction, model test, FAQ generation| LLM
+  Backend -->|proxy /ask| Agent
+  Agent --> PG
+  Agent --> LLM
   Worker --> S3
   Worker --> CLI
   CLI --> VLM
-  CLI -->|metadata extraction| LLM
+  CLI -->|metadata extraction, embeddings| LLM
+  CLI --> PG
 ```
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, procrastinate_jobs |
+| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, knowledge_bases, kb_documents, faqs, chunks, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
-| **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status |
-| **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction and model playground (configured via api_models) |
+| **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
+| **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
+| **QA Agent** | Separate FastAPI + LangGraph service; retrieves from pgvector (chunks + FAQs), generates answers via LLM; configurable per knowledge base |
 
 ## Frontend Structure
 
@@ -78,7 +87,7 @@ frontend/src/
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, pipelinesApi, jobsApi, modelsApi, providersApi, featureTogglesApi, channelUtils
+├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, pipelinesApi, jobsApi, modelsApi, providersApi, featureTogglesApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -105,6 +114,7 @@ backend/
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
+│   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
 │   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
@@ -115,20 +125,26 @@ backend/
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
-│   │   └── feature_toggle.py  # FeatureToggle (key-value flags)
+│   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
+│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, agent_url, chunk_config)
+│   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
+│   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
+│   │   └── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
 │   │   ├── pipeline.py         # PipelineCreate/Update/Response (+ model_id)
 │   │   ├── api_model.py        # ApiModelCreate/Update/Response (+ provider_id)
 │   │   ├── api_provider.py     # ApiProviderCreate/Update/Response
-│   │   └── job.py              # JobCreate/Response
+│   │   ├── job.py              # JobCreate/Response
+│   │   └── knowledge_base.py  # KB/FAQ/Chunk/Search/Ask schemas
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
-│   │   └── tasks.py            # run_pipeline task (subprocess openkms-cli)
+│   │   └── tasks.py            # run_pipeline task, run_kb_index task (subprocess openkms-cli)
 │   └── services/
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
 │       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, etc.)
+│       ├── faq_generation.py        # LLM-based FAQ pair generation from document markdown
 │       └── storage.py               # S3/MinIO client (upload, delete)
 ├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
 └── worker.py                    # procrastinate worker entry point
@@ -140,7 +156,7 @@ Standalone CLI for document parsing, designed for backend integration. Developer
 
 ```
 openkms-cli/
-├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline], [metadata]
+├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline], [metadata], [kb]
 ├── openkms_cli/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m openkms_cli
@@ -149,15 +165,39 @@ openkms-cli/
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
 │   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
-│   └── pipeline_cli.py      # pipeline download, upload, run, optional extract (optional [pipeline])
+│   ├── pipeline_cli.py      # pipeline download, upload, run, optional extract (optional [pipeline])
+│   ├── kb_cli.py            # kb index command (optional [kb])
+│   └── kb_indexer.py        # Chunking, embedding, pgvector bulk insert (optional [kb])
 └── README.md
 ```
 
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
-- **Commands**: `parse run`, `pipeline run`
+- **Commands**: `parse run`, `pipeline run`, `kb index`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
+- **KB indexing**: `openkms-cli kb index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), generates embeddings via OpenAI-compatible API, bulk inserts into pgvector, indexes FAQ embeddings
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
+
+## QA Agent Service
+
+```
+qa-agent/
+├── pyproject.toml           # FastAPI, LangGraph, langchain-openai, pgvector
+├── qa_agent/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI app with /ask endpoint
+│   ├── config.py            # Settings (DB, LLM, embedding)
+│   ├── agent.py             # LangGraph agent: retrieve → generate
+│   ├── retriever.py         # pgvector retrieval (chunks + FAQs)
+│   └── schemas.py           # AskRequest/AskResponse
+├── .env.example
+└── README.md
+```
+
+- **Purpose**: Separate RAG service for Q&A against knowledge bases; configurable per KB via `agent_url`
+- **Architecture**: LangGraph state graph with two nodes: `retrieve` (pgvector similarity search for chunks + FAQs) → `generate` (LLM answer with context)
+- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` to `{kb.agent_url}/ask`
+- **Port**: 8103 by default
 
 ## Data Flow
 

@@ -214,6 +214,79 @@ async def run_pipeline(
         raise
 
 
+@job_app.task(name="run_kb_index")
+async def run_kb_index(
+    knowledge_base_id: str,
+) -> None:
+    """
+    Run knowledge base indexing via openkms-cli subprocess.
+
+    Splits documents into chunks, generates embeddings, and indexes FAQs.
+    """
+    from app.database import async_session_maker
+    from app.models.knowledge_base import KnowledgeBase
+    from app.models.api_model import ApiModel
+    from sqlalchemy.orm import selectinload
+
+    embedding_args = ""
+
+    async with async_session_maker() as session:
+        kb = await session.get(KnowledgeBase, knowledge_base_id)
+        if not kb:
+            logger.error("Knowledge base %s not found", knowledge_base_id)
+            raise RuntimeError(f"Knowledge base {knowledge_base_id} not found")
+
+        if kb.embedding_model_id:
+            from sqlalchemy import select as sa_select
+            result = await session.execute(
+                sa_select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == kb.embedding_model_id)
+            )
+            model = result.scalar_one_or_none()
+            if model and model.provider_rel:
+                embedding_args = (
+                    f" --embedding-model-base-url {shlex.quote(model.provider_rel.base_url)}"
+                    f" --embedding-model-api-key {shlex.quote(model.provider_rel.api_key or '')}"
+                    f" --embedding-model-name {shlex.quote(model.model_name or model.name)}"
+                )
+
+    base_api_url = settings.openkms_backend_url.rstrip("/")
+    cmd_str = (
+        f"openkms-cli kb index"
+        f" --knowledge-base-id {knowledge_base_id}"
+        f" --api-url {base_api_url}"
+        f" --db-host {settings.database_host}"
+        f" --db-port {settings.database_port}"
+        f" --db-user {settings.database_user}"
+        f" --db-password {shlex.quote(settings.database_password)}"
+        f" --db-name {settings.database_name}"
+        f"{embedding_args}"
+    )
+
+    subprocess_env = {
+        **os.environ,
+        "OPENKMS_API_URL": base_api_url,
+    }
+
+    cmd = shlex.split(cmd_str)
+    logger.info("Running KB index for %s: %s", knowledge_base_id, cmd_str)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=1800,
+            env=subprocess_env,
+        )
+        if result.returncode != 0:
+            logger.error("KB indexing failed (exit %d): %s", result.returncode, result.stderr)
+            raise RuntimeError(f"KB indexing exited with code {result.returncode}: {result.stderr[:500]}")
+        logger.info("KB indexing completed for %s", knowledge_base_id)
+    except subprocess.TimeoutExpired:
+        logger.error("KB indexing timed out for %s", knowledge_base_id)
+        raise
+
+
 def _load_result_from_s3(file_hash: str) -> dict:
     """Load result.json from S3 after pipeline completes."""
     from app.services.storage import get_object

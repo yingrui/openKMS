@@ -1,8 +1,12 @@
 """Database connection and session management."""
+import logging
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 
@@ -32,9 +36,14 @@ async_session_maker = async_sessionmaker(
 
 
 async def init_db() -> None:
-    """Create database tables."""
+    """Create pgvector extension and database tables."""
     from app.models import document, document_channel, pipeline, api_model, api_provider, feature_toggle  # noqa: F401
+    from app.models import knowledge_base, kb_document, faq, chunk  # noqa: F401
     async with engine.begin() as conn:
+        try:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        except Exception:
+            logger.warning("Could not create pgvector extension (requires superuser). Assuming it already exists.")
         await conn.run_sync(Base.metadata.create_all)
 
 
