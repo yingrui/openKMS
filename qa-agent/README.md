@@ -32,9 +32,9 @@ The server starts on port 8103 by default.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENKMS_BACKEND_URL` | http://localhost:8102 | openKMS backend API base URL |
-| `LLM_BASE_URL` | http://localhost:11434/v1 | LLM API base URL |
-| `LLM_API_KEY` | no-key | LLM API key |
-| `LLM_MODEL_NAME` | qwen2.5 | LLM model name |
+| `OPENKMS_LLM_MODEL_BASE_URL` | http://localhost:11434/v1 | LLM API base URL |
+| `OPENKMS_LLM_MODEL_API_KEY` | no-key | LLM API key |
+| `OPENKMS_LLM_MODEL_NAME` | qwen2.5 | LLM model name |
 | `HOST` | 0.0.0.0 | Server bind host |
 | `PORT` | 8103 | Server port |
 
