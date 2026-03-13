@@ -1,8 +1,10 @@
 """Knowledge base indexer: chunk documents, generate embeddings, store in pgvector."""
+import base64
 import json
 import re
+import struct
 import uuid
-from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
 import requests
@@ -100,8 +102,8 @@ def chunk_document(text: str, config: dict[str, Any] | None) -> list[dict[str, A
 # --- Embedding generation ---
 
 
-def generate_embeddings(texts: list[str], model_config: dict[str, Any]) -> list[list[float]]:
-    """Generate embeddings for a batch of texts using OpenAI-compatible API."""
+def generate_embeddings(texts: list[str], model_config: dict[str, Any]) -> list[str]:
+    """Generate embeddings using OpenAI-compatible API with base64 encoding. Returns list of base64 strings."""
     from openai import OpenAI
 
     base_url = model_config["base_url"].rstrip("/")
@@ -114,78 +116,24 @@ def generate_embeddings(texts: list[str], model_config: dict[str, Any]) -> list[
     )
 
     BATCH_SIZE = 32
-    all_embeddings = []
+    all_embeddings: list[str] = []
     for i in range(0, len(texts), BATCH_SIZE):
-        batch = texts[i:i + BATCH_SIZE]
+        batch = texts[i : i + BATCH_SIZE]
         response = client.embeddings.create(
             model=model_config.get("model_name", "text-embedding-ada-002"),
             input=batch,
+            encoding_format="base64",
         )
-        batch_embeddings = [item.embedding for item in response.data]
-        all_embeddings.extend(batch_embeddings)
-
+        for item in response.data:
+            emb = item.embedding
+            if isinstance(emb, str):
+                all_embeddings.append(emb)
+            else:
+                all_embeddings.append(base64.b64encode(struct.pack(f"<{len(emb)}f", *emb)).decode("ascii"))
     return all_embeddings
 
 
-# --- Database operations ---
-
-
-def _get_db_connection(db_url: str):
-    """Create psycopg connection."""
-    import psycopg
-    return psycopg.connect(db_url)
-
-
-def _clear_chunks(conn, kb_id: str) -> None:
-    """Delete existing chunks for a knowledge base."""
-    with conn.cursor() as cur:
-        cur.execute("DELETE FROM chunks WHERE knowledge_base_id = %s", (kb_id,))
-    conn.commit()
-
-
-def _insert_chunks(conn, chunks: list[dict[str, Any]]) -> None:
-    """Bulk insert chunks with embeddings into PostgreSQL."""
-    if not chunks:
-        return
-    from pgvector.psycopg import register_vector
-    register_vector(conn)
-
-    with conn.cursor() as cur:
-        for c in chunks:
-            embedding = c.get("embedding")
-            cur.execute(
-                """INSERT INTO chunks (id, knowledge_base_id, document_id, content,
-                   chunk_index, token_count, embedding, chunk_metadata, created_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                (
-                    c["id"],
-                    c["knowledge_base_id"],
-                    c["document_id"],
-                    c["content"],
-                    c["chunk_index"],
-                    c.get("token_count"),
-                    embedding,
-                    json.dumps(c.get("chunk_metadata")) if c.get("chunk_metadata") else None,
-                    datetime.now(timezone.utc),
-                ),
-            )
-    conn.commit()
-
-
-def _update_faq_embeddings(conn, faq_updates: list[dict[str, Any]]) -> None:
-    """Update FAQ rows with generated embeddings."""
-    if not faq_updates:
-        return
-    from pgvector.psycopg import register_vector
-    register_vector(conn)
-
-    with conn.cursor() as cur:
-        for fu in faq_updates:
-            cur.execute(
-                "UPDATE faqs SET embedding = %s WHERE id = %s",
-                (fu["embedding"], fu["id"]),
-            )
-    conn.commit()
+# --- API operations ---
 
 
 # --- Main indexer ---
@@ -194,11 +142,11 @@ def _update_faq_embeddings(conn, faq_updates: list[dict[str, Any]]) -> None:
 def run_indexer(
     knowledge_base_id: str,
     api_url: str,
-    db_url: str,
     token: Optional[str] = None,
     embedding_override: Optional[dict[str, Any]] = None,
     progress: Optional[Progress] = None,
     task: Optional[TaskID] = None,
+    output_dir: Path | str | None = None,
 ) -> dict[str, int]:
     """
     Run the full indexing pipeline for a knowledge base.
@@ -273,6 +221,51 @@ def run_indexer(
             rc["token_count"] = len(rc["content"].split())
         all_chunks.extend(raw_chunks)
 
+    _update("Fetching FAQs...")
+    faqs_resp = requests.get(f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs", headers=headers, timeout=30)
+    faqs = faqs_resp.json() if faqs_resp.ok else []
+
+    def _save_chunks_to_output(
+        chunks: list[dict],
+        faq_items: list[dict],
+        include_embeddings: bool = False,
+    ) -> None:
+        if not output_dir:
+            return
+        out = Path(output_dir)
+        kb_out = out / f"kb_{knowledge_base_id}"
+        kb_out.mkdir(parents=True, exist_ok=True)
+        to_save = []
+        for c in chunks:
+            d = dict(c)
+            if "embedding" in d and not include_embeddings:
+                d = {k: v for k, v in d.items() if k != "embedding"}
+            elif include_embeddings and c.get("embedding") is not None:
+                d["embedding"] = c["embedding"]
+            d["source_type"] = "chunk"
+            to_save.append(d)
+        for f in faq_items:
+            d = {
+                "source_type": "faq",
+                "id": f["id"],
+                "knowledge_base_id": knowledge_base_id,
+                "document_id": f.get("document_id"),
+                "content": f["question"],
+                "answer": f["answer"],
+                "chunk_index": 0,
+                "chunk_metadata": {"strategy": "faq"},
+            }
+            if include_embeddings and f.get("embedding") is not None:
+                d["embedding"] = f["embedding"]
+            to_save.append(d)
+        path = kb_out / "chunks.json"
+        path.write_text(json.dumps(to_save, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    if output_dir:
+        faq_items_pre_embed = [{"id": f["id"], "document_id": f.get("document_id"), "question": f["question"], "answer": f["answer"]} for f in faqs]
+        _save_chunks_to_output(all_chunks, faq_items_pre_embed, include_embeddings=False)
+        _update(f"Chunks and FAQs saved to {Path(output_dir) / f'kb_{knowledge_base_id}'}/chunks.json")
+
     _update(f"Generating embeddings for {len(all_chunks)} chunks...")
     if all_chunks:
         chunk_texts = [c["content"] for c in all_chunks]
@@ -280,26 +273,56 @@ def run_indexer(
         for c, emb in zip(all_chunks, embeddings):
             c["embedding"] = emb
 
-    _update("Fetching FAQs...")
-    faqs_resp = requests.get(f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs", headers=headers, timeout=30)
-    faqs = faqs_resp.json() if faqs_resp.ok else []
-
     faq_updates: list[dict[str, Any]] = []
+    faq_items_for_output: list[dict[str, Any]] = []
     if faqs:
         _update(f"Generating embeddings for {len(faqs)} FAQs...")
         faq_texts = [f["question"] for f in faqs]
         faq_embeddings = generate_embeddings(faq_texts, model_config)
         for f, emb in zip(faqs, faq_embeddings):
             faq_updates.append({"id": f["id"], "embedding": emb})
+            faq_items_for_output.append({**f, "embedding": emb})
 
-    _update("Writing to database...")
-    conn = _get_db_connection(db_url)
-    try:
-        _clear_chunks(conn, knowledge_base_id)
-        _insert_chunks(conn, all_chunks)
-        _update_faq_embeddings(conn, faq_updates)
-    finally:
-        conn.close()
+    if output_dir:
+        _save_chunks_to_output(all_chunks, faq_items_for_output, include_embeddings=True)
+
+    _update("Writing to backend API...")
+    del_resp = requests.delete(f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks", headers=headers, timeout=60)
+    if not del_resp.ok:
+        raise RuntimeError(f"Failed to clear chunks: {del_resp.status_code} {del_resp.text[:200]}")
+
+    if all_chunks:
+        batch_items = [
+            {
+                "id": c["id"],
+                "document_id": c["document_id"],
+                "content": c["content"],
+                "chunk_index": c["chunk_index"],
+                "token_count": c.get("token_count"),
+                "embedding": c["embedding"],
+                "chunk_metadata": c.get("chunk_metadata"),
+            }
+            for c in all_chunks
+        ]
+        create_resp = requests.post(
+            f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks/batch",
+            headers=headers,
+            json={"items": batch_items},
+            timeout=120,
+        )
+        if not create_resp.ok:
+            raise RuntimeError(f"Failed to create chunks: {create_resp.status_code} {create_resp.text[:500]}")
+
+    if faq_updates:
+        faq_emb_items = [{"id": fu["id"], "embedding": fu["embedding"]} for fu in faq_updates]
+        faq_resp = requests.put(
+            f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs/batch-embeddings",
+            headers=headers,
+            json={"items": faq_emb_items},
+            timeout=60,
+        )
+        if not faq_resp.ok:
+            raise RuntimeError(f"Failed to update FAQ embeddings: {faq_resp.status_code} {faq_resp.text[:200]}")
 
     return {
         "chunks_created": len(all_chunks),

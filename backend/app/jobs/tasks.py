@@ -251,14 +251,9 @@ async def run_kb_index(
 
     base_api_url = settings.openkms_backend_url.rstrip("/")
     cmd_str = (
-        f"openkms-cli kb index"
+        f"openkms-cli pipeline run --pipeline-name kb-index"
         f" --knowledge-base-id {knowledge_base_id}"
         f" --api-url {base_api_url}"
-        f" --db-host {settings.database_host}"
-        f" --db-port {settings.database_port}"
-        f" --db-user {settings.database_user}"
-        f" --db-password {shlex.quote(settings.database_password)}"
-        f" --db-name {settings.database_name}"
         f"{embedding_args}"
     )
 

@@ -55,10 +55,10 @@
 | Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
 | KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt |
-| KB indexing (CLI) | ✅ | `openkms-cli kb index` – chunk documents, generate embeddings, bulk insert to pgvector |
+| KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index` – chunk documents, generate embeddings, bulk insert to pgvector |
 | KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
 | QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG with pgvector retrieval |
-| Q&A tab | ✅ | Chat-like interface in KB detail page for asking questions against the knowledge base |
+| Q&A tab | ✅ | Chat-like interface in KB detail page for asking questions; hidden when agent URL is not configured |
 
 - Toggle visibility via Console → Feature Toggles
 
@@ -192,6 +192,8 @@
 | POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
 | GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated) |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
+| POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index pipeline) |
+| PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
 | POST | `/api/knowledge-bases/{id}/search` | Semantic search over chunks and FAQs |
 | POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service |
 | GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |

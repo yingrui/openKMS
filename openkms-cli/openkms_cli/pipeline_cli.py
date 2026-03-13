@@ -23,6 +23,10 @@ SUPPORTED_PIPELINES: dict[str, tuple[str, str]] = {
         "PaddleOCR Document Parse",
         "Parse PDF/document with PaddleOCR-VL; output markdown and images to S3.",
     ),
+    "kb-index": (
+        "Knowledge Base Index",
+        "Chunk documents, generate embeddings, index FAQs; requires --knowledge-base-id.",
+    ),
 }
 
 pipeline_app = typer.Typer(
@@ -78,7 +82,8 @@ def pipeline_list() -> None:
     for name, (display, desc) in SUPPORTED_PIPELINES.items():
         table.add_row(name, f"{display}: {desc}")
     console.print(table)
-    console.print("\n[dim]Use: openkms-cli pipeline run --pipeline-name <name> --input <uri> --s3-prefix <prefix>[/dim]")
+    console.print("\n[dim]Doc parse: pipeline run --pipeline-name paddleocr-doc-parse --input <uri> --s3-prefix <prefix>[/dim]")
+    console.print("[dim]KB index:  pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url <url>[/dim]")
 
 
 @pipeline_app.command("run")
@@ -86,12 +91,17 @@ def pipeline_run(
     pipeline_name: str = typer.Option(
         "paddleocr-doc-parse",
         "--pipeline-name",
-        help="Pipeline name (e.g. paddleocr-doc-parse)",
+        help="Pipeline name (e.g. paddleocr-doc-parse, kb-index)",
     ),
-    input_uri: str = typer.Option(
-        ...,
+    input_uri: Optional[str] = typer.Option(
+        None,
         "--input",
-        help="Input: S3 URI (s3://bucket/key) or local file path (skip download)",
+        help="Input: S3 URI or local file path (required for doc-parse pipelines)",
+    ),
+    knowledge_base_id: Optional[str] = typer.Option(
+        None,
+        "--knowledge-base-id",
+        help="Knowledge base ID to index (required for kb-index pipeline)",
     ),
     s3_prefix: Optional[str] = typer.Option(
         None,
@@ -171,21 +181,95 @@ def pipeline_run(
         "--extraction-model-name",
         help="LLM model name (e.g. qwen3.5); fetches base_url/api_key from backend",
     ),
+    # KB index pipeline options
+    embedding_model_base_url: Optional[str] = typer.Option(
+        None,
+        "--embedding-model-base-url",
+        envvar="OPENKMS_EMBEDDING_MODEL_BASE_URL",
+        help="Override embedding model base URL (kb-index)",
+    ),
+    embedding_model_name: Optional[str] = typer.Option(
+        None,
+        "--embedding-model-name",
+        envvar="OPENKMS_EMBEDDING_MODEL_NAME",
+        help="Override embedding model name (kb-index)",
+    ),
 ) -> None:
     """
-    Run pipeline: download from S3 → parse → upload to S3.
+    Run pipeline. Use `pipeline list` to see supported pipeline names.
 
-    Example:
+    Document parse example:
       openkms-cli pipeline run --pipeline-name paddleocr-doc-parse \\
-        --input s3://openkms/da46.../original.pdf \\
-        --s3-prefix da46...
+        --input s3://openkms/da46.../original.pdf --s3-prefix da46...
+
+    KB index example:
+      openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url ...
     """
     if pipeline_name not in SUPPORTED_PIPELINES:
         console.print(
             f"[yellow]Unknown pipeline '{pipeline_name}'. "
-            f"Use 'openkms-cli pipeline list' to see supported pipelines. Using paddleocr-doc-parse.[/yellow]"
+            f"Use 'openkms-cli pipeline list' to see supported pipelines.[/yellow]"
         )
-        pipeline_name = "paddleocr-doc-parse"
+        raise typer.Exit(1)
+
+    # --- kb-index pipeline ---
+    if pipeline_name == "kb-index":
+        if not knowledge_base_id:
+            console.print("[red]kb-index pipeline requires --knowledge-base-id[/red]")
+            raise typer.Exit(1)
+        try:
+            from .kb_indexer import run_indexer
+        except ImportError as e:
+            console.print(f"[red]Missing dependencies: {e}. Install with: pip install openkms-cli[kb][/red]")
+            raise typer.Exit(1)
+
+        token: Optional[str] = None
+        try:
+            from .auth import get_access_token
+            token = get_access_token()
+            console.print("[dim]Got Keycloak token[/dim]")
+        except Exception:
+            console.print("[yellow]No auth token (proceeding without auth)[/yellow]")
+
+        embedding_override = None
+        if embedding_model_base_url:
+            embedding_override = {
+                "base_url": embedding_model_base_url,
+                "api_key": os.environ.get("OPENKMS_EMBEDDING_MODEL_API_KEY", ""),
+                "model_name": embedding_model_name or "text-embedding-ada-002",
+            }
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Indexing knowledge base...", total=None)
+            try:
+                stats = run_indexer(
+                    knowledge_base_id=knowledge_base_id,
+                    api_url=api_url,
+                    token=token,
+                    embedding_override=embedding_override,
+                    progress=progress,
+                    task=task,
+                    output_dir=output_dir,
+                )
+                progress.update(task, description="Done!")
+                console.print(
+                    f"[green]Indexing complete: "
+                    f"{stats['chunks_created']} chunks, "
+                    f"{stats['faqs_indexed']} FAQs indexed[/green]"
+                )
+            except Exception as e:
+                console.print(f"[red]Indexing failed: {e}[/red]")
+                raise typer.Exit(1)
+        return
+
+    # --- doc-parse pipelines (e.g. paddleocr-doc-parse) ---
+    if not input_uri:
+        console.print("[red]Document parse pipelines require --input (S3 URI or local file)[/red]")
+        raise typer.Exit(1)
 
     token: Optional[str] = None
     if extract_metadata:

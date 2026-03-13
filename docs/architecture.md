@@ -19,7 +19,7 @@ flowchart TB
   end
 
   subgraph WorkerDetail["Worker execution"]
-    CLI["openkms-cli pipeline run / kb index"]
+    CLI["openkms-cli pipeline run (doc-parse, kb-index)"]
     VLM["mlx-vlm-server"]
   end
 
@@ -43,7 +43,7 @@ flowchart TB
   Worker --> CLI
   CLI --> VLM
   CLI -->|metadata extraction, embeddings| LLM
-  CLI --> PG
+  CLI -->|kb-index: chunks, FAQ embeddings| Backend
 ```
 
 | Layer | Components |
@@ -165,17 +165,16 @@ openkms-cli/
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
 │   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
-│   ├── pipeline_cli.py      # pipeline download, upload, run, optional extract (optional [pipeline])
-│   ├── kb_cli.py            # kb index command (optional [kb])
+│   ├── pipeline_cli.py      # pipeline list, pipeline run (doc-parse, kb-index); optional [pipeline], [kb]
 │   └── kb_indexer.py        # Chunking, embedding, pgvector bulk insert (optional [kb])
 └── README.md
 ```
 
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
-- **Commands**: `parse run`, `pipeline list`, `pipeline run`, `kb index`
+- **Commands**: `parse run`, `pipeline list`, `pipeline run`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
-- **KB indexing**: `openkms-cli kb index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), generates embeddings via OpenAI-compatible API, bulk inserts into pgvector, indexes FAQ embeddings
+- **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), generates embeddings via OpenAI-compatible API, writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
 
 ## QA Agent Service

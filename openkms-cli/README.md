@@ -68,14 +68,23 @@ openkms-cli pipeline list
 
 ### `pipeline run`
 
-Download from S3 (or use local file) → parse → upload to S3.
+Run a pipeline. Supported pipelines: `paddleocr-doc-parse` (document parsing), `kb-index` (knowledge base indexing).
+
+**Document parse** (download from S3 → parse → upload to S3):
 
 ```bash
 # From S3
-openkms-cli pipeline run --input s3://openkms/da46.../original.pdf --s3-prefix da46...
+openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://openkms/da46.../original.pdf --s3-prefix da46...
 
 # From local file (skips download)
-openkms-cli pipeline run --input ./document.pdf --s3-prefix da46...
+openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input ./document.pdf --s3-prefix da46...
+```
+
+**KB index** (chunk documents, generate embeddings, index FAQs):
+
+```bash
+openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url http://localhost:8102
+# Requires: pip install -e ".[kb]" and backend API + PostgreSQL
 ```
 
 **Pipeline run options:**
@@ -83,7 +92,8 @@ openkms-cli pipeline run --input ./document.pdf --s3-prefix da46...
 | Option | Env var | Default |
 |--------|---------|---------|
 | `--pipeline-name` | - | `paddleocr-doc-parse` |
-| `--input` | - | (required) S3 URI or local file path |
+| `--input` | - | (required for doc-parse) S3 URI or local file path |
+| `--knowledge-base-id` | - | (required for kb-index) Knowledge base ID to index |
 | `--s3-prefix` | - | (optional) Output prefix; when omitted with S3 input, uses file hash |
 | `--vlm-url` | `OPENKMS_VLM_URL` | `http://localhost:8101/` |
 | `--bucket` | `AWS_BUCKET_NAME` | `openkms` |

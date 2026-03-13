@@ -1,5 +1,7 @@
 """Knowledge base management API."""
+import base64
 import logging
+import struct
 import uuid
 
 import httpx
@@ -17,8 +19,10 @@ from app.models.knowledge_base import KnowledgeBase
 from app.schemas.knowledge_base import (
     AskRequest,
     AskResponse,
+    ChunkBatchCreateRequest,
     ChunkListResponse,
     ChunkResponse,
+    FAQBatchEmbeddingsRequest,
     FAQBatchCreateRequest,
     FAQCreate,
     FAQGenerateRequest,
@@ -267,6 +271,20 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
     )
 
 
+@router.put("/{kb_id}/faqs/batch-embeddings", status_code=204)
+async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsRequest, db: AsyncSession = Depends(get_db)):
+    """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline."""
+    kb = await db.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    for item in body.items:
+        faq = await db.get(FAQ, item.id)
+        if not faq or faq.knowledge_base_id != kb_id:
+            continue
+        faq.embedding = _base64_to_floats(item.embedding)
+    await db.commit()
+
+
 @router.put("/{kb_id}/faqs/{faq_id}", response_model=FAQResponse)
 async def update_faq(kb_id: str, faq_id: str, body: FAQUpdate, db: AsyncSession = Depends(get_db)):
     faq = await db.get(FAQ, faq_id)
@@ -416,6 +434,49 @@ async def delete_all_chunks(kb_id: str, db: AsyncSession = Depends(get_db)):
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
+
+
+def _base64_to_floats(b64: str) -> list[float]:
+    """Decode base64-encoded float32 array to list of floats."""
+    data = base64.b64decode(b64)
+    n = len(data) // 4
+    return list(struct.unpack(f"<{n}f", data))
+
+
+@router.post("/{kb_id}/chunks/batch", response_model=ChunkListResponse)
+async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: AsyncSession = Depends(get_db)):
+    """Bulk create chunks with base64-encoded embeddings. Used by kb-index pipeline."""
+    kb = await db.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    items = []
+    for item in body.items:
+        embedding_floats = _base64_to_floats(item.embedding)
+        chunk = Chunk(
+            id=item.id,
+            knowledge_base_id=kb_id,
+            document_id=item.document_id,
+            content=item.content,
+            chunk_index=item.chunk_index,
+            token_count=item.token_count,
+            embedding=embedding_floats,
+            chunk_metadata=item.chunk_metadata,
+        )
+        db.add(chunk)
+        await db.flush()
+        await db.refresh(chunk)
+        items.append(ChunkResponse(
+            id=chunk.id,
+            knowledge_base_id=chunk.knowledge_base_id,
+            document_id=chunk.document_id,
+            content=chunk.content,
+            chunk_index=chunk.chunk_index,
+            token_count=chunk.token_count,
+            has_embedding=True,
+            chunk_metadata=chunk.chunk_metadata,
+            created_at=chunk.created_at,
+        ))
+    return ChunkListResponse(items=items, total=len(items))
 
 
 # --- Semantic Search ---

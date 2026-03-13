@@ -175,6 +175,13 @@ export function KnowledgeBaseDetail() {
     if (activeTab === 'chunks') loadChunks();
   }, [activeTab, loadDocs, loadFaqs, loadChunks]);
 
+  // Switch away from Q&A tab when agent_url is cleared
+  useEffect(() => {
+    if (activeTab === 'qa' && !kb?.agent_url) {
+      setActiveTab('documents');
+    }
+  }, [activeTab, kb?.agent_url]);
+
   // --- Document picker ---
   const alreadyAddedIds = new Set(docs.map((d) => d.document_id));
 
@@ -444,7 +451,9 @@ export function KnowledgeBaseDetail() {
       </header>
 
       <div className="kb-detail-tabs">
-        {tabs.map((tab) => (
+        {tabs
+          .filter((tab) => tab.id !== 'qa' || Boolean(kb?.agent_url))
+          .map((tab) => (
           <button
             key={tab.id}
             type="button"

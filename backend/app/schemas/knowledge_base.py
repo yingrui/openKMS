@@ -118,6 +118,29 @@ class FAQResponse(BaseModel):
 
 # --- Chunks ---
 
+class ChunkBatchItem(BaseModel):
+    id: str
+    document_id: str
+    content: str
+    chunk_index: int
+    token_count: int | None = None
+    embedding: str  # base64-encoded float32 array
+    chunk_metadata: dict[str, Any] | None = None
+
+
+class ChunkBatchCreateRequest(BaseModel):
+    items: list[ChunkBatchItem]
+
+
+class FAQEmbeddingUpdate(BaseModel):
+    id: str
+    embedding: str  # base64-encoded float32 array
+
+
+class FAQBatchEmbeddingsRequest(BaseModel):
+    items: list[FAQEmbeddingUpdate]
+
+
 class ChunkResponse(BaseModel):
     id: str
     knowledge_base_id: str

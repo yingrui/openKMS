@@ -12,11 +12,11 @@ logger = logging.getLogger(__name__)
 def _build_url(base_url: str, category: str) -> str:
     base = base_url.rstrip("/")
     if category == "embedding":
-        return f"{base}/v1/embeddings"
+        return f"{base}/embeddings"
     elif category == "llm":
-        return f"{base}/v1/chat/completions"
+        return f"{base}/chat/completions"
     elif category == "vl":
-        return f"{base}/v1/chat/completions"
+        return f"{base}/chat/completions"
     # Otherwise, use url as is
     return base
 

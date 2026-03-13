@@ -13,7 +13,7 @@
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
-- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli kb index; QA Agent service (FastAPI + LangGraph)
+- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
 - Console: settings, users, feature toggles (database-backed); admin-only (realm role `admin`)
 
 ## Short-Term (Next Steps)
@@ -104,7 +104,7 @@
 - [x] Semantic search over chunks and FAQs (`POST /search`)
 - [x] QA proxy to external agent service (`POST /ask`)
 - [x] KB settings: agent URL, embedding model, chunking config, FAQ generation prompt
-- [x] openkms-cli `kb index` command: chunk documents, generate embeddings, bulk insert to pgvector
+- [x] openkms-cli `pipeline run --pipeline-name kb-index`: chunk documents, generate embeddings, bulk insert to pgvector
 - [x] `run_kb_index` procrastinate task for background indexing
 - [x] Frontend: KnowledgeBaseList with real CRUD (create, edit, delete)
 - [x] Frontend: KnowledgeBaseDetail with Documents, FAQs, Chunks, Search, Q&A, Settings tabs
