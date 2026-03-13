@@ -39,6 +39,7 @@ async def ask(request: AskRequest):
         "knowledge_base_id": request.knowledge_base_id,
         "question": request.question,
         "conversation_history": request.conversation_history,
+        "access_token": request.access_token or "",
         "context": [],
         "answer": "",
     })

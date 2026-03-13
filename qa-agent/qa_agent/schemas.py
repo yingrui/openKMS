@@ -15,6 +15,7 @@ class AskRequest(BaseModel):
     knowledge_base_id: str
     question: str
     conversation_history: list[dict[str, str]] = []
+    access_token: str = ""
 
 
 class AskResponse(BaseModel):

@@ -14,13 +14,19 @@ class AgentState(TypedDict):
     knowledge_base_id: str
     question: str
     conversation_history: list[dict[str, str]]
+    access_token: str
     context: list[SourceItem]
     answer: str
 
 
 def retrieve_node(state: AgentState) -> dict[str, Any]:
-    """Retrieve relevant context from the knowledge base."""
-    sources = retrieve(state["knowledge_base_id"], state["question"], top_k=5)
+    """Retrieve relevant context from the knowledge base via backend search API."""
+    sources = retrieve(
+        state["knowledge_base_id"],
+        state["question"],
+        access_token=state["access_token"],
+        top_k=5,
+    )
     return {"context": sources}
 
 

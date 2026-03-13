@@ -571,7 +571,12 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
 # --- Ask (QA Proxy) ---
 
 @router.post("/{kb_id}/ask", response_model=AskResponse)
-async def ask_question(kb_id: str, body: AskRequest, db: AsyncSession = Depends(get_db)):
+async def ask_question(
+    kb_id: str,
+    body: AskRequest,
+    token: str = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
     """Forward question to the configured QA agent service."""
     kb = await db.get(KnowledgeBase, kb_id)
     if not kb:
@@ -588,6 +593,7 @@ async def ask_question(kb_id: str, body: AskRequest, db: AsyncSession = Depends(
                     "knowledge_base_id": kb_id,
                     "question": body.question,
                     "conversation_history": body.conversation_history,
+                    "access_token": token,
                 },
             )
             resp.raise_for_status()

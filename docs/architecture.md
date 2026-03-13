@@ -37,7 +37,7 @@ flowchart TB
   Backend --> Worker
   Backend -->|metadata extraction, model test, FAQ generation| LLM
   Backend -->|proxy /ask| Agent
-  Agent --> PG
+  Agent -->|search| Backend
   Agent --> LLM
   Worker --> S3
   Worker --> CLI
@@ -52,7 +52,7 @@ flowchart TB
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
-| **QA Agent** | Separate FastAPI + LangGraph service; retrieves from pgvector (chunks + FAQs), generates answers via LLM; configurable per knowledge base |
+| **QA Agent** | Separate FastAPI + LangGraph service; retrieves via backend search API (no DB access), generates answers via LLM; configurable per knowledge base |
 
 ## Frontend Structure
 
@@ -181,21 +181,21 @@ openkms-cli/
 
 ```
 qa-agent/
-├── pyproject.toml           # FastAPI, LangGraph, langchain-openai, pgvector
+├── pyproject.toml           # FastAPI, LangGraph, langchain-openai, httpx
 ├── qa_agent/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app with /ask endpoint
-│   ├── config.py            # Settings (DB, LLM, embedding)
+│   ├── config.py            # Settings (backend URL, LLM)
 │   ├── agent.py             # LangGraph agent: retrieve → generate
-│   ├── retriever.py         # pgvector retrieval (chunks + FAQs)
+│   ├── retriever.py         # Calls backend search API (no DB access)
 │   └── schemas.py           # AskRequest/AskResponse
 ├── .env.example
 └── README.md
 ```
 
 - **Purpose**: Separate RAG service for Q&A against knowledge bases; configurable per KB via `agent_url`
-- **Architecture**: LangGraph state graph with two nodes: `retrieve` (pgvector similarity search for chunks + FAQs) → `generate` (LLM answer with context)
-- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` to `{kb.agent_url}/ask`
+- **Architecture**: LangGraph state graph with two nodes: `retrieve` (calls `POST /api/knowledge-bases/{id}/search`) → `generate` (LLM answer with context). Does not access the database directly.
+- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` to `{kb.agent_url}/ask`, passing the user's access token so the agent can call the backend search API
 - **Port**: 8103 by default
 
 ## Data Flow
