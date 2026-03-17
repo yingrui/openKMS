@@ -15,6 +15,7 @@ def _model_response_from_orm(model: Any) -> dict[str, Any]:
         "provider_name": getattr(model.provider_rel, "name", ""),
         "name": model.name,
         "category": model.category,
+        "is_default_in_category": getattr(model, "is_default_in_category", False),
         "base_url": getattr(model.provider_rel, "base_url", ""),
         "model_name": model.model_name,
         "config": model.config,
@@ -27,6 +28,7 @@ class ApiModelCreate(BaseModel):
     provider_id: str
     name: str
     category: str
+    is_default_in_category: bool = False
     model_name: str | None = None
     config: dict[str, Any] | None = None
 
@@ -42,6 +44,7 @@ class ApiModelUpdate(BaseModel):
     provider_id: str | None = None
     name: str | None = None
     category: str | None = None
+    is_default_in_category: bool | None = None
     model_name: str | None = None
     config: dict[str, Any] | None = None
 
@@ -59,6 +62,7 @@ class ApiModelResponse(BaseModel):
     provider_name: str
     name: str
     category: str
+    is_default_in_category: bool = False
     base_url: str
     api_key_set: bool = False
     model_name: str | None = None

@@ -4,6 +4,7 @@ import {
   FileStack,
   FileText,
   Database,
+  BookOpen,
   Folder,
   FolderOpen,
   ChevronRight,
@@ -242,6 +243,15 @@ export function Sidebar() {
             <span>Knowledge Bases</span>
           </NavLink>
         )}
+        <NavLink
+          to="/glossaries"
+          className={({ isActive }) =>
+            `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <BookOpen size={18} strokeWidth={1.75} />
+          <span>Glossaries</span>
+        </NavLink>
         <NavLink
           to="/pipelines"
           className={({ isActive }) =>

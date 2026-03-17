@@ -15,6 +15,7 @@
 - Articles: UI placeholder with feature toggle
 - Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
 - Console: settings, users, feature toggles (database-backed); admin-only (realm role `admin`)
+- Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, synonyms, search, export/import
 
 ## Short-Term (Next Steps)
 
@@ -72,6 +73,7 @@
 - [x] Provider–model hierarchy: manage service providers first, then add models under them
 - [x] Model detail page with playground (test endpoint proxied through backend)
 - [x] Playground adapts per model category: form-based (VL with image upload), embedding (text input → vector output), chat (LLM/other)
+- [x] Model default in category: `is_default_in_category` on api_models; Models list Default column
 - [ ] Additional pipeline types beyond PaddleOCR
 
 ### 6. Jobs (procrastinate)
@@ -122,7 +124,7 @@
 
 - Multi-tenancy
 - Audit logging
-- Export/import
+- Glossary export/import (implemented); document export/import
 - Plugin/extensibility
 - Mobile/responsive polish
 

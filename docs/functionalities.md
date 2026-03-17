@@ -62,6 +62,18 @@
 
 - Toggle visibility via Console → Feature Toggles
 
+### 4b. Glossaries
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Glossary management | ✅ | CRUD via `/api/glossaries`; GlossaryList with create/edit/delete |
+| Multiple glossaries | ✅ | Create glossaries for different domains |
+| Bilingual terms | ✅ | Add primary EN, primary CN, synonyms EN, synonyms CN per term |
+| Term CRUD | ✅ | Add/edit/delete terms in glossary; at least one of primary_en or primary_cn required |
+| Search terms | ✅ | `GET /api/glossaries/{id}/terms?search=` filters by primary or synonym (case-insensitive) |
+| Export | ✅ | `GET /api/glossaries/{id}/export` returns JSON with glossary_id, name, terms array |
+| Import | ✅ | `POST /api/glossaries/{id}/import` with `{ terms, mode: "append" \| "replace" }`; JSON file picker in UI |
+
 ### 5. Console (Admin)
 
 - Overview, Settings, Users & Roles, Feature Toggles
@@ -118,6 +130,7 @@
 | Pipeline link | ✅ | Pipelines can link to a model (`model_id` FK); model selector in pipeline create/edit form |
 | Command resolution | ✅ | `{vlm_url}` and `{model_name}` template vars resolved from linked model at job creation |
 | Job detail model | ✅ | JobDetail.tsx shows model info card when job has a linked model |
+| Default in category | ✅ | `is_default_in_category` on api_models; one model per category can be default; Models list shows Default column with "Set" button |
 | Default seed | ✅ | PaddleOCR-VL-1.5 model seeded in migration and linked to default pipeline |
 | Model detail | ✅ | ModelDetail.tsx at `/models/:modelId` – connection info (from provider), config, timestamps |
 | Model playground | ✅ | Test models directly from the detail page; adapts per category: VL (form with image upload + prompt → markdown response), Embedding (text → dimension + values), LLM/other (chat conversation) |
@@ -196,6 +209,18 @@
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
 | POST | `/api/knowledge-bases/{id}/search` | Semantic search over chunks and FAQs |
 | POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service |
+| GET | `/api/glossaries` | List glossaries |
+| POST | `/api/glossaries` | Create glossary |
+| GET | `/api/glossaries/{id}` | Get glossary with term count |
+| PUT | `/api/glossaries/{id}` | Update glossary |
+| DELETE | `/api/glossaries/{id}` | Delete glossary (cascades terms) |
+| GET | `/api/glossaries/{id}/terms` | List terms (optional `?search=`) |
+| POST | `/api/glossaries/{id}/terms` | Create term |
+| GET | `/api/glossaries/{id}/terms/{term_id}` | Get term |
+| PUT | `/api/glossaries/{id}/terms/{term_id}` | Update term |
+| DELETE | `/api/glossaries/{id}/terms/{term_id}` | Delete term |
+| GET | `/api/glossaries/{id}/export` | Export terms as JSON |
+| POST | `/api/glossaries/{id}/import` | Import terms (body: `{ terms, mode: "append" \| "replace" }`) |
 | GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
@@ -215,7 +240,7 @@
 
 ### ApiModel
 
-- `id`, `name`, `provider`, `category`, `base_url`, `api_key` (masked in API responses), `model_name`, `config` (JSONB), `created_at`, `updated_at`
+- `id`, `name`, `provider`, `category`, `is_default_in_category` (one model per category can be default), `base_url`, `api_key` (masked in API responses), `model_name`, `config` (JSONB), `created_at`, `updated_at`
 - Represents an external API endpoint (VLM, LLM, Embedding, etc.) that pipelines can reference
 - Categories: `ocr`, `vl`, `llm`, `embedding`, `text-classification`
 
@@ -257,6 +282,16 @@
 
 - `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB), `created_at`
 - Document segments with vector embeddings for semantic search
+
+### Glossary
+
+- `id`, `name`, `description`, `created_at`, `updated_at`
+- Container for domain terms and synonyms
+
+### GlossaryTerm
+
+- `id`, `glossary_id` (FK → glossaries, CASCADE), `primary_en`, `primary_cn`, `synonyms_en` (JSONB array), `synonyms_cn` (JSONB array), `created_at`, `updated_at`
+- Bilingual term with synonyms; at least one of primary_en or primary_cn required
 
 ### Jobs (procrastinate_jobs)
 

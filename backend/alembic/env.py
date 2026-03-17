@@ -19,6 +19,8 @@ import app.models.knowledge_base  # noqa: F401 - register models with Base.metad
 import app.models.kb_document  # noqa: F401 - register models with Base.metadata
 import app.models.faq  # noqa: F401 - register models with Base.metadata
 import app.models.chunk  # noqa: F401 - register models with Base.metadata
+import app.models.glossary  # noqa: F401 - register models with Base.metadata
+import app.models.glossary_term  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

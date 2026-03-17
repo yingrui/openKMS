@@ -45,6 +45,7 @@ export function Models() {
   const [formProviderId, setFormProviderId] = useState('');
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('');
+  const [formIsDefaultInCategory, setFormIsDefaultInCategory] = useState(false);
   const [formModelName, setFormModelName] = useState('');
   const [formConfig, setFormConfig] = useState('');
 
@@ -104,6 +105,7 @@ export function Models() {
     setFormProviderId(activeProvider || (providers[0]?.id ?? ''));
     setFormName('');
     setFormCategory(categories[0]?.id ?? '');
+    setFormIsDefaultInCategory(false);
     setFormModelName('');
     setFormConfig('');
     setModalMode('model');
@@ -114,6 +116,7 @@ export function Models() {
     setFormProviderId(m.provider_id);
     setFormName(m.name);
     setFormCategory(m.category);
+    setFormIsDefaultInCategory(m.is_default_in_category ?? false);
     setFormModelName(m.model_name || '');
     setFormConfig(m.config ? JSON.stringify(m.config, null, 2) : '');
     setModalMode('model');
@@ -168,6 +171,7 @@ export function Models() {
         provider_id: formProviderId,
         name: formName,
         category: formCategory,
+        is_default_in_category: formIsDefaultInCategory,
         model_name: formModelName || null,
         config: parsedConfig ?? null,
       };
@@ -208,6 +212,18 @@ export function Models() {
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Delete failed');
+    }
+  };
+
+  const handleSetDefault = async (m: ApiModelResponse, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (m.is_default_in_category) return;
+    try {
+      await updateModel(m.id, { is_default_in_category: true });
+      toast.success(`"${m.name}" set as default for ${categoryLabel(m.category)}`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to set default');
     }
   };
 
@@ -314,6 +330,7 @@ export function Models() {
                     <th>Model</th>
                     <th>Provider</th>
                     <th>Category</th>
+                    <th>Default</th>
                     <th>Base URL</th>
                     <th className="models-table-actions-col">Actions</th>
                   </tr>
@@ -321,7 +338,7 @@ export function Models() {
                 <tbody>
                   {models.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
                         {providers.length === 0
                           ? 'Add a provider first, then add models.'
                           : 'No models yet. Click "Add Model" to get started.'}
@@ -347,6 +364,20 @@ export function Models() {
                         </td>
                         <td>{m.provider_name}</td>
                         <td>{categoryLabel(m.category)}</td>
+                        <td>
+                          {m.is_default_in_category ? (
+                            <span className="models-default-badge">Default</span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="models-set-default-btn"
+                              title={`Set as default for ${categoryLabel(m.category)}`}
+                              onClick={(e) => handleSetDefault(m, e)}
+                            >
+                              Set
+                            </button>
+                          )}
+                        </td>
                         <td className="models-table-url">{m.base_url}</td>
                         <td className="models-table-actions-col">
                           <div className="models-table-btns">
@@ -470,6 +501,14 @@ export function Models() {
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
                 </select>
+              </label>
+              <label className="models-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={formIsDefaultInCategory}
+                  onChange={(e) => setFormIsDefaultInCategory(e.target.checked)}
+                />
+                <span>Default in category</span>
               </label>
               <label>
                 Model Name

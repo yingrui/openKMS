@@ -13,6 +13,7 @@ export interface ApiModelResponse {
   provider_name: string;
   name: string;
   category: string;
+  is_default_in_category: boolean;
   base_url: string;
   api_key_set?: boolean;
   model_name?: string | null;
@@ -30,6 +31,7 @@ export interface ApiModelCreate {
   provider_id: string;
   name: string;
   category: string;
+  is_default_in_category?: boolean;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
 }
@@ -38,6 +40,7 @@ export interface ApiModelUpdate {
   provider_id?: string;
   name?: string;
   category?: string;
+  is_default_in_category?: boolean;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
 }

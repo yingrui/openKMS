@@ -10,6 +10,8 @@ import { DocumentsIndex } from './pages/DocumentsIndex';
 import { Articles } from './pages/Articles';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
 import { KnowledgeBaseDetail } from './pages/KnowledgeBaseDetail';
+import { GlossaryList } from './pages/GlossaryList';
+import { GlossaryDetail } from './pages/GlossaryDetail';
 import { Pipelines } from './pages/Pipelines';
 import { Jobs } from './pages/Jobs';
 import { JobDetail } from './pages/JobDetail';
@@ -47,6 +49,8 @@ function App() {
           <Route path="articles/view/:id" element={<FeatureGate feature="articles"><ArticleDetail /></FeatureGate>} />
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
+          <Route path="glossaries" element={<GlossaryList />} />
+          <Route path="glossaries/:id" element={<GlossaryDetail />} />
           <Route path="pipelines" element={<Pipelines />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:jobId" element={<JobDetail />} />

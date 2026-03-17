@@ -2,7 +2,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -62,17 +62,28 @@ async def list_models(
     return ApiModelListResponse(items=items, total=total)
 
 
+async def _clear_category_defaults(db: AsyncSession, category: str, exclude_model_id: str | None = None):
+    """Set is_default_in_category=False for all models in category except exclude_model_id."""
+    stmt = update(ApiModel).where(ApiModel.category == category).values(is_default_in_category=False)
+    if exclude_model_id:
+        stmt = stmt.where(ApiModel.id != exclude_model_id)
+    await db.execute(stmt)
+
+
 @router.post("", response_model=ApiModelResponse, status_code=201)
 async def create_model(body: ApiModelCreate, db: AsyncSession = Depends(get_db)):
     """Register a new model under a provider."""
     provider = await db.get(ApiProvider, body.provider_id)
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
+    if body.is_default_in_category:
+        await _clear_category_defaults(db, body.category)
     model = ApiModel(
         id=f"model_{uuid.uuid4().hex[:8]}",
         provider_id=body.provider_id,
         name=body.name,
         category=body.category,
+        is_default_in_category=body.is_default_in_category,
         model_name=body.model_name,
         config=body.config,
     )
@@ -153,6 +164,9 @@ async def update_model(model_id: str, body: ApiModelUpdate, db: AsyncSession = D
         provider = await db.get(ApiProvider, update_data["provider_id"])
         if not provider:
             raise HTTPException(status_code=404, detail="Provider not found")
+    if update_data.get("is_default_in_category") is True:
+        category = update_data.get("category", model.category)
+        await _clear_category_defaults(db, category, exclude_model_id=model_id)
     for key, value in update_data.items():
         setattr(model, key, value)
     await db.commit()

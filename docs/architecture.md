@@ -5,11 +5,11 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home, Documents, Articles, Knowledge Bases, Pipelines, Jobs, Models"]
+    FE["Home, Documents, Articles, Knowledge Bases, Glossaries, Pipelines, Jobs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["channels, documents, knowledge-bases, pipelines, jobs, models, feature-toggles"]
+    API["channels, documents, knowledge-bases, glossaries, pipelines, jobs, models, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -48,7 +48,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, knowledge_bases, kb_documents, faqs, chunks, procrastinate_jobs |
+| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, knowledge_bases, kb_documents, faqs, chunks, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -71,6 +71,7 @@ flowchart TB
     Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
     Articles[Articles, ArticleDetail]
     KB[KnowledgeBaseList, KnowledgeBaseDetail]
+    Glossaries[GlossaryList, GlossaryDetail]
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
@@ -87,7 +88,7 @@ frontend/src/
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, pipelinesApi, jobsApi, modelsApi, providersApi, featureTogglesApi, channelUtils
+├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, featureTogglesApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -97,6 +98,7 @@ frontend/src/
     ├── DocumentDetail.tsx
     ├── Articles.tsx, ArticleDetail.tsx
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
+    ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles
 ```
@@ -115,7 +117,8 @@ backend/
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── pipelines.py        # CRUD /api/pipelines, template-variables
+│   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
+│   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
@@ -129,7 +132,9 @@ backend/
 │   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, agent_url, chunk_config, faq_prompt)
 │   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
-│   │   └── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
+│   │   ├── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
+│   │   ├── glossary.py        # Glossary (name, description)
+│   │   └── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, synonyms_en, synonyms_cn)
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
@@ -137,7 +142,8 @@ backend/
 │   │   ├── api_model.py        # ApiModelCreate/Update/Response (+ provider_id)
 │   │   ├── api_provider.py     # ApiProviderCreate/Update/Response
 │   │   ├── job.py              # JobCreate/Response
-│   │   └── knowledge_base.py  # KB/FAQ/Chunk/Search/Ask schemas
+│   │   ├── knowledge_base.py  # KB/FAQ/Chunk/Search/Ask schemas
+│   │   └── glossary.py        # Glossary/Term Create/Update/Response, Export/Import schemas
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
 │   │   └── tasks.py            # run_pipeline task, run_kb_index task (subprocess openkms-cli)

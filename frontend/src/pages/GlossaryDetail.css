@@ -1,0 +1,231 @@
+.glossary-detail {
+  width: 100%;
+}
+
+.glossary-detail-loading {
+  color: var(--color-text-secondary);
+  padding: 40px 0;
+}
+
+.glossary-detail-header {
+  margin-bottom: 24px;
+}
+
+.glossary-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  margin-bottom: 12px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.glossary-back:hover {
+  color: var(--color-text);
+}
+
+.glossary-detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.glossary-detail-title-row h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.glossary-detail-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.glossary-detail-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+}
+
+.glossary-detail-desc {
+  margin: 8px 0 0;
+  font-size: 0.9375rem;
+  color: var(--color-text-secondary);
+}
+
+.glossary-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  margin-bottom: 20px;
+  max-width: 400px;
+}
+
+.glossary-search-icon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.glossary-search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+
+.glossary-search-input:focus {
+  outline: none;
+}
+
+.glossary-search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.glossary-terms-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.glossary-terms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.glossary-terms-table th,
+.glossary-terms-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.glossary-terms-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-muted);
+}
+
+.glossary-terms-table th:first-child,
+.glossary-terms-table td:first-child {
+  padding-left: 20px;
+}
+
+.glossary-terms-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.glossary-terms-table tbody tr:hover {
+  background: var(--color-bg-muted);
+}
+
+.glossary-terms-actions-col {
+  width: 80px;
+  white-space: nowrap;
+}
+
+.glossary-terms-actions-col button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  margin-right: 4px;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.glossary-terms-actions-col button:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+}
+
+.glossary-terms-actions-col button[aria-label="Delete"]:hover {
+  color: var(--color-error);
+}
+
+.glossary-terms-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 48px 20px !important;
+}
+
+/* Tag input for synonyms */
+.tag-input {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  padding: 6px 10px;
+  min-height: 42px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.tag button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.tag button:hover {
+  opacity: 1;
+}
+
+.tag-input-field {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  background: none;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  padding: 4px 0;
+}
+
+.tag-input-field:focus {
+  outline: none;
+}
+
+.tag-input-field::placeholder {
+  color: var(--color-text-muted);
+}
