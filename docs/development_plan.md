@@ -15,7 +15,7 @@
 - Articles: UI placeholder with feature toggle
 - Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
 - Console: settings, users, feature toggles (database-backed); admin-only (realm role `admin`)
-- Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, synonyms, search, export/import
+- Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start
 
 ## Short-Term (Next Steps)
 

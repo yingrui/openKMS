@@ -168,6 +168,24 @@
   padding: 48px 20px !important;
 }
 
+.glossary-terms-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glossary-terms-spinner {
+  animation: glossary-spin 0.8s linear infinite;
+}
+
+.glossary-term-desc,
+.glossary-term-definition {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Tag input for synonyms */
 .tag-input {
   border: 1px solid var(--color-border);
@@ -228,4 +246,24 @@
 
 .tag-input-field::placeholder {
   color: var(--color-text-muted);
+}
+
+/* AI Suggestion */
+.glossary-ai-suggestion-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.glossary-ai-suggestion-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.glossary-ai-spinner {
+  animation: glossary-spin 0.8s linear infinite;
+}
+
+@keyframes glossary-spin {
+  to { transform: rotate(360deg); }
 }

@@ -23,6 +23,7 @@ export interface GlossaryTermResponse {
   glossary_id: string;
   primary_en?: string | null;
   primary_cn?: string | null;
+  definition?: string | null;
   synonyms_en: string[];
   synonyms_cn: string[];
   created_at: string;
@@ -41,6 +42,7 @@ export interface GlossaryExportPayload {
   terms: Array<{
     primary_en?: string | null;
     primary_cn?: string | null;
+    definition?: string | null;
     synonyms_en: string[];
     synonyms_cn: string[];
   }>;
@@ -135,11 +137,38 @@ export async function fetchGlossaryTerms(
   return res.json();
 }
 
+export interface GlossaryTermSuggestResponse {
+  primary_en: string;
+  primary_cn: string;
+  definition?: string;
+  synonyms_en: string[];
+  synonyms_cn: string[];
+}
+
+export async function suggestGlossaryTerm(
+  glossaryId: string,
+  data: { primary_en?: string; primary_cn?: string }
+): Promise<GlossaryTermSuggestResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/suggest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to get AI suggestion');
+  }
+  return res.json();
+}
+
 export async function createGlossaryTerm(
   glossaryId: string,
   data: {
     primary_en?: string;
     primary_cn?: string;
+    definition?: string;
     synonyms_en?: string[];
     synonyms_cn?: string[];
   }
@@ -151,6 +180,7 @@ export async function createGlossaryTerm(
     body: JSON.stringify({
       primary_en: data.primary_en || null,
       primary_cn: data.primary_cn || null,
+      definition: data.definition || null,
       synonyms_en: data.synonyms_en || [],
       synonyms_cn: data.synonyms_cn || [],
     }),
@@ -169,6 +199,7 @@ export async function updateGlossaryTerm(
   data: {
     primary_en?: string;
     primary_cn?: string;
+    definition?: string;
     synonyms_en?: string[];
     synonyms_cn?: string[];
   }

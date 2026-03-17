@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
@@ -19,6 +19,8 @@ from app.schemas.glossary import (
     GlossaryTermCreate,
     GlossaryTermListResponse,
     GlossaryTermResponse,
+    GlossaryTermSuggestRequest,
+    GlossaryTermSuggestResponse,
     GlossaryTermUpdate,
     GlossaryUpdate,
 )
@@ -53,6 +55,7 @@ def _term_to_response(term: GlossaryTerm) -> GlossaryTermResponse:
         glossary_id=term.glossary_id,
         primary_en=term.primary_en,
         primary_cn=term.primary_cn,
+        definition=term.definition,
         synonyms_en=term.synonyms_en or [],
         synonyms_cn=term.synonyms_cn or [],
         created_at=term.created_at,
@@ -141,8 +144,9 @@ async def list_glossary_terms(
             or_(
                 GlossaryTerm.primary_en.ilike(pattern),
                 GlossaryTerm.primary_cn.ilike(pattern),
-                GlossaryTerm.synonyms_en.astext.ilike(pattern),
-                GlossaryTerm.synonyms_cn.astext.ilike(pattern),
+                GlossaryTerm.definition.ilike(pattern),
+                cast(GlossaryTerm.synonyms_en, String).ilike(pattern),
+                cast(GlossaryTerm.synonyms_cn, String).ilike(pattern),
             )
         )
 
@@ -152,6 +156,56 @@ async def list_glossary_terms(
 
     items = [_term_to_response(t) for t in terms]
     return GlossaryTermListResponse(items=items, total=len(items))
+
+
+@router.post("/{glossary_id}/terms/suggest", response_model=GlossaryTermSuggestResponse)
+async def suggest_glossary_term(
+    glossary_id: str,
+    body: GlossaryTermSuggestRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Use AI to suggest translation and synonyms for a term. Requires at least primary_en or primary_cn."""
+    glossary = await db.get(Glossary, glossary_id)
+    if not glossary:
+        raise HTTPException(status_code=404, detail="Glossary not found")
+    if not (body.primary_en or body.primary_cn) or (
+        not (body.primary_en or "").strip() and not (body.primary_cn or "").strip()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Provide at least one of primary_en or primary_cn",
+        )
+
+    from app.models.api_model import ApiModel
+    from sqlalchemy.orm import selectinload
+
+    model_result = await db.execute(
+        select(ApiModel)
+        .options(selectinload(ApiModel.provider_rel))
+        .where(ApiModel.category == "llm", ApiModel.is_default_in_category == True)
+        .limit(1)
+    )
+    model = model_result.scalar_one_or_none()
+    if not model:
+        raise HTTPException(
+            status_code=400,
+            detail="No default LLM model configured. Set a model as default in its category (Models page).",
+        )
+
+    model_config = {
+        "base_url": model.provider_rel.base_url,
+        "api_key": model.provider_rel.api_key,
+        "model_name": model.model_name or model.name,
+    }
+
+    from app.services.glossary_term_suggestion import suggest_glossary_term as do_suggest
+
+    result = await do_suggest(
+        primary_en=body.primary_en,
+        primary_cn=body.primary_cn,
+        model_config=model_config,
+    )
+    return GlossaryTermSuggestResponse(**result)
 
 
 @router.post("/{glossary_id}/terms", response_model=GlossaryTermResponse, status_code=201)
@@ -167,6 +221,7 @@ async def create_glossary_term(
         glossary_id=glossary_id,
         primary_en=body.primary_en or None,
         primary_cn=body.primary_cn or None,
+        definition=body.definition or None,
         synonyms_en=body.synonyms_en or [],
         synonyms_cn=body.synonyms_cn or [],
     )
@@ -242,6 +297,7 @@ async def export_glossary(glossary_id: str, db: AsyncSession = Depends(get_db)):
             {
                 "primary_en": t.primary_en,
                 "primary_cn": t.primary_cn,
+                "definition": t.definition,
                 "synonyms_en": t.synonyms_en or [],
                 "synonyms_cn": t.synonyms_cn or [],
             }
@@ -270,6 +326,7 @@ async def import_glossary(
             glossary_id=glossary_id,
             primary_en=item.primary_en or None,
             primary_cn=item.primary_cn or None,
+            definition=item.definition or None,
             synonyms_en=item.synonyms_en or [],
             synonyms_cn=item.synonyms_cn or [],
         )

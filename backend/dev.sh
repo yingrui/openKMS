@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
-# Backend dev server - activates venv, runs migrations, starts uvicorn
+# Backend dev server - activates venv, ensures pgvector, runs migrations, starts uvicorn
 set -e
 cd "$(dirname "$0")"
+
+# Load .env for database config
+if [[ -f .env ]]; then
+  set -a
+  source .env
+  set +a
+fi
 
 # Activate venv if present
 if [[ -d .venv ]]; then
   source .venv/bin/activate
+fi
+
+# Ensure pgvector extension (check/install, then CREATE EXTENSION)
+if [[ -f scripts/ensure_pgvector.py ]]; then
+  python scripts/ensure_pgvector.py || exit 1
 fi
 
 # Run migrations

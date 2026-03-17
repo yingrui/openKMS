@@ -9,6 +9,8 @@ import {
   X,
   Download,
   Upload,
+  Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -19,6 +21,7 @@ import {
   deleteGlossaryTerm,
   exportGlossary,
   importGlossary,
+  suggestGlossaryTerm,
   type GlossaryResponse,
   type GlossaryTermResponse,
 } from '../data/glossariesApi';
@@ -77,16 +80,18 @@ export function GlossaryDetail() {
   const [glossary, setGlossary] = useState<GlossaryResponse | null>(null);
   const [terms, setTerms] = useState<GlossaryTermResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [termsLoading, setTermsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [showTermForm, setShowTermForm] = useState(false);
   const [editTerm, setEditTerm] = useState<GlossaryTermResponse | null>(null);
   const [termPrimaryEn, setTermPrimaryEn] = useState('');
   const [termPrimaryCn, setTermPrimaryCn] = useState('');
+  const [termDefinition, setTermDefinition] = useState('');
   const [termSynonymsEn, setTermSynonymsEn] = useState<string[]>([]);
   const [termSynonymsCn, setTermSynonymsCn] = useState<string[]>([]);
   const [termSaving, setTermSaving] = useState(false);
+  const [termSuggesting, setTermSuggesting] = useState(false);
 
   const [showImport, setShowImport] = useState(false);
   const [importMode, setImportMode] = useState<'append' | 'replace'>('append');
@@ -105,30 +110,47 @@ export function GlossaryDetail() {
     }
   }, [glossaryId]);
 
-  const loadTerms = useCallback(async () => {
-    if (!glossaryId) return;
-    try {
-      const data = await fetchGlossaryTerms(glossaryId, { search: search.trim() || undefined });
-      setTerms(data.items);
-    } catch { /* noop */ }
-  }, [glossaryId, search]);
-
-  useEffect(() => { loadGlossary(); }, [loadGlossary]);
+  const loadTerms = useCallback(
+    async (searchQuery?: string) => {
+      if (!glossaryId) return;
+      setTermsLoading(true);
+      try {
+        const data = await fetchGlossaryTerms(glossaryId, {
+          search: (searchQuery ?? search).trim() || undefined,
+        });
+        setTerms(data.items);
+      } catch {
+        /* noop */
+      } finally {
+        setTermsLoading(false);
+      }
+    },
+    [glossaryId, search]
+  );
 
   useEffect(() => {
-    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    searchDebounceRef.current = setTimeout(() => {
-      loadTerms();
-    }, 300);
-    return () => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-    };
-  }, [search, loadTerms]);
+    loadGlossary();
+  }, [loadGlossary]);
+
+  // Load terms: immediately when glossary opens or switches, debounced (300ms) when search changes
+  const prevGlossaryIdRef = useRef<string | null>(null);
+  const prevSearchRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!glossaryId) return;
+    const glossaryChanged = prevGlossaryIdRef.current !== glossaryId;
+    prevGlossaryIdRef.current = glossaryId;
+    const isSearchChange = prevSearchRef.current !== null && !glossaryChanged;
+    prevSearchRef.current = search;
+    const delay = isSearchChange ? 300 : 0;
+    const t = setTimeout(() => loadTerms(search), delay);
+    return () => clearTimeout(t);
+  }, [glossaryId, search, loadTerms]);
 
   const openAddTerm = () => {
     setEditTerm(null);
     setTermPrimaryEn('');
     setTermPrimaryCn('');
+    setTermDefinition('');
     setTermSynonymsEn([]);
     setTermSynonymsCn([]);
     setShowTermForm(true);
@@ -138,6 +160,7 @@ export function GlossaryDetail() {
     setEditTerm(t);
     setTermPrimaryEn(t.primary_en || '');
     setTermPrimaryCn(t.primary_cn || '');
+    setTermDefinition(t.definition || '');
     setTermSynonymsEn(t.synonyms_en || []);
     setTermSynonymsCn(t.synonyms_cn || []);
     setShowTermForm(true);
@@ -148,6 +171,7 @@ export function GlossaryDetail() {
     setEditTerm(null);
     setTermPrimaryEn('');
     setTermPrimaryCn('');
+    setTermDefinition('');
     setTermSynonymsEn([]);
     setTermSynonymsCn([]);
   };
@@ -162,6 +186,7 @@ export function GlossaryDetail() {
       const payload = {
         primary_en: termPrimaryEn.trim() || undefined,
         primary_cn: termPrimaryCn.trim() || undefined,
+        definition: termDefinition.trim() || undefined,
         synonyms_en: termSynonymsEn,
         synonyms_cn: termSynonymsCn,
       };
@@ -179,6 +204,33 @@ export function GlossaryDetail() {
       toast.error(e instanceof Error ? e.message : 'Failed to save term');
     } finally {
       setTermSaving(false);
+    }
+  };
+
+  const handleAiSuggestion = async () => {
+    const en = termPrimaryEn.trim();
+    const cn = termPrimaryCn.trim();
+    if (!en && !cn) {
+      toast.error('Enter primary term (EN or CN) first');
+      return;
+    }
+    if (!glossaryId) return;
+    setTermSuggesting(true);
+    try {
+      const res = await suggestGlossaryTerm(glossaryId, {
+        primary_en: en || undefined,
+        primary_cn: cn || undefined,
+      });
+      setTermPrimaryEn(res.primary_en || '');
+      setTermPrimaryCn(res.primary_cn || '');
+      setTermDefinition(res.definition || '');
+      setTermSynonymsEn(res.synonyms_en || []);
+      setTermSynonymsCn(res.synonyms_cn || []);
+      toast.success('AI suggestion applied. Edit if needed, then Add.');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'AI suggestion failed');
+    } finally {
+      setTermSuggesting(false);
     }
   };
 
@@ -234,9 +286,10 @@ export function GlossaryDetail() {
         return;
       }
       await importGlossary(glossaryId, {
-        terms: validTerms.map((t: { primary_en?: string; primary_cn?: string; synonyms_en?: string[]; synonyms_cn?: string[] }) => ({
+        terms: validTerms.map((t: { primary_en?: string; primary_cn?: string; definition?: string; description?: string; synonyms_en?: string[]; synonyms_cn?: string[] }) => ({
           primary_en: t.primary_en || null,
           primary_cn: t.primary_cn || null,
+          definition: (t.definition ?? t.description) || null,
           synonyms_en: t.synonyms_en || [],
           synonyms_cn: t.synonyms_cn || [],
         })),
@@ -297,36 +350,47 @@ export function GlossaryDetail() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search terms (EN, CN, or synonyms)..."
+          placeholder="Search terms (EN, CN, definition, or synonyms)..."
           className="glossary-search-input"
         />
       </div>
 
       <div className="glossary-terms-table-wrapper">
         <table className="glossary-terms-table">
-          <thead>
-            <tr>
-              <th>Primary EN</th>
-              <th>Primary CN</th>
-              <th>Synonyms EN</th>
-              <th>Synonyms CN</th>
-              <th className="glossary-terms-actions-col" />
-            </tr>
-          </thead>
+                <thead>
+                  <tr>
+                    <th>Primary CN</th>
+                    <th>Primary EN</th>
+                    <th>Definition</th>
+                    <th>Synonyms CN</th>
+                    <th>Synonyms EN</th>
+                    <th className="glossary-terms-actions-col" />
+                  </tr>
+                </thead>
           <tbody>
-            {terms.length === 0 ? (
+            {termsLoading && terms.length === 0 ? (
               <tr>
-                <td colSpan={5} className="glossary-terms-empty">
+                <td colSpan={6} className="glossary-terms-empty">
+                  <span className="glossary-terms-loading">
+                    <Loader2 size={18} className="glossary-terms-spinner" />
+                    {search ? 'Searching...' : 'Loading terms...'}
+                  </span>
+                </td>
+              </tr>
+            ) : terms.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="glossary-terms-empty">
                   {search ? 'No matching terms' : 'No terms yet. Add one to get started.'}
                 </td>
               </tr>
             ) : (
               terms.map((t) => (
                 <tr key={t.id}>
-                  <td>{t.primary_en || '—'}</td>
                   <td>{t.primary_cn || '—'}</td>
-                  <td>{t.synonyms_en?.length ? t.synonyms_en.join(', ') : '—'}</td>
+                  <td>{t.primary_en || '—'}</td>
+                  <td className="glossary-term-definition">{t.definition || '—'}</td>
                   <td>{t.synonyms_cn?.length ? t.synonyms_cn.join(', ') : '—'}</td>
+                  <td>{t.synonyms_en?.length ? t.synonyms_en.join(', ') : '—'}</td>
                   <td className="glossary-terms-actions-col">
                     <button
                       type="button"
@@ -363,15 +427,6 @@ export function GlossaryDetail() {
             </div>
             <div className="glossary-dialog-body">
               <label>
-                <span>Primary (EN)</span>
-                <input
-                  type="text"
-                  value={termPrimaryEn}
-                  onChange={(e) => setTermPrimaryEn(e.target.value)}
-                  placeholder="e.g. Machine Learning"
-                />
-              </label>
-              <label>
                 <span>Primary (CN)</span>
                 <input
                   type="text"
@@ -381,11 +436,21 @@ export function GlossaryDetail() {
                 />
               </label>
               <label>
-                <span>Synonyms (EN)</span>
-                <TagInput
-                  tags={termSynonymsEn}
-                  onChange={setTermSynonymsEn}
-                  placeholder="Add synonym, press Enter"
+                <span>Primary (EN)</span>
+                <input
+                  type="text"
+                  value={termPrimaryEn}
+                  onChange={(e) => setTermPrimaryEn(e.target.value)}
+                  placeholder="e.g. Machine Learning"
+                />
+              </label>
+              <label>
+                <span>Definition</span>
+                <textarea
+                  rows={2}
+                  value={termDefinition}
+                  onChange={(e) => setTermDefinition(e.target.value)}
+                  placeholder="Optional definition of the term"
                 />
               </label>
               <label>
@@ -396,11 +461,34 @@ export function GlossaryDetail() {
                   placeholder="Add synonym, press Enter"
                 />
               </label>
+              <label>
+                <span>Synonyms (EN)</span>
+                <TagInput
+                  tags={termSynonymsEn}
+                  onChange={setTermSynonymsEn}
+                  placeholder="Add synonym, press Enter"
+                />
+              </label>
             </div>
             <div className="glossary-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeTermForm}>
                 Cancel
               </button>
+              {(termPrimaryEn.trim() || termPrimaryCn.trim()) && (
+                <button
+                  type="button"
+                  className="btn btn-secondary glossary-ai-suggestion-btn"
+                  onClick={handleAiSuggestion}
+                  disabled={termSuggesting}
+                >
+                  {termSuggesting ? (
+                    <Loader2 size={18} className="glossary-ai-spinner" />
+                  ) : (
+                    <Sparkles size={18} />
+                  )}
+                  <span>{termSuggesting ? 'Suggesting...' : 'AI Suggestion'}</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-primary"

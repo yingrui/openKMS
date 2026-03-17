@@ -134,7 +134,7 @@ backend/
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
 │   │   ├── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
 │   │   ├── glossary.py        # Glossary (name, description)
-│   │   └── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, synonyms_en, synonyms_cn)
+│   │   └── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, definition, synonyms_en, synonyms_cn)
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
@@ -150,8 +150,11 @@ backend/
 │   └── services/
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
 │       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, etc.)
-│       ├── faq_generation.py        # LLM-based FAQ pair generation from document markdown
-│       └── storage.py               # S3/MinIO client (upload, delete)
+│       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
+│       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
+│       └── storage.py                    # S3/MinIO client (upload, delete)
+├── scripts/
+│   └── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
 ├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
 └── worker.py                    # procrastinate worker entry point
 ```

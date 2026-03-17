@@ -7,7 +7,9 @@ import uuid
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from app.api.auth import require_auth
 from app.database import get_db
@@ -221,8 +223,10 @@ async def remove_kb_document(kb_id: str, document_id: str, db: AsyncSession = De
 
 @router.get("/{kb_id}/faqs", response_model=list[FAQResponse])
 async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
+    # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(FAQ, Document.name)
+        .options(load_only(FAQ.id, FAQ.knowledge_base_id, FAQ.document_id, FAQ.question, FAQ.answer, FAQ.created_at, FAQ.updated_at))
         .outerjoin(Document, FAQ.document_id == Document.id)
         .where(FAQ.knowledge_base_id == kb_id)
         .order_by(FAQ.created_at.desc())
@@ -236,7 +240,7 @@ async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
             document_name=doc_name,
             question=f.question,
             answer=f.answer,
-            has_embedding=f.embedding is not None,
+            has_embedding=False,  # Embedding column excluded to avoid pgvector; install pgvector for accurate value
             created_at=f.created_at,
             updated_at=f.updated_at,
         )
@@ -403,8 +407,10 @@ async def list_chunks(
     total = (await db.execute(
         select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
     )).scalar_one()
+    # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(Chunk, Document.name)
+        .options(load_only(Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.content, Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata, Chunk.created_at))
         .join(Document, Chunk.document_id == Document.id)
         .where(Chunk.knowledge_base_id == kb_id)
         .order_by(Chunk.document_id, Chunk.chunk_index)
@@ -421,7 +427,7 @@ async def list_chunks(
             content=chunk.content,
             chunk_index=chunk.chunk_index,
             token_count=chunk.token_count,
-            has_embedding=chunk.embedding is not None,
+            has_embedding=False,  # Embedding column excluded; install pgvector for accurate value
             chunk_metadata=chunk.chunk_metadata,
             created_at=chunk.created_at,
         ))
@@ -516,53 +522,62 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
 
     results: list[SearchResult] = []
 
-    if body.search_type in ("all", "chunks"):
-        chunk_query = (
-            select(
-                Chunk.id,
-                Chunk.content,
-                Chunk.document_id,
-                Document.name.label("doc_name"),
-                Chunk.embedding.cosine_distance(query_embedding).label("distance"),
+    try:
+        if body.search_type in ("all", "chunks"):
+            chunk_query = (
+                select(
+                    Chunk.id,
+                    Chunk.content,
+                    Chunk.document_id,
+                    Document.name.label("doc_name"),
+                    Chunk.embedding.cosine_distance(query_embedding).label("distance"),
+                )
+                .join(Document, Chunk.document_id == Document.id)
+                .where(Chunk.knowledge_base_id == kb_id, Chunk.embedding.isnot(None))
+                .order_by("distance")
+                .limit(body.top_k)
             )
-            .join(Document, Chunk.document_id == Document.id)
-            .where(Chunk.knowledge_base_id == kb_id, Chunk.embedding.isnot(None))
-            .order_by("distance")
-            .limit(body.top_k)
-        )
-        chunk_rows = (await db.execute(chunk_query)).all()
-        for row in chunk_rows:
-            results.append(SearchResult(
-                id=row.id,
-                source_type="chunk",
-                content=row.content,
-                score=round(1.0 - row.distance, 4),
-                source_name=row.doc_name,
-                document_id=row.document_id,
-            ))
+            chunk_rows = (await db.execute(chunk_query)).all()
+            for row in chunk_rows:
+                results.append(SearchResult(
+                    id=row.id,
+                    source_type="chunk",
+                    content=row.content,
+                    score=round(1.0 - row.distance, 4),
+                    source_name=row.doc_name,
+                    document_id=row.document_id,
+                ))
 
-    if body.search_type in ("all", "faqs"):
-        faq_query = (
-            select(
-                FAQ.id,
-                FAQ.question,
-                FAQ.answer,
-                FAQ.document_id,
-                FAQ.embedding.cosine_distance(query_embedding).label("distance"),
+        if body.search_type in ("all", "faqs"):
+            faq_query = (
+                select(
+                    FAQ.id,
+                    FAQ.question,
+                    FAQ.answer,
+                    FAQ.document_id,
+                    FAQ.embedding.cosine_distance(query_embedding).label("distance"),
+                )
+                .where(FAQ.knowledge_base_id == kb_id, FAQ.embedding.isnot(None))
+                .order_by("distance")
+                .limit(body.top_k)
             )
-            .where(FAQ.knowledge_base_id == kb_id, FAQ.embedding.isnot(None))
-            .order_by("distance")
-            .limit(body.top_k)
-        )
-        faq_rows = (await db.execute(faq_query)).all()
-        for row in faq_rows:
-            results.append(SearchResult(
-                id=row.id,
-                source_type="faq",
-                content=f"Q: {row.question}\nA: {row.answer}",
-                score=round(1.0 - row.distance, 4),
-                document_id=row.document_id,
-            ))
+            faq_rows = (await db.execute(faq_query)).all()
+            for row in faq_rows:
+                results.append(SearchResult(
+                    id=row.id,
+                    source_type="faq",
+                    content=f"Q: {row.question}\nA: {row.answer}",
+                    score=round(1.0 - row.distance, 4),
+                    document_id=row.document_id,
+                ))
+    except DBAPIError as e:
+        msg = str(e.orig) if e.orig else str(e)
+        if "vector" in msg.lower() or "$libdir" in msg.lower():
+            raise HTTPException(
+                status_code=503,
+                detail="Vector search requires the pgvector extension. Install it in PostgreSQL (e.g. brew install pgvector or use pgvector/pgvector Docker image), then run: CREATE EXTENSION IF NOT EXISTS vector;",
+            ) from e
+        raise
 
     results.sort(key=lambda r: r.score, reverse=True)
     return SearchResponse(results=results[: body.top_k], query=body.query)

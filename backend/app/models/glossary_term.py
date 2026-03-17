@@ -19,6 +19,7 @@ class GlossaryTerm(Base):
     )
     primary_en: Mapped[str | None] = mapped_column(String(512), nullable=True)
     primary_cn: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    definition: Mapped[str | None] = mapped_column(Text, nullable=True)
     synonyms_en: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True, default=list)
     synonyms_cn: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

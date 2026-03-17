@@ -37,6 +37,7 @@ class GlossaryListResponse(BaseModel):
 class GlossaryTermCreate(BaseModel):
     primary_en: str | None = None
     primary_cn: str | None = None
+    definition: str | None = None
     synonyms_en: list[str] = []
     synonyms_cn: list[str] = []
 
@@ -50,6 +51,7 @@ class GlossaryTermCreate(BaseModel):
 class GlossaryTermUpdate(BaseModel):
     primary_en: str | None = None
     primary_cn: str | None = None
+    definition: str | None = None
     synonyms_en: list[str] | None = None
     synonyms_cn: list[str] | None = None
 
@@ -59,6 +61,7 @@ class GlossaryTermResponse(BaseModel):
     glossary_id: str
     primary_en: str | None = None
     primary_cn: str | None = None
+    definition: str | None = None
     synonyms_en: list[str] = []
     synonyms_cn: list[str] = []
     created_at: datetime
@@ -72,11 +75,25 @@ class GlossaryTermListResponse(BaseModel):
     total: int
 
 
+class GlossaryTermSuggestRequest(BaseModel):
+    primary_en: str | None = None
+    primary_cn: str | None = None
+
+
+class GlossaryTermSuggestResponse(BaseModel):
+    primary_en: str = ""
+    primary_cn: str = ""
+    definition: str = ""
+    synonyms_en: list[str] = []
+    synonyms_cn: list[str] = []
+
+
 # --- Export / Import ---
 
 class GlossaryTermExportItem(BaseModel):
     primary_en: str | None = None
     primary_cn: str | None = None
+    definition: str | None = None
     synonyms_en: list[str] = []
     synonyms_cn: list[str] = []
 
@@ -91,6 +108,7 @@ class GlossaryExportPayload(BaseModel):
 class GlossaryImportTermItem(BaseModel):
     primary_en: str | None = None
     primary_cn: str | None = None
+    definition: str | None = None
     synonyms_en: list[str] = []
     synonyms_cn: list[str] = []
 
