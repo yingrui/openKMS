@@ -14,8 +14,10 @@
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
 - Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
-- Console: settings, users, feature toggles (database-backed); admin-only (realm role `admin`)
+- Console: settings, users, feature toggles (database-backed, includes objectsAndLinks), object types, link types, data sources, datasets; admin-only (realm role `admin`)
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start
+- Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /objects, /links; feature toggle objectsAndLinks
+- Data Sources & Datasets: Console → Data Sources (PostgreSQL/Neo4j connections, encrypted creds), Datasets (map PG tables); future: link datasets to Object Types / Link Types
 
 ## Short-Term (Next Steps)
 
@@ -51,6 +53,32 @@
 - [x] Document metadata extraction: LLM extracts abstract, author, publish_date, tags, etc.; configurable schema per channel in settings; Extract button on detail page
 - [x] Search in document list (`GET /api/documents?search=...`; optional when no channel)
 - [ ] Advanced filter in channel
+
+### 4a. Objects & Links (Ontology)
+
+- [x] Object types: schema with name, description, properties (string/number/boolean)
+- [x] Object instances: CRUD under `/api/object-types/{id}/objects` (admin write)
+- [x] Link types: schema with source/target object types
+- [x] Link instances: CRUD under `/api/link-types/{id}/links` (admin write)
+- [x] Console Object Types page: CRUD object types and properties
+- [x] Console Link Types page: CRUD link types
+- [x] User-facing Objects list (`/objects`), Object type detail with instances (`/objects/:typeId`)
+- [x] User-facing Links list (`/links`), Link type detail with instances (`/links/:typeId`)
+- [x] Search filter on object instances
+- [x] Feature toggle `objectsAndLinks` (gates sidebar and routes)
+
+### 4b. Data Sources & Datasets (Console)
+
+- [x] Data sources: CRUD for PostgreSQL and Neo4j connections; credentials encrypted (Fernet)
+- [x] Test connection: POST /api/data-sources/{id}/test
+- [x] Datasets: CRUD for PostgreSQL tables (schema + table) linked to data sources
+- [x] List tables: GET /api/datasets/from-source/{id} for table picker
+- [x] Console Data Sources page: table, Add/Edit modal, Test button
+- [x] Console Datasets page: table, Add/Edit with table picker, filter by data source, search
+- [x] Dataset detail: click dataset → Data tab (rows with pagination, page size selector) and Metadata tab (column info)
+- [x] Dataset rows/metadata API: GET /api/datasets/{id}/rows, GET /api/datasets/{id}/metadata
+- [x] seed_mock_insurance_data.py: mock diseases, insurance products, relationships for demo datasets
+- [ ] Future: map datasets to Object Types / Link Types
 
 ### 4. Authentication
 

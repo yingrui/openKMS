@@ -8,6 +8,7 @@ export type { FeatureToggles } from '../data/featureTogglesApi';
 const defaults: FeatureToggles = {
   articles: true,
   knowledgeBases: true,
+  objectsAndLinks: true,
 };
 
 interface FeatureTogglesContextValue {

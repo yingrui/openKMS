@@ -9,7 +9,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["channels, documents, knowledge-bases, glossaries, pipelines, jobs, models, feature-toggles"]
+    API["channels, documents, knowledge-bases, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -48,7 +48,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, knowledge_bases, kb_documents, faqs, chunks, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -75,7 +75,9 @@ flowchart TB
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
-    Console[Console: Overview, Settings, Users, FeatureToggles]
+    Objects[ObjectsList, ObjectTypeDetail]
+    Links[LinksList, LinkTypeDetail]
+    Console[Console: Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, DatasetDetail]
   end
 
   Providers --> Pages
@@ -88,7 +90,7 @@ frontend/src/
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, featureTogglesApi, channelUtils
+├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, ontologyApi, dataSourcesApi, datasetsApi, featureTogglesApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -100,7 +102,8 @@ frontend/src/
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles
+    ├── ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx
+    └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, ConsoleDatasetDetail
 ```
 
 ## Backend Structure
@@ -115,6 +118,10 @@ backend/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
+│   │   ├── object_types.py     # CRUD /api/object-types (admin write), instances under /object-types/{id}/objects
+│   │   ├── link_types.py       # CRUD /api/link-types (admin write), instances under /link-types/{id}/links
+│   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test; credentials encrypted
+│   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
@@ -129,6 +136,12 @@ backend/
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
+│   │   ├── object_type.py     # ObjectType (name, description, properties JSONB)
+│   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
+│   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
+│   │   ├── link_instance.py   # LinkInstance (link_type_id, source_object_id, target_object_id)
+│   │   ├── data_source.py     # DataSource (kind, host, port, database, username_encrypted, password_encrypted)
+│   │   ├── dataset.py         # Dataset (data_source_id FK, schema_name, table_name)
 │   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, agent_url, chunk_config, faq_prompt)
 │   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
@@ -143,18 +156,22 @@ backend/
 │   │   ├── api_provider.py     # ApiProviderCreate/Update/Response
 │   │   ├── job.py              # JobCreate/Response
 │   │   ├── knowledge_base.py  # KB/FAQ/Chunk/Search/Ask schemas
-│   │   └── glossary.py        # Glossary/Term Create/Update/Response, Export/Import schemas
+│   │   ├── glossary.py        # Glossary/Term Create/Update/Response, Export/Import schemas
+│   │   ├── ontology.py        # ObjectType/LinkType/ObjectInstance/LinkInstance schemas
+│   │   └── data_source.py     # DataSourceCreate/Response; dataset.py for Dataset schemas
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
 │   │   └── tasks.py            # run_pipeline task, run_kb_index task (subprocess openkms-cli)
 │   └── services/
+│       ├── credential_encryption.py # Fernet encrypt/decrypt for DataSource credentials
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
 │       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, etc.)
 │       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
 │       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
 │       └── storage.py                    # S3/MinIO client (upload, delete)
 ├── scripts/
-│   └── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
+│   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
+│   └── seed_mock_insurance_data.py  # Create mock diseases, insurance_products, disease_insurance_product tables in schema 'mock'
 ├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
 └── worker.py                    # procrastinate worker entry point
 ```

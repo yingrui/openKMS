@@ -75,27 +75,57 @@
 | Export | ✅ | `GET /api/glossaries/{id}/export` returns JSON with glossary_id, name, terms array |
 | Import | ✅ | `POST /api/glossaries/{id}/import` with `{ terms, mode: "append" \| "replace" }`; JSON file picker in UI |
 
-### 5. Console (Admin)
+### 5. Objects & Links (Feature Toggle)
 
-- Overview, Settings, Users & Roles, Feature Toggles
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB); managed in Console → Object Types |
+| Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
+| Link types | ✅ | Schema for relationships between two object types; managed in Console → Link Types |
+| Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
+| Objects list | ✅ | User-facing list of object types at `/objects`; click to browse instances |
+| Links list | ✅ | User-facing list of link types at `/links`; click to browse link instances |
+| Search | ✅ | Optional search filter on object instances |
+| Feature toggle | ✅ | `objectsAndLinks` toggle in Console; sidebar items and routes gated |
+
+- Toggle visibility via Console → Feature Toggles
+
+### 5b. Data Sources & Datasets (Console, Admin)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Data Source CRUD | ✅ | PostgreSQL and Neo4j connection configs; Console → Data Sources |
+| Credential encryption | ✅ | Username/password encrypted with Fernet before storage; key from OPENKMS_DATASOURCE_ENCRYPTION_KEY or derived from secret_key |
+| Test connection | ✅ | `POST /api/data-sources/{id}/test` validates connectivity |
+| Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; Console → Datasets |
+| List tables from source | ✅ | `GET /api/datasets/from-source/{id}` returns tables for picker when creating dataset |
+| Dataset detail | ✅ | Click dataset name → `/console/datasets/:id` with Data tab (rows, pagination) and Metadata tab (column info) |
+| Dataset rows | ✅ | `GET /api/datasets/{id}/rows?limit=&offset=` fetches paginated rows from table |
+| Dataset metadata | ✅ | `GET /api/datasets/{id}/metadata` returns column name, type, nullable, position from information_schema |
+| Search datasets | ✅ | Client-side search by display name, schema.table, data source on list page |
+| Future mapping | Planned | Datasets can be linked to Object Types and Link Types |
+
+### 6. Console (Admin)
+
+- Overview, Settings, Users & Roles, Feature Toggles, Object Types, Link Types, Data Sources, Datasets
 - **Admin-only**: visible and accessible only to users with Keycloak realm role `admin`
-- Feature toggles: `articles`, `knowledgeBases` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
+- Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
 - `PUT /api/feature-toggles` (admin-only) updates toggle state; backend `require_admin` checks JWT realm role
 
-### 5b. Authentication
+### 6b. Authentication
 
 - Keycloak login/logout (SSO, full logout via Keycloak)
 - Protected routes: all except home require auth; unauthenticated users see "Authentication Required" message
 
-### 5c. Home (Landing Page)
+### 6c. Home (Landing Page)
 
 - Public landing page for non-authorized users
 - Pain points: knowledge scattered, unstructured content, manual work
 - Benefits: centralized hub, RAG-ready knowledge bases, enterprise security
 - Functionalities: document management, articles, knowledge bases, pipelines
 
-### 6. Pipelines
+### 7. Pipelines
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -105,7 +135,7 @@
 | Channel-pipeline link | ✅ | Each channel can have a pipeline_id and auto_process flag |
 | Default pipeline | ✅ | "PaddleOCR Document Parse" seeded in migration with command template |
 
-### 7. Jobs (procrastinate)
+### 8. Jobs (procrastinate)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -120,7 +150,7 @@
 | Reset status | ✅ | Reset pending/failed documents to uploaded (if no active jobs); `POST /api/documents/{id}/reset-status` |
 | Toast notifications | ✅ | Project-wide toast system via sonner for success/error/warning messages |
 
-### 8. Models (Provider–Model Hierarchy)
+### 9. Models (Provider–Model Hierarchy)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -223,6 +253,38 @@
 | DELETE | `/api/glossaries/{id}/terms/{term_id}` | Delete term |
 | GET | `/api/glossaries/{id}/export` | Export terms as JSON |
 | POST | `/api/glossaries/{id}/import` | Import terms (body: `{ terms, mode: "append" \| "replace" }`) |
+| GET | `/api/object-types` | List object types (authenticated) |
+| POST | `/api/object-types` | Create object type (admin-only) |
+| GET | `/api/object-types/{id}` | Get object type |
+| PUT | `/api/object-types/{id}` | Update object type (admin-only) |
+| DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
+| GET | `/api/object-types/{id}/objects` | List object instances (optional `?search=`) |
+| POST | `/api/object-types/{id}/objects` | Create object instance (admin-only) |
+| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance |
+| PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only) |
+| DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only) |
+| GET | `/api/link-types` | List link types (authenticated) |
+| POST | `/api/link-types` | Create link type (admin-only) |
+| GET | `/api/link-types/{id}` | Get link type |
+| PUT | `/api/link-types/{id}` | Update link type (admin-only) |
+| DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
+| GET | `/api/link-types/{id}/links` | List link instances |
+| POST | `/api/link-types/{id}/links` | Create link instance (admin-only) |
+| DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only) |
+| GET | `/api/data-sources` | List data sources (admin-only) |
+| POST | `/api/data-sources` | Create data source (admin-only) |
+| GET | `/api/data-sources/{id}` | Get data source (admin-only) |
+| PUT | `/api/data-sources/{id}` | Update data source (admin-only) |
+| DELETE | `/api/data-sources/{id}` | Delete data source (admin-only) |
+| POST | `/api/data-sources/{id}/test` | Test connection (admin-only) |
+| GET | `/api/datasets` | List datasets (admin-only, optional ?data_source_id=) |
+| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (admin-only) |
+| POST | `/api/datasets` | Create dataset (admin-only) |
+| GET | `/api/datasets/{id}` | Get dataset (admin-only) |
+| GET | `/api/datasets/{id}/rows` | Get paginated rows from dataset table (admin-only; ?limit=, ?offset=) |
+| GET | `/api/datasets/{id}/metadata` | Get column metadata from information_schema (admin-only) |
+| PUT | `/api/datasets/{id}` | Update dataset (admin-only) |
+| DELETE | `/api/datasets/{id}` | Delete dataset (admin-only) |
 | GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
@@ -263,7 +325,7 @@
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users; seeded with `articles` and `knowledgeBases` (both enabled by default)
+- Stores feature flags shared across all users; seeded with `articles`, `knowledgeBases`, `objectsAndLinks` (all enabled by default)
 - Read by all authenticated users; write restricted to admins
 
 ### KnowledgeBase
@@ -295,6 +357,36 @@
 
 - `id`, `glossary_id` (FK → glossaries, CASCADE), `primary_en`, `primary_cn`, `definition` (text), `synonyms_en` (JSONB array), `synonyms_cn` (JSONB array), `created_at`, `updated_at`
 - Bilingual term with definition and synonyms; at least one of primary_en or primary_cn required
+
+### ObjectType
+
+- `id`, `name`, `description`, `properties` (JSONB: list of `{name, type, required}`), `created_at`, `updated_at`
+- Schema for entity types; property types: string, number, boolean
+
+### ObjectInstance
+
+- `id`, `object_type_id` (FK), `data` (JSONB: property values), `created_at`, `updated_at`
+- Instance of an object type
+
+### LinkType
+
+- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `created_at`, `updated_at`
+- Schema for relationships between two object types
+
+### LinkInstance
+
+- `id`, `link_type_id` (FK), `source_object_id` (FK), `target_object_id` (FK), `created_at`, `updated_at`
+- Instance of a link type connecting two object instances
+
+### DataSource
+
+- `id`, `name`, `kind` (postgresql | neo4j), `host`, `port`, `database`, `username_encrypted`, `password_encrypted`, `options` (JSONB), `created_at`, `updated_at`
+- Connection config; credentials encrypted with Fernet
+
+### Dataset
+
+- `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `created_at`, `updated_at`
+- PostgreSQL table reference; can be mapped to ObjectType/LinkType in future
 
 ### Jobs (procrastinate_jobs)
 

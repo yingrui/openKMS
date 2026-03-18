@@ -8,7 +8,7 @@ from app.api.auth import require_admin, require_auth
 from app.database import get_db
 from app.models.feature_toggle import FeatureToggle
 
-DEFAULTS = {"articles": True, "knowledgeBases": True}
+DEFAULTS = {"articles": True, "knowledgeBases": True, "objectsAndLinks": True}
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 
@@ -16,11 +16,13 @@ router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 class FeatureTogglesResponse(BaseModel):
     articles: bool = True
     knowledgeBases: bool = True
+    objectsAndLinks: bool = True
 
 
 class FeatureTogglesUpdate(BaseModel):
     articles: bool | None = None
     knowledgeBases: bool | None = None
+    objectsAndLinks: bool | None = None
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:

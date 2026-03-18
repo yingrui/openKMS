@@ -16,6 +16,9 @@ import {
   Users,
   ArrowLeft,
   ToggleLeft,
+  Box,
+  Link2,
+  Table,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -162,6 +165,22 @@ export function Sidebar() {
               <LayoutDashboard size={18} strokeWidth={1.75} />
               <span>Overview</span>
             </NavLink>
+            <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Box size={18} strokeWidth={1.75} />
+              <span>Object Types</span>
+            </NavLink>
+            <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Link2 size={18} strokeWidth={1.75} />
+              <span>Link Types</span>
+            </NavLink>
+            <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Database size={18} strokeWidth={1.75} />
+              <span>Data Sources</span>
+            </NavLink>
+            <NavLink to="/console/datasets" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Table size={18} strokeWidth={1.75} />
+              <span>Datasets</span>
+            </NavLink>
             <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
               <Settings size={18} strokeWidth={1.75} />
               <span>Settings</span>
@@ -242,6 +261,28 @@ export function Sidebar() {
             <Database size={18} strokeWidth={1.75} />
             <span>Knowledge Bases</span>
           </NavLink>
+        )}
+        {toggles.objectsAndLinks && (
+          <>
+            <NavLink
+              to="/objects"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+              }
+            >
+              <Box size={18} strokeWidth={1.75} />
+              <span>Objects</span>
+            </NavLink>
+            <NavLink
+              to="/links"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+              }
+            >
+              <Link2 size={18} strokeWidth={1.75} />
+              <span>Links</span>
+            </NavLink>
+          </>
         )}
         <NavLink
           to="/glossaries"

@@ -16,7 +16,11 @@ from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.knowledge_bases import router as knowledge_bases_router
 from app.api.glossaries import router as glossaries_router
+from app.api.object_types import router as object_types_router
+from app.api.link_types import router as link_types_router
 from app.api.providers import router as providers_router
+from app.api.data_sources import router as data_sources_router
+from app.api.datasets import router as datasets_router
 from app.config import settings
 from app.database import init_db
 
@@ -76,6 +80,10 @@ app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")
 app.include_router(glossaries_router, prefix="/api")
+app.include_router(object_types_router, prefix="/api")
+app.include_router(link_types_router, prefix="/api")
+app.include_router(data_sources_router, prefix="/api")
+app.include_router(datasets_router, prefix="/api")
 
 
 @app.get("/health")

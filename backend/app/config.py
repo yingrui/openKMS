@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     # Session (for OAuth2 state and post-login)
     secret_key: str = "openkms-dev-secret-change-in-production"
 
+    # DataSource credential encryption (Fernet key, base64). If unset, derived from secret_key (dev only).
+    datasource_encryption_key: str | None = None
+
     # S3/MinIO (env vars: AWS_*, no OPENKMS_ prefix)
     aws_access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
     aws_secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")

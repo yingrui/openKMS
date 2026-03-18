@@ -1,0 +1,342 @@
+/** API for ontology (object types, link types, instances). */
+import { config } from '../config';
+import { getAuthHeaders } from './apiClient';
+
+// --- Object Type ---
+
+export interface PropertyDef {
+  name: string;
+  type: string;
+  required: boolean;
+}
+
+export interface ObjectTypeResponse {
+  id: string;
+  name: string;
+  description?: string | null;
+  properties: PropertyDef[];
+  instance_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ObjectTypeListResponse {
+  items: ObjectTypeResponse[];
+  total: number;
+}
+
+export async function fetchObjectTypes(): Promise<ObjectTypeListResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/object-types`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch object types: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchObjectType(objectTypeId: string): Promise<ObjectTypeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch object type: ${res.status}`);
+  return res.json();
+}
+
+export async function createObjectType(data: {
+  name: string;
+  description?: string;
+  properties?: PropertyDef[];
+}): Promise<ObjectTypeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/object-types`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create object type');
+  }
+  return res.json();
+}
+
+export async function updateObjectType(
+  objectTypeId: string,
+  data: { name?: string; description?: string; properties?: PropertyDef[] }
+): Promise<ObjectTypeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update object type');
+  }
+  return res.json();
+}
+
+export async function deleteObjectType(objectTypeId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+    method: 'DELETE',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete object type');
+  }
+}
+
+// --- Object Instance ---
+
+export interface ObjectInstanceResponse {
+  id: string;
+  object_type_id: string;
+  data: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ObjectInstanceListResponse {
+  items: ObjectInstanceResponse[];
+  total: number;
+}
+
+export async function fetchObjectInstances(
+  objectTypeId: string,
+  params?: { search?: string }
+): Promise<ObjectInstanceListResponse> {
+  const headers = await getAuthHeaders();
+  const qs = params?.search ? `?search=${encodeURIComponent(params.search)}` : '';
+  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects${qs}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch objects: ${res.status}`);
+  return res.json();
+}
+
+export async function createObjectInstance(
+  objectTypeId: string,
+  data: Record<string, unknown>
+): Promise<ObjectInstanceResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ data }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create object');
+  }
+  return res.json();
+}
+
+export async function updateObjectInstance(
+  objectTypeId: string,
+  objectId: string,
+  data: Record<string, unknown>
+): Promise<ObjectInstanceResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${config.apiUrl}/api/object-types/${objectTypeId}/objects/${objectId}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ data }),
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update object');
+  }
+  return res.json();
+}
+
+export async function deleteObjectInstance(
+  objectTypeId: string,
+  objectId: string
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${config.apiUrl}/api/object-types/${objectTypeId}/objects/${objectId}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete object');
+  }
+}
+
+// --- Link Type ---
+
+export interface LinkTypeResponse {
+  id: string;
+  name: string;
+  description?: string | null;
+  source_object_type_id: string;
+  target_object_type_id: string;
+  source_object_type_name?: string | null;
+  target_object_type_name?: string | null;
+  link_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LinkTypeListResponse {
+  items: LinkTypeResponse[];
+  total: number;
+}
+
+export async function fetchLinkTypes(): Promise<LinkTypeListResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch link types: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchLinkType(linkTypeId: string): Promise<LinkTypeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch link type: ${res.status}`);
+  return res.json();
+}
+
+export async function createLinkType(data: {
+  name: string;
+  description?: string;
+  source_object_type_id: string;
+  target_object_type_id: string;
+}): Promise<LinkTypeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create link type');
+  }
+  return res.json();
+}
+
+export async function updateLinkType(
+  linkTypeId: string,
+  data: {
+    name?: string;
+    description?: string;
+    source_object_type_id?: string;
+    target_object_type_id?: string;
+  }
+): Promise<LinkTypeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update link type');
+  }
+  return res.json();
+}
+
+export async function deleteLinkType(linkTypeId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+    method: 'DELETE',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete link type');
+  }
+}
+
+// --- Link Instance ---
+
+export interface LinkInstanceResponse {
+  id: string;
+  link_type_id: string;
+  source_object_id: string;
+  target_object_id: string;
+  source_data?: Record<string, unknown> | null;
+  target_data?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LinkInstanceListResponse {
+  items: LinkInstanceResponse[];
+  total: number;
+}
+
+export async function fetchLinkInstances(linkTypeId: string): Promise<LinkInstanceListResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch links: ${res.status}`);
+  return res.json();
+}
+
+export async function createLinkInstance(
+  linkTypeId: string,
+  data: { source_object_id: string; target_object_id: string }
+): Promise<LinkInstanceResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create link');
+  }
+  return res.json();
+}
+
+export async function deleteLinkInstance(linkTypeId: string, linkId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${config.apiUrl}/api/link-types/${linkTypeId}/links/${linkId}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to delete link');
+  }
+}

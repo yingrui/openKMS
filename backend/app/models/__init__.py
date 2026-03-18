@@ -11,8 +11,11 @@ from app.models.faq import FAQ
 from app.models.chunk import Chunk
 from app.models.glossary import Glossary
 from app.models.glossary_term import GlossaryTerm
+from app.models.data_source import DataSource
+from app.models.dataset import Dataset
 
 __all__ = [
     "Document", "DocumentChannel", "Pipeline", "ApiModel", "ApiProvider", "FeatureToggle",
     "KnowledgeBase", "KBDocument", "FAQ", "Chunk", "Glossary", "GlossaryTerm",
+    "DataSource", "Dataset",
 ]

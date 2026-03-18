@@ -5,6 +5,7 @@ import { getAuthHeaders } from './apiClient';
 export interface FeatureToggles {
   articles: boolean;
   knowledgeBases: boolean;
+  objectsAndLinks: boolean;
 }
 
 export async function fetchToggles(): Promise<FeatureToggles> {

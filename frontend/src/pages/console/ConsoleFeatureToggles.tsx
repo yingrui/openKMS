@@ -12,6 +12,11 @@ const features = [
     name: 'Knowledge Bases',
     description: 'Knowledge bases with RAG Q&A. Lower priority feature.',
   },
+  {
+    id: 'objectsAndLinks' as const,
+    name: 'Objects & Links',
+    description: 'Ontology layer: object types, link types, and their instances. Schema managed in Object Types and Link Types.',
+  },
 ];
 
 export function ConsoleFeatureToggles() {
