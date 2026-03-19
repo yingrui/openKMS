@@ -29,6 +29,16 @@ export interface ChannelNode {
   children: ChannelNode[];
 }
 
+export async function fetchChannelById(channelId: string): Promise<ChannelNode> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch channel: ${res.status}`);
+  return res.json();
+}
+
 export async function fetchDocumentChannels(): Promise<ChannelNode[]> {
   try {
     const headers = await getAuthHeaders();

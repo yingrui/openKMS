@@ -62,12 +62,12 @@
 |---------|--------|-------------|
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying |
-| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document |
+| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; Edit FAQ modal with key-value form for labels and document metadata (from KB label_keys, metadata_keys; channel label_config/extraction_schema for array types) |
 | FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal |
-| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph) |
-| Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; returns 503 with install instructions if pgvector missing |
+| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); Edit Chunk modal with content, labels, document metadata (same key-value form as FAQ) |
+| Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; supports label_filters and metadata_filters for hybrid search; returns 503 with install instructions if pgvector missing |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
-| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt |
+| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt, label_keys, metadata_keys (keys to propagate from documents to FAQs/chunks) |
 | KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index` – chunk documents, generate embeddings, bulk insert to pgvector |
 | KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
 | QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); retrieves via backend search API, no direct DB access |
@@ -199,6 +199,7 @@
 | POST | `/clear-session` | Clear backend session (called by frontend before Keycloak logout) |
 | GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
 | GET | `/api/document-channels` | List document channels (tree) |
+| GET | `/api/document-channels/{id}` | Get channel by ID (includes label_config, extraction_schema) |
 | POST | `/api/document-channels` | Create channel |
 | PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config) |
 | POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
@@ -256,6 +257,7 @@
 | POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |
 | POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
 | GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated) |
+| PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (content, labels, doc_metadata) |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
 | POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index pipeline) |
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
@@ -354,7 +356,7 @@
 
 ### KnowledgeBase
 
-- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `faq_prompt` (optional default for FAQ generation), `created_at`, `updated_at`
+- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `faq_prompt` (optional default for FAQ generation), `label_keys` (JSONB array: keys from document labels to propagate), `metadata_keys` (JSONB array: keys from document metadata to propagate), `created_at`, `updated_at`
 - Groups documents, FAQs, and chunks for RAG Q&A
 
 ### KBDocument
@@ -364,13 +366,13 @@
 
 ### FAQ
 
-- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents, nullable), `question`, `answer`, `embedding` (pgvector), `created_at`, `updated_at`
-- Q&A pairs; embedding on question for semantic search
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents, nullable), `question`, `answer`, `embedding` (pgvector), `labels` (JSONB), `doc_metadata` (JSONB), `created_at`, `updated_at`
+- Q&A pairs; embedding on question for semantic search; labels and doc_metadata inherited from source document when label_keys/metadata_keys are configured
 
 ### Chunk
 
-- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB), `created_at`
-- Document segments with vector embeddings for semantic search
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.), `labels` (JSONB), `doc_metadata` (JSONB), `created_at`
+- Document segments with vector embeddings for semantic search; labels and doc_metadata inherited from source document; supports hybrid search (vector + label/metadata filters)
 
 ### Glossary
 

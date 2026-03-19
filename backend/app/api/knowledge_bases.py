@@ -1,15 +1,19 @@
 """Knowledge base management API."""
 import base64
+import json
 import logging
 import struct
 import uuid
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import cast
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
+from sqlalchemy.dialects.postgresql import JSONB
 
 from app.api.auth import require_auth
 from app.database import get_db
@@ -24,6 +28,7 @@ from app.schemas.knowledge_base import (
     ChunkBatchCreateRequest,
     ChunkListResponse,
     ChunkResponse,
+    ChunkUpdate,
     FAQBatchEmbeddingsRequest,
     FAQBatchCreateRequest,
     FAQCreate,
@@ -51,6 +56,45 @@ router = APIRouter(
 )
 
 
+def _build_label_filter_conditions(column: Any, filters: dict[str, str | list[str]]) -> Any:
+    """Build SQLAlchemy conditions for label_filters. Matches scalar or array containment. AND between keys."""
+    key_conds = []
+    for key, val in filters.items():
+        vals = val if isinstance(val, list) else [val]
+        # Match if labels.key equals any of vals (scalar) or array contains any
+        val_conds = [
+            or_(
+                column.op("@>")(cast(json.dumps({key: v}), JSONB)),
+                column[key].op("@>")(cast(json.dumps([v]), JSONB)),
+            )
+            for v in vals
+        ]
+        key_conds.append(or_(*val_conds))
+    return and_(*key_conds) if key_conds else True
+
+
+def _build_metadata_filter_conditions(column: Any, filters: dict[str, Any]) -> Any:
+    """Build SQLAlchemy condition for metadata_filters using JSONB containment."""
+    if not filters:
+        return True
+    return column.op("@>")(cast(json.dumps(filters), JSONB))
+
+
+def _propagate_labels_metadata(
+    doc_labels: dict | None, doc_metadata: dict | None, label_keys: list | None, metadata_keys: list | None
+) -> tuple[dict | None, dict | None]:
+    """Filter document labels and metadata by KB config. Returns (labels, doc_metadata)."""
+    labels = None
+    if label_keys:
+        filtered = {k: v for k, v in (doc_labels or {}).items() if k in label_keys}
+        labels = filtered if filtered else None
+    meta = None
+    if metadata_keys:
+        filtered = {k: v for k, v in (doc_metadata or {}).items() if k in metadata_keys}
+        meta = filtered if filtered else None
+    return labels, meta
+
+
 async def _kb_stats(db: AsyncSession, kb_id: str) -> dict[str, int]:
     doc_count = (await db.execute(
         select(func.count()).select_from(KBDocument).where(KBDocument.knowledge_base_id == kb_id)
@@ -73,6 +117,8 @@ def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRe
         agent_url=kb.agent_url,
         chunk_config=kb.chunk_config,
         faq_prompt=kb.faq_prompt,
+        label_keys=kb.label_keys,
+        metadata_keys=kb.metadata_keys,
         created_at=kb.created_at,
         updated_at=kb.updated_at,
         **stats,
@@ -101,6 +147,9 @@ async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = De
         embedding_model_id=body.embedding_model_id,
         agent_url=body.agent_url,
         chunk_config=body.chunk_config,
+        faq_prompt=body.faq_prompt,
+        label_keys=body.label_keys,
+        metadata_keys=body.metadata_keys,
     )
     db.add(kb)
     await db.flush()
@@ -226,7 +275,7 @@ async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
     # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(FAQ, Document.name)
-        .options(load_only(FAQ.id, FAQ.knowledge_base_id, FAQ.document_id, FAQ.question, FAQ.answer, FAQ.created_at, FAQ.updated_at))
+        .options(load_only(FAQ.id, FAQ.knowledge_base_id, FAQ.document_id, FAQ.question, FAQ.answer, FAQ.labels, FAQ.doc_metadata, FAQ.created_at, FAQ.updated_at))
         .outerjoin(Document, FAQ.document_id == Document.id)
         .where(FAQ.knowledge_base_id == kb_id)
         .order_by(FAQ.created_at.desc())
@@ -240,6 +289,8 @@ async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
             document_name=doc_name,
             question=f.question,
             answer=f.answer,
+            labels=f.labels,
+            doc_metadata=f.doc_metadata,
             has_embedding=False,  # Embedding column excluded to avoid pgvector; install pgvector for accurate value
             created_at=f.created_at,
             updated_at=f.updated_at,
@@ -259,6 +310,8 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
         document_id=body.document_id,
         question=body.question,
         answer=body.answer,
+        labels=body.labels,
+        doc_metadata=body.doc_metadata,
     )
     db.add(faq)
     await db.flush()
@@ -269,6 +322,8 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
         document_id=faq.document_id,
         question=faq.question,
         answer=faq.answer,
+        labels=faq.labels,
+        doc_metadata=faq.doc_metadata,
         has_embedding=False,
         created_at=faq.created_at,
         updated_at=faq.updated_at,
@@ -277,7 +332,7 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
 
 @router.put("/{kb_id}/faqs/batch-embeddings", status_code=204)
 async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsRequest, db: AsyncSession = Depends(get_db)):
-    """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline."""
+    """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline. Optionally updates labels and doc_metadata."""
     kb = await db.get(KnowledgeBase, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
@@ -286,6 +341,10 @@ async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsReque
         if not faq or faq.knowledge_base_id != kb_id:
             continue
         faq.embedding = _base64_to_floats(item.embedding)
+        if item.labels is not None:
+            faq.labels = item.labels
+        if item.doc_metadata is not None:
+            faq.doc_metadata = item.doc_metadata
     await db.commit()
 
 
@@ -305,6 +364,8 @@ async def update_faq(kb_id: str, faq_id: str, body: FAQUpdate, db: AsyncSession 
         document_id=faq.document_id,
         question=faq.question,
         answer=faq.answer,
+        labels=faq.labels,
+        doc_metadata=faq.doc_metadata,
         has_embedding=faq.embedding is not None,
         created_at=faq.created_at,
         updated_at=faq.updated_at,
@@ -351,12 +412,17 @@ async def generate_faqs(kb_id: str, body: FAQGenerateRequest, db: AsyncSession =
         if not doc or not doc.markdown:
             continue
         pairs = await generate_faq_pairs(doc.markdown, model_config, custom_prompt=effective_prompt)
+        labels, doc_meta = _propagate_labels_metadata(
+            doc.labels, doc.doc_metadata, kb.label_keys, kb.metadata_keys
+        )
         for pair in pairs:
             results.append(FAQGenerateResult(
                 document_id=doc_id,
                 document_name=doc.name,
                 question=pair["question"],
                 answer=pair["answer"],
+                labels=labels,
+                doc_metadata=doc_meta,
             ))
     return results
 
@@ -369,12 +435,23 @@ async def create_faqs_batch(kb_id: str, body: FAQBatchCreateRequest, db: AsyncSe
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     created = []
     for item in body.items:
+        labels, doc_meta = item.labels, item.doc_metadata
+        if (labels is None or doc_meta is None) and item.document_id:
+            doc = await db.get(Document, item.document_id)
+            if doc:
+                l, m = _propagate_labels_metadata(doc.labels, doc.doc_metadata, kb.label_keys, kb.metadata_keys)
+                if labels is None:
+                    labels = l
+                if doc_meta is None:
+                    doc_meta = m
         faq = FAQ(
             id=str(uuid.uuid4()),
             knowledge_base_id=kb_id,
             document_id=item.document_id,
             question=item.question,
             answer=item.answer,
+            labels=labels,
+            doc_metadata=doc_meta,
         )
         db.add(faq)
         await db.flush()
@@ -385,6 +462,8 @@ async def create_faqs_batch(kb_id: str, body: FAQBatchCreateRequest, db: AsyncSe
             document_id=faq.document_id,
             question=faq.question,
             answer=faq.answer,
+            labels=faq.labels,
+            doc_metadata=faq.doc_metadata,
             has_embedding=False,
             created_at=faq.created_at,
             updated_at=faq.updated_at,
@@ -410,7 +489,11 @@ async def list_chunks(
     # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(Chunk, Document.name)
-        .options(load_only(Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.content, Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata, Chunk.created_at))
+        .options(load_only(
+            Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.content,
+            Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata,
+            Chunk.labels, Chunk.doc_metadata, Chunk.created_at
+        ))
         .join(Document, Chunk.document_id == Document.id)
         .where(Chunk.knowledge_base_id == kb_id)
         .order_by(Chunk.document_id, Chunk.chunk_index)
@@ -429,6 +512,8 @@ async def list_chunks(
             token_count=chunk.token_count,
             has_embedding=False,  # Embedding column excluded; install pgvector for accurate value
             chunk_metadata=chunk.chunk_metadata,
+            labels=chunk.labels,
+            doc_metadata=chunk.doc_metadata,
             created_at=chunk.created_at,
         ))
     return ChunkListResponse(items=items, total=total)
@@ -440,6 +525,37 @@ async def delete_all_chunks(kb_id: str, db: AsyncSession = Depends(get_db)):
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
+
+
+@router.put("/{kb_id}/chunks/{chunk_id}", response_model=ChunkResponse)
+async def update_chunk(
+    kb_id: str, chunk_id: str, body: ChunkUpdate, db: AsyncSession = Depends(get_db)
+):
+    """Update chunk content, labels, or doc_metadata."""
+    chunk = await db.get(Chunk, chunk_id)
+    if not chunk or chunk.knowledge_base_id != kb_id:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(chunk, field, value)
+    await db.flush()
+    await db.refresh(chunk)
+    doc_result = await db.execute(select(Document.name).where(Document.id == chunk.document_id))
+    doc_name = doc_result.scalar_one_or_none()
+    return ChunkResponse(
+        id=chunk.id,
+        knowledge_base_id=chunk.knowledge_base_id,
+        document_id=chunk.document_id,
+        document_name=doc_name,
+        content=chunk.content,
+        chunk_index=chunk.chunk_index,
+        token_count=chunk.token_count,
+        has_embedding=chunk.embedding is not None,
+        chunk_metadata=chunk.chunk_metadata,
+        labels=chunk.labels,
+        doc_metadata=chunk.doc_metadata,
+        created_at=chunk.created_at,
+    )
 
 
 def _base64_to_floats(b64: str) -> list[float]:
@@ -467,6 +583,8 @@ async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: Asy
             token_count=item.token_count,
             embedding=embedding_floats,
             chunk_metadata=item.chunk_metadata,
+            labels=item.labels,
+            doc_metadata=item.doc_metadata,
         )
         db.add(chunk)
         await db.flush()
@@ -480,6 +598,8 @@ async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: Asy
             token_count=chunk.token_count,
             has_embedding=True,
             chunk_metadata=chunk.chunk_metadata,
+            labels=chunk.labels,
+            doc_metadata=chunk.doc_metadata,
             created_at=chunk.created_at,
         ))
     return ChunkListResponse(items=items, total=len(items))
@@ -522,6 +642,19 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
 
     results: list[SearchResult] = []
 
+    chunk_where = [Chunk.knowledge_base_id == kb_id, Chunk.embedding.isnot(None)]
+    faq_where = [FAQ.knowledge_base_id == kb_id, FAQ.embedding.isnot(None)]
+    if body.label_filters:
+        lbl_cond = _build_label_filter_conditions(Chunk.labels, body.label_filters)
+        chunk_where.append(lbl_cond)
+        faq_lbl_cond = _build_label_filter_conditions(FAQ.labels, body.label_filters)
+        faq_where.append(faq_lbl_cond)
+    if body.metadata_filters:
+        meta_cond = _build_metadata_filter_conditions(Chunk.doc_metadata, body.metadata_filters)
+        chunk_where.append(meta_cond)
+        faq_meta_cond = _build_metadata_filter_conditions(FAQ.doc_metadata, body.metadata_filters)
+        faq_where.append(faq_meta_cond)
+
     try:
         if body.search_type in ("all", "chunks"):
             chunk_query = (
@@ -529,11 +662,13 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
                     Chunk.id,
                     Chunk.content,
                     Chunk.document_id,
+                    Chunk.labels,
+                    Chunk.doc_metadata,
                     Document.name.label("doc_name"),
                     Chunk.embedding.cosine_distance(query_embedding).label("distance"),
                 )
                 .join(Document, Chunk.document_id == Document.id)
-                .where(Chunk.knowledge_base_id == kb_id, Chunk.embedding.isnot(None))
+                .where(*chunk_where)
                 .order_by("distance")
                 .limit(body.top_k)
             )
@@ -546,6 +681,8 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
                     score=round(1.0 - row.distance, 4),
                     source_name=row.doc_name,
                     document_id=row.document_id,
+                    labels=row.labels,
+                    doc_metadata=row.doc_metadata,
                 ))
 
         if body.search_type in ("all", "faqs"):
@@ -555,9 +692,11 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
                     FAQ.question,
                     FAQ.answer,
                     FAQ.document_id,
+                    FAQ.labels,
+                    FAQ.doc_metadata,
                     FAQ.embedding.cosine_distance(query_embedding).label("distance"),
                 )
-                .where(FAQ.knowledge_base_id == kb_id, FAQ.embedding.isnot(None))
+                .where(*faq_where)
                 .order_by("distance")
                 .limit(body.top_k)
             )
@@ -569,6 +708,8 @@ async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = De
                     content=f"Q: {row.question}\nA: {row.answer}",
                     score=round(1.0 - row.distance, 4),
                     document_id=row.document_id,
+                    labels=row.labels,
+                    doc_metadata=row.doc_metadata,
                 ))
     except DBAPIError as e:
         msg = str(e.orig) if e.orig else str(e)

@@ -12,6 +12,8 @@ export interface KnowledgeBaseResponse {
   agent_url?: string | null;
   chunk_config?: Record<string, unknown> | null;
   faq_prompt?: string | null;
+  label_keys?: string[] | null;
+  metadata_keys?: string[] | null;
   document_count: number;
   faq_count: number;
   chunk_count: number;
@@ -41,6 +43,8 @@ export interface FAQResponse {
   document_name?: string | null;
   question: string;
   answer: string;
+  labels?: Record<string, unknown> | null;
+  doc_metadata?: Record<string, unknown> | null;
   has_embedding: boolean;
   created_at: string;
   updated_at: string;
@@ -52,6 +56,8 @@ export interface FAQGenerateResult {
   document_name?: string | null;
   question: string;
   answer: string;
+  labels?: Record<string, unknown> | null;
+  doc_metadata?: Record<string, unknown> | null;
 }
 
 export interface ChunkResponse {
@@ -64,6 +70,8 @@ export interface ChunkResponse {
   token_count?: number | null;
   has_embedding: boolean;
   chunk_metadata?: Record<string, unknown> | null;
+  labels?: Record<string, unknown> | null;
+  doc_metadata?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -79,6 +87,8 @@ export interface SearchResult {
   score: number;
   source_name?: string | null;
   document_id?: string | null;
+  labels?: Record<string, unknown> | null;
+  doc_metadata?: Record<string, unknown> | null;
 }
 
 export interface SearchResponse {
@@ -140,6 +150,8 @@ export async function updateKnowledgeBase(
     agent_url?: string | null;
     chunk_config?: Record<string, unknown> | null;
     faq_prompt?: string | null;
+    label_keys?: string[] | null;
+    metadata_keys?: string[] | null;
   }
 ): Promise<KnowledgeBaseResponse> {
   const headers = await getAuthHeaders();
@@ -223,7 +235,13 @@ export async function fetchFAQs(kbId: string): Promise<FAQResponse[]> {
 
 export async function createFAQ(
   kbId: string,
-  data: { question: string; answer: string; document_id?: string }
+  data: {
+    question: string;
+    answer: string;
+    document_id?: string;
+    labels?: Record<string, unknown> | null;
+    doc_metadata?: Record<string, unknown> | null;
+  }
 ): Promise<FAQResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs`, {
@@ -242,7 +260,12 @@ export async function createFAQ(
 export async function updateFAQ(
   kbId: string,
   faqId: string,
-  data: { question?: string; answer?: string }
+  data: {
+    question?: string;
+    answer?: string;
+    labels?: Record<string, unknown> | null;
+    doc_metadata?: Record<string, unknown> | null;
+  }
 ): Promise<FAQResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
@@ -293,7 +316,13 @@ export async function generateFAQs(
 /** Save selected FAQ pairs to the knowledge base. */
 export async function saveFAQs(
   kbId: string,
-  items: { document_id: string; question: string; answer: string }[]
+  items: {
+    document_id: string;
+    question: string;
+    answer: string;
+    labels?: Record<string, unknown> | null;
+    doc_metadata?: Record<string, unknown> | null;
+  }[]
 ): Promise<FAQResponse[]> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/batch`, {
@@ -328,6 +357,25 @@ export async function fetchChunks(
   return res.json();
 }
 
+export async function updateChunk(
+  kbId: string,
+  chunkId: string,
+  data: { content?: string; labels?: Record<string, unknown> | null; doc_metadata?: Record<string, unknown> | null }
+): Promise<ChunkResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to update chunk');
+  }
+  return res.json();
+}
+
 export async function deleteAllChunks(kbId: string): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks`, {
@@ -345,7 +393,13 @@ export async function deleteAllChunks(kbId: string): Promise<void> {
 
 export async function searchKnowledgeBase(
   kbId: string,
-  data: { query: string; top_k?: number; search_type?: string }
+  data: {
+    query: string;
+    top_k?: number;
+    search_type?: string;
+    label_filters?: Record<string, string | string[]>;
+    metadata_filters?: Record<string, unknown>;
+  }
 ): Promise<SearchResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/search`, {

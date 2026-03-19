@@ -765,6 +765,135 @@
   color: var(--color-text);
 }
 
+.kb-faq-dialog {
+  min-width: 480px;
+  max-width: 640px;
+}
+
+.kb-faq-dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.kb-faq-dialog-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.kb-faq-dialog-form input,
+.kb-faq-dialog-form textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.kb-faq-dialog-form input:focus,
+.kb-faq-dialog-form textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.kb-faq-dialog-form textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.kb-kv-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kb-kv-editor-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.kb-kv-editor-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.kb-kv-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.kb-kv-row input:first-of-type {
+  flex: 0 0 120px;
+  min-width: 0;
+}
+
+.kb-kv-row input:last-of-type {
+  flex: 1;
+  min-width: 0;
+}
+
+.kb-kv-row-config {
+  gap: 12px;
+}
+
+.kb-kv-key-label {
+  flex: 0 0 140px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.kb-kv-row-config input {
+  flex: 1;
+  min-width: 0;
+}
+
+.kb-kv-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.kb-kv-remove:hover {
+  color: var(--color-danger, #dc3545);
+  background: var(--color-bg-muted);
+}
+
+.kb-kv-add {
+  align-self: flex-start;
+}
+
+.kb-chunk-dialog {
+  min-width: 560px;
+  max-width: 800px;
+}
+
+.kb-chunk-dialog-readonly {
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.kb-chunk-dialog-json {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+}
+
 .kb-doc-picker-hint {
   font-size: 0.875rem;
   color: var(--color-text-secondary);

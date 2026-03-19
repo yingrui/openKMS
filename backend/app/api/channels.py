@@ -47,6 +47,26 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
     return result
 
 
+@router.get("/{channel_id}", response_model=ChannelNode)
+async def get_document_channel(channel_id: str, db: AsyncSession = Depends(get_db)):
+    """Get a single document channel by ID."""
+    channel = await db.get(DocumentChannel, channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    return ChannelNode(
+        id=channel.id,
+        name=channel.name,
+        description=channel.description,
+        sort_order=channel.sort_order,
+        pipeline_id=channel.pipeline_id,
+        auto_process=channel.auto_process,
+        extraction_model_id=channel.extraction_model_id,
+        extraction_schema=_strip_field_order(channel.extraction_schema),
+        label_config=getattr(channel, "label_config", None),
+        children=[],
+    )
+
+
 @router.get("", response_model=list[ChannelNode])
 async def list_document_channels(db: AsyncSession = Depends(get_db)):
     """List document channels as tree (top-level only, children nested)."""

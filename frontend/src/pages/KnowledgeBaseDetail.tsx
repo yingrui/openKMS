@@ -35,6 +35,7 @@ import {
   searchKnowledgeBase,
   askQuestion,
   updateKnowledgeBase,
+  updateChunk,
   type KnowledgeBaseResponse,
   type KBDocumentResponse,
   type FAQResponse,
@@ -42,7 +43,9 @@ import {
   type ChunkResponse,
   type SearchResult,
 } from '../data/knowledgeBasesApi';
-import { fetchDocuments, type DocumentResponse } from '../data/documentsApi';
+import { fetchDocumentById, fetchDocuments, type DocumentResponse } from '../data/documentsApi';
+import { fetchChannelById } from '../data/channelsApi';
+import { normalizeExtractionSchemaToFields } from '../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import './KnowledgeBaseDetail.css';
 
@@ -81,10 +84,14 @@ export function KnowledgeBaseDetail() {
 
   // FAQs
   const [faqs, setFaqs] = useState<FAQResponse[]>([]);
-  const [showFaqForm, setShowFaqForm] = useState(false);
+  const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [editFaq, setEditFaq] = useState<FAQResponse | null>(null);
   const [faqQuestion, setFaqQuestion] = useState('');
   const [faqAnswer, setFaqAnswer] = useState('');
+  const [faqLabelsValues, setFaqLabelsValues] = useState<Record<string, string>>({});
+  const [faqDocMetadataValues, setFaqDocMetadataValues] = useState<Record<string, string>>({});
+  const [faqLabelAllowMultiple, setFaqLabelAllowMultiple] = useState<Record<string, boolean>>({});
+  const [faqMetadataIsArray, setFaqMetadataIsArray] = useState<Record<string, boolean>>({});
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [genSelectedDocs, setGenSelectedDocs] = useState<Set<string>>(new Set());
   const [genModelId, setGenModelId] = useState('');
@@ -97,6 +104,14 @@ export function KnowledgeBaseDetail() {
   // Chunks
   const [chunks, setChunks] = useState<ChunkResponse[]>([]);
   const [chunkTotal, setChunkTotal] = useState(0);
+  const [editChunk, setEditChunk] = useState<ChunkResponse | null>(null);
+  const [showChunkDialog, setShowChunkDialog] = useState(false);
+  const [chunkContent, setChunkContent] = useState('');
+  const [chunkLabelsValues, setChunkLabelsValues] = useState<Record<string, string>>({});
+  const [chunkDocMetadataValues, setChunkDocMetadataValues] = useState<Record<string, string>>({});
+  const [chunkLabelAllowMultiple, setChunkLabelAllowMultiple] = useState<Record<string, boolean>>({});
+  const [chunkMetadataIsArray, setChunkMetadataIsArray] = useState<Record<string, boolean>>({});
+  const [chunkSaving, setChunkSaving] = useState(false);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -116,6 +131,8 @@ export function KnowledgeBaseDetail() {
   const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
   const [settingsChunkSize, setSettingsChunkSize] = useState(512);
   const [settingsChunkOverlap, setSettingsChunkOverlap] = useState(50);
+  const [settingsLabelKeys, setSettingsLabelKeys] = useState('');
+  const [settingsMetadataKeys, setSettingsMetadataKeys] = useState('');
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -132,6 +149,8 @@ export function KnowledgeBaseDetail() {
       setSettingsChunkSize((cc.chunk_size as number) || 512);
       setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
       setSettingsFaqPrompt(data.faq_prompt || '');
+      setSettingsLabelKeys(Array.isArray(data.label_keys) ? data.label_keys.join(', ') : '');
+      setSettingsMetadataKeys(Array.isArray(data.metadata_keys) ? data.metadata_keys.join(', ') : '');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load KB');
     } finally {
@@ -257,20 +276,59 @@ export function KnowledgeBaseDetail() {
   };
 
   // --- FAQ handlers ---
+  const configValuesToLabels = (
+    values: Record<string, string>,
+    keys: string[] | null | undefined,
+    allowMultiple: Record<string, boolean>
+  ): Record<string, unknown> | null => {
+    if (!keys?.length) return null;
+    const result: Record<string, unknown> = {};
+    for (const k of keys) {
+      const v = (values[k] ?? '').trim();
+      if (v) {
+        result[k] = allowMultiple[k]
+          ? v.split(',').map((s) => s.trim()).filter(Boolean)
+          : v;
+      }
+    }
+    return Object.keys(result).length ? result : null;
+  };
+
+  const objToConfigValues = (obj: Record<string, unknown> | null | undefined, keys: string[] | null | undefined): Record<string, string> => {
+    if (!keys?.length) return {};
+    return Object.fromEntries(
+      keys.map((k) => {
+        const v = obj?.[k];
+        return [k, Array.isArray(v) ? v.join(', ') : String(v ?? '')];
+      })
+    );
+  };
+
   const handleSaveFaq = async () => {
     if (!kbId || !faqQuestion.trim() || !faqAnswer.trim()) return;
     try {
+      const labels = configValuesToLabels(faqLabelsValues, kb?.label_keys ?? undefined, faqLabelAllowMultiple);
+      const doc_metadata = configValuesToLabels(
+        faqDocMetadataValues,
+        kb?.metadata_keys ?? undefined,
+        faqMetadataIsArray
+      );
+      const payload = { question: faqQuestion, answer: faqAnswer, labels: labels ?? undefined, doc_metadata: doc_metadata ?? undefined };
       if (editFaq) {
-        await updateFAQ(kbId, editFaq.id, { question: faqQuestion, answer: faqAnswer });
+        await updateFAQ(kbId, editFaq.id, payload);
         toast.success('FAQ updated');
       } else {
-        await createFAQ(kbId, { question: faqQuestion, answer: faqAnswer });
+        await createFAQ(kbId, payload);
         toast.success('FAQ created');
       }
-      setShowFaqForm(false);
+      setShowFaqDialog(false);
       setEditFaq(null);
       setFaqQuestion('');
       setFaqAnswer('');
+      setFaqLabelsValues({});
+      setFaqDocMetadataValues({});
+      setFaqLabelAllowMultiple({});
+      setFaqMetadataIsArray({});
       loadFaqs();
       loadKb();
     } catch (e: unknown) {
@@ -348,6 +406,8 @@ export function KnowledgeBaseDetail() {
         document_id: f.document_id,
         question: f.question,
         answer: f.answer,
+        labels: f.labels ?? undefined,
+        doc_metadata: f.doc_metadata ?? undefined,
       }));
       await saveFAQs(kbId, items);
       toast.success(`Saved ${items.length} FAQs`);
@@ -364,6 +424,71 @@ export function KnowledgeBaseDetail() {
   const handleGenBackToConfig = () => {
     setGenStep('config');
     setGenPreviewFaqs([]);
+  };
+
+  // --- Chunk edit ---
+  const openChunkEdit = async (chunk: ChunkResponse) => {
+    setEditChunk(chunk);
+    setChunkContent(chunk.content);
+    setChunkLabelsValues(objToConfigValues(chunk.labels, kb?.label_keys ?? undefined));
+    setChunkDocMetadataValues(objToConfigValues(chunk.doc_metadata, kb?.metadata_keys ?? undefined));
+    const allowMultiple: Record<string, boolean> = {};
+    const metadataIsArray: Record<string, boolean> = {};
+    try {
+      const doc = await fetchDocumentById(chunk.document_id);
+      const channel = await fetchChannelById(doc.channel_id);
+      if (kb?.label_keys?.length) {
+        const lcMap = new Map(
+          (channel.label_config ?? []).map((lc: { key: string; allow_multiple?: boolean }) => [lc.key, lc.allow_multiple ?? false])
+        );
+        for (const k of kb.label_keys) {
+          allowMultiple[k] = lcMap.get(k) ?? false;
+        }
+      }
+      if (kb?.metadata_keys?.length) {
+        const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
+        const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
+        for (const k of kb.metadata_keys) {
+          metadataIsArray[k] = metaMap.get(k) ?? false;
+        }
+      }
+    } catch {
+      /* default to false */
+    }
+    setChunkLabelAllowMultiple(allowMultiple);
+    setChunkMetadataIsArray(metadataIsArray);
+    setShowChunkDialog(true);
+  };
+
+  const closeChunkDialog = () => {
+    setShowChunkDialog(false);
+    setEditChunk(null);
+  };
+
+  const handleSaveChunk = async () => {
+    if (!kbId || !editChunk) return;
+    setChunkSaving(true);
+    try {
+      const labels = configValuesToLabels(chunkLabelsValues, kb?.label_keys ?? undefined, chunkLabelAllowMultiple);
+      const doc_metadata = configValuesToLabels(
+        chunkDocMetadataValues,
+        kb?.metadata_keys ?? undefined,
+        chunkMetadataIsArray
+      );
+      await updateChunk(kbId, editChunk.id, {
+        content: chunkContent,
+        labels: labels ?? undefined,
+        doc_metadata: doc_metadata ?? undefined,
+      });
+      toast.success('Chunk updated');
+      closeChunkDialog();
+      loadChunks();
+      loadKb();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update chunk');
+    } finally {
+      setChunkSaving(false);
+    }
   };
 
   // --- Search ---
@@ -409,6 +534,14 @@ export function KnowledgeBaseDetail() {
     if (!kbId) return;
     setSettingsSaving(true);
     try {
+      const labelKeys = settingsLabelKeys
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const metadataKeys = settingsMetadataKeys
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       await updateKnowledgeBase(kbId, {
         agent_url: settingsAgentUrl || null,
         embedding_model_id: settingsEmbeddingModelId || null,
@@ -418,6 +551,8 @@ export function KnowledgeBaseDetail() {
           chunk_overlap: settingsChunkOverlap,
         },
         faq_prompt: settingsFaqPrompt.trim() || null,
+        label_keys: labelKeys.length > 0 ? labelKeys : null,
+        metadata_keys: metadataKeys.length > 0 ? metadataKeys : null,
       });
       toast.success('Settings saved');
       loadKb();
@@ -531,40 +666,20 @@ export function KnowledgeBaseDetail() {
                   <span>Generate FAQ</span>
                 </button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => {
-                  setShowFaqForm(true);
                   setEditFaq(null);
                   setFaqQuestion('');
                   setFaqAnswer('');
+                  setFaqLabelsValues(objToConfigValues({}, kb?.label_keys ?? undefined));
+                  setFaqDocMetadataValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
+                  setFaqLabelAllowMultiple({});
+                  setFaqMetadataIsArray({});
+                  setShowFaqDialog(true);
                 }}>
                   <Plus size={16} />
                   <span>Add FAQ</span>
                 </button>
               </div>
             </div>
-
-            {showFaqForm && (
-              <div className="kb-inline-form">
-                <input
-                  type="text"
-                  placeholder="Question"
-                  value={faqQuestion}
-                  onChange={(e) => setFaqQuestion(e.target.value)}
-                  autoFocus
-                />
-                <textarea
-                  placeholder="Answer"
-                  value={faqAnswer}
-                  onChange={(e) => setFaqAnswer(e.target.value)}
-                  rows={3}
-                />
-                <div className="kb-inline-form-actions">
-                  <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveFaq} disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
-                    {editFaq ? 'Update' : 'Create'}
-                  </button>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setShowFaqForm(false); setEditFaq(null); }}>Cancel</button>
-                </div>
-              </div>
-            )}
 
             {faqs.length === 0 ? (
               <p className="kb-empty-text">No FAQs yet.</p>
@@ -599,11 +714,40 @@ export function KnowledgeBaseDetail() {
                         </td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <button type="button" title="Edit" aria-label="Edit" onClick={() => {
+                            <button type="button" title="Edit" aria-label="Edit" onClick={async () => {
                               setEditFaq(faq);
                               setFaqQuestion(faq.question);
                               setFaqAnswer(faq.answer);
-                              setShowFaqForm(true);
+                              setFaqLabelsValues(objToConfigValues(faq.labels, kb?.label_keys ?? undefined));
+                              setFaqDocMetadataValues(objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined));
+                              const allowMultiple: Record<string, boolean> = {};
+                              const metadataIsArray: Record<string, boolean> = {};
+                              if (faq.document_id) {
+                                try {
+                                  const doc = await fetchDocumentById(faq.document_id);
+                                  const channel = await fetchChannelById(doc.channel_id);
+                                  if (kb?.label_keys?.length) {
+                                    const lcMap = new Map(
+                                      (channel.label_config ?? []).map((lc: { key: string; allow_multiple?: boolean }) => [lc.key, lc.allow_multiple ?? false])
+                                    );
+                                    for (const k of kb.label_keys) {
+                                      allowMultiple[k] = lcMap.get(k) ?? false;
+                                    }
+                                  }
+                                  if (kb?.metadata_keys?.length) {
+                                    const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
+                                    const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
+                                    for (const k of kb.metadata_keys) {
+                                      metadataIsArray[k] = metaMap.get(k) ?? false;
+                                    }
+                                  }
+                                } catch {
+                                  /* default to false */
+                                }
+                              }
+                              setFaqLabelAllowMultiple(allowMultiple);
+                              setFaqMetadataIsArray(metadataIsArray);
+                              setShowFaqDialog(true);
                             }}>
                               <Pencil size={16} />
                             </button>
@@ -638,6 +782,7 @@ export function KnowledgeBaseDetail() {
                       <th>Excerpt</th>
                       <th>Tokens</th>
                       <th>Embedded</th>
+                      <th className="kb-table-actions">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -652,6 +797,13 @@ export function KnowledgeBaseDetail() {
                         <td className="kb-table-excerpt">{chunk.content.slice(0, 150)}...</td>
                         <td>{chunk.token_count ?? '—'}</td>
                         <td>{chunk.has_embedding ? 'Yes' : 'No'}</td>
+                        <td className="kb-table-actions">
+                          <div className="kb-table-btns">
+                            <button type="button" title="Edit" aria-label="Edit" onClick={() => openChunkEdit(chunk)}>
+                              <Pencil size={16} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -845,6 +997,28 @@ export function KnowledgeBaseDetail() {
                   rows={6}
                 />
                 <small>System prompt sent to the LLM when generating FAQ pairs from documents</small>
+              </label>
+
+              <label>
+                <span>Label Keys</span>
+                <input
+                  type="text"
+                  placeholder="product, region"
+                  value={settingsLabelKeys}
+                  onChange={(e) => setSettingsLabelKeys(e.target.value)}
+                />
+                <small>Comma-separated keys from document labels to propagate to FAQs and chunks (e.g. product, region)</small>
+              </label>
+
+              <label>
+                <span>Metadata Keys</span>
+                <input
+                  type="text"
+                  placeholder="author, publish_date, tags"
+                  value={settingsMetadataKeys}
+                  onChange={(e) => setSettingsMetadataKeys(e.target.value)}
+                />
+                <small>Comma-separated keys from document metadata to propagate to FAQs and chunks (e.g. author, publish_date, tags)</small>
               </label>
 
               <div className="kb-settings-actions">
@@ -1171,6 +1345,193 @@ export function KnowledgeBaseDetail() {
                     </>
                   )}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showChunkDialog && editChunk && (
+        <div
+          className="kb-doc-picker-overlay"
+          onClick={closeChunkDialog}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="chunk-dialog-title"
+        >
+          <div className="kb-doc-picker kb-faq-dialog kb-chunk-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="kb-doc-picker-header">
+              <h2 id="chunk-dialog-title">Edit Chunk</h2>
+              <button
+                type="button"
+                className="kb-doc-picker-close"
+                onClick={closeChunkDialog}
+                disabled={chunkSaving}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="kb-faq-dialog-form">
+              <label>
+                <span>Source</span>
+                <input type="text" value={editChunk.document_name || editChunk.document_id} readOnly disabled className="kb-chunk-dialog-readonly" />
+              </label>
+              <label>
+                <span>Content</span>
+                <textarea
+                  value={chunkContent}
+                  onChange={(e) => setChunkContent(e.target.value)}
+                  rows={8}
+                />
+              </label>
+
+              {kb?.label_keys && kb.label_keys.length > 0 && (
+                <div className="kb-kv-editor">
+                  <span className="kb-kv-editor-label">Labels</span>
+                  <small className="kb-kv-editor-hint">
+                    Value per label key from channel settings. {Object.values(chunkLabelAllowMultiple).some(Boolean) ? 'Use comma for multiple values on labels that allow multiple.' : 'Values are stored as single strings.'}
+                  </small>
+                  {kb.label_keys.map((key) => (
+                    <div key={key} className="kb-kv-row kb-kv-row-config">
+                      <span className="kb-kv-key-label">{key}{chunkLabelAllowMultiple[key] ? ' (multiple)' : ''}</span>
+                      <input
+                        type="text"
+                        placeholder={chunkLabelAllowMultiple[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
+                        value={chunkLabelsValues[key] ?? ''}
+                        onChange={(e) => setChunkLabelsValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
+                <div className="kb-kv-editor">
+                  <span className="kb-kv-editor-label">Document Metadata</span>
+                  <small className="kb-kv-editor-hint">
+                    Value per metadata key from channel extraction schema. {Object.values(chunkMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
+                  </small>
+                  {kb.metadata_keys.map((key) => (
+                    <div key={key} className="kb-kv-row kb-kv-row-config">
+                      <span className="kb-kv-key-label">{key}{chunkMetadataIsArray[key] ? ' (array)' : ''}</span>
+                      <input
+                        type="text"
+                        placeholder={chunkMetadataIsArray[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
+                        value={chunkDocMetadataValues[key] ?? ''}
+                        onChange={(e) => setChunkDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="kb-doc-picker-footer">
+                <div />
+                <div className="kb-doc-picker-actions">
+                  <button type="button" className="btn btn-secondary" onClick={closeChunkDialog} disabled={chunkSaving}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={handleSaveChunk} disabled={chunkSaving || !chunkContent.trim()}>
+                    {chunkSaving ? 'Saving...' : 'Update'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFaqDialog && (
+        <div
+          className="kb-doc-picker-overlay"
+          onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="faq-dialog-title"
+        >
+          <div className="kb-doc-picker kb-faq-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="kb-doc-picker-header">
+              <h2 id="faq-dialog-title">{editFaq ? 'Edit FAQ' : 'Add FAQ'}</h2>
+              <button
+                type="button"
+                className="kb-doc-picker-close"
+                onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="kb-faq-dialog-form">
+              <label>
+                <span>Question</span>
+                <input
+                  type="text"
+                  placeholder="Question"
+                  value={faqQuestion}
+                  onChange={(e) => setFaqQuestion(e.target.value)}
+                  autoFocus
+                />
+              </label>
+              <label>
+                <span>Answer</span>
+                <textarea
+                  placeholder="Answer"
+                  value={faqAnswer}
+                  onChange={(e) => setFaqAnswer(e.target.value)}
+                  rows={5}
+                />
+              </label>
+
+              {kb?.label_keys && kb.label_keys.length > 0 && (
+                <div className="kb-kv-editor">
+                  <span className="kb-kv-editor-label">Labels</span>
+                  <small className="kb-kv-editor-hint">
+                    Value per label key from channel settings. {Object.values(faqLabelAllowMultiple).some(Boolean) ? 'Use comma for multiple values on labels that allow multiple.' : 'Values are stored as single strings.'}
+                  </small>
+                  {kb.label_keys.map((key) => (
+                    <div key={key} className="kb-kv-row kb-kv-row-config">
+                      <span className="kb-kv-key-label">{key}{faqLabelAllowMultiple[key] ? ' (multiple)' : ''}</span>
+                      <input
+                        type="text"
+                        placeholder={faqLabelAllowMultiple[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
+                        value={faqLabelsValues[key] ?? ''}
+                        onChange={(e) => setFaqLabelsValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
+                <div className="kb-kv-editor">
+                  <span className="kb-kv-editor-label">Document Metadata</span>
+                  <small className="kb-kv-editor-hint">
+                    Value per metadata key from channel extraction schema. {Object.values(faqMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
+                  </small>
+                  {kb.metadata_keys.map((key) => (
+                    <div key={key} className="kb-kv-row kb-kv-row-config">
+                      <span className="kb-kv-key-label">{key}{faqMetadataIsArray[key] ? ' (array)' : ''}</span>
+                      <input
+                        type="text"
+                        placeholder={faqMetadataIsArray[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
+                        value={faqDocMetadataValues[key] ?? ''}
+                        onChange={(e) => setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="kb-doc-picker-footer">
+                <div />
+                <div className="kb-doc-picker-actions">
+                  <button type="button" className="btn btn-secondary" onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={handleSaveFaq} disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
+                    {editFaq ? 'Update' : 'Create'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

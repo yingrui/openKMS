@@ -26,4 +26,6 @@ class Chunk(Base):
     token_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     embedding = mapped_column(Vector(None), nullable=True)
     chunk_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    labels: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    doc_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

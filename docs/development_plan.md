@@ -14,7 +14,7 @@
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
-- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search, Q&A proxy, settings; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
+- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (label_filters, metadata_filters), Q&A proxy, settings (chunk_config, faq_prompt, label_keys, metadata_keys); labels and doc_metadata propagated from documents to FAQs/chunks; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
 - Console: settings, users, feature toggles (database-backed, includes objectsAndLinks), object types, link types, data sources, datasets; admin-only (realm role `admin`)
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start
 - Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /objects, /links; feature toggle objectsAndLinks
