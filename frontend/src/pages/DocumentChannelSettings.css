@@ -17,10 +17,50 @@
   color: var(--color-accent);
 }
 
+.document-channel-settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 4px 12px 0 12px;
+  flex-shrink: 0;
+}
+
+.document-channel-settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.document-channel-settings-tab:hover {
+  color: var(--color-text);
+}
+
+.document-channel-settings-tab.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
 .document-channel-settings-form {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
   padding: 24px;
 }
 

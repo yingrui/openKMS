@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
   findChannel,
@@ -59,6 +59,9 @@ export function DocumentChannelSettings() {
   const [extractionSchema, setExtractionSchema] = useState<ExtractionSchemaField[]>([]);
   const [saving, setSaving] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
+
+  type TabId = 'general' | 'processing' | 'extraction';
+  const [activeTab, setActiveTab] = useState<TabId>('general');
 
   const channelName = getDocumentChannelName(channels, channelId);
 
@@ -165,6 +168,12 @@ export function DocumentChannelSettings() {
     if (preset) setExtractionSchema([...preset]);
   };
 
+  const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
+    { id: 'general', label: 'General', icon: Settings },
+    { id: 'processing', label: 'Processing', icon: Zap },
+    { id: 'extraction', label: 'Metadata extraction', icon: FileSearch },
+  ];
+
   return (
     <div className="document-channel-settings">
       <Link to={`/documents/channels/${channelId}`} className="document-channel-settings-back">
@@ -175,11 +184,26 @@ export function DocumentChannelSettings() {
       <div className="page-header">
         <h1>Channel settings</h1>
         <p className="page-subtitle">
-          Configure {channelName} – processing pipeline and auto-process options.
+          Configure {channelName}
         </p>
       </div>
 
+      <div className="document-channel-settings-tabs">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={`document-channel-settings-tab ${activeTab === t.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.id)}
+          >
+            <t.icon size={16} />
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="document-channel-settings-form">
+        {activeTab === 'general' && (
         <section className="document-channel-settings-section">
           <h2>General</h2>
           <div className="document-channel-settings-field">
@@ -203,7 +227,9 @@ export function DocumentChannelSettings() {
             />
           </div>
         </section>
+        )}
 
+        {activeTab === 'processing' && (
         <section className="document-channel-settings-section">
           <h2>Document processing pipeline</h2>
           <div className="document-channel-settings-field">
@@ -228,9 +254,7 @@ export function DocumentChannelSettings() {
               </select>
             )}
           </div>
-        </section>
 
-        <section className="document-channel-settings-section">
           <h2>Auto-process</h2>
           <div className="document-channel-settings-field">
             <label>
@@ -247,7 +271,9 @@ export function DocumentChannelSettings() {
             </p>
           </div>
         </section>
+        )}
 
+        {activeTab === 'extraction' && (
         <section className="document-channel-settings-section">
           <h2>Metadata extraction (pydantic-ai)</h2>
           <p className="document-channel-settings-hint">
@@ -410,6 +436,7 @@ export function DocumentChannelSettings() {
             )}
           </div>
         </section>
+        )}
 
         <div className="document-channel-settings-actions">
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
