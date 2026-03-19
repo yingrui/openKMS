@@ -47,7 +47,7 @@ export function FeatureTogglesProvider({ children }: { children: React.ReactNode
   }, []);
 
   const isEnabled = useCallback(
-    (key: keyof FeatureToggles) => toggles[key],
+    (key: keyof FeatureToggles) => Boolean(toggles[key]),
     [toggles]
   );
 

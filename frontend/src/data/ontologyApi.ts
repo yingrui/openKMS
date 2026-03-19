@@ -108,6 +108,21 @@ export async function indexObjectTypesToNeo4j(neo4jDataSourceId: string): Promis
   return res.json();
 }
 
+export async function executeCypherQuery(cypher: string): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/ontology/explore`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ cypher }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to execute query');
+  }
+  return res.json();
+}
+
 export async function indexLinkTypesToNeo4j(neo4jDataSourceId: string): Promise<{
   link_types_indexed: number;
   relationships_created: number;

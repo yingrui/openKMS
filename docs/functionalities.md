@@ -85,7 +85,7 @@
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
 | Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
-| Object Explorer | ✅ | Placeholder page at `/object-explorer`; under Ontology sidebar menu |
+| Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; object/link type selection, directional arrows, zoom-to-fit; Neo4j Browser–style expandable right panel with Object Types and Link Types color pickers |
 | Ontology sidebar | ✅ | Expandable "Ontology" menu with Objects, Links, Object Explorer; shown when Neo4j exists or objectsAndLinks toggle |
 | Search | ✅ | Optional search filter on object instances |
 | Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
@@ -281,6 +281,7 @@
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
 | POST | `/api/link-types/index-to-neo4j` | Index link types (M:M junction + M:1/1:M from source dataset) to Neo4j as relationships (admin-only) |
+| POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
 | GET | `/api/data-sources` | List data sources (admin-only) |
 | POST | `/api/data-sources` | Create data source (admin-only) |
 | GET | `/api/data-sources/{id}` | Get data source (admin-only) |
