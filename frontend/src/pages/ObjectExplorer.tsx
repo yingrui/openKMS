@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Box, ChevronLeft, ChevronRight, Link2, Palette, Search, Play, Loader2, List, Network } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
@@ -171,6 +171,7 @@ export function ObjectExplorer() {
   const [result, setResult] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null);
   const [resultView, setResultView] = useState<'list' | 'graph'>('list');
   const [stylePanelOpen, setStylePanelOpen] = useState(true);
+  const [canvasFullscreen, setCanvasFullscreen] = useState(false);
   const [objectTypeColors, setObjectTypeColors] = useState<Record<string, string>>({});
   const [linkTypeColors, setLinkTypeColors] = useState<Record<string, string>>({});
 
@@ -237,6 +238,21 @@ export function ObjectExplorer() {
   }, [result, selectedLinks, selectedObjects]);
 
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>(undefined);
+  const graphContainerRef = useRef<HTMLDivElement>(null);
+  const [graphSize, setGraphSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = graphContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setGraphSize({ width: Math.round(width), height: Math.round(height) });
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [resultView, canvasFullscreen]);
 
   useEffect(() => {
     const g = graphRef.current;
@@ -277,14 +293,18 @@ export function ObjectExplorer() {
           ) : (
             <ul className="object-explorer-type-list">
               {objectTypes.map((t) => (
-                <li
-                  key={t.id}
-                  className={`object-explorer-type-item ${selectedObjectTypeIds.has(t.id) ? 'selected' : ''}`}
-                  onClick={() => toggleObjectType(t.id)}
-                >
-                  <Box size={16} />
-                  <span>{t.name}</span>
-                  <span className="object-explorer-type-count">{t.instance_count}</span>
+                <li key={t.id} className="object-explorer-type-item">
+                  <label className="object-explorer-type-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedObjectTypeIds.has(t.id)}
+                      onChange={() => toggleObjectType(t.id)}
+                      className="object-explorer-type-checkbox"
+                    />
+                    <Box size={16} aria-hidden />
+                    <span className="object-explorer-type-label">{t.name}</span>
+                    <span className="object-explorer-type-count">{t.instance_count}</span>
+                  </label>
                 </li>
               ))}
             </ul>
@@ -293,16 +313,20 @@ export function ObjectExplorer() {
           {loading ? null : (
             <ul className="object-explorer-type-list">
               {linkTypes.map((t) => (
-                <li
-                  key={t.id}
-                  className={`object-explorer-type-item ${selectedLinkTypeIds.has(t.id) ? 'selected' : ''}`}
-                  onClick={() => toggleLinkType(t.id)}
-                >
-                  <Link2 size={16} />
-                  <span title={t.name}>
-                    {t.source_object_type_name} —[{t.name}]→ {t.target_object_type_name}
-                  </span>
-                  <span className="object-explorer-type-count">{t.link_count}</span>
+                <li key={t.id} className="object-explorer-type-item">
+                  <label className="object-explorer-type-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedLinkTypeIds.has(t.id)}
+                      onChange={() => toggleLinkType(t.id)}
+                      className="object-explorer-type-checkbox"
+                    />
+                    <Link2 size={16} aria-hidden />
+                    <span className="object-explorer-type-label" title={t.name}>
+                      {t.source_object_type_name} —[{t.name}]→ {t.target_object_type_name}
+                    </span>
+                    <span className="object-explorer-type-count">{t.link_count}</span>
+                  </label>
                 </li>
               ))}
             </ul>
@@ -310,12 +334,15 @@ export function ObjectExplorer() {
         </aside>
         <main className="object-explorer-main">
           <div className="object-explorer-search-bar">
-            <div className="object-explorer-cypher-row">
-              <Search size={18} className="object-explorer-search-icon" />
+            <div className="object-explorer-cypher-wrap">
+              <label htmlFor="object-explorer-cypher" className="object-explorer-cypher-label">
+                Cypher query
+              </label>
               <textarea
-              className="object-explorer-cypher-input"
-              value={cypherInput}
-              onChange={(e) => setCypherInput(e.target.value)}
+                id="object-explorer-cypher"
+                className="object-explorer-cypher-input"
+                value={cypherInput}
+                onChange={(e) => setCypherInput(e.target.value)}
                 placeholder="MATCH (a:Label)-[r:REL]->(b:Label) RETURN a, r, b"
                 rows={3}
               />
@@ -400,10 +427,129 @@ export function ObjectExplorer() {
                 </table>
               </div>
                 ) : graphData ? (
-                  <div className="object-explorer-graph">
+                  <div
+                    ref={graphContainerRef}
+                    className={`object-explorer-graph ${canvasFullscreen ? 'object-explorer-graph-fullscreen' : ''}`}
+                  >
+                    <div className="object-explorer-graph-controls">
+                      <button
+                        type="button"
+                        className="object-explorer-graph-control-btn"
+                        onClick={() => {
+                          const g = graphRef.current;
+                          if (g && typeof g.zoom === 'function') {
+                            const s = g.zoom();
+                            g.zoom(s * 1.3, 200);
+                          }
+                        }}
+                        title="Zoom in"
+                        aria-label="Zoom in"
+                      >
+                        <ZoomIn size={16} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="object-explorer-graph-control-btn"
+                        onClick={() => {
+                          const g = graphRef.current;
+                          if (g && typeof g.zoom === 'function') {
+                            const s = g.zoom();
+                            g.zoom(s / 1.3, 200);
+                          }
+                        }}
+                        title="Zoom out"
+                        aria-label="Zoom out"
+                      >
+                        <ZoomOut size={16} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="object-explorer-graph-control-btn"
+                        onClick={() => {
+                          const g = graphRef.current;
+                          if (g && typeof g.zoomToFit === 'function') g.zoomToFit(200, 50);
+                        }}
+                        title="Zoom to fit"
+                        aria-label="Zoom to fit"
+                      >
+                        <Expand size={16} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="object-explorer-graph-control-btn"
+                        onClick={() => setCanvasFullscreen((v) => !v)}
+                        title={canvasFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                        aria-label={canvasFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                      >
+                        {canvasFullscreen ? (
+                          <Minimize2 size={16} aria-hidden />
+                        ) : (
+                          <Maximize2 size={16} aria-hidden />
+                        )}
+                      </button>
+                    </div>
+                    <div className={`object-explorer-style-panel ${stylePanelOpen ? 'open' : ''}`}>
+                      <button
+                        type="button"
+                        className="object-explorer-style-panel-toggle-btn"
+                        onClick={() => setStylePanelOpen((v) => !v)}
+                        title={stylePanelOpen ? 'Collapse style panel' : 'Expand style panel'}
+                        aria-expanded={stylePanelOpen}
+                      >
+                        {stylePanelOpen ? (
+                          <ChevronLeft size={16} aria-hidden />
+                        ) : (
+                          <ChevronRight size={16} aria-hidden />
+                        )}
+                      </button>
+                      {stylePanelOpen && (
+                        <div className="object-explorer-style-panel-content">
+                          <h3 className="object-explorer-sidebar-title">Node colors</h3>
+                          <ul className="object-explorer-style-list">
+                            {objectTypes.map((t, idx) => (
+                              <li key={t.id} className="object-explorer-style-item">
+                                <input
+                                  type="color"
+                                  value={objectTypeColors[t.id] ?? getDefaultColor(idx)}
+                                  onChange={(e) =>
+                                    setObjectTypeColors((prev) => ({ ...prev, [t.id]: e.target.value }))
+                                  }
+                                  className="object-explorer-color-input"
+                                  aria-label={`Color for ${t.name}`}
+                                />
+                                <span className="object-explorer-style-label" title={t.name}>
+                                  {t.name}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          <h3 className="object-explorer-sidebar-title">Link colors</h3>
+                          <ul className="object-explorer-style-list">
+                            {linkTypes.map((t, idx) => (
+                              <li key={t.id} className="object-explorer-style-item">
+                                <input
+                                  type="color"
+                                  value={linkTypeColors[t.id] ?? getDefaultColor(idx)}
+                                  onChange={(e) =>
+                                    setLinkTypeColors((prev) => ({ ...prev, [t.id]: e.target.value }))
+                                  }
+                                  className="object-explorer-color-input"
+                                  aria-label={`Color for ${t.name}`}
+                                />
+                                <span className="object-explorer-style-label" title={t.name}>
+                                  {t.source_object_type_name} → {t.name} → {t.target_object_type_name}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                     <ForceGraph2D
                       ref={graphRef}
                       graphData={graphData}
+                      width={graphSize.width || undefined}
+                      height={graphSize.height || undefined}
                       onEngineStop={() => {
                         const g = graphRef.current;
                         if (g && typeof g.zoomToFit === 'function') g.zoomToFit(400, 50);
@@ -459,68 +605,6 @@ export function ObjectExplorer() {
             )}
           </div>
         </main>
-        <aside className={`object-explorer-style-panel ${stylePanelOpen ? 'open' : ''}`}>
-          <div className="object-explorer-style-panel-toggle">
-            <button
-              type="button"
-              className="object-explorer-style-panel-btn"
-              onClick={() => setStylePanelOpen((v) => !v)}
-              title={stylePanelOpen ? 'Collapse style panel' : 'Expand style panel'}
-              aria-expanded={stylePanelOpen}
-            >
-              {stylePanelOpen ? (
-                <ChevronRight size={18} aria-hidden />
-              ) : (
-                <>
-                  <ChevronLeft size={18} aria-hidden />
-                  <Palette size={14} aria-hidden />
-                </>
-              )}
-            </button>
-          </div>
-          {stylePanelOpen && (
-            <div className="object-explorer-style-panel-content">
-              <h3 className="object-explorer-sidebar-title">Node colors</h3>
-              <ul className="object-explorer-style-list">
-                {objectTypes.map((t, idx) => (
-                  <li key={t.id} className="object-explorer-style-item">
-                    <input
-                      type="color"
-                      value={objectTypeColors[t.id] ?? getDefaultColor(idx)}
-                      onChange={(e) =>
-                        setObjectTypeColors((prev) => ({ ...prev, [t.id]: e.target.value }))
-                      }
-                      className="object-explorer-color-input"
-                      aria-label={`Color for ${t.name}`}
-                    />
-                    <span className="object-explorer-style-label" title={t.name}>
-                      {t.name}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <h3 className="object-explorer-sidebar-title">Link colors</h3>
-              <ul className="object-explorer-style-list">
-                {linkTypes.map((t, idx) => (
-                  <li key={t.id} className="object-explorer-style-item">
-                    <input
-                      type="color"
-                      value={linkTypeColors[t.id] ?? getDefaultColor(idx)}
-                      onChange={(e) =>
-                        setLinkTypeColors((prev) => ({ ...prev, [t.id]: e.target.value }))
-                      }
-                      className="object-explorer-color-input"
-                      aria-label={`Color for ${t.name}`}
-                    />
-                    <span className="object-explorer-style-label" title={t.name}>
-                      {t.source_object_type_name} → {t.name} → {t.target_object_type_name}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </aside>
       </div>
     </div>
   );

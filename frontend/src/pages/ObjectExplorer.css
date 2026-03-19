@@ -34,55 +34,67 @@
   margin-top: 20px;
 }
 
-/* Right style panel (Neo4j Browser-like) */
+/* Style panel overlay on canvas */
 .object-explorer-style-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
   display: flex;
-  flex-shrink: 0;
-  background: var(--color-bg-elevated);
-  border-left: 1px solid var(--color-border);
-  overflow: hidden;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.object-explorer-style-panel > * {
+  pointer-events: auto;
 }
 
 .object-explorer-style-panel.open {
   width: 260px;
-  min-width: 260px;
+  background: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.08);
 }
 
 .object-explorer-style-panel:not(.open) {
-  width: 44px;
-  min-width: 44px;
-}
-
-.object-explorer-style-panel-toggle {
-  flex-shrink: 0;
-  padding: 12px 0;
-  display: flex;
-  justify-content: center;
-}
-
-.object-explorer-style-panel-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px;
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
+  width: 0;
+  min-width: 0;
+  overflow: visible;
   background: transparent;
   border: none;
+}
+
+.object-explorer-style-panel-toggle-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: color 0.15s, background 0.15s;
 }
 
-.object-explorer-style-panel-btn:hover {
-  color: var(--color-text);
+.object-explorer-style-panel-toggle-btn:hover {
   background: var(--color-bg-muted);
+}
+
+.object-explorer-style-panel.open .object-explorer-style-panel-toggle-btn {
+  right: 8px;
 }
 
 .object-explorer-style-panel-content {
   flex: 1;
-  padding: 16px 12px;
+  padding: 44px 12px 16px;
   overflow-y: auto;
   min-width: 0;
 }
@@ -133,28 +145,34 @@
 }
 
 .object-explorer-type-item {
+  padding: 4px 0;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.object-explorer-type-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s;
 }
 
-.object-explorer-type-item:hover {
+.object-explorer-type-row:hover {
   background: var(--color-bg-muted);
-  color: var(--color-text);
 }
 
-.object-explorer-type-item.selected {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
+.object-explorer-type-checkbox {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
 }
 
-.object-explorer-type-item span:first-of-type {
+.object-explorer-type-label {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -164,10 +182,6 @@
 .object-explorer-type-count {
   font-size: 0.75rem;
   color: var(--color-text-muted);
-}
-
-.object-explorer-type-item.selected .object-explorer-type-count {
-  color: var(--color-accent);
 }
 
 .object-explorer-loading {
@@ -191,16 +205,17 @@
   margin-bottom: 16px;
 }
 
-.object-explorer-cypher-row {
+.object-explorer-cypher-wrap {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.object-explorer-search-icon {
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-  margin-top: 14px;
+.object-explorer-cypher-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: default;
 }
 
 .object-explorer-cypher-input {
@@ -248,6 +263,8 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 12px;
+  display: flex;
+  flex-direction: column;
 }
 
 .object-explorer-results-placeholder,
@@ -330,17 +347,62 @@
 }
 
 .object-explorer-graph {
-  width: 100%;
-  height: 500px;
+  position: relative;
+  flex: 1;
   min-height: 400px;
+  width: 100%;
   border-radius: var(--radius-sm);
   overflow: hidden;
   background: var(--color-bg);
 }
 
+.object-explorer-graph-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 0 !important;
+  z-index: 100;
+  border-radius: 0;
+}
+
+.object-explorer-graph-controls {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.object-explorer-graph-control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--color-text);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: color 0.15s, background 0.15s;
+}
+
+.object-explorer-graph-control-btn:hover {
+  background: var(--color-bg-muted);
+}
+
 .object-explorer-graph canvas {
   border-radius: var(--radius-sm);
   display: block;
+}
+
+.object-explorer-graph-fullscreen .object-explorer-graph canvas {
+  border-radius: 0;
 }
 
 [data-theme='dark'] .object-explorer-graph canvas {
