@@ -148,7 +148,17 @@ export function DocumentChannelSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const schemaDict = editorFieldsToJsonSchema(extractionSchema);
+      /* Use array format to preserve field order; JSON object key order is not guaranteed across parse/serialize. */
+      const schemaToSave = extractionSchema
+        .filter((f) => f.key?.trim())
+        .map((f) => ({
+          key: f.key.trim(),
+          label: f.label || f.key,
+          type: f.type || 'string',
+          description: f.description ?? '',
+          required: !!f.required,
+          ...(f.type === 'enum' && Array.isArray(f.enum) && f.enum.length > 0 && { enum: f.enum }),
+        }));
       const labelConfigToSave = labelConfig
         .filter((l) => l.key.trim() && l.object_type_id)
         .map((l) => ({
@@ -163,7 +173,7 @@ export function DocumentChannelSettings() {
         pipeline_id: pipelineId || null,
         auto_process: autoProcess,
         extraction_model_id: extractionModelId || null,
-        extraction_schema: schemaDict ?? null,
+        extraction_schema: schemaToSave.length > 0 ? schemaToSave : null,
         label_config: labelConfigToSave.length > 0 ? labelConfigToSave : null,
       });
       if (refreshChannels) await refreshChannels();
