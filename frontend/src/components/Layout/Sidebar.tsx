@@ -260,17 +260,6 @@ export function Sidebar() {
             )}
           </div>
         )}
-        {toggles.knowledgeBases && (
-          <NavLink
-            to="/knowledge-bases"
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-            }
-          >
-            <Database size={18} strokeWidth={1.75} />
-            <span>Knowledge Bases</span>
-          </NavLink>
-        )}
         {(toggles.objectsAndLinks || toggles.hasNeo4jDataSource) && (
           <div className="sidebar-menu-group">
             <div className="sidebar-link sidebar-link-parent">
@@ -333,6 +322,17 @@ export function Sidebar() {
           <BookOpen size={18} strokeWidth={1.75} />
           <span>Glossaries</span>
         </NavLink>
+        {toggles.knowledgeBases && (
+          <NavLink
+            to="/knowledge-bases"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <Database size={18} strokeWidth={1.75} />
+            <span>Knowledge Bases</span>
+          </NavLink>
+        )}
         <NavLink
           to="/pipelines"
           className={({ isActive }) =>
