@@ -366,14 +366,82 @@
   border-radius: 0;
 }
 
+.object-explorer-layout-controls {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 11;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: stretch;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.object-explorer-layout-controls > *:not(:first-child) {
+  border-left: 1px solid var(--color-border);
+}
+
+.object-explorer-layout-select {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  cursor: pointer;
+}
+
+.object-explorer-layout-select:hover {
+  background: var(--color-bg-muted);
+}
+
+.object-explorer-layout-select:focus {
+  outline: none;
+}
+
+.object-explorer-layout-controls .object-explorer-graph-control-btn {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.object-explorer-layout-controls .object-explorer-graph-control-btn:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
 .object-explorer-graph-controls {
   position: absolute;
   right: 8px;
   bottom: 8px;
-  z-index: 9;
-  display: flex;
+  z-index: 11;
+  display: inline-flex;
   flex-direction: column;
-  gap: 4px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.object-explorer-graph-controls .object-explorer-graph-control-btn {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.object-explorer-graph-controls .object-explorer-graph-control-btn:not(:first-child) {
+  border-top: 1px solid var(--color-border);
+}
+
+.object-explorer-graph-controls .object-explorer-graph-control-btn:first-child {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.object-explorer-graph-controls .object-explorer-graph-control-btn:last-child {
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
 .object-explorer-graph-control-btn {
@@ -384,11 +452,8 @@
   height: 28px;
   padding: 0;
   color: var(--color-text);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  background: transparent;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: color 0.15s, background 0.15s;
 }
 

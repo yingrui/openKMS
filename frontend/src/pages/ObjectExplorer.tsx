@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Box, ChevronLeft, ChevronRight, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
@@ -172,6 +172,7 @@ export function ObjectExplorer() {
   const [resultView, setResultView] = useState<'list' | 'graph'>('list');
   const [stylePanelOpen, setStylePanelOpen] = useState(true);
   const [canvasFullscreen, setCanvasFullscreen] = useState(false);
+  const [dagLayoutMode, setDagLayoutMode] = useState<'' | 'lr' | 'rl' | 'td' | 'bu' | 'radialout' | 'radialin'>('');
   const [objectTypeColors, setObjectTypeColors] = useState<Record<string, string>>({});
   const [linkTypeColors, setLinkTypeColors] = useState<Record<string, string>>({});
 
@@ -258,11 +259,15 @@ export function ObjectExplorer() {
     const g = graphRef.current;
     if (g && graphData) {
       const charge = g.d3Force('charge');
-      if (charge && typeof charge.strength === 'function') charge.strength(-400);
+      if (charge && typeof charge.strength === 'function') {
+        charge.strength(dagLayoutMode ? -500 : -400);
+      }
       const link = g.d3Force('link');
-      if (link && typeof link.distance === 'function') link.distance(80);
+      if (link && typeof link.distance === 'function') {
+        link.distance(dagLayoutMode ? 150 : 80);
+      }
     }
-  }, [graphData, resultView]);
+  }, [graphData, resultView, dagLayoutMode]);
 
   const handleExecute = async () => {
     const query = cypherInput.trim();
@@ -431,6 +436,51 @@ export function ObjectExplorer() {
                     ref={graphContainerRef}
                     className={`object-explorer-graph ${canvasFullscreen ? 'object-explorer-graph-fullscreen' : ''}`}
                   >
+                    <div className="object-explorer-layout-controls">
+                      <select
+                        className="object-explorer-layout-select"
+                        value={dagLayoutMode}
+                        onChange={(e) =>
+                          setDagLayoutMode(
+                            e.target.value as '' | 'lr' | 'rl' | 'td' | 'bu' | 'radialout' | 'radialin'
+                          )
+                        }
+                        title="Layout mode"
+                        aria-label="Layout mode"
+                      >
+                        <option value="">Default</option>
+                        <option value="lr">Left to right</option>
+                        <option value="rl">Right to left</option>
+                        <option value="td">Top to bottom</option>
+                        <option value="bu">Bottom to top</option>
+                        <option value="radialout">Radial outward</option>
+                        <option value="radialin">Radial inward</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="object-explorer-graph-control-btn"
+                        onClick={() => {
+                          const g = graphRef.current;
+                          if (g && typeof g.d3ReheatSimulation === 'function') g.d3ReheatSimulation();
+                        }}
+                        title="Reheat layout"
+                        aria-label="Reheat layout"
+                      >
+                        <RotateCcw size={16} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="object-explorer-graph-control-btn"
+                        onClick={() => {
+                          const g = graphRef.current;
+                          if (g && typeof g.centerAt === 'function') g.centerAt(0, 0, 200);
+                        }}
+                        title="Center view"
+                        aria-label="Center view"
+                      >
+                        <Crosshair size={16} aria-hidden />
+                      </button>
+                    </div>
                     <div className="object-explorer-graph-controls">
                       <button
                         type="button"
@@ -550,6 +600,16 @@ export function ObjectExplorer() {
                       graphData={graphData}
                       width={graphSize.width || undefined}
                       height={graphSize.height || undefined}
+                      dagMode={dagLayoutMode || undefined}
+                      dagLevelDistance={dagLayoutMode ? 150 : undefined}
+                      onDagError={
+                        dagLayoutMode
+                          ? (loopIds) =>
+                              toast.warning(
+                                `Graph has cycles. Layout "${dagLayoutMode}" works best for DAGs. Nodes in loops: ${loopIds?.slice(0, 3).join(', ')}${(loopIds?.length ?? 0) > 3 ? '...' : ''}`
+                              )
+                          : undefined
+                      }
                       onEngineStop={() => {
                         const g = graphRef.current;
                         if (g && typeof g.zoomToFit === 'function') g.zoomToFit(400, 50);
