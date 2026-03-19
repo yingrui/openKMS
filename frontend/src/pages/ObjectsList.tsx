@@ -11,7 +11,7 @@ export function ObjectsList() {
 
   const load = async () => {
     try {
-      const data = await fetchObjectTypes();
+      const data = await fetchObjectTypes({ countFromNeo4j: true });
       setTypes(data.items);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load object types');

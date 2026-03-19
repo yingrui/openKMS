@@ -151,3 +151,56 @@
   background: var(--color-accent-subtle);
   color: var(--color-accent);
 }
+
+/* Ontology expandable parent */
+.sidebar-link-parent {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  margin-bottom: 2px;
+  background: transparent;
+  cursor: default;
+  color: inherit;
+}
+
+.sidebar-link-parent:hover {
+  background: transparent;
+}
+
+.sidebar-parent-toggle {
+  padding: 8px 6px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.sidebar-parent-toggle .expanded {
+  transform: rotate(90deg);
+  display: inline-block;
+}
+
+.sidebar-parent-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  padding: 8px 10px 8px 4px;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-parent-label:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.sidebar-subnav .sidebar-sublink {
+  margin-left: 0;
+}

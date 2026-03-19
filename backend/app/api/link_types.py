@@ -72,8 +72,80 @@ async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
     return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
 
 
-async def _to_response(db: AsyncSession, link_type: LinkType) -> LinkTypeResponse:
-    count = await _link_count_for_type(db, link_type)
+async def _get_first_neo4j_datasource(db: AsyncSession) -> DataSource | None:
+    result = await db.execute(select(DataSource).where(DataSource.kind == "neo4j").limit(1))
+    return result.scalar_one_or_none()
+
+
+def _neo4j_rel_count(driver, src_label: str, tgt_label: str, rel_type: str) -> int:
+    """Return count of relationships of given type in Neo4j."""
+    with driver.session() as session:
+        result = session.run(
+            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) RETURN count(r) AS c"
+        )
+        row = result.single()
+        return row["c"] or 0
+
+
+def _query_neo4j_relationships(
+    driver,
+    src_label: str,
+    tgt_label: str,
+    rel_type: str,
+    src_key: str,
+    tgt_key: str,
+    limit: int,
+    offset: int,
+) -> tuple[list[dict], int]:
+    """Query relationships from Neo4j. Returns (rows with source_key_value, target_key_value, source_data, target_data), total."""
+    def _serialize_val(v):
+        if v is None:
+            return None
+        if isinstance(v, (str, int, float, bool)):
+            return v
+        if hasattr(v, "isoformat"):
+            return v.isoformat()
+        return str(v)
+
+    def _node_to_data(node):
+        if node is None:
+            return {}
+        props = dict(node) if hasattr(node, "keys") else {}
+        return {k: _serialize_val(v) for k, v in props.items() if v is not None}
+
+    with driver.session() as session:
+        count_result = session.run(
+            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) RETURN count(r) AS c"
+        )
+        total = count_result.single()["c"] or 0
+
+        result = session.run(
+            f"MATCH (a:{src_label})-[r:{rel_type}]->(b:{tgt_label}) RETURN a, b SKIP $offset LIMIT $limit",
+            offset=offset,
+            limit=limit,
+        )
+        rows = []
+        for record in result:
+            a_node = record["a"]
+            b_node = record["b"]
+            if a_node is None or b_node is None:
+                continue
+            source_data = _node_to_data(a_node)
+            target_data = _node_to_data(b_node)
+            src_val = source_data.get(src_key, list(source_data.values())[0] if source_data else None)
+            tgt_val = target_data.get(tgt_key, list(target_data.values())[0] if target_data else None)
+            if src_val is not None and tgt_val is not None:
+                rows.append({
+                    "source_key_value": str(src_val),
+                    "target_key_value": str(tgt_val),
+                    "source_data": source_data,
+                    "target_data": target_data,
+                })
+        return rows, total
+
+
+async def _to_response(db: AsyncSession, link_type: LinkType, link_count_override: int | None = None) -> LinkTypeResponse:
+    count = link_count_override if link_count_override is not None else await _link_count_for_type(db, link_type)
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
     target_type = await db.get(ObjectType, link_type.target_object_type_id)
     ds_name = await _dataset_name(db, link_type.dataset_id)
@@ -101,11 +173,45 @@ async def _to_response(db: AsyncSession, link_type: LinkType) -> LinkTypeRespons
 # --- Admin CRUD ---
 
 @router.get("", response_model=LinkTypeListResponse)
-async def list_link_types(db: AsyncSession = Depends(get_db)):
-    """List all link types. Available to all authenticated users."""
+async def list_link_types(
+    count_from_neo4j: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all link types. When count_from_neo4j=true, link_count comes from Neo4j (Links page)."""
     result = await db.execute(select(LinkType).order_by(LinkType.created_at.desc()))
     types = result.scalars().all()
-    items = [await _to_response(db, t) for t in types]
+    neo4j_driver = None
+    if count_from_neo4j:
+        neo4j_ds = await _get_first_neo4j_datasource(db)
+        if neo4j_ds:
+            try:
+                from neo4j import GraphDatabase
+
+                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+                neo4j_driver = GraphDatabase.driver(uri, auth=(username, password))
+            except ImportError:
+                neo4j_driver = None
+    items = []
+    try:
+        for t in types:
+            count_override = None
+            if neo4j_driver:
+                source_type = await db.get(ObjectType, t.source_object_type_id)
+                target_type = await db.get(ObjectType, t.target_object_type_id)
+                if source_type and target_type:
+                    try:
+                        src_label = _neo4j_safe_label(source_type.name)
+                        tgt_label = _neo4j_safe_label(target_type.name)
+                        rel_type = _neo4j_safe_rel_type(t.name)
+                        count_override = _neo4j_rel_count(neo4j_driver, src_label, tgt_label, rel_type)
+                    except Exception:
+                        pass
+            items.append(await _to_response(db, t, count_override))
+    finally:
+        if neo4j_driver:
+            neo4j_driver.close()
     return LinkTypeListResponse(items=items, total=len(items))
 
 
@@ -145,11 +251,38 @@ async def create_link_type(
 
 
 @router.get("/{link_type_id}", response_model=LinkTypeResponse)
-async def get_link_type(link_type_id: str, db: AsyncSession = Depends(get_db)):
+async def get_link_type(
+    link_type_id: str,
+    count_from_neo4j: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    return await _to_response(db, link_type)
+    count_override = None
+    if count_from_neo4j:
+        neo4j_ds = await _get_first_neo4j_datasource(db)
+        if neo4j_ds:
+            source_type = await db.get(ObjectType, link_type.source_object_type_id)
+            target_type = await db.get(ObjectType, link_type.target_object_type_id)
+            if source_type and target_type:
+                try:
+                    from neo4j import GraphDatabase
+
+                    username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+                    password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+                    uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+                    driver = GraphDatabase.driver(uri, auth=(username, password))
+                    try:
+                        src_label = _neo4j_safe_label(source_type.name)
+                        tgt_label = _neo4j_safe_label(target_type.name)
+                        rel_type = _neo4j_safe_rel_type(link_type.name)
+                        count_override = _neo4j_rel_count(driver, src_label, tgt_label, rel_type)
+                    finally:
+                        driver.close()
+                except Exception:
+                    pass
+    return await _to_response(db, link_type, count_override)
 
 
 @router.put("/{link_type_id}", response_model=LinkTypeResponse)
@@ -373,9 +506,60 @@ async def list_link_instances(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
+    """List link instances. Links page loads from Neo4j when a Neo4j data source exists."""
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+
+    neo4j_ds = await _get_first_neo4j_datasource(db)
+    if neo4j_ds:
+        source_type = await db.get(ObjectType, link_type.source_object_type_id)
+        target_type = await db.get(ObjectType, link_type.target_object_type_id)
+        if source_type and target_type:
+            try:
+                from neo4j import GraphDatabase
+            except ImportError:
+                pass
+            else:
+                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+                driver = GraphDatabase.driver(uri, auth=(username, password))
+                try:
+                    src_label = _neo4j_safe_label(source_type.name)
+                    tgt_label = _neo4j_safe_label(target_type.name)
+                    rel_type = _neo4j_safe_rel_type(link_type.name)
+                    if link_type.cardinality in ("many-to-one", "one-to-many"):
+                        src_key = link_type.target_key_property or "id"
+                        tgt_key = src_key
+                    else:
+                        src_key = link_type.source_key_property or "id"
+                        tgt_key = link_type.target_key_property or "id"
+                    rows, total = _query_neo4j_relationships(
+                        driver, src_label, tgt_label, rel_type, src_key, tgt_key, limit, offset
+                    )
+                    return LinkInstanceListResponse(
+                        items=[
+                            LinkInstanceResponse(
+                                id=f"neo4j:{r['source_key_value']}:{r['target_key_value']}",
+                                link_type_id=link_type_id,
+                                source_object_id="",
+                                target_object_id="",
+                                source_key_value=r["source_key_value"],
+                                target_key_value=r["target_key_value"],
+                                source_data=r["source_data"],
+                                target_data=r["target_data"],
+                                created_at=None,
+                                updated_at=None,
+                            )
+                            for r in rows
+                        ],
+                        total=total,
+                    )
+                except Exception:
+                    pass
+                finally:
+                    driver.close()
 
     # Many-to-many with dataset: connections come from junction table
     if (
@@ -410,6 +594,45 @@ async def list_link_instances(
                     )
                 )
         return LinkInstanceListResponse(items=items, total=total)
+    # many-to-one / one-to-many: from source dataset
+    if (
+        link_type.cardinality in ("many-to-one", "one-to-many")
+        and link_type.source_key_property
+    ):
+        source_type = await db.get(ObjectType, link_type.source_object_type_id)
+        if source_type and source_type.dataset_id:
+            try:
+                rows, _ = await fetch_dataset_rows(db, source_type.dataset_id, limit=limit, offset=offset)
+                total = await get_dataset_row_count_where_not_null(
+                    db, source_type.dataset_id, link_type.source_key_property
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
+            fk_col = link_type.source_key_property
+            src_id_col = "id" if (rows and "id" in rows[0]) else (list(rows[0].keys())[0] if rows else "id")
+            items = []
+            for i, row in enumerate(rows):
+                tgt_val = row.get(fk_col)
+                if tgt_val is None:
+                    continue
+                src_val = row.get(src_id_col)
+                if src_val is None:
+                    continue
+                items.append(
+                    LinkInstanceResponse(
+                        id=f"dataset:{offset + i}",
+                        link_type_id=link_type_id,
+                        source_object_id="",
+                        target_object_id="",
+                        source_key_value=str(src_val),
+                        target_key_value=str(tgt_val),
+                        source_data={k: v for k, v in row.items() if v is not None},
+                        target_data={fk_col: tgt_val},
+                        created_at=None,
+                        updated_at=None,
+                    )
+                )
+            return LinkInstanceListResponse(items=items, total=total)
     # Otherwise: from link_instances table
     result = await db.execute(
         select(LinkInstance)

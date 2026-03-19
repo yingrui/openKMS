@@ -2,7 +2,7 @@
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,16 +95,122 @@ async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
     return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
 
 
+async def _get_first_neo4j_datasource(db: AsyncSession) -> DataSource | None:
+    result = await db.execute(select(DataSource).where(DataSource.kind == "neo4j").limit(1))
+    return result.scalar_one_or_none()
+
+
+def _neo4j_node_count(driver, label: str) -> int:
+    """Return count of nodes with the given label in Neo4j."""
+    with driver.session() as session:
+        result = session.run(f"MATCH (n:{label}) RETURN count(n) AS c")
+        row = result.single()
+        return row["c"] or 0
+
+
+def _query_neo4j_nodes(
+    driver,
+    label: str,
+    search: str | None,
+    limit: int,
+    offset: int,
+    id_prop: str,
+) -> tuple[list[dict], int]:
+    """Query nodes from Neo4j by label. Returns (rows, total)."""
+    search_trimmed = search.strip() if search else None
+    with driver.session() as session:
+        # Count query
+        if search_trimmed:
+            count_result = session.run(
+                f"""
+                MATCH (n:{label})
+                WHERE any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))
+                RETURN count(n) AS c
+                """,
+                search=search_trimmed,
+            )
+        else:
+            count_result = session.run(f"MATCH (n:{label}) RETURN count(n) AS c")
+        total = count_result.single()["c"] or 0
+
+        # Data query
+        if search_trimmed:
+            result = session.run(
+                f"""
+                MATCH (n:{label})
+                WHERE any(k IN keys(n) WHERE toLower(toString(n[k])) CONTAINS toLower($search))
+                RETURN n
+                SKIP $offset LIMIT $limit
+                """,
+                search=search_trimmed,
+                offset=offset,
+                limit=limit,
+            )
+        else:
+            result = session.run(
+                f"MATCH (n:{label}) RETURN n SKIP $offset LIMIT $limit",
+                offset=offset,
+                limit=limit,
+            )
+        def _serialize_val(v):
+            if v is None:
+                return None
+            if isinstance(v, (str, int, float, bool)):
+                return v
+            if hasattr(v, "isoformat"):  # datetime
+                return v.isoformat()
+            return str(v)
+
+        rows = []
+        for record in result:
+            node = record["n"]
+            if node is None:
+                continue
+            props = dict(node) if hasattr(node, "__iter__") and hasattr(node, "keys") else {}
+            data = {k: _serialize_val(v) for k, v in props.items() if v is not None}
+            row_id = data.get(id_prop, list(data.values())[0] if data else None)
+            if row_id is not None:
+                rows.append({"id": row_id, "data": data})
+        return rows, total
+
+
 @router.get("", response_model=ObjectTypeListResponse)
-async def list_object_types(db: AsyncSession = Depends(get_db)):
-    """List all object types. Available to all authenticated users."""
+async def list_object_types(
+    count_from_neo4j: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    """List all object types. When count_from_neo4j=true, instance_count comes from Neo4j (Objects page)."""
     result = await db.execute(select(ObjectType).order_by(ObjectType.created_at.desc()))
     types = result.scalars().all()
     items = []
-    for t in types:
-        count = await _resolve_instance_count(db, t)
-        ds_name = await _dataset_name(db, t.dataset_id)
-        items.append(_to_response(t, count, ds_name))
+    neo4j_driver = None
+    if count_from_neo4j:
+        neo4j_ds = await _get_first_neo4j_datasource(db)
+        if neo4j_ds:
+            try:
+                from neo4j import GraphDatabase
+
+                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+                neo4j_driver = GraphDatabase.driver(uri, auth=(username, password))
+            except ImportError:
+                neo4j_driver = None
+    try:
+        for t in types:
+            if neo4j_driver:
+                try:
+                    label = _neo4j_safe_label(t.name)
+                    count = _neo4j_node_count(neo4j_driver, label)
+                except Exception:
+                    count = await _resolve_instance_count(db, t)
+            else:
+                count = await _resolve_instance_count(db, t)
+            ds_name = await _dataset_name(db, t.dataset_id)
+            items.append(_to_response(t, count, ds_name))
+    finally:
+        if neo4j_driver:
+            neo4j_driver.close()
     return ObjectTypeListResponse(items=items, total=len(items))
 
 
@@ -135,10 +241,33 @@ async def create_object_type(
 
 
 @router.get("/{object_type_id}", response_model=ObjectTypeResponse)
-async def get_object_type(object_type_id: str, db: AsyncSession = Depends(get_db)):
+async def get_object_type(
+    object_type_id: str,
+    count_from_neo4j: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
+    if count_from_neo4j:
+        neo4j_ds = await _get_first_neo4j_datasource(db)
+        if neo4j_ds:
+            try:
+                from neo4j import GraphDatabase
+
+                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+                driver = GraphDatabase.driver(uri, auth=(username, password))
+                try:
+                    label = _neo4j_safe_label(obj_type.name)
+                    count = _neo4j_node_count(driver, label)
+                finally:
+                    driver.close()
+                ds_name = await _dataset_name(db, obj_type.dataset_id)
+                return _to_response(obj_type, count, ds_name)
+            except Exception:
+                pass
     count = await _resolve_instance_count(db, obj_type)
     ds_name = await _dataset_name(db, obj_type.dataset_id)
     return _to_response(obj_type, count, ds_name)
@@ -266,28 +395,103 @@ async def index_objects_to_neo4j(
 async def list_object_instances(
     object_type_id: str,
     search: str | None = None,
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
+    """List object instances. Objects page loads from Neo4j when a Neo4j data source exists."""
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
-    query = select(ObjectInstance).where(ObjectInstance.object_type_id == object_type_id)
-    if search and search.strip():
-        pattern = f"%{search.strip()}%"
-        query = query.where(cast(ObjectInstance.data, String).ilike(pattern))
-    query = query.order_by(ObjectInstance.created_at.desc())
-    result = await db.execute(query)
-    instances = result.scalars().all()
-    return ObjectInstanceListResponse(
-        items=[ObjectInstanceResponse(
-            id=o.id,
-            object_type_id=o.object_type_id,
-            data=o.data or {},
-            created_at=o.created_at,
-            updated_at=o.updated_at,
-        ) for o in instances],
-        total=len(instances),
+
+    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
+    id_prop = (
+        "id"
+        if (prop_names and "id" in prop_names)
+        else (prop_names[0] if prop_names else "id")
     )
+
+    neo4j_ds = await _get_first_neo4j_datasource(db)
+    if neo4j_ds:
+        try:
+            from neo4j import GraphDatabase
+        except ImportError:
+            pass
+        else:
+            username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+            password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+            uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+            driver = GraphDatabase.driver(uri, auth=(username, password))
+            try:
+                label = _neo4j_safe_label(obj_type.name)
+                rows, total = _query_neo4j_nodes(
+                    driver, label, search, limit, offset, id_prop
+                )
+                return ObjectInstanceListResponse(
+                    items=[
+                        ObjectInstanceResponse(
+                            id=str(r["id"]),
+                            object_type_id=object_type_id,
+                            data=r["data"],
+                            created_at=None,
+                            updated_at=None,
+                        )
+                        for r in rows
+                    ],
+                    total=total,
+                )
+            except Exception:
+                pass
+            finally:
+                driver.close()
+
+    if obj_type.dataset_id:
+        try:
+            rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=limit, offset=offset)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        id_col = (
+            "id"
+            if (prop_names and "id" in prop_names) or (rows and rows[0] and "id" in rows[0])
+            else (prop_names[0] if prop_names else (list(rows[0].keys())[0] if rows else "id"))
+        )
+        items = []
+        for row in rows:
+            row_id = row.get(id_col, row.get(list(row.keys())[0]) if row else None)
+            if row_id is None:
+                continue
+            data = {k: v for k, v in row.items() if v is not None}
+            items.append(
+                ObjectInstanceResponse(
+                    id=str(row_id),
+                    object_type_id=object_type_id,
+                    data=data,
+                    created_at=None,
+                    updated_at=None,
+                )
+            )
+        return ObjectInstanceListResponse(items=items, total=total)
+    else:
+        query = select(ObjectInstance).where(ObjectInstance.object_type_id == object_type_id)
+        if search and search.strip():
+            pattern = f"%{search.strip()}%"
+            query = query.where(cast(ObjectInstance.data, String).ilike(pattern))
+        query = query.order_by(ObjectInstance.created_at.desc())
+        result = await db.execute(query)
+        instances = result.scalars().all()
+        return ObjectInstanceListResponse(
+            items=[
+                ObjectInstanceResponse(
+                    id=o.id,
+                    object_type_id=o.object_type_id,
+                    data=o.data or {},
+                    created_at=o.created_at,
+                    updated_at=o.updated_at,
+                )
+                for o in instances
+            ],
+            total=len(instances),
+        )
 
 
 @router.post("/{object_type_id}/objects", response_model=ObjectInstanceResponse, status_code=201)

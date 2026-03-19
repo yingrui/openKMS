@@ -9,6 +9,7 @@ const defaults: FeatureToggles = {
   articles: true,
   knowledgeBases: true,
   objectsAndLinks: true,
+  hasNeo4jDataSource: false,
 };
 
 interface FeatureTogglesContextValue {

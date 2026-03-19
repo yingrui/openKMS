@@ -79,14 +79,17 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id); managed in Console → Object Types; instance_count from dataset row count when linked |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id); managed in Console → Object Types |
 | Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
 | Link types | ✅ | Schema for relationships between two object types; managed in Console → Link Types |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
-| Objects list | ✅ | User-facing list of object types at `/objects`; click to browse instances |
-| Links list | ✅ | User-facing list of link types at `/links`; click to browse link instances |
+| Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
+| Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
+| Object Explorer | ✅ | Placeholder page at `/object-explorer`; under Ontology sidebar menu |
+| Ontology sidebar | ✅ | Expandable "Ontology" menu with Objects, Links, Object Explorer; shown when Neo4j exists or objectsAndLinks toggle |
 | Search | ✅ | Optional search filter on object instances |
-| Feature toggle | ✅ | `objectsAndLinks` toggle in Console; sidebar items and routes gated |
+| Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
+| Console counts | ✅ | Console Object Types and Link Types: instance_count and link_count from datasets (PostgreSQL) |
 
 - Toggle visibility via Console → Feature Toggles
 
@@ -258,23 +261,23 @@
 | DELETE | `/api/glossaries/{id}/terms/{term_id}` | Delete term |
 | GET | `/api/glossaries/{id}/export` | Export terms as JSON |
 | POST | `/api/glossaries/{id}/import` | Import terms (body: `{ terms, mode: "append" \| "replace" }`) |
-| GET | `/api/object-types` | List object types (authenticated) |
+| GET | `/api/object-types` | List object types (authenticated); ?count_from_neo4j=true for instance_count from Neo4j |
 | POST | `/api/object-types` | Create object type (admin-only) |
-| GET | `/api/object-types/{id}` | Get object type |
+| GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
 | PUT | `/api/object-types/{id}` | Update object type (admin-only) |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (optional `?search=`) |
+| GET | `/api/object-types/{id}/objects` | List object instances (from Neo4j when available; optional ?search=, ?limit=, ?offset=) |
 | POST | `/api/object-types/{id}/objects` | Create object instance (admin-only) |
 | GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only) |
 | POST | `/api/object-types/index-to-neo4j` | Index object type datasets to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
-| GET | `/api/link-types` | List link types (authenticated) |
+| GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
 | POST | `/api/link-types` | Create link type (admin-only) |
-| GET | `/api/link-types/{id}` | Get link type |
+| GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
 | PUT | `/api/link-types/{id}` | Update link type (admin-only) |
 | DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
-| GET | `/api/link-types/{id}/links` | List link instances (from junction table when M:M with dataset; ?limit=, ?offset=) |
+| GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; ?limit=, ?offset=) |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
 | POST | `/api/link-types/index-to-neo4j` | Index link types (M:M junction + M:1/1:M from source dataset) to Neo4j as relationships (admin-only) |
@@ -292,7 +295,7 @@
 | GET | `/api/datasets/{id}/metadata` | Get column metadata from information_schema (admin-only) |
 | PUT | `/api/datasets/{id}` | Update dataset (admin-only) |
 | DELETE | `/api/datasets/{id}` | Delete dataset (admin-only) |
-| GET | `/api/feature-toggles` | Get feature toggle state (authenticated) |
+| GET | `/api/feature-toggles` | Get feature toggle state (includes hasNeo4jDataSource; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ## Configuration

@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_admin, require_auth
 from app.database import get_db
+from app.models.data_source import DataSource
 from app.models.feature_toggle import FeatureToggle
 
 DEFAULTS = {"articles": True, "knowledgeBases": True, "objectsAndLinks": True}
@@ -17,6 +18,7 @@ class FeatureTogglesResponse(BaseModel):
     articles: bool = True
     knowledgeBases: bool = True
     objectsAndLinks: bool = True
+    hasNeo4jDataSource: bool = False
 
 
 class FeatureTogglesUpdate(BaseModel):
@@ -34,7 +36,9 @@ async def _load_toggles(db: AsyncSession) -> dict[str, bool]:
 @router.get("", response_model=FeatureTogglesResponse, dependencies=[Depends(require_auth)])
 async def get_feature_toggles(db: AsyncSession = Depends(get_db)):
     toggles = await _load_toggles(db)
-    return FeatureTogglesResponse(**toggles)
+    result = await db.execute(select(DataSource).where(DataSource.kind == "neo4j").limit(1))
+    has_neo4j = result.scalar_one_or_none() is not None
+    return FeatureTogglesResponse(**toggles, hasNeo4jDataSource=has_neo4j)
 
 
 @router.put("", response_model=FeatureTogglesResponse, dependencies=[Depends(require_admin)])

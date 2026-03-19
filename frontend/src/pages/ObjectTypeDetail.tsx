@@ -38,7 +38,7 @@ export function ObjectTypeDetail() {
   const loadType = useCallback(async () => {
     if (!typeId) return;
     try {
-      const data = await fetchObjectType(typeId);
+      const data = await fetchObjectType(typeId, { countFromNeo4j: true });
       setObjectType(data);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load object type');

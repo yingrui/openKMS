@@ -61,8 +61,8 @@ class ObjectInstanceResponse(BaseModel):
     id: str
     object_type_id: str
     data: dict = {}
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None  # None when from dataset
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

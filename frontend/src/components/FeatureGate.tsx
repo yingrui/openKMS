@@ -11,7 +11,10 @@ export function FeatureGate({
   children: React.ReactNode;
 }) {
   const { toggles } = useFeatureToggles();
-  const enabled = toggles[feature];
+  const enabled =
+    feature === 'objectsAndLinks'
+      ? toggles.objectsAndLinks || !!toggles.hasNeo4jDataSource
+      : toggles[feature];
 
   if (!enabled) {
     return <Navigate to="/" replace />;

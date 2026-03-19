@@ -21,6 +21,7 @@ import { ObjectsList } from './pages/ObjectsList';
 import { ObjectTypeDetail } from './pages/ObjectTypeDetail';
 import { LinksList } from './pages/LinksList';
 import { LinkTypeDetail } from './pages/LinkTypeDetail';
+import { ObjectExplorer } from './pages/ObjectExplorer';
 import { DocumentDetail } from './pages/DocumentDetail';
 import { DocumentChannelSettings } from './pages/DocumentChannelSettings';
 import { DocumentChannels } from './pages/DocumentChannels';
@@ -69,6 +70,7 @@ function App() {
           <Route path="objects/:typeId" element={<FeatureGate feature="objectsAndLinks"><ObjectTypeDetail /></FeatureGate>} />
           <Route path="links" element={<FeatureGate feature="objectsAndLinks"><LinksList /></FeatureGate>} />
           <Route path="links/:typeId" element={<FeatureGate feature="objectsAndLinks"><LinkTypeDetail /></FeatureGate>} />
+          <Route path="object-explorer" element={<FeatureGate feature="objectsAndLinks"><ObjectExplorer /></FeatureGate>} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />
             <Route path="object-types" element={<ConsoleObjectTypes />} />

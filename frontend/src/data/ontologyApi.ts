@@ -27,9 +27,10 @@ export interface ObjectTypeListResponse {
   total: number;
 }
 
-export async function fetchObjectTypes(): Promise<ObjectTypeListResponse> {
+export async function fetchObjectTypes(params?: { countFromNeo4j?: boolean }): Promise<ObjectTypeListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types`, {
+  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
+  const res = await fetch(`${config.apiUrl}/api/object-types${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -37,9 +38,13 @@ export async function fetchObjectTypes(): Promise<ObjectTypeListResponse> {
   return res.json();
 }
 
-export async function fetchObjectType(objectTypeId: string): Promise<ObjectTypeResponse> {
+export async function fetchObjectType(
+  objectTypeId: string,
+  params?: { countFromNeo4j?: boolean }
+): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
+  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -253,9 +258,10 @@ export interface LinkTypeListResponse {
   total: number;
 }
 
-export async function fetchLinkTypes(): Promise<LinkTypeListResponse> {
+export async function fetchLinkTypes(params?: { countFromNeo4j?: boolean }): Promise<LinkTypeListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types`, {
+  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
+  const res = await fetch(`${config.apiUrl}/api/link-types${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -263,9 +269,13 @@ export async function fetchLinkTypes(): Promise<LinkTypeListResponse> {
   return res.json();
 }
 
-export async function fetchLinkType(linkTypeId: string): Promise<LinkTypeResponse> {
+export async function fetchLinkType(
+  linkTypeId: string,
+  params?: { countFromNeo4j?: boolean }
+): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
+  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });

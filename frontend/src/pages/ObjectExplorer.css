@@ -1,0 +1,41 @@
+.object-explorer {
+  width: 100%;
+}
+
+.object-explorer .page-header {
+  margin-bottom: 32px;
+}
+
+.object-explorer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.object-explorer-header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.object-explorer .page-subtitle {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.object-explorer-icon {
+  flex-shrink: 0;
+  opacity: 0.4;
+  color: var(--color-accent);
+}
+
+.object-explorer-placeholder {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-muted);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border);
+}

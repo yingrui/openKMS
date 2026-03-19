@@ -75,7 +75,7 @@ flowchart TB
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
-    Objects[ObjectsList, ObjectTypeDetail]
+    Objects[ObjectsList, ObjectTypeDetail, ObjectExplorer]
     Links[LinksList, LinkTypeDetail]
     Console[Console: Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, DatasetDetail]
   end
@@ -102,7 +102,7 @@ frontend/src/
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    ├── ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx
+    ├── ObjectsList.tsx, ObjectTypeDetail.tsx, ObjectExplorer.tsx, LinksList.tsx, LinkTypeDetail.tsx
     └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, ConsoleDatasetDetail
 ```
 
@@ -118,11 +118,11 @@ backend/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
-│   │   ├── object_types.py     # CRUD /api/object-types (admin write), instances under /object-types/{id}/objects
-│   │   ├── link_types.py       # CRUD /api/link-types (admin write), instances under /link-types/{id}/links
+│   │   ├── object_types.py     # CRUD /api/object-types; instances from Neo4j when available; count_from_neo4j param for Objects page
+│   │   ├── link_types.py       # CRUD /api/link-types; instances from Neo4j when available; count_from_neo4j param for Links page
 │   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test; credentials encrypted
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
-│   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only)
+│   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables

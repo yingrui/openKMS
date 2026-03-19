@@ -84,6 +84,12 @@
 - [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
 - [x] Many-to-one/one-to-many: link_count from source object type dataset where FK column is not null
 - [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links buttons when Neo4j data source exists; POST /api/object-types/index-to-neo4j, POST /api/link-types/index-to-neo4j
+- [x] Ontology sidebar: expandable "Ontology" menu with Objects, Links, Object Explorer submenus
+- [x] Objects & Links visible when Neo4j data source exists (hasNeo4jDataSource in feature toggles)
+- [x] Object Explorer: placeholder page at /object-explorer
+- [x] Objects page: instances and instance_count from Neo4j; Console Object Types: counts from datasets
+- [x] Links page: instances and link_count from Neo4j; Console Link Types: counts from datasets
+- [x] API params: count_from_neo4j on GET /api/object-types, /object-types/{id}, /api/link-types, /link-types/{id}
 
 ### 4. Authentication
 

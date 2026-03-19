@@ -11,7 +11,7 @@ export function LinksList() {
 
   const load = async () => {
     try {
-      const data = await fetchLinkTypes();
+      const data = await fetchLinkTypes({ countFromNeo4j: true });
       setTypes(data.items);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load link types');

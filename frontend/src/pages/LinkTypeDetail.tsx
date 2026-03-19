@@ -38,7 +38,7 @@ export function LinkTypeDetail() {
   const loadType = useCallback(async () => {
     if (!typeId) return;
     try {
-      const data = await fetchLinkType(typeId);
+      const data = await fetchLinkType(typeId, { countFromNeo4j: true });
       setLinkType(data);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load link type');

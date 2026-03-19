@@ -19,6 +19,8 @@ import {
   Box,
   Link2,
   Table,
+  Network,
+  Compass,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -113,6 +115,13 @@ export function Sidebar() {
 
   const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
   const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
+  const [ontologyExpanded, setOntologyExpanded] = useState(false);
+
+  const onOntology = location.pathname.startsWith('/objects') || location.pathname.startsWith('/links') || location.pathname.startsWith('/object-explorer');
+
+  useEffect(() => {
+    if (onOntology) setOntologyExpanded(true);
+  }, [onOntology]);
 
   useEffect(() => {
     if (onDocuments && channels.length > 0) {
@@ -262,27 +271,58 @@ export function Sidebar() {
             <span>Knowledge Bases</span>
           </NavLink>
         )}
-        {toggles.objectsAndLinks && (
-          <>
-            <NavLink
-              to="/objects"
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-              }
-            >
-              <Box size={18} strokeWidth={1.75} />
-              <span>Objects</span>
-            </NavLink>
-            <NavLink
-              to="/links"
-              className={({ isActive }) =>
-                `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-              }
-            >
-              <Link2 size={18} strokeWidth={1.75} />
-              <span>Links</span>
-            </NavLink>
-          </>
+        {(toggles.objectsAndLinks || toggles.hasNeo4jDataSource) && (
+          <div className="sidebar-menu-group">
+            <div className="sidebar-link sidebar-link-parent">
+              <button
+                type="button"
+                className="sidebar-parent-toggle"
+                onClick={() => setOntologyExpanded((e) => !e)}
+                aria-label={ontologyExpanded ? 'Collapse' : 'Expand'}
+              >
+                <ChevronRight size={14} className={ontologyExpanded ? 'expanded' : ''} />
+              </button>
+              <button
+                type="button"
+                className="sidebar-parent-label"
+                onClick={() => setOntologyExpanded((e) => !e)}
+              >
+                <Network size={18} strokeWidth={1.75} />
+                <span>Ontology</span>
+              </button>
+            </div>
+            {ontologyExpanded && (
+              <div className="sidebar-subnav">
+                <NavLink
+                  to="/objects"
+                  className={({ isActive }) =>
+                    `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                  }
+                >
+                  <Box size={18} strokeWidth={1.75} />
+                  <span>Objects</span>
+                </NavLink>
+                <NavLink
+                  to="/links"
+                  className={({ isActive }) =>
+                    `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                  }
+                >
+                  <Link2 size={18} strokeWidth={1.75} />
+                  <span>Links</span>
+                </NavLink>
+                <NavLink
+                  to="/object-explorer"
+                  className={({ isActive }) =>
+                    `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                  }
+                >
+                  <Compass size={18} strokeWidth={1.75} />
+                  <span>Object Explorer</span>
+                </NavLink>
+              </div>
+            )}
+          </div>
         )}
         <NavLink
           to="/glossaries"
