@@ -10,6 +10,7 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
+from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelUpdate
 
 router = APIRouter(prefix="/document-channels", tags=["document-channels"], dependencies=[Depends(require_auth)])
@@ -39,6 +40,7 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
                 auto_process=c.auto_process,
                 extraction_model_id=c.extraction_model_id,
                 extraction_schema=_strip_field_order(c.extraction_schema),
+                label_config=getattr(c, "label_config", None),
                 children=_build_tree(channels, c.id),
             )
         )
@@ -94,6 +96,7 @@ async def create_document_channel(
         auto_process=channel.auto_process,
         extraction_model_id=channel.extraction_model_id,
         extraction_schema=_strip_field_order(channel.extraction_schema),
+        label_config=getattr(channel, "label_config", None),
         children=[],
     )
 
@@ -188,7 +191,7 @@ def _collect_descendant_ids(channels: list[DocumentChannel], channel_id: str, ou
     out.add(channel_id)
     for c in channels:
         if c.parent_id == channel_id:
-            _collect_descendant_ids(channels, c.id, out    )
+            _collect_descendant_ids(channels, c.id, out)
 
 
 @router.post("/{channel_id}/reorder", status_code=204)
@@ -281,6 +284,26 @@ async def update_document_channel(
 
     if "extraction_schema" in update_data and update_data["extraction_schema"] is not None:
         update_data["extraction_schema"] = _strip_field_order(update_data["extraction_schema"])
+
+    if "label_config" in update_data and update_data["label_config"] is not None:
+        cfg = update_data["label_config"]
+        if not isinstance(cfg, list):
+            raise HTTPException(status_code=400, detail="label_config must be a list")
+        for item in cfg:
+            if not isinstance(item, dict):
+                continue
+            ot_id = item.get("object_type_id")
+            if not ot_id:
+                raise HTTPException(status_code=400, detail="label_config item must have object_type_id")
+            ot = await db.get(ObjectType, ot_id)
+            if not ot:
+                raise HTTPException(status_code=400, detail=f"Object type {ot_id} not found")
+            if not getattr(ot, "is_master_data", False):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Object type '{ot.name}' is not master data. Only master data object types can be used for labels.",
+                )
+
     for key, value in update_data.items():
         setattr(channel, key, value)
 

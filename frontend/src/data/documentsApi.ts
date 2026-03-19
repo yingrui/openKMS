@@ -13,6 +13,7 @@ export interface DocumentResponse {
   markdown?: string | null;
   parsing_result?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
+  labels?: Record<string, string | string[]> | null;
   created_at: string;
   updated_at: string;
 }
@@ -202,12 +203,13 @@ export async function extractDocumentMetadata(documentId: string): Promise<Docum
 
 export async function updateDocument(
   documentId: string,
-  params: { name?: string; channel_id?: string }
+  params: { name?: string; channel_id?: string; labels?: Record<string, string | string[]> | null }
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const body: Record<string, string> = {};
+  const body: Record<string, unknown> = {};
   if (params.name !== undefined) body.name = params.name;
   if (params.channel_id !== undefined) body.channel_id = params.channel_id;
+  if (params.labels !== undefined) body.labels = params.labels;
   const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch, Tag } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
   findChannel,
@@ -11,6 +11,7 @@ import {
 } from '../data/channelUtils';
 import { fetchPipelines, type PipelineResponse } from '../data/pipelinesApi';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
+import { fetchObjectTypes, type ObjectTypeResponse } from '../data/ontologyApi';
 import { toast } from 'sonner';
 import { updateChannel } from '../data/channelsApi';
 import './DocumentChannelSettings.css';
@@ -49,6 +50,8 @@ export function DocumentChannelSettings() {
   const [pipelinesLoading, setPipelinesLoading] = useState(true);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
+  const [masterDataObjectTypes, setMasterDataObjectTypes] = useState<ObjectTypeResponse[]>([]);
+  const [objectTypesLoading, setObjectTypesLoading] = useState(true);
 
   const channel = channels.length > 0 ? findChannel(channels, channelId) : null;
   const [channelNameField, setChannelNameField] = useState('');
@@ -57,10 +60,11 @@ export function DocumentChannelSettings() {
   const [autoProcess, setAutoProcess] = useState(false);
   const [extractionModelId, setExtractionModelId] = useState('');
   const [extractionSchema, setExtractionSchema] = useState<ExtractionSchemaField[]>([]);
+  const [labelConfig, setLabelConfig] = useState<{ key: string; object_type_id: string; display_label?: string; allow_multiple?: boolean }[]>([]);
   const [saving, setSaving] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
 
-  type TabId = 'general' | 'processing' | 'extraction';
+  type TabId = 'general' | 'processing' | 'extraction' | 'labels';
   const [activeTab, setActiveTab] = useState<TabId>('general');
 
   const channelName = getDocumentChannelName(channels, channelId);
@@ -97,6 +101,22 @@ export function DocumentChannelSettings() {
     loadModels();
   }, [loadModels]);
 
+  const loadMasterDataObjectTypes = useCallback(async () => {
+    setObjectTypesLoading(true);
+    try {
+      const res = await fetchObjectTypes({ isMasterData: true });
+      setMasterDataObjectTypes(res.items);
+    } catch {
+      setMasterDataObjectTypes([]);
+    } finally {
+      setObjectTypesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMasterDataObjectTypes();
+  }, [loadMasterDataObjectTypes]);
+
   useEffect(() => {
     if (channel) {
       setChannelNameField(channel.name || '');
@@ -105,6 +125,17 @@ export function DocumentChannelSettings() {
       setAutoProcess(channel.auto_process || false);
       setExtractionModelId(channel.extraction_model_id || '');
       setExtractionSchema(extractionSchemaToEditorFields(channel.extraction_schema ?? null));
+      const lc = channel.label_config;
+      setLabelConfig(
+        Array.isArray(lc)
+          ? lc.map((x: { key?: string; object_type_id?: string; display_label?: string; allow_multiple?: boolean }) => ({
+              key: x.key ?? '',
+              object_type_id: x.object_type_id ?? '',
+              display_label: x.display_label ?? '',
+              allow_multiple: x.allow_multiple ?? false,
+            }))
+          : []
+      );
     }
   }, [channel]);
 
@@ -118,6 +149,14 @@ export function DocumentChannelSettings() {
     setSaving(true);
     try {
       const schemaDict = editorFieldsToJsonSchema(extractionSchema);
+      const labelConfigToSave = labelConfig
+        .filter((l) => l.key.trim() && l.object_type_id)
+        .map((l) => ({
+          key: l.key.trim(),
+          object_type_id: l.object_type_id,
+          display_label: l.display_label?.trim() || null,
+          allow_multiple: l.allow_multiple ?? false,
+        }));
       await updateChannel(channelId, {
         name: channelNameField.trim() || channel?.name,
         description: channelDescription.trim() || null,
@@ -125,6 +164,7 @@ export function DocumentChannelSettings() {
         auto_process: autoProcess,
         extraction_model_id: extractionModelId || null,
         extraction_schema: schemaDict ?? null,
+        label_config: labelConfigToSave.length > 0 ? labelConfigToSave : null,
       });
       if (refreshChannels) await refreshChannels();
       toast.success('Channel settings saved');
@@ -168,10 +208,27 @@ export function DocumentChannelSettings() {
     if (preset) setExtractionSchema([...preset]);
   };
 
+  const addLabelConfig = () => {
+    setLabelConfig((prev) => [...prev, { key: '', object_type_id: '', display_label: '', allow_multiple: false }]);
+  };
+
+  const updateLabelConfig = (index: number, field: Partial<typeof labelConfig[0]>) => {
+    setLabelConfig((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...field };
+      return next;
+    });
+  };
+
+  const removeLabelConfig = (index: number) => {
+    setLabelConfig((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
     { id: 'general', label: 'General', icon: Settings },
     { id: 'processing', label: 'Processing', icon: Zap },
     { id: 'extraction', label: 'Metadata extraction', icon: FileSearch },
+    { id: 'labels', label: 'Labels', icon: Tag },
   ];
 
   return (
@@ -434,6 +491,83 @@ export function DocumentChannelSettings() {
                 Add fields or choose a preset. If empty, the default StructuredDict schema (abstract, author, publish_date, source, tags, categories) will be used.
               </p>
             )}
+          </div>
+        </section>
+        )}
+
+        {activeTab === 'labels' && (
+        <section className="document-channel-settings-section">
+          <h2>Document labels</h2>
+          <p className="document-channel-settings-hint">
+            Configure which labels can be assigned to documents in this channel. Each label maps to a Master Data object type. Only object types marked as Master Data in Console → Object Types appear here.
+          </p>
+          <div className="document-channel-settings-field">
+            <label>Label configs</label>
+            <div className="dcs-schema-list">
+              {labelConfig.map((item, i) => (
+                <div key={i} className="dcs-schema-item">
+                  <div className="dcs-schema-row">
+                    <input
+                      type="text"
+                      placeholder="key (e.g. product)"
+                      value={item.key}
+                      onChange={(e) => updateLabelConfig(i, { key: e.target.value })}
+                      className="dcs-schema-input dcs-schema-key"
+                    />
+                    <select
+                      value={item.object_type_id}
+                      onChange={(e) => updateLabelConfig(i, { object_type_id: e.target.value })}
+                      className="dcs-schema-select"
+                    >
+                      <option value="">Select object type</option>
+                      {masterDataObjectTypes.map((ot) => (
+                        <option key={ot.id} value={ot.id}>
+                          {ot.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Display label (optional)"
+                      value={item.display_label ?? ''}
+                      onChange={(e) => updateLabelConfig(i, { display_label: e.target.value })}
+                      className="dcs-schema-input"
+                      style={{ minWidth: 120 }}
+                    />
+                    <label className="dcs-schema-required">
+                      <input
+                        type="checkbox"
+                        checked={!!item.allow_multiple}
+                        onChange={(e) => updateLabelConfig(i, { allow_multiple: e.target.checked })}
+                      />
+                      <span>Allow multiple</span>
+                    </label>
+                    <button
+                      type="button"
+                      className="dcs-schema-remove"
+                      onClick={() => removeLabelConfig(i)}
+                      aria-label="Remove label config"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {objectTypesLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                <Loader2 size={16} className="dcs-spinner" />
+                <span>Loading master data object types…</span>
+              </div>
+            ) : masterDataObjectTypes.length === 0 ? (
+              <p className="document-channel-settings-hint">
+                No master data object types. Mark object types as Master Data in Console → Object Types.
+              </p>
+            ) : null}
+            <button type="button" className="btn btn-secondary dcs-add-field" onClick={addLabelConfig} style={{ marginTop: 8 }}>
+              <Plus size={14} />
+              <span>Add label</span>
+            </button>
           </div>
         </section>
         )}

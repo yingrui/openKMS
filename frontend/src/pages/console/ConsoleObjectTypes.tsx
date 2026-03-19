@@ -130,6 +130,8 @@ export function ConsoleObjectTypes() {
   const [indexNeo4jId, setIndexNeo4jId] = useState('');
   const [indexing, setIndexing] = useState(false);
   const [formKeyProperty, setFormKeyProperty] = useState('');
+  const [formIsMasterData, setFormIsMasterData] = useState(false);
+  const [formDisplayProperty, setFormDisplayProperty] = useState('');
 
   const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
 
@@ -200,6 +202,8 @@ export function ConsoleObjectTypes() {
     setFormDatasetId('');
     setFormProperties([]);
     setFormKeyProperty('');
+    setFormIsMasterData(false);
+    setFormDisplayProperty('');
     setShowForm(true);
   };
 
@@ -208,6 +212,8 @@ export function ConsoleObjectTypes() {
     setFormName(t.name);
     setFormDescription(t.description || '');
     setFormKeyProperty(t.key_property || '');
+    setFormIsMasterData(t.is_master_data ?? false);
+    setFormDisplayProperty(t.display_property || '');
     const dsId = t.dataset_id || '';
     if (dsId) {
       savedPropNamesRef.current = new Set(
@@ -271,6 +277,8 @@ export function ConsoleObjectTypes() {
           dataset_id: formDatasetId || undefined,
           properties: props,
           key_property: formKeyProperty || undefined,
+          is_master_data: formIsMasterData,
+          display_property: formDisplayProperty || undefined,
         });
         toast.success('Object type updated');
       } else {
@@ -280,6 +288,8 @@ export function ConsoleObjectTypes() {
           dataset_id: formDatasetId || undefined,
           properties: props,
           key_property: formKeyProperty || undefined,
+          is_master_data: formIsMasterData,
+          display_property: formDisplayProperty || undefined,
         });
         toast.success('Object type created');
       }
@@ -362,6 +372,8 @@ export function ConsoleObjectTypes() {
                 <th>Name</th>
                 <th>Description</th>
                 <th>Dataset</th>
+                <th>Master Data</th>
+                <th>Display</th>
                 <th>Properties</th>
                 <th>Instances</th>
                 <th className="console-table-actions">Actions</th>
@@ -370,7 +382,7 @@ export function ConsoleObjectTypes() {
             <tbody>
               {types.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="console-table-empty">
+                  <td colSpan={8} className="console-table-empty">
                     No object types yet. Create one to get started.
                   </td>
                 </tr>
@@ -380,6 +392,8 @@ export function ConsoleObjectTypes() {
                     <td><strong>{t.name}</strong></td>
                     <td>{t.description || '—'}</td>
                     <td>{t.dataset_name || '—'}</td>
+                    <td>{t.is_master_data ? 'Yes' : '—'}</td>
+                    <td>{t.display_property || '—'}</td>
                     <td>{(t.properties || []).length}</td>
                     <td>{t.instance_count}</td>
                     <td className="console-table-actions">
@@ -433,6 +447,36 @@ export function ConsoleObjectTypes() {
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Optional"
                 />
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={formIsMasterData}
+                  onChange={(e) => setFormIsMasterData(e.target.checked)}
+                />
+                <span>Master Data</span>
+                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                  Only master data object types can be used for document labels in channel settings.
+                </span>
+              </label>
+              <label>
+                <span>Display property (optional)</span>
+                <select
+                  value={formDisplayProperty}
+                  onChange={(e) => setFormDisplayProperty(e.target.value)}
+                >
+                  <option value="">None</option>
+                  {formProperties
+                    .filter((p) => p.name.trim() && p.enabled !== false)
+                    .map((p) => (
+                      <option key={p.name} value={p.name}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                  Property used to display object instances in document label pickers.
+                </span>
               </label>
               <label>
                 <span>Dataset (optional)</span>

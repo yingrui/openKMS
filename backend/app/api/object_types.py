@@ -68,6 +68,8 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
         dataset_id=obj_type.dataset_id,
         dataset_name=dataset_name,
         key_property=obj_type.key_property,
+        is_master_data=getattr(obj_type, "is_master_data", False),
+        display_property=getattr(obj_type, "display_property", None),
         properties=props,
         instance_count=instance_count,
         created_at=obj_type.created_at,
@@ -188,10 +190,14 @@ def _query_neo4j_nodes(
 @router.get("", response_model=ObjectTypeListResponse)
 async def list_object_types(
     count_from_neo4j: bool = False,
+    is_master_data: bool | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """List all object types. When count_from_neo4j=true, instance_count comes from Neo4j (Objects page)."""
-    result = await db.execute(select(ObjectType).order_by(ObjectType.created_at.desc()))
+    """List object types. count_from_neo4j: instance_count from Neo4j. is_master_data: filter to master data only."""
+    query = select(ObjectType).order_by(ObjectType.created_at.desc())
+    if is_master_data is not None:
+        query = query.where(ObjectType.is_master_data == is_master_data)
+    result = await db.execute(query)
     types = result.scalars().all()
     items = []
     neo4j_driver = None
@@ -242,6 +248,8 @@ async def create_object_type(
         description=body.description,
         dataset_id=body.dataset_id,
         key_property=body.key_property,
+        is_master_data=body.is_master_data,
+        display_property=body.display_property,
         properties=props,
     )
     db.add(obj_type)
@@ -309,6 +317,10 @@ async def update_object_type(
         obj_type.description = body.description
     if body.dataset_id is not None:
         obj_type.dataset_id = body.dataset_id
+    if body.is_master_data is not None:
+        obj_type.is_master_data = body.is_master_data
+    if body.display_property is not None:
+        obj_type.display_property = body.display_property.strip() or None
     if body.properties is not None:
         obj_type.properties = _prop_defs_to_dicts(body.properties)
     await db.flush()

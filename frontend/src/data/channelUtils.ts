@@ -23,6 +23,13 @@ export type ExtractionSchemaValue =
   | { type: 'object'; properties: Record<string, Record<string, unknown>>; required?: string[] }
   | ExtractionSchemaField[];
 
+export interface LabelConfigItem {
+  key: string;
+  object_type_id: string;
+  display_label?: string | null;
+  allow_multiple?: boolean;
+}
+
 export interface ChannelNode {
   id: string;
   name: string;
@@ -33,6 +40,7 @@ export interface ChannelNode {
   extraction_model_id?: string | null;
   /** JSON Schema dict or legacy array. Dict format: { type, properties, required }. */
   extraction_schema?: ExtractionSchemaValue | null;
+  label_config?: LabelConfigItem[] | null;
   children?: ChannelNode[];
 }
 

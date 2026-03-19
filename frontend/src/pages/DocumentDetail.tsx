@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, Tag, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -9,6 +9,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
 import { fetchDocumentById, extractDocumentMetadata, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse } from '../data/documentsApi';
+import { fetchObjectType, fetchObjectInstances } from '../data/ontologyApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { findChannel, normalizeExtractionSchemaToFields } from '../data/channelUtils';
@@ -84,6 +85,10 @@ export function DocumentDetail() {
   const [editMeta, setEditMeta] = useState<Record<string, unknown>>({});
   const [savingInfo, setSavingInfo] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
+  const [savingLabels, setSavingLabels] = useState(false);
+  const [editLabels, setEditLabels] = useState<Record<string, string | string[]>>({});
+  const [labelObjectTypes, setLabelObjectTypes] = useState<Record<string, { display_property?: string | null; key_property?: string | null }>>({});
+  const [labelInstances, setLabelInstances] = useState<Record<string, { id: string; data: Record<string, unknown> }[]>>({});
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -226,11 +231,85 @@ export function DocumentDetail() {
   const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
   const hasExtractionModel = !!channel?.extraction_model_id;
   const extractionSchemaFields = normalizeExtractionSchemaToFields(channel?.extraction_schema ?? null);
+  const labelConfig = (channel?.label_config ?? []).filter(
+    (l: { key?: string; object_type_id?: string }) => l.key && l.object_type_id
+  );
   const meta = document?.metadata ?? {};
   const metaKeys = extractionSchemaFields.length > 0
     ? extractionSchemaFields.map((f) => f.key)
     : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
   const showMetadataSection = !docConfig && document?.channel_id;
+  const showLabelsSection = !docConfig && document?.channel_id && labelConfig.length > 0;
+
+  useEffect(() => {
+    if (document?.labels) {
+      setEditLabels(document.labels as Record<string, string | string[]>);
+    } else if (labelConfig.length > 0) {
+      setEditLabels({});
+    }
+  }, [document?.labels, labelConfig.length]);
+
+  useEffect(() => {
+    if (labelConfig.length === 0) return;
+    let cancelled = false;
+    const load = async () => {
+      const uniqueIds = [...new Set(labelConfig.map((l: { object_type_id: string }) => l.object_type_id))];
+      try {
+        const [typesRes, instancesRes] = await Promise.all([
+          Promise.all(uniqueIds.map((otid) => fetchObjectType(otid))),
+          Promise.all(uniqueIds.map((otid) => fetchObjectInstances(otid))),
+        ]);
+        if (cancelled) return;
+        const typesMap: Record<string, { display_property?: string | null; key_property?: string | null }> = {};
+        const instancesMap: Record<string, { id: string; data: Record<string, unknown> }[]> = {};
+        uniqueIds.forEach((otid, i) => {
+          typesMap[otid] = {
+            display_property: typesRes[i]?.display_property ?? null,
+            key_property: typesRes[i]?.key_property ?? null,
+          };
+          instancesMap[otid] = (instancesRes[i]?.items ?? []).map((x) => ({ id: x.id, data: x.data ?? {} }));
+        });
+        setLabelObjectTypes(typesMap);
+        setLabelInstances(instancesMap);
+      } catch {
+        if (!cancelled) {
+          setLabelObjectTypes({});
+          setLabelInstances({});
+        }
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [channel?.id, JSON.stringify((channel?.label_config ?? []).map((l: { object_type_id: string }) => l.object_type_id))]);
+
+  const getInstanceDisplay = (otid: string, instance: { id: string; data: Record<string, unknown> }) => {
+    const ot = labelObjectTypes[otid];
+    const displayProp = ot?.display_property ?? ot?.key_property;
+    if (displayProp && instance.data[displayProp] != null) {
+      return String(instance.data[displayProp]);
+    }
+    const keys = Object.keys(instance.data).filter((k) => k !== 'id');
+    if (keys.length > 0 && instance.data[keys[0]] != null) return String(instance.data[keys[0]]);
+    return instance.id;
+  };
+
+  const handleSaveLabels = useCallback(async () => {
+    if (!id) return;
+    setSavingLabels(true);
+    try {
+      const updated = await updateDocument(id, { labels: editLabels });
+      setDocument(updated);
+      toast.success('Labels saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save labels');
+    } finally {
+      setSavingLabels(false);
+    }
+  }, [id, editLabels]);
+
+  const setLabelValue = useCallback((key: string, value: string | string[]) => {
+    setEditLabels((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   const handleProcess = useCallback(async () => {
     if (!id || !document) return;
@@ -391,7 +470,7 @@ export function DocumentDetail() {
 
   return (
     <div className="document-detail">
-      <Link to="/documents" className="document-detail-back">
+      <Link to={document?.channel_id ? `/documents/channels/${document.channel_id}` : '/documents'} className="document-detail-back">
         <ArrowLeft size={18} />
         <span>Back to Documents</span>
       </Link>
@@ -739,6 +818,103 @@ export function DocumentDetail() {
                             <span>{extracting ? 'Extracting…' : 'Extract'}</span>
                           </button>
                           )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {showLabelsSection && (
+                    <>
+                      <hr className="document-detail-info-divider" />
+                      <div className="document-detail-labels-body">
+                        <h3 className="document-detail-metadata-subtitle">
+                          <Tag size={16} />
+                          Labels
+                        </h3>
+                        <dl className="document-detail-info-list document-detail-labels-list">
+                          {labelConfig.map((lc: { key: string; object_type_id: string; display_label?: string | null; allow_multiple?: boolean }) => {
+                            const label = lc.display_label || lc.key;
+                            const instances = labelInstances[lc.object_type_id] ?? [];
+                            const currentVal = editLabels[lc.key];
+                            const allowMultiple = lc.allow_multiple ?? false;
+                            return (
+                              <div key={lc.key} className="document-detail-info-item document-detail-info-item--edit">
+                                <dt>{label}</dt>
+                                <dd>
+                                  {allowMultiple ? (
+                                    <div className="document-detail-labels-multi">
+                                      <select
+                                        className="document-detail-metadata-input"
+                                        value=""
+                                        onChange={(e) => {
+                                          const pk = e.target.value;
+                                          if (!pk) return;
+                                          const arr = Array.isArray(currentVal) ? [...currentVal] : currentVal ? [currentVal] : [];
+                                          if (!arr.includes(pk)) {
+                                            setLabelValue(lc.key, [...arr, pk]);
+                                          }
+                                          e.target.value = '';
+                                        }}
+                                        aria-label={`Add ${label}`}
+                                      >
+                                        <option value="">— Add —</option>
+                                        {instances.map((inst) => (
+                                          <option key={inst.id} value={inst.id}>
+                                            {getInstanceDisplay(lc.object_type_id, inst)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <div className="document-detail-labels-pills">
+                                        {(Array.isArray(currentVal) ? currentVal : currentVal ? [currentVal] : []).map((pk) => {
+                                          const inst = instances.find((i) => i.id === pk);
+                                          const display = inst ? getInstanceDisplay(lc.object_type_id, inst) : pk;
+                                          return (
+                                            <span key={pk} className="document-detail-metadata-pill document-detail-labels-pill">
+                                              {display}
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const arr = Array.isArray(currentVal) ? currentVal.filter((x) => x !== pk) : [];
+                                                  setLabelValue(lc.key, arr);
+                                                }}
+                                                aria-label={`Remove ${display}`}
+                                              >
+                                                <XIcon size={12} />
+                                              </button>
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <select
+                                      className="document-detail-metadata-input"
+                                      value={typeof currentVal === 'string' ? currentVal : Array.isArray(currentVal) ? currentVal[0] ?? '' : ''}
+                                      onChange={(e) => setLabelValue(lc.key, e.target.value || '')}
+                                      aria-label={label}
+                                    >
+                                      <option value="">—</option>
+                                      {instances.map((inst) => (
+                                        <option key={inst.id} value={inst.id}>
+                                          {getInstanceDisplay(lc.object_type_id, inst)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </dd>
+                              </div>
+                            );
+                          })}
+                        </dl>
+                        <div className="document-detail-metadata-edit-actions">
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={handleSaveLabels}
+                            disabled={savingLabels}
+                          >
+                            {savingLabels ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                            <span>{savingLabels ? 'Saving…' : 'Save labels'}</span>
+                          </button>
                         </div>
                       </div>
                     </>

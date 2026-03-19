@@ -9,7 +9,8 @@
 - Delete document: `DELETE /api/documents/{id}`
 - Document info & metadata: Edit name (`PUT /api/documents/{id}`), edit metadata (`PUT /metadata`), Extract via pydantic-ai Agent + StructuredDict
 - Document markdown: Edit and save (`PUT /markdown`), restore from S3 (`POST /restore-markdown`)
-- Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction)
+- Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Labels)
+- Document labels: channel label_config maps keys to Master Data object types; documents store label values (object primary keys); Labels tab in channel settings; Labels section on document detail
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
@@ -60,7 +61,7 @@
 - [x] Object instances: CRUD under `/api/object-types/{id}/objects` (admin write)
 - [x] Link types: schema with source/target object types
 - [x] Link instances: CRUD under `/api/link-types/{id}/links` (admin write)
-- [x] Console Object Types page: CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector
+- [x] Console Object Types page: CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector; is_master_data and display_property for document labels
 - [x] Console Link Types page: CRUD link types
 - [x] User-facing Objects list (`/objects`), Object type detail with instances (`/objects/:typeId`)
 - [x] User-facing Links list (`/links`), Link type detail with instances (`/links/:typeId`)

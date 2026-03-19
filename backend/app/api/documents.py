@@ -226,6 +226,8 @@ async def update_document(
         if not channel:
             raise HTTPException(status_code=404, detail="Channel not found")
         doc.channel_id = body.channel_id
+    if body.labels is not None:
+        doc.labels = body.labels
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)

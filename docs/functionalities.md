@@ -21,7 +21,7 @@
 | Document overview | ✅ | Dashboard at `/documents` with channel count, document count (from API stats), quick actions |
 | Channel management | ✅ | Create channels at `/documents/channels` (tree structure); rename, description, move, merge, delete; settings per channel |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
-| Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema) at `/documents/channels/:channelId/settings`; tabbed UI (General, Processing, Metadata extraction) |
+| Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema), labels config at `/documents/channels/:channelId/settings`; tabbed UI (General, Processing, Metadata extraction, Labels) |
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
@@ -29,6 +29,7 @@
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
 | Document metadata extraction | ✅ | Metadata card on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type, description for LLM prompt); combined with document info in one section |
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
+| Document labels | ✅ | Assign labels to documents; labels map to Master Data object types (configure in channel settings Labels tab); single or multiple values per label; Labels section on document detail with object-instance pickers |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
 ### 2. Document Parsing
@@ -91,7 +92,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property for primary key); managed in Console → Object Types; Edit dialog: wider, property name/type read-only when editing, primary key radio selector |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); managed in Console → Object Types; Edit dialog: wider, property name/type read-only when editing, primary key radio selector; Master Data flag (only master data types usable for document labels); display_property for label picker display |
 | Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
 | Link types | ✅ | Schema for relationships between two object types; managed in Console → Link Types |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
@@ -199,7 +200,7 @@
 | GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
 | GET | `/api/document-channels` | List document channels (tree) |
 | POST | `/api/document-channels` | Create channel |
-| PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema) |
+| PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config) |
 | POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
@@ -207,7 +208,7 @@
 | GET | `/api/documents?channel_id=&search=&limit=` | List documents; channel_id optional (all if omitted); search filters by name |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
-| PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
+| PUT | `/api/documents/{id}` | Update document info (name, channel_id, labels) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
 | GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
@@ -334,14 +335,14 @@
 
 ### Document Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, allow_multiple?}`), `created_at`
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
 - Metadata extraction: pydantic-ai Agent + StructuredDict; `extraction_model_id` designates LLM; `extraction_schema` stored as PostgreSQL `json` (not jsonb) to preserve key order; JSON Schema dict (type, properties, required)
 
 ### Document
 
-- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB), `created_at`, `updated_at`
+- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB), `labels` (JSONB: key → object primary key or array of keys), `created_at`, `updated_at`
 - Status: `uploaded` → `pending` → `running` → `completed` / `failed`
 - `metadata`: extracted or manually edited (abstract, author, publish_date, tags, etc.)
 
@@ -383,8 +384,10 @@
 
 ### ObjectType
 
-- `id`, `name`, `description`, `properties` (JSONB: list of `{name, type, required}`), `created_at`, `updated_at`
+- `id`, `name`, `description`, `dataset_id`, `key_property`, `is_master_data`, `display_property`, `properties` (JSONB: list of `{name, type, required}`), `created_at`, `updated_at`
 - Schema for entity types; property types: string, number, boolean
+- `is_master_data`: only master data types can be used for document labels in channel settings
+- `display_property`: property used to display object instances in document label pickers
 
 ### ObjectInstance
 

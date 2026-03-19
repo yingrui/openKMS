@@ -25,6 +25,7 @@ class DocumentResponse(BaseModel):
     markdown: str | None = None
     parsing_result: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
+    labels: dict[str, str | list[str]] | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -46,6 +47,7 @@ class DocumentResponse(BaseModel):
                 "markdown": data.markdown,
                 "parsing_result": data.parsing_result,
                 "metadata": data.doc_metadata,
+                "labels": getattr(data, "labels", None),
                 "created_at": data.created_at,
                 "updated_at": data.updated_at,
             }
@@ -59,10 +61,11 @@ class MetadataUpdateBody(BaseModel):
 
 
 class DocumentInfoUpdateBody(BaseModel):
-    """Body for PUT /documents/{id} (document info)."""
+    """Body for PUT /documents/{id} (document info and labels)."""
 
     name: str | None = None
     channel_id: str | None = None
+    labels: dict[str, str | list[str]] | None = None
 
 
 class MarkdownUpdateBody(BaseModel):

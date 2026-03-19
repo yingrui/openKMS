@@ -22,6 +22,7 @@ class DocumentChannel(Base):
         String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
     )
     extraction_schema: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    label_config: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["DocumentChannel | None"] = relationship("DocumentChannel", remote_side=[id], back_populates="children")

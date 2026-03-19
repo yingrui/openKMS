@@ -120,8 +120,8 @@ backend/
 │   ├── api/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
-│   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
-│   │   ├── object_types.py     # CRUD /api/object-types; instances from Neo4j when available; count_from_neo4j param for Objects page
+│   │   ├── documents.py        # POST upload (store only), GET, DELETE, PUT (name, channel_id, labels), PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
+│   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
 │   │   ├── link_types.py       # CRUD /api/link-types; instances from Neo4j when available; count_from_neo4j param for Links page
 │   │   ├── ontology_explore.py # POST /api/ontology/explore; execute read-only Cypher against Neo4j (Object Explorer)
 │   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test; credentials encrypted
@@ -134,13 +134,13 @@ backend/
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
-│   │   ├── document.py          # Document model (+ status, metadata JSONB)
-│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema)
+│   │   ├── document.py          # Document model (+ status, metadata JSONB, labels JSONB)
+│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config)
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
-│   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK)
+│   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK, key_property, is_master_data, display_property)
 │   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
 │   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
 │   │   ├── link_instance.py   # LinkInstance (link_type_id, source_object_id, target_object_id)
@@ -154,7 +154,7 @@ backend/
 │   │   └── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, definition, synonyms_en, synonyms_cn)
 │   ├── schemas/
 │   │   ├── document.py
-│   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate
+│   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate, LabelConfigItem (label_config)
 │   │   ├── pipeline.py         # PipelineCreate/Update/Response (+ model_id)
 │   │   ├── api_model.py        # ApiModelCreate/Update/Response (+ provider_id)
 │   │   ├── api_provider.py     # ApiProviderCreate/Update/Response

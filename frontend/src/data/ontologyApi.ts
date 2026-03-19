@@ -17,6 +17,8 @@ export interface ObjectTypeResponse {
   dataset_id?: string | null;
   dataset_name?: string | null;
   key_property?: string | null;
+  is_master_data?: boolean;
+  display_property?: string | null;
   properties: PropertyDef[];
   instance_count: number;
   created_at: string;
@@ -28,9 +30,12 @@ export interface ObjectTypeListResponse {
   total: number;
 }
 
-export async function fetchObjectTypes(params?: { countFromNeo4j?: boolean }): Promise<ObjectTypeListResponse> {
+export async function fetchObjectTypes(params?: { countFromNeo4j?: boolean; isMasterData?: boolean }): Promise<ObjectTypeListResponse> {
   const headers = await getAuthHeaders();
-  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
+  const searchParams = new URLSearchParams();
+  if (params?.countFromNeo4j) searchParams.set('count_from_neo4j', 'true');
+  if (params?.isMasterData !== undefined) searchParams.set('is_master_data', String(params.isMasterData));
+  const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
   const res = await fetch(`${config.apiUrl}/api/object-types${qs}`, {
     headers: { ...headers },
     credentials: 'include',
@@ -58,6 +63,8 @@ export async function createObjectType(data: {
   description?: string;
   dataset_id?: string;
   key_property?: string;
+  is_master_data?: boolean;
+  display_property?: string;
   properties?: PropertyDef[];
 }): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
@@ -76,7 +83,7 @@ export async function createObjectType(data: {
 
 export async function updateObjectType(
   objectTypeId: string,
-  data: { name?: string; description?: string; dataset_id?: string; key_property?: string; properties?: PropertyDef[] }
+  data: { name?: string; description?: string; dataset_id?: string; key_property?: string; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {

@@ -9,6 +9,13 @@ export interface ExtractionSchemaField {
   description?: string;
 }
 
+export interface LabelConfigItem {
+  key: string;
+  object_type_id: string;
+  display_label?: string | null;
+  allow_multiple?: boolean;
+}
+
 export interface ChannelNode {
   id: string;
   name: string;
@@ -18,6 +25,7 @@ export interface ChannelNode {
   auto_process?: boolean;
   extraction_model_id?: string | null;
   extraction_schema?: ExtractionSchemaField[] | null;
+  label_config?: LabelConfigItem[] | null;
   children: ChannelNode[];
 }
 
@@ -78,6 +86,7 @@ export async function updateChannel(
     auto_process?: boolean;
     extraction_model_id?: string | null;
     extraction_schema?: Record<string, unknown> | { key: string; label: string; type: string; description?: string; required?: boolean }[] | null;
+    label_config?: LabelConfigItem[] | null;
     sort_order?: number;
   },
 ): Promise<ChannelNode> {
