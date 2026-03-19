@@ -26,6 +26,7 @@ dependencies = [
     "PyJWT[crypto]>=2.8.0",
     "pgvector>=0.4.2",
     "cryptography>=44.0.0",
+    "neo4j>=5.0.0",
 ]
 
 [build-system]

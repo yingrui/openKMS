@@ -1,14 +1,18 @@
 """Object types API (admin CRUD + user read)."""
+import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_admin, require_auth
-from app.api.datasets import get_dataset_row_count
+from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
+from app.models.data_source import DataSource
 from app.models.dataset import Dataset
+from app.services.credential_encryption import decrypt
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.schemas.ontology import (
@@ -27,6 +31,15 @@ router = APIRouter(
     tags=["object-types"],
     dependencies=[Depends(require_auth)],
 )
+
+
+class IndexToNeo4jRequest(BaseModel):
+    neo4j_data_source_id: str
+
+
+class IndexToNeo4jResponse(BaseModel):
+    object_types_indexed: int
+    nodes_created: int
 
 
 async def _object_instance_count(db: AsyncSession, object_type_id: str) -> int:
@@ -66,6 +79,12 @@ def _prop_defs_to_dicts(properties: list) -> list[dict]:
 
 
 # --- Admin CRUD ---
+
+def _neo4j_safe_label(name: str) -> str:
+    """Convert object type name to Neo4j-safe label (alphanumeric, underscore)."""
+    s = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    return s or "Node"
+
 
 async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
     if not dataset_id:
@@ -167,6 +186,78 @@ async def delete_object_type(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
     await db.delete(obj_type)
+
+
+@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_admin)])
+async def index_objects_to_neo4j(
+    body: IndexToNeo4jRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index all object types with datasets to the target Neo4j database. Admin only."""
+    neo4j_ds = await db.get(DataSource, body.neo4j_data_source_id)
+    if not neo4j_ds:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    if neo4j_ds.kind != "neo4j":
+        raise HTTPException(status_code=400, detail="Target must be a Neo4j data source")
+    try:
+        from neo4j import GraphDatabase
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Neo4j driver not installed. pip install neo4j",
+        )
+    username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
+    password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
+    uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+    result = await db.execute(
+        select(ObjectType).where(ObjectType.dataset_id.isnot(None)).order_by(ObjectType.name)
+    )
+    obj_types = result.scalars().all()
+    if not obj_types:
+        return IndexToNeo4jResponse(object_types_indexed=0, nodes_created=0)
+    nodes_created = 0
+    driver = GraphDatabase.driver(uri, auth=(username, password))
+    try:
+        with driver.session() as session:
+            for obj_type in obj_types:
+                label = _neo4j_safe_label(obj_type.name)
+                offset = 0
+                batch_size = 1000
+                while True:
+                    try:
+                        rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=batch_size, offset=offset)
+                    except Exception as e:
+                        raise HTTPException(
+                            status_code=502,
+                            detail=f"Failed to fetch dataset for {obj_type.name}: {e}",
+                        ) from e
+                    if not rows:
+                        break
+                    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
+                    id_col = "id" if (prop_names and "id" in prop_names) or "id" in rows[0] else (prop_names[0] if prop_names else list(rows[0].keys())[0])
+                    for row in rows:
+                        props = {k: v for k, v in row.items() if v is not None}
+                        node_id = props.get(id_col, props.get(list(props.keys())[0]) if props else None)
+                        if node_id is None:
+                            continue
+                        safe_props = {}
+                        for k, v in props.items():
+                            if isinstance(v, (str, int, float, bool)):
+                                safe_props[k] = v
+                            else:
+                                safe_props[k] = str(v)
+                        session.run(
+                            f"MERGE (n:{label} {{`{id_col}`: $id_val}}) SET n += $props",
+                            id_val=safe_props.get(id_col, node_id),
+                            props=safe_props,
+                        )
+                        nodes_created += 1
+                    offset += len(rows)
+                    if offset >= total:
+                        break
+    finally:
+        driver.close()
+    return IndexToNeo4jResponse(object_types_indexed=len(obj_types), nodes_created=nodes_created)
 
 
 # --- Object instances (nested under object type) ---

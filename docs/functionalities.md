@@ -107,6 +107,8 @@
 | Link type cardinality | ✅ | Link types have cardinality (one-to-one, one-to-many, many-to-many) and optional dataset link for many-to-many |
 | Link type FK mapping | ✅ | Source/Target key properties; junction table columns (source_dataset_column, target_dataset_column) for many-to-many |
 | M:M junction table links | ✅ | When link type has dataset_id, links and link_count come from junction table; Add/Delete disabled for dataset-backed links |
+| M:1/1:M link count | ✅ | When source object type has dataset and source_key_property (FK column), link_count from rows where FK is not null |
+| Index to Neo4j | ✅ | Object Types and Link Types: Index Objects/Links button when Neo4j data source exists; indexes datasets as nodes, link types as relationships |
 
 ### 6. Console (Admin)
 
@@ -266,6 +268,7 @@
 | GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only) |
+| POST | `/api/object-types/index-to-neo4j` | Index object type datasets to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
 | GET | `/api/link-types` | List link types (authenticated) |
 | POST | `/api/link-types` | Create link type (admin-only) |
 | GET | `/api/link-types/{id}` | Get link type |
@@ -274,6 +277,7 @@
 | GET | `/api/link-types/{id}/links` | List link instances (from junction table when M:M with dataset; ?limit=, ?offset=) |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
+| POST | `/api/link-types/index-to-neo4j` | Index link types (M:M junction + M:1/1:M from source dataset) to Neo4j as relationships (admin-only) |
 | GET | `/api/data-sources` | List data sources (admin-only) |
 | POST | `/api/data-sources` | Create data source (admin-only) |
 | GET | `/api/data-sources/{id}` | Get data source (admin-only) |

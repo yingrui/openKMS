@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchLinkTypes,
@@ -7,11 +7,13 @@ import {
   createLinkType,
   updateLinkType,
   deleteLinkType,
+  indexLinkTypesToNeo4j,
   CARDINALITY_OPTIONS,
   type LinkTypeResponse,
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
+import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import './ConsoleObjectTypes.css';
 
 export function ConsoleLinkTypes() {
@@ -33,18 +35,26 @@ export function ConsoleLinkTypes() {
   const [submitting, setSubmitting] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
   const [datasetColumns, setDatasetColumns] = useState<{ column_name: string }[]>([]);
+  const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
+  const [showIndexDialog, setShowIndexDialog] = useState(false);
+  const [indexNeo4jId, setIndexNeo4jId] = useState('');
+  const [indexing, setIndexing] = useState(false);
+
+  const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [linksRes, objsRes, dsRes] = await Promise.all([
+      const [linksRes, objsRes, dsRes, dsSourcesRes] = await Promise.all([
         fetchLinkTypes(),
         fetchObjectTypes(),
         fetchDatasets(),
+        fetchDataSources(),
       ]);
       setLinkTypes(linksRes.items);
       setObjectTypes(objsRes.items);
       setDatasets(dsRes.items);
+      setDataSources(dsSourcesRes.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load link types');
     } finally {
@@ -143,6 +153,20 @@ export function ConsoleLinkTypes() {
     }
   };
 
+  const handleIndexConfirm = async () => {
+    if (!indexNeo4jId) return;
+    setIndexing(true);
+    try {
+      const res = await indexLinkTypesToNeo4j(indexNeo4jId);
+      toast.success(`Indexed ${res.link_types_indexed} link types, ${res.relationships_created} relationships created`);
+      setShowIndexDialog(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Index failed');
+    } finally {
+      setIndexing(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this link type? All link instances will be deleted.')) return;
     try {
@@ -163,16 +187,32 @@ export function ConsoleLinkTypes() {
             Define relationships between object types (e.g. Disease → InsuranceProduct). Admin only.
           </p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={openCreate}
-          disabled={objectTypes.length < 2}
-          title={objectTypes.length < 2 ? 'Create at least 2 object types first' : ''}
-        >
-          <Plus size={18} />
-          <span>New Link Type</span>
-        </button>
+        <div className="page-header-actions">
+          {neo4jDataSources.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              title="Index dataset to knowledge graph"
+              onClick={() => {
+                setIndexNeo4jId(neo4jDataSources[0]?.id || '');
+                setShowIndexDialog(true);
+              }}
+            >
+              <Database size={18} />
+              <span>Index Links</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={openCreate}
+            disabled={objectTypes.length < 2}
+            title={objectTypes.length < 2 ? 'Create at least 2 object types first' : ''}
+          >
+            <Plus size={18} />
+            <span>New Link Type</span>
+          </button>
+        </div>
       </div>
 
       <div className="console-object-types-content">
@@ -426,6 +466,71 @@ export function ConsoleLinkTypes() {
                 }
               >
                 {submitting ? 'Saving…' : editType ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIndexDialog && (
+        <div
+          className="console-modal-overlay"
+          onClick={(e) => e.target === e.currentTarget && !indexing && setShowIndexDialog(false)}
+        >
+          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="console-modal-header">
+              <h2>Index Links to Knowledge Graph</h2>
+              <button
+                type="button"
+                onClick={() => !indexing && setShowIndexDialog(false)}
+                disabled={indexing}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="console-modal-body">
+              <p className="console-modal-hint">
+                Index all link types with junction datasets to the selected Neo4j database as relationships.
+              </p>
+              <label>
+                <span>Neo4j Data Source</span>
+                <select
+                  value={indexNeo4jId}
+                  onChange={(e) => setIndexNeo4jId(e.target.value)}
+                >
+                  <option value="">Select…</option>
+                  {neo4jDataSources.map((ds) => (
+                    <option key={ds.id} value={ds.id}>
+                      {ds.name} ({ds.host}:{ds.port ?? 7687})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="console-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => !indexing && setShowIndexDialog(false)}
+                disabled={indexing}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleIndexConfirm}
+                disabled={!indexNeo4jId || indexing}
+              >
+                {indexing ? (
+                  <>
+                    <Loader2 size={18} className="console-loading-spinner" />
+                    <span>Indexing…</span>
+                  </>
+                ) : (
+                  'Confirm & Index'
+                )}
               </button>
             </div>
           </div>

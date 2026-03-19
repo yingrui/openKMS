@@ -82,6 +82,8 @@
 - [x] Link types: cardinality (one-to-one, one-to-many, many-to-many) and optional dataset_id for many-to-many
 - [x] Link types FK mapping: source_key_property, target_key_property, source_dataset_column, target_dataset_column
 - [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
+- [x] Many-to-one/one-to-many: link_count from source object type dataset where FK column is not null
+- [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links buttons when Neo4j data source exists; POST /api/object-types/index-to-neo4j, POST /api/link-types/index-to-neo4j
 
 ### 4. Authentication
 
