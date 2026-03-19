@@ -139,6 +139,49 @@
   padding: 20px 0;
 }
 
+.kb-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.kb-pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.kb-pagination-info label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-pagination-info select {
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  font-size: 0.875rem;
+}
+
+.kb-pagination-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-pagination-nums {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 0 4px;
+}
+
 /* Buttons – match documents header actions */
 .kb-section-header .btn-sm {
   display: inline-flex;

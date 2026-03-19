@@ -62,9 +62,9 @@
 |---------|--------|-------------|
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying |
-| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; Edit FAQ modal with key-value form for labels and document metadata (from KB label_keys, metadata_keys; channel label_config/extraction_schema for array types) |
+| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for labels and document metadata (from KB label_keys, metadata_keys; channel label_config/extraction_schema for array types) |
 | FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal |
-| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); Edit Chunk modal with content, labels, document metadata (same key-value form as FAQ) |
+| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); paginated list (offset, limit); Edit Chunk modal with content, labels, document metadata (same key-value form as FAQ) |
 | Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; supports label_filters and metadata_filters for hybrid search; returns 503 with install instructions if pgvector missing |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
 | KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt, label_keys, metadata_keys (keys to propagate from documents to FAQs/chunks) |
@@ -250,13 +250,13 @@
 | GET | `/api/knowledge-bases/{id}/documents` | List documents in KB |
 | POST | `/api/knowledge-bases/{id}/documents` | Add document to KB |
 | DELETE | `/api/knowledge-bases/{id}/documents/{doc_id}` | Remove document from KB |
-| GET | `/api/knowledge-bases/{id}/faqs` | List FAQs |
+| GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=) |
 | POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |
 | PUT | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Update FAQ |
 | DELETE | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Delete FAQ |
 | POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |
 | POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
-| GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated) |
+| GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated; ?offset=, ?limit=) |
 | PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (content, labels, doc_metadata) |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
 | POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index pipeline) |

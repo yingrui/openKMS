@@ -132,6 +132,11 @@ class FAQResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class FAQListResponse(BaseModel):
+    items: list[FAQResponse]
+    total: int
+
+
 # --- Chunks ---
 
 class ChunkBatchItem(BaseModel):

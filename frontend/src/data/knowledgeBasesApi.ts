@@ -50,6 +50,11 @@ export interface FAQResponse {
   updated_at: string;
 }
 
+export interface FAQListResponse {
+  items: FAQResponse[];
+  total: number;
+}
+
 /** Generated FAQ pair (preview, not yet saved). */
 export interface FAQGenerateResult {
   document_id: string;
@@ -223,9 +228,16 @@ export async function removeKBDocument(kbId: string, documentId: string): Promis
 
 // --- FAQs ---
 
-export async function fetchFAQs(kbId: string): Promise<FAQResponse[]> {
+export async function fetchFAQs(
+  kbId: string,
+  params?: { offset?: number; limit?: number }
+): Promise<FAQListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs`, {
+  const query = new URLSearchParams();
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });

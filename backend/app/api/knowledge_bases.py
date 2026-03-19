@@ -34,6 +34,7 @@ from app.schemas.knowledge_base import (
     FAQCreate,
     FAQGenerateRequest,
     FAQGenerateResult,
+    FAQListResponse,
     FAQResponse,
     FAQUpdate,
     KBDocumentAdd,
@@ -270,8 +271,19 @@ async def remove_kb_document(kb_id: str, document_id: str, db: AsyncSession = De
 
 # --- FAQs ---
 
-@router.get("/{kb_id}/faqs", response_model=list[FAQResponse])
-async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/{kb_id}/faqs", response_model=FAQListResponse)
+async def list_faqs(
+    kb_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    kb = await db.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    total = (await db.execute(
+        select(func.count()).select_from(FAQ).where(FAQ.knowledge_base_id == kb_id)
+    )).scalar_one()
     # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(FAQ, Document.name)
@@ -279,9 +291,11 @@ async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
         .outerjoin(Document, FAQ.document_id == Document.id)
         .where(FAQ.knowledge_base_id == kb_id)
         .order_by(FAQ.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     rows = result.all()
-    return [
+    items = [
         FAQResponse(
             id=f.id,
             knowledge_base_id=f.knowledge_base_id,
@@ -297,6 +311,7 @@ async def list_faqs(kb_id: str, db: AsyncSession = Depends(get_db)):
         )
         for f, doc_name in rows
     ]
+    return FAQListResponse(items=items, total=total)
 
 
 @router.post("/{kb_id}/faqs", response_model=FAQResponse, status_code=201)

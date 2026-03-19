@@ -84,6 +84,9 @@ export function KnowledgeBaseDetail() {
 
   // FAQs
   const [faqs, setFaqs] = useState<FAQResponse[]>([]);
+  const [faqTotal, setFaqTotal] = useState(0);
+  const [faqPage, setFaqPage] = useState(0);
+  const [faqPageSize, setFaqPageSize] = useState(50);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
   const [editFaq, setEditFaq] = useState<FAQResponse | null>(null);
   const [faqQuestion, setFaqQuestion] = useState('');
@@ -104,6 +107,8 @@ export function KnowledgeBaseDetail() {
   // Chunks
   const [chunks, setChunks] = useState<ChunkResponse[]>([]);
   const [chunkTotal, setChunkTotal] = useState(0);
+  const [chunkPage, setChunkPage] = useState(0);
+  const [chunkPageSize, setChunkPageSize] = useState(50);
   const [editChunk, setEditChunk] = useState<ChunkResponse | null>(null);
   const [showChunkDialog, setShowChunkDialog] = useState(false);
   const [chunkContent, setChunkContent] = useState('');
@@ -165,17 +170,29 @@ export function KnowledgeBaseDetail() {
 
   const loadFaqs = useCallback(async () => {
     if (!kbId) return;
-    try { setFaqs(await fetchFAQs(kbId)); } catch { /* noop */ }
-  }, [kbId]);
+    try {
+      const data = await fetchFAQs(kbId, { offset: faqPage * faqPageSize, limit: faqPageSize });
+      setFaqs(data.items);
+      setFaqTotal(data.total);
+      setFaqPage((p) => {
+        const maxP = data.total > 0 ? Math.ceil(data.total / faqPageSize) - 1 : 0;
+        return Math.min(p, Math.max(0, maxP));
+      });
+    } catch { /* noop */ }
+  }, [kbId, faqPage, faqPageSize]);
 
   const loadChunks = useCallback(async () => {
     if (!kbId) return;
     try {
-      const data = await fetchChunks(kbId, { limit: 100 });
+      const data = await fetchChunks(kbId, { offset: chunkPage * chunkPageSize, limit: chunkPageSize });
       setChunks(data.items);
       setChunkTotal(data.total);
+      setChunkPage((p) => {
+        const maxP = data.total > 0 ? Math.ceil(data.total / chunkPageSize) - 1 : 0;
+        return Math.min(p, Math.max(0, maxP));
+      });
     } catch { /* noop */ }
-  }, [kbId]);
+  }, [kbId, chunkPage, chunkPageSize]);
 
   const loadModels = useCallback(async () => {
     try {
@@ -659,7 +676,7 @@ export function KnowledgeBaseDetail() {
         {activeTab === 'faqs' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>FAQs</h2>
+              <h2>FAQs ({faqTotal})</h2>
               <div className="kb-section-header-btns">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={openGenerateModal}>
                   <Sparkles size={16} />
@@ -681,9 +698,10 @@ export function KnowledgeBaseDetail() {
               </div>
             </div>
 
-            {faqs.length === 0 ? (
+            {faqTotal === 0 ? (
               <p className="kb-empty-text">No FAQs yet.</p>
             ) : (
+              <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
@@ -761,6 +779,72 @@ export function KnowledgeBaseDetail() {
                   </tbody>
                 </table>
               </div>
+              {faqTotal > 0 && (
+                <div className="kb-pagination">
+                  <div className="kb-pagination-info">
+                    <span>
+                      Showing {faqTotal === 0 ? 0 : faqPage * faqPageSize + 1}–
+                      {Math.min((faqPage + 1) * faqPageSize, faqTotal)} of {faqTotal}
+                    </span>
+                    <label>
+                      <span>Page size:</span>
+                      <select
+                        value={faqPageSize}
+                        onChange={(e) => {
+                          setFaqPageSize(Number(e.target.value));
+                          setFaqPage(0);
+                        }}
+                      >
+                        {[25, 50, 100, 200].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {Math.ceil(faqTotal / faqPageSize) > 1 && (
+                    <div className="kb-pagination-btns">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setFaqPage(0)}
+                        disabled={faqPage === 0}
+                        title="First page"
+                      >
+                        «
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setFaqPage((p) => Math.max(0, p - 1))}
+                        disabled={faqPage === 0}
+                      >
+                        Previous
+                      </button>
+                      <span className="kb-pagination-nums">
+                        Page {faqPage + 1} of {Math.ceil(faqTotal / faqPageSize) || 1}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setFaqPage((p) => Math.min(Math.ceil(faqTotal / faqPageSize) - 1, p + 1))}
+                        disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
+                      >
+                        Next
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setFaqPage(Math.ceil(faqTotal / faqPageSize) - 1)}
+                        disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
+                        title="Last page"
+                      >
+                        »
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              </>
             )}
           </section>
         )}
@@ -771,9 +855,10 @@ export function KnowledgeBaseDetail() {
             <div className="kb-section-header">
               <h2>Chunks ({chunkTotal})</h2>
             </div>
-            {chunks.length === 0 ? (
+            {chunkTotal === 0 ? (
               <p className="kb-empty-text">No chunks yet. Run indexing from Settings to generate chunks.</p>
             ) : (
+              <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
@@ -809,6 +894,72 @@ export function KnowledgeBaseDetail() {
                   </tbody>
                 </table>
               </div>
+              {chunkTotal > 0 && (
+                <div className="kb-pagination">
+                  <div className="kb-pagination-info">
+                    <span>
+                      Showing {chunkTotal === 0 ? 0 : chunkPage * chunkPageSize + 1}–
+                      {Math.min((chunkPage + 1) * chunkPageSize, chunkTotal)} of {chunkTotal}
+                    </span>
+                    <label>
+                      <span>Page size:</span>
+                      <select
+                        value={chunkPageSize}
+                        onChange={(e) => {
+                          setChunkPageSize(Number(e.target.value));
+                          setChunkPage(0);
+                        }}
+                      >
+                        {[25, 50, 100, 200].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {Math.ceil(chunkTotal / chunkPageSize) > 1 && (
+                    <div className="kb-pagination-btns">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setChunkPage(0)}
+                        disabled={chunkPage === 0}
+                        title="First page"
+                      >
+                        «
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setChunkPage((p) => Math.max(0, p - 1))}
+                        disabled={chunkPage === 0}
+                      >
+                        Previous
+                      </button>
+                      <span className="kb-pagination-nums">
+                        Page {chunkPage + 1} of {Math.ceil(chunkTotal / chunkPageSize) || 1}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setChunkPage((p) => Math.min(Math.ceil(chunkTotal / chunkPageSize) - 1, p + 1))}
+                        disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
+                      >
+                        Next
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setChunkPage(Math.ceil(chunkTotal / chunkPageSize) - 1)}
+                        disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
+                        title="Last page"
+                      >
+                        »
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              </>
             )}
           </section>
         )}

@@ -361,7 +361,7 @@ def run_indexer(
         faq_emb_items = [
             {k: v for k, v in fu.items() if k in ("id", "embedding", "labels", "doc_metadata")}
             for fu in faq_updates
-        ]]
+        ]
         faq_resp = requests.put(
             f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs/batch-embeddings",
             headers=headers,
