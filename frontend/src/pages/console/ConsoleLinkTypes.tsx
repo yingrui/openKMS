@@ -11,7 +11,7 @@ import {
   type LinkTypeResponse,
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
-import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
+import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import './ConsoleObjectTypes.css';
 
 export function ConsoleLinkTypes() {
@@ -26,8 +26,13 @@ export function ConsoleLinkTypes() {
   const [formTargetId, setFormTargetId] = useState('');
   const [formCardinality, setFormCardinality] = useState<string>('one-to-many');
   const [formDatasetId, setFormDatasetId] = useState('');
+  const [formSourceKeyProperty, setFormSourceKeyProperty] = useState('');
+  const [formTargetKeyProperty, setFormTargetKeyProperty] = useState('');
+  const [formSourceDatasetColumn, setFormSourceDatasetColumn] = useState('');
+  const [formTargetDatasetColumn, setFormTargetDatasetColumn] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [datasetColumns, setDatasetColumns] = useState<{ column_name: string }[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +64,10 @@ export function ConsoleLinkTypes() {
     setFormTargetId(objectTypes[0]?.id || '');
     setFormCardinality('one-to-many');
     setFormDatasetId('');
+    setFormSourceKeyProperty('');
+    setFormTargetKeyProperty('');
+    setFormSourceDatasetColumn('');
+    setFormTargetDatasetColumn('');
     setShowForm(true);
   };
 
@@ -70,8 +79,27 @@ export function ConsoleLinkTypes() {
     setFormTargetId(t.target_object_type_id);
     setFormCardinality(t.cardinality || 'one-to-many');
     setFormDatasetId(t.dataset_id || '');
+    setFormSourceKeyProperty(t.source_key_property || '');
+    setFormTargetKeyProperty(t.target_key_property || '');
+    setFormSourceDatasetColumn(t.source_dataset_column || '');
+    setFormTargetDatasetColumn(t.target_dataset_column || '');
     setShowForm(true);
   };
+
+  useEffect(() => {
+    if (formCardinality === 'many-to-many' && formDatasetId) {
+      fetchDatasetMetadata(formDatasetId)
+        .then((cols) => setDatasetColumns(cols))
+        .catch(() => setDatasetColumns([]));
+    } else {
+      setDatasetColumns([]);
+    }
+  }, [formCardinality, formDatasetId]);
+
+  const sourceObjectType = objectTypes.find((o) => o.id === formSourceId);
+  const targetObjectType = objectTypes.find((o) => o.id === formTargetId);
+  const sourceProperties = sourceObjectType?.properties ?? [];
+  const targetProperties = targetObjectType?.properties ?? [];
 
   const handleSubmit = async () => {
     if (!formName.trim() || !formSourceId || !formTargetId) return;
@@ -85,6 +113,10 @@ export function ConsoleLinkTypes() {
           target_object_type_id: formTargetId,
           cardinality: formCardinality,
           dataset_id: formCardinality === 'many-to-many' ? formDatasetId || undefined : undefined,
+          source_key_property: formSourceKeyProperty || undefined,
+          target_key_property: formTargetKeyProperty || undefined,
+          source_dataset_column: formSourceDatasetColumn || undefined,
+          target_dataset_column: formTargetDatasetColumn || undefined,
         });
         toast.success('Link type updated');
       } else {
@@ -95,6 +127,10 @@ export function ConsoleLinkTypes() {
           target_object_type_id: formTargetId,
           cardinality: formCardinality,
           dataset_id: formCardinality === 'many-to-many' ? formDatasetId || undefined : undefined,
+          source_key_property: formSourceKeyProperty || undefined,
+          target_key_property: formTargetKeyProperty || undefined,
+          source_dataset_column: formSourceDatasetColumn || undefined,
+          target_dataset_column: formTargetDatasetColumn || undefined,
         });
         toast.success('Link type created');
       }
@@ -153,6 +189,7 @@ export function ConsoleLinkTypes() {
                 <th>Name</th>
                 <th>Description</th>
                 <th>Source → Target</th>
+                <th>FK</th>
                 <th>Cardinality</th>
                 <th>Dataset (M:M)</th>
                 <th>Links</th>
@@ -162,7 +199,7 @@ export function ConsoleLinkTypes() {
             <tbody>
               {linkTypes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="console-table-empty">
+                  <td colSpan={8} className="console-table-empty">
                     No link types yet. Create at least 2 object types, then create a link type.
                   </td>
                 </tr>
@@ -174,6 +211,15 @@ export function ConsoleLinkTypes() {
                     <td>
                       {t.source_object_type_name || t.source_object_type_id} →{' '}
                       {t.target_object_type_name || t.target_object_type_id}
+                    </td>
+                    <td>
+                      {[t.source_key_property, t.source_dataset_column, t.target_dataset_column, t.target_key_property]
+                        .filter(Boolean)
+                        .length > 0
+                        ? [t.source_key_property, t.source_dataset_column, t.target_dataset_column, t.target_key_property]
+                            .filter(Boolean)
+                            .join(' — ')
+                        : '—'}
                     </td>
                     <td>{t.cardinality || 'one-to-many'}</td>
                     <td>{t.cardinality === 'many-to-many' ? (t.dataset_name || '—') : '—'}</td>
@@ -199,7 +245,7 @@ export function ConsoleLinkTypes() {
 
       {showForm && (
         <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
               <h2>{editType ? 'Edit Link Type' : 'New Link Type'}</h2>
               <button
@@ -273,7 +319,11 @@ export function ConsoleLinkTypes() {
                   <span>Dataset (junction table)</span>
                   <select
                     value={formDatasetId}
-                    onChange={(e) => setFormDatasetId(e.target.value)}
+                    onChange={(e) => {
+                      setFormDatasetId(e.target.value);
+                      setFormSourceDatasetColumn('');
+                      setFormTargetDatasetColumn('');
+                    }}
                   >
                     <option value="">Select dataset…</option>
                     {datasets.map((d) => (
@@ -284,6 +334,75 @@ export function ConsoleLinkTypes() {
                   </select>
                 </label>
               )}
+              <div className="console-modal-fk-section">
+                <span className="console-modal-fk-label">
+                  {formCardinality === 'many-to-many' && formDatasetId
+                    ? 'Source Key Property — Link Dataset Source Key Property — Link Dataset Target Key Property — Target Key Property'
+                    : 'Foreign key (connect properties)'}
+                </span>
+                <div className="console-modal-fk-chain">
+                  <label>
+                    <span>Source Key Property</span>
+                    <select
+                      value={formSourceKeyProperty}
+                      onChange={(e) => setFormSourceKeyProperty(e.target.value)}
+                    >
+                      <option value="">— Select —</option>
+                      {sourceProperties.map((p) => (
+                        <option key={p.name} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {formCardinality === 'many-to-many' && formDatasetId && datasetColumns.length > 0 && (
+                    <>
+                      <span className="console-modal-fk-arrow">—</span>
+                      <label>
+                        <span>Link Dataset Source Key Property</span>
+                        <select
+                          value={formSourceDatasetColumn}
+                          onChange={(e) => setFormSourceDatasetColumn(e.target.value)}
+                        >
+                          <option value="">— Select —</option>
+                          {datasetColumns.map((c) => (
+                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <span className="console-modal-fk-arrow">—</span>
+                      <label>
+                        <span>Link Dataset Target Key Property</span>
+                        <select
+                          value={formTargetDatasetColumn}
+                          onChange={(e) => setFormTargetDatasetColumn(e.target.value)}
+                        >
+                          <option value="">— Select —</option>
+                          {datasetColumns.map((c) => (
+                            <option key={c.column_name} value={c.column_name}>{c.column_name}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </>
+                  )}
+                  <span className="console-modal-fk-arrow">—</span>
+                  <label>
+                    <span>Target Key Property</span>
+                    <select
+                      value={formTargetKeyProperty}
+                      onChange={(e) => setFormTargetKeyProperty(e.target.value)}
+                    >
+                      <option value="">— Select —</option>
+                      {targetProperties.map((p) => (
+                        <option key={p.name} value={p.name}>{p.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                  {formCardinality === 'many-to-many' && formDatasetId
+                    ? 'Which property/column maps source → target through the junction table.'
+                    : 'Which property in source/target object types forms the link (e.g. id, icd_code).'}
+                </span>
+              </div>
             </div>
             <div className="console-modal-actions">
               <button
@@ -302,7 +421,7 @@ export function ConsoleLinkTypes() {
                   !formName.trim() ||
                   !formSourceId ||
                   !formTargetId ||
-                  (formCardinality === 'many-to-many' && !formDatasetId) ||
+                  (formCardinality === 'many-to-many' && (!formDatasetId || !formSourceDatasetColumn || !formTargetDatasetColumn)) ||
                   submitting
                 }
               >

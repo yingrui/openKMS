@@ -203,6 +203,10 @@ export interface LinkTypeResponse {
   cardinality: string;
   dataset_id?: string | null;
   dataset_name?: string | null;
+  source_key_property?: string | null;
+  target_key_property?: string | null;
+  source_dataset_column?: string | null;
+  target_dataset_column?: string | null;
   link_count: number;
   created_at: string;
   updated_at: string;
@@ -240,6 +244,10 @@ export async function createLinkType(data: {
   target_object_type_id: string;
   cardinality?: string;
   dataset_id?: string;
+  source_key_property?: string;
+  target_key_property?: string;
+  source_dataset_column?: string;
+  target_dataset_column?: string;
 }): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/link-types`, {
@@ -264,6 +272,10 @@ export async function updateLinkType(
     target_object_type_id?: string;
     cardinality?: string;
     dataset_id?: string;
+    source_key_property?: string;
+    target_key_property?: string;
+    source_dataset_column?: string;
+    target_dataset_column?: string;
   }
 ): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
@@ -300,10 +312,12 @@ export interface LinkInstanceResponse {
   link_type_id: string;
   source_object_id: string;
   target_object_id: string;
+  source_key_value?: string | null;  // FK value when from dataset junction table
+  target_key_value?: string | null;  // FK value when from dataset junction table
   source_data?: Record<string, unknown> | null;
   target_data?: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface LinkInstanceListResponse {

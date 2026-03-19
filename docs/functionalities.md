@@ -105,10 +105,12 @@
 | Search datasets | ✅ | Client-side search by display name, schema.table, data source on list page |
 | Object type–dataset link | ✅ | Object types can link to a dataset (dataset_id); instance_count shows dataset table row count |
 | Link type cardinality | ✅ | Link types have cardinality (one-to-one, one-to-many, many-to-many) and optional dataset link for many-to-many |
+| Link type FK mapping | ✅ | Source/Target key properties; junction table columns (source_dataset_column, target_dataset_column) for many-to-many |
+| M:M junction table links | ✅ | When link type has dataset_id, links and link_count come from junction table; Add/Delete disabled for dataset-backed links |
 
 ### 6. Console (Admin)
 
-- Overview, Settings, Users & Roles, Feature Toggles, Object Types, Link Types, Data Sources, Datasets
+- Overview, Data Sources, Datasets, Object Types, Link Types, System Settings, Users & Roles, Feature Toggles
 - **Admin-only**: visible and accessible only to users with Keycloak realm role `admin`
 - Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
@@ -269,9 +271,9 @@
 | GET | `/api/link-types/{id}` | Get link type |
 | PUT | `/api/link-types/{id}` | Update link type (admin-only) |
 | DELETE | `/api/link-types/{id}` | Delete link type (admin-only) |
-| GET | `/api/link-types/{id}/links` | List link instances |
-| POST | `/api/link-types/{id}/links` | Create link instance (admin-only) |
-| DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only) |
+| GET | `/api/link-types/{id}/links` | List link instances (from junction table when M:M with dataset; ?limit=, ?offset=) |
+| POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
+| DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
 | GET | `/api/data-sources` | List data sources (admin-only) |
 | POST | `/api/data-sources` | Create data source (admin-only) |
 | GET | `/api/data-sources/{id}` | Get data source (admin-only) |
@@ -371,8 +373,8 @@
 
 ### LinkType
 
-- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `cardinality` (one-to-one | one-to-many | many-to-many), `dataset_id` (FK → datasets, nullable, for many-to-many), `created_at`, `updated_at`
-- Schema for relationships between two object types
+- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `cardinality` (one-to-one | one-to-many | many-to-many), `dataset_id` (FK → datasets, nullable, for many-to-many), `source_key_property`, `target_key_property`, `source_dataset_column`, `target_dataset_column` (nullable, junction table columns for M:M), `created_at`, `updated_at`
+- Schema for relationships between two object types; when many-to-many with dataset_id, links and link_count come from junction table
 
 ### LinkInstance
 

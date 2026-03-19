@@ -170,6 +170,50 @@ async def get_dataset_row_count(db: AsyncSession, dataset_id: str) -> int:
         return 0
 
 
+def _serialize_row_value(obj):
+    """Serialize a row value for JSON compatibility."""
+    if obj is None:
+        return None
+    if isinstance(obj, (date, datetime)):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return float(obj)
+    return obj
+
+
+async def fetch_dataset_rows(
+    db: AsyncSession, dataset_id: str, limit: int = 500, offset: int = 0
+) -> tuple[list[dict], int]:
+    """Fetch rows from dataset table. Returns (rows, total). Raises HTTPException on error."""
+    dataset = await db.get(Dataset, dataset_id)
+    if not dataset:
+        raise ValueError("Dataset not found")
+    ds = await db.get(DataSource, dataset.data_source_id)
+    if not ds or ds.kind != "postgresql":
+        raise ValueError("Dataset rows only supported for PostgreSQL sources")
+    schema, table = dataset.schema_name, dataset.table_name
+    if not _validate_identifier(schema) or not _validate_identifier(table):
+        raise ValueError("Invalid schema or table name")
+    quoted = f'"{schema}"."{table}"'
+    engine = _pg_engine_for_datasource(ds)
+    try:
+        with engine.connect() as conn:
+            count_result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}"))
+            total = count_result.scalar() or 0
+            rows_result = conn.execute(
+                text(f"SELECT * FROM {quoted} LIMIT :limit OFFSET :offset"),
+                {"limit": limit, "offset": offset},
+            )
+            columns = list(rows_result.keys())
+            rows = [dict(zip(columns, r)) for r in rows_result.fetchall()]
+            rows = [{k: _serialize_row_value(v) for k, v in r.items()} for r in rows]
+        engine.dispose()
+        return rows, int(total)
+    except Exception:
+        engine.dispose()
+        raise
+
+
 @router.get(
     "/{dataset_id}/rows",
     response_model=DatasetRowsResponse,
@@ -203,17 +247,7 @@ async def get_dataset_rows(
             )
             columns = list(rows_result.keys())
             rows = [dict(zip(columns, r)) for r in rows_result.fetchall()]
-
-            def _serialize(obj):
-                if obj is None:
-                    return None
-                if isinstance(obj, (date, datetime)):
-                    return obj.isoformat()
-                if isinstance(obj, Decimal):
-                    return float(obj)
-                return obj
-
-            rows = [{k: _serialize(v) for k, v in r.items()} for r in rows]
+            rows = [{k: _serialize_row_value(v) for k, v in r.items()} for r in rows]
         engine.dispose()
         return DatasetRowsResponse(rows=rows, total=total, limit=limit, offset=offset)
     except Exception as e:

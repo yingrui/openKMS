@@ -80,6 +80,8 @@
 - [x] seed_mock_insurance_data.py: mock diseases, insurance products, relationships for demo datasets
 - [x] Object types link to datasets (dataset_id); instance_count uses dataset row count when linked
 - [x] Link types: cardinality (one-to-one, one-to-many, many-to-many) and optional dataset_id for many-to-many
+- [x] Link types FK mapping: source_key_property, target_key_property, source_dataset_column, target_dataset_column
+- [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
 
 ### 4. Authentication
 

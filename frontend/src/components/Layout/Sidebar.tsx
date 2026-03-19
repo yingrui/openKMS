@@ -165,14 +165,6 @@ export function Sidebar() {
               <LayoutDashboard size={18} strokeWidth={1.75} />
               <span>Overview</span>
             </NavLink>
-            <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Box size={18} strokeWidth={1.75} />
-              <span>Object Types</span>
-            </NavLink>
-            <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Link2 size={18} strokeWidth={1.75} />
-              <span>Link Types</span>
-            </NavLink>
             <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
               <Database size={18} strokeWidth={1.75} />
               <span>Data Sources</span>
@@ -181,9 +173,17 @@ export function Sidebar() {
               <Table size={18} strokeWidth={1.75} />
               <span>Datasets</span>
             </NavLink>
+            <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Box size={18} strokeWidth={1.75} />
+              <span>Object Types</span>
+            </NavLink>
+            <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+              <Link2 size={18} strokeWidth={1.75} />
+              <span>Link Types</span>
+            </NavLink>
             <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
               <Settings size={18} strokeWidth={1.75} />
-              <span>Settings</span>
+              <span>System Settings</span>
             </NavLink>
             <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
               <Users size={18} strokeWidth={1.75} />

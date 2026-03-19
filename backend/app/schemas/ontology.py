@@ -84,6 +84,10 @@ class LinkTypeCreate(BaseModel):
     target_object_type_id: str
     cardinality: str = "one-to-many"
     dataset_id: str | None = None
+    source_key_property: str | None = None  # Property in source object type for FK
+    target_key_property: str | None = None  # Property in target object type for FK
+    source_dataset_column: str | None = None  # Column in junction table for source FK
+    target_dataset_column: str | None = None  # Column in junction table for target FK
 
 
 class LinkTypeUpdate(BaseModel):
@@ -93,6 +97,10 @@ class LinkTypeUpdate(BaseModel):
     target_object_type_id: str | None = None
     cardinality: str | None = None
     dataset_id: str | None = None
+    source_key_property: str | None = None
+    target_key_property: str | None = None
+    source_dataset_column: str | None = None
+    target_dataset_column: str | None = None
 
 
 class LinkTypeResponse(BaseModel):
@@ -106,6 +114,10 @@ class LinkTypeResponse(BaseModel):
     cardinality: str = "one-to-many"
     dataset_id: str | None = None
     dataset_name: str | None = None
+    source_key_property: str | None = None
+    target_key_property: str | None = None
+    source_dataset_column: str | None = None
+    target_dataset_column: str | None = None
     link_count: int = 0
     created_at: datetime
     updated_at: datetime
@@ -128,12 +140,14 @@ class LinkInstanceCreate(BaseModel):
 class LinkInstanceResponse(BaseModel):
     id: str
     link_type_id: str
-    source_object_id: str
-    target_object_id: str
+    source_object_id: str = ""  # Empty when from dataset junction table
+    target_object_id: str = ""  # Empty when from dataset junction table
+    source_key_value: str | None = None  # FK value when from dataset
+    target_key_value: str | None = None  # FK value when from dataset
     source_data: dict | None = None  # for display
     target_data: dict | None = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime | None = None  # None when from dataset
+    updated_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 

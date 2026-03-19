@@ -14,7 +14,8 @@ import {
 } from '../data/ontologyApi';
 import './LinkTypeDetail.css';
 
-function objectLabel(data: Record<string, unknown> | null | undefined): string {
+function objectLabel(data: Record<string, unknown> | null | undefined, keyValue?: string | null): string {
+  if (keyValue != null && keyValue !== '') return keyValue;
   if (!data) return '—';
   if (typeof data.name === 'string') return data.name;
   const first = Object.values(data).find((v) => v !== null && v !== undefined && v !== '');
@@ -154,7 +155,7 @@ export function LinkTypeDetail() {
         </Link>
         <div className="link-type-detail-title-row">
           <h1>{linkType.name}</h1>
-          {isAdmin && (
+          {isAdmin && !linkType.dataset_id && (
             <button type="button" className="btn btn-primary" onClick={openAdd}>
               <Plus size={18} />
               <span>Add Link</span>
@@ -175,22 +176,22 @@ export function LinkTypeDetail() {
             <tr>
               <th>Source</th>
               <th>Target</th>
-              {isAdmin && <th className="link-type-actions-col" />}
+              {isAdmin && !linkType.dataset_id && <th className="link-type-actions-col" />}
             </tr>
           </thead>
           <tbody>
             {instances.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 3 : 2} className="link-type-empty">
-                  No links yet.{isAdmin ? ' Click "Add Link" to create one.' : ''}
+                <td colSpan={isAdmin && !linkType.dataset_id ? 3 : 2} className="link-type-empty">
+                  No links yet.{isAdmin && !linkType.dataset_id ? ' Click "Add Link" to create one.' : linkType.dataset_id ? ' Links are read from the junction table dataset.' : ''}
                 </td>
               </tr>
             ) : (
               instances.map((inst) => (
                 <tr key={inst.id}>
-                  <td>{objectLabel(inst.source_data)}</td>
-                  <td>{objectLabel(inst.target_data)}</td>
-                  {isAdmin && (
+                  <td>{objectLabel(inst.source_data, inst.source_key_value)}</td>
+                  <td>{objectLabel(inst.target_data, inst.target_key_value)}</td>
+                  {isAdmin && !linkType.dataset_id && (
                     <td className="link-type-actions-col">
                       <button
                         type="button"

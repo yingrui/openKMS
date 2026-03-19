@@ -1,11 +1,12 @@
 """Link types API (admin CRUD + user read)."""
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_admin, require_auth
+from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
 from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
@@ -35,6 +36,13 @@ async def _link_instance_count(db: AsyncSession, link_type_id: str) -> int:
     )).scalar_one()
 
 
+async def _link_count_for_type(db: AsyncSession, link_type: LinkType) -> int:
+    """Link count: from junction dataset when many-to-many with dataset_id, else from link_instances."""
+    if link_type.cardinality == "many-to-many" and link_type.dataset_id:
+        return await get_dataset_row_count(db, link_type.dataset_id)
+    return await _link_instance_count(db, link_type.id)
+
+
 async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
     if not dataset_id:
         return None
@@ -45,7 +53,7 @@ async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
 
 
 async def _to_response(db: AsyncSession, link_type: LinkType) -> LinkTypeResponse:
-    count = await _link_instance_count(db, link_type.id)
+    count = await _link_count_for_type(db, link_type)
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
     target_type = await db.get(ObjectType, link_type.target_object_type_id)
     ds_name = await _dataset_name(db, link_type.dataset_id)
@@ -60,6 +68,10 @@ async def _to_response(db: AsyncSession, link_type: LinkType) -> LinkTypeRespons
         cardinality=link_type.cardinality or "one-to-many",
         dataset_id=link_type.dataset_id,
         dataset_name=ds_name,
+        source_key_property=link_type.source_key_property,
+        target_key_property=link_type.target_key_property,
+        source_dataset_column=link_type.source_dataset_column,
+        target_dataset_column=link_type.target_dataset_column,
         link_count=count,
         created_at=link_type.created_at,
         updated_at=link_type.updated_at,
@@ -101,6 +113,10 @@ async def create_link_type(
         target_object_type_id=body.target_object_type_id,
         cardinality=cardinality,
         dataset_id=body.dataset_id,
+        source_key_property=body.source_key_property,
+        target_key_property=body.target_key_property,
+        source_dataset_column=body.source_dataset_column,
+        target_dataset_column=body.target_dataset_column,
     )
     db.add(link_type)
     await db.flush()
@@ -149,6 +165,14 @@ async def update_link_type(
             link_type.dataset_id = None
     if body.dataset_id is not None:
         link_type.dataset_id = body.dataset_id
+    if body.source_key_property is not None:
+        link_type.source_key_property = body.source_key_property
+    if body.target_key_property is not None:
+        link_type.target_key_property = body.target_key_property
+    if body.source_dataset_column is not None:
+        link_type.source_dataset_column = body.source_dataset_column
+    if body.target_dataset_column is not None:
+        link_type.target_dataset_column = body.target_dataset_column
     await db.flush()
     await db.refresh(link_type)
     return await _to_response(db, link_type)
@@ -172,11 +196,48 @@ async def delete_link_type(
 @router.get("/{link_type_id}/links", response_model=LinkInstanceListResponse)
 async def list_link_instances(
     link_type_id: str,
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+
+    # Many-to-many with dataset: connections come from junction table
+    if (
+        link_type.cardinality == "many-to-many"
+        and link_type.dataset_id
+        and link_type.source_dataset_column
+        and link_type.target_dataset_column
+    ):
+        try:
+            rows, total = await fetch_dataset_rows(db, link_type.dataset_id, limit=limit, offset=offset)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        src_col = link_type.source_dataset_column
+        tgt_col = link_type.target_dataset_column
+        items = []
+        for i, row in enumerate(rows):
+            src_val = row.get(src_col)
+            tgt_val = row.get(tgt_col)
+            if src_val is not None and tgt_val is not None:
+                items.append(
+                    LinkInstanceResponse(
+                        id=f"dataset:{offset + i}",
+                        link_type_id=link_type_id,
+                        source_object_id="",
+                        target_object_id="",
+                        source_key_value=str(src_val),
+                        target_key_value=str(tgt_val),
+                        source_data={src_col: src_val},
+                        target_data={tgt_col: tgt_val},
+                        created_at=None,
+                        updated_at=None,
+                    )
+                )
+        return LinkInstanceListResponse(items=items, total=total)
+    # Otherwise: from link_instances table
     result = await db.execute(
         select(LinkInstance)
         .where(LinkInstance.link_type_id == link_type_id)
@@ -187,16 +248,18 @@ async def list_link_instances(
     for li in links:
         source_obj = await db.get(ObjectInstance, li.source_object_id)
         target_obj = await db.get(ObjectInstance, li.target_object_id)
-        items.append(LinkInstanceResponse(
-            id=li.id,
-            link_type_id=li.link_type_id,
-            source_object_id=li.source_object_id,
-            target_object_id=li.target_object_id,
-            source_data=source_obj.data if source_obj else None,
-            target_data=target_obj.data if target_obj else None,
-            created_at=li.created_at,
-            updated_at=li.updated_at,
-        ))
+        items.append(
+            LinkInstanceResponse(
+                id=li.id,
+                link_type_id=li.link_type_id,
+                source_object_id=li.source_object_id,
+                target_object_id=li.target_object_id,
+                source_data=source_obj.data if source_obj else None,
+                target_data=target_obj.data if target_obj else None,
+                created_at=li.created_at,
+                updated_at=li.updated_at,
+            )
+        )
     return LinkInstanceListResponse(items=items, total=len(items))
 
 
@@ -210,6 +273,11 @@ async def create_link_instance(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    if link_type.cardinality == "many-to-many" and link_type.dataset_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Links come from the junction table dataset; add/remove rows there.",
+        )
     # Validate source/target belong to correct types
     source_obj = await db.get(ObjectInstance, body.source_object_id)
     target_obj = await db.get(ObjectInstance, body.target_object_id)
@@ -249,6 +317,14 @@ async def delete_link_instance(
     _: str = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    link_type = await db.get(LinkType, link_type_id)
+    if not link_type:
+        raise HTTPException(status_code=404, detail="Link type not found")
+    if link_type.cardinality == "many-to-many" and link_type.dataset_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Links come from the junction table dataset; remove rows there.",
+        )
     link_instance = await db.get(LinkInstance, link_id)
     if not link_instance or link_instance.link_type_id != link_type_id:
         raise HTTPException(status_code=404, detail="Link not found")
