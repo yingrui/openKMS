@@ -212,7 +212,7 @@ export function ConsoleDataSources() {
       </div>
 
       {showForm && (
-        <div className="console-modal-overlay" onClick={() => !submitting && setShowForm(false)}>
+        <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
               <h2>{editItem ? 'Edit Data Source' : 'New Data Source'}</h2>

@@ -1,7 +1,7 @@
 """ObjectType model for ontology schema definitions."""
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,6 +16,9 @@ class ObjectType(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    dataset_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     properties: Mapped[list[dict] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # e.g. [{"name": "icd_code", "type": "string", "required": False}]

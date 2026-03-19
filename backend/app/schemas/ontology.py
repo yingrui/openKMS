@@ -17,12 +17,14 @@ class PropertyDef(BaseModel):
 class ObjectTypeCreate(BaseModel):
     name: str
     description: str | None = None
+    dataset_id: str | None = None
     properties: list[PropertyDef] = []
 
 
 class ObjectTypeUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    dataset_id: str | None = None
     properties: list[PropertyDef] | None = None
 
 
@@ -30,6 +32,8 @@ class ObjectTypeResponse(BaseModel):
     id: str
     name: str
     description: str | None = None
+    dataset_id: str | None = None
+    dataset_name: str | None = None
     properties: list[dict] = []  # e.g. [{"name": "icd_code", "type": "string", "required": False}]
     instance_count: int = 0
     created_at: datetime
@@ -70,11 +74,16 @@ class ObjectInstanceListResponse(BaseModel):
 
 # --- Link Type ---
 
+CARDINALITY_CHOICES = ("one-to-one", "one-to-many", "many-to-one", "many-to-many")
+
+
 class LinkTypeCreate(BaseModel):
     name: str
     description: str | None = None
     source_object_type_id: str
     target_object_type_id: str
+    cardinality: str = "one-to-many"
+    dataset_id: str | None = None
 
 
 class LinkTypeUpdate(BaseModel):
@@ -82,6 +91,8 @@ class LinkTypeUpdate(BaseModel):
     description: str | None = None
     source_object_type_id: str | None = None
     target_object_type_id: str | None = None
+    cardinality: str | None = None
+    dataset_id: str | None = None
 
 
 class LinkTypeResponse(BaseModel):
@@ -92,6 +103,9 @@ class LinkTypeResponse(BaseModel):
     target_object_type_id: str
     source_object_type_name: str | None = None
     target_object_type_name: str | None = None
+    cardinality: str = "one-to-many"
+    dataset_id: str | None = None
+    dataset_name: str | None = None
     link_count: int = 0
     created_at: datetime
     updated_at: datetime

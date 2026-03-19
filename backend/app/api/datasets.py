@@ -147,6 +147,29 @@ def _validate_identifier(name: str) -> bool:
     return bool(re.match(r"^[a-zA-Z0-9_]+$", name))
 
 
+async def get_dataset_row_count(db: AsyncSession, dataset_id: str) -> int:
+    """Get row count for a dataset table. Returns 0 if dataset not found or on error."""
+    dataset = await db.get(Dataset, dataset_id)
+    if not dataset:
+        return 0
+    ds = await db.get(DataSource, dataset.data_source_id)
+    if not ds or ds.kind != "postgresql":
+        return 0
+    schema, table = dataset.schema_name, dataset.table_name
+    if not _validate_identifier(schema) or not _validate_identifier(table):
+        return 0
+    try:
+        engine = _pg_engine_for_datasource(ds)
+        with engine.connect() as conn:
+            quoted = f'"{schema}"."{table}"'
+            result = conn.execute(text(f"SELECT COUNT(*) FROM {quoted}"))
+            total = result.scalar() or 0
+        engine.dispose()
+        return int(total)
+    except Exception:
+        return 0
+
+
 @router.get(
     "/{dataset_id}/rows",
     response_model=DatasetRowsResponse,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -9,26 +9,65 @@ import {
   type ObjectTypeResponse,
   type PropertyDef,
 } from '../../data/ontologyApi';
+import {
+  fetchDatasets,
+  fetchDatasetMetadata,
+  type DatasetResponse,
+  type ColumnMetadata,
+} from '../../data/datasetsApi';
 import './ConsoleObjectTypes.css';
 
 const PROPERTY_TYPES = ['string', 'number', 'boolean'];
 
+/** Map PostgreSQL data_type to our property type */
+function mapPgTypeToPropType(dataType: string): string {
+  const t = dataType.toLowerCase();
+  if (
+    t.includes('int') ||
+    t.includes('numeric') ||
+    t.includes('decimal') ||
+    t.includes('real') ||
+    t.includes('double') ||
+    t.includes('float')
+  ) {
+    return 'number';
+  }
+  if (t.includes('bool')) return 'boolean';
+  return 'string';
+}
+
+type FormProperty = PropertyDef & { enabled?: boolean };
+
 function PropertyRow({
   prop,
+  fromDataset,
   onChange,
   onRemove,
+  onToggleEnabled,
 }: {
-  prop: PropertyDef;
-  onChange: (p: PropertyDef) => void;
+  prop: FormProperty;
+  fromDataset: boolean;
+  onChange: (p: FormProperty) => void;
   onRemove: () => void;
+  onToggleEnabled?: (enabled: boolean) => void;
 }) {
   return (
     <div className="console-obj-property-row">
+      {fromDataset && onToggleEnabled && (
+        <label className="console-obj-property-enabled" title="Include this property">
+          <input
+            type="checkbox"
+            checked={prop.enabled !== false}
+            onChange={(e) => onToggleEnabled(e.target.checked)}
+          />
+        </label>
+      )}
       <input
         type="text"
         placeholder="Property name"
         value={prop.name}
         onChange={(e) => onChange({ ...prop, name: e.target.value })}
+        readOnly={fromDataset}
       />
       <select
         value={prop.type}
@@ -46,9 +85,11 @@ function PropertyRow({
         />
         Required
       </label>
-      <button type="button" onClick={onRemove} aria-label="Remove property">
-        <X size={14} />
-      </button>
+      {!fromDataset && (
+        <button type="button" onClick={onRemove} aria-label="Remove property">
+          <X size={14} />
+        </button>
+      )}
     </div>
   );
 }
@@ -60,14 +101,21 @@ export function ConsoleObjectTypes() {
   const [editType, setEditType] = useState<ObjectTypeResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formProperties, setFormProperties] = useState<PropertyDef[]>([]);
+  const [formDatasetId, setFormDatasetId] = useState('');
+  const [formProperties, setFormProperties] = useState<FormProperty[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [loadingMetadata, setLoadingMetadata] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchObjectTypes();
-      setTypes(res.items);
+      const [typesRes, dsRes] = await Promise.all([
+        fetchObjectTypes(),
+        fetchDatasets(),
+      ]);
+      setTypes(typesRes.items);
+      setDatasets(dsRes.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load object types');
     } finally {
@@ -79,10 +127,48 @@ export function ConsoleObjectTypes() {
     load();
   }, [load]);
 
+  const savedPropNamesRef = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    if (!formDatasetId) {
+      setFormProperties([]);
+      savedPropNamesRef.current = null;
+      return;
+    }
+    const enabledNames = savedPropNamesRef.current;
+    savedPropNamesRef.current = null;
+    let cancelled = false;
+    setLoadingMetadata(true);
+    fetchDatasetMetadata(formDatasetId)
+      .then((cols: ColumnMetadata[]) => {
+        if (cancelled) return;
+        const props: FormProperty[] = cols.map((c) => ({
+          name: c.column_name,
+          type: mapPgTypeToPropType(c.data_type),
+          required: !c.is_nullable,
+          enabled: enabledNames ? enabledNames.has(c.column_name) : true,
+        }));
+        setFormProperties(props);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : 'Failed to load dataset columns');
+          setFormProperties([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMetadata(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [formDatasetId]);
+
   const openCreate = () => {
     setEditType(null);
     setFormName('');
     setFormDescription('');
+    setFormDatasetId('');
     setFormProperties([]);
     setShowForm(true);
   };
@@ -91,24 +177,45 @@ export function ConsoleObjectTypes() {
     setEditType(t);
     setFormName(t.name);
     setFormDescription(t.description || '');
-    setFormProperties(
-      (t.properties || []).map((p) =>
-        typeof p === 'object' && 'name' in p
-          ? { name: p.name, type: p.type || 'string', required: !!p.required }
-          : { name: '', type: 'string', required: false }
-      )
-    );
+    const dsId = t.dataset_id || '';
+    if (dsId) {
+      savedPropNamesRef.current = new Set(
+        (t.properties || [])
+          .filter((p) => typeof p === 'object' && 'name' in p && (p as { name: string }).name)
+          .map((p) => (p as { name: string }).name)
+      );
+    }
+    setFormDatasetId(dsId);
+    if (!dsId) {
+      setFormProperties(
+        (t.properties || []).map((p) => {
+          const base =
+            typeof p === 'object' && 'name' in p
+              ? { name: p.name, type: p.type || 'string', required: !!p.required }
+              : { name: '', type: 'string', required: false };
+          return { ...base, enabled: true };
+        })
+      );
+    }
     setShowForm(true);
   };
 
   const addProperty = () => {
-    setFormProperties((prev) => [...prev, { name: '', type: 'string', required: false }]);
+    setFormProperties((prev) => [...prev, { name: '', type: 'string', required: false, enabled: true }]);
   };
 
-  const updateProperty = (idx: number, p: PropertyDef) => {
+  const updateProperty = (idx: number, p: FormProperty) => {
     setFormProperties((prev) => {
       const next = [...prev];
       next[idx] = p;
+      return next;
+    });
+  };
+
+  const togglePropertyEnabled = (idx: number, enabled: boolean) => {
+    setFormProperties((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], enabled };
       return next;
     });
   };
@@ -119,13 +226,16 @@ export function ConsoleObjectTypes() {
 
   const handleSubmit = async () => {
     if (!formName.trim()) return;
-    const props = formProperties.filter((p) => p.name.trim());
+    const props = formProperties
+      .filter((p) => p.name.trim() && p.enabled !== false)
+      .map(({ enabled: _e, ...rest }) => rest) as PropertyDef[];
     setSubmitting(true);
     try {
       if (editType) {
         await updateObjectType(editType.id, {
           name: formName.trim(),
           description: formDescription.trim() || undefined,
+          dataset_id: formDatasetId || undefined,
           properties: props,
         });
         toast.success('Object type updated');
@@ -133,6 +243,7 @@ export function ConsoleObjectTypes() {
         await createObjectType({
           name: formName.trim(),
           description: formDescription.trim() || undefined,
+          dataset_id: formDatasetId || undefined,
           properties: props,
         });
         toast.success('Object type created');
@@ -185,6 +296,7 @@ export function ConsoleObjectTypes() {
               <tr>
                 <th>Name</th>
                 <th>Description</th>
+                <th>Dataset</th>
                 <th>Properties</th>
                 <th>Instances</th>
                 <th className="console-table-actions">Actions</th>
@@ -193,7 +305,7 @@ export function ConsoleObjectTypes() {
             <tbody>
               {types.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="console-table-empty">
+                  <td colSpan={6} className="console-table-empty">
                     No object types yet. Create one to get started.
                   </td>
                 </tr>
@@ -202,6 +314,7 @@ export function ConsoleObjectTypes() {
                   <tr key={t.id}>
                     <td><strong>{t.name}</strong></td>
                     <td>{t.description || '—'}</td>
+                    <td>{t.dataset_name || '—'}</td>
                     <td>{(t.properties || []).length}</td>
                     <td>{t.instance_count}</td>
                     <td className="console-table-actions">
@@ -224,7 +337,7 @@ export function ConsoleObjectTypes() {
       </div>
 
       {showForm && (
-        <div className="console-modal-overlay" onClick={() => !submitting && setShowForm(false)}>
+        <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
               <h2>{editType ? 'Edit Object Type' : 'New Object Type'}</h2>
@@ -256,24 +369,49 @@ export function ConsoleObjectTypes() {
                   placeholder="Optional"
                 />
               </label>
+              <label>
+                <span>Dataset (optional)</span>
+                <select
+                  value={formDatasetId}
+                  onChange={(e) => setFormDatasetId(e.target.value)}
+                >
+                  <option value="">None</option>
+                  {datasets.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.display_name || `${d.schema_name}.${d.table_name}`}
+                    </option>
+                  ))}
+                </select>
+                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                  Select a dataset to auto-fill properties from columns. Check/uncheck to include or exclude.
+                </span>
+              </label>
               <div className="console-modal-section">
                 <div className="console-modal-section-header">
                   <span>Properties</span>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={addProperty}>
-                    <Plus size={14} />
-                    Add
-                  </button>
+                  {!formDatasetId && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={addProperty}>
+                      <Plus size={14} />
+                      Add
+                    </button>
+                  )}
                 </div>
-                {formProperties.length === 0 ? (
-                  <p className="console-modal-hint">No properties. Add one to define fields.</p>
+                {loadingMetadata ? (
+                  <p className="console-modal-hint">Loading columns…</p>
+                ) : formProperties.length === 0 ? (
+                  <p className="console-modal-hint">
+                    {formDatasetId ? 'No columns in this dataset.' : 'Select a dataset to load columns, or add properties manually.'}
+                  </p>
                 ) : (
                   <div className="console-obj-properties-list">
                     {formProperties.map((p, i) => (
                       <PropertyRow
-                        key={i}
+                        key={formDatasetId ? p.name : i}
                         prop={p}
+                        fromDataset={!!formDatasetId}
                         onChange={(np) => updateProperty(i, np)}
                         onRemove={() => removeProperty(i)}
+                        onToggleEnabled={formDatasetId ? (enabled) => togglePropertyEnabled(i, enabled) : undefined}
                       />
                     ))}
                   </div>

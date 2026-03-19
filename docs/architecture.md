@@ -136,7 +136,7 @@ backend/
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
-│   │   ├── object_type.py     # ObjectType (name, description, properties JSONB)
+│   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK)
 │   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
 │   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
 │   │   ├── link_instance.py   # LinkInstance (link_type_id, source_object_id, target_object_id)

@@ -264,6 +264,13 @@
   gap: 8px;
 }
 
+.console-obj-property-enabled {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 24px;
+}
+
 .console-obj-property-row input[type='text'] {
   flex: 1;
   min-width: 0;

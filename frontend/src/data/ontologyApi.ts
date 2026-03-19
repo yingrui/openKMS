@@ -14,6 +14,8 @@ export interface ObjectTypeResponse {
   id: string;
   name: string;
   description?: string | null;
+  dataset_id?: string | null;
+  dataset_name?: string | null;
   properties: PropertyDef[];
   instance_count: number;
   created_at: string;
@@ -48,6 +50,7 @@ export async function fetchObjectType(objectTypeId: string): Promise<ObjectTypeR
 export async function createObjectType(data: {
   name: string;
   description?: string;
+  dataset_id?: string;
   properties?: PropertyDef[];
 }): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
@@ -66,7 +69,7 @@ export async function createObjectType(data: {
 
 export async function updateObjectType(
   objectTypeId: string,
-  data: { name?: string; description?: string; properties?: PropertyDef[] }
+  data: { name?: string; description?: string; dataset_id?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
@@ -185,6 +188,10 @@ export async function deleteObjectInstance(
 
 // --- Link Type ---
 
+export const CARDINALITY_OPTIONS = ['one-to-one', 'one-to-many', 'many-to-one', 'many-to-many'] as const;
+
+export type Cardinality = (typeof CARDINALITY_OPTIONS)[number];
+
 export interface LinkTypeResponse {
   id: string;
   name: string;
@@ -193,6 +200,9 @@ export interface LinkTypeResponse {
   target_object_type_id: string;
   source_object_type_name?: string | null;
   target_object_type_name?: string | null;
+  cardinality: string;
+  dataset_id?: string | null;
+  dataset_name?: string | null;
   link_count: number;
   created_at: string;
   updated_at: string;
@@ -228,6 +238,8 @@ export async function createLinkType(data: {
   description?: string;
   source_object_type_id: string;
   target_object_type_id: string;
+  cardinality?: string;
+  dataset_id?: string;
 }): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/link-types`, {
@@ -250,6 +262,8 @@ export async function updateLinkType(
     description?: string;
     source_object_type_id?: string;
     target_object_type_id?: string;
+    cardinality?: string;
+    dataset_id?: string;
   }
 ): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();

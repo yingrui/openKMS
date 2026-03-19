@@ -6,7 +6,9 @@ from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_admin, require_auth
+from app.api.datasets import get_dataset_row_count
 from app.database import get_db
+from app.models.dataset import Dataset
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.schemas.ontology import (
@@ -35,7 +37,14 @@ async def _object_instance_count(db: AsyncSession, object_type_id: str) -> int:
     )).scalar_one()
 
 
-def _to_response(obj_type: ObjectType, instance_count: int) -> ObjectTypeResponse:
+async def _resolve_instance_count(db: AsyncSession, obj_type: ObjectType) -> int:
+    """Instance count: dataset row count when linked, else object_instances count."""
+    if obj_type.dataset_id:
+        return await get_dataset_row_count(db, obj_type.dataset_id)
+    return await _object_instance_count(db, obj_type.id)
+
+
+def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | None = None) -> ObjectTypeResponse:
     props = [p if isinstance(p, dict) else p.model_dump() for p in (obj_type.properties or [])]
     if hasattr(obj_type, "_property_defs"):
         props = [p.model_dump() if hasattr(p, "model_dump") else p for p in obj_type.properties or []]
@@ -43,6 +52,8 @@ def _to_response(obj_type: ObjectType, instance_count: int) -> ObjectTypeRespons
         id=obj_type.id,
         name=obj_type.name,
         description=obj_type.description,
+        dataset_id=obj_type.dataset_id,
+        dataset_name=dataset_name,
         properties=props,
         instance_count=instance_count,
         created_at=obj_type.created_at,
@@ -56,6 +67,15 @@ def _prop_defs_to_dicts(properties: list) -> list[dict]:
 
 # --- Admin CRUD ---
 
+async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
+    if not dataset_id:
+        return None
+    ds = await db.get(Dataset, dataset_id)
+    if not ds:
+        return None
+    return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
+
+
 @router.get("", response_model=ObjectTypeListResponse)
 async def list_object_types(db: AsyncSession = Depends(get_db)):
     """List all object types. Available to all authenticated users."""
@@ -63,8 +83,9 @@ async def list_object_types(db: AsyncSession = Depends(get_db)):
     types = result.scalars().all()
     items = []
     for t in types:
-        count = await _object_instance_count(db, t.id)
-        items.append(_to_response(t, count))
+        count = await _resolve_instance_count(db, t)
+        ds_name = await _dataset_name(db, t.dataset_id)
+        items.append(_to_response(t, count, ds_name))
     return ObjectTypeListResponse(items=items, total=len(items))
 
 
@@ -83,13 +104,15 @@ async def create_object_type(
         id=str(uuid.uuid4()),
         name=body.name,
         description=body.description,
+        dataset_id=body.dataset_id,
         properties=props,
     )
     db.add(obj_type)
     await db.flush()
     await db.refresh(obj_type)
-    count = await _object_instance_count(db, obj_type.id)
-    return _to_response(obj_type, count)
+    count = await _resolve_instance_count(db, obj_type)
+    ds_name = await _dataset_name(db, obj_type.dataset_id)
+    return _to_response(obj_type, count, ds_name)
 
 
 @router.get("/{object_type_id}", response_model=ObjectTypeResponse)
@@ -97,8 +120,9 @@ async def get_object_type(object_type_id: str, db: AsyncSession = Depends(get_db
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
-    count = await _object_instance_count(db, obj_type.id)
-    return _to_response(obj_type, count)
+    count = await _resolve_instance_count(db, obj_type)
+    ds_name = await _dataset_name(db, obj_type.dataset_id)
+    return _to_response(obj_type, count, ds_name)
 
 
 @router.put("/{object_type_id}", response_model=ObjectTypeResponse)
@@ -121,12 +145,15 @@ async def update_object_type(
         obj_type.name = body.name
     if body.description is not None:
         obj_type.description = body.description
+    if body.dataset_id is not None:
+        obj_type.dataset_id = body.dataset_id
     if body.properties is not None:
         obj_type.properties = _prop_defs_to_dicts(body.properties)
     await db.flush()
     await db.refresh(obj_type)
-    count = await _object_instance_count(db, obj_type.id)
-    return _to_response(obj_type, count)
+    count = await _resolve_instance_count(db, obj_type)
+    ds_name = await _dataset_name(db, obj_type.dataset_id)
+    return _to_response(obj_type, count, ds_name)
 
 
 @router.delete("/{object_type_id}", status_code=204)

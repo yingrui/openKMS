@@ -78,7 +78,8 @@
 - [x] Dataset detail: click dataset → Data tab (rows with pagination, page size selector) and Metadata tab (column info)
 - [x] Dataset rows/metadata API: GET /api/datasets/{id}/rows, GET /api/datasets/{id}/metadata
 - [x] seed_mock_insurance_data.py: mock diseases, insurance products, relationships for demo datasets
-- [ ] Future: map datasets to Object Types / Link Types
+- [x] Object types link to datasets (dataset_id); instance_count uses dataset row count when linked
+- [x] Link types: cardinality (one-to-one, one-to-many, many-to-many) and optional dataset_id for many-to-many
 
 ### 4. Authentication
 

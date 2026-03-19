@@ -79,7 +79,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB); managed in Console → Object Types |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id); managed in Console → Object Types; instance_count from dataset row count when linked |
 | Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
 | Link types | ✅ | Schema for relationships between two object types; managed in Console → Link Types |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
@@ -103,7 +103,8 @@
 | Dataset rows | ✅ | `GET /api/datasets/{id}/rows?limit=&offset=` fetches paginated rows from table |
 | Dataset metadata | ✅ | `GET /api/datasets/{id}/metadata` returns column name, type, nullable, position from information_schema |
 | Search datasets | ✅ | Client-side search by display name, schema.table, data source on list page |
-| Future mapping | Planned | Datasets can be linked to Object Types and Link Types |
+| Object type–dataset link | ✅ | Object types can link to a dataset (dataset_id); instance_count shows dataset table row count |
+| Link type cardinality | ✅ | Link types have cardinality (one-to-one, one-to-many, many-to-many) and optional dataset link for many-to-many |
 
 ### 6. Console (Admin)
 
@@ -370,7 +371,7 @@
 
 ### LinkType
 
-- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `created_at`, `updated_at`
+- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `cardinality` (one-to-one | one-to-many | many-to-many), `dataset_id` (FK → datasets, nullable, for many-to-many), `created_at`, `updated_at`
 - Schema for relationships between two object types
 
 ### LinkInstance

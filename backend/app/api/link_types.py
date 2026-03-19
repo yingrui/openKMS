@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_admin, require_auth
 from app.database import get_db
+from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
-from app.models.link_type import LinkType
+from app.models.link_type import CARDINALITY_CHOICES, LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.schemas.ontology import (
@@ -34,10 +35,20 @@ async def _link_instance_count(db: AsyncSession, link_type_id: str) -> int:
     )).scalar_one()
 
 
+async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
+    if not dataset_id:
+        return None
+    ds = await db.get(Dataset, dataset_id)
+    if not ds:
+        return None
+    return ds.display_name or f"{ds.schema_name}.{ds.table_name}"
+
+
 async def _to_response(db: AsyncSession, link_type: LinkType) -> LinkTypeResponse:
     count = await _link_instance_count(db, link_type.id)
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
     target_type = await db.get(ObjectType, link_type.target_object_type_id)
+    ds_name = await _dataset_name(db, link_type.dataset_id)
     return LinkTypeResponse(
         id=link_type.id,
         name=link_type.name,
@@ -46,6 +57,9 @@ async def _to_response(db: AsyncSession, link_type: LinkType) -> LinkTypeRespons
         target_object_type_id=link_type.target_object_type_id,
         source_object_type_name=source_type.name if source_type else None,
         target_object_type_name=target_type.name if target_type else None,
+        cardinality=link_type.cardinality or "one-to-many",
+        dataset_id=link_type.dataset_id,
+        dataset_name=ds_name,
         link_count=count,
         created_at=link_type.created_at,
         updated_at=link_type.updated_at,
@@ -76,12 +90,17 @@ async def create_link_type(
         raise HTTPException(status_code=400, detail="Source object type not found")
     if not target:
         raise HTTPException(status_code=400, detail="Target object type not found")
+    cardinality = body.cardinality or "one-to-many"
+    if cardinality not in CARDINALITY_CHOICES:
+        raise HTTPException(status_code=400, detail=f"cardinality must be one of {CARDINALITY_CHOICES}")
     link_type = LinkType(
         id=str(uuid.uuid4()),
         name=body.name,
         description=body.description,
         source_object_type_id=body.source_object_type_id,
         target_object_type_id=body.target_object_type_id,
+        cardinality=cardinality,
+        dataset_id=body.dataset_id,
     )
     db.add(link_type)
     await db.flush()
@@ -122,6 +141,14 @@ async def update_link_type(
         if not tgt:
             raise HTTPException(status_code=400, detail="Target object type not found")
         link_type.target_object_type_id = body.target_object_type_id
+    if body.cardinality is not None:
+        if body.cardinality not in CARDINALITY_CHOICES:
+            raise HTTPException(status_code=400, detail=f"cardinality must be one of {CARDINALITY_CHOICES}")
+        link_type.cardinality = body.cardinality
+        if body.cardinality != "many-to-many":
+            link_type.dataset_id = None
+    if body.dataset_id is not None:
+        link_type.dataset_id = body.dataset_id
     await db.flush()
     await db.refresh(link_type)
     return await _to_response(db, link_type)
