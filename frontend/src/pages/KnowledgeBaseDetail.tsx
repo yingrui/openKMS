@@ -18,6 +18,9 @@ import {
   FileText,
   Check,
   Loader2,
+  Filter,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -123,6 +126,9 @@ export function KnowledgeBaseDetail() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchFiltersExpanded, setSearchFiltersExpanded] = useState(false);
+  const [searchLabelFilters, setSearchLabelFilters] = useState<Record<string, string>>({});
+  const [searchMetadataFilters, setSearchMetadataFilters] = useState<Record<string, string>>({});
 
   // QA
   const [qaInput, setQaInput] = useState('');
@@ -509,12 +515,40 @@ export function KnowledgeBaseDetail() {
   };
 
   // --- Search ---
+  const parseFilterValue = (v: string): string | string[] => {
+    const trimmed = v.trim();
+    if (!trimmed) return trimmed;
+    if (trimmed.includes(',')) {
+      return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return trimmed;
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!kbId || !searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await searchKnowledgeBase(kbId, { query: searchQuery, top_k: 10 });
+      const label_filters: Record<string, string | string[]> = {};
+      for (const [k, v] of Object.entries(searchLabelFilters)) {
+        const parsed = parseFilterValue(v);
+        if (parsed && (typeof parsed === 'string' ? parsed : parsed.length > 0)) {
+          label_filters[k] = parsed;
+        }
+      }
+      const metadata_filters: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(searchMetadataFilters)) {
+        const parsed = parseFilterValue(v);
+        if (parsed && (typeof parsed === 'string' ? parsed : parsed.length > 0)) {
+          metadata_filters[k] = parsed;
+        }
+      }
+      const res = await searchKnowledgeBase(kbId, {
+        query: searchQuery,
+        top_k: 10,
+        label_filters: Object.keys(label_filters).length ? label_filters : undefined,
+        metadata_filters: Object.keys(metadata_filters).length ? metadata_filters : undefined,
+      });
       setSearchResults(res.results);
       setHasSearched(true);
     } catch (e: unknown) {
@@ -986,6 +1020,73 @@ export function KnowledgeBaseDetail() {
                 <span>{searching ? 'Searching...' : 'Search'}</span>
               </button>
             </form>
+
+            {(kb?.label_keys?.length || kb?.metadata_keys?.length) ? (
+              <div className="kb-search-filters">
+                <button
+                  type="button"
+                  className="kb-search-filters-toggle"
+                  onClick={() => setSearchFiltersExpanded((e) => !e)}
+                  aria-expanded={searchFiltersExpanded}
+                >
+                  {searchFiltersExpanded ? (
+                    <ChevronDown size={18} />
+                  ) : (
+                    <ChevronRight size={18} />
+                  )}
+                  <Filter size={18} />
+                  <span>Filters</span>
+                  {(Object.values(searchLabelFilters).some(Boolean) || Object.values(searchMetadataFilters).some(Boolean)) && (
+                    <span className="kb-search-filters-badge">active</span>
+                  )}
+                </button>
+                {searchFiltersExpanded && (
+                  <div className="kb-search-filters-panel">
+                    <p className="kb-search-filters-hint">
+                      Restrict results by labels (from documents) or metadata. Use exact values; comma-separated for multiple.
+                    </p>
+                    {kb?.label_keys && kb.label_keys.length > 0 && (
+                      <div className="kb-search-filters-group">
+                        <span className="kb-search-filters-group-label">Labels</span>
+                        {kb.label_keys.map((key) => (
+                          <div key={key} className="kb-search-filter-row">
+                            <label htmlFor={`search-label-${key}`}>{key}</label>
+                            <input
+                              id={`search-label-${key}`}
+                              type="text"
+                              placeholder={`e.g. prod-123 or value1, value2`}
+                              value={searchLabelFilters[key] ?? ''}
+                              onChange={(e) => setSearchLabelFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
+                      <div className="kb-search-filters-group">
+                        <span className="kb-search-filters-group-label">Document Metadata</span>
+                        {kb.metadata_keys.map((key) => (
+                          <div key={key} className="kb-search-filter-row">
+                            <label htmlFor={`search-meta-${key}`}>{key}</label>
+                            <input
+                              id={`search-meta-${key}`}
+                              type="text"
+                              placeholder={`e.g. Alice or tag1, tag2`}
+                              value={searchMetadataFilters[key] ?? ''}
+                              onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="kb-search-filters-empty-hint">
+                Configure label_keys and metadata_keys in Settings to filter search results (e.g. product = xx).
+              </p>
+            )}
 
             {hasSearched && searchResults.length > 0 && (
               <div className="kb-search-results-panel">

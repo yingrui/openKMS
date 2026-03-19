@@ -6,6 +6,7 @@ Usage: openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3:/
 import json
 import os
 import re
+import traceback
 from pathlib import Path
 from typing import Optional
 
@@ -263,6 +264,8 @@ def pipeline_run(
                 )
             except Exception as e:
                 console.print(f"[red]Indexing failed: {e}[/red]")
+                console.print("[dim]Traceback:[/dim]")
+                console.print(traceback.format_exc(), style="dim")
                 raise typer.Exit(1)
         return
 

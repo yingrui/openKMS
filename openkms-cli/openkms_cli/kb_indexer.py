@@ -250,8 +250,24 @@ def run_indexer(
         all_chunks.extend(raw_chunks)
 
     _update("Fetching FAQs...")
-    faqs_resp = requests.get(f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs", headers=headers, timeout=30)
-    faqs = faqs_resp.json() if faqs_resp.ok else []
+    faqs: list[dict[str, Any]] = []
+    offset = 0
+    limit = 200
+    while True:
+        faqs_resp = requests.get(
+            f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs",
+            params={"offset": offset, "limit": limit},
+            headers=headers,
+            timeout=30,
+        )
+        if not faqs_resp.ok:
+            break
+        data = faqs_resp.json()
+        items = data.get("items", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+        faqs.extend(items)
+        if len(items) < limit:
+            break
+        offset += limit
 
     def _save_chunks_to_output(
         chunks: list[dict],

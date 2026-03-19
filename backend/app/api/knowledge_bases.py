@@ -58,27 +58,37 @@ router = APIRouter(
 
 
 def _build_label_filter_conditions(column: Any, filters: dict[str, str | list[str]]) -> Any:
-    """Build SQLAlchemy conditions for label_filters. Matches scalar or array containment. AND between keys."""
+    """Build SQLAlchemy conditions for label_filters. Matches scalar or array containment. AND between keys.
+    Uses jsonb_build_object/jsonb_build_array to avoid Python string encoding issues with cast(json.dumps())."""
     key_conds = []
     for key, val in filters.items():
         vals = val if isinstance(val, list) else [val]
-        # Match if labels.key equals any of vals (scalar) or array contains any
-        val_conds = [
-            or_(
-                column.op("@>")(cast(json.dumps({key: v}), JSONB)),
-                column[key].op("@>")(cast(json.dumps([v]), JSONB)),
+        val_conds = []
+        for v in vals:
+            # Match if labels @> {key: v} (scalar) or labels->key @> [v] (array contains v)
+            obj_expr = func.jsonb_build_object(key, v)
+            arr_expr = func.jsonb_build_array(v)
+            val_conds.append(
+                or_(
+                    column.op("@>")(obj_expr),
+                    column[key].op("@>")(arr_expr),
+                )
             )
-            for v in vals
-        ]
         key_conds.append(or_(*val_conds))
     return and_(*key_conds) if key_conds else True
 
 
 def _build_metadata_filter_conditions(column: Any, filters: dict[str, Any]) -> Any:
-    """Build SQLAlchemy condition for metadata_filters using JSONB containment."""
+    """Build SQLAlchemy condition for metadata_filters using JSONB containment.
+    Uses jsonb_build_object to avoid Python string encoding issues."""
     if not filters:
         return True
-    return column.op("@>")(cast(json.dumps(filters), JSONB))
+    # Build jsonb_build_object(key1, val1, key2, val2, ...) - PostgreSQL expects alternating key,value
+    args = []
+    for k, v in filters.items():
+        args.extend([k, v])
+    obj_expr = func.jsonb_build_object(*args)
+    return column.op("@>")(obj_expr)
 
 
 def _propagate_labels_metadata(
