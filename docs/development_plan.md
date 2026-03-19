@@ -134,6 +134,22 @@
 - [ ] Job logs/stdout capture
 - [ ] Configurable concurrency for worker
 
+### 6b. Tech Debt Mitigation (2026-03)
+
+- [x] Error boundary around routes (App.tsx)
+- [x] Document model status default fix (migration p1q2r3s4t5u6)
+- [x] Frontend typecheck script (`npm run typecheck`)
+- [x] Cypher injection hardening (ontology_explore: block CALL, apoc., dbms.; require RETURN)
+- [x] Docker Compose (Postgres, MinIO)
+- [x] Makefile (install, migrate, run-backend, run-frontend, run-worker, test)
+- [x] .env.example (root, vlm-server)
+- [x] Production secret key check (reject startup with default)
+- [x] Pipeline command validation (max_length=4096)
+- [x] Backend pytest + smoke tests
+- [x] Frontend Vitest + smoke tests
+- [x] DocumentStatus enum; async subprocess (run_pipeline); document list query optimization; VLM config consolidation
+- [x] Route-level code splitting (React.lazy); ErrorBanner; ConsoleSettings a11y (id/htmlFor)
+
 ### 7. Knowledge Bases (RAG)
 
 - [x] Knowledge base CRUD API (`/api/knowledge-bases`)

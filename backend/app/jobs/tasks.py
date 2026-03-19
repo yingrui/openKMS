@@ -1,11 +1,12 @@
 """Procrastinate task definitions for document processing."""
+import asyncio
 import json
 import logging
 import os
 import shlex
-import subprocess
 
 from app.config import settings
+from app.constants import DocumentStatus
 from app.jobs import job_app
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,7 @@ def render_command(
         "bucket": settings.aws_bucket_name,
         "endpoint_url": settings.aws_endpoint_url or "",
         "region": settings.aws_region,
-        "vlm_url": model_base_url or settings.paddleocr_vl_server_url,
+        "vlm_url": model_base_url or settings.vlm_url.rstrip("/"),
         "model_name": model_name or settings.paddleocr_vl_model,
         "document_id": document_id,
         "api_url": base_api_url,
@@ -166,7 +167,7 @@ async def run_pipeline(
 
     async with async_session_maker() as session:
         await session.execute(
-            update(Document).where(Document.id == document_id).values(status="running")
+            update(Document).where(Document.id == document_id).values(status=DocumentStatus.RUNNING)
         )
         await session.commit()
     cmd = shlex.split(rendered)
@@ -174,22 +175,35 @@ async def run_pipeline(
     logger.info("Running pipeline for document %s: %s", document_id, rendered)
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=600,
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
             env=subprocess_env,
         )
-
-        if result.returncode != 0:
-            logger.error("Pipeline failed (exit %d): %s", result.returncode, result.stderr)
+        try:
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=600)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            logger.error("Pipeline timed out for document %s", document_id)
             async with async_session_maker() as session:
                 await session.execute(
-                    update(Document).where(Document.id == document_id).values(status="failed")
+                    update(Document).where(Document.id == document_id).values(status=DocumentStatus.FAILED)
                 )
                 await session.commit()
-            raise RuntimeError(f"Pipeline exited with code {result.returncode}: {result.stderr[:500]}")
+            raise RuntimeError("Pipeline timed out after 600s") from None
+
+        stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
+
+        if proc.returncode != 0:
+            logger.error("Pipeline failed (exit %d): %s", proc.returncode, stderr)
+            async with async_session_maker() as session:
+                await session.execute(
+                    update(Document).where(Document.id == document_id).values(status=DocumentStatus.FAILED)
+                )
+                await session.commit()
+            raise RuntimeError(f"Pipeline exited with code {proc.returncode}: {stderr[:500]}")
 
         logger.info("Pipeline completed for document %s", document_id)
 
@@ -200,17 +214,11 @@ async def run_pipeline(
             await session.execute(
                 update(Document)
                 .where(Document.id == document_id)
-                .values(status="completed", parsing_result=parsing_result, markdown=markdown)
+                .values(status=DocumentStatus.COMPLETED, parsing_result=parsing_result, markdown=markdown)
             )
             await session.commit()
 
-    except subprocess.TimeoutExpired:
-        logger.error("Pipeline timed out for document %s", document_id)
-        async with async_session_maker() as session:
-            await session.execute(
-                update(Document).where(Document.id == document_id).values(status="failed")
-            )
-            await session.commit()
+    except RuntimeError:
         raise
 
 

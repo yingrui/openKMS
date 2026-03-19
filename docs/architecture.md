@@ -86,9 +86,11 @@ flowchart TB
 ```
 frontend/src/
 ├── main.tsx                 # Entry
-├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels)
+├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels), ErrorBoundary, Suspense + lazy routes
 ├── config/index.ts          # API URL
 ├── components/Layout/       # MainLayout, Sidebar, Header
+├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
+├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
 ├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, ontologyApi, dataSourcesApi, datasetsApi, featureTogglesApi, channelUtils
 └── pages/
@@ -111,8 +113,9 @@ frontend/src/
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI app, CORS, routers, procrastinate lifespan
-│   ├── config.py                # Settings (env: OPENKMS_*)
+│   ├── main.py                  # FastAPI app, CORS, routers, procrastinate lifespan; rejects default secret in production
+│   ├── config.py                # Settings (env: OPENKMS_*); vlm_url primary for VLM
+│   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
 │   ├── database.py              # Async engine, get_db, init_db
 │   ├── api/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin

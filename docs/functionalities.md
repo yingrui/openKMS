@@ -2,6 +2,18 @@
 
 ## Implemented Features
 
+### 0. Infrastructure & Quality
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Docker Compose | ✅ | Postgres, MinIO for local dev; `docker compose up -d` |
+| Makefile | ✅ | install, migrate, run-backend, run-frontend, run-worker, test |
+| Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
+| Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
+| Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
+| Route code splitting | ✅ | React.lazy for heavy routes (ObjectExplorer, Models, Pipelines, etc.) |
+| Typecheck | ✅ | `npm run typecheck` (tsc --noEmit) |
+
 ### 1. Documents
 
 | Feature | Status | Description |

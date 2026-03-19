@@ -49,11 +49,28 @@ async def execute_cypher(
     if not body.cypher or not body.cypher.strip():
         raise HTTPException(status_code=400, detail="Cypher query is required")
     cypher = body.cypher.strip()
-    # Basic safety: only allow read operations (block write keywords as whole words)
+    # Block write operations (whole words)
     if re.search(r"\b(CREATE|MERGE|DELETE|SET|REMOVE|DETACH|DROP)\b", cypher, re.IGNORECASE):
         raise HTTPException(
             status_code=400,
             detail="Only read queries allowed (MATCH, RETURN, WHERE, etc.). Write operations are forbidden.",
+        )
+    # Block procedure/admin calls (CALL, apoc., dbms., etc.)
+    if re.search(r"\bCALL\b", cypher, re.IGNORECASE):
+        raise HTTPException(
+            status_code=400,
+            detail="Procedure calls (CALL) are not allowed.",
+        )
+    if re.search(r"(apoc\.|dbms\.)", cypher, re.IGNORECASE):
+        raise HTTPException(
+            status_code=400,
+            detail="apoc and dbms procedures are not allowed.",
+        )
+    # Require RETURN (read queries must return results)
+    if "RETURN" not in cypher.upper():
+        raise HTTPException(
+            status_code=400,
+            detail="Query must include RETURN (read-only queries only).",
         )
     result = await db.execute(select(DataSource).where(DataSource.kind == "neo4j").limit(1))
     neo4j_ds = result.scalar_one_or_none()

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, GitBranch, Search, Trash2, Pencil, X, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../components/ErrorBanner';
 import {
   fetchPipelines,
   fetchTemplateVariables,
@@ -44,7 +45,7 @@ export function Pipelines() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to load pipelines';
       setError(msg);
-      toast.error(msg);
+      // Banner only for load errors (blocking); toast for mutations
     } finally {
       setLoading(false);
     }
@@ -163,7 +164,7 @@ export function Pipelines() {
             />
           </div>
         </div>
-        {error && <p className="pipelines-error">{error}</p>}
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
         <div className="pipelines-table-wrap">
           {loading ? (
             <div className="pipelines-loading">

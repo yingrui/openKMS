@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 DEFAULT_PIPELINE_COMMAND = (
@@ -23,7 +23,7 @@ class PipelineCreate(BaseModel):
 class PipelineUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
-    command: str | None = None
+    command: str | None = Field(default=None, max_length=4096)
     default_args: dict[str, Any] | None = None
     model_id: str | None = None
 

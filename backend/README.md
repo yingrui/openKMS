@@ -52,7 +52,10 @@ Tables are created automatically on startup via `init_db()`.
 # Start vlm-server first (in another terminal)
 cd ../vlm-server && ./start.sh
 
-# Start backend
+# Start backend (recommended: uses dev.sh for pgvector, migrations, OPENKMS_DEBUG=true)
+./dev.sh
+
+# Or run uvicorn directly (requires OPENKMS_DEBUG=true or non-default OPENKMS_SECRET_KEY for local dev)
 uvicorn app.main:app --reload --port 8102
 ```
 

@@ -28,9 +28,18 @@ from app.database import init_db
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_SECRET_KEY = "openkms-dev-secret-change-in-production"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Create tables, storage bucket, and procrastinate schema on startup."""
+    if not settings.debug and settings.secret_key == DEFAULT_SECRET_KEY:
+        raise RuntimeError(
+            "Refusing to start: secret_key is the default value. "
+            "Set OPENKMS_SECRET_KEY to a secure value in production."
+        )
+
     from app.services.storage import ensure_bucket
 
     await init_db()

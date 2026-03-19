@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
@@ -9,23 +10,9 @@ import { DocumentChannel } from './pages/DocumentChannel';
 import { DocumentsIndex } from './pages/DocumentsIndex';
 import { Articles } from './pages/Articles';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
-import { KnowledgeBaseDetail } from './pages/KnowledgeBaseDetail';
 import { GlossaryList } from './pages/GlossaryList';
 import { GlossaryDetail } from './pages/GlossaryDetail';
-import { Pipelines } from './pages/Pipelines';
-import { Jobs } from './pages/Jobs';
-import { JobDetail } from './pages/JobDetail';
-import { Models } from './pages/Models';
-import { ModelDetail } from './pages/ModelDetail';
-import { ObjectsList } from './pages/ObjectsList';
-import { ObjectTypeDetail } from './pages/ObjectTypeDetail';
-import { LinksList } from './pages/LinksList';
-import { LinkTypeDetail } from './pages/LinkTypeDetail';
-import { ObjectExplorer } from './pages/ObjectExplorer';
-import { DocumentDetail } from './pages/DocumentDetail';
-import { DocumentChannelSettings } from './pages/DocumentChannelSettings';
 import { DocumentChannels } from './pages/DocumentChannels';
-import { ArticleDetail } from './pages/ArticleDetail';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
 import { ConsoleOverview } from './pages/console/ConsoleOverview';
 import { ConsoleSettings } from './pages/console/ConsoleSettings';
@@ -35,8 +22,24 @@ import { ConsoleObjectTypes } from './pages/console/ConsoleObjectTypes';
 import { ConsoleLinkTypes } from './pages/console/ConsoleLinkTypes';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
-import { ConsoleDatasetDetail } from './pages/console/ConsoleDatasetDetail';
 import { FeatureGate } from './components/FeatureGate';
+import { ErrorBoundary } from './components/ErrorBoundary';
+
+const KnowledgeBaseDetail = lazy(() => import('./pages/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })));
+const Pipelines = lazy(() => import('./pages/Pipelines').then((m) => ({ default: m.Pipelines })));
+const Jobs = lazy(() => import('./pages/Jobs').then((m) => ({ default: m.Jobs })));
+const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
+const Models = lazy(() => import('./pages/Models').then((m) => ({ default: m.Models })));
+const ModelDetail = lazy(() => import('./pages/ModelDetail').then((m) => ({ default: m.ModelDetail })));
+const ObjectsList = lazy(() => import('./pages/ObjectsList').then((m) => ({ default: m.ObjectsList })));
+const ObjectTypeDetail = lazy(() => import('./pages/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
+const LinksList = lazy(() => import('./pages/LinksList').then((m) => ({ default: m.LinksList })));
+const LinkTypeDetail = lazy(() => import('./pages/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
+const ObjectExplorer = lazy(() => import('./pages/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
+const DocumentDetail = lazy(() => import('./pages/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
+const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })));
+const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
+const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
 
 function App() {
   return (
@@ -45,6 +48,8 @@ function App() {
       <AuthProvider>
       <FeatureTogglesProvider>
       <DocumentChannelsProvider>
+      <ErrorBoundary>
+      <Suspense fallback={<div className="app-loading" aria-live="polite">Loading...</div>}>
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
@@ -84,6 +89,8 @@ function App() {
           </Route>
         </Route>
       </Routes>
+      </Suspense>
+      </ErrorBoundary>
       </DocumentChannelsProvider>
       </FeatureTogglesProvider>
       </AuthProvider>

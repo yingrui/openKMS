@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.constants import DocumentStatus
 from app.database import Base
 
 
@@ -19,7 +20,9 @@ class Document(Base):
     size_bytes: Mapped[int] = mapped_column(nullable=False, default=0)
     channel_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     file_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="uploaded", server_default="completed")
+    status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default=DocumentStatus.UPLOADED, server_default=DocumentStatus.UPLOADED
+    )
     markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     parsing_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     doc_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)

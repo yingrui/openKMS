@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
+from app.constants import DocumentStatus
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
@@ -156,7 +157,7 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
 
     from sqlalchemy import update
     await db.execute(
-        update(Document).where(Document.id == doc.id).values(status="pending")
+        update(Document).where(Document.id == doc.id).values(status=DocumentStatus.PENDING)
     )
     await db.commit()
 
@@ -215,7 +216,7 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
     from sqlalchemy import update
     from app.models.document import Document
     await db.execute(
-        update(Document).where(Document.id == document_id).values(status="pending")
+        update(Document).where(Document.id == document_id).values(status=DocumentStatus.PENDING)
     )
     await db.commit()
 

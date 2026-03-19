@@ -13,6 +13,7 @@ from fastapi.responses import RedirectResponse
 
 from app.api.auth import require_auth
 from app.config import settings
+from app.constants import DocumentStatus
 from app.database import get_db
 from app.models.api_model import ApiModel
 from app.models.document import Document
@@ -58,11 +59,11 @@ async def list_documents(
     query = select(Document)
 
     if channel_id:
-        target = await db.get(DocumentChannel, channel_id)
-        if not target:
-            raise HTTPException(status_code=404, detail="Channel not found")
         result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
         all_channels = list(result.scalars().all())
+        target = next((c for c in all_channels if c.id == channel_id), None)
+        if not target:
+            raise HTTPException(status_code=404, detail="Channel not found")
         ids_to_include: set[str] = set()
         _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
         query = query.where(Document.channel_id.in_(ids_to_include))
@@ -105,8 +106,6 @@ async def upload_document(
 
     upload_object(f"{file_hash}/original.{ext}", content)
 
-    initial_status = "uploaded"
-
     doc = Document(
         id=str(uuid4()),
         name=filename,
@@ -114,7 +113,7 @@ async def upload_document(
         size_bytes=len(content),
         channel_id=channel_id,
         file_hash=file_hash,
-        status=initial_status,
+        status=DocumentStatus.UPLOADED,
     )
     db.add(doc)
     await db.flush()
@@ -133,7 +132,7 @@ async def upload_document(
                 default_args=pipeline.default_args,
                 model_id=pipeline.model_id,
             )
-            doc.status = "pending"
+            doc.status = DocumentStatus.PENDING
 
     await db.commit()
     await db.refresh(doc)
@@ -168,7 +167,7 @@ async def reset_document_status(
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    if doc.status not in ("pending", "failed"):
+    if doc.status not in (DocumentStatus.PENDING, DocumentStatus.FAILED):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot reset document with status '{doc.status}'",
@@ -192,7 +191,7 @@ async def reset_document_status(
                 detail="Document has active jobs. Cancel or wait for them to finish.",
             )
 
-    doc.status = "uploaded"
+    doc.status = DocumentStatus.UPLOADED
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
@@ -310,7 +309,7 @@ async def extract_document_metadata(
             status_code=400,
             detail="Document has no markdown content to extract from",
         )
-    if doc.status != "completed":
+    if doc.status != DocumentStatus.COMPLETED:
         raise HTTPException(
             status_code=400,
             detail=f"Document must be fully parsed (status=completed). Current: {doc.status}",

@@ -24,10 +24,9 @@ class Settings(BaseSettings):
     vlm_url: str = "http://localhost:8101"
     vlm_model: str = "mlx-community/Qwen2-VL-2B-Instruct-4bit"
 
-    # PaddleOCRVL (uses mlx-vlm-server as VLM backend for document parsing)
-    paddleocr_vl_server_url: str = "http://localhost:8101/"
+    # PaddleOCRVL (uses vlm_url / mlx-vlm-server as VLM backend for document parsing)
+    paddleocr_vl_server_url: str = "http://localhost:8101/"  # deprecated: use vlm_url
     paddleocr_vl_model: str = "PaddlePaddle/PaddleOCR-VL-1.5"
-    paddleocr_vl_max_concurrency: int = 3
 
     # Metadata extraction (LLM for document metadata)
     extraction_model_id: str | None = None

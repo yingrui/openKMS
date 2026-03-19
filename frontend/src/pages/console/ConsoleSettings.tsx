@@ -16,12 +16,12 @@ export function ConsoleSettings() {
           General
         </h2>
         <div className="console-settings-section">
-          <label>System name</label>
-          <input type="text" defaultValue="openKMS" className="console-settings-input" />
+          <label htmlFor="console-settings-system-name">System name</label>
+          <input id="console-settings-system-name" type="text" defaultValue="openKMS" className="console-settings-input" />
         </div>
         <div className="console-settings-section">
-          <label>Default timezone</label>
-          <select className="console-settings-select" defaultValue="UTC">
+          <label htmlFor="console-settings-timezone">Default timezone</label>
+          <select id="console-settings-timezone" className="console-settings-select" defaultValue="UTC">
             <option value="UTC">UTC</option>
             <option value="Asia/Shanghai">Asia/Shanghai</option>
             <option value="America/New_York">America/New_York</option>
@@ -31,8 +31,8 @@ export function ConsoleSettings() {
       <div className="console-settings-card">
         <h2>API &amp; Integrations</h2>
         <div className="console-settings-section">
-          <label>Default API base URL</label>
-          <input type="url" placeholder="https://api.example.com" className="console-settings-input" />
+          <label htmlFor="console-settings-api-url">Default API base URL</label>
+          <input id="console-settings-api-url" type="url" placeholder="https://api.example.com" className="console-settings-input" />
         </div>
       </div>
     </div>

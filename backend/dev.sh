@@ -10,6 +10,9 @@ if [[ -f .env ]]; then
   set +a
 fi
 
+# Allow default secret key in local development
+export OPENKMS_DEBUG="${OPENKMS_DEBUG:-true}"
+
 # Activate venv if present
 if [[ -d .venv ]]; then
   source .venv/bin/activate
