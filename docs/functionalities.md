@@ -91,7 +91,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id); managed in Console → Object Types |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property for primary key); managed in Console → Object Types; Edit dialog: wider, property name/type read-only when editing, primary key radio selector |
 | Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
 | Link types | ✅ | Schema for relationships between two object types; managed in Console → Link Types |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |

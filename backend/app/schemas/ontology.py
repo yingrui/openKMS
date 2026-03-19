@@ -18,6 +18,7 @@ class ObjectTypeCreate(BaseModel):
     name: str
     description: str | None = None
     dataset_id: str | None = None
+    key_property: str | None = None
     properties: list[PropertyDef] = []
 
 
@@ -25,6 +26,7 @@ class ObjectTypeUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     dataset_id: str | None = None
+    key_property: str | None = None
     properties: list[PropertyDef] | None = None
 
 
@@ -34,6 +36,7 @@ class ObjectTypeResponse(BaseModel):
     description: str | None = None
     dataset_id: str | None = None
     dataset_name: str | None = None
+    key_property: str | None = None
     properties: list[dict] = []  # e.g. [{"name": "icd_code", "type": "string", "required": False}]
     instance_count: int = 0
     created_at: datetime

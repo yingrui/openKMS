@@ -67,6 +67,7 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
         description=obj_type.description,
         dataset_id=obj_type.dataset_id,
         dataset_name=dataset_name,
+        key_property=obj_type.key_property,
         properties=props,
         instance_count=instance_count,
         created_at=obj_type.created_at,
@@ -76,6 +77,16 @@ def _to_response(obj_type: ObjectType, instance_count: int, dataset_name: str | 
 
 def _prop_defs_to_dicts(properties: list) -> list[dict]:
     return [p.model_dump() if hasattr(p, "model_dump") else p for p in properties]
+
+
+def _resolve_id_property(obj_type: ObjectType) -> str:
+    """Return property name used as primary/ID. Uses key_property if set, else infers."""
+    if obj_type.key_property:
+        prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
+        if obj_type.key_property in (prop_names or ["id"]):
+            return obj_type.key_property
+    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
+    return "id" if (prop_names and "id" in prop_names) else (prop_names[0] if prop_names else "id")
 
 
 # --- Admin CRUD ---
@@ -230,6 +241,7 @@ async def create_object_type(
         name=body.name,
         description=body.description,
         dataset_id=body.dataset_id,
+        key_property=body.key_property,
         properties=props,
     )
     db.add(obj_type)
@@ -291,6 +303,8 @@ async def update_object_type(
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Object type with this name already exists")
         obj_type.name = body.name
+    if body.key_property is not None:
+        obj_type.key_property = body.key_property.strip() or None
     if body.description is not None:
         obj_type.description = body.description
     if body.dataset_id is not None:
@@ -363,7 +377,12 @@ async def index_objects_to_neo4j(
                     if not rows:
                         break
                     prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
-                    id_col = "id" if (prop_names and "id" in prop_names) or "id" in rows[0] else (prop_names[0] if prop_names else list(rows[0].keys())[0])
+                    if obj_type.key_property and rows and obj_type.key_property in rows[0]:
+                        id_col = obj_type.key_property
+                    elif (prop_names and "id" in prop_names) or (rows and "id" in rows[0]):
+                        id_col = "id"
+                    else:
+                        id_col = prop_names[0] if prop_names else list(rows[0].keys())[0]
                     for row in rows:
                         props = {k: v for k, v in row.items() if v is not None}
                         node_id = props.get(id_col, props.get(list(props.keys())[0]) if props else None)
@@ -404,12 +423,7 @@ async def list_object_instances(
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
 
-    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
-    id_prop = (
-        "id"
-        if (prop_names and "id" in prop_names)
-        else (prop_names[0] if prop_names else "id")
-    )
+    id_prop = _resolve_id_property(obj_type)
 
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
@@ -451,9 +465,10 @@ async def list_object_instances(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         id_col = (
-            "id"
-            if (prop_names and "id" in prop_names) or (rows and rows[0] and "id" in rows[0])
-            else (prop_names[0] if prop_names else (list(rows[0].keys())[0] if rows else "id"))
+            obj_type.key_property
+            if obj_type.key_property and rows and rows[0] and obj_type.key_property in rows[0]
+            else ("id" if (rows and rows[0] and "id" in rows[0])
+                  else (list(rows[0].keys())[0] if rows else "id"))
         )
         items = []
         for row in rows:

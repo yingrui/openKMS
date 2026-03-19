@@ -189,7 +189,11 @@
 }
 
 .console-modal.console-modal--wide {
-  max-width: 720px;
+  max-width: 640px;
+}
+
+.console-object-types .console-modal.console-modal--wide {
+  max-width: 680px;
 }
 
 .console-modal-header {
@@ -325,6 +329,48 @@
   align-items: center;
   flex-shrink: 0;
   width: 24px;
+}
+
+.console-obj-property-primary {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 24px;
+}
+
+.console-obj-property-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.console-obj-prop-col-enable {
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.console-obj-prop-col-pk {
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.console-obj-prop-col-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.console-obj-prop-col-type {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.console-obj-prop-col-required {
+  flex-shrink: 0;
 }
 
 .console-obj-property-row input[type='text'] {

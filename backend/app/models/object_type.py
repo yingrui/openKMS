@@ -19,6 +19,7 @@ class ObjectType(Base):
     dataset_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    key_property: Mapped[str | None] = mapped_column(String(128), nullable=True)  # Property name used as primary/ID
     properties: Mapped[list[dict] | None] = mapped_column(
         JSONB, nullable=True, default=list
     )  # e.g. [{"name": "icd_code", "type": "string", "required": False}]

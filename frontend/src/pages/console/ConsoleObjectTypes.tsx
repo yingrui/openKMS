@@ -43,12 +43,18 @@ type FormProperty = PropertyDef & { enabled?: boolean };
 function PropertyRow({
   prop,
   fromDataset,
+  nameTypeReadOnly,
+  isPrimaryKey,
+  onPrimaryKeyChange,
   onChange,
   onRemove,
   onToggleEnabled,
 }: {
   prop: FormProperty;
   fromDataset: boolean;
+  nameTypeReadOnly: boolean;
+  isPrimaryKey?: boolean;
+  onPrimaryKeyChange?: () => void;
   onChange: (p: FormProperty) => void;
   onRemove: () => void;
   onToggleEnabled?: (enabled: boolean) => void;
@@ -64,16 +70,27 @@ function PropertyRow({
           />
         </label>
       )}
+      {onPrimaryKeyChange ? (
+        <label className="console-obj-property-primary" title="Primary key">
+          <input
+            type="radio"
+            name="primary-key"
+            checked={isPrimaryKey}
+            onChange={onPrimaryKeyChange}
+          />
+        </label>
+      ) : null}
       <input
         type="text"
         placeholder="Property name"
         value={prop.name}
         onChange={(e) => onChange({ ...prop, name: e.target.value })}
-        readOnly={fromDataset}
+        readOnly={fromDataset || nameTypeReadOnly}
       />
       <select
         value={prop.type}
         onChange={(e) => onChange({ ...prop, type: e.target.value })}
+        disabled={nameTypeReadOnly}
       >
         {PROPERTY_TYPES.map((t) => (
           <option key={t} value={t}>{t}</option>
@@ -112,6 +129,7 @@ export function ConsoleObjectTypes() {
   const [showIndexDialog, setShowIndexDialog] = useState(false);
   const [indexNeo4jId, setIndexNeo4jId] = useState('');
   const [indexing, setIndexing] = useState(false);
+  const [formKeyProperty, setFormKeyProperty] = useState('');
 
   const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
 
@@ -159,6 +177,7 @@ export function ConsoleObjectTypes() {
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
         setFormProperties(props);
+        setFormKeyProperty((prev) => (prev ? prev : cols[0]?.column_name || ''));
       })
       .catch((e) => {
         if (!cancelled) {
@@ -180,6 +199,7 @@ export function ConsoleObjectTypes() {
     setFormDescription('');
     setFormDatasetId('');
     setFormProperties([]);
+    setFormKeyProperty('');
     setShowForm(true);
   };
 
@@ -187,6 +207,7 @@ export function ConsoleObjectTypes() {
     setEditType(t);
     setFormName(t.name);
     setFormDescription(t.description || '');
+    setFormKeyProperty(t.key_property || '');
     const dsId = t.dataset_id || '';
     if (dsId) {
       savedPropNamesRef.current = new Set(
@@ -197,15 +218,17 @@ export function ConsoleObjectTypes() {
     }
     setFormDatasetId(dsId);
     if (!dsId) {
-      setFormProperties(
-        (t.properties || []).map((p) => {
-          const base =
-            typeof p === 'object' && 'name' in p
-              ? { name: p.name, type: p.type || 'string', required: !!p.required }
-              : { name: '', type: 'string', required: false };
-          return { ...base, enabled: true };
-        })
-      );
+      const props = (t.properties || []).map((p) => {
+        const base =
+          typeof p === 'object' && 'name' in p
+            ? { name: p.name, type: p.type || 'string', required: !!p.required }
+            : { name: '', type: 'string', required: false };
+        return { ...base, enabled: true };
+      });
+      setFormProperties(props);
+      if (!t.key_property && props.length > 0 && props[0].name) {
+        setFormKeyProperty(props[0].name);
+      }
     }
     setShowForm(true);
   };
@@ -247,6 +270,7 @@ export function ConsoleObjectTypes() {
           description: formDescription.trim() || undefined,
           dataset_id: formDatasetId || undefined,
           properties: props,
+          key_property: formKeyProperty || undefined,
         });
         toast.success('Object type updated');
       } else {
@@ -255,6 +279,7 @@ export function ConsoleObjectTypes() {
           description: formDescription.trim() || undefined,
           dataset_id: formDatasetId || undefined,
           properties: props,
+          key_property: formKeyProperty || undefined,
         });
         toast.success('Object type created');
       }
@@ -378,7 +403,7 @@ export function ConsoleObjectTypes() {
 
       {showForm && (
         <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
               <h2>{editType ? 'Edit Object Type' : 'New Object Type'}</h2>
               <button
@@ -444,11 +469,21 @@ export function ConsoleObjectTypes() {
                   </p>
                 ) : (
                   <div className="console-obj-properties-list">
+                    <div className="console-obj-property-header">
+                      {formDatasetId ? <span className="console-obj-prop-col-enable" /> : null}
+                      <span className="console-obj-prop-col-pk" title="Primary key">PK</span>
+                      <span className="console-obj-prop-col-name">Name</span>
+                      <span className="console-obj-prop-col-type">Type</span>
+                      <span className="console-obj-prop-col-required">Required</span>
+                    </div>
                     {formProperties.map((p, i) => (
                       <PropertyRow
                         key={formDatasetId ? p.name : i}
                         prop={p}
                         fromDataset={!!formDatasetId}
+                        nameTypeReadOnly={!!editType}
+                        isPrimaryKey={formKeyProperty === p.name}
+                        onPrimaryKeyChange={() => setFormKeyProperty(p.name)}
                         onChange={(np) => updateProperty(i, np)}
                         onRemove={() => removeProperty(i)}
                         onToggleEnabled={formDatasetId ? (enabled) => togglePropertyEnabled(i, enabled) : undefined}

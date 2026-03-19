@@ -60,7 +60,7 @@
 - [x] Object instances: CRUD under `/api/object-types/{id}/objects` (admin write)
 - [x] Link types: schema with source/target object types
 - [x] Link instances: CRUD under `/api/link-types/{id}/links` (admin write)
-- [x] Console Object Types page: CRUD object types and properties
+- [x] Console Object Types page: CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector
 - [x] Console Link Types page: CRUD link types
 - [x] User-facing Objects list (`/objects`), Object type detail with instances (`/objects/:typeId`)
 - [x] User-facing Links list (`/links`), Link type detail with instances (`/links/:typeId`)

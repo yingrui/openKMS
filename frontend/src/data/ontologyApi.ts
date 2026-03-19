@@ -16,6 +16,7 @@ export interface ObjectTypeResponse {
   description?: string | null;
   dataset_id?: string | null;
   dataset_name?: string | null;
+  key_property?: string | null;
   properties: PropertyDef[];
   instance_count: number;
   created_at: string;
@@ -56,6 +57,7 @@ export async function createObjectType(data: {
   name: string;
   description?: string;
   dataset_id?: string;
+  key_property?: string;
   properties?: PropertyDef[];
 }): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
@@ -74,7 +76,7 @@ export async function createObjectType(data: {
 
 export async function updateObjectType(
   objectTypeId: string,
-  data: { name?: string; description?: string; dataset_id?: string; properties?: PropertyDef[] }
+  data: { name?: string; description?: string; dataset_id?: string; key_property?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
