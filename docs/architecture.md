@@ -76,8 +76,7 @@ flowchart TB
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
-    Objects[ObjectsList, ObjectTypeDetail, ObjectExplorer (force-directed graph)]
-    Links[LinksList, LinkTypeDetail]
+    Ontology[OntologyList - overview; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer]
     Console[Console: Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, DatasetDetail]
   end
 
@@ -106,7 +105,7 @@ frontend/src/
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    ├── ObjectsList.tsx, ObjectTypeDetail.tsx, ObjectExplorer.tsx, LinksList.tsx, LinkTypeDetail.tsx
+    ├── OntologyList.tsx, ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx, ObjectExplorer.tsx
     └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, ConsoleDatasetDetail
 ```
 

@@ -112,7 +112,8 @@
 | Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
 | Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; checkbox selection for object/link types, directional arrows; layout modes (force, left-to-right, top-to-bottom, radial); zoom in/out/fit, fullscreen; style panel overlays canvas with Object/Link type color pickers |
-| Ontology sidebar | ✅ | Expandable "Ontology" menu with Objects, Links, Object Explorer; shown when Neo4j exists or objectsAndLinks toggle |
+| Ontology overview | ✅ | Single page at `/ontology` showing all object types and link types with links to detail pages |
+| Ontology sidebar | ✅ | Clickable "Ontology" menu (links to `/ontology`); subnav Objects, Links, Object Explorer when on ontology pages; shown when Neo4j exists or objectsAndLinks toggle |
 | Search | ✅ | Optional search filter on object instances |
 | Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
 | Console counts | ✅ | Console Object Types and Link Types: instance_count and link_count from datasets (PostgreSQL) |

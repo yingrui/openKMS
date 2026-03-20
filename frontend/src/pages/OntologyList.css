@@ -1,0 +1,129 @@
+.ontology-list {
+  width: 100%;
+}
+
+.ontology-list .page-header {
+  margin-bottom: 32px;
+}
+
+.ontology-list .page-header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.ontology-list .page-subtitle {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.ontology-loading {
+  color: var(--color-text-secondary);
+  padding: 40px 0;
+}
+
+.ontology-section {
+  margin-bottom: 40px;
+}
+
+.ontology-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: var(--color-text-secondary);
+}
+
+.ontology-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.ontology-empty svg {
+  opacity: 0.5;
+}
+
+.ontology-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.ontology-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.ontology-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.ontology-card-top {
+  margin-bottom: 12px;
+}
+
+.ontology-icon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.ontology-icon-object {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.ontology-icon-link {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.ontology-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.ontology-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  flex: 1;
+}
+
+.ontology-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.ontology-type-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

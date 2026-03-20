@@ -33,6 +33,7 @@ const Jobs = lazy(() => import('./pages/Jobs').then((m) => ({ default: m.Jobs })
 const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
 const Models = lazy(() => import('./pages/Models').then((m) => ({ default: m.Models })));
 const ModelDetail = lazy(() => import('./pages/ModelDetail').then((m) => ({ default: m.ModelDetail })));
+const OntologyList = lazy(() => import('./pages/OntologyList').then((m) => ({ default: m.OntologyList })));
 const ObjectsList = lazy(() => import('./pages/ObjectsList').then((m) => ({ default: m.ObjectsList })));
 const ObjectTypeDetail = lazy(() => import('./pages/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
 const LinksList = lazy(() => import('./pages/LinksList').then((m) => ({ default: m.LinksList })));
@@ -75,6 +76,7 @@ function App() {
           <Route path="jobs/:jobId" element={<JobDetail />} />
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
+          <Route path="ontology" element={<FeatureGate feature="objectsAndLinks"><OntologyList /></FeatureGate>} />
           <Route path="objects" element={<FeatureGate feature="objectsAndLinks"><ObjectsList /></FeatureGate>} />
           <Route path="objects/:typeId" element={<FeatureGate feature="objectsAndLinks"><ObjectTypeDetail /></FeatureGate>} />
           <Route path="links" element={<FeatureGate feature="objectsAndLinks"><LinksList /></FeatureGate>} />

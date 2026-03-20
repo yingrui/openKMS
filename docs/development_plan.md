@@ -18,7 +18,7 @@
 - Console: settings, users, feature toggles (database-backed, includes objectsAndLinks, evaluationDatasets), object types, link types, data sources, datasets; admin-only (realm role `admin`)
 - Evaluation (experimental, feature toggle): query + expected answer pairs per KB; topic column; CSV import (topic, query, answer); run evaluation via QA /ask; sidebar link when evaluationDatasets enabled
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start
-- Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /objects, /links; feature toggle objectsAndLinks
+- Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /ontology (overview), /objects, /links; feature toggle objectsAndLinks
 - Data Sources & Datasets: Console → Data Sources (PostgreSQL/Neo4j connections, encrypted creds), Datasets (map PG tables); future: link datasets to Object Types / Link Types
 
 ## Short-Term (Next Steps)
@@ -64,6 +64,7 @@
 - [x] Link instances: CRUD under `/api/link-types/{id}/links` (admin write)
 - [x] Console Object Types page: CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector; is_master_data and display_property for document labels
 - [x] Console Link Types page: CRUD link types
+- [x] Ontology overview page (`/ontology`) – all object types and link types on one page
 - [x] User-facing Objects list (`/objects`), Object type detail with instances (`/objects/:typeId`)
 - [x] User-facing Links list (`/links`), Link type detail with instances (`/links/:typeId`)
 - [x] Search filter on object instances
@@ -87,7 +88,7 @@
 - [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
 - [x] Many-to-one/one-to-many: link_count from source object type dataset where FK column is not null
 - [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links buttons when Neo4j data source exists; POST /api/object-types/index-to-neo4j, POST /api/link-types/index-to-neo4j
-- [x] Ontology sidebar: expandable "Ontology" menu with Objects, Links, Object Explorer submenus
+- [x] Ontology sidebar: clickable "Ontology" menu (links to /ontology); subnav Objects, Links, Object Explorer when on ontology pages
 - [x] Objects & Links visible when Neo4j data source exists (hasNeo4jDataSource in feature toggles)
 - [x] Object Explorer: graph view at /object-explorer (react-force-graph-2d, Cypher execution, object/link type selection)
 - [x] Objects page: instances and instance_count from Neo4j; Console Object Types: counts from datasets

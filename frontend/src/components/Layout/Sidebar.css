@@ -168,6 +168,11 @@
   background: transparent;
 }
 
+.sidebar-link-parent-static {
+  cursor: default;
+  color: var(--color-text-secondary);
+}
+
 .sidebar-parent-toggle {
   padding: 8px 6px;
   color: var(--color-text-muted);
