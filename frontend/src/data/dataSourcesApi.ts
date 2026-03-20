@@ -116,3 +116,15 @@ export async function testDataSourceConnection(id: string): Promise<{ ok: boolea
   if (!res.ok) throw new Error((data as { detail?: string }).detail || 'Test failed');
   return data as { ok: boolean; message: string };
 }
+
+export async function neo4jDeleteAll(id: string): Promise<{ ok: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/data-sources/${id}/neo4j-delete-all`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as { detail?: string }).detail || 'Delete all failed');
+  return data as { ok: boolean; message: string };
+}

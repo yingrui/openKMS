@@ -169,3 +169,34 @@ async def test_data_source_connection(data_source_id: str, db: AsyncSession = De
             return {"ok": False, "message": str(e)}
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported data source kind: {ds.kind}")
+
+
+@router.post("/{data_source_id}/neo4j-delete-all", dependencies=[Depends(require_admin)])
+async def neo4j_delete_all(data_source_id: str, db: AsyncSession = Depends(get_db)):
+    """Delete all nodes and relationships in the Neo4j database. Admin only. Neo4j data sources only."""
+    ds = await db.get(DataSource, data_source_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Data source not found")
+    if ds.kind != "neo4j":
+        raise HTTPException(status_code=400, detail="Only Neo4j data sources support delete all")
+
+    try:
+        from neo4j import GraphDatabase
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Neo4j driver not installed. pip install neo4j",
+        )
+
+    username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
+    password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
+    uri = f"bolt://{ds.host}:{ds.port or 7687}"
+    driver = GraphDatabase.driver(uri, auth=(username, password))
+    try:
+        with driver.session() as session:
+            session.run("MATCH (n) DETACH DELETE n")
+        return {"ok": True, "message": "All nodes and relationships deleted"}
+    except Exception as e:
+        return {"ok": False, "message": str(e)}
+    finally:
+        driver.close()

@@ -73,6 +73,7 @@
 
 - [x] Data sources: CRUD for PostgreSQL and Neo4j connections; credentials encrypted (Fernet)
 - [x] Test connection: POST /api/data-sources/{id}/test
+- [x] Neo4j delete all: POST /api/data-sources/{id}/neo4j-delete-all; confirmation modal in Console
 - [x] Datasets: CRUD for PostgreSQL tables (schema + table) linked to data sources
 - [x] List tables: GET /api/datasets/from-source/{id} for table picker
 - [x] Console Data Sources page: table, Add/Edit modal, Test button

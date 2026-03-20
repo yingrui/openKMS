@@ -126,7 +126,7 @@ backend/
 │   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
 │   │   ├── link_types.py       # CRUD /api/link-types; instances from Neo4j when available; count_from_neo4j param for Links page
 │   │   ├── ontology_explore.py # POST /api/ontology/explore; execute read-only Cypher against Neo4j (Object Explorer)
-│   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test; credentials encrypted
+│   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test, POST /{id}/neo4j-delete-all; credentials encrypted
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy

@@ -125,6 +125,7 @@
 | Data Source CRUD | ✅ | PostgreSQL and Neo4j connection configs; Console → Data Sources |
 | Credential encryption | ✅ | Username/password encrypted with Fernet before storage; key from OPENKMS_DATASOURCE_ENCRYPTION_KEY or derived from secret_key |
 | Test connection | ✅ | `POST /api/data-sources/{id}/test` validates connectivity |
+| Neo4j delete all | ✅ | `POST /api/data-sources/{id}/neo4j-delete-all` wipes all nodes and relationships; confirmation modal in Console |
 | Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; Console → Datasets |
 | List tables from source | ✅ | `GET /api/datasets/from-source/{id}` returns tables for picker when creating dataset |
 | Dataset detail | ✅ | Click dataset name → `/console/datasets/:id` with Data tab (rows, pagination) and Metadata tab (column info) |
@@ -325,6 +326,7 @@
 | PUT | `/api/data-sources/{id}` | Update data source (admin-only) |
 | DELETE | `/api/data-sources/{id}` | Delete data source (admin-only) |
 | POST | `/api/data-sources/{id}/test` | Test connection (admin-only) |
+| POST | `/api/data-sources/{id}/neo4j-delete-all` | Delete all nodes and relationships in Neo4j (admin-only, Neo4j only) |
 | GET | `/api/datasets` | List datasets (admin-only, optional ?data_source_id=) |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (admin-only) |
 | POST | `/api/datasets` | Create dataset (admin-only) |

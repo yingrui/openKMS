@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Wifi, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Wifi, Loader2, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchDataSources,
@@ -7,6 +7,7 @@ import {
   updateDataSource,
   deleteDataSource,
   testDataSourceConnection,
+  neo4jDeleteAll,
   type DataSourceResponse,
 } from '../../data/dataSourcesApi';
 import './ConsoleObjectTypes.css';
@@ -27,6 +28,8 @@ export function ConsoleDataSources() {
   const [formPassword, setFormPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
+  const [deletingAll, setDeletingAll] = useState<string | null>(null);
+  const [deleteAllConfirmId, setDeleteAllConfirmId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,6 +138,25 @@ export function ConsoleDataSources() {
     }
   };
 
+  const handleNeo4jDeleteAllConfirm = async () => {
+    if (!deleteAllConfirmId) return;
+    const id = deleteAllConfirmId;
+    setDeleteAllConfirmId(null);
+    setDeletingAll(id);
+    try {
+      const res = await neo4jDeleteAll(id);
+      if (res.ok) {
+        toast.success('All Neo4j data deleted');
+      } else {
+        toast.error(res.message || 'Delete all failed');
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Delete all failed');
+    } finally {
+      setDeletingAll(null);
+    }
+  };
+
   return (
     <div className="console-object-types">
       <div className="page-header">
@@ -194,6 +216,20 @@ export function ConsoleDataSources() {
                         >
                           <Wifi size={16} />
                         </button>
+                        {d.kind === 'neo4j' && (
+                          <button
+                            type="button"
+                            title="Delete all nodes and relationships in Neo4j"
+                            onClick={() => setDeleteAllConfirmId(d.id)}
+                            disabled={deletingAll === d.id}
+                          >
+                            {deletingAll === d.id ? (
+                              <Loader2 size={16} className="console-loading-spinner" />
+                            ) : (
+                              <Eraser size={16} />
+                            )}
+                          </button>
+                        )}
                         <button type="button" title="Edit" onClick={() => openEdit(d)}>
                           <Pencil size={16} />
                         </button>
@@ -307,6 +343,57 @@ export function ConsoleDataSources() {
                 disabled={!formName.trim() || !formHost.trim() || !formUsername.trim() || submitting}
               >
                 {submitting ? 'Saving…' : editItem ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteAllConfirmId && (
+        <div
+          className="console-modal-overlay"
+          onClick={(e) => e.target === e.currentTarget && !deletingAll && setDeleteAllConfirmId(null)}
+        >
+          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="console-modal-header">
+              <h2>Delete All Neo4j Data</h2>
+              <button
+                type="button"
+                onClick={() => !deletingAll && setDeleteAllConfirmId(null)}
+                disabled={!!deletingAll}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="console-modal-body">
+              <p className="console-modal-hint">
+                Delete all nodes and relationships in this Neo4j database? This cannot be undone.
+              </p>
+            </div>
+            <div className="console-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => !deletingAll && setDeleteAllConfirmId(null)}
+                disabled={!!deletingAll}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleNeo4jDeleteAllConfirm}
+                disabled={!!deletingAll}
+              >
+                {deletingAll ? (
+                  <>
+                    <Loader2 size={18} className="console-loading-spinner" />
+                    <span>Deleting…</span>
+                  </>
+                ) : (
+                  'Confirm & Delete All'
+                )}
               </button>
             </div>
           </div>
