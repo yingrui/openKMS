@@ -9,6 +9,7 @@ export interface KnowledgeBaseResponse {
   name: string;
   description?: string | null;
   embedding_model_id?: string | null;
+  judge_model_id?: string | null;
   agent_url?: string | null;
   chunk_config?: Record<string, unknown> | null;
   faq_prompt?: string | null;
@@ -152,6 +153,7 @@ export async function updateKnowledgeBase(
     name?: string;
     description?: string;
     embedding_model_id?: string | null;
+    judge_model_id?: string | null;
     agent_url?: string | null;
     chunk_config?: Record<string, unknown> | null;
     faq_prompt?: string | null;

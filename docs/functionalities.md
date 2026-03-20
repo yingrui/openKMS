@@ -82,7 +82,7 @@
 | Evaluation dataset CRUD | ✅ | Create/edit/delete datasets; each linked to one knowledge base |
 | Evaluation items | ✅ | Add/edit/delete items: query + expected answer pairs; optional topic column |
 | CSV import | ✅ | Import Data button uploads CSV (columns: topic, query, answer or expected_answer) |
-| Run evaluation | ✅ | `POST /api/evaluation-datasets/{id}/run` – calls QA `/ask` per query, returns generated vs expected; requires KB agent_url |
+| Run evaluation | ✅ | `POST /api/evaluation-datasets/{id}/run` – search per query, LLM judge evaluates if results support expected answer; requires KB embedding_model_id; optional judge_model_id |
 | Sidebar | ✅ | "Evaluation" link when `evaluationDatasets` toggle enabled |
 | Feature toggle | ✅ | `evaluationDatasets` (default: false); Console → Feature Toggles |
 

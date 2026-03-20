@@ -19,6 +19,9 @@ class KnowledgeBase(Base):
     embedding_model_id: Mapped[str | None] = mapped_column(
         String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
     )
+    judge_model_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True
+    )
     agent_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     chunk_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     faq_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)

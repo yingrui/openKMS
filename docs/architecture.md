@@ -129,7 +129,7 @@ backend/
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, items/import (CSV), run (QA evaluation)
+│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, items/import (CSV), run (search + LLM judge)
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
@@ -148,7 +148,7 @@ backend/
 │   │   ├── link_instance.py   # LinkInstance (link_type_id, source_object_id, target_object_id)
 │   │   ├── data_source.py     # DataSource (kind, host, port, database, username_encrypted, password_encrypted)
 │   │   ├── dataset.py         # Dataset (data_source_id FK, schema_name, table_name)
-│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, agent_url, chunk_config, faq_prompt)
+│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, judge_model_id, agent_url, chunk_config, faq_prompt)
 │   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
 │   │   ├── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
@@ -174,6 +174,8 @@ backend/
 │       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, etc.)
 │       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
 │       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
+│       ├── kb_search.py                  # Semantic search over chunks and FAQs (used by search route and evaluation)
+│       ├── search_judge.py               # LLM judge for search retrieval evaluation (pass, score, reasoning)
 │       └── storage.py                    # S3/MinIO client (upload, delete)
 ├── scripts/
 │   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing

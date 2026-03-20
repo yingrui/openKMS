@@ -299,22 +299,45 @@ export function EvaluationDatasetDetail() {
       {runResults && runResults.length > 0 && (
         <section className="eval-detail-section eval-results-section">
           <h2>Evaluation Results</h2>
+          <div className="eval-results-summary">
+            Pass: {runResults.filter((r) => r.pass).length} / {runResults.length} · Avg score:{' '}
+            {(runResults.reduce((a, r) => a + r.score, 0) / runResults.length).toFixed(2)}
+          </div>
           <div className="eval-results-list">
             {runResults.map((r) => (
               <div key={r.item_id} className="eval-result-item">
+                <div className="eval-result-header">
+                  <span className={`eval-result-badge ${r.pass ? 'eval-result-pass' : 'eval-result-fail'}`}>
+                    {r.pass ? 'Pass' : 'Fail'}
+                  </span>
+                  <span className="eval-result-score">Score: {r.score.toFixed(2)}</span>
+                </div>
                 <div className="eval-result-query">
                   <strong>Query:</strong> {r.query}
                 </div>
-                <div className="eval-result-row">
-                  <div>
-                    <strong>Expected:</strong>
-                    <p>{r.expected_answer}</p>
-                  </div>
-                  <div>
-                    <strong>Generated:</strong>
-                    <p>{r.generated_answer}</p>
-                  </div>
+                <div className="eval-result-expected">
+                  <strong>Expected:</strong>
+                  <p>{r.expected_answer}</p>
                 </div>
+                <div className="eval-result-reasoning">
+                  <strong>Judge reasoning:</strong>
+                  <p>{r.reasoning}</p>
+                </div>
+                {r.search_results.length > 0 && (
+                  <div className="eval-result-snippets">
+                    <strong>Top search results:</strong>
+                    <ul>
+                      {r.search_results.map((s, i) => (
+                        <li key={i}>
+                          <span className="eval-snippet-meta">
+                            [{s.source_type}] score={s.score.toFixed(2)}
+                          </span>
+                          {s.content}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ))}
           </div>

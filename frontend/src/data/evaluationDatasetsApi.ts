@@ -1,4 +1,4 @@
-/** API for evaluation datasets (KB QA performance evaluation). */
+/** API for evaluation datasets (KB search retrieval evaluation). */
 import { config } from '../config';
 import { getAuthHeaders } from './apiClient';
 
@@ -28,12 +28,20 @@ export interface EvaluationDatasetItemResponse {
   created_at: string;
 }
 
+export interface SearchResultSnippet {
+  content: string;
+  score: number;
+  source_type: string;
+}
+
 export interface EvaluationRunResult {
   item_id: string;
   query: string;
   expected_answer: string;
-  generated_answer: string;
-  sources: Array<Record<string, unknown>>;
+  search_results: SearchResultSnippet[];
+  pass: boolean;
+  score: number;
+  reasoning: string;
 }
 
 export interface EvaluationRunResponse {

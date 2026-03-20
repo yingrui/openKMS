@@ -125,6 +125,7 @@ def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRe
         name=kb.name,
         description=kb.description,
         embedding_model_id=kb.embedding_model_id,
+        judge_model_id=kb.judge_model_id,
         agent_url=kb.agent_url,
         chunk_config=kb.chunk_config,
         faq_prompt=kb.faq_prompt,
@@ -156,6 +157,7 @@ async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = De
         name=body.name,
         description=body.description,
         embedding_model_id=body.embedding_model_id,
+        judge_model_id=body.judge_model_id,
         agent_url=body.agent_url,
         chunk_config=body.chunk_config,
         faq_prompt=body.faq_prompt,
@@ -639,118 +641,17 @@ async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: Asy
 @router.post("/{kb_id}/search", response_model=SearchResponse)
 async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = Depends(get_db)):
     """Search chunks and FAQs using vector similarity."""
-    from app.models.api_model import ApiModel
-    from app.models.api_provider import ApiProvider
-    from sqlalchemy.orm import selectinload
+    from app.services.kb_search import search_knowledge_base
 
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
-
-    if not kb.embedding_model_id:
-        raise HTTPException(status_code=400, detail="No embedding model configured for this knowledge base")
-
-    model_result = await db.execute(
-        select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == kb.embedding_model_id)
+    return await search_knowledge_base(
+        kb_id,
+        body.query,
+        top_k=body.top_k,
+        search_type=body.search_type,
+        label_filters=body.label_filters,
+        metadata_filters=body.metadata_filters,
+        db=db,
     )
-    model = model_result.scalar_one_or_none()
-    if not model:
-        raise HTTPException(status_code=400, detail="Embedding model not found")
-
-    from openai import AsyncOpenAI
-
-    client = AsyncOpenAI(
-        base_url=model.provider_rel.base_url,
-        api_key=model.provider_rel.api_key or "no-key",
-    )
-    embed_response = await client.embeddings.create(
-        model=model.model_name or model.name,
-        input=body.query,
-    )
-    query_embedding = embed_response.data[0].embedding
-
-    results: list[SearchResult] = []
-
-    chunk_where = [Chunk.knowledge_base_id == kb_id, Chunk.embedding.isnot(None)]
-    faq_where = [FAQ.knowledge_base_id == kb_id, FAQ.embedding.isnot(None)]
-    if body.label_filters:
-        lbl_cond = _build_label_filter_conditions(Chunk.labels, body.label_filters)
-        chunk_where.append(lbl_cond)
-        faq_lbl_cond = _build_label_filter_conditions(FAQ.labels, body.label_filters)
-        faq_where.append(faq_lbl_cond)
-    if body.metadata_filters:
-        meta_cond = _build_metadata_filter_conditions(Chunk.doc_metadata, body.metadata_filters)
-        chunk_where.append(meta_cond)
-        faq_meta_cond = _build_metadata_filter_conditions(FAQ.doc_metadata, body.metadata_filters)
-        faq_where.append(faq_meta_cond)
-
-    try:
-        if body.search_type in ("all", "chunks"):
-            chunk_query = (
-                select(
-                    Chunk.id,
-                    Chunk.content,
-                    Chunk.document_id,
-                    Chunk.labels,
-                    Chunk.doc_metadata,
-                    Document.name.label("doc_name"),
-                    Chunk.embedding.cosine_distance(query_embedding).label("distance"),
-                )
-                .join(Document, Chunk.document_id == Document.id)
-                .where(*chunk_where)
-                .order_by("distance")
-                .limit(body.top_k)
-            )
-            chunk_rows = (await db.execute(chunk_query)).all()
-            for row in chunk_rows:
-                results.append(SearchResult(
-                    id=row.id,
-                    source_type="chunk",
-                    content=row.content,
-                    score=round(1.0 - row.distance, 4),
-                    source_name=row.doc_name,
-                    document_id=row.document_id,
-                    labels=row.labels,
-                    doc_metadata=row.doc_metadata,
-                ))
-
-        if body.search_type in ("all", "faqs"):
-            faq_query = (
-                select(
-                    FAQ.id,
-                    FAQ.question,
-                    FAQ.answer,
-                    FAQ.document_id,
-                    FAQ.labels,
-                    FAQ.doc_metadata,
-                    FAQ.embedding.cosine_distance(query_embedding).label("distance"),
-                )
-                .where(*faq_where)
-                .order_by("distance")
-                .limit(body.top_k)
-            )
-            faq_rows = (await db.execute(faq_query)).all()
-            for row in faq_rows:
-                results.append(SearchResult(
-                    id=row.id,
-                    source_type="faq",
-                    content=f"Q: {row.question}\nA: {row.answer}",
-                    score=round(1.0 - row.distance, 4),
-                    document_id=row.document_id,
-                    labels=row.labels,
-                    doc_metadata=row.doc_metadata,
-                ))
-    except DBAPIError as e:
-        msg = str(e.orig) if e.orig else str(e)
-        if "vector" in msg.lower() or "$libdir" in msg.lower():
-            raise HTTPException(
-                status_code=503,
-                detail="Vector search requires the pgvector extension. Install it in PostgreSQL (e.g. brew install pgvector or use pgvector/pgvector Docker image), then run: CREATE EXTENSION IF NOT EXISTS vector;",
-            ) from e
-        raise
-
-    results.sort(key=lambda r: r.score, reverse=True)
-    return SearchResponse(results=results[: body.top_k], query=body.query)
 
 
 # --- Ask (QA Proxy) ---

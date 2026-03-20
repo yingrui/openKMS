@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # --- Evaluation Dataset ---
@@ -66,12 +66,25 @@ class EvaluationDatasetItemResponse(BaseModel):
 
 # --- Run Evaluation ---
 
+
+class SearchResultSnippet(BaseModel):
+    """Truncated search result for evaluation response."""
+
+    content: str
+    score: float
+    source_type: str
+
+
 class EvaluationRunResult(BaseModel):
     item_id: str
     query: str
     expected_answer: str
-    generated_answer: str
-    sources: list[dict[str, Any]] = []
+    search_results: list[SearchResultSnippet] = []
+    pass_: bool = Field(False, alias="pass")
+    score: float = 0.0
+    reasoning: str = ""
+
+    model_config = {"populate_by_name": True}
 
 
 class EvaluationRunResponse(BaseModel):

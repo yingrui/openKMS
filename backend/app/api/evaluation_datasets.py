@@ -1,15 +1,16 @@
-"""Evaluation dataset API for KB QA performance evaluation."""
+"""Evaluation dataset API for KB search retrieval evaluation."""
 import csv
 import io
 import uuid
 
-import httpx
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from sqlalchemy import delete, func, select
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.models.api_model import ApiModel
 from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.evaluation_dataset import (
@@ -22,6 +23,7 @@ from app.schemas.evaluation_dataset import (
     EvaluationDatasetUpdate,
     EvaluationRunResponse,
     EvaluationRunResult,
+    SearchResultSnippet,
 )
 
 router = APIRouter(
@@ -298,21 +300,57 @@ async def delete_evaluation_dataset_item(
 @router.post("/{dataset_id}/run", response_model=EvaluationRunResponse)
 async def run_evaluation(
     dataset_id: str,
-    request: Request,
-    token: str = Depends(require_auth),
+    _token: str = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
+    """Run search-based evaluation: search per query, then LLM judge for each item."""
     ds = await db.get(EvaluationDataset, dataset_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
-    if not kb.agent_url:
+    if not kb.embedding_model_id:
         raise HTTPException(
             status_code=400,
-            detail="No agent URL configured for this knowledge base. Configure it in KB Settings.",
+            detail="No embedding model configured for this knowledge base. Configure it in KB Settings.",
         )
+
+    # Resolve judge model: kb.judge_model_id or fallback to first llm model
+    judge_model_id = kb.judge_model_id
+    if not judge_model_id:
+        fallback = await db.execute(
+            select(ApiModel)
+            .options(selectinload(ApiModel.provider_rel))
+            .where(ApiModel.category == "llm")
+            .order_by(ApiModel.is_default_in_category.desc().nullslast())
+            .limit(1)
+        )
+        judge_model = fallback.scalar_one_or_none()
+        if not judge_model:
+            raise HTTPException(
+                status_code=400,
+                detail="No judge model configured. Set judge_model_id on the KB or add an LLM model.",
+            )
+        judge_model_id = judge_model.id
+
+    judge_model_result = await db.execute(
+        select(ApiModel)
+        .options(selectinload(ApiModel.provider_rel))
+        .where(ApiModel.id == judge_model_id)
+    )
+    judge_model = judge_model_result.scalar_one_or_none()
+    if not judge_model:
+        raise HTTPException(status_code=400, detail="Judge model not found")
+
+    judge_config = {
+        "base_url": judge_model.provider_rel.base_url,
+        "api_key": judge_model.provider_rel.api_key or "no-key",
+        "model_name": judge_model.model_name or judge_model.name,
+    }
+
+    from app.services.kb_search import search_knowledge_base
+    from app.services.search_judge import judge_search_results
 
     result = await db.execute(
         select(EvaluationDatasetItem)
@@ -321,42 +359,59 @@ async def run_evaluation(
     )
     items = result.scalars().all()
 
-    base_url = str(request.base_url).rstrip("/")
-    api_url = f"{base_url}/api/knowledge-bases/{ds.knowledge_base_id}/ask"
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-
     results: list[EvaluationRunResult] = []
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        for item in items:
-            try:
-                resp = await client.post(
-                    api_url,
-                    json={"question": item.query, "conversation_history": []},
-                    headers=headers,
-                )
-                if not resp.is_error:
-                    data = resp.json()
-                    generated = data.get("answer", "")
-                    sources = data.get("sources", [])
-                    if isinstance(sources, list):
-                        sources = [s if isinstance(s, dict) else {"id": str(s)} for s in sources]
-                    else:
-                        sources = []
-                else:
-                    generated = f"[Error: {resp.status_code}]"
-                    sources = []
-            except Exception as e:
-                generated = f"[Error: {str(e)}]"
-                sources = []
-
+    for item in items:
+        try:
+            search_resp = await search_knowledge_base(
+                ds.knowledge_base_id,
+                item.query,
+                top_k=10,
+                search_type="all",
+                db=db,
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
             results.append(
                 EvaluationRunResult(
                     item_id=item.id,
                     query=item.query,
                     expected_answer=item.expected_answer,
-                    generated_answer=generated,
-                    sources=sources,
+                    search_results=[],
+                    pass_=False,
+                    score=0.0,
+                    reasoning=str(e),
                 )
             )
+            continue
+
+        search_list = [
+            {"content": r.content, "score": r.score, "source_type": r.source_type}
+            for r in search_resp.results
+        ]
+
+        verdict = await judge_search_results(
+            item.query,
+            item.expected_answer,
+            search_list,
+            judge_config,
+        )
+
+        snippets = [
+            SearchResultSnippet(content=r["content"][:500], score=r["score"], source_type=r["source_type"])
+            for r in search_list[:5]
+        ]
+
+        results.append(
+            EvaluationRunResult(
+                item_id=item.id,
+                query=item.query,
+                expected_answer=item.expected_answer,
+                search_results=snippets,
+                pass_=verdict["pass"],
+                score=verdict["score"],
+                reasoning=verdict["reasoning"],
+            )
+        )
 
     return EvaluationRunResponse(results=results)
