@@ -54,13 +54,15 @@ export async function fetchDocumentStats(): Promise<{ total: number }> {
 export async function fetchDocuments(params?: {
   channel_id?: string;
   search?: string;
+  offset?: number;
   limit?: number;
 }): Promise<DocumentListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
   if (params?.channel_id) query.set('channel_id', params.channel_id);
   if (params?.search) query.set('search', params.search);
-  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  if (params?.limit != null) query.set('limit', String(params.limit));
   const qs = query.toString() ? `?${query.toString()}` : '';
   const res = await fetch(`${config.apiUrl}/api/documents${qs}`, {
     headers: { ...headers },

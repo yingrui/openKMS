@@ -52,11 +52,12 @@ async def get_document_stats(db: AsyncSession = Depends(get_db)):
 async def list_documents(
     channel_id: str | None = None,
     search: str | None = None,
+    offset: int = 0,
     limit: int = 200,
     db: AsyncSession = Depends(get_db),
 ):
-    """List documents, optionally filtered by channel and/or name search."""
-    query = select(Document)
+    """List documents, optionally filtered by channel and/or name search. Supports pagination."""
+    base_query = select(Document)
 
     if channel_id:
         result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
@@ -66,15 +67,19 @@ async def list_documents(
             raise HTTPException(status_code=404, detail="Channel not found")
         ids_to_include: set[str] = set()
         _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
-        query = query.where(Document.channel_id.in_(ids_to_include))
+        base_query = base_query.where(Document.channel_id.in_(ids_to_include))
 
     if search:
-        query = query.where(Document.name.ilike(f"%{search}%"))
+        base_query = base_query.where(Document.name.ilike(f"%{search}%"))
 
-    query = query.order_by(Document.created_at.desc()).limit(limit)
+    count_query = select(func.count()).select_from(base_query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar_one() or 0
+
+    query = base_query.order_by(Document.created_at.desc()).offset(offset).limit(limit)
     docs_result = await db.execute(query)
     docs = list(docs_result.scalars().all())
-    return DocumentListResponse(items=[DocumentResponse.model_validate(d) for d in docs], total=len(docs))
+    return DocumentListResponse(items=[DocumentResponse.model_validate(d) for d in docs], total=total)
 
 
 @router.post("/upload", response_model=DocumentResponse)

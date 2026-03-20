@@ -61,7 +61,7 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
-| KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying |
+| KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying; Add Documents dialog: left sidebar channel tree, right documents list with search and pagination |
 | FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for labels and document metadata (from KB label_keys, metadata_keys; channel label_config/extraction_schema for array types) |
 | FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal; when multiple documents selected, generates one-by-one with progress in dialog |
 | Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); paginated list (offset, limit); Edit Chunk modal with content, labels, document metadata (same key-value form as FAQ) |
@@ -219,7 +219,7 @@
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
 | POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
-| GET | `/api/documents?channel_id=&search=&limit=` | List documents; channel_id optional (all if omitted); search filters by name |
+| GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted); search filters by name; offset/limit for pagination |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
 | PUT | `/api/documents/{id}` | Update document info (name, channel_id, labels) |

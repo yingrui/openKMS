@@ -511,9 +511,13 @@ async def list_chunks(
     total = (await db.execute(
         select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
     )).scalar_one()
-    # Exclude embedding column to avoid pgvector dependency when extension is not installed
+    # Exclude embedding column from load to avoid transferring vector data; check IS NOT NULL for has_embedding
     result = await db.execute(
-        select(Chunk, Document.name)
+        select(
+            Chunk,
+            Document.name,
+            Chunk.embedding.isnot(None).label("has_embedding"),
+        )
         .options(load_only(
             Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.content,
             Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata,
@@ -526,7 +530,7 @@ async def list_chunks(
         .limit(limit)
     )
     items = []
-    for chunk, doc_name in result.all():
+    for chunk, doc_name, has_emb in result.all():
         items.append(ChunkResponse(
             id=chunk.id,
             knowledge_base_id=chunk.knowledge_base_id,
@@ -535,7 +539,7 @@ async def list_chunks(
             content=chunk.content,
             chunk_index=chunk.chunk_index,
             token_count=chunk.token_count,
-            has_embedding=False,  # Embedding column excluded; install pgvector for accurate value
+            has_embedding=bool(has_emb),
             chunk_metadata=chunk.chunk_metadata,
             labels=chunk.labels,
             doc_metadata=chunk.doc_metadata,

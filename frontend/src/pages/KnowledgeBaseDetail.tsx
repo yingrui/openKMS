@@ -2,10 +2,14 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   HelpCircle,
   Search as SearchIcon,
   Send,
   FileStack,
+  Folder,
+  FolderOpen,
   Layers,
   Plus,
   Eye,
@@ -20,7 +24,6 @@ import {
   Loader2,
   Filter,
   ChevronDown,
-  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -47,7 +50,8 @@ import {
   type SearchResult,
 } from '../data/knowledgeBasesApi';
 import { fetchDocumentById, fetchDocuments, type DocumentResponse } from '../data/documentsApi';
-import { fetchChannelById } from '../data/channelsApi';
+import { fetchChannelById, type ChannelNode } from '../data/channelsApi';
+import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import './KnowledgeBaseDetail.css';
@@ -69,8 +73,76 @@ interface ChatMessage {
   sources?: SearchResult[];
 }
 
+function DocPickerChannelTree({
+  node,
+  selectedId,
+  expanded,
+  onSelect,
+  onToggle,
+  depth,
+}: {
+  node: ChannelNode;
+  selectedId: string | null;
+  expanded: Record<string, boolean>;
+  onSelect: (id: string) => void;
+  onToggle: (id: string) => void;
+  depth: number;
+}) {
+  const hasChildren = node.children && node.children.length > 0;
+  const isExpanded = expanded[node.id];
+  return (
+    <li className="kb-doc-picker-channel-li">
+      <div
+        className={`kb-doc-picker-channel-item${selectedId === node.id ? ' selected' : ''}`}
+        style={{ paddingLeft: 8 + depth * 16 }}
+      >
+        {hasChildren ? (
+          <button
+            type="button"
+            className="kb-doc-picker-channel-toggle"
+            onClick={() => onToggle(node.id)}
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            <ChevronRight size={14} className={isExpanded ? 'expanded' : ''} />
+          </button>
+        ) : (
+          <span className="kb-doc-picker-channel-spacer" />
+        )}
+        <button
+          type="button"
+          className="kb-doc-picker-channel-label"
+          onClick={() => onSelect(node.id)}
+        >
+          {hasChildren && isExpanded ? (
+            <FolderOpen size={16} />
+          ) : (
+            <Folder size={16} />
+          )}
+          <span>{node.name}</span>
+        </button>
+      </div>
+      {hasChildren && isExpanded && (
+        <ul className="kb-doc-picker-channel-tree" style={{ paddingLeft: 0 }}>
+          {node.children!.map((ch) => (
+            <DocPickerChannelTree
+              key={ch.id}
+              node={ch}
+              selectedId={selectedId}
+              expanded={expanded}
+              onSelect={onSelect}
+              onToggle={onToggle}
+              depth={depth + 1}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 export function KnowledgeBaseDetail() {
   const { id: kbId } = useParams<{ id: string }>();
+  const { channels } = useDocumentChannels();
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('documents');
   const [loading, setLoading] = useState(true);
@@ -82,6 +154,12 @@ export function KnowledgeBaseDetail() {
   const [pickerResults, setPickerResults] = useState<DocumentResponse[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
+  const [pickerSelectedChannel, setPickerSelectedChannel] = useState<string | null>(null);
+  const [pickerChannelExpanded, setPickerChannelExpanded] = useState<Record<string, boolean>>({});
+  const [pickerSearchDebounced, setPickerSearchDebounced] = useState('');
+  const [pickerPage, setPickerPage] = useState(0);
+  const [pickerPageSize] = useState(20);
+  const [pickerTotal, setPickerTotal] = useState(0);
   const [pickerAdding, setPickerAdding] = useState(false);
   const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -231,27 +309,71 @@ export function KnowledgeBaseDetail() {
   const openDocPicker = async () => {
     setShowDocPicker(true);
     setPickerSearch('');
+    setPickerSearchDebounced('');
     setPickerSelected(new Set());
+    setPickerSelectedChannel(null);
+    setPickerPage(0);
+    setPickerResults([]);
+    setPickerTotal(0);
+    setPickerLoading(false);
+    setPickerChannelExpanded(
+      channels.reduce<Record<string, boolean>>((acc, ch) => {
+        if (ch.children?.length) acc[ch.id] = true;
+        return acc;
+      }, {})
+    );
+  };
+
+  const handlePickerChannelSelect = (channelId: string) => {
+    setPickerSelectedChannel(channelId);
+    setPickerPage(0);
+  };
+
+  const handlePickerChannelToggle = (channelId: string) => {
+    setPickerChannelExpanded((prev) => ({ ...prev, [channelId]: !prev[channelId] }));
+  };
+
+  const loadPickerDocuments = useCallback(async () => {
+    if (!pickerSelectedChannel) {
+      setPickerResults([]);
+      setPickerTotal(0);
+      return;
+    }
     setPickerLoading(true);
     try {
-      const res = await fetchDocuments({ limit: 50 });
+      const res = await fetchDocuments({
+        channel_id: pickerSelectedChannel,
+        search: pickerSearchDebounced || undefined,
+        offset: pickerPage * pickerPageSize,
+        limit: pickerPageSize,
+      });
       setPickerResults(res.items);
+      setPickerTotal(res.total);
     } catch { /* noop */ }
     finally { setPickerLoading(false); }
-  };
+  }, [pickerSelectedChannel, pickerSearchDebounced, pickerPage, pickerPageSize]);
+
+  useEffect(() => {
+    if (showDocPicker && pickerSelectedChannel) {
+      loadPickerDocuments();
+    } else if (showDocPicker && !pickerSelectedChannel) {
+      setPickerResults([]);
+      setPickerTotal(0);
+    }
+  }, [showDocPicker, pickerSelectedChannel, loadPickerDocuments]);
 
   const handlePickerSearch = (query: string) => {
     setPickerSearch(query);
     if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);
-    pickerDebounceRef.current = setTimeout(async () => {
-      setPickerLoading(true);
-      try {
-        const res = await fetchDocuments({ search: query || undefined, limit: 50 });
-        setPickerResults(res.items);
-      } catch { /* noop */ }
-      finally { setPickerLoading(false); }
+    pickerDebounceRef.current = setTimeout(() => {
+      setPickerSearchDebounced(query);
+      setPickerPage(0);
     }, 300);
   };
+
+  const pickerTotalPages = Math.ceil(pickerTotal / pickerPageSize) || 1;
+  const pickerCanPrev = pickerPage > 0;
+  const pickerCanNext = pickerPage < pickerTotalPages - 1;
 
   const togglePickerDoc = (docId: string) => {
     setPickerSelected((prev) => {
@@ -769,7 +891,7 @@ export function KnowledgeBaseDetail() {
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th>Question</th>
+                      <th className="kb-table-question-col">Question</th>
                       <th>Answer</th>
                       <th className="kb-table-source-col">Source</th>
                       <th className="kb-table-actions">Actions</th>
@@ -778,7 +900,7 @@ export function KnowledgeBaseDetail() {
                   <tbody>
                     {faqs.map((faq) => (
                       <tr key={faq.id}>
-                        <td>
+                        <td className="kb-table-question-col">
                           <div className="kb-table-name">
                             <HelpCircle size={18} />
                             <span>{faq.question}</span>
@@ -1534,7 +1656,7 @@ export function KnowledgeBaseDetail() {
           aria-modal="true"
           aria-labelledby="doc-picker-title"
         >
-          <div className="kb-doc-picker" onClick={(e) => e.stopPropagation()}>
+          <div className="kb-doc-picker kb-doc-picker-split" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
               <h2 id="doc-picker-title">Add Documents</h2>
               <button
@@ -1547,63 +1669,118 @@ export function KnowledgeBaseDetail() {
                 <X size={20} />
               </button>
             </div>
-            <p className="kb-doc-picker-hint">
-              Search and select documents to add to this knowledge base.
-            </p>
-            <div className="kb-doc-picker-search">
-              <SearchIcon size={18} />
-              <input
-                type="search"
-                placeholder="Search documents by name..."
-                value={pickerSearch}
-                onChange={(e) => handlePickerSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="kb-doc-picker-list">
-              {pickerLoading ? (
-                <div className="kb-doc-picker-loading">
-                  <Loader2 size={24} className="kb-doc-picker-spinner" />
-                  <span>Loading documents...</span>
+            <div className="kb-doc-picker-body">
+              <aside className="kb-doc-picker-sidebar">
+                <span className="kb-doc-picker-sidebar-label">Channels</span>
+                <ul className="kb-doc-picker-channel-tree">
+                  {channels.length === 0 ? (
+                    <li className="kb-doc-picker-channel-empty">No channels</li>
+                  ) : (
+                    <>
+                      {channels.map((ch) => (
+                        <DocPickerChannelTree
+                          key={ch.id}
+                          node={ch}
+                          selectedId={pickerSelectedChannel}
+                          expanded={pickerChannelExpanded}
+                          onSelect={handlePickerChannelSelect}
+                          onToggle={handlePickerChannelToggle}
+                          depth={0}
+                        />
+                      ))}
+                    </>
+                  )}
+                </ul>
+              </aside>
+              <div className="kb-doc-picker-main">
+                <div className="kb-doc-picker-search">
+                  <SearchIcon size={18} />
+                  <input
+                    type="search"
+                    placeholder="Search documents by name..."
+                    value={pickerSearch}
+                    onChange={(e) => handlePickerSearch(e.target.value)}
+                    disabled={!pickerSelectedChannel}
+                    autoFocus
+                  />
                 </div>
-              ) : pickerResults.length === 0 ? (
-                <div className="kb-doc-picker-empty">
-                  <p>No documents found</p>
-                </div>
-              ) : (
-                pickerResults.map((doc) => {
-                  const added = alreadyAddedIds.has(doc.id);
-                  const selected = pickerSelected.has(doc.id);
-                  return (
-                    <div
-                      key={doc.id}
-                      className={`kb-doc-picker-item${selected ? ' selected' : ''}${added ? ' already-added' : ''}`}
-                      onClick={() => !added && togglePickerDoc(doc.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && !added && togglePickerDoc(doc.id)}
-                    >
-                      <div className="kb-doc-picker-item-check">
-                        {added ? (
-                          <Check size={16} />
-                        ) : selected ? (
-                          <Check size={16} />
-                        ) : (
-                          <div className="kb-doc-picker-item-checkbox" />
-                        )}
-                      </div>
-                      <FileText size={18} className="kb-doc-picker-item-icon" />
-                      <div className="kb-doc-picker-item-info">
-                        <span className="kb-doc-picker-item-name">{doc.name}</span>
-                        <span className="kb-doc-picker-item-meta">
-                          {doc.file_type} · {doc.status || 'completed'}
-                        </span>
-                      </div>
-                      {added && <span className="kb-doc-picker-item-badge">Added</span>}
+                <div className="kb-doc-picker-list">
+                  {!pickerSelectedChannel ? (
+                    <div className="kb-doc-picker-empty">
+                      <p>Select a channel to see documents</p>
                     </div>
-                  );
-                })
-              )}
+                  ) : pickerLoading ? (
+                    <div className="kb-doc-picker-loading">
+                      <Loader2 size={24} className="kb-doc-picker-spinner" />
+                      <span>Loading documents...</span>
+                    </div>
+                  ) : pickerResults.length === 0 ? (
+                    <div className="kb-doc-picker-empty">
+                      <p>No documents found</p>
+                    </div>
+                  ) : (
+                    pickerResults.map((doc) => {
+                      const added = alreadyAddedIds.has(doc.id);
+                      const selected = pickerSelected.has(doc.id);
+                      return (
+                        <div
+                          key={doc.id}
+                          className={`kb-doc-picker-item${selected ? ' selected' : ''}${added ? ' already-added' : ''}`}
+                          onClick={() => !added && togglePickerDoc(doc.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && !added && togglePickerDoc(doc.id)}
+                        >
+                          <div className="kb-doc-picker-item-check">
+                            {added ? (
+                              <Check size={16} />
+                            ) : selected ? (
+                              <Check size={16} />
+                            ) : (
+                              <div className="kb-doc-picker-item-checkbox" />
+                            )}
+                          </div>
+                          <FileText size={18} className="kb-doc-picker-item-icon" />
+                          <div className="kb-doc-picker-item-info">
+                            <span className="kb-doc-picker-item-name">{doc.name}</span>
+                            <span className="kb-doc-picker-item-meta">
+                              {doc.file_type} · {doc.status || 'completed'}
+                            </span>
+                          </div>
+                          {added && <span className="kb-doc-picker-item-badge">Added</span>}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                {pickerSelectedChannel && pickerTotal > 0 && (
+                  <div className="kb-doc-picker-pagination">
+                    <span className="kb-doc-picker-pagination-info">
+                      {pickerPage * pickerPageSize + 1}–{Math.min((pickerPage + 1) * pickerPageSize, pickerTotal)} of {pickerTotal}
+                    </span>
+                    <div className="kb-doc-picker-pagination-btns">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setPickerPage((p) => Math.max(0, p - 1))}
+                        disabled={!pickerCanPrev}
+                        aria-label="Previous page"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setPickerPage((p) => Math.min(pickerTotalPages - 1, p + 1))}
+                        disabled={!pickerCanNext}
+                        aria-label="Next page"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="kb-doc-picker-footer">
               <span className="kb-doc-picker-count">
