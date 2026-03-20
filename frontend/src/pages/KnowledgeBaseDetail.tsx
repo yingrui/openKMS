@@ -202,6 +202,7 @@ export function KnowledgeBaseDetail() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<'all' | 'chunks' | 'faqs'>('all');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -697,6 +698,7 @@ export function KnowledgeBaseDetail() {
       const res = await searchKnowledgeBase(kbId, {
         query: searchQuery,
         top_k: 10,
+        search_type: searchType,
         label_filters: Object.keys(label_filters).length ? label_filters : undefined,
         metadata_filters: Object.keys(metadata_filters).length ? metadata_filters : undefined,
       });
@@ -1156,6 +1158,19 @@ export function KnowledgeBaseDetail() {
             <p className="kb-section-desc">
               Search over document chunks and FAQs using vector similarity.
             </p>
+            <div className="kb-search-type-tabs">
+              {(['all', 'chunks', 'faqs'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={`kb-search-type-tab${searchType === type ? ' active' : ''}`}
+                  onClick={() => setSearchType(type)}
+                  aria-pressed={searchType === type}
+                >
+                  {type === 'all' ? 'All' : type === 'chunks' ? 'Chunks' : 'FAQs'}
+                </button>
+              ))}
+            </div>
             <form className="kb-search-form" onSubmit={handleSearch}>
               <SearchIcon size={20} />
               <input
