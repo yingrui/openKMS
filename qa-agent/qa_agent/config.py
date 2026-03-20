@@ -18,7 +18,15 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8103
 
+    langfuse_secret_key: str | None = Field(default=None, validation_alias="LANGFUSE_SECRET_KEY")
+    langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_base_url: str | None = Field(default=None, validation_alias="LANGFUSE_BASE_URL")
+
     model_config = {"env_file": _ENV_FILE, "extra": "ignore"}
+
+    @property
+    def langfuse_enabled(self) -> bool:
+        return bool(self.langfuse_secret_key and self.langfuse_public_key)
 
 
 settings = Settings()

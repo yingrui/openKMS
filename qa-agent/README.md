@@ -47,6 +47,11 @@ The server starts on port 8103 by default.
 | `OPENKMS_LLM_MODEL_NAME` | qwen2.5 | LLM model name |
 | `HOST` | 0.0.0.0 | Server bind host |
 | `PORT` | 8103 | Server port |
+| `LANGFUSE_SECRET_KEY` | - | Langfuse secret key (optional; enables tracing) |
+| `LANGFUSE_PUBLIC_KEY` | - | Langfuse public key |
+| `LANGFUSE_BASE_URL` | - | Langfuse host (e.g. https://cloud.langfuse.com or http://localhost:3002) |
+
+When Langfuse keys are set, agent runs are traced for observability (LLM calls, tool invocations, graph steps).
 
 ## API
 

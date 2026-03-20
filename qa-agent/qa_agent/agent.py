@@ -153,8 +153,13 @@ def invoke_agent(
     access_token: str,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
+    from .langfuse_client import get_langfuse_callback
+
     agent = get_agent()
-    config = {"configurable": {"access_token": access_token}}
+    config: dict = {"configurable": {"access_token": access_token}}
+    callback = get_langfuse_callback()
+    if callback:
+        config["callbacks"] = [callback]
     result = agent.invoke(
         {
             "knowledge_base_id": knowledge_base_id,
@@ -167,5 +172,7 @@ def invoke_agent(
         },
         config=config,
     )
+    if callback and hasattr(callback, "flush"):
+        callback.flush()
     answer = _extract_answer(result)
     return {"answer": answer, "context": result.get("context", [])}
