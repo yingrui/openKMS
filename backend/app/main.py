@@ -22,6 +22,7 @@ from app.api.ontology_explore import router as ontology_explore_router
 from app.api.providers import router as providers_router
 from app.api.data_sources import router as data_sources_router
 from app.api.datasets import router as datasets_router
+from app.api.evaluation_datasets import router as evaluation_datasets_router
 from app.config import settings
 from app.database import init_db
 
@@ -95,6 +96,7 @@ app.include_router(link_types_router, prefix="/api")
 app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
+app.include_router(evaluation_datasets_router, prefix="/api")
 
 
 @app.get("/health")

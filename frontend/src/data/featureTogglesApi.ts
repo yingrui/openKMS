@@ -6,6 +6,7 @@ export interface FeatureToggles {
   articles: boolean;
   knowledgeBases: boolean;
   objectsAndLinks: boolean;
+  evaluationDatasets: boolean;
   hasNeo4jDataSource?: boolean;
 }
 

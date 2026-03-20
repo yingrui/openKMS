@@ -21,6 +21,7 @@ import {
   Table,
   Network,
   Compass,
+  ClipboardList,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -331,6 +332,17 @@ export function Sidebar() {
           >
             <Database size={18} strokeWidth={1.75} />
             <span>Knowledge Bases</span>
+          </NavLink>
+        )}
+        {toggles.evaluationDatasets && (
+          <NavLink
+            to="/evaluation-datasets"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <ClipboardList size={18} strokeWidth={1.75} />
+            <span>Evaluation</span>
           </NavLink>
         )}
         <NavLink

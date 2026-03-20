@@ -22,6 +22,8 @@ import { ConsoleObjectTypes } from './pages/console/ConsoleObjectTypes';
 import { ConsoleLinkTypes } from './pages/console/ConsoleLinkTypes';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
+import { EvaluationDatasetList } from './pages/EvaluationDatasetList';
+import { EvaluationDatasetDetail } from './pages/EvaluationDatasetDetail';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -64,6 +66,8 @@ function App() {
           <Route path="articles/view/:id" element={<FeatureGate feature="articles"><ArticleDetail /></FeatureGate>} />
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
+          <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />
+          <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetail /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
           <Route path="pipelines" element={<Pipelines />} />

@@ -75,6 +75,18 @@
 
 - Toggle visibility via Console → Feature Toggles
 
+### 4a. Evaluation (Feature Toggle, Experimental)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Evaluation dataset CRUD | ✅ | Create/edit/delete datasets; each linked to one knowledge base |
+| Evaluation items | ✅ | Add/edit/delete items: query + expected answer pairs |
+| Run evaluation | ✅ | `POST /api/evaluation-datasets/{id}/run` – calls QA `/ask` per query, returns generated vs expected; requires KB agent_url |
+| Sidebar | ✅ | "Evaluation" link when `evaluationDatasets` toggle enabled |
+| Feature toggle | ✅ | `evaluationDatasets` (default: false); Console → Feature Toggles |
+
+- Toggle visibility via Console → Feature Toggles
+
 ### 4b. Glossaries
 
 | Feature | Status | Description |
@@ -263,6 +275,16 @@
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
 | POST | `/api/knowledge-bases/{id}/search` | Semantic search over chunks and FAQs |
 | POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service |
+| GET | `/api/evaluation-datasets` | List evaluation datasets (optional ?knowledge_base_id=) |
+| POST | `/api/evaluation-datasets` | Create evaluation dataset |
+| GET | `/api/evaluation-datasets/{id}` | Get evaluation dataset |
+| PUT | `/api/evaluation-datasets/{id}` | Update evaluation dataset |
+| DELETE | `/api/evaluation-datasets/{id}` | Delete evaluation dataset |
+| GET | `/api/evaluation-datasets/{id}/items` | List evaluation items |
+| POST | `/api/evaluation-datasets/{id}/items` | Add evaluation item |
+| PUT | `/api/evaluation-datasets/{id}/items/{item_id}` | Update evaluation item |
+| DELETE | `/api/evaluation-datasets/{id}/items/{item_id}` | Delete evaluation item |
+| POST | `/api/evaluation-datasets/{id}/run` | Run evaluation (calls QA per query) |
 | GET | `/api/glossaries` | List glossaries |
 | POST | `/api/glossaries` | Create glossary |
 | GET | `/api/glossaries/{id}` | Get glossary with term count |
@@ -351,7 +373,7 @@
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users; seeded with `articles`, `knowledgeBases`, `objectsAndLinks` (all enabled by default)
+- Stores feature flags shared across all users; seeded with `articles`, `knowledgeBases`, `objectsAndLinks` (enabled by default), `evaluationDatasets` (disabled by default, experimental)
 - Read by all authenticated users; write restricted to admins
 
 ### KnowledgeBase
@@ -373,6 +395,16 @@
 
 - `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.), `labels` (JSONB), `doc_metadata` (JSONB), `created_at`
 - Document segments with vector embeddings for semantic search; labels and doc_metadata inherited from source document; supports hybrid search (vector + label/metadata filters)
+
+### EvaluationDataset
+
+- `id`, `name`, `knowledge_base_id` (FK → knowledge_bases), `description`, `created_at`, `updated_at`
+- Container for query + expected answer pairs to evaluate KB QA performance
+
+### EvaluationDatasetItem
+
+- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `query`, `expected_answer`, `sort_order`, `created_at`
+- Single evaluation item: question to ask and expected answer
 
 ### Glossary
 

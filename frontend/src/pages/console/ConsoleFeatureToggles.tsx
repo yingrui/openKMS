@@ -17,6 +17,11 @@ const features = [
     name: 'Objects & Links',
     description: 'Ontology layer: object types, link types, and their instances. Schema managed in Object Types and Link Types.',
   },
+  {
+    id: 'evaluationDatasets' as const,
+    name: 'Evaluation',
+    description: 'Evaluation datasets for KB QA performance (experimental). Query + expected answer pairs to measure RAG quality.',
+  },
 ];
 
 export function ConsoleFeatureToggles() {

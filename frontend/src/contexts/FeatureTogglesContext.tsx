@@ -9,6 +9,7 @@ const defaults: FeatureToggles = {
   articles: true,
   knowledgeBases: true,
   objectsAndLinks: true,
+  evaluationDatasets: false,
   hasNeo4jDataSource: false,
 };
 

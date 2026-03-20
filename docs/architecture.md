@@ -48,7 +48,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | documents, doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -71,6 +71,7 @@ flowchart TB
     Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
     Articles[Articles, ArticleDetail]
     KB[KnowledgeBaseList, KnowledgeBaseDetail]
+    Eval[EvaluationDatasetList, EvaluationDatasetDetail]
     Glossaries[GlossaryList, GlossaryDetail]
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
@@ -92,7 +93,7 @@ frontend/src/
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, ontologyApi, dataSourcesApi, datasetsApi, featureTogglesApi, channelUtils
+├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, evaluationDatasetsApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, ontologyApi, dataSourcesApi, datasetsApi, featureTogglesApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -102,6 +103,7 @@ frontend/src/
     ├── DocumentDetail.tsx
     ├── Articles.tsx, ArticleDetail.tsx
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
+    ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── ObjectsList.tsx, ObjectTypeDetail.tsx, ObjectExplorer.tsx, LinksList.tsx, LinkTypeDetail.tsx
@@ -128,6 +130,7 @@ backend/
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
+│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, run (QA evaluation)
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
