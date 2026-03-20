@@ -1037,6 +1037,20 @@
   padding: 0 24px 16px;
 }
 
+.kb-gen-progress-bar {
+  height: 4px;
+  background: var(--color-border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 8px 24px 0;
+}
+
+.kb-gen-progress-fill {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.2s ease;
+}
+
 .kb-doc-picker-search {
   display: flex;
   align-items: center;

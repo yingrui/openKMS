@@ -63,7 +63,7 @@
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying |
 | FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for labels and document metadata (from KB label_keys, metadata_keys; channel label_config/extraction_schema for array types) |
-| FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal |
+| FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal; when multiple documents selected, generates one-by-one with progress in dialog |
 | Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); paginated list (offset, limit); Edit Chunk modal with content, labels, document metadata (same key-value form as FAQ) |
 | Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; supports label_filters and metadata_filters for hybrid search; Search tab has collapsible Filters (labels, metadata) when KB has label_keys/metadata_keys configured; comma-separated for multiple values; returns 503 with install instructions if pgvector missing |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |

@@ -103,6 +103,7 @@ export function KnowledgeBaseDetail() {
   const [genModelId, setGenModelId] = useState('');
   const [genPrompt, setGenPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [genProgress, setGenProgress] = useState<{ current: number; total: number; documentName: string } | null>(null);
   const [genStep, setGenStep] = useState<'config' | 'review'>('config');
   const [genPreviewFaqs, setGenPreviewFaqs] = useState<FAQGenerateResult[]>([]);
   const [genSaving, setGenSaving] = useState(false);
@@ -400,17 +401,45 @@ export function KnowledgeBaseDetail() {
       toast.error('Select at least one document');
       return;
     }
+    const docIdToName = new Map(docs.map((d) => [d.document_id, d.document_name || d.document_id]));
     setGenerating(true);
+    setGenProgress(null);
     try {
-      const result = await generateFAQs(kbId, {
-        document_ids: docIds,
-        model_id: genModelId,
-        prompt: genPrompt.trim() || undefined,
-      });
-      setGenPreviewFaqs(result);
+      const allResults: FAQGenerateResult[] = [];
+      if (docIds.length === 1) {
+        setGenProgress({
+          current: 1,
+          total: 1,
+          documentName: docIdToName.get(docIds[0]) || docIds[0],
+        });
+        const result = await generateFAQs(kbId, {
+          document_ids: docIds,
+          model_id: genModelId,
+          prompt: genPrompt.trim() || undefined,
+        });
+        allResults.push(...result);
+      } else {
+        for (let i = 0; i < docIds.length; i++) {
+          const docId = docIds[i];
+          setGenProgress({
+            current: i + 1,
+            total: docIds.length,
+            documentName: docIdToName.get(docId) || docId,
+          });
+          const result = await generateFAQs(kbId, {
+            document_ids: [docId],
+            model_id: genModelId,
+            prompt: genPrompt.trim() || undefined,
+          });
+          allResults.push(...result);
+        }
+      }
+      setGenProgress(null);
+      setGenPreviewFaqs(allResults);
       setGenStep('review');
-      toast.success(`Generated ${result.length} FAQ pairs. Review and remove any you don't want, then Save.`);
+      toast.success(`Generated ${allResults.length} FAQ pairs. Review and remove any you don't want, then Save.`);
     } catch (e: unknown) {
+      setGenProgress(null);
       toast.error(e instanceof Error ? e.message : 'FAQ generation failed');
     } finally {
       setGenerating(false);
@@ -1306,9 +1335,19 @@ export function KnowledgeBaseDetail() {
             </div>
             <p className="kb-doc-picker-hint">
               {genStep === 'config'
-                ? 'Select an LLM model and choose which documents to generate Q&A pairs from.'
+                ? generating && genProgress
+                  ? `Generating document ${genProgress.current} of ${genProgress.total}: ${genProgress.documentName}`
+                  : 'Select an LLM model and choose which documents to generate Q&A pairs from.'
                 : 'Review the generated FAQs. Remove any you do not want to keep, then Save.'}
             </p>
+            {generating && genProgress && genProgress.total > 1 && (
+              <div className="kb-gen-progress-bar">
+                <div
+                  className="kb-gen-progress-fill"
+                  style={{ width: `${(genProgress.current / genProgress.total) * 100}%` }}
+                />
+              </div>
+            )}
 
             {genStep === 'config' ? (
               <>
