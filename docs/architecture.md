@@ -219,16 +219,19 @@ qa-agent/
 │   ├── __init__.py
 │   ├── main.py              # FastAPI app with /ask endpoint
 │   ├── config.py            # Settings (backend URL, LLM)
-│   ├── agent.py             # LangGraph agent: retrieve → generate
+│   ├── agent.py             # LangGraph agent: retrieve → generate (with tools) → tools
 │   ├── retriever.py         # Calls backend search API (no DB access)
+│   ├── ontology_client.py   # GET object-types, link-types; POST ontology/explore (Cypher)
+│   ├── tools.py             # get_ontology_schema_tool, run_cypher_tool
 │   └── schemas.py           # AskRequest/AskResponse
 ├── .env.example
 └── README.md
 ```
 
-- **Purpose**: Separate RAG service for Q&A against knowledge bases; configurable per KB via `agent_url`
-- **Architecture**: LangGraph state graph with two nodes: `retrieve` (calls `POST /api/knowledge-bases/{id}/search`) → `generate` (LLM answer with context). Does not access the database directly.
-- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` to `{kb.agent_url}/ask`, passing the user's access token so the agent can call the backend search API
+- **Purpose**: Separate RAG + ontology service for Q&A against knowledge bases; configurable per KB via `agent_url`
+- **Architecture**: LangGraph state graph: `retrieve` (KB search) → `generate` (LLM with tools) ⇄ `tools` (ontology). RAG via `POST /api/knowledge-bases/{id}/search`; ontology via `GET /api/object-types`, `GET /api/link-types`, `POST /api/ontology/explore` (Cypher). Does not access the database directly.
+- **Ontology skills**: For coverage questions (e.g. "Which insurance products cover heart attack?"), the agent calls `get_ontology_schema_tool` to learn node labels and relationship types, then `run_cypher_tool` to query Neo4j.
+- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` to `{kb.agent_url}/ask`, passing the user's access token so the agent can call the backend APIs
 - **Port**: 8103 by default
 
 ## Data Flow

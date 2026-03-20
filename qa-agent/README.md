@@ -5,11 +5,21 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 ## Architecture
 
 - **FastAPI** web server with a single `/ask` endpoint
-- **LangGraph** agent with two nodes: `retrieve` (calls backend search API) and `generate` (LLM answer)
-- **Backend API** for retrieval: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
+- **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools), `tools` (ontology tools)
+- **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
+- **Ontology skills**: Tools to query object types, link types, and execute Cypher against Neo4j
 - **OpenAI-compatible** LLM for answer generation
 
-The backend forwards the user's access token when calling the agent. The agent uses that token to call the backend search API, so search runs in the user's auth context.
+The backend forwards the user's access token when calling the agent. The agent uses that token to call the backend APIs (search, object-types, link-types, ontology/explore).
+
+## Ontology Skills
+
+For questions about relationships and coverage (e.g. "Which insurance products cover heart attack?"):
+
+1. **get_ontology_schema_tool** – Fetches object types (node labels) and link types (relationships) from the backend. Use to learn the graph structure.
+2. **run_cypher_tool** – Executes read-only Cypher queries against Neo4j. Use after getting the schema to query the graph.
+
+The agent automatically calls these tools when the question relates to ontology/coverage. Example flow: user asks "Which products cover heart attack?" → agent calls `get_ontology_schema_tool` → agent generates Cypher (e.g. `MATCH (d:Disease)-[:COVERS]-(p:Insurance_Product) WHERE d.name CONTAINS 'heart' RETURN p.name`) → agent calls `run_cypher_tool` → agent formats the answer.
 
 ## Setup
 

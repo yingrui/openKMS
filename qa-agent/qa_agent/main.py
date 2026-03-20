@@ -4,7 +4,6 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .agent import get_agent
 from .config import settings
 from .schemas import AskRequest, AskResponse, SourceItem
 
@@ -33,16 +32,15 @@ async def health():
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(request: AskRequest):
-    """Answer a question using RAG against the specified knowledge base."""
-    agent = get_agent()
-    result = agent.invoke({
-        "knowledge_base_id": request.knowledge_base_id,
-        "question": request.question,
-        "conversation_history": request.conversation_history,
-        "access_token": request.access_token or "",
-        "context": [],
-        "answer": "",
-    })
+    """Answer a question using RAG + ontology tools against the knowledge base."""
+    from .agent import invoke_agent
+
+    result = invoke_agent(
+        knowledge_base_id=request.knowledge_base_id,
+        question=request.question,
+        conversation_history=request.conversation_history,
+        access_token=request.access_token or "",
+    )
 
     sources = [
         SourceItem(
@@ -53,11 +51,11 @@ async def ask(request: AskRequest):
             source_name=s.source_name,
             document_id=s.document_id,
         )
-        for s in result["context"]
+        for s in result.get("context", [])
     ]
 
     return AskResponse(
-        answer=result["answer"],
+        answer=result.get("answer", ""),
         sources=sources,
     )
 

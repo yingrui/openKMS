@@ -70,7 +70,7 @@
 | KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt, label_keys, metadata_keys (keys to propagate from documents to FAQs/chunks) |
 | KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index` – chunk documents, generate embeddings, bulk insert to pgvector |
 | KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
-| QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); retrieves via backend search API, no direct DB access |
+| QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG via backend search API; ontology skills: get object/link types, run Cypher for coverage questions (e.g. which insurance products cover heart attack) |
 | Q&A tab | ✅ | Chat-like interface in KB detail page for asking questions; hidden when agent URL is not configured |
 
 - Toggle visibility via Console → Feature Toggles
