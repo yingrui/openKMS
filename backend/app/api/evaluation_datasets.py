@@ -1,8 +1,10 @@
 """Evaluation dataset API for KB QA performance evaluation."""
+import csv
+import io
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -156,6 +158,7 @@ async def list_evaluation_dataset_items(
             evaluation_dataset_id=i.evaluation_dataset_id,
             query=i.query,
             expected_answer=i.expected_answer,
+            topic=i.topic,
             sort_order=i.sort_order,
             created_at=i.created_at,
         )
@@ -177,6 +180,7 @@ async def create_evaluation_dataset_item(
         evaluation_dataset_id=dataset_id,
         query=body.query,
         expected_answer=body.expected_answer,
+        topic=body.topic,
         sort_order=body.sort_order,
     )
     db.add(item)
@@ -187,6 +191,7 @@ async def create_evaluation_dataset_item(
         evaluation_dataset_id=item.evaluation_dataset_id,
         query=item.query,
         expected_answer=item.expected_answer,
+        topic=item.topic,
         sort_order=item.sort_order,
         created_at=item.created_at,
     )
@@ -211,9 +216,69 @@ async def update_evaluation_dataset_item(
         evaluation_dataset_id=item.evaluation_dataset_id,
         query=item.query,
         expected_answer=item.expected_answer,
+        topic=item.topic,
         sort_order=item.sort_order,
         created_at=item.created_at,
     )
+
+
+@router.post("/{dataset_id}/items/import")
+async def import_evaluation_dataset_items(
+    dataset_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import evaluation items from a CSV file. Expected columns: topic (optional), query, answer or expected_answer."""
+    ds = await db.get(EvaluationDataset, dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded")
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV has no headers")
+
+    # Normalize column names (lowercase, strip)
+    normalized = {h.strip().lower(): h for h in reader.fieldnames}
+    query_col = normalized.get("query")
+    answer_col = normalized.get("answer") or normalized.get("expected_answer")
+    topic_col = normalized.get("topic")
+
+    if not query_col or not answer_col:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV must have 'query' and 'answer' (or 'expected_answer') columns",
+        )
+
+    created = 0
+    for idx, row in enumerate(reader):
+        query = (row.get(query_col) or "").strip()
+        expected = (row.get(answer_col) or "").strip()
+        if not query or not expected:
+            continue
+        topic_val = (row.get(topic_col) or "").strip() if topic_col else None
+        topic_val = topic_val or None
+
+        item = EvaluationDatasetItem(
+            id=str(uuid.uuid4()),
+            evaluation_dataset_id=dataset_id,
+            query=query,
+            expected_answer=expected,
+            topic=topic_val,
+            sort_order=idx,
+        )
+        db.add(item)
+        created += 1
+
+    await db.flush()
+    return {"imported": created}
 
 
 @router.delete("/{dataset_id}/items/{item_id}", status_code=204)

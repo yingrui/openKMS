@@ -80,7 +80,8 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Evaluation dataset CRUD | ✅ | Create/edit/delete datasets; each linked to one knowledge base |
-| Evaluation items | ✅ | Add/edit/delete items: query + expected answer pairs |
+| Evaluation items | ✅ | Add/edit/delete items: query + expected answer pairs; optional topic column |
+| CSV import | ✅ | Import Data button uploads CSV (columns: topic, query, answer or expected_answer) |
 | Run evaluation | ✅ | `POST /api/evaluation-datasets/{id}/run` – calls QA `/ask` per query, returns generated vs expected; requires KB agent_url |
 | Sidebar | ✅ | "Evaluation" link when `evaluationDatasets` toggle enabled |
 | Feature toggle | ✅ | `evaluationDatasets` (default: false); Console → Feature Toggles |
@@ -283,6 +284,7 @@
 | DELETE | `/api/evaluation-datasets/{id}` | Delete evaluation dataset |
 | GET | `/api/evaluation-datasets/{id}/items` | List evaluation items |
 | POST | `/api/evaluation-datasets/{id}/items` | Add evaluation item |
+| POST | `/api/evaluation-datasets/{id}/items/import` | Import items from CSV (multipart file; columns: topic, query, answer or expected_answer) |
 | PUT | `/api/evaluation-datasets/{id}/items/{item_id}` | Update evaluation item |
 | DELETE | `/api/evaluation-datasets/{id}/items/{item_id}` | Delete evaluation item |
 | POST | `/api/evaluation-datasets/{id}/run` | Run evaluation (calls QA per query) |
@@ -405,8 +407,8 @@
 
 ### EvaluationDatasetItem
 
-- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `query`, `expected_answer`, `sort_order`, `created_at`
-- Single evaluation item: question to ask and expected answer
+- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `query`, `expected_answer`, `topic` (optional), `sort_order`, `created_at`
+- Single evaluation item: question to ask and expected answer; topic for categorization
 
 ### Glossary
 

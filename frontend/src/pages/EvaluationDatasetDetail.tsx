@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -8,6 +8,7 @@ import {
   X,
   Play,
   Loader2,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -16,6 +17,7 @@ import {
   createEvaluationDatasetItem,
   updateEvaluationDatasetItem,
   deleteEvaluationDatasetItem,
+  importEvaluationDatasetItems,
   runEvaluation,
   type EvaluationDatasetResponse,
   type EvaluationDatasetItemResponse,
@@ -32,7 +34,10 @@ export function EvaluationDatasetDetail() {
   const [editItem, setEditItem] = useState<EvaluationDatasetItemResponse | null>(null);
   const [itemQuery, setItemQuery] = useState('');
   const [itemExpected, setItemExpected] = useState('');
+  const [itemTopic, setItemTopic] = useState('');
   const [itemSaving, setItemSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [running, setRunning] = useState(false);
   const [runResults, setRunResults] = useState<EvaluationRunResult[] | null>(null);
 
@@ -73,10 +78,12 @@ export function EvaluationDatasetDetail() {
       await createEvaluationDatasetItem(datasetId, {
         query: itemQuery.trim(),
         expected_answer: itemExpected.trim(),
+        topic: itemTopic.trim() || undefined,
       });
       setShowItemForm(false);
       setItemQuery('');
       setItemExpected('');
+      setItemTopic('');
       toast.success('Item added');
       loadItems();
       loadDataset();
@@ -94,10 +101,12 @@ export function EvaluationDatasetDetail() {
       await updateEvaluationDatasetItem(datasetId, editItem.id, {
         query: itemQuery.trim(),
         expected_answer: itemExpected.trim(),
+        topic: itemTopic.trim() || undefined,
       });
       setEditItem(null);
       setItemQuery('');
       setItemExpected('');
+      setItemTopic('');
       toast.success('Item updated');
       loadItems();
       loadDataset();
@@ -124,6 +133,7 @@ export function EvaluationDatasetDetail() {
     setEditItem(item);
     setItemQuery(item.query);
     setItemExpected(item.expected_answer);
+    setItemTopic(item.topic ?? '');
   };
 
   const closeItemForm = () => {
@@ -131,6 +141,26 @@ export function EvaluationDatasetDetail() {
     setEditItem(null);
     setItemQuery('');
     setItemExpected('');
+    setItemTopic('');
+  };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!datasetId || !file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      const res = await importEvaluationDatasetItems(datasetId, file);
+      toast.success(`Imported ${res.imported} items`);
+      loadItems();
+      loadDataset();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to import CSV');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const handleRunEvaluation = async () => {
@@ -185,18 +215,38 @@ export function EvaluationDatasetDetail() {
       <section className="eval-detail-section">
         <div className="eval-detail-section-header">
           <h2>Items ({items.length})</h2>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => {
-              setShowItemForm(true);
-              setItemQuery('');
-              setItemExpected('');
-            }}
-          >
-            <Plus size={16} />
-            <span>Add Item</span>
-          </button>
+          <div className="eval-detail-section-actions">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              onChange={handleImportFile}
+              style={{ display: 'none' }}
+              aria-hidden
+            />
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleImportClick}
+              disabled={importing}
+            >
+              {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+              <span>{importing ? 'Importing...' : 'Import Data'}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setShowItemForm(true);
+                setItemQuery('');
+                setItemExpected('');
+                setItemTopic('');
+              }}
+            >
+              <Plus size={16} />
+              <span>Add Item</span>
+            </button>
+          </div>
         </div>
 
         {items.length === 0 ? (
@@ -206,6 +256,7 @@ export function EvaluationDatasetDetail() {
             <table className="eval-table">
               <thead>
                 <tr>
+                  <th>Topic</th>
                   <th>Query</th>
                   <th>Expected Answer</th>
                   <th className="eval-table-actions">Actions</th>
@@ -214,6 +265,7 @@ export function EvaluationDatasetDetail() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item.id}>
+                    <td className="eval-table-topic">{item.topic ?? '—'}</td>
                     <td className="eval-table-query">{item.query}</td>
                     <td className="eval-table-expected">{item.expected_answer}</td>
                     <td className="eval-table-actions">
@@ -279,6 +331,15 @@ export function EvaluationDatasetDetail() {
               </button>
             </div>
             <div className="eval-dialog-body">
+              <label>
+                <span>Topic (optional)</span>
+                <input
+                  type="text"
+                  value={itemTopic}
+                  onChange={(e) => setItemTopic(e.target.value)}
+                  placeholder="e.g. 投保年龄"
+                />
+              </label>
               <label>
                 <span>Query</span>
                 <textarea

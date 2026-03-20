@@ -41,12 +41,14 @@ class EvaluationDatasetListResponse(BaseModel):
 class EvaluationDatasetItemCreate(BaseModel):
     query: str
     expected_answer: str
+    topic: str | None = None
     sort_order: int = 0
 
 
 class EvaluationDatasetItemUpdate(BaseModel):
     query: str | None = None
     expected_answer: str | None = None
+    topic: str | None = None
     sort_order: int | None = None
 
 
@@ -55,6 +57,7 @@ class EvaluationDatasetItemResponse(BaseModel):
     evaluation_dataset_id: str
     query: str
     expected_answer: str
+    topic: str | None = None
     sort_order: int
     created_at: datetime
 

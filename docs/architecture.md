@@ -130,7 +130,7 @@ backend/
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, run (QA evaluation)
+│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, items/import (CSV), run (QA evaluation)
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test

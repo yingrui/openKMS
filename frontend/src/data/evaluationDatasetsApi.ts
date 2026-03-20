@@ -23,6 +23,7 @@ export interface EvaluationDatasetItemResponse {
   evaluation_dataset_id: string;
   query: string;
   expected_answer: string;
+  topic?: string | null;
   sort_order: number;
   created_at: string;
 }
@@ -125,7 +126,7 @@ export async function fetchEvaluationDatasetItems(
 
 export async function createEvaluationDatasetItem(
   datasetId: string,
-  data: { query: string; expected_answer: string; sort_order?: number }
+  data: { query: string; expected_answer: string; topic?: string | null; sort_order?: number }
 ): Promise<EvaluationDatasetItemResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items`, {
@@ -144,7 +145,7 @@ export async function createEvaluationDatasetItem(
 export async function updateEvaluationDatasetItem(
   datasetId: string,
   itemId: string,
-  data: { query?: string; expected_answer?: string; sort_order?: number }
+  data: { query?: string; expected_answer?: string; topic?: string | null; sort_order?: number }
 ): Promise<EvaluationDatasetItemResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(
@@ -177,6 +178,29 @@ export async function deleteEvaluationDatasetItem(
     }
   );
   if (!res.ok) throw new Error(`Failed to delete evaluation item: ${res.status}`);
+}
+
+export async function importEvaluationDatasetItems(
+  datasetId: string,
+  file: File
+): Promise<{ imported: number }> {
+  const headers = await getAuthHeaders();
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(
+    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/import`,
+    {
+      method: 'POST',
+      headers: { ...headers },
+      body: formData,
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to import CSV');
+  }
+  return res.json();
 }
 
 export async function runEvaluation(datasetId: string): Promise<EvaluationRunResponse> {
