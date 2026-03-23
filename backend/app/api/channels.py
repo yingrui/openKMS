@@ -24,6 +24,24 @@ def _strip_field_order(schema: dict[str, Any] | list | None) -> dict[str, Any] |
     return out
 
 
+def _normalize_label_config(cfg: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    """Normalize label_config: migrate allow_multiple to type for backward compat."""
+    if not cfg or not isinstance(cfg, list):
+        return cfg
+    out = []
+    for item in cfg:
+        if not isinstance(item, dict):
+            out.append(item)
+            continue
+        copy = dict(item)
+        if "type" not in copy or copy.get("type") not in ("object_type", "list[object_type]"):
+            copy["type"] = "list[object_type]" if copy.get("allow_multiple") else "object_type"
+        if "allow_multiple" in copy:
+            del copy["allow_multiple"]
+        out.append(copy)
+    return out
+
+
 def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -> list[ChannelNode]:
     """Build tree from flat list. Siblings sorted by sort_order then name at each level."""
     nodes = [c for c in channels if c.parent_id == parent_id]
@@ -40,7 +58,8 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
                 auto_process=c.auto_process,
                 extraction_model_id=c.extraction_model_id,
                 extraction_schema=_strip_field_order(c.extraction_schema),
-                label_config=getattr(c, "label_config", None),
+                label_config=_normalize_label_config(getattr(c, "label_config", None)),
+                object_type_extraction_max_instances=getattr(c, "object_type_extraction_max_instances", None),
                 children=_build_tree(channels, c.id),
             )
         )
@@ -62,7 +81,8 @@ async def get_document_channel(channel_id: str, db: AsyncSession = Depends(get_d
         auto_process=channel.auto_process,
         extraction_model_id=channel.extraction_model_id,
         extraction_schema=_strip_field_order(channel.extraction_schema),
-        label_config=getattr(channel, "label_config", None),
+        label_config=_normalize_label_config(getattr(channel, "label_config", None)),
+        object_type_extraction_max_instances=getattr(channel, "object_type_extraction_max_instances", None),
         children=[],
     )
 
@@ -116,7 +136,8 @@ async def create_document_channel(
         auto_process=channel.auto_process,
         extraction_model_id=channel.extraction_model_id,
         extraction_schema=_strip_field_order(channel.extraction_schema),
-        label_config=getattr(channel, "label_config", None),
+        label_config=_normalize_label_config(getattr(channel, "label_config", None)),
+        object_type_extraction_max_instances=getattr(channel, "object_type_extraction_max_instances", None),
         children=[],
     )
 
@@ -309,8 +330,10 @@ async def update_document_channel(
         cfg = update_data["label_config"]
         if not isinstance(cfg, list):
             raise HTTPException(status_code=400, detail="label_config must be a list")
+        normalized = []
         for item in cfg:
             if not isinstance(item, dict):
+                normalized.append(item)
                 continue
             ot_id = item.get("object_type_id")
             if not ot_id:
@@ -321,8 +344,15 @@ async def update_document_channel(
             if not getattr(ot, "is_master_data", False):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Object type '{ot.name}' is not master data. Only master data object types can be used for labels.",
+                    detail=f"Object type '{ot.name}' is not master data. Only master data object types can be used for manual labels.",
                 )
+            copy = dict(item)
+            if "type" not in copy or copy.get("type") not in ("object_type", "list[object_type]"):
+                copy["type"] = "list[object_type]" if copy.get("allow_multiple") else "object_type"
+            if "allow_multiple" in copy:
+                del copy["allow_multiple"]
+            normalized.append(copy)
+        update_data["label_config"] = normalized
 
     for key, value in update_data.items():
         setattr(channel, key, value)
@@ -338,5 +368,7 @@ async def update_document_channel(
         auto_process=channel.auto_process,
         extraction_model_id=channel.extraction_model_id,
         extraction_schema=_strip_field_order(channel.extraction_schema),
+        label_config=_normalize_label_config(getattr(channel, "label_config", None)),
+        object_type_extraction_max_instances=getattr(channel, "object_type_extraction_max_instances", None),
         children=[],
     )

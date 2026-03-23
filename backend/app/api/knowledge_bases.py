@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy import cast
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,53 +57,12 @@ router = APIRouter(
 )
 
 
-def _build_label_filter_conditions(column: Any, filters: dict[str, str | list[str]]) -> Any:
-    """Build SQLAlchemy conditions for label_filters. Matches scalar or array containment. AND between keys.
-    Uses jsonb_build_object/jsonb_build_array to avoid Python string encoding issues with cast(json.dumps())."""
-    key_conds = []
-    for key, val in filters.items():
-        vals = val if isinstance(val, list) else [val]
-        val_conds = []
-        for v in vals:
-            # Match if labels @> {key: v} (scalar) or labels->key @> [v] (array contains v)
-            obj_expr = func.jsonb_build_object(key, v)
-            arr_expr = func.jsonb_build_array(v)
-            val_conds.append(
-                or_(
-                    column.op("@>")(obj_expr),
-                    column[key].op("@>")(arr_expr),
-                )
-            )
-        key_conds.append(or_(*val_conds))
-    return and_(*key_conds) if key_conds else True
-
-
-def _build_metadata_filter_conditions(column: Any, filters: dict[str, Any]) -> Any:
-    """Build SQLAlchemy condition for metadata_filters using JSONB containment.
-    Uses jsonb_build_object to avoid Python string encoding issues."""
-    if not filters:
-        return True
-    # Build jsonb_build_object(key1, val1, key2, val2, ...) - PostgreSQL expects alternating key,value
-    args = []
-    for k, v in filters.items():
-        args.extend([k, v])
-    obj_expr = func.jsonb_build_object(*args)
-    return column.op("@>")(obj_expr)
-
-
-def _propagate_labels_metadata(
-    doc_labels: dict | None, doc_metadata: dict | None, label_keys: list | None, metadata_keys: list | None
-) -> tuple[dict | None, dict | None]:
-    """Filter document labels and metadata by KB config. Returns (labels, doc_metadata)."""
-    labels = None
-    if label_keys:
-        filtered = {k: v for k, v in (doc_labels or {}).items() if k in label_keys}
-        labels = filtered if filtered else None
-    meta = None
-    if metadata_keys:
-        filtered = {k: v for k, v in (doc_metadata or {}).items() if k in metadata_keys}
-        meta = filtered if filtered else None
-    return labels, meta
+def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -> dict | None:
+    """Filter document metadata by KB config. Returns filtered doc_metadata."""
+    if not metadata_keys:
+        return None
+    filtered = {k: v for k, v in (doc_metadata or {}).items() if k in metadata_keys}
+    return filtered if filtered else None
 
 
 async def _kb_stats(db: AsyncSession, kb_id: str) -> dict[str, int]:
@@ -129,7 +88,6 @@ def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRe
         agent_url=kb.agent_url,
         chunk_config=kb.chunk_config,
         faq_prompt=kb.faq_prompt,
-        label_keys=kb.label_keys,
         metadata_keys=kb.metadata_keys,
         created_at=kb.created_at,
         updated_at=kb.updated_at,
@@ -161,7 +119,6 @@ async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = De
         agent_url=body.agent_url,
         chunk_config=body.chunk_config,
         faq_prompt=body.faq_prompt,
-        label_keys=body.label_keys,
         metadata_keys=body.metadata_keys,
     )
     db.add(kb)
@@ -299,7 +256,7 @@ async def list_faqs(
     # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(FAQ, Document.name)
-        .options(load_only(FAQ.id, FAQ.knowledge_base_id, FAQ.document_id, FAQ.question, FAQ.answer, FAQ.labels, FAQ.doc_metadata, FAQ.created_at, FAQ.updated_at))
+        .options(load_only(FAQ.id, FAQ.knowledge_base_id, FAQ.document_id, FAQ.question, FAQ.answer, FAQ.doc_metadata, FAQ.created_at, FAQ.updated_at))
         .outerjoin(Document, FAQ.document_id == Document.id)
         .where(FAQ.knowledge_base_id == kb_id)
         .order_by(FAQ.created_at.desc())
@@ -315,7 +272,6 @@ async def list_faqs(
             document_name=doc_name,
             question=f.question,
             answer=f.answer,
-            labels=f.labels,
             doc_metadata=f.doc_metadata,
             has_embedding=False,  # Embedding column excluded to avoid pgvector; install pgvector for accurate value
             created_at=f.created_at,
@@ -337,7 +293,6 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
         document_id=body.document_id,
         question=body.question,
         answer=body.answer,
-        labels=body.labels,
         doc_metadata=body.doc_metadata,
     )
     db.add(faq)
@@ -349,7 +304,6 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
         document_id=faq.document_id,
         question=faq.question,
         answer=faq.answer,
-        labels=faq.labels,
         doc_metadata=faq.doc_metadata,
         has_embedding=False,
         created_at=faq.created_at,
@@ -359,7 +313,7 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
 
 @router.put("/{kb_id}/faqs/batch-embeddings", status_code=204)
 async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsRequest, db: AsyncSession = Depends(get_db)):
-    """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline. Optionally updates labels and doc_metadata."""
+    """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline. Optionally updates doc_metadata."""
     kb = await db.get(KnowledgeBase, kb_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
@@ -368,8 +322,6 @@ async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsReque
         if not faq or faq.knowledge_base_id != kb_id:
             continue
         faq.embedding = _base64_to_floats(item.embedding)
-        if item.labels is not None:
-            faq.labels = item.labels
         if item.doc_metadata is not None:
             faq.doc_metadata = item.doc_metadata
     await db.commit()
@@ -391,7 +343,6 @@ async def update_faq(kb_id: str, faq_id: str, body: FAQUpdate, db: AsyncSession 
         document_id=faq.document_id,
         question=faq.question,
         answer=faq.answer,
-        labels=faq.labels,
         doc_metadata=faq.doc_metadata,
         has_embedding=faq.embedding is not None,
         created_at=faq.created_at,
@@ -439,16 +390,13 @@ async def generate_faqs(kb_id: str, body: FAQGenerateRequest, db: AsyncSession =
         if not doc or not doc.markdown:
             continue
         pairs = await generate_faq_pairs(doc.markdown, model_config, custom_prompt=effective_prompt)
-        labels, doc_meta = _propagate_labels_metadata(
-            doc.labels, doc.doc_metadata, kb.label_keys, kb.metadata_keys
-        )
+        doc_meta = _propagate_metadata(doc.doc_metadata, kb.metadata_keys)
         for pair in pairs:
             results.append(FAQGenerateResult(
                 document_id=doc_id,
                 document_name=doc.name,
                 question=pair["question"],
                 answer=pair["answer"],
-                labels=labels,
                 doc_metadata=doc_meta,
             ))
     return results
@@ -462,22 +410,17 @@ async def create_faqs_batch(kb_id: str, body: FAQBatchCreateRequest, db: AsyncSe
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     created = []
     for item in body.items:
-        labels, doc_meta = item.labels, item.doc_metadata
-        if (labels is None or doc_meta is None) and item.document_id:
+        doc_meta = item.doc_metadata
+        if doc_meta is None and item.document_id:
             doc = await db.get(Document, item.document_id)
             if doc:
-                l, m = _propagate_labels_metadata(doc.labels, doc.doc_metadata, kb.label_keys, kb.metadata_keys)
-                if labels is None:
-                    labels = l
-                if doc_meta is None:
-                    doc_meta = m
+                doc_meta = _propagate_metadata(doc.doc_metadata, kb.metadata_keys)
         faq = FAQ(
             id=str(uuid.uuid4()),
             knowledge_base_id=kb_id,
             document_id=item.document_id,
             question=item.question,
             answer=item.answer,
-            labels=labels,
             doc_metadata=doc_meta,
         )
         db.add(faq)
@@ -489,7 +432,6 @@ async def create_faqs_batch(kb_id: str, body: FAQBatchCreateRequest, db: AsyncSe
             document_id=faq.document_id,
             question=faq.question,
             answer=faq.answer,
-            labels=faq.labels,
             doc_metadata=faq.doc_metadata,
             has_embedding=False,
             created_at=faq.created_at,
@@ -523,7 +465,7 @@ async def list_chunks(
         .options(load_only(
             Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.content,
             Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata,
-            Chunk.labels, Chunk.doc_metadata, Chunk.created_at
+            Chunk.doc_metadata, Chunk.created_at
         ))
         .join(Document, Chunk.document_id == Document.id)
         .where(Chunk.knowledge_base_id == kb_id)
@@ -543,7 +485,6 @@ async def list_chunks(
             token_count=chunk.token_count,
             has_embedding=bool(has_emb),
             chunk_metadata=chunk.chunk_metadata,
-            labels=chunk.labels,
             doc_metadata=chunk.doc_metadata,
             created_at=chunk.created_at,
         ))
@@ -583,7 +524,6 @@ async def update_chunk(
         token_count=chunk.token_count,
         has_embedding=chunk.embedding is not None,
         chunk_metadata=chunk.chunk_metadata,
-        labels=chunk.labels,
         doc_metadata=chunk.doc_metadata,
         created_at=chunk.created_at,
     )
@@ -614,7 +554,6 @@ async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: Asy
             token_count=item.token_count,
             embedding=embedding_floats,
             chunk_metadata=item.chunk_metadata,
-            labels=item.labels,
             doc_metadata=item.doc_metadata,
         )
         db.add(chunk)
@@ -629,7 +568,6 @@ async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: Asy
             token_count=chunk.token_count,
             has_embedding=True,
             chunk_metadata=chunk.chunk_metadata,
-            labels=chunk.labels,
             doc_metadata=chunk.doc_metadata,
             created_at=chunk.created_at,
         ))

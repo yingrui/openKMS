@@ -21,15 +21,15 @@
 | Document overview | ✅ | Dashboard at `/documents` with channel count, document count (from API stats), quick actions |
 | Channel management | ✅ | Create channels at `/documents/channels` (tree structure); rename, description, move, merge, delete; settings per channel |
 | Document channel view | ✅ | Browse documents by channel at `/documents/channels/:channelId`; list from `GET /api/documents?channel_id=` |
-| Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema), labels config at `/documents/channels/:channelId/settings`; tabbed UI (General, Processing, Metadata extraction, Labels) |
+| Channel settings | ✅ | Per-channel pipeline, auto-process, metadata extraction (model + schema, supports object_type/list[object_type]), manual labels config at `/documents/channels/:channelId/settings`; tabbed UI (General, Processing, Metadata extraction, Manual Labels) |
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; scrollable layout (min-height 720px) for large content |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
-| Document metadata extraction | ✅ | Metadata card on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type, description for LLM prompt); combined with document info in one section |
+| Document metadata extraction | ✅ | Single METADATA section on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type: text/date/enum/object_type/list[object_type], description); object_type_extraction_max_instances limits instance count for extraction |
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
-| Document labels | ✅ | Assign labels to documents; labels map to Master Data object types (configure in channel settings Labels tab); single or multiple values per label; Labels section on document detail with object-instance pickers |
+| Document metadata (unified) | ✅ | All metadata (extracted + manual) in single `metadata` JSONB; manual labels configure in channel settings Manual Labels tab (type: object_type or list[object_type]); object-instance pickers in METADATA section |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
 ### 2. Document Parsing
@@ -62,12 +62,12 @@
 |---------|--------|-------------|
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying; Add Documents dialog: left sidebar channel tree, right documents list with search and pagination |
-| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for labels and document metadata (from KB label_keys, metadata_keys; channel label_config/extraction_schema for array types) |
+| FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for document metadata (from KB metadata_keys; channel label_config/extraction_schema for object_type/list[object_type]) |
 | FAQ generation | ✅ | Two-step: `POST /faqs/generate` returns preview; user reviews, removes unqualified; `POST /faqs/batch` saves selected; configurable prompt in KB settings and modal; when multiple documents selected, generates one-by-one with progress in dialog |
-| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); paginated list (offset, limit); Edit Chunk modal with content, labels, document metadata (same key-value form as FAQ) |
-| Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; search_type (all/chunks/faqs) to choose scope; supports label_filters and metadata_filters for hybrid search; Search tab has All/Chunks/FAQs tabs and collapsible Filters (labels, metadata) when KB has label_keys/metadata_keys configured; comma-separated for multiple values; returns 503 with install instructions if pgvector missing |
+| Chunks | ✅ | Document chunks stored with pgvector embeddings; configurable chunking strategy (fixed_size, markdown_header, paragraph); paginated list (offset, limit); Edit Chunk modal with content and document metadata (same key-value form as FAQ) |
+| Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; search_type (all/chunks/faqs) to choose scope; supports metadata_filters for hybrid search; Search tab has All/Chunks/FAQs tabs and collapsible Filters when KB has metadata_keys configured; comma-separated for multiple values; returns 503 with install instructions if pgvector missing |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
-| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt, label_keys, metadata_keys (keys to propagate from documents to FAQs/chunks) |
+| KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt, metadata_keys (keys to propagate from documents to FAQs/chunks) |
 | KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index` – chunk documents, generate embeddings, bulk insert to pgvector |
 | KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
 | QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG via backend search API; ontology skills: get object/link types, run Cypher for coverage questions (e.g. which insurance products cover heart attack) |
@@ -216,7 +216,7 @@
 | GET | `/api/document-channels` | List document channels (tree) |
 | GET | `/api/document-channels/{id}` | Get channel by ID (includes label_config, extraction_schema) |
 | POST | `/api/document-channels` | Create channel |
-| PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config) |
+| PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config, object_type_extraction_max_instances) |
 | POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
@@ -224,7 +224,7 @@
 | GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted); search filters by name; offset/limit for pagination |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
-| PUT | `/api/documents/{id}` | Update document info (name, channel_id, labels) |
+| PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
 | GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
@@ -260,7 +260,7 @@
 | GET | `/api/knowledge-bases` | List knowledge bases |
 | POST | `/api/knowledge-bases` | Create knowledge base |
 | GET | `/api/knowledge-bases/{id}` | Get KB with stats |
-| PUT | `/api/knowledge-bases/{id}` | Update KB (name, description, agent_url, chunk_config, embedding_model_id, faq_prompt) |
+| PUT | `/api/knowledge-bases/{id}` | Update KB (name, description, agent_url, chunk_config, embedding_model_id, faq_prompt, metadata_keys) |
 | DELETE | `/api/knowledge-bases/{id}` | Delete KB (cascades documents, FAQs, chunks) |
 | GET | `/api/knowledge-bases/{id}/documents` | List documents in KB |
 | POST | `/api/knowledge-bases/{id}/documents` | Add document to KB |
@@ -272,7 +272,7 @@
 | POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |
 | POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
 | GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated; ?offset=, ?limit=) |
-| PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (content, labels, doc_metadata) |
+| PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (content, doc_metadata) |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
 | POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index pipeline) |
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
@@ -364,14 +364,14 @@
 
 ### Document Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, allow_multiple?}`), `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, type: "object_type"|"list[object_type]"}`), `object_type_extraction_max_instances` (int, nullable, default 100), `created_at`
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
 - Metadata extraction: pydantic-ai Agent + StructuredDict; `extraction_model_id` designates LLM; `extraction_schema` stored as PostgreSQL `json` (not jsonb) to preserve key order; JSON Schema dict (type, properties, required)
 
 ### Document
 
-- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB), `labels` (JSONB: key → object primary key or array of keys), `created_at`, `updated_at`
+- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB: extracted + manual labels, unified), `created_at`, `updated_at`
 - Status: `uploaded` → `pending` → `running` → `completed` / `failed`
 - `metadata`: extracted or manually edited (abstract, author, publish_date, tags, etc.)
 
@@ -383,7 +383,7 @@
 
 ### KnowledgeBase
 
-- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `faq_prompt` (optional default for FAQ generation), `label_keys` (JSONB array: keys from document labels to propagate), `metadata_keys` (JSONB array: keys from document metadata to propagate), `created_at`, `updated_at`
+- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap), `faq_prompt` (optional default for FAQ generation), `metadata_keys` (JSONB array: keys from document metadata to propagate to FAQs/chunks), `created_at`, `updated_at`
 - Groups documents, FAQs, and chunks for RAG Q&A
 
 ### KBDocument
@@ -393,13 +393,13 @@
 
 ### FAQ
 
-- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents, nullable), `question`, `answer`, `embedding` (pgvector), `labels` (JSONB), `doc_metadata` (JSONB), `created_at`, `updated_at`
-- Q&A pairs; embedding on question for semantic search; labels and doc_metadata inherited from source document when label_keys/metadata_keys are configured
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents, nullable), `question`, `answer`, `embedding` (pgvector), `doc_metadata` (JSONB), `created_at`, `updated_at`
+- Q&A pairs; embedding on question for semantic search; doc_metadata inherited from source document when metadata_keys is configured
 
 ### Chunk
 
-- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.), `labels` (JSONB), `doc_metadata` (JSONB), `created_at`
-- Document segments with vector embeddings for semantic search; labels and doc_metadata inherited from source document; supports hybrid search (vector + label/metadata filters)
+- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.), `doc_metadata` (JSONB), `created_at`
+- Document segments with vector embeddings for semantic search; doc_metadata inherited from source document per metadata_keys; supports hybrid search (vector + metadata filters)
 
 ### EvaluationDataset
 

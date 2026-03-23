@@ -16,8 +16,8 @@ from app.models.api_model import ApiModel
 from app.schemas.knowledge_base import SearchRequest, SearchResponse, SearchResult
 
 
-def _build_label_filter_conditions(column: Any, filters: dict[str, str | list[str]]) -> Any:
-    """Build SQLAlchemy conditions for label_filters. Matches scalar or array containment."""
+def _build_metadata_key_filter_conditions(column: Any, filters: dict[str, str | list[str]]) -> Any:
+    """Build SQLAlchemy conditions for metadata key filters. Matches scalar or array containment."""
     key_conds = []
     for key, val in filters.items():
         vals = val if isinstance(val, list) else [val]
@@ -91,9 +91,9 @@ async def search_knowledge_base(
     chunk_where = [Chunk.knowledge_base_id == kb_id, Chunk.embedding.isnot(None)]
     faq_where = [FAQ.knowledge_base_id == kb_id, FAQ.embedding.isnot(None)]
     if label_filters:
-        lbl_cond = _build_label_filter_conditions(Chunk.labels, label_filters)
+        lbl_cond = _build_metadata_key_filter_conditions(Chunk.doc_metadata, label_filters)
         chunk_where.append(lbl_cond)
-        faq_lbl_cond = _build_label_filter_conditions(FAQ.labels, label_filters)
+        faq_lbl_cond = _build_metadata_key_filter_conditions(FAQ.doc_metadata, label_filters)
         faq_where.append(faq_lbl_cond)
     if metadata_filters:
         meta_cond = _build_metadata_filter_conditions(Chunk.doc_metadata, metadata_filters)
@@ -108,7 +108,6 @@ async def search_knowledge_base(
                     Chunk.id,
                     Chunk.content,
                     Chunk.document_id,
-                    Chunk.labels,
                     Chunk.doc_metadata,
                     Document.name.label("doc_name"),
                     Chunk.embedding.cosine_distance(query_embedding).label("distance"),
@@ -127,7 +126,6 @@ async def search_knowledge_base(
                     score=round(1.0 - row.distance, 4),
                     source_name=row.doc_name,
                     document_id=row.document_id,
-                    labels=row.labels,
                     doc_metadata=row.doc_metadata,
                 ))
 
@@ -138,7 +136,6 @@ async def search_knowledge_base(
                     FAQ.question,
                     FAQ.answer,
                     FAQ.document_id,
-                    FAQ.labels,
                     FAQ.doc_metadata,
                     FAQ.embedding.cosine_distance(query_embedding).label("distance"),
                 )
@@ -154,7 +151,6 @@ async def search_knowledge_base(
                     content=f"Q: {row.question}\nA: {row.answer}",
                     score=round(1.0 - row.distance, 4),
                     document_id=row.document_id,
-                    labels=row.labels,
                     doc_metadata=row.doc_metadata,
                 ))
     except DBAPIError as e:

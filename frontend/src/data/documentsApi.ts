@@ -13,7 +13,6 @@ export interface DocumentResponse {
   markdown?: string | null;
   parsing_result?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
-  labels?: Record<string, string | string[]> | null;
   created_at: string;
   updated_at: string;
 }
@@ -189,7 +188,12 @@ export async function resetDocumentStatus(documentId: string): Promise<DocumentR
   return res.json();
 }
 
-export async function extractDocumentMetadata(documentId: string): Promise<DocumentResponse> {
+export interface ExtractMetadataResponse {
+  document: DocumentResponse;
+  warnings: string[];
+}
+
+export async function extractDocumentMetadata(documentId: string): Promise<ExtractMetadataResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/extract-metadata`, {
     method: 'POST',
@@ -205,13 +209,12 @@ export async function extractDocumentMetadata(documentId: string): Promise<Docum
 
 export async function updateDocument(
   documentId: string,
-  params: { name?: string; channel_id?: string; labels?: Record<string, string | string[]> | null }
+  params: { name?: string; channel_id?: string }
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
   const body: Record<string, unknown> = {};
   if (params.name !== undefined) body.name = params.name;
   if (params.channel_id !== undefined) body.channel_id = params.channel_id;
-  if (params.labels !== undefined) body.labels = params.labels;
   const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },

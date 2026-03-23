@@ -22,11 +22,12 @@ from app.schemas.document import (
     DocumentInfoUpdateBody,
     DocumentListResponse,
     DocumentResponse,
+    ExtractMetadataResponse,
     MarkdownUpdateBody,
     MetadataUpdateBody,
     ParsingResultResponse,
 )
-from app.services.metadata_extraction import extract_metadata
+from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
@@ -231,8 +232,6 @@ async def update_document(
         if not channel:
             raise HTTPException(status_code=404, detail="Channel not found")
         doc.channel_id = body.channel_id
-    if body.labels is not None:
-        doc.labels = body.labels
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
@@ -302,7 +301,7 @@ async def update_document_metadata(
     return DocumentResponse.model_validate(doc)
 
 
-@router.post("/{document_id}/extract-metadata", response_model=DocumentResponse)
+@router.post("/{document_id}/extract-metadata", response_model=ExtractMetadataResponse)
 async def extract_document_metadata(
     document_id: str,
     db: AsyncSession = Depends(get_db),
@@ -345,8 +344,10 @@ async def extract_document_metadata(
         raise HTTPException(status_code=400, detail="Extraction model must be category=llm")
 
     schema = channel.extraction_schema if channel.extraction_schema else None
+    resolved_schema, warnings = await resolve_extraction_schema_for_llm(schema, channel, db)
+
     try:
-        extracted = await extract_metadata(doc.markdown, model, schema)
+        extracted = await extract_metadata(doc.markdown, model, resolved_schema)
     except ValueError as e:
         msg = str(e)
         if "HTTP 401" in msg or "401" in msg:
@@ -370,7 +371,7 @@ async def extract_document_metadata(
     doc.doc_metadata = merged
     await db.commit()
     await db.refresh(doc)
-    return DocumentResponse.model_validate(doc)
+    return ExtractMetadataResponse(document=DocumentResponse.model_validate(doc), warnings=warnings)
 
 
 @router.get("/{document_id}/parsing", response_model=ParsingResultResponse)

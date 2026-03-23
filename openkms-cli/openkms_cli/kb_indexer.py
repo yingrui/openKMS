@@ -133,25 +133,15 @@ def generate_embeddings(texts: list[str], model_config: dict[str, Any]) -> list[
     return all_embeddings
 
 
-# --- Label/metadata propagation ---
+# --- Metadata propagation ---
 
 
-def _propagate_labels_metadata(
-    doc_labels: dict | None,
-    doc_metadata: dict | None,
-    label_keys: list | None,
-    metadata_keys: list | None,
-) -> tuple[dict | None, dict | None]:
-    """Filter document labels and metadata by KB config. Returns (labels, doc_metadata)."""
-    labels = None
-    if label_keys:
-        filtered = {k: v for k, v in (doc_labels or {}).items() if k in label_keys}
-        labels = filtered if filtered else None
-    meta = None
-    if metadata_keys:
-        filtered = {k: v for k, v in (doc_metadata or {}).items() if k in metadata_keys}
-        meta = filtered if filtered else None
-    return labels, meta
+def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -> dict | None:
+    """Filter document metadata by KB config. Returns filtered doc_metadata."""
+    if not metadata_keys:
+        return None
+    filtered = {k: v for k, v in (doc_metadata or {}).items() if k in metadata_keys}
+    return filtered if filtered else None
 
 
 # --- Main indexer ---
@@ -190,7 +180,6 @@ def run_indexer(
         raise RuntimeError(f"Failed to fetch KB: {kb_resp.status_code} {kb_resp.text[:200]}")
     kb_data = kb_resp.json()
     chunk_config = kb_data.get("chunk_config") or {}
-    label_keys = kb_data.get("label_keys") or []
     metadata_keys = kb_data.get("metadata_keys") or []
 
     if embedding_override:
@@ -232,11 +221,8 @@ def run_indexer(
         if not markdown.strip():
             continue
 
-        doc_labels = doc_data.get("labels")
         doc_metadata = doc_data.get("metadata")  # API returns "metadata", not "doc_metadata"
-        labels, doc_meta = _propagate_labels_metadata(
-            doc_labels, doc_metadata, label_keys, metadata_keys
-        )
+        doc_meta = _propagate_metadata(doc_metadata, metadata_keys)
 
         raw_chunks = chunk_document(markdown, chunk_config)
         for rc in raw_chunks:
@@ -245,7 +231,6 @@ def run_indexer(
             rc["document_id"] = doc_id
             rc["chunk_metadata"] = rc.pop("metadata", None)
             rc["token_count"] = len(rc["content"].split())
-            rc["labels"] = labels
             rc["doc_metadata"] = doc_meta
         all_chunks.extend(raw_chunks)
 
@@ -326,16 +311,11 @@ def run_indexer(
         for f, emb in zip(faqs, faq_embeddings):
             item: dict[str, Any] = {"id": f["id"], "embedding": emb}
             doc_id = f.get("document_id")
-            if doc_id and (label_keys or metadata_keys):
+            if doc_id and metadata_keys:
                 doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, timeout=30)
                 if doc_resp.ok:
                     doc_data = doc_resp.json()
-                    lbl, dmeta = _propagate_labels_metadata(
-                        doc_data.get("labels"), doc_data.get("metadata"),
-                        label_keys, metadata_keys
-                    )
-                    if lbl is not None:
-                        item["labels"] = lbl
+                    dmeta = _propagate_metadata(doc_data.get("metadata"), metadata_keys)
                     if dmeta is not None:
                         item["doc_metadata"] = dmeta
             faq_updates.append(item)
@@ -359,7 +339,6 @@ def run_indexer(
                 "token_count": c.get("token_count"),
                 "embedding": c["embedding"],
                 "chunk_metadata": c.get("chunk_metadata"),
-                "labels": c.get("labels"),
                 "doc_metadata": c.get("doc_metadata"),
             }
             for c in all_chunks
@@ -375,7 +354,7 @@ def run_indexer(
 
     if faq_updates:
         faq_emb_items = [
-            {k: v for k, v in fu.items() if k in ("id", "embedding", "labels", "doc_metadata")}
+            {k: v for k, v in fu.items() if k in ("id", "embedding", "doc_metadata")}
             for fu in faq_updates
         ]
         faq_resp = requests.put(

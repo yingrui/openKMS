@@ -13,12 +13,12 @@ class ExtractionSchemaField(BaseModel):
 
 
 class LabelConfigItem(BaseModel):
-    """Single label config: maps a label key to an object type."""
+    """Single label config: maps a metadata key to an object type (manual labels)."""
 
     key: str
     object_type_id: str
     display_label: str | None = None
-    allow_multiple: bool = False
+    type: str = "object_type"  # "object_type" (single) | "list[object_type]" (multiple)
 
 
 class ChannelNode(BaseModel):
@@ -31,6 +31,7 @@ class ChannelNode(BaseModel):
     extraction_model_id: str | None = None
     extraction_schema: dict[str, Any] | list[dict[str, Any]] | None = None
     label_config: list[dict[str, Any]] | None = None
+    object_type_extraction_max_instances: int | None = None
     children: list["ChannelNode"] = []
 
     model_config = {"from_attributes": True}
@@ -64,4 +65,5 @@ class ChannelUpdate(BaseModel):
     extraction_model_id: str | None = None
     extraction_schema: dict[str, Any] | list[dict[str, Any]] | None = None
     label_config: list[dict[str, Any]] | None = None
+    object_type_extraction_max_instances: int | None = None
     sort_order: int | None = None

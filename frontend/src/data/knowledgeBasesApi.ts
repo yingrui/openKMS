@@ -13,7 +13,6 @@ export interface KnowledgeBaseResponse {
   agent_url?: string | null;
   chunk_config?: Record<string, unknown> | null;
   faq_prompt?: string | null;
-  label_keys?: string[] | null;
   metadata_keys?: string[] | null;
   document_count: number;
   faq_count: number;
@@ -44,7 +43,6 @@ export interface FAQResponse {
   document_name?: string | null;
   question: string;
   answer: string;
-  labels?: Record<string, unknown> | null;
   doc_metadata?: Record<string, unknown> | null;
   has_embedding: boolean;
   created_at: string;
@@ -62,7 +60,6 @@ export interface FAQGenerateResult {
   document_name?: string | null;
   question: string;
   answer: string;
-  labels?: Record<string, unknown> | null;
   doc_metadata?: Record<string, unknown> | null;
 }
 
@@ -76,7 +73,6 @@ export interface ChunkResponse {
   token_count?: number | null;
   has_embedding: boolean;
   chunk_metadata?: Record<string, unknown> | null;
-  labels?: Record<string, unknown> | null;
   doc_metadata?: Record<string, unknown> | null;
   created_at: string;
 }
@@ -93,7 +89,6 @@ export interface SearchResult {
   score: number;
   source_name?: string | null;
   document_id?: string | null;
-  labels?: Record<string, unknown> | null;
   doc_metadata?: Record<string, unknown> | null;
 }
 
@@ -157,7 +152,6 @@ export async function updateKnowledgeBase(
     agent_url?: string | null;
     chunk_config?: Record<string, unknown> | null;
     faq_prompt?: string | null;
-    label_keys?: string[] | null;
     metadata_keys?: string[] | null;
   }
 ): Promise<KnowledgeBaseResponse> {
@@ -253,7 +247,6 @@ export async function createFAQ(
     question: string;
     answer: string;
     document_id?: string;
-    labels?: Record<string, unknown> | null;
     doc_metadata?: Record<string, unknown> | null;
   }
 ): Promise<FAQResponse> {
@@ -277,7 +270,6 @@ export async function updateFAQ(
   data: {
     question?: string;
     answer?: string;
-    labels?: Record<string, unknown> | null;
     doc_metadata?: Record<string, unknown> | null;
   }
 ): Promise<FAQResponse> {
@@ -374,7 +366,7 @@ export async function fetchChunks(
 export async function updateChunk(
   kbId: string,
   chunkId: string,
-  data: { content?: string; labels?: Record<string, unknown> | null; doc_metadata?: Record<string, unknown> | null }
+  data: { content?: string; doc_metadata?: Record<string, unknown> | null }
 ): Promise<ChunkResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {

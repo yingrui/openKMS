@@ -9,12 +9,12 @@
 - Delete document: `DELETE /api/documents/{id}`
 - Document info & metadata: Edit name (`PUT /api/documents/{id}`), edit metadata (`PUT /metadata`), Extract via pydantic-ai Agent + StructuredDict
 - Document markdown: Edit and save (`PUT /markdown`), restore from S3 (`POST /restore-markdown`)
-- Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Labels)
-- Document labels: channel label_config maps keys to Master Data object types; documents store label values (object primary keys); Labels tab in channel settings; Labels section on document detail
+- Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
+- Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
-- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (label_filters, metadata_filters), Q&A proxy, settings (chunk_config, faq_prompt, label_keys, metadata_keys); labels and doc_metadata propagated from documents to FAQs/chunks; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
+- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters), Q&A proxy, settings (chunk_config, faq_prompt, metadata_keys); doc_metadata propagated from documents to FAQs/chunks per metadata_keys; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
 - Console: settings, users, feature toggles (database-backed, includes objectsAndLinks, evaluationDatasets), object types, link types, data sources, datasets; admin-only (realm role `admin`)
 - Evaluation (experimental, feature toggle): query + expected answer pairs per KB; topic column; CSV import (topic, query, answer); run evaluation via search + LLM judge (evaluates retrieval quality); sidebar link when evaluationDatasets enabled
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start
@@ -138,7 +138,15 @@
 - [ ] Job logs/stdout capture
 - [ ] Configurable concurrency for worker
 
-### 6b. Tech Debt Mitigation (2026-03)
+### 6b. Unify Metadata and Labels (2026-03)
+
+- [x] Merge labels into metadata; single METADATA concept in DB and UI
+- [x] Alembic migration: merge labels → metadata, label_keys → metadata_keys, drop labels/label_keys columns
+- [x] Add object_type and list[object_type] to extraction schema; object_type_extraction_max_instances on channel
+- [x] Rename Labels tab to Manual Labels; label_config uses type (object_type | list[object_type]) instead of allow_multiple
+- [x] KB: metadata_keys only; openkms-cli and backend propagation use _propagate_metadata(doc_metadata, metadata_keys)
+
+### 6c. Tech Debt Mitigation (2026-03)
 
 - [x] Error boundary around routes (App.tsx)
 - [x] Document model status default fix (migration p1q2r3s4t5u6)

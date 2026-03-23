@@ -23,6 +23,9 @@ class DocumentChannel(Base):
     )
     extraction_schema: Mapped[list | None] = mapped_column(JSON, nullable=True)
     label_config: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    object_type_extraction_max_instances: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, server_default="100"
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["DocumentChannel | None"] = relationship("DocumentChannel", remote_side=[id], back_populates="children")

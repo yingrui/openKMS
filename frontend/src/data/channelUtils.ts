@@ -8,6 +8,7 @@ export interface ExtractionSchemaField {
   description?: string;
   required?: boolean;
   enum?: string[];
+  object_type_id?: string;
 }
 
 /** Display field for metadata (label, type for rendering). */
@@ -16,6 +17,7 @@ export interface ExtractionSchemaDisplayField {
   label: string;
   type: string;
   enum?: string[];
+  object_type_id?: string;
 }
 
 /** extraction_schema is stored as JSON Schema dict (type/object, properties, required) or legacy array. PostgreSQL json type preserves key order. */
@@ -27,7 +29,7 @@ export interface LabelConfigItem {
   key: string;
   object_type_id: string;
   display_label?: string | null;
-  allow_multiple?: boolean;
+  type?: 'object_type' | 'list[object_type]';
 }
 
 export interface ChannelNode {
@@ -41,6 +43,7 @@ export interface ChannelNode {
   /** JSON Schema dict or legacy array. Dict format: { type, properties, required }. */
   extraction_schema?: ExtractionSchemaValue | null;
   label_config?: LabelConfigItem[] | null;
+  object_type_extraction_max_instances?: number | null;
   children?: ChannelNode[];
 }
 
@@ -54,6 +57,7 @@ export function normalizeExtractionSchemaToFields(
       key: f.key,
       label: f.label || f.key,
       type: f.type || 'string',
+      object_type_id: (f as { object_type_id?: string }).object_type_id,
     }));
   }
   const props = schema.properties;
@@ -62,13 +66,17 @@ export function normalizeExtractionSchemaToFields(
   return keys.map((key) => {
     const prop = props[key] as Record<string, unknown>;
     const hasEnum = Array.isArray(prop?.enum);
+    const objTypeId = prop?.['x-object_type_id'] as string | undefined;
     let type = hasEnum ? 'enum' : (prop?.type as string) || 'string';
     if (type === 'string' && prop?.format === 'date') type = 'date';
+    if (objTypeId && type === 'string') type = 'object_type';
+    if (objTypeId && type === 'array') type = 'list[object_type]';
     return {
       key,
       label: (prop?.title as string) || key,
       type: type === 'array' ? 'array' : type,
       ...(hasEnum && { enum: prop.enum as string[] }),
+      ...(objTypeId && { object_type_id: objTypeId }),
     };
   });
 }
@@ -94,8 +102,11 @@ export function extractionSchemaToEditorFields(
   return keys.map((key) => {
     const p = props[key] as Record<string, unknown>;
     const hasEnum = Array.isArray(p?.enum);
+    const objTypeId = p?.['x-object_type_id'] as string | undefined;
     let type = hasEnum ? 'enum' : (p?.type as string) || 'string';
     if (type === 'string' && p?.format === 'date') type = 'date';
+    if (objTypeId && type === 'string') type = 'object_type';
+    if (objTypeId && type === 'array') type = 'list[object_type]';
     return {
       key,
       label: (p?.title as string) || key,
@@ -103,6 +114,7 @@ export function extractionSchemaToEditorFields(
       description: (p?.description as string) || '',
       required: required.has(key),
       enum: hasEnum ? (p.enum as string[]) : undefined,
+      object_type_id: objTypeId,
     };
   });
 }
@@ -130,6 +142,10 @@ export function editorFieldsToJsonSchema(
       prop = { type: 'boolean' };
     } else if (f.type === 'enum' && Array.isArray(f.enum) && f.enum.length > 0) {
       prop = { type: 'string', enum: f.enum };
+    } else if (f.type === 'object_type' && f.object_type_id) {
+      prop = { type: 'string', 'x-object_type_id': f.object_type_id };
+    } else if (f.type === 'list[object_type]' && f.object_type_id) {
+      prop = { type: 'array', items: { type: 'string' }, 'x-object_type_id': f.object_type_id, 'x-type': 'list[object_type]' };
     } else {
       prop = { type: 'string' };
     }

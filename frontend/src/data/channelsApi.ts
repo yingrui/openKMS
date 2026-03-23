@@ -13,7 +13,7 @@ export interface LabelConfigItem {
   key: string;
   object_type_id: string;
   display_label?: string | null;
-  allow_multiple?: boolean;
+  type?: 'object_type' | 'list[object_type]';
 }
 
 export interface ChannelNode {
@@ -26,6 +26,7 @@ export interface ChannelNode {
   extraction_model_id?: string | null;
   extraction_schema?: ExtractionSchemaField[] | null;
   label_config?: LabelConfigItem[] | null;
+  object_type_extraction_max_instances?: number | null;
   children: ChannelNode[];
 }
 
@@ -95,8 +96,9 @@ export async function updateChannel(
     pipeline_id?: string | null;
     auto_process?: boolean;
     extraction_model_id?: string | null;
-    extraction_schema?: Record<string, unknown> | { key: string; label: string; type: string; description?: string; required?: boolean }[] | null;
+    extraction_schema?: Record<string, unknown> | { key: string; label: string; type: string; description?: string; required?: boolean; object_type_id?: string }[] | null;
     label_config?: LabelConfigItem[] | null;
+    object_type_extraction_max_instances?: number | null;
     sort_order?: number;
   },
 ): Promise<ChannelNode> {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, Tag, X as XIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -85,8 +85,7 @@ export function DocumentDetail() {
   const [editMeta, setEditMeta] = useState<Record<string, unknown>>({});
   const [savingInfo, setSavingInfo] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
-  const [savingLabels, setSavingLabels] = useState(false);
-  const [editLabels, setEditLabels] = useState<Record<string, string | string[]>>({});
+  const [extractWarnings, setExtractWarnings] = useState<string[]>([]);
   const [labelObjectTypes, setLabelObjectTypes] = useState<Record<string, { display_property?: string | null; key_property?: string | null }>>({});
   const [labelInstances, setLabelInstances] = useState<Record<string, { id: string; data: Record<string, unknown> }[]>>({});
 
@@ -235,25 +234,24 @@ export function DocumentDetail() {
     (l: { key?: string; object_type_id?: string }) => l.key && l.object_type_id
   );
   const meta = document?.metadata ?? {};
-  const metaKeys = extractionSchemaFields.length > 0
-    ? extractionSchemaFields.map((f) => f.key)
+  const extractionKeys = extractionSchemaFields.map((f) => f.key);
+  const labelKeys = labelConfig.map((l: { key: string }) => l.key);
+  const metaKeys = extractionKeys.length > 0 || labelKeys.length > 0
+    ? [...extractionKeys, ...labelKeys.filter((k) => !extractionKeys.includes(k))]
     : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
   const showMetadataSection = !docConfig && document?.channel_id;
-  const showLabelsSection = !docConfig && document?.channel_id && labelConfig.length > 0;
+  const labelKeysSet = new Set(labelKeys);
+
+  const extractionObjectTypeIds = extractionSchemaFields
+    .filter((f) => (f.type === 'object_type' || f.type === 'list[object_type]') && (f as { object_type_id?: string }).object_type_id)
+    .map((f) => (f as { object_type_id: string }).object_type_id);
+  const allObjectTypeIds = [...new Set([...labelConfig.map((l: { object_type_id: string }) => l.object_type_id), ...extractionObjectTypeIds])];
 
   useEffect(() => {
-    if (document?.labels) {
-      setEditLabels(document.labels as Record<string, string | string[]>);
-    } else if (labelConfig.length > 0) {
-      setEditLabels({});
-    }
-  }, [document?.labels, labelConfig.length]);
-
-  useEffect(() => {
-    if (labelConfig.length === 0) return;
+    if (allObjectTypeIds.length === 0) return;
     let cancelled = false;
     const load = async () => {
-      const uniqueIds = [...new Set(labelConfig.map((l: { object_type_id: string }) => l.object_type_id))];
+      const uniqueIds = allObjectTypeIds;
       try {
         const [typesRes, instancesRes] = await Promise.all([
           Promise.all(uniqueIds.map((otid) => fetchObjectType(otid))),
@@ -280,7 +278,7 @@ export function DocumentDetail() {
     };
     load();
     return () => { cancelled = true; };
-  }, [channel?.id, JSON.stringify((channel?.label_config ?? []).map((l: { object_type_id: string }) => l.object_type_id))]);
+  }, [channel?.id, JSON.stringify(allObjectTypeIds)]);
 
   const getInstanceDisplay = (otid: string, instance: { id: string; data: Record<string, unknown> }) => {
     const ot = labelObjectTypes[otid];
@@ -292,24 +290,6 @@ export function DocumentDetail() {
     if (keys.length > 0 && instance.data[keys[0]] != null) return String(instance.data[keys[0]]);
     return instance.id;
   };
-
-  const handleSaveLabels = useCallback(async () => {
-    if (!id) return;
-    setSavingLabels(true);
-    try {
-      const updated = await updateDocument(id, { labels: editLabels });
-      setDocument(updated);
-      toast.success('Labels saved');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save labels');
-    } finally {
-      setSavingLabels(false);
-    }
-  }, [id, editLabels]);
-
-  const setLabelValue = useCallback((key: string, value: string | string[]) => {
-    setEditLabels((prev) => ({ ...prev, [key]: value }));
-  }, []);
 
   const handleProcess = useCallback(async () => {
     if (!id || !document) return;
@@ -343,9 +323,11 @@ export function DocumentDetail() {
   const handleExtract = useCallback(async () => {
     if (!id || !document) return;
     setExtracting(true);
+    setExtractWarnings([]);
     try {
-      const updated = await extractDocumentMetadata(id);
-      setDocument(updated);
+      const result = await extractDocumentMetadata(id);
+      setDocument(result.document);
+      setExtractWarnings(result.warnings ?? []);
       toast.success('Metadata extracted');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Extraction failed');
@@ -417,16 +399,14 @@ export function DocumentDetail() {
 
   const handleEnterMetadataEdit = useCallback(() => {
     const meta = document?.metadata ?? {};
-    const keys = extractionSchemaFields.length > 0
-      ? extractionSchemaFields.map((f) => f.key)
-      : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
+    const keys = metaKeys;
     const initial: Record<string, unknown> = {};
     for (const key of keys) {
       initial[key] = meta[key] ?? '';
     }
     setEditMeta(initial);
     setMetadataEditMode(true);
-  }, [document?.metadata, extractionSchemaFields]);
+  }, [document?.metadata, metaKeys]);
 
   const handleSaveMetadata = useCallback(async () => {
     if (!id) return;
@@ -617,8 +597,8 @@ export function DocumentDetail() {
                       <div className="document-detail-metadata-body">
                         <h3 className="document-detail-metadata-subtitle">
                           <Sparkles size={16} />
-                          Extracted metadata
-                          {(metaKeys.length > 0 || extractionSchemaFields.length > 0) && !metadataEditMode ? (
+                          METADATA
+                          {(metaKeys.length > 0 || extractionSchemaFields.length > 0 || labelConfig.length > 0) && !metadataEditMode ? (
                             <button
                               type="button"
                               className="document-detail-metadata-edit-btn"
@@ -633,16 +613,17 @@ export function DocumentDetail() {
                         </h3>
                         {metaKeys.length === 0 && !metadataEditMode ? (
                           <p className="document-detail-metadata-empty">
-                            No metadata extracted. Click Extract to use LLM.
+                            No metadata yet. Click Extract to use LLM, or configure Manual Labels in channel settings.
                             {!hasExtractionModel && ' (Configure an extraction model in channel settings.)'}
                           </p>
                         ) : metadataEditMode ? (
                           <div className="document-detail-metadata-edit">
                             <dl className="document-detail-info-list document-detail-metadata-list">
-                              {(extractionSchemaFields.length > 0 ? extractionSchemaFields.map((f) => f.key) : metaKeys).map((key) => {
+                              {metaKeys.map((key) => {
                                 const field = extractionSchemaFields.find((f) => f.key === key);
-                                const label = field?.label ?? key;
-                                const fieldType = field?.type ?? 'string';
+                                const lc = labelConfig.find((l: { key: string }) => l.key === key);
+                                const label = field?.label ?? lc?.display_label ?? lc?.key ?? key;
+                                const fieldType = field?.type ?? (lc ? (lc.type === 'list[object_type]' ? 'list[object_type]' : 'object_type') : 'string');
                                 const val = editMeta[key];
                                 const strVal = val == null ? '' : Array.isArray(val) ? (val as unknown[]).join(', ') : String(val);
                                 return (
@@ -725,6 +706,73 @@ export function DocumentDetail() {
                                           <option value="true">true</option>
                                           <option value="false">false</option>
                                         </select>
+                                      ) : fieldType === 'object_type' || fieldType === 'list[object_type]' ? (
+                                        (() => {
+                                          const otid = (field as { object_type_id?: string })?.object_type_id ?? lc?.object_type_id ?? '';
+                                          const instances = labelInstances[otid] ?? [];
+                                          const currentVal = val;
+                                          const isMulti = fieldType === 'list[object_type]';
+                                          return isMulti ? (
+                                            <div className="document-detail-labels-multi">
+                                              <select
+                                                className="document-detail-metadata-input"
+                                                value=""
+                                                onChange={(e) => {
+                                                  const pk = e.target.value;
+                                                  if (!pk) return;
+                                                  const arr = Array.isArray(currentVal) ? [...currentVal] : currentVal ? [currentVal] : [];
+                                                  if (!arr.includes(pk)) {
+                                                    setEditMetaField(key, [...arr, pk]);
+                                                  }
+                                                  e.target.value = '';
+                                                }}
+                                                aria-label={`Add ${label}`}
+                                              >
+                                                <option value="">— Add —</option>
+                                                {instances.map((inst) => (
+                                                  <option key={inst.id} value={inst.id}>
+                                                    {getInstanceDisplay(otid, inst)}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                              <div className="document-detail-labels-pills">
+                                                {(Array.isArray(currentVal) ? currentVal : currentVal ? [currentVal] : []).map((pk: string) => {
+                                                  const inst = instances.find((i) => i.id === pk);
+                                                  const display = inst ? getInstanceDisplay(otid, inst) : pk;
+                                                  return (
+                                                    <span key={pk} className="document-detail-metadata-pill document-detail-labels-pill">
+                                                      {display}
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                          const arr = Array.isArray(currentVal) ? currentVal.filter((x: string) => x !== pk) : [];
+                                                          setEditMetaField(key, arr);
+                                                        }}
+                                                        aria-label={`Remove ${display}`}
+                                                      >
+                                                        <XIcon size={12} />
+                                                      </button>
+                                                    </span>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <select
+                                              className="document-detail-metadata-input"
+                                              value={typeof currentVal === 'string' ? currentVal : Array.isArray(currentVal) ? currentVal[0] ?? '' : ''}
+                                              onChange={(e) => setEditMetaField(key, e.target.value || null)}
+                                              aria-label={label}
+                                            >
+                                              <option value="">—</option>
+                                              {instances.map((inst) => (
+                                                <option key={inst.id} value={inst.id}>
+                                                  {getInstanceDisplay(otid, inst)}
+                                                </option>
+                                              ))}
+                                            </select>
+                                          );
+                                        })()
                                       ) : (
                                         <input
                                           type="text"
@@ -762,9 +810,21 @@ export function DocumentDetail() {
                         ) : (
                           <dl className="document-detail-info-list document-detail-metadata-list">
                             {metaKeys.map((key) => {
-                              const label = extractionSchemaFields.find((f) => f.key === key)?.label ?? key;
+                              const field = extractionSchemaFields.find((f) => f.key === key);
+                              const lc = labelConfig.find((l: { key: string }) => l.key === key);
+                              const label = field?.label ?? lc?.display_label ?? lc?.key ?? key;
                               const val = meta[key];
                               const isArray = Array.isArray(val);
+                              const isLabelKey = labelKeysSet.has(key);
+                              const otid = (field as { object_type_id?: string })?.object_type_id ?? lc?.object_type_id ?? '';
+                              const instances = labelInstances[otid] ?? [];
+                              const formatVal = (v: unknown) => {
+                                if (isLabelKey && typeof v === 'string') {
+                                  const inst = instances.find((i) => i.id === v);
+                                  return inst ? getInstanceDisplay(otid, inst) : v;
+                                }
+                                return String(v);
+                              };
                               return (
                                 <div key={key} className="document-detail-info-item">
                                   <dt>{label}</dt>
@@ -773,20 +833,29 @@ export function DocumentDetail() {
                                       '—'
                                     ) : isArray ? (
                                       <span className="document-detail-metadata-pills">
-                                        {val.map((v: unknown, i: number) => (
+                                        {(val as unknown[]).map((v: unknown, i: number) => (
                                           <span key={i} className="document-detail-metadata-pill">
-                                            {String(v)}
+                                            {formatVal(v)}
                                           </span>
                                         ))}
                                       </span>
                                     ) : (
-                                      String(val)
+                                      formatVal(val)
                                     )}
                                   </dd>
                                 </div>
                               );
                             })}
                           </dl>
+                        )}
+                        {extractWarnings.length > 0 && (
+                          <div className="document-detail-extract-warnings" style={{ marginTop: 8 }}>
+                            {extractWarnings.map((w, i) => (
+                              <p key={i} className="document-detail-warning" style={{ color: 'var(--color-warning, #b45309)', fontSize: '0.9em' }}>
+                                {w}
+                              </p>
+                            ))}
+                          </div>
                         )}
                         <div className="document-detail-metadata-actions">
                           {!metadataEditMode && (
@@ -818,103 +887,6 @@ export function DocumentDetail() {
                             <span>{extracting ? 'Extracting…' : 'Extract'}</span>
                           </button>
                           )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                  {showLabelsSection && (
-                    <>
-                      <hr className="document-detail-info-divider" />
-                      <div className="document-detail-labels-body">
-                        <h3 className="document-detail-metadata-subtitle">
-                          <Tag size={16} />
-                          Labels
-                        </h3>
-                        <dl className="document-detail-info-list document-detail-labels-list">
-                          {labelConfig.map((lc: { key: string; object_type_id: string; display_label?: string | null; allow_multiple?: boolean }) => {
-                            const label = lc.display_label || lc.key;
-                            const instances = labelInstances[lc.object_type_id] ?? [];
-                            const currentVal = editLabels[lc.key];
-                            const allowMultiple = lc.allow_multiple ?? false;
-                            return (
-                              <div key={lc.key} className="document-detail-info-item document-detail-info-item--edit">
-                                <dt>{label}</dt>
-                                <dd>
-                                  {allowMultiple ? (
-                                    <div className="document-detail-labels-multi">
-                                      <select
-                                        className="document-detail-metadata-input"
-                                        value=""
-                                        onChange={(e) => {
-                                          const pk = e.target.value;
-                                          if (!pk) return;
-                                          const arr = Array.isArray(currentVal) ? [...currentVal] : currentVal ? [currentVal] : [];
-                                          if (!arr.includes(pk)) {
-                                            setLabelValue(lc.key, [...arr, pk]);
-                                          }
-                                          e.target.value = '';
-                                        }}
-                                        aria-label={`Add ${label}`}
-                                      >
-                                        <option value="">— Add —</option>
-                                        {instances.map((inst) => (
-                                          <option key={inst.id} value={inst.id}>
-                                            {getInstanceDisplay(lc.object_type_id, inst)}
-                                          </option>
-                                        ))}
-                                      </select>
-                                      <div className="document-detail-labels-pills">
-                                        {(Array.isArray(currentVal) ? currentVal : currentVal ? [currentVal] : []).map((pk) => {
-                                          const inst = instances.find((i) => i.id === pk);
-                                          const display = inst ? getInstanceDisplay(lc.object_type_id, inst) : pk;
-                                          return (
-                                            <span key={pk} className="document-detail-metadata-pill document-detail-labels-pill">
-                                              {display}
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  const arr = Array.isArray(currentVal) ? currentVal.filter((x) => x !== pk) : [];
-                                                  setLabelValue(lc.key, arr);
-                                                }}
-                                                aria-label={`Remove ${display}`}
-                                              >
-                                                <XIcon size={12} />
-                                              </button>
-                                            </span>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <select
-                                      className="document-detail-metadata-input"
-                                      value={typeof currentVal === 'string' ? currentVal : Array.isArray(currentVal) ? currentVal[0] ?? '' : ''}
-                                      onChange={(e) => setLabelValue(lc.key, e.target.value || '')}
-                                      aria-label={label}
-                                    >
-                                      <option value="">—</option>
-                                      {instances.map((inst) => (
-                                        <option key={inst.id} value={inst.id}>
-                                          {getInstanceDisplay(lc.object_type_id, inst)}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  )}
-                                </dd>
-                              </div>
-                            );
-                          })}
-                        </dl>
-                        <div className="document-detail-metadata-edit-actions">
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            onClick={handleSaveLabels}
-                            disabled={savingLabels}
-                          >
-                            {savingLabels ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                            <span>{savingLabels ? 'Saving…' : 'Save labels'}</span>
-                          </button>
                         </div>
                       </div>
                     </>

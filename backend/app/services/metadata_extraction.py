@@ -7,8 +7,12 @@ from pydantic_ai import Agent, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.api_model import ApiModel
+from app.models.object_instance import ObjectInstance
+from app.models.object_type import ObjectType
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +28,124 @@ DEFAULT_SCHEMA = [
 TRUNCATE_CHARS = 8000
 
 
+async def resolve_extraction_schema_for_llm(
+    schema: list[dict[str, Any]] | dict[str, Any] | None,
+    channel: Any,
+    db: AsyncSession,
+) -> tuple[list[dict[str, Any]] | dict[str, Any] | None, list[str]]:
+    """
+    Resolve object_type and list[object_type] fields by fetching instance IDs.
+    If instance count exceeds channel.object_type_extraction_max_instances, skip
+    the field and add a warning.
+
+    Returns (resolved_schema, warnings).
+    """
+    warnings: list[str] = []
+    max_instances = getattr(channel, "object_type_extraction_max_instances", None) or 100
+
+    if schema is None:
+        return None, []
+
+    if isinstance(schema, dict):
+        if schema.get("type") != "object" or "properties" not in schema:
+            return schema, []
+        props = schema.get("properties", {})
+        resolved_props: dict[str, Any] = {}
+        for key, prop in props.items():
+            if not isinstance(prop, dict):
+                resolved_props[key] = prop
+                continue
+            obj_type_id = prop.get("x-object_type_id")
+            if not obj_type_id:
+                resolved_props[key] = prop
+                continue
+            is_list = prop.get("type") == "array" or prop.get("x-type") == "list[object_type]"
+            obj_type = await db.get(ObjectType, obj_type_id)
+            if not obj_type:
+                resolved_props[key] = prop
+                continue
+            count = await _object_instance_count(db, obj_type_id)
+            if count > max_instances:
+                warnings.append(
+                    f"Object type '{obj_type.name}' has {count} instances (limit {max_instances}). "
+                    f"Skipping field '{key}' for extraction."
+                )
+                continue
+            result = await db.execute(
+                select(ObjectInstance.id).where(ObjectInstance.object_type_id == obj_type_id)
+            )
+            ids = [r[0] for r in result.all()]
+            if is_list:
+                resolved_props[key] = {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ids},
+                    "description": prop.get("description", ""),
+                }
+            else:
+                resolved_props[key] = {
+                    "type": "string",
+                    "enum": ids,
+                    "description": prop.get("description", ""),
+                }
+            if prop.get("title"):
+                resolved_props[key]["title"] = prop["title"]
+        required = [k for k in schema.get("required", []) if k in resolved_props]
+        return {"type": "object", "properties": resolved_props, "required": required}, warnings
+
+    if isinstance(schema, list):
+        resolved: list[dict[str, Any]] = []
+        for field in schema:
+            key = field.get("key", "unknown")
+            if not key:
+                continue
+            ftype = field.get("type", "string")
+            obj_type_id = field.get("object_type_id")
+            if ftype not in ("object_type", "list[object_type]") or not obj_type_id:
+                resolved.append(field)
+                continue
+            obj_type = await db.get(ObjectType, obj_type_id)
+            if not obj_type:
+                resolved.append(field)
+                continue
+            count = await _object_instance_count(db, obj_type_id)
+            if count > max_instances:
+                warnings.append(
+                    f"Object type '{obj_type.name}' has {count} instances (limit {max_instances}). "
+                    f"Skipping field '{key}' for extraction."
+                )
+                continue
+            result = await db.execute(
+                select(ObjectInstance.id).where(ObjectInstance.object_type_id == obj_type_id)
+            )
+            ids = [r[0] for r in result.all()]
+            if ftype == "list[object_type]":
+                resolved.append({
+                    **field,
+                    "type": "array",
+                    "enum": ids,
+                    "object_type_id": None,
+                })
+            else:
+                resolved.append({
+                    **field,
+                    "type": "enum",
+                    "enum": ids,
+                    "object_type_id": None,
+                })
+        return resolved, warnings
+
+    return schema, []
+
+
+async def _object_instance_count(db: AsyncSession, object_type_id: str) -> int:
+    result = await db.execute(
+        select(func.count()).select_from(ObjectInstance).where(
+            ObjectInstance.object_type_id == object_type_id
+        )
+    )
+    return result.scalar_one() or 0
+
+
 def _array_schema_to_json_schema(schema: list[dict[str, Any]]) -> dict[str, Any]:
     """Convert legacy array extraction_schema to JSON Schema for StructuredDict."""
     properties: dict[str, dict[str, Any]] = {}
@@ -37,7 +159,11 @@ def _array_schema_to_json_schema(schema: list[dict[str, Any]]) -> dict[str, Any]
         if ftype == "date":
             prop = {"type": "string", "format": "date"}
         elif ftype == "array":
-            prop = {"type": "array", "items": {"type": "string"}}
+            enum_vals = field.get("enum")
+            if isinstance(enum_vals, list) and enum_vals:
+                prop = {"type": "array", "items": {"type": "string", "enum": enum_vals}}
+            else:
+                prop = {"type": "array", "items": {"type": "string"}}
         elif ftype == "integer":
             prop = {"type": "integer"}
         elif ftype == "number":

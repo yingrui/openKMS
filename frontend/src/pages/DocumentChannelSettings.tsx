@@ -60,7 +60,8 @@ export function DocumentChannelSettings() {
   const [autoProcess, setAutoProcess] = useState(false);
   const [extractionModelId, setExtractionModelId] = useState('');
   const [extractionSchema, setExtractionSchema] = useState<ExtractionSchemaField[]>([]);
-  const [labelConfig, setLabelConfig] = useState<{ key: string; object_type_id: string; display_label?: string; allow_multiple?: boolean }[]>([]);
+  const [labelConfig, setLabelConfig] = useState<{ key: string; object_type_id: string; display_label?: string; type?: 'object_type' | 'list[object_type]' }[]>([]);
+  const [objectTypeExtractionMaxInstances, setObjectTypeExtractionMaxInstances] = useState<number | ''>('');
   const [saving, setSaving] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
 
@@ -128,14 +129,16 @@ export function DocumentChannelSettings() {
       const lc = channel.label_config;
       setLabelConfig(
         Array.isArray(lc)
-          ? lc.map((x: { key?: string; object_type_id?: string; display_label?: string; allow_multiple?: boolean }) => ({
+          ? lc.map((x: { key?: string; object_type_id?: string; display_label?: string; type?: string; allow_multiple?: boolean }) => ({
               key: x.key ?? '',
               object_type_id: x.object_type_id ?? '',
               display_label: x.display_label ?? '',
-              allow_multiple: x.allow_multiple ?? false,
+              type: (x.type === 'list[object_type]' ? 'list[object_type]' : 'object_type') as 'object_type' | 'list[object_type]',
             }))
           : []
       );
+      const maxInst = channel.object_type_extraction_max_instances;
+      setObjectTypeExtractionMaxInstances(maxInst != null ? maxInst : '');
     }
   }, [channel]);
 
@@ -158,6 +161,7 @@ export function DocumentChannelSettings() {
           description: f.description ?? '',
           required: !!f.required,
           ...(f.type === 'enum' && Array.isArray(f.enum) && f.enum.length > 0 && { enum: f.enum }),
+          ...((f.type === 'object_type' || f.type === 'list[object_type]') && f.object_type_id && { object_type_id: f.object_type_id }),
         }));
       const labelConfigToSave = labelConfig
         .filter((l) => l.key.trim() && l.object_type_id)
@@ -165,7 +169,7 @@ export function DocumentChannelSettings() {
           key: l.key.trim(),
           object_type_id: l.object_type_id,
           display_label: l.display_label?.trim() || null,
-          allow_multiple: l.allow_multiple ?? false,
+          type: l.type === 'list[object_type]' ? 'list[object_type]' as const : 'object_type' as const,
         }));
       await updateChannel(channelId, {
         name: channelNameField.trim() || channel?.name,
@@ -175,6 +179,7 @@ export function DocumentChannelSettings() {
         extraction_model_id: extractionModelId || null,
         extraction_schema: schemaToSave.length > 0 ? schemaToSave : null,
         label_config: labelConfigToSave.length > 0 ? labelConfigToSave : null,
+        object_type_extraction_max_instances: objectTypeExtractionMaxInstances === '' ? null : Number(objectTypeExtractionMaxInstances),
       });
       if (refreshChannels) await refreshChannels();
       toast.success('Channel settings saved');
@@ -219,7 +224,7 @@ export function DocumentChannelSettings() {
   };
 
   const addLabelConfig = () => {
-    setLabelConfig((prev) => [...prev, { key: '', object_type_id: '', display_label: '', allow_multiple: false }]);
+    setLabelConfig((prev) => [...prev, { key: '', object_type_id: '', display_label: '', type: 'object_type' as const }]);
   };
 
   const updateLabelConfig = (index: number, field: Partial<typeof labelConfig[0]>) => {
@@ -238,7 +243,7 @@ export function DocumentChannelSettings() {
     { id: 'general', label: 'General', icon: Settings },
     { id: 'processing', label: 'Processing', icon: Zap },
     { id: 'extraction', label: 'Metadata extraction', icon: FileSearch },
-    { id: 'labels', label: 'Labels', icon: Tag },
+    { id: 'labels', label: 'Manual Labels', icon: Tag },
   ];
 
   return (
@@ -432,6 +437,8 @@ export function DocumentChannelSettings() {
                       <option value="date">date</option>
                       <option value="array">array</option>
                       <option value="enum">enum</option>
+                      <option value="object_type">object_type</option>
+                      <option value="list[object_type]">list[object_type]</option>
                       <option value="integer">integer</option>
                       <option value="number">number</option>
                       <option value="boolean">boolean</option>
@@ -473,6 +480,21 @@ export function DocumentChannelSettings() {
                       className="dcs-schema-input dcs-schema-enum"
                     />
                   )}
+                  {(field.type === 'object_type' || field.type === 'list[object_type]') && (
+                    <select
+                      value={field.object_type_id ?? ''}
+                      onChange={(e) => updateSchemaField(i, { object_type_id: e.target.value || undefined })}
+                      className="dcs-schema-select dcs-schema-object-type"
+                      style={{ marginTop: 4 }}
+                    >
+                      <option value="">Select object type</option>
+                      {masterDataObjectTypes.map((ot) => (
+                        <option key={ot.id} value={ot.id}>
+                          {ot.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               ))}
             </div>
@@ -496,6 +518,22 @@ export function DocumentChannelSettings() {
                   : '{\n  "type": "object",\n  "properties": {},\n  "required": []\n}'}
               </pre>
             )}
+            <div className="document-channel-settings-field" style={{ marginTop: 16 }}>
+              <label htmlFor="extraction-max-instances">Object type extraction max instances</label>
+              <input
+                id="extraction-max-instances"
+                type="number"
+                min={1}
+                placeholder="100 (default)"
+                value={objectTypeExtractionMaxInstances}
+                onChange={(e) => setObjectTypeExtractionMaxInstances(e.target.value === '' ? '' : Number(e.target.value))}
+                className="dcs-schema-input"
+                style={{ width: 120 }}
+              />
+              <p className="document-channel-settings-hint">
+                For object_type / list[object_type] fields: if an object type has more instances than this limit, it will be skipped during extraction and a warning shown.
+              </p>
+            </div>
             {extractionModelId && extractionSchema.length === 0 && (
               <p className="document-channel-settings-hint dcs-schema-empty-hint">
                 Add fields or choose a preset. If empty, the default StructuredDict schema (abstract, author, publish_date, source, tags, categories) will be used.
@@ -507,9 +545,9 @@ export function DocumentChannelSettings() {
 
         {activeTab === 'labels' && (
         <section className="document-channel-settings-section">
-          <h2>Document labels</h2>
+          <h2>Manual Labels</h2>
           <p className="document-channel-settings-hint">
-            Configure which labels can be assigned to documents in this channel. Each label maps to a Master Data object type. Only object types marked as Master Data in Console → Object Types appear here.
+            Manual labels are metadata that you assign by hand. Configure which metadata keys can be manually set on documents in this channel. Each key maps to a Master Data object type. Only object types marked as Master Data in Console → Object Types appear here.
           </p>
           <div className="document-channel-settings-field">
             <label>Label configs</label>
@@ -544,14 +582,15 @@ export function DocumentChannelSettings() {
                       className="dcs-schema-input"
                       style={{ minWidth: 120 }}
                     />
-                    <label className="dcs-schema-required">
-                      <input
-                        type="checkbox"
-                        checked={!!item.allow_multiple}
-                        onChange={(e) => updateLabelConfig(i, { allow_multiple: e.target.checked })}
-                      />
-                      <span>Allow multiple</span>
-                    </label>
+                    <select
+                      value={item.type === 'list[object_type]' ? 'list[object_type]' : 'object_type'}
+                      onChange={(e) => updateLabelConfig(i, { type: e.target.value as 'object_type' | 'list[object_type]' })}
+                      className="dcs-schema-select"
+                      style={{ minWidth: 140 }}
+                    >
+                      <option value="object_type">object_type</option>
+                      <option value="list[object_type]">list[object_type]</option>
+                    </select>
                     <button
                       type="button"
                       className="dcs-schema-remove"
@@ -576,7 +615,7 @@ export function DocumentChannelSettings() {
             ) : null}
             <button type="button" className="btn btn-secondary dcs-add-field" onClick={addLabelConfig} style={{ marginTop: 8 }}>
               <Plus size={14} />
-              <span>Add label</span>
+              <span>Add manual label</span>
             </button>
           </div>
         </section>

@@ -15,7 +15,6 @@ class KnowledgeBaseCreate(BaseModel):
     agent_url: str | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
-    label_keys: list[str] | None = None
     metadata_keys: list[str] | None = None
 
 
@@ -27,7 +26,6 @@ class KnowledgeBaseUpdate(BaseModel):
     agent_url: str | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
-    label_keys: list[str] | None = None
     metadata_keys: list[str] | None = None
 
 
@@ -40,7 +38,6 @@ class KnowledgeBaseResponse(BaseModel):
     agent_url: str | None = None
     chunk_config: dict[str, Any] | None = None
     faq_prompt: str | None = None
-    label_keys: list[str] | None = None
     metadata_keys: list[str] | None = None
     document_count: int = 0
     faq_count: int = 0
@@ -80,14 +77,12 @@ class FAQCreate(BaseModel):
     question: str
     answer: str
     document_id: str | None = None
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
 class FAQUpdate(BaseModel):
     question: str | None = None
     answer: str | None = None
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
@@ -103,7 +98,6 @@ class FAQGenerateResult(BaseModel):
     document_name: str | None = None
     question: str
     answer: str
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
@@ -111,7 +105,6 @@ class FAQBatchItem(BaseModel):
     document_id: str
     question: str
     answer: str
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
@@ -126,7 +119,6 @@ class FAQResponse(BaseModel):
     document_name: str | None = None
     question: str
     answer: str
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
     has_embedding: bool = False
     created_at: datetime
@@ -150,7 +142,6 @@ class ChunkBatchItem(BaseModel):
     token_count: int | None = None
     embedding: str  # base64-encoded float32 array
     chunk_metadata: dict[str, Any] | None = None
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
@@ -160,14 +151,12 @@ class ChunkBatchCreateRequest(BaseModel):
 
 class ChunkUpdate(BaseModel):
     content: str | None = None
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
 class FAQEmbeddingUpdate(BaseModel):
     id: str
     embedding: str  # base64-encoded float32 array
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 
@@ -185,7 +174,6 @@ class ChunkResponse(BaseModel):
     token_count: int | None = None
     has_embedding: bool = False
     chunk_metadata: dict[str, Any] | None = None
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
     created_at: datetime
 
@@ -214,7 +202,6 @@ class SearchResult(BaseModel):
     score: float
     source_name: str | None = None
     document_id: str | None = None
-    labels: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
 
 

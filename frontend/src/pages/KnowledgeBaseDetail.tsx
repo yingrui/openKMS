@@ -222,7 +222,6 @@ export function KnowledgeBaseDetail() {
   const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
   const [settingsChunkSize, setSettingsChunkSize] = useState(512);
   const [settingsChunkOverlap, setSettingsChunkOverlap] = useState(50);
-  const [settingsLabelKeys, setSettingsLabelKeys] = useState('');
   const [settingsMetadataKeys, setSettingsMetadataKeys] = useState('');
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
@@ -240,7 +239,6 @@ export function KnowledgeBaseDetail() {
       setSettingsChunkSize((cc.chunk_size as number) || 512);
       setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
       setSettingsFaqPrompt(data.faq_prompt || '');
-      setSettingsLabelKeys(Array.isArray(data.label_keys) ? data.label_keys.join(', ') : '');
       setSettingsMetadataKeys(Array.isArray(data.metadata_keys) ? data.metadata_keys.join(', ') : '');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load KB');
@@ -423,17 +421,17 @@ export function KnowledgeBaseDetail() {
   };
 
   // --- FAQ handlers ---
-  const configValuesToLabels = (
+  const configValuesToMetadata = (
     values: Record<string, string>,
     keys: string[] | null | undefined,
-    allowMultiple: Record<string, boolean>
+    isArray: Record<string, boolean>
   ): Record<string, unknown> | null => {
     if (!keys?.length) return null;
     const result: Record<string, unknown> = {};
     for (const k of keys) {
       const v = (values[k] ?? '').trim();
       if (v) {
-        result[k] = allowMultiple[k]
+        result[k] = isArray[k]
           ? v.split(',').map((s) => s.trim()).filter(Boolean)
           : v;
       }
@@ -454,13 +452,12 @@ export function KnowledgeBaseDetail() {
   const handleSaveFaq = async () => {
     if (!kbId || !faqQuestion.trim() || !faqAnswer.trim()) return;
     try {
-      const labels = configValuesToLabels(faqLabelsValues, kb?.label_keys ?? undefined, faqLabelAllowMultiple);
-      const doc_metadata = configValuesToLabels(
+      const doc_metadata = configValuesToMetadata(
         faqDocMetadataValues,
         kb?.metadata_keys ?? undefined,
         faqMetadataIsArray
       );
-      const payload = { question: faqQuestion, answer: faqAnswer, labels: labels ?? undefined, doc_metadata: doc_metadata ?? undefined };
+      const payload = { question: faqQuestion, answer: faqAnswer, doc_metadata: doc_metadata ?? undefined };
       if (editFaq) {
         await updateFAQ(kbId, editFaq.id, payload);
         toast.success('FAQ updated');
@@ -581,7 +578,6 @@ export function KnowledgeBaseDetail() {
         document_id: f.document_id,
         question: f.question,
         answer: f.answer,
-        labels: f.labels ?? undefined,
         doc_metadata: f.doc_metadata ?? undefined,
       }));
       await saveFAQs(kbId, items);
@@ -605,32 +601,27 @@ export function KnowledgeBaseDetail() {
   const openChunkEdit = async (chunk: ChunkResponse) => {
     setEditChunk(chunk);
     setChunkContent(chunk.content);
-    setChunkLabelsValues(objToConfigValues(chunk.labels, kb?.label_keys ?? undefined));
-    setChunkDocMetadataValues(objToConfigValues(chunk.doc_metadata, kb?.metadata_keys ?? undefined));
-    const allowMultiple: Record<string, boolean> = {};
+    const metaValues = objToConfigValues(chunk.doc_metadata, kb?.metadata_keys ?? undefined);
+    setChunkLabelsValues(metaValues);
+    setChunkDocMetadataValues(metaValues);
     const metadataIsArray: Record<string, boolean> = {};
     try {
       const doc = await fetchDocumentById(chunk.document_id);
       const channel = await fetchChannelById(doc.channel_id);
-      if (kb?.label_keys?.length) {
-        const lcMap = new Map(
-          (channel.label_config ?? []).map((lc: { key: string; allow_multiple?: boolean }) => [lc.key, lc.allow_multiple ?? false])
-        );
-        for (const k of kb.label_keys) {
-          allowMultiple[k] = lcMap.get(k) ?? false;
-        }
-      }
       if (kb?.metadata_keys?.length) {
         const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
         const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
+        const lcMap = new Map(
+          (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
+        );
         for (const k of kb.metadata_keys) {
-          metadataIsArray[k] = metaMap.get(k) ?? false;
+          metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
         }
       }
     } catch {
       /* default to false */
     }
-    setChunkLabelAllowMultiple(allowMultiple);
+    setChunkLabelAllowMultiple({});
     setChunkMetadataIsArray(metadataIsArray);
     setShowChunkDialog(true);
   };
@@ -644,15 +635,13 @@ export function KnowledgeBaseDetail() {
     if (!kbId || !editChunk) return;
     setChunkSaving(true);
     try {
-      const labels = configValuesToLabels(chunkLabelsValues, kb?.label_keys ?? undefined, chunkLabelAllowMultiple);
-      const doc_metadata = configValuesToLabels(
+      const doc_metadata = configValuesToMetadata(
         chunkDocMetadataValues,
         kb?.metadata_keys ?? undefined,
         chunkMetadataIsArray
       );
       await updateChunk(kbId, editChunk.id, {
         content: chunkContent,
-        labels: labels ?? undefined,
         doc_metadata: doc_metadata ?? undefined,
       });
       toast.success('Chunk updated');
@@ -681,13 +670,6 @@ export function KnowledgeBaseDetail() {
     if (!kbId || !searchQuery.trim()) return;
     setSearching(true);
     try {
-      const label_filters: Record<string, string | string[]> = {};
-      for (const [k, v] of Object.entries(searchLabelFilters)) {
-        const parsed = parseFilterValue(v);
-        if (parsed && (typeof parsed === 'string' ? parsed : parsed.length > 0)) {
-          label_filters[k] = parsed;
-        }
-      }
       const metadata_filters: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(searchMetadataFilters)) {
         const parsed = parseFilterValue(v);
@@ -699,7 +681,6 @@ export function KnowledgeBaseDetail() {
         query: searchQuery,
         top_k: 10,
         search_type: searchType,
-        label_filters: Object.keys(label_filters).length ? label_filters : undefined,
         metadata_filters: Object.keys(metadata_filters).length ? metadata_filters : undefined,
       });
       setSearchResults(res.results);
@@ -738,10 +719,6 @@ export function KnowledgeBaseDetail() {
     if (!kbId) return;
     setSettingsSaving(true);
     try {
-      const labelKeys = settingsLabelKeys
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
       const metadataKeys = settingsMetadataKeys
         .split(',')
         .map((s) => s.trim())
@@ -755,7 +732,6 @@ export function KnowledgeBaseDetail() {
           chunk_overlap: settingsChunkOverlap,
         },
         faq_prompt: settingsFaqPrompt.trim() || null,
-        label_keys: labelKeys.length > 0 ? labelKeys : null,
         metadata_keys: metadataKeys.length > 0 ? metadataKeys : null,
       });
       toast.success('Settings saved');
@@ -872,8 +848,7 @@ export function KnowledgeBaseDetail() {
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => {
                   setEditFaq(null);
                   setFaqQuestion('');
-                  setFaqAnswer('');
-                  setFaqLabelsValues(objToConfigValues({}, kb?.label_keys ?? undefined));
+                  setFaqLabelsValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
                   setFaqDocMetadataValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
                   setFaqLabelAllowMultiple({});
                   setFaqMetadataIsArray({});
@@ -923,34 +898,27 @@ export function KnowledgeBaseDetail() {
                               setEditFaq(faq);
                               setFaqQuestion(faq.question);
                               setFaqAnswer(faq.answer);
-                              setFaqLabelsValues(objToConfigValues(faq.labels, kb?.label_keys ?? undefined));
-                              setFaqDocMetadataValues(objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined));
-                              const allowMultiple: Record<string, boolean> = {};
+                              const metaValues = objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined);
+                              setFaqLabelsValues(metaValues);
+                              setFaqDocMetadataValues(metaValues);
                               const metadataIsArray: Record<string, boolean> = {};
-                              if (faq.document_id) {
+                              if (faq.document_id && kb?.metadata_keys?.length) {
                                 try {
                                   const doc = await fetchDocumentById(faq.document_id);
                                   const channel = await fetchChannelById(doc.channel_id);
-                                  if (kb?.label_keys?.length) {
-                                    const lcMap = new Map(
-                                      (channel.label_config ?? []).map((lc: { key: string; allow_multiple?: boolean }) => [lc.key, lc.allow_multiple ?? false])
-                                    );
-                                    for (const k of kb.label_keys) {
-                                      allowMultiple[k] = lcMap.get(k) ?? false;
-                                    }
-                                  }
-                                  if (kb?.metadata_keys?.length) {
-                                    const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
-                                    const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
-                                    for (const k of kb.metadata_keys) {
-                                      metadataIsArray[k] = metaMap.get(k) ?? false;
-                                    }
+                                  const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
+                                  const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
+                                  const lcMap = new Map(
+                                    (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
+                                  );
+                                  for (const k of kb.metadata_keys) {
+                                    metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
                                   }
                                 } catch {
                                   /* default to false */
                                 }
                               }
-                              setFaqLabelAllowMultiple(allowMultiple);
+                              setFaqLabelAllowMultiple({});
                               setFaqMetadataIsArray(metadataIsArray);
                               setShowFaqDialog(true);
                             }}>
@@ -1187,7 +1155,7 @@ export function KnowledgeBaseDetail() {
               </button>
             </form>
 
-            {(kb?.label_keys?.length || kb?.metadata_keys?.length) ? (
+            {kb?.metadata_keys?.length ? (
               <div className="kb-search-filters">
                 <button
                   type="button"
@@ -1209,28 +1177,11 @@ export function KnowledgeBaseDetail() {
                 {searchFiltersExpanded && (
                   <div className="kb-search-filters-panel">
                     <p className="kb-search-filters-hint">
-                      Restrict results by labels (from documents) or metadata. Use exact values; comma-separated for multiple.
+                      Restrict results by metadata. Use exact values; comma-separated for multiple.
                     </p>
-                    {kb?.label_keys && kb.label_keys.length > 0 && (
-                      <div className="kb-search-filters-group">
-                        <span className="kb-search-filters-group-label">Labels</span>
-                        {kb.label_keys.map((key) => (
-                          <div key={key} className="kb-search-filter-row">
-                            <label htmlFor={`search-label-${key}`}>{key}</label>
-                            <input
-                              id={`search-label-${key}`}
-                              type="text"
-                              placeholder={`e.g. prod-123 or value1, value2`}
-                              value={searchLabelFilters[key] ?? ''}
-                              onChange={(e) => setSearchLabelFilters((prev) => ({ ...prev, [key]: e.target.value }))}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
                     {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
                       <div className="kb-search-filters-group">
-                        <span className="kb-search-filters-group-label">Document Metadata</span>
+                        <span className="kb-search-filters-group-label">Metadata</span>
                         {kb.metadata_keys.map((key) => (
                           <div key={key} className="kb-search-filter-row">
                             <label htmlFor={`search-meta-${key}`}>{key}</label>
@@ -1250,7 +1201,7 @@ export function KnowledgeBaseDetail() {
               </div>
             ) : (
               <p className="kb-search-filters-empty-hint">
-                Configure label_keys and metadata_keys in Settings to filter search results (e.g. product = xx).
+                Configure metadata_keys in Settings to filter search results (e.g. product = xx).
               </p>
             )}
 
@@ -1418,25 +1369,14 @@ export function KnowledgeBaseDetail() {
               </label>
 
               <label>
-                <span>Label Keys</span>
-                <input
-                  type="text"
-                  placeholder="product, region"
-                  value={settingsLabelKeys}
-                  onChange={(e) => setSettingsLabelKeys(e.target.value)}
-                />
-                <small>Comma-separated keys from document labels to propagate to FAQs and chunks (e.g. product, region)</small>
-              </label>
-
-              <label>
                 <span>Metadata Keys</span>
                 <input
                   type="text"
-                  placeholder="author, publish_date, tags"
+                  placeholder="product, author, publish_date, tags"
                   value={settingsMetadataKeys}
                   onChange={(e) => setSettingsMetadataKeys(e.target.value)}
                 />
-                <small>Comma-separated keys from document metadata to propagate to FAQs and chunks (e.g. author, publish_date, tags)</small>
+                <small>Comma-separated keys from document metadata (extracted or manual) to propagate to FAQs and chunks (e.g. product, author, publish_date)</small>
               </label>
 
               <div className="kb-settings-actions">
@@ -1869,31 +1809,11 @@ export function KnowledgeBaseDetail() {
                 />
               </label>
 
-              {kb?.label_keys && kb.label_keys.length > 0 && (
-                <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">Labels</span>
-                  <small className="kb-kv-editor-hint">
-                    Value per label key from channel settings. {Object.values(chunkLabelAllowMultiple).some(Boolean) ? 'Use comma for multiple values on labels that allow multiple.' : 'Values are stored as single strings.'}
-                  </small>
-                  {kb.label_keys.map((key) => (
-                    <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{chunkLabelAllowMultiple[key] ? ' (multiple)' : ''}</span>
-                      <input
-                        type="text"
-                        placeholder={chunkLabelAllowMultiple[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
-                        value={chunkLabelsValues[key] ?? ''}
-                        onChange={(e) => setChunkLabelsValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
                 <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">Document Metadata</span>
+                  <span className="kb-kv-editor-label">Metadata</span>
                   <small className="kb-kv-editor-hint">
-                    Value per metadata key from channel extraction schema. {Object.values(chunkMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
+                    Value per metadata key. {Object.values(chunkMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
                   </small>
                   {kb.metadata_keys.map((key) => (
                     <div key={key} className="kb-kv-row kb-kv-row-config">
@@ -1965,31 +1885,11 @@ export function KnowledgeBaseDetail() {
                 />
               </label>
 
-              {kb?.label_keys && kb.label_keys.length > 0 && (
-                <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">Labels</span>
-                  <small className="kb-kv-editor-hint">
-                    Value per label key from channel settings. {Object.values(faqLabelAllowMultiple).some(Boolean) ? 'Use comma for multiple values on labels that allow multiple.' : 'Values are stored as single strings.'}
-                  </small>
-                  {kb.label_keys.map((key) => (
-                    <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{faqLabelAllowMultiple[key] ? ' (multiple)' : ''}</span>
-                      <input
-                        type="text"
-                        placeholder={faqLabelAllowMultiple[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
-                        value={faqLabelsValues[key] ?? ''}
-                        onChange={(e) => setFaqLabelsValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
               {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
                 <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">Document Metadata</span>
+                  <span className="kb-kv-editor-label">Metadata</span>
                   <small className="kb-kv-editor-hint">
-                    Value per metadata key from channel extraction schema. {Object.values(faqMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
+                    Value per metadata key. {Object.values(faqMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
                   </small>
                   {kb.metadata_keys.map((key) => (
                     <div key={key} className="kb-kv-row kb-kv-row-config">

@@ -121,7 +121,7 @@ backend/
 │   ├── api/
 │   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
-│   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id, labels), PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
+│   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id), PUT metadata, PUT markdown, POST restore-markdown, POST extract-metadata
 │   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
 │   │   ├── link_types.py       # CRUD /api/link-types; instances from Neo4j when available; count_from_neo4j param for Links page
 │   │   ├── ontology_explore.py # POST /api/ontology/explore; execute read-only Cypher against Neo4j (Object Explorer)
@@ -136,8 +136,8 @@ backend/
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
-│   │   ├── document.py          # Document model (+ status, metadata JSONB, labels JSONB)
-│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config)
+│   │   ├── document.py          # Document model (+ status, metadata JSONB)
+│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config, object_type_extraction_max_instances)
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
@@ -148,7 +148,7 @@ backend/
 │   │   ├── link_instance.py   # LinkInstance (link_type_id, source_object_id, target_object_id)
 │   │   ├── data_source.py     # DataSource (kind, host, port, database, username_encrypted, password_encrypted)
 │   │   ├── dataset.py         # Dataset (data_source_id FK, schema_name, table_name)
-│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, judge_model_id, agent_url, chunk_config, faq_prompt)
+│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, judge_model_id, agent_url, chunk_config, faq_prompt, metadata_keys)
 │   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
 │   │   ├── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
@@ -171,7 +171,7 @@ backend/
 │   └── services/
 │       ├── credential_encryption.py # Fernet encrypt/decrypt for DataSource credentials
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
-│       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, etc.)
+│       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, object_type, list[object_type])
 │       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
 │       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
 │       ├── kb_search.py                  # Semantic search over chunks and FAQs (used by search route and evaluation)
@@ -208,7 +208,7 @@ openkms-cli/
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
-- **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document labels and metadata to chunks/FAQs per `label_keys` and `metadata_keys`, generates embeddings via OpenAI-compatible API, writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
+- **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, generates embeddings via OpenAI-compatible API, writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
 
 ## QA Agent Service
@@ -303,7 +303,7 @@ sequenceDiagram
 2. Document files (images, markdown assets): frontend requests `GET /api/documents/{id}/files/{file_hash}/{path}`; backend redirects (302) to presigned S3 URL via frontend proxy
 3. If document status is `uploaded` or `failed`, a "Process" button appears to trigger processing
 4. If document status is `pending` or `failed`, a "Reset" button appears to reset status to `uploaded` (only if no active jobs exist)
-5. Metadata section: extract metadata via pydantic-ai Agent + StructuredDict (channel's extraction_model_id + extraction_schema); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata` (editable fields per schema)
+5. Metadata section: single unified METADATA section (extracted + manual labels); extract via pydantic-ai Agent + StructuredDict (channel's extraction_model_id + extraction_schema, supports object_type and list[object_type]); `POST /api/documents/{id}/extract-metadata`; manual edit via `PUT /api/documents/{id}/metadata` (editable fields per extraction_schema and label_config)
 6. Document info: Name editable via Edit button; `PUT /api/documents/{id}` with `{ name }`
 7. Markdown edit: Edit/View toggle in markdown panel; edit mode shows textarea with Save (`PUT /api/documents/{id}/markdown`) and Restore (`POST /api/documents/{id}/restore-markdown`) from S3 `{file_hash}/markdown.md`; only for real documents (not examples)
 
