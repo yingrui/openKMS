@@ -25,7 +25,7 @@
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
-| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; right panel: Markdown | Page Index toggle (PageIndex tree from pipeline); scrollable layout (min-height 720px) |
+| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; right panel: Markdown | Page Index toggle (PageIndex tree from pipeline; content icon per node opens popup with section content including children); scrollable layout (min-height 720px) |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
 | Document metadata extraction | ✅ | Single METADATA section on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type: text/date/enum/object_type/list[object_type], description); object_type_extraction_max_instances limits instance count for extraction |
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
