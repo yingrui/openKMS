@@ -1,6 +1,7 @@
 """Document API routes."""
 
 import hashlib
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -281,6 +282,44 @@ async def restore_document_markdown(
     await db.commit()
     await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
+
+
+@router.get("/{document_id}/page-index")
+async def get_document_page_index(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return PageIndex tree structure for document. Built during pipeline; served from S3."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not doc.file_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Document has no file hash; page index not available",
+        )
+    if doc.status != DocumentStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document must be fully parsed (status=completed). Current: {doc.status}",
+        )
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+    key = f"{doc.file_hash}/page_index.json"
+    if not object_exists(key):
+        raise HTTPException(status_code=404, detail="Page index not found (re-process document to build)")
+    try:
+        content = get_object(key)
+        data = json.loads(content.decode("utf-8"))
+        return {
+            "structure": data.get("structure", []),
+            "doc_name": data.get("doc_name"),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read page index: {e}") from e
 
 
 @router.put("/{document_id}/metadata", response_model=DocumentResponse)

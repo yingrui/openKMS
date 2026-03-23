@@ -33,6 +33,7 @@
 - [x] Pipeline CLI: `openkms-cli pipeline list` (list supported pipelines), `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
 - [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from backend config-by-name, extracts via pydantic-ai, PUTs metadata to backend
+- [x] PageIndex: pipeline builds markdown→tree via pageindex.md_to_tree (install from cloned VectifyAI/PageIndex); backend GET /documents/{id}/page-index serves from S3; frontend Markdown | Page Index toggle on document detail
 
 ### 1. Document List Integration
 

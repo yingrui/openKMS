@@ -16,6 +16,10 @@ pip install -e ".[pipeline]"
 
 # Full (parse + pipeline)
 pip install -e ".[parse,pipeline,metadata]"
+
+# With PageIndex (markdown structure tree; used by pipeline --build-page-index)
+pip install -e ".[pipeline,pageindex]"
+# Also install PageIndex repo for md_to_tree: pip install -e /path/to/PageIndex
 ```
 
 ## Commands

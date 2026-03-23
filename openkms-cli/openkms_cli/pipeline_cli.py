@@ -70,7 +70,13 @@ def _get_s3_client(endpoint_url: Optional[str], access_key: str, secret_key: str
 
 def _content_type_for_path(path: str) -> str:
     p = Path(path)
-    suffixes = {".md": "text/markdown", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+    suffixes = {
+        ".md": "text/markdown",
+        ".json": "application/json",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }
     return suffixes.get(p.suffix.lower(), "application/octet-stream")
 
 
@@ -155,6 +161,11 @@ def pipeline_run(
         False,
         "--extract-metadata",
         help="After upload, extract metadata via LLM and PUT to backend API",
+    ),
+    build_page_index: bool = typer.Option(
+        True,
+        "--build-page-index/--no-build-page-index",
+        help="Build PageIndex tree from markdown (when pageindex is installed)",
     ),
     document_id: Optional[str] = typer.Option(
         None,
@@ -370,6 +381,20 @@ def pipeline_run(
         (hash_dir / "result.json").write_text(result_json, encoding="utf-8")
         if result.get("markdown"):
             (hash_dir / "markdown.md").write_text(result["markdown"], encoding="utf-8")
+
+        if build_page_index and result.get("markdown"):
+            md_path = hash_dir / "markdown.md"
+            try:
+                from .page_index import build_page_index_from_markdown
+
+                progress.update(task, description="Building PageIndex...")
+                tree = build_page_index_from_markdown(md_path)
+                (hash_dir / "page_index.json").write_text(
+                    json.dumps(tree, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                console.print("[dim]PageIndex built[/dim]")
+            except Exception as e:
+                console.print(f"[yellow]PageIndex build failed: {e}. Skipping.[/yellow]")
 
         if skip_upload:
             count = sum(1 for f in hash_dir.rglob("*") if f.is_file())

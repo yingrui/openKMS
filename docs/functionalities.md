@@ -25,7 +25,7 @@
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
-| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; scrollable layout (min-height 720px) for large content |
+| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; right panel: Markdown | Page Index toggle (PageIndex tree from pipeline); scrollable layout (min-height 720px) |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
 | Document metadata extraction | ✅ | Single METADATA section on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type: text/date/enum/object_type/list[object_type], description); object_type_extraction_max_instances limits instance count for extraction |
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
@@ -45,8 +45,8 @@
 - **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`
 - **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
 - **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`
-- Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`
-- Output structure matches backend: `{file_hash}/original.{ext}`, `result.json`, `markdown.md`, `layout_det_*`, `block_*`, `markdown_out/*`
+- Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`; PageIndex tree via pageindex package (install cloned repo: `pip install -e /path/to/PageIndex`)
+- Output structure matches backend: `{file_hash}/original.{ext}`, `result.json`, `markdown.md`, `page_index.json` (when pageindex installed), `layout_det_*`, `block_*`, `markdown_out/*`
 - **Backend integration**: subprocess-invokable for async jobs
 - **Extensible**: developers can add new Typer subapps in app.py
 
@@ -232,6 +232,7 @@
 | PUT | `/api/documents/{id}/metadata` | Update document metadata (partial merge) |
 | PUT | `/api/documents/{id}/markdown` | Update document markdown (DB only) |
 | POST | `/api/documents/{id}/restore-markdown` | Restore markdown from S3 `{file_hash}/markdown.md` |
+| GET | `/api/documents/{id}/page-index` | Get PageIndex tree structure (built during pipeline, served from S3) |
 | POST | `/api/documents/{id}/extract-metadata` | Extract metadata from markdown using channel's LLM |
 | GET | `/api/pipelines` | List pipeline configurations |
 | GET | `/api/pipelines/template-variables` | List available command template variables |

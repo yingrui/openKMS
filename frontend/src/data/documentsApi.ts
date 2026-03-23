@@ -277,3 +277,34 @@ export async function restoreDocumentMarkdown(documentId: string): Promise<Docum
   }
   return res.json();
 }
+
+export interface PageIndexNode {
+  title: string;
+  node_id?: string;
+  line_num?: number;
+  summary?: string;
+  prefix_summary?: string;
+  nodes?: PageIndexNode[];
+}
+
+export interface PageIndexResponse {
+  structure: PageIndexNode[];
+  doc_name?: string | null;
+}
+
+export async function fetchPageIndex(
+  documentId: string,
+  signal?: AbortSignal
+): Promise<PageIndexResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/page-index`, {
+    headers: { ...headers },
+    signal,
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to fetch page index');
+  }
+  return res.json();
+}

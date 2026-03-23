@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -8,7 +8,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
-import { fetchDocumentById, extractDocumentMetadata, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse } from '../data/documentsApi';
+import { fetchDocumentById, extractDocumentMetadata, fetchPageIndex, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse, type PageIndexNode } from '../data/documentsApi';
 import { fetchObjectType, fetchObjectInstances } from '../data/ontologyApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
@@ -46,6 +46,84 @@ interface PageBlock {
   coordinate: number[];
   label: string;
   parsingItem: ParsingResultItem;
+}
+
+function PageIndexTreeNode({
+  node,
+  depth = 0,
+}: {
+  node: PageIndexNode;
+  depth?: number;
+}) {
+  const [expanded, setExpanded] = useState(true);
+  const hasChildren = node.nodes && node.nodes.length > 0;
+  return (
+    <div className="document-detail-pageindex-node" style={{ marginLeft: depth * 12 }}>
+      <div className="document-detail-pageindex-node-header">
+        {hasChildren ? (
+          <button
+            type="button"
+            className="document-detail-pageindex-expand"
+            onClick={() => setExpanded((e) => !e)}
+            aria-expanded={expanded}
+          >
+            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </button>
+        ) : (
+          <span className="document-detail-pageindex-expand-placeholder" />
+        )}
+        <span className="document-detail-pageindex-node-title">{node.title}</span>
+      </div>
+      {hasChildren && expanded && (
+        <div className="document-detail-pageindex-children">
+          {node.nodes!.map((child, i) => (
+            <PageIndexTreeNode key={child.node_id ?? i} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PageIndexTree({
+  pageIndex,
+  loading,
+  error,
+  docConfig,
+}: {
+  pageIndex: { structure: PageIndexNode[]; doc_name?: string | null } | null;
+  loading: boolean;
+  error: string | null;
+  docConfig: { folderId: string; markdownFile: string } | null;
+}) {
+  if (docConfig) {
+    return <p className="document-detail-muted">Page Index not available for example documents.</p>;
+  }
+  if (loading) {
+    return (
+      <div className="document-detail-pageindex-loading">
+        <Loader2 size={20} className="doc-detail-spinner" />
+        <span>Loading page index…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return <p className="document-detail-muted document-detail-pageindex-error">{error}</p>;
+  }
+  if (!pageIndex || !pageIndex.structure?.length) {
+    return (
+      <p className="document-detail-muted">
+        No page index available. Re-process the document to build the index.
+      </p>
+    );
+  }
+  return (
+    <div className="document-detail-pageindex">
+      {pageIndex.structure.map((node, i) => (
+        <PageIndexTreeNode key={node.node_id ?? i} node={node} />
+      ))}
+    </div>
+  );
 }
 
 // Map document id to example folder (folder hash + markdown filename)
@@ -88,6 +166,10 @@ export function DocumentDetail() {
   const [extractWarnings, setExtractWarnings] = useState<string[]>([]);
   const [labelObjectTypes, setLabelObjectTypes] = useState<Record<string, { display_property?: string | null; key_property?: string | null }>>({});
   const [labelInstances, setLabelInstances] = useState<Record<string, { id: string; data: Record<string, unknown> }[]>>({});
+  const [rightPanelView, setRightPanelView] = useState<'markdown' | 'pageIndex'>('markdown');
+  const [pageIndex, setPageIndex] = useState<{ structure: PageIndexNode[]; doc_name?: string | null } | null>(null);
+  const [pageIndexLoading, setPageIndexLoading] = useState(false);
+  const [pageIndexError, setPageIndexError] = useState<string | null>(null);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -152,6 +234,34 @@ export function DocumentDetail() {
       clearTimeout(timeoutId);
     };
   }, [id, docConfig]);
+
+  useEffect(() => {
+    if (!id || rightPanelView !== 'pageIndex' || docConfig) {
+      if (!id || docConfig) setPageIndex(null);
+      return;
+    }
+    let cancelled = false;
+    const controller = new AbortController();
+    setPageIndexError(null);
+    setPageIndexLoading(true);
+    fetchPageIndex(id, controller.signal)
+      .then((data) => {
+        if (!cancelled) setPageIndex(data);
+      })
+      .catch((e) => {
+        if (!cancelled && e?.name !== 'AbortError') {
+          setPageIndexError(e instanceof Error ? e.message : 'Failed to load page index');
+          setPageIndex(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPageIndexLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [id, rightPanelView, docConfig]);
 
   /** Images: examples use /examples/, backend docs use proxy. */
   const getImageUrl = (path: string) => (id ? getDocumentFileUrl(id, path) : '');
@@ -976,9 +1086,27 @@ export function DocumentDetail() {
           </section>
           <section className="document-detail-panel document-detail-markdown">
             <h2 className="document-detail-panel-header">
-              <FileText size={16} />
-              <span>Markdown Content</span>
-              {!docConfig && (
+              <div className="document-detail-panel-tabs">
+                <button
+                  type="button"
+                  className={`document-detail-panel-tab ${rightPanelView === 'markdown' ? 'document-detail-panel-tab--active' : ''}`}
+                  onClick={() => setRightPanelView('markdown')}
+                  aria-pressed={rightPanelView === 'markdown'}
+                >
+                  <FileText size={14} />
+                  <span>Markdown</span>
+                </button>
+                <button
+                  type="button"
+                  className={`document-detail-panel-tab ${rightPanelView === 'pageIndex' ? 'document-detail-panel-tab--active' : ''}`}
+                  onClick={() => setRightPanelView('pageIndex')}
+                  aria-pressed={rightPanelView === 'pageIndex'}
+                >
+                  <ListTree size={14} />
+                  <span>Page Index</span>
+                </button>
+              </div>
+              {rightPanelView === 'markdown' && !docConfig && (
                 <button
                   type="button"
                   className={`document-detail-edit-toggle ${markdownEditMode ? 'document-detail-edit-toggle--active' : ''}`}
@@ -1004,7 +1132,14 @@ export function DocumentDetail() {
               </button>
             </h2>
             <div className="document-detail-markdown-body">
-              {selectedBlock && !markdownEditMode ? (
+              {rightPanelView === 'pageIndex' ? (
+                <PageIndexTree
+                  pageIndex={pageIndex}
+                  loading={pageIndexLoading}
+                  error={pageIndexError}
+                  docConfig={docConfig}
+                />
+              ) : selectedBlock && !markdownEditMode ? (
                 <div key="block-view" className="document-detail-block-view">
                   <button
                     type="button"

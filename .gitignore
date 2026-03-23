@@ -8,6 +8,7 @@ __pycache__/
 
 # Build output
 dist/
+openkms-cli/build/
 frontend/dist/
 frontend/public/examples/
 frontend/src/data/examples/
