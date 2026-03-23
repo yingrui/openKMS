@@ -5,21 +5,31 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 ## Architecture
 
 - **FastAPI** web server with a single `/ask` endpoint
-- **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools), `tools` (ontology tools)
+- **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools), `tools` (skill tools)
 - **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
-- **Ontology skills**: Tools to query object types, link types, and execute Cypher against Neo4j
+- **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph), page_index (document TOC navigation)
 - **OpenAI-compatible** LLM for answer generation
 
 The backend forwards the user's access token when calling the agent. The agent uses that token to call the backend APIs (search, object-types, link-types, ontology/explore).
 
-## Ontology Skills
+## LangGraph Skills
 
-For questions about relationships and coverage (e.g. "Which insurance products cover heart attack?"):
+Skills are modules in `qa_agent/skills/` that provide tools and prompt fragments. The agent uses them when the question matches the skill domain.
 
-1. **get_ontology_schema_tool** – Fetches object types (node labels) and link types (relationships) from the backend. Use to learn the graph structure.
-2. **run_cypher_tool** – Executes read-only Cypher queries against Neo4j. Use after getting the schema to query the graph.
+### Ontology skill
 
-The agent automatically calls these tools when the question relates to ontology/coverage. Example flow: user asks "Which products cover heart attack?" → agent calls `get_ontology_schema_tool` → agent generates Cypher (e.g. `MATCH (d:Disease)-[:COVERS]-(p:Insurance_Product) WHERE d.name CONTAINS 'heart' RETURN p.name`) → agent calls `run_cypher_tool` → agent formats the answer.
+For coverage/relationship questions (e.g. "Which insurance products cover heart attack?"):
+- **get_ontology_schema_tool** – Fetches object types and link types from the backend
+- **run_cypher_tool** – Executes read-only Cypher against Neo4j
+
+### Page Index skill
+
+For document-depth questions when search chunks are insufficient:
+1. **read_table_of_contents_tool** – Get document structure (sections with start_line, end_line)
+2. **select section** – LLM chooses relevant section by title
+3. **get_section_content_tool** – Fetch markdown content for the section
+4. **determine information-sufficient** – If yes → generate answer; if no → try another section
+5. **generate answer** – Use extracted content, cite the section
 
 ## Setup
 

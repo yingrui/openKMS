@@ -322,6 +322,50 @@ async def get_document_page_index(
         raise HTTPException(status_code=500, detail=f"Failed to read page index: {e}") from e
 
 
+def _get_document_markdown(doc: Document) -> str:
+    """Get document markdown from DB or S3. Raises HTTPException if not available."""
+    if doc.markdown and doc.markdown.strip():
+        return doc.markdown
+    if not doc.file_hash or not settings.storage_enabled:
+        return ""
+    key = f"{doc.file_hash}/markdown.md"
+    if not object_exists(key):
+        return ""
+    content = get_object(key)
+    return content.decode("utf-8")
+
+
+@router.get("/{document_id}/section")
+async def get_document_section(
+    document_id: str,
+    start_line: int,
+    end_line: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a section of document markdown by line range (1-based, inclusive).
+    Use with page-index structure line_num to extract specific sections."""
+    if start_line < 1 or end_line < 1 or start_line > end_line:
+        raise HTTPException(status_code=400, detail="Invalid start_line or end_line (must be 1-based, start <= end)")
+    if end_line - start_line + 1 > 500:
+        raise HTTPException(status_code=400, detail="Section too large (max 500 lines)")
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if doc.status != DocumentStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document must be fully parsed (status=completed). Current: {doc.status}",
+        )
+    markdown = _get_document_markdown(doc)
+    if not markdown:
+        raise HTTPException(status_code=404, detail="Document has no markdown content")
+    lines = markdown.split("\n")
+    start_idx = max(0, start_line - 1)
+    end_idx = min(len(lines), end_line)
+    section = "\n".join(lines[start_idx:end_idx])
+    return {"content": section, "start_line": start_line, "end_line": end_idx}
+
+
 @router.put("/{document_id}/metadata", response_model=DocumentResponse)
 async def update_document_metadata(
     document_id: str,

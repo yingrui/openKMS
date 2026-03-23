@@ -165,7 +165,7 @@ def pipeline_run(
     build_page_index: bool = typer.Option(
         True,
         "--build-page-index/--no-build-page-index",
-        help="Build PageIndex tree from markdown (when pageindex is installed)",
+        help="Build PageIndex tree from markdown (# headings → hierarchical structure)",
     ),
     document_id: Optional[str] = typer.Option(
         None,

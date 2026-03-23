@@ -1,4 +1,4 @@
-"""LangGraph RAG agent with ontology skills: KB search + object/link types + Cypher."""
+"""LangGraph RAG agent with skills: KB search, ontology (Cypher), page_index (document TOC)."""
 from typing import Annotated, Any, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -11,7 +11,7 @@ from typing_extensions import TypedDict
 from .config import settings
 from .retriever import retrieve
 from .schemas import SourceItem
-from .tools import get_ontology_tools
+from .skills import get_all_skill_tools, get_skill_prompt_fragments
 
 
 class AgentState(TypedDict):
@@ -37,22 +37,22 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
 
 def _build_system_prompt(context: list[SourceItem]) -> str:
     context_text = "\n\n---\n\n".join(
-        f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%}):\n{s.content}"
+        f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%})"
+        + (f" [document_id={s.document_id}]" if s.document_id else "")
+        + f":\n{s.content}"
         for s in context
     )
+    skill_prompt = get_skill_prompt_fragments()
     return (
-        "You are a helpful assistant answering questions based on a knowledge base and a knowledge graph (ontology).\n\n"
-        "You have two sources of information:\n"
-        "1. **Knowledge base** – Document chunks and FAQs (provided as context below). Use this for questions about documents, policies, procedures.\n"
-        "2. **Knowledge graph (Neo4j)** – Object types (e.g. Disease, Insurance_Product) and link types (e.g. COVERS). "
-        "Use the tools get_ontology_schema_tool and run_cypher_tool for questions about relationships, coverage, which products cover which diseases, etc.\n\n"
-        "For coverage questions (e.g. 'Which insurance products cover heart attack?'):\n"
-        "- First call get_ontology_schema_tool to learn the node labels and relationship types.\n"
-        "- Then write a Cypher query (e.g. MATCH (d:Disease)-[:COVERS]-(p:Insurance_Product) WHERE d.name CONTAINS 'heart' RETURN p.name) and call run_cypher_tool.\n"
-        "- Use the results to answer the user.\n\n"
+        "You are a helpful assistant answering questions based on a knowledge base, document structure (Page Index), and a knowledge graph (ontology).\n\n"
+        "You have three sources:\n"
+        "1. **Knowledge base** – Document chunks and FAQs (context below). Use for questions about documents, policies, procedures.\n"
+        "2. **Page Index skill** – Navigate documents by table of contents when chunks are insufficient. See skill workflow below.\n"
+        "3. **Ontology skill** – Query Neo4j for relationships and coverage. See skill workflow below.\n\n"
+        f"{skill_prompt}\n\n"
         "Context from the knowledge base:\n"
         f"{context_text}\n\n"
-        "If the context or graph doesn't contain enough information, say so honestly. Cite sources when possible."
+        "If the context or skills don't provide enough information, say so honestly. Cite sources when possible."
     )
 
 
@@ -68,7 +68,7 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         model=settings.llm_model_name,
         temperature=0.3,
     )
-    tools = get_ontology_tools()
+    tools = get_all_skill_tools()
     llm_with_tools = llm.bind_tools(tools)
 
     config = {"configurable": {"access_token": state["access_token"]}}
@@ -111,7 +111,7 @@ def build_graph() -> StateGraph:
     """Build the RAG + ontology agent graph."""
     graph = StateGraph(AgentState)
 
-    tools = get_ontology_tools()
+    tools = get_all_skill_tools()
     tool_node = ToolNode(tools)
 
     graph.add_node("retrieve", retrieve_node)
