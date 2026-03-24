@@ -205,6 +205,127 @@
   min-width: 0;
 }
 
+.document-detail-info-list--name-row {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+}
+
+.document-detail-info-stats-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(200px, 1.15fr);
+  gap: 16px 24px;
+  margin-top: 12px;
+  width: 100%;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .document-detail-info-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.document-detail-info-stats-col {
+  min-width: 0;
+}
+
+.document-detail-info-stats-col:not(.document-detail-info-stats-col--version) {
+  padding-top: 2px;
+}
+
+.document-detail-info-stats-col--version {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.document-detail-info-list--col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+}
+
+.document-detail-version-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-height: 100%;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--color-bg-elevated) 94%, var(--color-accent) 6%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+}
+
+.document-detail-version-panel-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.document-detail-version-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.document-detail-version-panel-status {
+  font-size: 0.85rem;
+  color: var(--color-text);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.document-detail-info-version-text {
+  line-height: 1.45;
+}
+
+.document-detail-info-version-sep {
+  opacity: 0.6;
+}
+
+.document-detail-version-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.document-detail-version-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.document-detail-version-panel-btn--ghost {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.document-detail-version-panel-btn--ghost:hover {
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+}
+
+.document-detail-version-panel-btn--primary {
+  gap: 6px;
+}
+
 /* Metadata subsection (inside combined info section) */
 .document-detail-labels-body {
   margin-top: 0;
@@ -739,6 +860,82 @@
 
 .document-detail-pageindex-dialog-body p:last-child {
   margin-bottom: 0;
+}
+
+.document-detail-save-version-dialog {
+  max-width: 420px;
+}
+
+.document-detail-save-version-body {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 22px 22px;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.document-detail-save-version-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.document-detail-save-version-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.document-detail-save-version-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.01em;
+}
+
+.document-detail-save-version-optional {
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.document-detail-save-version-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.document-detail-save-version-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.document-detail-save-version-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.document-detail-save-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.document-detail-save-version-cancel {
+  min-width: 88px;
 }
 
 .document-detail-extend-btn {

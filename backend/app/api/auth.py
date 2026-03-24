@@ -56,6 +56,12 @@ async def require_auth(request: Request) -> str:
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
+async def get_jwt_payload(request: Request) -> dict:
+    """Return verified JWT claims (sub, preferred_username, etc.) for the current request."""
+    token = await require_auth(request)
+    return _verify_jwt(token)
+
+
 async def require_admin(request: Request) -> str:
     """Require authentication AND the 'admin' realm role from Keycloak JWT."""
     token = await require_auth(request)

@@ -12,17 +12,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi.responses import RedirectResponse
 
-from app.api.auth import require_auth
+from app.api.auth import get_jwt_payload, require_auth
 from app.config import settings
 from app.constants import DocumentStatus
 from app.database import get_db
 from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
+from app.models.document_version import DocumentVersion
 from app.schemas.document import (
     DocumentInfoUpdateBody,
     DocumentListResponse,
     DocumentResponse,
+    DocumentVersionCreateBody,
+    DocumentVersionDetailResponse,
+    DocumentVersionListItem,
+    DocumentVersionListResponse,
+    DocumentVersionRestoreBody,
     ExtractMetadataResponse,
     MarkdownUpdateBody,
     MetadataUpdateBody,
@@ -33,6 +39,30 @@ from app.services.page_index import md_to_tree_from_markdown
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
+
+
+def _maybe_upload_page_index_from_markdown(doc: Document, markdown: str | None) -> None:
+    """Rebuild and store page_index.json when storage is enabled and markdown is non-empty."""
+    if not doc.file_hash or not settings.storage_enabled:
+        return
+    if not markdown or not markdown.strip():
+        return
+    try:
+        page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
+        key = f"{doc.file_hash}/page_index.json"
+        upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
+    except Exception:
+        pass
+
+
+async def _next_document_version_number(db: AsyncSession, document_id: str) -> int:
+    result = await db.execute(
+        select(func.coalesce(func.max(DocumentVersion.version_number), 0)).where(
+            DocumentVersion.document_id == document_id
+        )
+    )
+    m = result.scalar_one()
+    return int(m) + 1
 
 
 def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id: str, out: set[str]) -> None:
@@ -253,13 +283,7 @@ async def update_document_markdown(
     await db.commit()
     await db.refresh(doc)
 
-    if doc.file_hash and settings.storage_enabled:
-        try:
-            page_index = md_to_tree_from_markdown(body.markdown, doc_name=doc.name or "document")
-            key = f"{doc.file_hash}/page_index.json"
-            upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
-        except Exception:
-            pass
+    _maybe_upload_page_index_from_markdown(doc, body.markdown)
 
     return DocumentResponse.model_validate(doc)
 
@@ -292,13 +316,7 @@ async def restore_document_markdown(
     await db.commit()
     await db.refresh(doc)
 
-    if doc.file_hash and settings.storage_enabled:
-        try:
-            page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
-            key = f"{doc.file_hash}/page_index.json"
-            upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
-        except Exception:
-            pass
+    _maybe_upload_page_index_from_markdown(doc, markdown)
 
     return DocumentResponse.model_validate(doc)
 
@@ -419,6 +437,119 @@ async def get_document_section(
     end_idx = min(len(lines), end_line)
     section = "\n".join(lines[start_idx:end_idx])
     return {"content": section, "start_line": start_line, "end_line": end_idx}
+
+
+@router.post("/{document_id}/versions", response_model=DocumentVersionDetailResponse)
+async def create_document_version(
+    document_id: str,
+    body: DocumentVersionCreateBody,
+    db: AsyncSession = Depends(get_db),
+    claims: dict = Depends(get_jwt_payload),
+):
+    """Snapshot current markdown and metadata as a new explicit version."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    vn = await _next_document_version_number(db, document_id)
+    sub = claims.get("sub")
+    uname = claims.get("preferred_username") or claims.get("name")
+    dv = DocumentVersion(
+        id=str(uuid4()),
+        document_id=document_id,
+        version_number=vn,
+        label=body.label,
+        note=body.note,
+        markdown=doc.markdown,
+        version_metadata=dict(doc.doc_metadata) if doc.doc_metadata else None,
+        created_by_sub=sub if isinstance(sub, str) else None,
+        created_by_name=uname if isinstance(uname, str) else None,
+    )
+    db.add(dv)
+    await db.commit()
+    await db.refresh(dv)
+    return DocumentVersionDetailResponse.model_validate(dv)
+
+
+@router.get("/{document_id}/versions", response_model=DocumentVersionListResponse)
+async def list_document_versions(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """List explicit versions (no full markdown in list)."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    result = await db.execute(
+        select(DocumentVersion)
+        .where(DocumentVersion.document_id == document_id)
+        .order_by(DocumentVersion.version_number.desc())
+    )
+    rows = list(result.scalars().all())
+    return DocumentVersionListResponse(items=[DocumentVersionListItem.model_validate(r) for r in rows])
+
+
+@router.get("/{document_id}/versions/{version_id}", response_model=DocumentVersionDetailResponse)
+async def get_document_version(
+    document_id: str,
+    version_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Full version snapshot for preview or restore confirmation."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    dv = await db.get(DocumentVersion, version_id)
+    if not dv or dv.document_id != document_id:
+        raise HTTPException(status_code=404, detail="Version not found")
+    return DocumentVersionDetailResponse.model_validate(dv)
+
+
+@router.post("/{document_id}/versions/{version_id}/restore", response_model=DocumentResponse)
+async def restore_document_version(
+    document_id: str,
+    version_id: str,
+    body: DocumentVersionRestoreBody,
+    db: AsyncSession = Depends(get_db),
+    claims: dict = Depends(get_jwt_payload),
+):
+    """Restore working copy markdown and metadata from a version."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    dv = await db.get(DocumentVersion, version_id)
+    if not dv or dv.document_id != document_id:
+        raise HTTPException(status_code=404, detail="Version not found")
+
+    if body.save_current_as_version:
+        vn = await _next_document_version_number(db, document_id)
+        sub = claims.get("sub")
+        uname = claims.get("preferred_username") or claims.get("name")
+        pre = DocumentVersion(
+            id=str(uuid4()),
+            document_id=document_id,
+            version_number=vn,
+            label=body.label,
+            note=body.note,
+            markdown=doc.markdown,
+            version_metadata=dict(doc.doc_metadata) if doc.doc_metadata else None,
+            created_by_sub=sub if isinstance(sub, str) else None,
+            created_by_name=uname if isinstance(uname, str) else None,
+        )
+        db.add(pre)
+
+    doc.markdown = dv.markdown
+    doc.doc_metadata = dict(dv.version_metadata) if dv.version_metadata else None
+
+    await db.commit()
+    await db.refresh(doc)
+
+    _maybe_upload_page_index_from_markdown(doc, doc.markdown)
+
+    return DocumentResponse.model_validate(doc)
 
 
 @router.put("/{document_id}/metadata", response_model=DocumentResponse)

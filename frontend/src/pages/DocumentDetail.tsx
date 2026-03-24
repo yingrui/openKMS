@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -8,7 +8,27 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
-import { fetchDocumentById, extractDocumentMetadata, fetchPageIndex, getDocumentFileUrl, getDocumentFilesBaseUrl, rebuildPageIndex, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse, type PageIndexNode } from '../data/documentsApi';
+import {
+  createDocumentVersion,
+  extractDocumentMetadata,
+  fetchDocumentById,
+  fetchPageIndex,
+  getDocumentFileUrl,
+  getDocumentFilesBaseUrl,
+  getDocumentVersion,
+  listDocumentVersions,
+  rebuildPageIndex,
+  resetDocumentStatus,
+  restoreDocumentMarkdown,
+  restoreDocumentVersion,
+  updateDocument,
+  updateDocumentMetadata,
+  updateDocumentMarkdown,
+  type DocumentResponse,
+  type DocumentVersionDetail,
+  type DocumentVersionListItem,
+  type PageIndexNode,
+} from '../data/documentsApi';
 import { fetchObjectType, fetchObjectInstances } from '../data/ontologyApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
@@ -281,6 +301,24 @@ export function DocumentDetail() {
   const [pageIndexError, setPageIndexError] = useState<string | null>(null);
   const [pageIndexRefreshKey, setPageIndexRefreshKey] = useState(0);
   const [pageIndexRebuilding, setPageIndexRebuilding] = useState(false);
+  const [saveVersionModalOpen, setSaveVersionModalOpen] = useState(false);
+  const [saveVersionTag, setSaveVersionTag] = useState('');
+  const [saveVersionSubmitting, setSaveVersionSubmitting] = useState(false);
+  const [versionsModalOpen, setVersionsModalOpen] = useState(false);
+  const [versionsItems, setVersionsItems] = useState<DocumentVersionListItem[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionPreview, setVersionPreview] = useState<DocumentVersionDetail | null>(null);
+  const [versionPreviewLoading, setVersionPreviewLoading] = useState(false);
+  const [restoreModalVersion, setRestoreModalVersion] = useState<DocumentVersionListItem | null>(null);
+  const [restoreSaveCurrent, setRestoreSaveCurrent] = useState(false);
+  const [restoreLabel, setRestoreLabel] = useState('');
+  const [restoreNote, setRestoreNote] = useState('');
+  const [restoreSubmitting, setRestoreSubmitting] = useState(false);
+  const [latestVersionSnapshot, setLatestVersionSnapshot] = useState<{
+    created_at: string;
+    version_number: number;
+  } | null>(null);
+  const [versionSnapshotLoading, setVersionSnapshotLoading] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -665,6 +703,133 @@ export function DocumentDetail() {
     setMetadataEditMode(false);
   }, []);
 
+  const refreshLatestVersionSnapshot = useCallback(async () => {
+    if (!id || docConfig) return;
+    setVersionSnapshotLoading(true);
+    try {
+      const { items } = await listDocumentVersions(id);
+      if (!items.length) {
+        setLatestVersionSnapshot(null);
+      } else {
+        setLatestVersionSnapshot({
+          created_at: items[0].created_at,
+          version_number: items[0].version_number,
+        });
+      }
+    } catch {
+      setLatestVersionSnapshot(null);
+    } finally {
+      setVersionSnapshotLoading(false);
+    }
+  }, [id, docConfig]);
+
+  useEffect(() => {
+    if (!id || docConfig) {
+      setLatestVersionSnapshot(null);
+      setVersionSnapshotLoading(false);
+      return;
+    }
+    refreshLatestVersionSnapshot();
+  }, [id, docConfig, refreshLatestVersionSnapshot]);
+
+  const showSaveVersionButton = useMemo(() => {
+    if (docConfig || !document || versionSnapshotLoading) return false;
+    if (!latestVersionSnapshot) return true;
+    return new Date(document.updated_at).getTime() > new Date(latestVersionSnapshot.created_at).getTime();
+  }, [docConfig, document, versionSnapshotLoading, latestVersionSnapshot]);
+
+  const handleOpenVersionsModal = useCallback(async () => {
+    if (!id) return;
+    setVersionsModalOpen(true);
+    setVersionsLoading(true);
+    try {
+      const { items } = await listDocumentVersions(id);
+      setVersionsItems(items);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load versions');
+      setVersionsItems([]);
+    } finally {
+      setVersionsLoading(false);
+    }
+  }, [id]);
+
+  const handleCreateVersion = useCallback(async () => {
+    if (!id) return;
+    setSaveVersionSubmitting(true);
+    try {
+      const created = await createDocumentVersion(id, {
+        label: saveVersionTag.trim() || null,
+        note: null,
+      });
+      setLatestVersionSnapshot({
+        created_at: created.created_at,
+        version_number: created.version_number,
+      });
+      toast.success('Version saved');
+      setSaveVersionModalOpen(false);
+      setSaveVersionTag('');
+      if (versionsModalOpen) {
+        const { items } = await listDocumentVersions(id);
+        setVersionsItems(items);
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save version');
+    } finally {
+      setSaveVersionSubmitting(false);
+    }
+  }, [id, saveVersionTag, versionsModalOpen]);
+
+  const handlePreviewVersion = useCallback(async (vid: string) => {
+    if (!id) return;
+    setVersionPreviewLoading(true);
+    setVersionPreview(null);
+    try {
+      const detail = await getDocumentVersion(id, vid);
+      setVersionPreview(detail);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load version');
+    } finally {
+      setVersionPreviewLoading(false);
+    }
+  }, [id]);
+
+  const handleConfirmRestore = useCallback(async () => {
+    if (!id || !restoreModalVersion) return;
+    setRestoreSubmitting(true);
+    try {
+      const updated = await restoreDocumentVersion(id, restoreModalVersion.id, {
+        save_current_as_version: restoreSaveCurrent,
+        label: restoreLabel.trim() || null,
+        note: restoreNote.trim() || null,
+      });
+      setDocument(updated);
+      setMarkdown(updated.markdown ?? '');
+      const m = updated.metadata ?? {};
+      const initial: Record<string, unknown> = {};
+      for (const key of metaKeys) {
+        initial[key] = m[key] ?? '';
+      }
+      setEditMeta(initial);
+      setMetadataEditMode(false);
+      setMarkdownEditMode(false);
+      setPageIndexRefreshKey((k) => k + 1);
+      setRestoreModalVersion(null);
+      setRestoreSaveCurrent(false);
+      setRestoreLabel('');
+      setRestoreNote('');
+      toast.success('Version restored');
+      if (versionsModalOpen) {
+        const { items } = await listDocumentVersions(id);
+        setVersionsItems(items);
+      }
+      await refreshLatestVersionSnapshot();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Restore failed');
+    } finally {
+      setRestoreSubmitting(false);
+    }
+  }, [id, restoreModalVersion, restoreSaveCurrent, restoreLabel, restoreNote, versionsModalOpen, metaKeys, refreshLatestVersionSnapshot]);
+
   const setEditMetaField = useCallback((key: string, value: unknown) => {
     setEditMeta((prev) => ({ ...prev, [key]: value }));
   }, []);
@@ -719,7 +884,7 @@ export function DocumentDetail() {
               </h2>
               {infoVisible && (
                 <div className="document-detail-info-body">
-                  <dl className={`document-detail-info-list ${fileHash ? 'document-detail-info-list--with-hash' : ''}`}>
+                  <dl className="document-detail-info-list document-detail-info-list--name-row">
                     <div className="document-detail-info-item document-detail-info-item--name">
                       <dt>Name</dt>
                       <dd>
@@ -770,65 +935,132 @@ export function DocumentDetail() {
                         )}
                       </dd>
                     </div>
-                    <div className="document-detail-info-item document-detail-info-item--compact">
-                      <dt>Type</dt>
-                      <dd>{document.file_type}</dd>
-                    </div>
-                    <div className="document-detail-info-item document-detail-info-item--compact">
-                      <dt>Size</dt>
-                      <dd>{document.size_bytes ? `${(document.size_bytes / 1024).toFixed(1)} KB` : '—'}</dd>
-                    </div>
-                    <div className="document-detail-info-item document-detail-info-item--compact">
-                      <dt>Uploaded</dt>
-                      <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
-                    </div>
-                    <div className="document-detail-info-item document-detail-info-item--compact">
-                      <dt>Status</dt>
-                      <dd>
-                        <span className={`doc-status doc-status-${document.status || 'completed'}`}>
-                          {document.status || 'completed'}
-                        </span>
-                        {(document.status === 'uploaded' || document.status === 'failed') && (
-                          <button
-                            type="button"
-                            className="document-detail-process-btn"
-                            onClick={handleProcess}
-                            disabled={processing}
-                            title="Process this document"
-                          >
-                            {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
-                            <span>{processing ? 'Processing…' : 'Process'}</span>
-                          </button>
-                        )}
-                        {(document.status === 'pending' || document.status === 'failed') && (
-                          <button
-                            type="button"
-                            className="document-detail-reset-btn"
-                            onClick={handleReset}
-                            disabled={resetting}
-                            title="Reset status to uploaded"
-                          >
-                            {resetting ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
-                            <span>{resetting ? 'Resetting…' : 'Reset'}</span>
-                          </button>
-                        )}
-                      </dd>
-                    </div>
-                    <div className="document-detail-info-item document-detail-info-item--compact">
-                      <dt>Markdown</dt>
-                      <dd>{markdown ? 'Yes' : 'No'}</dd>
-                    </div>
-                    {fileHash && (
-                      <div className="document-detail-info-item document-detail-info-item--compact">
-                        <dt>File hash</dt>
-                        <dd className="document-detail-info-hash" title={fileHash}>
-                          {fileHash.length > 12
-                            ? `${fileHash.slice(0, 10)}...`
-                            : fileHash}
-                        </dd>
-                      </div>
-                    )}
                   </dl>
+                  <div className="document-detail-info-stats-grid">
+                    <div className="document-detail-info-stats-col">
+                      <dl className="document-detail-info-list document-detail-info-list--col">
+                        <div className="document-detail-info-item document-detail-info-item--compact">
+                          <dt>Type</dt>
+                          <dd>{document.file_type}</dd>
+                        </div>
+                        <div className="document-detail-info-item document-detail-info-item--compact">
+                          <dt>Size</dt>
+                          <dd>{document.size_bytes ? `${(document.size_bytes / 1024).toFixed(1)} KB` : '—'}</dd>
+                        </div>
+                        <div className="document-detail-info-item document-detail-info-item--compact">
+                          <dt>Uploaded</dt>
+                          <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                    <div className="document-detail-info-stats-col">
+                      <dl className="document-detail-info-list document-detail-info-list--col">
+                        <div className="document-detail-info-item document-detail-info-item--compact">
+                          <dt>Status</dt>
+                          <dd>
+                            <span className={`doc-status doc-status-${document.status || 'completed'}`}>
+                              {document.status || 'completed'}
+                            </span>
+                            {(document.status === 'uploaded' || document.status === 'failed') && (
+                              <button
+                                type="button"
+                                className="document-detail-process-btn"
+                                onClick={handleProcess}
+                                disabled={processing}
+                                title="Process this document"
+                              >
+                                {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
+                                <span>{processing ? 'Processing…' : 'Process'}</span>
+                              </button>
+                            )}
+                            {(document.status === 'pending' || document.status === 'failed') && (
+                              <button
+                                type="button"
+                                className="document-detail-reset-btn"
+                                onClick={handleReset}
+                                disabled={resetting}
+                                title="Reset status to uploaded"
+                              >
+                                {resetting ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
+                                <span>{resetting ? 'Resetting…' : 'Reset'}</span>
+                              </button>
+                            )}
+                          </dd>
+                        </div>
+                        <div className="document-detail-info-item document-detail-info-item--compact">
+                          <dt>Markdown</dt>
+                          <dd>{markdown ? 'Yes' : 'No'}</dd>
+                        </div>
+                        {fileHash ? (
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>File hash</dt>
+                            <dd className="document-detail-info-hash" title={fileHash}>
+                              {fileHash.length > 12 ? `${fileHash.slice(0, 10)}...` : fileHash}
+                            </dd>
+                          </div>
+                        ) : (
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>File hash</dt>
+                            <dd>—</dd>
+                          </div>
+                        )}
+                      </dl>
+                    </div>
+                    <div className="document-detail-info-stats-col document-detail-info-stats-col--version">
+                      <div className="document-detail-version-panel">
+                        <div className="document-detail-version-panel-label">Version</div>
+                        <div className="document-detail-version-panel-body">
+                          <div className="document-detail-version-panel-status">
+                            {docConfig ? (
+                              '—'
+                            ) : versionSnapshotLoading ? (
+                              <span className="document-detail-muted">Loading…</span>
+                            ) : latestVersionSnapshot ? (
+                              <span className="document-detail-info-version-text">
+                                v{latestVersionSnapshot.version_number}
+                                <span className="document-detail-info-version-sep"> · </span>
+                                {new Date(latestVersionSnapshot.created_at).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span
+                                className="document-detail-muted"
+                                title="Markdown can exist without a named version. Save version stores a checkpoint of the current markdown and metadata."
+                              >
+                                No version saved yet
+                              </span>
+                            )}
+                          </div>
+                          {!docConfig && (
+                            <div className="document-detail-version-panel-actions">
+                              <button
+                                type="button"
+                                className="document-detail-version-panel-btn document-detail-version-panel-btn--ghost"
+                                onClick={handleOpenVersionsModal}
+                                title="View and restore document versions"
+                              >
+                                <History size={14} />
+                                <span>Versions</span>
+                              </button>
+                              {showSaveVersionButton && (
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm document-detail-version-panel-btn--primary"
+                                  onClick={() => {
+                                    setSaveVersionTag('');
+                                    setSaveVersionModalOpen(true);
+                                  }}
+                                  title="Save current markdown and metadata as a named version"
+                                >
+                                  <Bookmark size={14} />
+                                  <span>Save version</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   {showMetadataSection && (
                     <>
                       <hr className="document-detail-info-divider" />
@@ -1136,6 +1368,7 @@ export function DocumentDetail() {
           {error ? (
             <div className="document-detail-error">{error}</div>
           ) : (
+        <>
         <div
           className="document-detail-split"
           data-extended-images={extendedPanel === 'images'}
@@ -1384,6 +1617,270 @@ export function DocumentDetail() {
             </div>
           </section>
         </div>
+        {!docConfig && id && (
+          <>
+            {saveVersionModalOpen && (
+              <div
+                className="document-detail-pageindex-dialog-overlay"
+                onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
+              >
+                <div
+                  className="document-detail-pageindex-dialog document-detail-save-version-dialog"
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-labelledby="save-version-title"
+                >
+                  <div className="document-detail-pageindex-dialog-header">
+                    <h2 id="save-version-title">Save as version</h2>
+                    <button
+                      type="button"
+                      className="document-detail-pageindex-dialog-close"
+                      onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
+                      aria-label="Close"
+                    >
+                      <XIcon size={18} />
+                    </button>
+                  </div>
+                  <div className="document-detail-save-version-body">
+                    <p className="document-detail-save-version-hint">
+                      Saves a checkpoint of the current markdown and metadata. Ordinary saves do not add a version.
+                    </p>
+                    <div className="document-detail-save-version-field">
+                      <label htmlFor="save-version-tag" className="document-detail-save-version-label">
+                        Tag <span className="document-detail-save-version-optional">(optional)</span>
+                      </label>
+                      <input
+                        id="save-version-tag"
+                        type="text"
+                        className="document-detail-save-version-input"
+                        value={saveVersionTag}
+                        onChange={(e) => setSaveVersionTag(e.target.value)}
+                        placeholder="e.g. Before review"
+                        autoComplete="off"
+                        disabled={saveVersionSubmitting}
+                      />
+                    </div>
+                    <div className="document-detail-save-version-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={handleCreateVersion}
+                        disabled={saveVersionSubmitting}
+                      >
+                        {saveVersionSubmitting ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
+                        <span>{saveVersionSubmitting ? 'Saving…' : 'Create version'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary document-detail-save-version-cancel"
+                        onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
+                        disabled={saveVersionSubmitting}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {versionsModalOpen && (
+              <div
+                className="document-detail-pageindex-dialog-overlay"
+                onClick={() => !restoreSubmitting && setVersionsModalOpen(false)}
+              >
+                <div
+                  className="document-detail-pageindex-dialog document-detail-versions-dialog document-detail-versions-dialog--wide"
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-labelledby="versions-list-title"
+                >
+                  <div className="document-detail-pageindex-dialog-header">
+                    <h2 id="versions-list-title">Document versions</h2>
+                    <button
+                      type="button"
+                      className="document-detail-pageindex-dialog-close"
+                      onClick={() => !restoreSubmitting && setVersionsModalOpen(false)}
+                      aria-label="Close"
+                    >
+                      <XIcon size={18} />
+                    </button>
+                  </div>
+                  <div className="document-detail-pageindex-dialog-body">
+                    {versionsLoading ? (
+                      <div className="document-detail-pageindex-loading">
+                        <Loader2 size={20} className="doc-detail-spinner" />
+                        <span>Loading…</span>
+                      </div>
+                    ) : versionsItems.length === 0 ? (
+                      <p className="document-detail-muted">No versions yet. Use &quot;Save version&quot; to create one.</p>
+                    ) : (
+                      <ul className="document-detail-versions-list">
+                        {versionsItems.map((v) => (
+                          <li key={v.id} className="document-detail-versions-row">
+                            <div className="document-detail-versions-row-main">
+                              <span className="document-detail-versions-vno">v{v.version_number}</span>
+                              {v.label && <span className="document-detail-versions-labeltext">{v.label}</span>}
+                              <span className="document-detail-versions-date">
+                                {new Date(v.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <div className="document-detail-versions-row-actions">
+                              <button
+                                type="button"
+                                className="btn btn-sm"
+                                onClick={() => handlePreviewVersion(v.id)}
+                              >
+                                Preview
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => setRestoreModalVersion(v)}
+                              >
+                                Restore
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {versionPreview && (
+              <div
+                className="document-detail-pageindex-dialog-overlay"
+                onClick={() => setVersionPreview(null)}
+              >
+                <div
+                  className="document-detail-pageindex-dialog document-detail-versions-dialog document-detail-versions-dialog--wide"
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                >
+                  <div className="document-detail-pageindex-dialog-header">
+                    <h2 id="version-preview-title">
+                      v{versionPreview.version_number}
+                      {versionPreview.label ? ` — ${versionPreview.label}` : ''}
+                    </h2>
+                    <button
+                      type="button"
+                      className="document-detail-pageindex-dialog-close"
+                      onClick={() => setVersionPreview(null)}
+                      aria-label="Close"
+                    >
+                      <XIcon size={18} />
+                    </button>
+                  </div>
+                  <div className="document-detail-pageindex-dialog-body document-detail-version-preview-body">
+                    {versionPreviewLoading ? (
+                      <Loader2 className="doc-detail-spinner" />
+                    ) : (
+                      <>
+                        <h3 className="document-detail-version-preview-sub">Markdown</h3>
+                        <div className="document-detail-version-preview-md">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeRaw, rehypeKatex]}
+                            components={markdownComponents}
+                          >
+                            {versionPreview.markdown || ''}
+                          </ReactMarkdown>
+                        </div>
+                        <h3 className="document-detail-version-preview-sub">Metadata</h3>
+                        <pre className="document-detail-version-preview-json">
+                          {JSON.stringify(versionPreview.metadata ?? {}, null, 2)}
+                        </pre>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {restoreModalVersion && (
+              <div
+                className="document-detail-pageindex-dialog-overlay"
+                onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
+              >
+                <div
+                  className="document-detail-pageindex-dialog document-detail-versions-dialog"
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-labelledby="restore-version-title"
+                >
+                  <div className="document-detail-pageindex-dialog-header">
+                    <h2 id="restore-version-title">Restore version v{restoreModalVersion.version_number}?</h2>
+                    <button
+                      type="button"
+                      className="document-detail-pageindex-dialog-close"
+                      onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
+                      aria-label="Close"
+                    >
+                      <XIcon size={18} />
+                    </button>
+                  </div>
+                  <div className="document-detail-pageindex-dialog-body document-detail-versions-form">
+                    <p className="document-detail-muted" style={{ marginTop: 0 }}>
+                      Replaces the working copy markdown and metadata with this snapshot.
+                    </p>
+                    <label className="document-detail-versions-check">
+                      <input
+                        type="checkbox"
+                        checked={restoreSaveCurrent}
+                        onChange={(e) => setRestoreSaveCurrent(e.target.checked)}
+                      />
+                      Save current state as a version first
+                    </label>
+                    {restoreSaveCurrent && (
+                      <>
+                        <label className="document-detail-versions-label">
+                          Label (optional)
+                          <input
+                            type="text"
+                            className="document-detail-info-input"
+                            value={restoreLabel}
+                            onChange={(e) => setRestoreLabel(e.target.value)}
+                            placeholder="Checkpoint before restore"
+                          />
+                        </label>
+                        <label className="document-detail-versions-label">
+                          Note (optional)
+                          <textarea
+                            className="document-detail-markdown-textarea"
+                            rows={2}
+                            value={restoreNote}
+                            onChange={(e) => setRestoreNote(e.target.value)}
+                            style={{ minHeight: 56 }}
+                          />
+                        </label>
+                      </>
+                    )}
+                    <div className="document-detail-metadata-edit-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={handleConfirmRestore}
+                        disabled={restoreSubmitting}
+                      >
+                        {restoreSubmitting ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                        <span>{restoreSubmitting ? 'Restoring…' : 'Restore'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="document-detail-metadata-cancel-btn"
+                        onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
+                        disabled={restoreSubmitting}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        </>
           )}
         </>
       )}

@@ -323,3 +323,89 @@ export async function rebuildPageIndex(documentId: string): Promise<PageIndexRes
   }
   return res.json();
 }
+
+export interface DocumentVersionListItem {
+  id: string;
+  document_id: string;
+  version_number: number;
+  label?: string | null;
+  note?: string | null;
+  created_at: string;
+  created_by_sub?: string | null;
+  created_by_name?: string | null;
+}
+
+export interface DocumentVersionDetail extends DocumentVersionListItem {
+  markdown?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export async function createDocumentVersion(
+  documentId: string,
+  body: { label?: string | null; note?: string | null }
+): Promise<DocumentVersionDetail> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ label: body.label ?? null, note: body.note ?? null }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to create version');
+  }
+  return res.json();
+}
+
+export async function listDocumentVersions(documentId: string): Promise<{ items: DocumentVersionListItem[] }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to list versions');
+  }
+  return res.json();
+}
+
+export async function getDocumentVersion(documentId: string, versionId: string): Promise<DocumentVersionDetail> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to load version');
+  }
+  return res.json();
+}
+
+export async function restoreDocumentVersion(
+  documentId: string,
+  versionId: string,
+  body: { save_current_as_version?: boolean; label?: string | null; note?: string | null }
+): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}/restore`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({
+        save_current_as_version: body.save_current_as_version ?? false,
+        label: body.label ?? null,
+        note: body.note ?? null,
+      }),
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to restore version');
+  }
+  return res.json();
+}

@@ -91,3 +91,68 @@ class ParsingResultResponse(BaseModel):
     layout_det_res: list[dict[str, Any]] = []
     markdown: str = ""
     page_count: int = 0
+
+
+class DocumentVersionCreateBody(BaseModel):
+    """Body for POST /documents/{id}/versions."""
+
+    label: str | None = None
+    note: str | None = None
+
+
+class DocumentVersionRestoreBody(BaseModel):
+    """Body for POST /documents/{id}/versions/{version_id}/restore."""
+
+    save_current_as_version: bool = False
+    label: str | None = None
+    note: str | None = None
+
+
+class DocumentVersionListItem(BaseModel):
+    id: str
+    document_id: str
+    version_number: int
+    label: str | None = None
+    note: str | None = None
+    created_at: datetime
+    created_by_sub: str | None = None
+    created_by_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class DocumentVersionListResponse(BaseModel):
+    items: list[DocumentVersionListItem]
+
+
+class DocumentVersionDetailResponse(BaseModel):
+    id: str
+    document_id: str
+    version_number: int
+    label: str | None = None
+    note: str | None = None
+    markdown: str | None = None
+    metadata: dict[str, Any] | None = None
+    created_at: datetime
+    created_by_sub: str | None = None
+    created_by_name: str | None = None
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_version_metadata(cls, data: Any) -> Any:
+        if hasattr(data, "version_metadata"):
+            return {
+                "id": data.id,
+                "document_id": data.document_id,
+                "version_number": data.version_number,
+                "label": data.label,
+                "note": data.note,
+                "markdown": data.markdown,
+                "metadata": data.version_metadata,
+                "created_at": data.created_at,
+                "created_by_sub": data.created_by_sub,
+                "created_by_name": data.created_by_name,
+            }
+        return data
