@@ -19,7 +19,7 @@ class DocumentVersion(Base):
         String(64), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
     )
     version_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    label: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    tag: Mapped[str | None] = mapped_column(String(512), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     version_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)

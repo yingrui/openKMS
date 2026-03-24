@@ -96,7 +96,7 @@ class ParsingResultResponse(BaseModel):
 class DocumentVersionCreateBody(BaseModel):
     """Body for POST /documents/{id}/versions."""
 
-    label: str | None = None
+    tag: str | None = None
     note: str | None = None
 
 
@@ -104,7 +104,7 @@ class DocumentVersionRestoreBody(BaseModel):
     """Body for POST /documents/{id}/versions/{version_id}/restore."""
 
     save_current_as_version: bool = False
-    label: str | None = None
+    tag: str | None = None
     note: str | None = None
 
 
@@ -112,7 +112,7 @@ class DocumentVersionListItem(BaseModel):
     id: str
     document_id: str
     version_number: int
-    label: str | None = None
+    tag: str | None = None
     note: str | None = None
     created_at: datetime
     created_by_sub: str | None = None
@@ -129,7 +129,7 @@ class DocumentVersionDetailResponse(BaseModel):
     id: str
     document_id: str
     version_number: int
-    label: str | None = None
+    tag: str | None = None
     note: str | None = None
     markdown: str | None = None
     metadata: dict[str, Any] | None = None
@@ -147,7 +147,7 @@ class DocumentVersionDetailResponse(BaseModel):
                 "id": data.id,
                 "document_id": data.document_id,
                 "version_number": data.version_number,
-                "label": data.label,
+                "tag": data.tag,
                 "note": data.note,
                 "markdown": data.markdown,
                 "metadata": data.version_metadata,

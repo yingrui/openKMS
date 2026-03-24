@@ -27,7 +27,7 @@
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; **Document Information**: 3-column stats (Type, Size, Uploaded | Status, Markdown, File hash | Version panel with Versions + conditional Save version when working copy changed since last snapshot); right panel: Markdown \| Page Index (refresh parses markdown to tree); explicit versions (`document_versions`) not created on routine save; scrollable layout (min-height 720px) |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`; rebuilds page index), Restore from S3 (`POST /restore-markdown`; rebuilds page index); `POST /rebuild-page-index` for manual rebuild from current markdown |
-| Document versions | ✅ | User-triggered checkpoints: `POST /documents/{id}/versions` snapshots current markdown and metadata (optional tag via `label` in API); list, preview, restore (`POST .../versions/{vid}/restore`); optional save-current before restore; Save as version modal (tag only in UI) |
+| Document versions | ✅ | User-triggered checkpoints: `POST /documents/{id}/versions` snapshots current markdown and metadata (optional `tag` in API); list, preview, restore (`POST .../versions/{vid}/restore`); optional save-current before restore; Save as version modal (optional tag) |
 | Document metadata extraction | ✅ | Single METADATA section on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type: text/date/enum/object_type/list[object_type], description); object_type_extraction_max_instances limits instance count for extraction |
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
 | Document metadata (unified) | ✅ | All metadata (extracted + manual) in single `metadata` JSONB; manual labels configure in channel settings Manual Labels tab (type: object_type or list[object_type]); object-instance pickers in METADATA section |
@@ -236,10 +236,10 @@
 | POST | `/api/documents/{id}/rebuild-page-index` | Rebuild page index from current markdown (DB or S3) and store in S3 |
 | GET | `/api/documents/{id}/page-index` | Get PageIndex tree structure (built during pipeline or after markdown edit, served from S3) |
 | GET | `/api/documents/{id}/section` | Get markdown section by line range (start_line, end_line; 1-based inclusive; for QA agent Page Index skill) |
-| POST | `/api/documents/{id}/versions` | Create explicit version (snapshot of current markdown + metadata; body: optional `label` / `note`; UI uses optional tag → `label`) |
+| POST | `/api/documents/{id}/versions` | Create explicit version (snapshot of current markdown + metadata; body: optional `tag` / `note`) |
 | GET | `/api/documents/{id}/versions` | List document versions (metadata only; no full markdown in list) |
 | GET | `/api/documents/{id}/versions/{version_id}` | Get full version snapshot (markdown + metadata) |
-| POST | `/api/documents/{id}/versions/{version_id}/restore` | Restore working copy from version (body: optional save_current_as_version, label, note); rebuilds page index |
+| POST | `/api/documents/{id}/versions/{version_id}/restore` | Restore working copy from version (body: optional save_current_as_version, tag, note); rebuilds page index |
 | POST | `/api/documents/{id}/extract-metadata` | Extract metadata from markdown using channel's LLM |
 | GET | `/api/pipelines` | List pipeline configurations |
 | GET | `/api/pipelines/template-variables` | List available command template variables |

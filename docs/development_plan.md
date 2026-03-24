@@ -9,7 +9,7 @@
 - Delete document: `DELETE /api/documents/{id}`
 - Document info & metadata: Edit name (`PUT /api/documents/{id}`), edit metadata (`PUT /metadata`), Extract via pydantic-ai Agent + StructuredDict
 - Document markdown: Edit and save (`PUT /markdown`; rebuilds page index in S3), restore from S3 (`POST /restore-markdown`; rebuilds page index), optional `POST /rebuild-page-index` (also triggered from Page Index tab refresh); detail page shows Save/Cancel in panel header when editing (not View toggle); Page Index tab has refresh control (tooltip: parse markdown to tree)
-- Document versions: `document_versions` table; explicit snapshots of markdown + metadata (`POST /versions`, `GET /versions`, `GET /versions/{id}`, `POST /versions/{id}/restore`); UI: version column in Document Information (3-column stats), Save version when working copy newer than last snapshot, optional tag in Save as version modal, Versions list/preview/restore with optional save-current-first; not created on routine markdown/metadata save
+- Document versions: `document_versions` table; explicit snapshots of markdown + metadata (`POST /versions`, `GET /versions`, `GET /versions/{id}`, `POST /versions/{id}/restore`); version checkpoint uses JSON field **`tag`** (DB column `tag`); UI: version column in Document Information (3-column stats), Save version when working copy newer than last snapshot, optional tag in Save as version modal, **Versions** modal as a table (Version / Tag / Saved / Actions); list/preview/restore with optional save-current-first; not created on routine markdown/metadata save
 - Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
 - Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
@@ -35,6 +35,7 @@
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
 - [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from backend config-by-name, extracts via pydantic-ai, PUTs metadata to backend
 - [x] PageIndex: pipeline builds markdown→tree via built-in md_to_tree (# headings); backend GET /documents/{id}/page-index and GET /documents/{id}/section; frontend Markdown | Page Index toggle; QA agent LangGraph page_index skill (read TOC, select section, extract content)
+- [x] Pipeline checkpoint: after successful S3 upload, when `--document-id` and Keycloak token are available, CLI `PUT`s parsed markdown then `POST /api/documents/{id}/versions` with `tag: "Pipeline"` (after optional metadata extraction)
 
 ### 1. Document List Integration
 

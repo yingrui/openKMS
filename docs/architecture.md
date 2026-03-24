@@ -137,7 +137,7 @@ backend/
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status, metadata JSONB)
-│   │   ├── document_version.py  # DocumentVersion (document_id FK, version_number, label, note, markdown, metadata JSONB snapshot, created_by_*)
+│   │   ├── document_version.py  # DocumentVersion (document_id FK, version_number, tag, note, markdown, metadata JSONB snapshot, created_by_*)
 │   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config, object_type_extraction_max_instances)
 │   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)

@@ -328,7 +328,7 @@ export interface DocumentVersionListItem {
   id: string;
   document_id: string;
   version_number: number;
-  label?: string | null;
+  tag?: string | null;
   note?: string | null;
   created_at: string;
   created_by_sub?: string | null;
@@ -342,13 +342,13 @@ export interface DocumentVersionDetail extends DocumentVersionListItem {
 
 export async function createDocumentVersion(
   documentId: string,
-  body: { label?: string | null; note?: string | null }
+  body: { tag?: string | null; note?: string | null }
 ): Promise<DocumentVersionDetail> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify({ label: body.label ?? null, note: body.note ?? null }),
+    body: JSON.stringify({ tag: body.tag ?? null, note: body.note ?? null }),
     credentials: 'include',
   });
   if (!res.ok) {
@@ -387,7 +387,7 @@ export async function getDocumentVersion(documentId: string, versionId: string):
 export async function restoreDocumentVersion(
   documentId: string,
   versionId: string,
-  body: { save_current_as_version?: boolean; label?: string | null; note?: string | null }
+  body: { save_current_as_version?: boolean; tag?: string | null; note?: string | null }
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(
@@ -397,7 +397,7 @@ export async function restoreDocumentVersion(
       headers: { 'Content-Type': 'application/json', ...headers },
       body: JSON.stringify({
         save_current_as_version: body.save_current_as_version ?? false,
-        label: body.label ?? null,
+        tag: body.tag ?? null,
         note: body.note ?? null,
       }),
       credentials: 'include',

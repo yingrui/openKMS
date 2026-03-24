@@ -80,6 +80,40 @@ def _content_type_for_path(path: str) -> str:
     return suffixes.get(p.suffix.lower(), "application/octet-stream")
 
 
+def _put_document_markdown(api_url: str, document_id: str, token: str, markdown: str) -> bool:
+    """Sync parsed markdown to backend (required before POST /versions snapshots DB state)."""
+    base = api_url.rstrip("/")
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    r = requests.put(
+        f"{base}/api/documents/{document_id}/markdown",
+        json={"markdown": markdown},
+        headers=headers,
+        timeout=300,
+    )
+    if not r.ok:
+        console.print(f"[yellow]PUT markdown failed: {r.status_code} {r.text[:200]}[/yellow]")
+        return False
+    console.print("[dim]Markdown synced to API[/dim]")
+    return True
+
+
+def _post_pipeline_version(api_url: str, document_id: str, token: str) -> bool:
+    """Create explicit document version tagged Pipeline (current DB markdown + metadata)."""
+    base = api_url.rstrip("/")
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    r = requests.post(
+        f"{base}/api/documents/{document_id}/versions",
+        json={"tag": "Pipeline", "note": None},
+        headers=headers,
+        timeout=60,
+    )
+    if r.ok:
+        console.print("[green]Pipeline version saved[/green]")
+        return True
+    console.print(f"[yellow]Save version failed: {r.status_code} {r.text[:200]}[/yellow]")
+    return False
+
+
 @pipeline_app.command("list")
 def pipeline_list() -> None:
     """List supported pipelines that can be run with `pipeline run`."""
@@ -170,7 +204,7 @@ def pipeline_run(
     document_id: Optional[str] = typer.Option(
         None,
         "--document-id",
-        help="Document ID (required for --extract-metadata)",
+        help="Document ID: sync markdown + save Pipeline version after upload (Keycloak); required for --extract-metadata",
     ),
     api_url: str = typer.Option(
         "http://localhost:8102",
@@ -298,13 +332,19 @@ def pipeline_run(
                 "--extraction-model-base-url[/red]"
             )
             raise typer.Exit(1)
+    if document_id:
         try:
             from .auth import get_access_token
+
             token = get_access_token()
             console.print("[dim]Got Keycloak token[/dim]")
         except ValueError as e:
-            console.print(f"[red]Auth failed: {e}[/red]")
-            raise typer.Exit(1)
+            if extract_metadata:
+                console.print(f"[red]Auth failed: {e}[/red]")
+                raise typer.Exit(1)
+            console.print(
+                f"[yellow]No API token ({e}); skipping markdown sync and pipeline version.[/yellow]"
+            )
 
     access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
     secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
@@ -420,6 +460,13 @@ def pipeline_run(
                 f"[green]Uploaded {count} files to s3://{bucket}/{prefix}/[/green]"
             )
 
+        markdown_synced = False
+        if not skip_upload and document_id and token and result.get("markdown"):
+            progress.update(task, description="Syncing markdown to API...")
+            markdown_synced = _put_document_markdown(
+                api_url, document_id, token, result["markdown"]
+            )
+
         if extract_metadata and token and document_id and result.get("markdown"):
             progress.update(task, description="Extracting metadata...")
             try:
@@ -471,3 +518,13 @@ def pipeline_run(
                 console.print(f"[red]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/red]")
                 raise typer.Exit(1)
             console.print("[green]Metadata updated via API[/green]")
+
+        if (
+            not skip_upload
+            and document_id
+            and token
+            and result.get("markdown")
+            and markdown_synced
+        ):
+            progress.update(task, description="Saving pipeline version...")
+            _post_pipeline_version(api_url, document_id, token)

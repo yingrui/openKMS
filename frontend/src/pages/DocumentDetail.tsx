@@ -758,7 +758,7 @@ export function DocumentDetail() {
     setSaveVersionSubmitting(true);
     try {
       const created = await createDocumentVersion(id, {
-        label: saveVersionTag.trim() || null,
+        tag: saveVersionTag.trim() || null,
         note: null,
       });
       setLatestVersionSnapshot({
@@ -799,7 +799,7 @@ export function DocumentDetail() {
     try {
       const updated = await restoreDocumentVersion(id, restoreModalVersion.id, {
         save_current_as_version: restoreSaveCurrent,
-        label: restoreLabel.trim() || null,
+        tag: restoreLabel.trim() || null,
         note: restoreNote.trim() || null,
       });
       setDocument(updated);
@@ -1714,35 +1714,60 @@ export function DocumentDetail() {
                     ) : versionsItems.length === 0 ? (
                       <p className="document-detail-muted">No versions yet. Use &quot;Save version&quot; to create one.</p>
                     ) : (
-                      <ul className="document-detail-versions-list">
-                        {versionsItems.map((v) => (
-                          <li key={v.id} className="document-detail-versions-row">
-                            <div className="document-detail-versions-row-main">
-                              <span className="document-detail-versions-vno">v{v.version_number}</span>
-                              {v.label && <span className="document-detail-versions-labeltext">{v.label}</span>}
-                              <span className="document-detail-versions-date">
-                                {new Date(v.created_at).toLocaleString()}
-                              </span>
-                            </div>
-                            <div className="document-detail-versions-row-actions">
-                              <button
-                                type="button"
-                                className="btn btn-sm"
-                                onClick={() => handlePreviewVersion(v.id)}
-                              >
-                                Preview
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-primary btn-sm"
-                                onClick={() => setRestoreModalVersion(v)}
-                              >
-                                Restore
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      <table className="document-detail-versions-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">Version</th>
+                            <th scope="col">Tag</th>
+                            <th scope="col">Saved</th>
+                            <th scope="col" className="document-detail-versions-th-actions">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {versionsItems.map((v) => (
+                            <tr key={v.id}>
+                              <td>
+                                <span className="document-detail-versions-vno">v{v.version_number}</span>
+                              </td>
+                              <td>
+                                {v.tag ? (
+                                  <span className="document-detail-versions-tag">{v.tag}</span>
+                                ) : (
+                                  <span className="document-detail-versions-empty">—</span>
+                                )}
+                              </td>
+                              <td>
+                                <time
+                                  className="document-detail-versions-date"
+                                  dateTime={v.created_at}
+                                >
+                                  {new Date(v.created_at).toLocaleString()}
+                                </time>
+                              </td>
+                              <td className="document-detail-versions-td-actions">
+                                <div className="document-detail-versions-actions">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm"
+                                    onClick={() => handlePreviewVersion(v.id)}
+                                  >
+                                    Preview
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => setRestoreModalVersion(v)}
+                                  >
+                                    Restore
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 </div>
@@ -1761,7 +1786,7 @@ export function DocumentDetail() {
                   <div className="document-detail-pageindex-dialog-header">
                     <h2 id="version-preview-title">
                       v{versionPreview.version_number}
-                      {versionPreview.label ? ` — ${versionPreview.label}` : ''}
+                      {versionPreview.tag ? ` — ${versionPreview.tag}` : ''}
                     </h2>
                     <button
                       type="button"
