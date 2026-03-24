@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Edit3, Eye, FileText, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -279,6 +279,7 @@ export function DocumentDetail() {
   const [pageIndex, setPageIndex] = useState<{ structure: PageIndexNode[]; doc_name?: string | null } | null>(null);
   const [pageIndexLoading, setPageIndexLoading] = useState(false);
   const [pageIndexError, setPageIndexError] = useState<string | null>(null);
+  const [pageIndexRefreshKey, setPageIndexRefreshKey] = useState(0);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -370,7 +371,7 @@ export function DocumentDetail() {
       cancelled = true;
       controller.abort();
     };
-  }, [id, rightPanelView, docConfig]);
+  }, [id, rightPanelView, docConfig, pageIndexRefreshKey]);
 
   /** Images: examples use /examples/, backend docs use proxy. */
   const getImageUrl = (path: string) => (id ? getDocumentFileUrl(id, path) : '');
@@ -563,6 +564,7 @@ export function DocumentDetail() {
       setDocument(updated);
       setMarkdown(updated.markdown ?? '');
       setMarkdownEditMode(false);
+      setPageIndexRefreshKey((k) => k + 1);
       toast.success('Markdown saved');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save markdown');
@@ -580,6 +582,7 @@ export function DocumentDetail() {
       setDocument(updated);
       setMarkdown(updated.markdown ?? '');
       setMarkdownEditMode(false);
+      setPageIndexRefreshKey((k) => k + 1);
       toast.success('Markdown restored from storage');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Restore failed');
@@ -1216,19 +1219,47 @@ export function DocumentDetail() {
                 </button>
               </div>
               {rightPanelView === 'markdown' && !docConfig && (
-                <button
-                  type="button"
-                  className={`document-detail-edit-toggle ${markdownEditMode ? 'document-detail-edit-toggle--active' : ''}`}
-                  onClick={() => {
-                    if (!markdownEditMode) setSelectedBlock(null);
-                    setMarkdownEditMode((v) => !v);
-                  }}
-                  title={markdownEditMode ? 'Switch to view mode' : 'Edit markdown'}
-                  aria-pressed={markdownEditMode}
-                >
-                  {markdownEditMode ? <Eye size={14} /> : <Edit3 size={14} />}
-                  <span>{markdownEditMode ? 'View' : 'Edit'}</span>
-                </button>
+                markdownEditMode ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-primary document-detail-save-btn"
+                      onClick={handleSaveMarkdown}
+                      disabled={saving}
+                      title="Save markdown"
+                    >
+                      {saving ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
+                      <span>{saving ? 'Saving…' : 'Save'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={() => {
+                        setMarkdown(document?.markdown ?? '');
+                        setMarkdownEditMode(false);
+                      }}
+                      disabled={saving}
+                      title="Cancel and discard changes"
+                    >
+                      <XIcon size={14} />
+                      <span>Cancel</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="document-detail-edit-toggle"
+                    onClick={() => {
+                      setSelectedBlock(null);
+                      setMarkdownEditMode(true);
+                    }}
+                    title="Edit markdown"
+                    aria-pressed={false}
+                  >
+                    <Edit3 size={14} />
+                    <span>Edit</span>
+                  </button>
+                )
               )}
               <button
                 type="button"
@@ -1293,15 +1324,6 @@ export function DocumentDetail() {
                     placeholder="Markdown content..."
                   />
                   <div className="document-detail-markdown-actions">
-                    <button
-                      type="button"
-                      className="btn btn-primary document-detail-save-btn"
-                      onClick={handleSaveMarkdown}
-                      disabled={saving}
-                    >
-                      {saving ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
-                      <span>{saving ? 'Saving…' : 'Save'}</span>
-                    </button>
                     <button
                       type="button"
                       className="document-detail-restore-btn"

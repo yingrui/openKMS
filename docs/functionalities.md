@@ -26,7 +26,7 @@
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
 | Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; right panel: Markdown | Page Index toggle (PageIndex tree from pipeline; content icon per node opens popup with section content including children); scrollable layout (min-height 720px) |
-| Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`), Restore from S3 (`POST /restore-markdown`) |
+| Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`; rebuilds page index), Restore from S3 (`POST /restore-markdown`; rebuilds page index); `POST /rebuild-page-index` for manual rebuild from current markdown |
 | Document metadata extraction | ✅ | Single METADATA section on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type: text/date/enum/object_type/list[object_type], description); object_type_extraction_max_instances limits instance count for extraction |
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
 | Document metadata (unified) | ✅ | All metadata (extracted + manual) in single `metadata` JSONB; manual labels configure in channel settings Manual Labels tab (type: object_type or list[object_type]); object-instance pickers in METADATA section |
@@ -230,9 +230,10 @@
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
 | POST | `/api/documents/{id}/reset-status` | Reset document status to uploaded (if no active jobs) |
 | PUT | `/api/documents/{id}/metadata` | Update document metadata (partial merge) |
-| PUT | `/api/documents/{id}/markdown` | Update document markdown (DB only) |
-| POST | `/api/documents/{id}/restore-markdown` | Restore markdown from S3 `{file_hash}/markdown.md` |
-| GET | `/api/documents/{id}/page-index` | Get PageIndex tree structure (built during pipeline, served from S3) |
+| PUT | `/api/documents/{id}/markdown` | Update document markdown and rebuild page index in S3 |
+| POST | `/api/documents/{id}/restore-markdown` | Restore markdown from S3 `{file_hash}/markdown.md` and rebuild page index |
+| POST | `/api/documents/{id}/rebuild-page-index` | Rebuild page index from current markdown (DB or S3) and store in S3 |
+| GET | `/api/documents/{id}/page-index` | Get PageIndex tree structure (built during pipeline or after markdown edit, served from S3) |
 | GET | `/api/documents/{id}/section` | Get markdown section by line range (start_line, end_line; 1-based inclusive; for QA agent Page Index skill) |
 | POST | `/api/documents/{id}/extract-metadata` | Extract metadata from markdown using channel's LLM |
 | GET | `/api/pipelines` | List pipeline configurations |

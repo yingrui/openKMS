@@ -29,6 +29,7 @@ from app.schemas.document import (
     ParsingResultResponse,
 )
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
+from app.services.page_index import md_to_tree_from_markdown
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
@@ -244,13 +245,22 @@ async def update_document_markdown(
     body: MarkdownUpdateBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """Update document markdown in database."""
+    """Update document markdown in database and rebuild page index from updated content."""
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
     doc.markdown = body.markdown
     await db.commit()
     await db.refresh(doc)
+
+    if doc.file_hash and settings.storage_enabled:
+        try:
+            page_index = md_to_tree_from_markdown(body.markdown, doc_name=doc.name or "document")
+            key = f"{doc.file_hash}/page_index.json"
+            upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
+        except Exception:
+            pass
+
     return DocumentResponse.model_validate(doc)
 
 
@@ -281,7 +291,52 @@ async def restore_document_markdown(
     doc.markdown = markdown
     await db.commit()
     await db.refresh(doc)
+
+    if doc.file_hash and settings.storage_enabled:
+        try:
+            page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
+            key = f"{doc.file_hash}/page_index.json"
+            upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
+        except Exception:
+            pass
+
     return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/rebuild-page-index")
+async def rebuild_page_index(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Rebuild page index from current document markdown (DB or S3) and store in S3."""
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not doc.file_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Document has no file hash; page index not available",
+        )
+    if doc.status != DocumentStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Document must be fully parsed (status=completed). Current: {doc.status}",
+        )
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+    markdown = _get_document_markdown(doc)
+    if not markdown:
+        raise HTTPException(status_code=404, detail="Document has no markdown content")
+    page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
+    key = f"{doc.file_hash}/page_index.json"
+    upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
+    return {
+        "structure": page_index.get("structure", []),
+        "doc_name": page_index.get("doc_name"),
+    }
 
 
 @router.get("/{document_id}/page-index")
