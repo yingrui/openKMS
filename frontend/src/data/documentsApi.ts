@@ -308,3 +308,18 @@ export async function fetchPageIndex(
   }
   return res.json();
 }
+
+/** Rebuild page index from current markdown (md_to_tree) and persist to S3. */
+export async function rebuildPageIndex(documentId: string): Promise<PageIndexResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/rebuild-page-index`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to rebuild page index');
+  }
+  return res.json();
+}

@@ -8,7 +8,7 @@
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`
 - Document info & metadata: Edit name (`PUT /api/documents/{id}`), edit metadata (`PUT /metadata`), Extract via pydantic-ai Agent + StructuredDict
-- Document markdown: Edit and save (`PUT /markdown`; rebuilds page index in S3), restore from S3 (`POST /restore-markdown`; rebuilds page index), optional `POST /rebuild-page-index`; detail page shows Save/Cancel in panel header when editing (not View toggle)
+- Document markdown: Edit and save (`PUT /markdown`; rebuilds page index in S3), restore from S3 (`POST /restore-markdown`; rebuilds page index), optional `POST /rebuild-page-index` (also triggered from Page Index tab refresh); detail page shows Save/Cancel in panel header when editing (not View toggle); Page Index tab has refresh control (tooltip: parse markdown to tree)
 - Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
 - Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
 - OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev

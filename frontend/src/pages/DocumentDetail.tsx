@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -8,7 +8,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
-import { fetchDocumentById, extractDocumentMetadata, fetchPageIndex, getDocumentFileUrl, getDocumentFilesBaseUrl, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse, type PageIndexNode } from '../data/documentsApi';
+import { fetchDocumentById, extractDocumentMetadata, fetchPageIndex, getDocumentFileUrl, getDocumentFilesBaseUrl, rebuildPageIndex, resetDocumentStatus, updateDocument, updateDocumentMetadata, updateDocumentMarkdown, restoreDocumentMarkdown, type DocumentResponse, type PageIndexNode } from '../data/documentsApi';
 import { fetchObjectType, fetchObjectInstances } from '../data/ontologyApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
@@ -280,6 +280,7 @@ export function DocumentDetail() {
   const [pageIndexLoading, setPageIndexLoading] = useState(false);
   const [pageIndexError, setPageIndexError] = useState<string | null>(null);
   const [pageIndexRefreshKey, setPageIndexRefreshKey] = useState(0);
+  const [pageIndexRebuilding, setPageIndexRebuilding] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -588,6 +589,21 @@ export function DocumentDetail() {
       toast.error(e instanceof Error ? e.message : 'Restore failed');
     } finally {
       setRestoring(false);
+    }
+  }, [id]);
+
+  const handleRebuildPageIndex = useCallback(async () => {
+    if (!id) return;
+    setPageIndexRebuilding(true);
+    try {
+      const data = await rebuildPageIndex(id);
+      setPageIndex(data);
+      setPageIndexError(null);
+      toast.success('Page index updated');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to rebuild page index');
+    } finally {
+      setPageIndexRebuilding(false);
     }
   }, [id]);
 
@@ -1260,6 +1276,22 @@ export function DocumentDetail() {
                     <span>Edit</span>
                   </button>
                 )
+              )}
+              {rightPanelView === 'pageIndex' && !docConfig && (
+                <button
+                  type="button"
+                  className="document-detail-edit-toggle"
+                  onClick={handleRebuildPageIndex}
+                  disabled={pageIndexRebuilding}
+                  title="parse markdown to tree"
+                  aria-label="parse markdown to tree"
+                >
+                  {pageIndexRebuilding ? (
+                    <Loader2 size={14} className="doc-detail-spinner" />
+                  ) : (
+                    <RefreshCw size={14} />
+                  )}
+                </button>
               )}
               <button
                 type="button"
