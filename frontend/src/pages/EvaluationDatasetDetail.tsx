@@ -11,6 +11,7 @@ import {
   Upload,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -23,6 +24,7 @@ import {
   runEvaluation,
   listEvaluationRuns,
   getEvaluationRun,
+  deleteEvaluationRun,
   compareEvaluationRuns,
   type EvaluationDatasetResponse,
   type EvaluationDatasetItemResponse,
@@ -64,6 +66,7 @@ export function EvaluationDatasetDetail() {
   const [compareRunB, setCompareRunB] = useState('');
   const [compareData, setCompareData] = useState<EvaluationCompareResponse | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
+  const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
 
   const loadDataset = useCallback(async () => {
     if (!datasetId) return;
@@ -242,6 +245,29 @@ export function EvaluationDatasetDetail() {
       toast.success('Loaded run');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to load run');
+    }
+  };
+
+  const handleDeleteRun = async (runId: string) => {
+    if (!datasetId || !confirm('Delete this evaluation run from history?')) return;
+    setDeletingRunId(runId);
+    try {
+      await deleteEvaluationRun(datasetId, runId);
+      if (runView?.run_id === runId) setRunView(null);
+      if (compareRunA === runId) setCompareRunA('');
+      if (compareRunB === runId) setCompareRunB('');
+      if (
+        compareData &&
+        (compareData.run_a_id === runId || compareData.run_b_id === runId)
+      ) {
+        setCompareData(null);
+      }
+      toast.success('Run deleted');
+      await loadRuns();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete run');
+    } finally {
+      setDeletingRunId(null);
     }
   };
 
@@ -474,7 +500,7 @@ export function EvaluationDatasetDetail() {
                   <th>Pass</th>
                   <th>Avg score</th>
                   <th>Status</th>
-                  <th className="eval-table-actions">View</th>
+                  <th className="eval-table-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -490,13 +516,30 @@ export function EvaluationDatasetDetail() {
                     <td>{r.avg_score != null ? r.avg_score.toFixed(2) : '—'}</td>
                     <td>{r.status}</td>
                     <td className="eval-table-actions">
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => handleLoadRun(r.id)}
-                      >
-                        View
-                      </button>
+                      <div className="eval-table-btns">
+                        <button
+                          type="button"
+                          title="View"
+                          aria-label="View run"
+                          onClick={() => handleLoadRun(r.id)}
+                          disabled={deletingRunId === r.id}
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete"
+                          aria-label="Delete run"
+                          onClick={() => handleDeleteRun(r.id)}
+                          disabled={deletingRunId === r.id}
+                        >
+                          {deletingRunId === r.id ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Trash2 size={16} />
+                          )}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

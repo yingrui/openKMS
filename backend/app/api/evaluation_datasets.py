@@ -560,6 +560,18 @@ async def get_evaluation_run(
     return _run_to_response(run, results)
 
 
+@router.delete("/{dataset_id}/runs/{run_id}", status_code=204)
+async def delete_evaluation_run(
+    dataset_id: str,
+    run_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    run = await db.get(EvaluationRun, run_id)
+    if not run or run.evaluation_dataset_id != dataset_id:
+        raise HTTPException(status_code=404, detail="Evaluation run not found")
+    await db.delete(run)
+
+
 @router.post("/{dataset_id}/run", response_model=EvaluationRunResponse)
 async def run_evaluation(
     dataset_id: str,

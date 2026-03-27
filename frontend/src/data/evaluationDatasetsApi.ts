@@ -315,6 +315,15 @@ export async function getEvaluationRun(
   return res.json();
 }
 
+export async function deleteEvaluationRun(datasetId: string, runId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/${encodeURIComponent(runId)}`,
+    { method: 'DELETE', headers: { ...headers }, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(`Failed to delete evaluation run: ${res.status}`);
+}
+
 export async function compareEvaluationRuns(
   datasetId: string,
   runA: string,
