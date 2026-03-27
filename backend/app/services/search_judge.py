@@ -94,3 +94,85 @@ async def judge_search_results(
     except Exception as e:
         logger.error("Judge failed: %s", e)
         return {"pass": False, "score": 0.0, "reasoning": str(e)}
+
+
+QA_JUDGE_PROMPT = """You are evaluating end-to-end question answering for a RAG / knowledge base system.
+
+User question: {query}
+Expected answer (ground truth): {expected_answer}
+
+Model-generated answer:
+{generated_answer}
+
+Optional cited sources (snippets the model may have used):
+{formatted_sources}
+
+Task: Judge whether the generated answer adequately addresses the question and is consistent with the expected answer. Allow paraphrasing; penalize contradictions, missing key facts, or hallucinations.
+
+Respond with JSON only, no other text: {{"pass": true|false, "score": 0.0-1.0, "reasoning": "brief explanation"}}
+- pass: true if the answer is satisfactory relative to the expected answer
+- score: 0.0 to 1.0
+- reasoning: one or two sentences"""
+
+
+async def judge_qa_answer(
+    query: str,
+    expected_answer: str,
+    generated_answer: str,
+    sources: list[dict[str, Any]],
+    model_config: dict[str, Any],
+) -> dict[str, Any]:
+    """LLM judge: generated QA answer vs expected answer."""
+    formatted = []
+    for i, r in enumerate(sources[:10], 1):
+        content = (r.get("content") or "")[:1500]
+        score = r.get("score", 0)
+        stype = r.get("source_type", "unknown")
+        formatted.append(f"[{i}] ({stype}, score={score})\n{content}")
+    formatted_sources = "\n\n".join(formatted) if formatted else "(No sources provided)"
+
+    prompt = QA_JUDGE_PROMPT.format(
+        query=query,
+        expected_answer=expected_answer,
+        generated_answer=generated_answer or "(empty answer)",
+        formatted_sources=formatted_sources,
+    )
+
+    base_url = model_config.get("base_url", "").rstrip("/")
+    if base_url and not base_url.endswith("/v1"):
+        base_url = f"{base_url}/v1"
+
+    client = AsyncOpenAI(
+        base_url=base_url,
+        api_key=model_config.get("api_key") or "no-key",
+    )
+
+    try:
+        response = await client.chat.completions.create(
+            model=model_config.get("model_name", "gpt-4o-mini"),
+            messages=[
+                {"role": "system", "content": "You are a QA quality evaluator. Respond only with valid JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.0,
+        )
+        content = (response.choices[0].message.content or "{}").strip()
+        if content.startswith("```"):
+            lines = content.split("\n")
+            content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+
+        data = json.loads(content)
+        if not isinstance(data, dict):
+            return {"pass": False, "score": 0.0, "reasoning": "Invalid judge response"}
+
+        return {
+            "pass": bool(data.get("pass", False)),
+            "score": float(data.get("score", 0.0)),
+            "reasoning": str(data.get("reasoning", "")),
+        }
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse QA judge response as JSON: %s", e)
+        return {"pass": False, "score": 0.0, "reasoning": f"Parse error: {e}"}
+    except Exception as e:
+        logger.error("QA judge failed: %s", e)
+        return {"pass": False, "score": 0.0, "reasoning": str(e)}

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useParams } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
@@ -44,6 +44,11 @@ const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettin
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
 
+function EvaluationDatasetDetailPage() {
+  const { id } = useParams();
+  return <EvaluationDatasetDetail key={id ?? ''} />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -68,7 +73,7 @@ function App() {
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
           <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />
-          <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetail /></FeatureGate>} />
+          <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
           <Route path="pipelines" element={<Pipelines />} />

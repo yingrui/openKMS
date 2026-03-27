@@ -48,7 +48,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -129,7 +129,7 @@ backend/
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, items/import (CSV), run (search + LLM judge)
+│   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, import (CSV), run (search_retrieval | qa_answer), runs list/get/compare
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
@@ -153,6 +153,8 @@ backend/
 │   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
 │   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
 │   │   ├── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
+│   │   ├── evaluation_dataset.py  # EvaluationDataset, EvaluationDatasetItem (query + expected answer)
+│   │   ├── evaluation_run.py   # EvaluationRun, EvaluationRunItem (persisted run + per-item detail JSONB)
 │   │   ├── glossary.py        # Glossary (name, description)
 │   │   └── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, definition, synonyms_en, synonyms_cn)
 │   ├── schemas/
@@ -176,7 +178,8 @@ backend/
 │       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
 │       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
 │       ├── kb_search.py                  # Semantic search over chunks and FAQs (used by search route and evaluation)
-│       ├── search_judge.py               # LLM judge for search retrieval evaluation (pass, score, reasoning)
+│       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
+│       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
 │       └── storage.py                    # S3/MinIO client (upload, delete)
 ├── scripts/

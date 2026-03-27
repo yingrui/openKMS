@@ -29,6 +29,7 @@ import app.models.link_instance  # noqa: F401 - register models with Base.metada
 import app.models.data_source  # noqa: F401 - register models with Base.metadata
 import app.models.dataset  # noqa: F401 - register models with Base.metadata
 import app.models.evaluation_dataset  # noqa: F401 - register models with Base.metadata
+import app.models.evaluation_run  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

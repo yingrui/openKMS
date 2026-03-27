@@ -44,6 +44,52 @@ Create the database:
 createdb openkms
 ```
 
+### pgvector (semantic search & embeddings)
+
+Knowledge base search and FAQ/chunk embeddings need the **pgvector** extension in PostgreSQL.
+
+1. Install pgvector for your PostgreSQL version, for example:
+   - **macOS (Homebrew):** `brew install pgvector`
+   - **Docker (recommended):** use an image that **already includes** pgvector so you never fight apt inside the container — e.g. [`pgvector/pgvector`](https://github.com/pgvector/pgvector#docker-images) tags like `pgvector/pgvector:pg15` (match your major version). Point your volume at the same data directory, or dump/restore if you change images.
+   - **Docker (package not found):** the default `postgres` image often **does not** ship the Debian package `postgresql-15-pgvector` in its default apt sources. Either:
+     - **Add the PostgreSQL PGDG apt repo** (inside the container), then install — example for Debian-based images (adjust `15` and codename if needed; codename = `grep VERSION_CODENAME /etc/os-release`):
+
+       ```bash
+       apt-get update && apt-get install -y ca-certificates curl gnupg
+       install -d /usr/share/postgresql-common/pgdg
+       curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+       echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+       apt-get update && apt-get install -y postgresql-15-pgvector
+       ```
+
+       Then restart the container and verify `SELECT '[1,2,3]'::vector;`.
+     - **Or compile** (needs `postgresql-server-dev-15` and build tools): see [pgvector install](https://github.com/pgvector/pgvector#linux-and-mac).
+   - **Docker (Alpine):** use `apk` / a pgvector-enabled image; package names differ from Debian.
+2. Enable the extension (as a superuser or role with `CREATE` on the database):
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+If vector search fails with a 503, the API message is: *Vector search requires the pgvector extension…* — follow the steps above.
+
+**Local dev:** `./dev.sh` runs `scripts/ensure_pgvector.py` before the server starts (checks/creates the extension and can attempt install in some Docker setups).
+
+**Still failing after `CREATE EXTENSION`?** The extension only applies to the **exact** database session the backend uses. Common causes:
+
+1. **Different Postgres than `psql`** — Backend reads `OPENKMS_DATABASE_HOST`, `OPENKMS_DATABASE_PORT`, `OPENKMS_DATABASE_NAME`, `OPENKMS_DATABASE_USER` from `backend/.env`. If you ran `CREATE EXTENSION` on a host Postgres but the app points at **Docker** (or another host/port), that other instance may not have pgvector. Align `.env` with where you connected, or run `CREATE EXTENSION` on **that** database.
+2. **Sanity check as the app user** (same user/password as in `.env`):
+
+   ```bash
+   psql -d openkms -U <OPENKMS_DATABASE_USER> -h <host> -p <port> -c "SELECT extversion FROM pg_extension WHERE extname = 'vector';"
+   psql ... -c "SELECT '[1,2,3]'::vector;"
+   ```
+
+   If the second command errors, the server process for that connection still lacks a working pgvector library (reinstall/restart Postgres).
+3. **`could not access file "$libdir/vector"`** — `pg_extension` lists `vector`, but the **pgvector shared library** is not installed under PostgreSQL’s lib directory (common after a Postgres upgrade, image change, or DB restore from elsewhere). Fix: install the OS package for your **exact major version** (from `SELECT version();`), e.g. Debian/Ubuntu `sudo apt update && sudo apt install postgresql-15-pgvector`, then **`systemctl restart postgresql`** (or restart the container). Test again: `SELECT '[1,2,3]'::vector;`. Do **not** `DROP EXTENSION vector` if you already have tables using `vector` columns (e.g. chunks/FAQs); reinstalling the package is enough once the `.so` is on disk.
+
+4. **Not a vector error** — Note the **full** API error or backend traceback. Missing embeddings, wrong KB config, or auth issues produce different messages than the 503 pgvector text.
+
 Tables are created automatically on startup via `init_db()`.
 
 ## Run

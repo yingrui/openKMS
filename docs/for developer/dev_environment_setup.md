@@ -20,6 +20,24 @@ GRANT ALL ON SCHEMA public TO openkms_user;
 GRANT CREATE ON SCHEMA public TO openkms_user;
 ```
 
+### pgvector (semantic search & KB embeddings)
+
+Vector search and FAQ/chunk embeddings require the **pgvector** extension in PostgreSQL.
+
+1. Install pgvector for your server (examples):
+   - **macOS:** `brew install pgvector`
+   - **Docker:** use a Postgres image with pgvector (e.g. [`pgvector/pgvector`](https://github.com/pgvector/pgvector#docker-images)) or install `postgresql-<major>-pgvector` in the container.
+2. As a superuser (or a role that can create extensions), run:
+
+```sql
+\c openkms
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+If the API returns **503** with *Vector search requires the pgvector extension…*, install pgvector and run `CREATE EXTENSION IF NOT EXISTS vector;` on the openKMS database.
+
+When starting the backend with **`backend/dev.sh`**, `scripts/ensure_pgvector.py` runs first to verify or create the extension (and may help in some Docker setups).
+
 ### Document Parsing Solution
 
 Dependence packages are:

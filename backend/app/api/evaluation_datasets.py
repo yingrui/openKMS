@@ -2,28 +2,42 @@
 import csv
 import io
 import uuid
+from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.auth import require_auth
 from app.database import get_db
-from app.models.api_model import ApiModel
 from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
+from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.evaluation_dataset import (
+    EvaluationCompareResponse,
+    EvaluationCompareRow,
     EvaluationDatasetCreate,
     EvaluationDatasetItemCreate,
+    EvaluationDatasetItemListResponse,
     EvaluationDatasetItemResponse,
     EvaluationDatasetItemUpdate,
     EvaluationDatasetListResponse,
     EvaluationDatasetResponse,
     EvaluationDatasetUpdate,
+    EvaluationRunListItem,
+    EvaluationRunListResponse,
+    EvaluationRunRequestBody,
     EvaluationRunResponse,
     EvaluationRunResult,
     SearchResultSnippet,
+)
+from app.services.evaluation.execute import (
+    ALLOWED_EVALUATION_TYPES,
+    EVALUATION_TYPE_QA_ANSWER,
+    EVALUATION_TYPE_SEARCH_RETRIEVAL,
+    resolve_judge_config,
+    run_qa_answer_evaluation,
+    run_search_retrieval_evaluation,
 )
 
 router = APIRouter(
@@ -53,6 +67,121 @@ def _dataset_to_response(
         item_count=item_count,
         created_at=ds.created_at,
         updated_at=ds.updated_at,
+    )
+
+
+def _aggregates(item_rows: list[dict]) -> tuple[int, int, float | None]:
+    n = len(item_rows)
+    if n == 0:
+        return 0, 0, None
+    pc = sum(1 for r in item_rows if r.get("passed"))
+    avg = sum(float(r.get("score", 0)) for r in item_rows) / n
+    return n, pc, avg
+
+
+def _snippet_model_from_dict(s: dict) -> SearchResultSnippet:
+    return SearchResultSnippet(
+        content=str(s.get("content", "")),
+        score=float(s.get("score", 0)),
+        source_type=str(s.get("source_type", "unknown")),
+    )
+
+
+def _result_dicts_to_schemas(evaluation_type: str, rows: list[dict]) -> list[EvaluationRunResult]:
+    out: list[EvaluationRunResult] = []
+    for r in rows:
+        detail = r.get("detail") or {}
+        srs = [_snippet_model_from_dict(s) for s in (detail.get("search_results") or [])]
+        qas = [_snippet_model_from_dict(s) for s in (detail.get("sources") or [])]
+        out.append(
+            EvaluationRunResult(
+                item_id=r["evaluation_dataset_item_id"],
+                query=r["query"],
+                expected_answer=r["expected_answer"],
+                search_results=srs if evaluation_type == EVALUATION_TYPE_SEARCH_RETRIEVAL else [],
+                generated_answer=detail.get("answer") if evaluation_type == EVALUATION_TYPE_QA_ANSWER else None,
+                qa_sources=qas if evaluation_type == EVALUATION_TYPE_QA_ANSWER else [],
+                pass_=bool(r.get("passed")),
+                score=float(r.get("score", 0)),
+                reasoning=str(r.get("reasoning", "")),
+            )
+        )
+    return out
+
+
+def _run_item_to_result(
+    ri: EvaluationRunItem, item: EvaluationDatasetItem, evaluation_type: str
+) -> EvaluationRunResult:
+    detail = ri.detail or {}
+    srs = [_snippet_model_from_dict(s) for s in (detail.get("search_results") or [])]
+    qas = [_snippet_model_from_dict(s) for s in (detail.get("sources") or [])]
+    return EvaluationRunResult(
+        item_id=item.id,
+        query=item.query,
+        expected_answer=item.expected_answer,
+        search_results=srs if evaluation_type == EVALUATION_TYPE_SEARCH_RETRIEVAL else [],
+        generated_answer=detail.get("answer") if evaluation_type == EVALUATION_TYPE_QA_ANSWER else None,
+        qa_sources=qas if evaluation_type == EVALUATION_TYPE_QA_ANSWER else [],
+        pass_=ri.passed,
+        score=float(ri.score),
+        reasoning=ri.reasoning or "",
+    )
+
+
+async def _persist_run(
+    db: AsyncSession,
+    *,
+    dataset_id: str,
+    knowledge_base_id: str,
+    evaluation_type: str,
+    config_snapshot: dict | None,
+    item_rows: list[dict],
+    status: str = "completed",
+    error_message: str | None = None,
+) -> EvaluationRun:
+    n, pc, avg = _aggregates(item_rows)
+    run = EvaluationRun(
+        id=str(uuid.uuid4()),
+        evaluation_dataset_id=dataset_id,
+        knowledge_base_id=knowledge_base_id,
+        evaluation_type=evaluation_type,
+        status=status,
+        error_message=error_message,
+        item_count=n,
+        pass_count=pc,
+        avg_score=avg,
+        config_snapshot=config_snapshot,
+        finished_at=datetime.now(timezone.utc),
+    )
+    db.add(run)
+    await db.flush()
+    for r in item_rows:
+        db.add(
+            EvaluationRunItem(
+                id=str(uuid.uuid4()),
+                evaluation_run_id=run.id,
+                evaluation_dataset_item_id=r["evaluation_dataset_item_id"],
+                passed=bool(r.get("passed")),
+                score=float(r.get("score", 0)),
+                reasoning=str(r.get("reasoning", "")),
+                detail=r.get("detail"),
+            )
+        )
+    await db.flush()
+    await db.refresh(run)
+    return run
+
+
+def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> EvaluationRunResponse:
+    return EvaluationRunResponse(
+        run_id=run.id,
+        evaluation_type=run.evaluation_type,
+        status=run.status,
+        item_count=run.item_count,
+        pass_count=run.pass_count,
+        avg_score=run.avg_score,
+        error_message=run.error_message,
+        results=results,
     )
 
 
@@ -140,32 +269,34 @@ async def delete_evaluation_dataset(
 
 # --- Items ---
 
-@router.get("/{dataset_id}/items", response_model=list[EvaluationDatasetItemResponse])
+@router.get("/{dataset_id}/items", response_model=EvaluationDatasetItemListResponse)
 async def list_evaluation_dataset_items(
     dataset_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
     ds = await db.get(EvaluationDataset, dataset_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+    count_q = await db.execute(
+        select(func.count()).select_from(EvaluationDatasetItem).where(
+            EvaluationDatasetItem.evaluation_dataset_id == dataset_id
+        )
+    )
+    total = count_q.scalar_one()
     result = await db.execute(
         select(EvaluationDatasetItem)
         .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
         .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+        .offset(offset)
+        .limit(limit)
     )
-    items = result.scalars().all()
-    return [
-        EvaluationDatasetItemResponse(
-            id=i.id,
-            evaluation_dataset_id=i.evaluation_dataset_id,
-            query=i.query,
-            expected_answer=i.expected_answer,
-            topic=i.topic,
-            sort_order=i.sort_order,
-            created_at=i.created_at,
-        )
-        for i in items
-    ]
+    rows = result.scalars().all()
+    return EvaluationDatasetItemListResponse(
+        items=[EvaluationDatasetItemResponse.model_validate(i) for i in rows],
+        total=total,
+    )
 
 
 @router.post("/{dataset_id}/items", response_model=EvaluationDatasetItemResponse, status_code=201)
@@ -295,123 +426,209 @@ async def delete_evaluation_dataset_item(
     await db.delete(item)
 
 
-# --- Run Evaluation ---
+# --- Run evaluation & persisted reports ---
+
+
+@router.get("/{dataset_id}/runs/compare", response_model=EvaluationCompareResponse)
+async def compare_evaluation_runs(
+    dataset_id: str,
+    run_a: str = Query(..., description="First evaluation run id"),
+    run_b: str = Query(..., description="Second evaluation run id"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Compare two runs item-by-item (pass/score deltas)."""
+    ds = await db.get(EvaluationDataset, dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+
+    ra = await db.get(EvaluationRun, run_a)
+    rb = await db.get(EvaluationRun, run_b)
+    if not ra or ra.evaluation_dataset_id != dataset_id:
+        raise HTTPException(status_code=404, detail="Run A not found for this dataset")
+    if not rb or rb.evaluation_dataset_id != dataset_id:
+        raise HTTPException(status_code=404, detail="Run B not found for this dataset")
+
+    res_a = await db.execute(
+        select(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id == run_a)
+    )
+    res_b = await db.execute(
+        select(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id == run_b)
+    )
+    map_a = {x.evaluation_dataset_item_id: x for x in res_a.scalars().all()}
+    map_b = {x.evaluation_dataset_item_id: x for x in res_b.scalars().all()}
+
+    order_res = await db.execute(
+        select(EvaluationDatasetItem)
+        .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
+        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+    )
+    items_ordered = order_res.scalars().all()
+
+    rows: list[EvaluationCompareRow] = []
+    for item in items_ordered:
+        ia = map_a.get(item.id)
+        ib = map_b.get(item.id)
+        if not ia or not ib:
+            continue
+        pa, pb = ia.passed, ib.passed
+        sa, sb = float(ia.score), float(ib.score)
+        rows.append(
+            EvaluationCompareRow(
+                evaluation_dataset_item_id=item.id,
+                query=item.query,
+                expected_answer=item.expected_answer,
+                pass_a=pa,
+                score_a=sa,
+                pass_b=pb,
+                score_b=sb,
+                pass_changed=pa != pb,
+                score_delta=round(sb - sa, 4),
+            )
+        )
+
+    return EvaluationCompareResponse(
+        run_a_id=run_a,
+        run_b_id=run_b,
+        evaluation_type_a=ra.evaluation_type,
+        evaluation_type_b=rb.evaluation_type,
+        rows=rows,
+    )
+
+
+@router.get("/{dataset_id}/runs", response_model=EvaluationRunListResponse)
+async def list_evaluation_runs(
+    dataset_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    ds = await db.get(EvaluationDataset, dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+
+    count_q = await db.execute(
+        select(func.count()).select_from(EvaluationRun).where(
+            EvaluationRun.evaluation_dataset_id == dataset_id
+        )
+    )
+    total = count_q.scalar_one()
+
+    result = await db.execute(
+        select(EvaluationRun)
+        .where(EvaluationRun.evaluation_dataset_id == dataset_id)
+        .order_by(EvaluationRun.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    runs = result.scalars().all()
+    items = [
+        EvaluationRunListItem(
+            id=r.id,
+            evaluation_type=r.evaluation_type,
+            status=r.status,
+            item_count=r.item_count,
+            pass_count=r.pass_count,
+            avg_score=r.avg_score,
+            created_at=r.created_at,
+        )
+        for r in runs
+    ]
+    return EvaluationRunListResponse(items=items, total=total)
+
+
+@router.get("/{dataset_id}/runs/{run_id}", response_model=EvaluationRunResponse)
+async def get_evaluation_run(
+    dataset_id: str,
+    run_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    run = await db.get(EvaluationRun, run_id)
+    if not run or run.evaluation_dataset_id != dataset_id:
+        raise HTTPException(status_code=404, detail="Evaluation run not found")
+
+    result = await db.execute(
+        select(EvaluationRunItem, EvaluationDatasetItem)
+        .join(
+            EvaluationDatasetItem,
+            EvaluationDatasetItem.id == EvaluationRunItem.evaluation_dataset_item_id,
+        )
+        .where(EvaluationRunItem.evaluation_run_id == run_id)
+        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+    )
+    pairs = result.all()
+    results = [_run_item_to_result(ri, item, run.evaluation_type) for ri, item in pairs]
+    return _run_to_response(run, results)
+
 
 @router.post("/{dataset_id}/run", response_model=EvaluationRunResponse)
 async def run_evaluation(
     dataset_id: str,
-    _token: str = Depends(require_auth),
+    body: EvaluationRunRequestBody = Body(default_factory=EvaluationRunRequestBody),
+    token: str = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Run search-based evaluation: search per query, then LLM judge for each item."""
+    """Run evaluation (search retrieval or QA), persist report, return full results."""
+    raw_type = (body.evaluation_type or "").strip()
+    eval_type = raw_type if raw_type else EVALUATION_TYPE_SEARCH_RETRIEVAL
+    if eval_type not in ALLOWED_EVALUATION_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid evaluation_type. Allowed: {', '.join(sorted(ALLOWED_EVALUATION_TYPES))}",
+        )
+
     ds = await db.get(EvaluationDataset, dataset_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
-    if not kb.embedding_model_id:
+
+    if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL and not kb.embedding_model_id:
         raise HTTPException(
             status_code=400,
             detail="No embedding model configured for this knowledge base. Configure it in KB Settings.",
         )
 
-    # Resolve judge model: kb.judge_model_id or fallback to first llm model
-    judge_model_id = kb.judge_model_id
-    if not judge_model_id:
-        fallback = await db.execute(
-            select(ApiModel)
-            .options(selectinload(ApiModel.provider_rel))
-            .where(ApiModel.category == "llm")
-            .order_by(ApiModel.is_default_in_category.desc().nullslast())
-            .limit(1)
-        )
-        judge_model = fallback.scalar_one_or_none()
-        if not judge_model:
-            raise HTTPException(
-                status_code=400,
-                detail="No judge model configured. Set judge_model_id on the KB or add an LLM model.",
-            )
-        judge_model_id = judge_model.id
-
-    judge_model_result = await db.execute(
-        select(ApiModel)
-        .options(selectinload(ApiModel.provider_rel))
-        .where(ApiModel.id == judge_model_id)
-    )
-    judge_model = judge_model_result.scalar_one_or_none()
-    if not judge_model:
-        raise HTTPException(status_code=400, detail="Judge model not found")
-
-    judge_config = {
-        "base_url": judge_model.provider_rel.base_url,
-        "api_key": judge_model.provider_rel.api_key or "no-key",
-        "model_name": judge_model.model_name or judge_model.name,
+    judge_model_id, judge_config = await resolve_judge_config(db, kb)
+    config_snapshot = {
+        "judge_model_id": judge_model_id,
+        "top_k": 10,
+        "search_type": "all",
     }
 
-    from app.services.kb_search import search_knowledge_base
-    from app.services.search_judge import judge_search_results
+    try:
+        if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
+            item_rows = await run_search_retrieval_evaluation(
+                db, ds.knowledge_base_id, dataset_id, judge_config
+            )
+        else:
+            item_rows = await run_qa_answer_evaluation(
+                db, kb, dataset_id, judge_config, token
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        run = await _persist_run(
+            db,
+            dataset_id=dataset_id,
+            knowledge_base_id=ds.knowledge_base_id,
+            evaluation_type=eval_type,
+            config_snapshot=config_snapshot,
+            item_rows=[],
+            status="failed",
+            error_message=str(e),
+        )
+        return _run_to_response(run, [])
 
-    result = await db.execute(
-        select(EvaluationDatasetItem)
-        .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
-        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+    run = await _persist_run(
+        db,
+        dataset_id=dataset_id,
+        knowledge_base_id=ds.knowledge_base_id,
+        evaluation_type=eval_type,
+        config_snapshot=config_snapshot,
+        item_rows=item_rows,
+        status="completed",
+        error_message=None,
     )
-    items = result.scalars().all()
-
-    results: list[EvaluationRunResult] = []
-    for item in items:
-        try:
-            search_resp = await search_knowledge_base(
-                ds.knowledge_base_id,
-                item.query,
-                top_k=10,
-                search_type="all",
-                db=db,
-            )
-        except HTTPException:
-            raise
-        except Exception as e:
-            results.append(
-                EvaluationRunResult(
-                    item_id=item.id,
-                    query=item.query,
-                    expected_answer=item.expected_answer,
-                    search_results=[],
-                    pass_=False,
-                    score=0.0,
-                    reasoning=str(e),
-                )
-            )
-            continue
-
-        search_list = [
-            {"content": r.content, "score": r.score, "source_type": r.source_type}
-            for r in search_resp.results
-        ]
-
-        verdict = await judge_search_results(
-            item.query,
-            item.expected_answer,
-            search_list,
-            judge_config,
-        )
-
-        snippets = [
-            SearchResultSnippet(content=r["content"][:500], score=r["score"], source_type=r["source_type"])
-            for r in search_list[:5]
-        ]
-
-        results.append(
-            EvaluationRunResult(
-                item_id=item.id,
-                query=item.query,
-                expected_answer=item.expected_answer,
-                search_results=snippets,
-                pass_=verdict["pass"],
-                score=verdict["score"],
-                reasoning=verdict["reasoning"],
-            )
-        )
-
-    return EvaluationRunResponse(results=results)
+    schemas = _result_dicts_to_schemas(eval_type, item_rows)
+    return _run_to_response(run, schemas)

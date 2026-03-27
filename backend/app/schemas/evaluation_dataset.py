@@ -64,6 +64,11 @@ class EvaluationDatasetItemResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class EvaluationDatasetItemListResponse(BaseModel):
+    items: list[EvaluationDatasetItemResponse]
+    total: int
+
+
 # --- Run Evaluation ---
 
 
@@ -80,6 +85,8 @@ class EvaluationRunResult(BaseModel):
     query: str
     expected_answer: str
     search_results: list[SearchResultSnippet] = []
+    generated_answer: str | None = None
+    qa_sources: list[SearchResultSnippet] = []
     pass_: bool = Field(False, alias="pass")
     score: float = 0.0
     reasoning: str = ""
@@ -87,5 +94,57 @@ class EvaluationRunResult(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class EvaluationRunRequestBody(BaseModel):
+    """Body for POST .../run."""
+
+    evaluation_type: str = "search_retrieval"
+
+
 class EvaluationRunResponse(BaseModel):
+    """Response after running evaluation (also matches persisted run summary + items)."""
+
+    run_id: str
+    evaluation_type: str
+    status: str
+    item_count: int
+    pass_count: int
+    avg_score: float | None
+    error_message: str | None = None
     results: list[EvaluationRunResult]
+
+
+class EvaluationRunListItem(BaseModel):
+    id: str
+    evaluation_type: str
+    status: str
+    item_count: int
+    pass_count: int
+    avg_score: float | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class EvaluationRunListResponse(BaseModel):
+    items: list[EvaluationRunListItem]
+    total: int
+
+
+class EvaluationCompareRow(BaseModel):
+    evaluation_dataset_item_id: str
+    query: str
+    expected_answer: str
+    pass_a: bool
+    score_a: float
+    pass_b: bool
+    score_b: float
+    pass_changed: bool
+    score_delta: float
+
+
+class EvaluationCompareResponse(BaseModel):
+    run_a_id: str
+    run_b_id: str
+    evaluation_type_a: str
+    evaluation_type_b: str
+    rows: list[EvaluationCompareRow]

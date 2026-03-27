@@ -81,9 +81,10 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Evaluation dataset CRUD | ✅ | Create/edit/delete datasets; each linked to one knowledge base |
-| Evaluation items | ✅ | Add/edit/delete items: query + expected answer pairs; optional topic column |
+| Evaluation items | ✅ | Add/edit/delete items: query + expected answer pairs; optional topic column; list API paginated (`offset`/`limit`, default limit 10); dataset detail UI: per-page size (10/25/50/100), prev/next, range label |
 | CSV import | ✅ | Import Data button uploads CSV (columns: topic, query, answer or expected_answer) |
-| Run evaluation | ✅ | `POST /api/evaluation-datasets/{id}/run` – search per query, LLM judge evaluates if results support expected answer; requires KB embedding_model_id; optional judge_model_id |
+| Run evaluation | ✅ | `POST /api/evaluation-datasets/{id}/run` body `{ evaluation_type }`: **`search_retrieval`** (default) — hybrid search + LLM judge on snippets; **`qa_answer`** — KB QA agent `/ask` per item + LLM judge on generated answer vs expected; persists **`evaluation_runs`** + **`evaluation_run_items`** (JSONB `detail`); response includes `run_id`, aggregates |
+| Run history & compare | ✅ | `GET .../runs`, `GET .../runs/{run_id}`, `GET .../runs/compare?run_a=&run_b=`; dataset detail: type selector, history table, load run, compare two runs (per-item pass/score deltas) |
 | Sidebar | ✅ | "Evaluation" link when `evaluationDatasets` toggle enabled |
 | Feature toggle | ✅ | `evaluationDatasets` (default: false); Console → Feature Toggles |
 
@@ -291,12 +292,15 @@
 | GET | `/api/evaluation-datasets/{id}` | Get evaluation dataset |
 | PUT | `/api/evaluation-datasets/{id}` | Update evaluation dataset |
 | DELETE | `/api/evaluation-datasets/{id}` | Delete evaluation dataset |
-| GET | `/api/evaluation-datasets/{id}/items` | List evaluation items |
+| GET | `/api/evaluation-datasets/{id}/items` | List evaluation items (`offset`, `limit` default 10 max 200; response `{ items, total }`) |
 | POST | `/api/evaluation-datasets/{id}/items` | Add evaluation item |
 | POST | `/api/evaluation-datasets/{id}/items/import` | Import items from CSV (multipart file; columns: topic, query, answer or expected_answer) |
 | PUT | `/api/evaluation-datasets/{id}/items/{item_id}` | Update evaluation item |
 | DELETE | `/api/evaluation-datasets/{id}/items/{item_id}` | Delete evaluation item |
-| POST | `/api/evaluation-datasets/{id}/run` | Run evaluation (calls QA per query) |
+| POST | `/api/evaluation-datasets/{id}/run` | Run evaluation; body `{ evaluation_type?: "search_retrieval" \| "qa_answer" }`; persists run + per-item results |
+| GET | `/api/evaluation-datasets/{id}/runs` | List saved runs (`offset`, `limit`) |
+| GET | `/api/evaluation-datasets/{id}/runs/{run_id}` | Full run with item results |
+| GET | `/api/evaluation-datasets/{id}/runs/compare` | Compare two runs (`run_a`, `run_b` query params) |
 | GET | `/api/glossaries` | List glossaries |
 | POST | `/api/glossaries` | Create glossary |
 | GET | `/api/glossaries/{id}` | Get glossary with term count |
@@ -418,6 +422,16 @@
 
 - `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `query`, `expected_answer`, `topic` (optional), `sort_order`, `created_at`
 - Single evaluation item: question to ask and expected answer; topic for categorization
+
+### EvaluationRun
+
+- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `knowledge_base_id`, `evaluation_type` (`search_retrieval` \| `qa_answer`), `status`, `error_message`, `item_count`, `pass_count`, `avg_score`, `config_snapshot` (JSONB), `created_at`, `finished_at`
+- One persisted evaluation execution (report); config snapshot records judge model and search params used
+
+### EvaluationRunItem
+
+- `id`, `evaluation_run_id` (FK → evaluation_runs, CASCADE), `evaluation_dataset_item_id` (FK → evaluation_dataset_items, CASCADE), `passed`, `score`, `reasoning`, `detail` (JSONB: search snippets or QA answer + sources)
+- Per-item outcome for a run
 
 ### Glossary
 
