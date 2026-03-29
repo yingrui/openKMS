@@ -336,6 +336,10 @@ class AuthUserOut(BaseModel):
     email: str
     username: str
     is_admin: bool
+    roles: list[str] = Field(
+        default_factory=list,
+        description="Realm roles from the JWT (e.g. Keycloak realm_access.roles).",
+    )
 
 
 class TokenResponse(BaseModel):
@@ -406,6 +410,7 @@ async def register(
         raise HTTPException(status_code=409, detail="Email or username already registered") from None
 
     token = mint_local_user_jwt(user)
+    roles = ["admin"] if user.is_admin else []
     return TokenResponse(
         access_token=token,
         user=AuthUserOut(
@@ -413,6 +418,7 @@ async def register(
             email=user.email,
             username=user.username,
             is_admin=user.is_admin,
+            roles=roles,
         ),
     )
 
@@ -432,6 +438,7 @@ async def login_json(body: LoginBody, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     token = mint_local_user_jwt(user)
+    roles = ["admin"] if user.is_admin else []
     return TokenResponse(
         access_token=token,
         user=AuthUserOut(
@@ -439,6 +446,7 @@ async def login_json(body: LoginBody, db: AsyncSession = Depends(get_db)):
             email=user.email,
             username=user.username,
             is_admin=user.is_admin,
+            roles=roles,
         ),
     )
 
@@ -454,12 +462,21 @@ async def auth_me(request: Request):
     if email is not None and not isinstance(email, str):
         email = None
     realm = p.get("realm_access") or {}
-    roles = realm.get("roles") if isinstance(realm, dict) else []
-    is_admin = isinstance(roles, list) and "admin" in roles
+    raw_roles = realm.get("roles") if isinstance(realm, dict) else []
+    if not isinstance(raw_roles, list):
+        raw_roles = []
+    role_strs = [str(r) for r in raw_roles if r is not None and str(r).strip()]
+    is_admin = "admin" in role_strs
     username = p.get("preferred_username") or p.get("name") or "user"
     if not isinstance(username, str):
         username = "user"
-    return AuthUserOut(id=sub, email=email or "", username=username, is_admin=is_admin)
+    return AuthUserOut(
+        id=sub,
+        email=email or "",
+        username=username,
+        is_admin=is_admin,
+        roles=role_strs,
+    )
 
 
 @api_auth_router.post("/logout")

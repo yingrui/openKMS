@@ -366,14 +366,14 @@ flowchart LR
 ### Local mode (PostgreSQL users)
 
 - **Backend**: `OPENKMS_AUTH_MODE=local`. Users in `users` table; passwords hashed (bcrypt); access tokens are HS256 JWTs signed with `OPENKMS_SECRET_KEY` (claims mirror OIDC-style `sub`, `realm_access.roles`, etc.).
-- **Endpoints**: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`. `POST /sync-session` accepts local JWT for cookie-backed requests.
+- **Endpoints**: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me` (returns `is_admin` and `roles` from `realm_access.roles`), `POST /api/auth/logout`. `POST /sync-session` accepts local JWT for cookie-backed requests.
 - **CLI**: `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` → `Authorization: Basic` (use only on trusted networks without TLS).
 - **Frontend**: `/login` and `/signup` when `public-config` reports `local`; signup link hidden if `allow_signup` is false; session cookie after sync-session; API calls use `credentials: 'include'`.
 - OIDC redirect routes redirect to `/login?notice=local_auth` when hit in local mode.
 
 ### Shared
 
-- **Route protection**: All pages except home (and `/login`, `/signup` in local mode) require auth. **`/profile`** shows the current user from `GET /api/auth/me` (header user menu).
+- **Route protection**: All pages except home (and `/login`, `/signup` in local mode) require auth. **`/profile`** shows the current user from `GET /api/auth/me` (administrator flag, role list, header user menu).
 - **Console**: `admin` in `realm_access.roles` (OIDC) or `is_admin` on user (local JWT). Non-admins redirected from console routes.
 - `POST /clear-session` – clears backend session cookie.
 

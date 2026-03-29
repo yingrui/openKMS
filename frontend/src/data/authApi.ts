@@ -6,6 +6,8 @@ export interface AuthMeResponse {
   email: string;
   username: string;
   is_admin: boolean;
+  /** Realm roles from the IdP JWT (local: admin or empty). */
+  roles?: string[];
 }
 
 export async function fetchAuthMe(): Promise<AuthMeResponse> {

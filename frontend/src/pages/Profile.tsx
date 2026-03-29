@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { UserCircle } from 'lucide-react';
 import { fetchAuthMe, type AuthMeResponse } from '../data/authApi';
-import { useAuth } from '../contexts/AuthContext';
 import './Profile.css';
 
 export function Profile() {
-  const { authMode, authModeReady } = useAuth();
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,9 +25,6 @@ export function Profile() {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const signInLabel =
-    authModeReady && authMode === 'local' ? 'Local account (username and password)' : 'Organization sign-in (OpenID Connect)';
 
   return (
     <div className="profile-page">
@@ -70,11 +65,33 @@ export function Profile() {
               <dd>{me.email || '—'}</dd>
             </div>
             <div>
-              <dt>Role</dt>
+              <dt>Administrator</dt>
               <dd>
                 <span className={`profile-role ${me.is_admin ? 'profile-role--admin' : ''}`}>
-                  {me.is_admin ? 'Administrator' : 'User'}
+                  {me.is_admin ? 'Yes' : 'No'}
                 </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Roles</dt>
+              <dd>
+                {(me.roles ?? []).length === 0 ? (
+                  '—'
+                ) : (
+                  <ul className="profile-role-list" aria-label="Assigned roles">
+                    {[...(me.roles ?? [])]
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((r) => (
+                        <li key={r}>
+                          <span
+                            className={`profile-role ${r === 'admin' ? 'profile-role--admin' : ''}`}
+                          >
+                            {r}
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                )}
               </dd>
             </div>
             <div>
@@ -83,12 +100,6 @@ export function Profile() {
                 <code style={{ fontSize: '0.9em' }}>{me.id}</code>
               </dd>
             </div>
-            {authModeReady && (
-              <div>
-                <dt>Sign-in method</dt>
-                <dd>{signInLabel}</dd>
-              </div>
-            )}
           </dl>
         </div>
       )}

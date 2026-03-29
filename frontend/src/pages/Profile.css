@@ -77,6 +77,19 @@
   color: var(--color-accent, #2563eb);
 }
 
+.profile-role-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-role-list li {
+  margin: 0;
+}
+
 .profile-error {
   color: var(--color-error);
   margin: 0 0 16px;
