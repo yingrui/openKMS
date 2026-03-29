@@ -31,6 +31,7 @@ openKMS organizes content in **channel trees** (similar to Google Drive folders)
 
 ```
 openKMS/
+├── docker/            # Dockerfiles, docker-compose, Makefile (build / up / down)
 ├── frontend/          # React app
 ├── backend/           # FastAPI service
 ├── vlm-server/        # MLX-VLM server (VLM backend)

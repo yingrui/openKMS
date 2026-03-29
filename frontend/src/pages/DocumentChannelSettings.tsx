@@ -13,7 +13,7 @@ import { fetchPipelines, type PipelineResponse } from '../data/pipelinesApi';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../data/ontologyApi';
 import { toast } from 'sonner';
-import { updateChannel } from '../data/channelsApi';
+import { updateChannel, type LabelConfigItem } from '../data/channelsApi';
 import './DocumentChannelSettings.css';
 
 const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
@@ -129,7 +129,7 @@ export function DocumentChannelSettings() {
       const lc = channel.label_config;
       setLabelConfig(
         Array.isArray(lc)
-          ? lc.map((x: { key?: string; object_type_id?: string; display_label?: string; type?: string; allow_multiple?: boolean }) => ({
+          ? lc.map((x: LabelConfigItem) => ({
               key: x.key ?? '',
               object_type_id: x.object_type_id ?? '',
               display_label: x.display_label ?? '',

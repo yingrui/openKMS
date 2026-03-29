@@ -1,0 +1,115 @@
+# Full stack: Postgres (pgvector), MinIO, backend API, worker (+ openkms-cli), frontend (nginx).
+#
+# From repo root:
+#   make -C docker build    # build images
+#   make -C docker up       # build (if needed) and start all services
+#   make -C docker down     # stop and remove containers
+#
+# Requires ../backend/.env (copy from backend/.env.example). Compose overrides DB host,
+# MinIO URL, frontend URL for Docker networking.
+#
+# UI: http://localhost:8080  |  API (direct): http://localhost:8102
+# Document parsing in the worker calls VLM on the host: set OPENKMS_VLM_URL or use defaults below.
+
+x-backend-env: &backend_env
+  OPENKMS_DATABASE_HOST: postgres
+  OPENKMS_DATABASE_PORT: "5432"
+  OPENKMS_DATABASE_USER: postgres
+  OPENKMS_DATABASE_PASSWORD: postgres
+  OPENKMS_DATABASE_NAME: openkms
+  AWS_ENDPOINT_URL: http://minio:9000
+  AWS_ACCESS_KEY_ID: minioadmin
+  AWS_SECRET_ACCESS_KEY: minioadmin
+  AWS_BUCKET_NAME: openkms
+  AWS_REGION: us-east-1
+  OPENKMS_FRONTEND_URL: http://localhost:8080
+  OPENKMS_DEBUG: "true"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: openkms
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: backend
+    ports:
+      - "8102:8102"
+    env_file:
+      - ../backend/.env
+    environment:
+      <<: *backend_env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: worker
+    env_file:
+      - ../backend/.env
+    environment:
+      <<: *backend_env
+      OPENKMS_BACKEND_URL: http://backend:8102
+      OPENKMS_VLM_URL: http://host.docker.internal:8101
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        VITE_API_URL: ""
+        VITE_AUTH_MODE: local
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data: {}
+  minio_data: {}

@@ -1,0 +1,26 @@
+# Static SPA + nginx reverse proxy to backend and MinIO (same-origin /api as in Vite dev).
+# Context: repository root.
+
+FROM node:22-bookworm-slim AS build
+
+WORKDIR /src
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend ./
+
+ARG VITE_API_URL=
+ARG VITE_AUTH_MODE=local
+
+ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_AUTH_MODE=${VITE_AUTH_MODE}
+
+RUN npm run build
+
+FROM nginx:alpine
+
+COPY --from=build /src/dist /usr/share/nginx/html
+COPY docker/nginx-frontend.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80

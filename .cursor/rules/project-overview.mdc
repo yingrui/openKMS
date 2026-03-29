@@ -11,6 +11,7 @@ alwaysApply: true
 
 - **Backend**: `backend/app/` (FastAPI)
 - **Frontend**: `frontend/src/` (React/Vite)
+- **Docker / Make**: `docker/` (`docker-compose.yml`, `Makefile` — `make -C docker build|up|down` only)
 - **Docs**: `docs/` (README, functionalities, architecture, development_plan)
 - **VLM**: `vlm-server/` (mlx-vlm for document parsing)
 - **Planned**: `document_parsing/` (Typer CLI for pipeline/async jobs)

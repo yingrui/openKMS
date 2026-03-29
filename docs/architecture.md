@@ -1,5 +1,7 @@
 # openKMS Architecture
 
+**`docker/docker-compose.yml`** can run the full stack (Postgres with pgvector, MinIO, backend API, procrastinate worker with `openkms-cli`, frontend via nginx). For host dev, start only **`postgres`** and **`minio`** with `docker compose -f docker/docker-compose.yml up -d postgres minio`. Images are built from **`docker/Dockerfile`** (targets `backend`, `worker`) and **`docker/Dockerfile.frontend`**. **`docker/Makefile`** wraps **`docker compose build`**, **`up -d --build`**, and **`down`** (`make -C docker build|up|down`). Details: **`docker/README.md`**.
+
 ## High-Level Diagram
 
 ```mermaid

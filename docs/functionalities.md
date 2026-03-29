@@ -6,8 +6,8 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Docker Compose | ✅ | Postgres, MinIO for local dev; `docker compose up -d` |
-| Makefile | ✅ | install, migrate, run-backend, run-frontend, run-worker, test |
+| Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, worker, nginx frontend); `make -C docker up` / `down`; infra-only: `docker compose up -d postgres minio` in `docker/` |
+| Makefile | ✅ | `docker/Makefile`: `build`, `up`, `down` only (wrappers for `docker compose`) |
 | Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
