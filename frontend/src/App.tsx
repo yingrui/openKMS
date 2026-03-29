@@ -6,6 +6,9 @@ import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
+import { Profile } from './pages/Profile';
+import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
 import { DocumentChannel } from './pages/DocumentChannel';
 import { DocumentsIndex } from './pages/DocumentsIndex';
 import { Articles } from './pages/Articles';
@@ -59,6 +62,8 @@ function App() {
       <ErrorBoundary>
       <Suspense fallback={<div className="app-loading" aria-live="polite">Loading...</div>}>
       <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="documents" element={<Outlet />}>
@@ -76,6 +81,7 @@ function App() {
           <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
+          <Route path="profile" element={<Profile />} />
           <Route path="pipelines" element={<Pipelines />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:jobId" element={<JobDetail />} />

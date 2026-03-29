@@ -48,7 +48,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | users (local auth), documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -119,7 +119,7 @@ backend/
 │   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
 │   ├── database.py              # Async engine, get_db, init_db
 │   ├── api/
-│   │   ├── auth.py              # OAuth2 Keycloak login/logout, require_auth, require_admin
+│   │   ├── auth.py              # OIDC or local auth: JWKS / HS256 JWT, require_auth, /api/auth/*, sync-session
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id), PUT metadata, PUT markdown, POST restore-markdown, POST rebuild-page-index, POST/GET versions, GET version, POST version restore, POST extract-metadata, GET page-index, GET section (by line range)
 │   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
@@ -134,6 +134,7 @@ backend/
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
+│   │   ├── users_admin.py      # GET/POST/PATCH/DELETE /api/admin/users (admin; local user CRUD + OIDC notice)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status, metadata JSONB)
@@ -143,6 +144,7 @@ backend/
 │   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
+│   │   ├── user.py            # User (local auth: email, username, password_hash, is_admin)
 │   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK, key_property, is_master_data, display_property)
 │   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
 │   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
@@ -200,7 +202,7 @@ openkms-cli/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m openkms_cli
 │   ├── app.py               # Typer app, registers subcommands
-│   ├── auth.py              # Keycloak client credentials (get_access_token)
+│   ├── auth.py              # OIDC client credentials or local HTTP Basic (try_api_request_auth)
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
 │   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
@@ -298,7 +300,7 @@ sequenceDiagram
 3. procrastinate worker picks up the job, renders the command template (substituting `{input}`, `{s3_prefix}`, `{vlm_url}`, `{model_name}`, etc.; model-linked values override defaults), sets `Document.status=running`
 4. If document's channel has extraction_model_id and extraction_schema, worker appends `--extract-metadata --document-id ... --api-url ... --extraction-schema-file ... --extraction-model-base-url ... --extraction-model-name ...` and passes `EXTRACTION_MODEL_API_KEY` in env
 5. Worker spawns the rendered command (e.g. `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/{file_hash}/original.{ext} --s3-prefix {file_hash}`)
-6. CLI gets Keycloak token (client credentials), parses document via PaddleOCR-VL, uploads results to S3; if extraction enabled, extracts metadata via pydantic-ai and PUTs to `PUT /api/documents/{id}/metadata`
+6. CLI authenticates to the API (OIDC client credentials Bearer token, or HTTP Basic in `OPENKMS_AUTH_MODE=local`), parses document via PaddleOCR-VL, uploads results to S3; if extraction enabled, extracts metadata via pydantic-ai and PUTs to `PUT /api/documents/{id}/metadata`
 7. Worker reads result.json from S3, updates Document (parsing_result, markdown, `status=completed`)
 8. On failure: `status=failed`; user can retry via `POST /api/jobs/{id}/retry`
 
@@ -325,12 +327,16 @@ sequenceDiagram
 - Optional `search` param filters by document name; `limit` defaults to 200
 - Backend returns documents in channel and descendants (or all if no channel)
 
-## Authentication (Keycloak)
+## Authentication (`OPENKMS_AUTH_MODE`)
+
+Two modes (default **`oidc`**). Deployments should keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for `auth_mode` and `allow_signup`, chooses Keycloak JS vs local forms from the API, and shows a banner if `VITE_AUTH_MODE` is set and disagrees. `VITE_AUTH_MODE` is only a fallback when that request fails.
+
+### OIDC mode (external IdP, e.g. Keycloak)
 
 ```mermaid
 flowchart LR
   subgraph UserFlow["User auth flow"]
-    U[User] -->|"kc.login()"| KC[Keycloak]
+    U[User] -->|"kc.login()"| KC[OIDC IdP]
     KC -->|"Auth Code + PKCE"| FE[Frontend]
     FE -->|"Bearer JWT"| BE[Backend API]
     FE -->|"POST /sync-session"| BE
@@ -338,7 +344,7 @@ flowchart LR
 
   subgraph BackendAuth["Backend accepts"]
     BE
-    BE -->|"JWT or session cookie"| JWKS[Keycloak JWKS]
+    BE -->|"JWT or session cookie"| JWKS[IdP JWKS]
   end
 
   subgraph CLIAuth["openkms-cli (worker)"]
@@ -347,26 +353,34 @@ flowchart LR
   end
 ```
 
-- **Backend**: Requires auth for `/api/*` (channels, documents). Accepts either session cookie (from backend OAuth flow) or `Authorization: Bearer <JWT>`. JWT validated via Keycloak JWKS.
-- **Frontend**: Keycloak JS adapter (Authorization Code + PKCE); sends Bearer token in API requests; calls `POST /sync-session` after login to sync JWT to backend session (for img requests that use cookies).
-- **Login**: Uses `kc.login()` (SSO if user already has Keycloak session).
-- **Logout**: Uses `kc.logout()` – redirects to Keycloak logout, then back to frontend. Requires frontend origin in Keycloak "Valid Post Logout Redirect URIs".
-- `GET /login` – redirects to Keycloak (backend OAuth, optional)
-- `GET /login/oauth2/code/keycloak` – OAuth callback; stores tokens in session
-- `POST /sync-session` – accepts Bearer JWT; stores in session (for frontend Keycloak JS flow)
-- `POST /clear-session` – clears backend session only (called before Keycloak logout)
-- `GET /logout` – clears session; redirects to Keycloak logout (legacy)
-- **Route protection**: All pages except home require auth; unauthenticated users see "Authentication Required" with Sign in button.
-- **Console**: Only users with realm role `admin` can access (Header link, Sidebar, routes). Non-admins redirected to home.
+- **Backend**: JWT validated via IdP JWKS (`KEYCLOAK_*` URLs today). Session cookie optional after `POST /sync-session`.
+- **Frontend**: Keycloak JS when `public-config` reports `oidc` (or fallback `VITE_AUTH_MODE`); Authorization Code + PKCE; `POST /sync-session` after login.
+- `GET /login` / `GET /login/oauth2/code/keycloak` – backend OAuth redirect and callback (legacy path name; OIDC callback).
+- `GET /logout` – clears session; redirects to IdP logout when configured.
+
+### Local mode (PostgreSQL users)
+
+- **Backend**: `OPENKMS_AUTH_MODE=local`. Users in `users` table; passwords hashed (bcrypt); access tokens are HS256 JWTs signed with `OPENKMS_SECRET_KEY` (claims mirror OIDC-style `sub`, `realm_access.roles`, etc.).
+- **Endpoints**: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`. `POST /sync-session` accepts local JWT for cookie-backed requests.
+- **CLI**: `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` → `Authorization: Basic` (use only on trusted networks without TLS).
+- **Frontend**: `/login` and `/signup` when `public-config` reports `local`; signup link hidden if `allow_signup` is false; session cookie after sync-session; API calls use `credentials: 'include'`.
+- OIDC redirect routes redirect to `/login?notice=local_auth` when hit in local mode.
+
+### Shared
+
+- **Route protection**: All pages except home (and `/login`, `/signup` in local mode) require auth. **`/profile`** shows the current user from `GET /api/auth/me` (header user menu).
+- **Console**: `admin` in `realm_access.roles` (OIDC) or `is_admin` on user (local JWT). Non-admins redirected from console routes.
+- `POST /clear-session` – clears backend session cookie.
 
 ## Configuration
 
 | Layer | Config |
 |-------|--------|
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id, OPENKMS_BACKEND_URL (for CLI metadata extraction) |
-| Backend | `KEYCLOAK_*` – auth server, realm, client id/secret, redirect URI, frontend URL, KEYCLOAK_SERVICE_CLIENT_ID (openkms-cli) |
+| Backend | `OPENKMS_AUTH_MODE` – `oidc` (default) or `local`; `OPENKMS_ALLOW_SIGNUP`, `OPENKMS_INITIAL_ADMIN_USER`, `OPENKMS_CLI_BASIC_*`, `OPENKMS_LOCAL_JWT_EXP_HOURS` |
+| Backend | `KEYCLOAK_*` – OIDC IdP (e.g. Keycloak): server, realm, clients, redirect URI, frontend URL, service client id for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl`, `keycloak` (url, realm, clientId). In dev, `apiUrl` defaults to '' (uses proxy). |
+| Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback), `keycloak` (oidc). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
 | Vite dev | Proxy `/api`, `/sync-session`, `/clear-session` → backend; `/buckets/openkms` → MinIO |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit, alembic-migrations) |

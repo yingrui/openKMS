@@ -146,15 +146,19 @@
 ### 6. Console (Admin)
 
 - Overview, Data Sources, Datasets, Object Types, Link Types, System Settings, Users & Roles, Feature Toggles
-- **Admin-only**: visible and accessible only to users with Keycloak realm role `admin`
+- **Admin-only**: visible and accessible only to users with realm role `admin` (OIDC JWT) or local user `is_admin`
+- **Users & Roles** (`/console/users`): admin-only. **Local auth**: list users from PostgreSQL, toggle Admin role, delete users (safeguards: last admin, no self-delete), add user with password. **OIDC auth**: read-only notice only—no user directory in openKMS
 - Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
 - `PUT /api/feature-toggles` (admin-only) updates toggle state; backend `require_admin` checks JWT realm role
 
 ### 6b. Authentication
 
-- Keycloak login/logout (SSO, full logout via Keycloak)
-- Protected routes: all except home require auth; unauthenticated users see "Authentication Required" message
+- **OIDC mode** (default): external IdP (e.g. Keycloak) – Authorization Code + PKCE in browser; full logout via IdP when configured
+- **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
+- **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
+- **Profile** (`/profile`): authenticated users see display name, email (if present), administrator vs user role, account ID (`sub`), and sign-in method (local vs OIDC); data from `GET /api/auth/me`. Linked from the header user menu.
+- Protected routes: all except home require auth (plus `/login` and `/signup` in local mode); unauthenticated users see "Authentication Required" message
 
 ### 6c. Home (Landing Page)
 
@@ -210,11 +214,20 @@
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check |
-| GET | `/login` | Redirect to Keycloak login |
-| GET | `/login/oauth2/code/keycloak` | OAuth2 callback (Keycloak redirect URI) |
+| GET | `/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
+| GET | `/login/oauth2/code/keycloak` | OAuth2 callback (legacy path name; IdP redirect URI) |
+| GET | `/api/auth/public-config` | No auth: `{ auth_mode, allow_signup }` for SPA / CLI alignment with local vs OIDC IdP |
+| POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
+| POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
+| GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic |
+| POST | `/api/auth/logout` | Clear server session |
 | POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
-| POST | `/clear-session` | Clear backend session (called by frontend before Keycloak logout) |
-| GET | `/logout` | Clear session, redirect to Keycloak logout (legacy backend flow) |
+| POST | `/clear-session` | Clear backend session (called before logout) |
+| GET | `/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
+| GET | `/api/admin/users` | Admin-only: auth mode, IdP notice, `users` (local only) |
+| POST | `/api/admin/users` | Admin-only, **local** only: create user (`email`, `username`, `password`, `is_admin`) |
+| PATCH | `/api/admin/users/{id}` | Admin-only, **local** only: set `is_admin` |
+| DELETE | `/api/admin/users/{id}` | Admin-only, **local** only: delete user |
 | GET | `/api/document-channels` | List document channels (tree) |
 | GET | `/api/document-channels/{id}` | Get channel by ID (includes label_config, extraction_schema) |
 | POST | `/api/document-channels` | Create channel |

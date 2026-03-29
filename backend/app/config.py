@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 # .env next to backend root (parent of app/)
@@ -39,7 +39,22 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
 
-    # Keycloak (env vars: KEYCLOAK_*, no OPENKMS_ prefix)
+    # Authentication: oidc (external OpenID Connect IdP, e.g. Keycloak) | local (PostgreSQL users)
+    auth_mode: str = Field(default="oidc")
+    allow_signup: bool = Field(default=True)
+    initial_admin_user: str | None = Field(default=None)
+    local_jwt_exp_hours: int = Field(default=168)
+    cli_basic_user: str = Field(default="")
+    cli_basic_password: str = Field(default="")
+
+    @field_validator("auth_mode")
+    @classmethod
+    def validate_auth_mode(cls, v: str) -> str:
+        if v not in ("oidc", "local"):
+            raise ValueError("OPENKMS_AUTH_MODE must be 'oidc' or 'local'")
+        return v
+
+    # Keycloak / OIDC provider (env vars: KEYCLOAK_*, no OPENKMS_ prefix)
     keycloak_auth_server_url: str = Field(default="http://localhost:8081", validation_alias="KEYCLOAK_AUTH_SERVER_URL")
     keycloak_realm: str = Field(default="openkms", validation_alias="KEYCLOAK_REALM")
     keycloak_client_id: str = Field(default="openkms-backend", validation_alias="KEYCLOAK_CLIENT_ID")

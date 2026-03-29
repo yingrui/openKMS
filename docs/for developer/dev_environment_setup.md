@@ -100,9 +100,20 @@ Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate j
    cd backend && alembic upgrade head && uvicorn app.main:app --reload --port 8102
    ```
 
-### Keycloak Setup (Authentication)
+### Authentication
 
-The frontend uses the Keycloak JavaScript adapter (Authorization Code + PKCE). Configure a **public** client in Keycloak:
+**Modes:** set `OPENKMS_AUTH_MODE` on the backend to `oidc` (default) or `local`. The frontend discovers the active mode via `GET /api/auth/public-config`; set `VITE_AUTH_MODE` only as a fallback when the API is unreachable (e.g. offline build checks), and keep it consistent with the backend to avoid the compatibility banner.
+
+#### Local auth (no external IdP)
+
+1. Backend: `OPENKMS_AUTH_MODE=local`, run migrations (`alembic upgrade head`) for the `users` table.
+2. Frontend: `VITE_AUTH_MODE=local`.
+3. Optional: `OPENKMS_ALLOW_SIGNUP=false` to disable public registration; `OPENKMS_INITIAL_ADMIN_USER` to grant admin when the signup **username** matches (case-insensitive).
+4. **openkms-cli**: `OPENKMS_AUTH_MODE=local`, `OPENKMS_CLI_BASIC_USER`, `OPENKMS_CLI_BASIC_PASSWORD` (must match backend). Use only on trusted networks without TLS.
+
+#### OIDC setup (e.g. Keycloak)
+
+The frontend uses the Keycloak JavaScript adapter (Authorization Code + PKCE) when `VITE_AUTH_MODE=oidc`. Configure a **public** client in your IdP (Keycloak example below):
 
 1. **Create client** `openkms-frontend`:
    - Client authentication: **Off**

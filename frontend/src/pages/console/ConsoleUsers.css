@@ -88,3 +88,127 @@
   color: var(--color-accent);
   flex-shrink: 0;
 }
+
+.console-users-muted {
+  color: var(--color-text-muted);
+}
+
+.console-users-error {
+  color: var(--color-error, #b91c1c);
+  margin-bottom: 16px;
+}
+
+.console-users-notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.console-users-notice svg {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  margin-top: 2px;
+}
+
+.console-users-notice p {
+  margin: 0;
+}
+
+.console-users-admin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.console-users-date {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.console-users-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 24px !important;
+}
+
+.console-users-delete {
+  font-size: 0.8125rem;
+}
+
+.console-users-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.console-users-modal {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
+
+.console-users-modal h2 {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.console-users-modal-sub {
+  margin: 0 0 20px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.console-users-modal .auth-local-field {
+  margin-bottom: 14px;
+}
+
+.console-users-modal .auth-local-field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.console-users-modal .auth-local-field input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.console-users-modal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.console-users-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}

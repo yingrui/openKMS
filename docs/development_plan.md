@@ -12,7 +12,8 @@
 - Document versions: `document_versions` table; explicit snapshots of markdown + metadata (`POST /versions`, `GET /versions`, `GET /versions/{id}`, `POST /versions/{id}/restore`); version checkpoint uses JSON field **`tag`** (DB column `tag`); UI: version column in Document Information (3-column stats), Save version when working copy newer than last snapshot, optional tag in Save as version modal, **Versions** modal as a table (Version / Tag / Saved / Actions); list/preview/restore with optional save-current-first; not created on routine markdown/metadata save
 - Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
 - Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
-- OAuth2 Keycloak: backend verifies JWT Bearer or session; frontend sends Bearer token, sync-session for img; Vite proxy for API in dev
+- Authentication: `OPENKMS_AUTH_MODE=oidc` (default, external IdP e.g. Keycloak) or `local` (PostgreSQL users, `/api/auth/*`, CLI HTTP Basic); backend verifies JWT Bearer or session; `GET /api/auth/public-config` (no auth) exposes `auth_mode` and `allow_signup` so the SPA matches the server; frontend resolves local vs OIDC from the API with `VITE_AUTH_MODE` as fallback; Vite proxy for API in dev
+- User profile: `/profile` shows current user from `GET /api/auth/me` (header menu); Console → Users & Roles: `/api/admin/users` CRUD in local mode, IdP notice in OIDC mode
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
 - Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters), Q&A proxy, settings (chunk_config, faq_prompt, metadata_keys); doc_metadata propagated from documents to FAQs/chunks per metadata_keys; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
@@ -35,7 +36,7 @@
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
 - [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from backend config-by-name, extracts via pydantic-ai, PUTs metadata to backend
 - [x] PageIndex: pipeline builds markdown→tree via built-in md_to_tree (# headings); backend GET /documents/{id}/page-index and GET /documents/{id}/section; frontend Markdown | Page Index toggle; QA agent LangGraph page_index skill (read TOC, select section, extract content)
-- [x] Pipeline checkpoint: after successful S3 upload, when `--document-id` and Keycloak token are available, CLI `PUT`s parsed markdown then `POST /api/documents/{id}/versions` with `tag: "Pipeline"` (after optional metadata extraction)
+- [x] Pipeline checkpoint: after successful S3 upload, when `--document-id` and API auth (OIDC token or local Basic) are available, CLI `PUT`s parsed markdown then `POST /api/documents/{id}/versions` with `tag: "Pipeline"` (after optional metadata extraction)
 
 ### 1. Document List Integration
 
@@ -100,9 +101,12 @@
 
 ### 4. Authentication
 
-- [x] Integrate Keycloak with frontend (login/logout)
-- [x] Protect backend routes with JWT Bearer or session
-- [x] Role-based access: Console restricted to users with realm role `admin`
+- [x] Integrate OIDC IdP with frontend (Keycloak JS; login/logout) when `VITE_AUTH_MODE=oidc`
+- [x] Local auth mode: PostgreSQL `users`, `/api/auth/register|login|me`, frontend `/login` & `/signup`, CLI HTTP Basic
+- [x] `GET /api/auth/public-config` + SPA uses API-reported mode (compatibility with local vs central IdP); optional mismatch banner vs `VITE_AUTH_MODE`
+- [x] Profile page `/profile` and `fetchAuthMe`; admin user APIs `/api/admin/users` + Console Users (local only)
+- [x] Protect backend routes with JWT Bearer or session (or local Basic for CLI)
+- [x] Role-based access: Console restricted to realm role `admin` (OIDC) or `is_admin` (local)
 - [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT admin-only)
 - [x] Backend `require_admin` dependency for admin-only endpoints (checks JWT `realm_access.roles`)
 - [x] Backend dependency management via pyproject.toml + uv.lock (replaces requirements.txt)

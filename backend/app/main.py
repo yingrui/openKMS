@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.api.auth import router as auth_router
+from app.api.auth import api_auth_router, router as auth_router
 from app.api.channels import router as channels_router
 from app.api.documents import router as documents_router
 from app.api.feature_toggles import router as feature_toggles_router
@@ -23,6 +23,7 @@ from app.api.providers import router as providers_router
 from app.api.data_sources import router as data_sources_router
 from app.api.datasets import router as datasets_router
 from app.api.evaluation_datasets import router as evaluation_datasets_router
+from app.api.users_admin import router as users_admin_router
 from app.config import settings
 from app.database import init_db
 
@@ -82,6 +83,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(api_auth_router)
 app.include_router(channels_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(feature_toggles_router, prefix="/api")
@@ -97,6 +99,7 @@ app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
 app.include_router(evaluation_datasets_router, prefix="/api")
+app.include_router(users_admin_router, prefix="/api")
 
 
 @app.get("/health")

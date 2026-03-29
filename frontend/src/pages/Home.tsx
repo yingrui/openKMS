@@ -33,7 +33,7 @@ const benefits = [
   {
     icon: Shield,
     title: 'Enterprise-ready security',
-    text: 'Keycloak SSO, role-based access, and admin-only console. Control who sees what.',
+    text: 'OIDC SSO or local accounts, role-based access, and admin-only console. Control who sees what.',
   },
 ];
 

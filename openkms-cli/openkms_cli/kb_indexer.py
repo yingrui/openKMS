@@ -150,7 +150,8 @@ def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -
 def run_indexer(
     knowledge_base_id: str,
     api_url: str,
-    token: Optional[str] = None,
+    auth_headers: Optional[dict[str, str]] = None,
+    basic: Optional[tuple[str, str]] = None,
     embedding_override: Optional[dict[str, Any]] = None,
     progress: Optional[Progress] = None,
     task: Optional[TaskID] = None,
@@ -165,9 +166,7 @@ def run_indexer(
     4. Store chunks in DB
     5. Index FAQ embeddings
     """
-    headers = {}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    headers = dict(auth_headers or {})
     base = api_url.rstrip("/")
 
     def _update(msg: str) -> None:
@@ -175,7 +174,9 @@ def run_indexer(
             progress.update(task, description=msg)
 
     _update("Fetching knowledge base config...")
-    kb_resp = requests.get(f"{base}/api/knowledge-bases/{knowledge_base_id}", headers=headers, timeout=30)
+    kb_resp = requests.get(
+        f"{base}/api/knowledge-bases/{knowledge_base_id}", headers=headers, auth=basic, timeout=30
+    )
     if not kb_resp.ok:
         raise RuntimeError(f"Failed to fetch KB: {kb_resp.status_code} {kb_resp.text[:200]}")
     kb_data = kb_resp.json()
@@ -188,11 +189,15 @@ def run_indexer(
         embedding_model_id = kb_data.get("embedding_model_id")
         if not embedding_model_id:
             raise RuntimeError("No embedding model configured and no override provided")
-        model_resp = requests.get(f"{base}/api/models/{embedding_model_id}", headers=headers, timeout=30)
+        model_resp = requests.get(
+            f"{base}/api/models/{embedding_model_id}", headers=headers, auth=basic, timeout=30
+        )
         if not model_resp.ok:
             raise RuntimeError(f"Failed to fetch embedding model: {model_resp.status_code}")
         model_data = model_resp.json()
-        provider_resp = requests.get(f"{base}/api/providers/{model_data['provider_id']}", headers=headers, timeout=30)
+        provider_resp = requests.get(
+            f"{base}/api/providers/{model_data['provider_id']}", headers=headers, auth=basic, timeout=30
+        )
         if not provider_resp.ok:
             raise RuntimeError(f"Failed to fetch provider: {provider_resp.status_code}")
         provider_data = provider_resp.json()
@@ -203,7 +208,9 @@ def run_indexer(
         }
 
     _update("Fetching documents...")
-    docs_resp = requests.get(f"{base}/api/knowledge-bases/{knowledge_base_id}/documents", headers=headers, timeout=30)
+    docs_resp = requests.get(
+        f"{base}/api/knowledge-bases/{knowledge_base_id}/documents", headers=headers, auth=basic, timeout=30
+    )
     if not docs_resp.ok:
         raise RuntimeError(f"Failed to fetch KB documents: {docs_resp.status_code}")
     kb_docs = docs_resp.json()
@@ -213,7 +220,7 @@ def run_indexer(
         doc_id = kbd["document_id"]
         doc_name = kbd.get("document_name", doc_id)
         _update(f"Chunking {doc_name}...")
-        doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, timeout=30)
+        doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, auth=basic, timeout=30)
         if not doc_resp.ok:
             continue
         doc_data = doc_resp.json()
@@ -243,6 +250,7 @@ def run_indexer(
             f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs",
             params={"offset": offset, "limit": limit},
             headers=headers,
+            auth=basic,
             timeout=30,
         )
         if not faqs_resp.ok:
@@ -312,7 +320,7 @@ def run_indexer(
             item: dict[str, Any] = {"id": f["id"], "embedding": emb}
             doc_id = f.get("document_id")
             if doc_id and metadata_keys:
-                doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, timeout=30)
+                doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, auth=basic, timeout=30)
                 if doc_resp.ok:
                     doc_data = doc_resp.json()
                     dmeta = _propagate_metadata(doc_data.get("metadata"), metadata_keys)
@@ -325,7 +333,9 @@ def run_indexer(
         _save_chunks_to_output(all_chunks, faq_items_for_output, include_embeddings=True)
 
     _update("Writing to backend API...")
-    del_resp = requests.delete(f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks", headers=headers, timeout=60)
+    del_resp = requests.delete(
+        f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks", headers=headers, auth=basic, timeout=60
+    )
     if not del_resp.ok:
         raise RuntimeError(f"Failed to clear chunks: {del_resp.status_code} {del_resp.text[:200]}")
 
@@ -346,6 +356,7 @@ def run_indexer(
         create_resp = requests.post(
             f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks/batch",
             headers=headers,
+            auth=basic,
             json={"items": batch_items},
             timeout=120,
         )
@@ -360,6 +371,7 @@ def run_indexer(
         faq_resp = requests.put(
             f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs/batch-embeddings",
             headers=headers,
+            auth=basic,
             json={"items": faq_emb_items},
             timeout=60,
         )

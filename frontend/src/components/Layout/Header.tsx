@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
@@ -91,10 +91,14 @@ export function Header() {
                     <span className="header-user-email">{user?.email ?? ''}</span>
                   </div>
                   <div className="header-user-dropdown-divider" />
-                  <button type="button" className="header-user-dropdown-item">
+                  <Link
+                    to="/profile"
+                    className="header-user-dropdown-item"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
                     <UserCircle size={18} />
                     <span>Profile</span>
-                  </button>
+                  </Link>
                   <button type="button" className="header-user-dropdown-item">
                     <Settings size={18} />
                     <span>Settings</span>

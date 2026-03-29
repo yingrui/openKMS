@@ -29,7 +29,12 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
 | `OPENKMS_VLM_URL` | http://localhost:8101 | vlm-server URL |
-| `KEYCLOAK_AUTH_SERVER_URL` | http://localhost:8081 | Keycloak server |
+| `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
+| `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local` |
+| `OPENKMS_INITIAL_ADMIN_USER` | (empty) | Local mode: grant `is_admin` when signup username matches (case-insensitive) |
+| `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: CLI HTTP Basic username |
+| `OPENKMS_CLI_BASIC_PASSWORD` | (empty) | Local mode: CLI HTTP Basic password |
+| `KEYCLOAK_AUTH_SERVER_URL` | http://localhost:8081 | OIDC IdP server (e.g. Keycloak) |
 | `KEYCLOAK_REALM` | openkms | Keycloak realm |
 | `KEYCLOAK_CLIENT_ID` | openkms-backend | OAuth2 client ID |
 | `KEYCLOAK_CLIENT_SECRET` | (empty) | OAuth2 client secret |

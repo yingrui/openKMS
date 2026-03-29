@@ -80,14 +80,17 @@ def _content_type_for_path(path: str) -> str:
     return suffixes.get(p.suffix.lower(), "application/octet-stream")
 
 
-def _put_document_markdown(api_url: str, document_id: str, token: str, markdown: str) -> bool:
+def _put_document_markdown(
+    api_url: str, document_id: str, markdown: str, auth_headers: dict, basic: tuple[str, str] | None
+) -> bool:
     """Sync parsed markdown to backend (required before POST /versions snapshots DB state)."""
     base = api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {**auth_headers, "Content-Type": "application/json"}
     r = requests.put(
         f"{base}/api/documents/{document_id}/markdown",
         json={"markdown": markdown},
         headers=headers,
+        auth=basic,
         timeout=300,
     )
     if not r.ok:
@@ -97,14 +100,17 @@ def _put_document_markdown(api_url: str, document_id: str, token: str, markdown:
     return True
 
 
-def _post_pipeline_version(api_url: str, document_id: str, token: str) -> bool:
+def _post_pipeline_version(
+    api_url: str, document_id: str, auth_headers: dict, basic: tuple[str, str] | None
+) -> bool:
     """Create explicit document version tagged Pipeline (current DB markdown + metadata)."""
     base = api_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = {**auth_headers, "Content-Type": "application/json"}
     r = requests.post(
         f"{base}/api/documents/{document_id}/versions",
         json={"tag": "Pipeline", "note": None},
         headers=headers,
+        auth=basic,
         timeout=60,
     )
     if r.ok:
@@ -269,13 +275,17 @@ def pipeline_run(
             console.print(f"[red]Missing dependencies: {e}. Install with: pip install openkms-cli[kb][/red]")
             raise typer.Exit(1)
 
-        token: Optional[str] = None
+        auth_headers: dict = {}
+        basic_auth: Optional[tuple[str, str]] = None
         try:
-            from .auth import get_access_token
-            token = get_access_token()
-            console.print("[dim]Got Keycloak token[/dim]")
+            from .auth import try_api_request_auth
+
+            cred = try_api_request_auth()
+            if cred:
+                auth_headers, basic_auth = cred
+                console.print("[dim]Using API authentication[/dim]")
         except Exception:
-            console.print("[yellow]No auth token (proceeding without auth)[/yellow]")
+            console.print("[yellow]No API auth (proceeding without auth)[/yellow]")
 
         embedding_override = None
         if embedding_model_base_url:
@@ -295,7 +305,8 @@ def pipeline_run(
                 stats = run_indexer(
                     knowledge_base_id=knowledge_base_id,
                     api_url=api_url,
-                    token=token,
+                    auth_headers=auth_headers,
+                    basic=basic_auth,
                     embedding_override=embedding_override,
                     progress=progress,
                     task=task,
@@ -319,7 +330,9 @@ def pipeline_run(
         console.print("[red]Document parse pipelines require --input (S3 URI or local file)[/red]")
         raise typer.Exit(1)
 
-    token: Optional[str] = None
+    auth_headers: dict = {}
+    basic_auth: Optional[tuple[str, str]] = None
+    has_api_auth = False
     if extract_metadata:
         if not document_id or not extraction_schema:
             console.print(
@@ -333,18 +346,18 @@ def pipeline_run(
             )
             raise typer.Exit(1)
     if document_id:
-        try:
-            from .auth import get_access_token
+        from .auth import try_api_request_auth
 
-            token = get_access_token()
-            console.print("[dim]Got Keycloak token[/dim]")
-        except ValueError as e:
-            if extract_metadata:
-                console.print(f"[red]Auth failed: {e}[/red]")
-                raise typer.Exit(1)
-            console.print(
-                f"[yellow]No API token ({e}); skipping markdown sync and pipeline version.[/yellow]"
-            )
+        cred = try_api_request_auth()
+        if cred:
+            auth_headers, basic_auth = cred
+            has_api_auth = True
+            console.print("[dim]Using API authentication[/dim]")
+        elif extract_metadata:
+            console.print("[red]API authentication required for --extract-metadata[/red]")
+            raise typer.Exit(1)
+        else:
+            console.print("[yellow]No API auth; skipping markdown sync and pipeline version.[/yellow]")
 
     access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
     secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
@@ -461,13 +474,13 @@ def pipeline_run(
             )
 
         markdown_synced = False
-        if not skip_upload and document_id and token and result.get("markdown"):
+        if not skip_upload and document_id and has_api_auth and result.get("markdown"):
             progress.update(task, description="Syncing markdown to API...")
             markdown_synced = _put_document_markdown(
-                api_url, document_id, token, result["markdown"]
+                api_url, document_id, result["markdown"], auth_headers, basic_auth
             )
 
-        if extract_metadata and token and document_id and result.get("markdown"):
+        if extract_metadata and has_api_auth and document_id and result.get("markdown"):
             progress.update(task, description="Extracting metadata...")
             try:
                 from .extract import extract_metadata_sync
@@ -485,9 +498,11 @@ def pipeline_run(
                 from urllib.parse import quote
                 base = api_url.rstrip("/")
                 config_url = f"{base}/api/models/config-by-name?model_name={quote(extraction_model_name)}"
+                req_headers = {**auth_headers}
                 config_resp = requests.get(
                     config_url,
-                    headers={"Authorization": f"Bearer {token}"},
+                    headers=req_headers,
+                    auth=basic_auth,
                     timeout=30,
                 )
                 if not config_resp.ok:
@@ -512,8 +527,10 @@ def pipeline_run(
 
             base = api_url.rstrip("/")
             put_url = f"{base}/api/documents/{document_id}/metadata"
-            headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-            resp = requests.put(put_url, json={"metadata": extracted}, headers=headers, timeout=30)
+            headers = {**auth_headers, "Content-Type": "application/json"}
+            resp = requests.put(
+                put_url, json={"metadata": extracted}, headers=headers, auth=basic_auth, timeout=30
+            )
             if not resp.ok:
                 console.print(f"[red]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/red]")
                 raise typer.Exit(1)
@@ -522,9 +539,9 @@ def pipeline_run(
         if (
             not skip_upload
             and document_id
-            and token
+            and has_api_auth
             and result.get("markdown")
             and markdown_synced
         ):
             progress.update(task, description="Saving pipeline version...")
-            _post_pipeline_version(api_url, document_id, token)
+            _post_pipeline_version(api_url, document_id, auth_headers, basic_auth)

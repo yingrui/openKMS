@@ -229,6 +229,8 @@
   border: none;
   cursor: pointer;
   transition: background 0.15s;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .header-user-dropdown-item:hover {
