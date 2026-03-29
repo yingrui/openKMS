@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "katex": "^0.16.33",
-    "keycloak-js": "^26.2.3",
     "lucide-react": "^0.577.0",
+    "oidc-client-ts": "^3.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-force-graph-2d": "^1.29.1",

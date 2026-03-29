@@ -72,7 +72,7 @@ def get_redirect_url(key: str, expires_in: int = 3600) -> str:
         ExpiresIn=expires_in,
     )
     # Rewrite to frontend proxy (/buckets/openkms) so img loads avoid S3 CORS
-    frontend = settings.keycloak_frontend_url.rstrip("/")
+    frontend = settings.frontend_url.rstrip("/")
     bucket = _bucket()
     from urllib.parse import urlparse, urlunparse
 
@@ -104,7 +104,7 @@ def ensure_bucket() -> None:
             client.create_bucket(Bucket=_bucket())
 
     # CORS: allow frontend origin for GET (img loads after backend redirect to presigned URL)
-    frontend_origin = settings.keycloak_frontend_url.rstrip("/")
+    frontend_origin = settings.frontend_url.rstrip("/")
     cors_config = {
         "CORSRules": [
             {

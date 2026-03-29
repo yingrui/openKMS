@@ -4,7 +4,6 @@ Usage: openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3:/
 """
 
 import json
-import os
 import re
 import traceback
 from pathlib import Path
@@ -15,6 +14,8 @@ import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
+
+from .settings import get_cli_settings
 
 console = Console()
 
@@ -155,35 +156,30 @@ def pipeline_run(
         "--s3-prefix",
         help="S3 output prefix. If omitted with S3 input, uses file hash (SHA256 of content).",
     ),
-    vlm_url: str = typer.Option(
-        "http://localhost:8101/",
+    vlm_url: Optional[str] = typer.Option(
+        None,
         "--vlm-url",
-        envvar="OPENKMS_VLM_URL",
-        help="VLM server URL",
+        help="VLM server URL (default: OPENKMS_VLM_URL from environment)",
     ),
     vlm_api_key: Optional[str] = typer.Option(
         None,
         "--vlm-api-key",
-        envvar="OPENKMS_VLM_API_KEY",
-        help="VLM API key (for authenticated VLM endpoints)",
+        help="VLM API key (default: OPENKMS_VLM_API_KEY)",
     ),
-    bucket: str = typer.Option(
-        "openkms",
+    bucket: Optional[str] = typer.Option(
+        None,
         "--bucket",
-        envvar="AWS_BUCKET_NAME",
-        help="S3 bucket for output",
+        help="S3 bucket (default: AWS_BUCKET_NAME)",
     ),
     endpoint_url: Optional[str] = typer.Option(
         None,
         "--endpoint-url",
-        envvar="AWS_ENDPOINT_URL",
-        help="S3/MinIO endpoint",
+        help="S3/MinIO endpoint (default: AWS_ENDPOINT_URL)",
     ),
-    region: str = typer.Option(
-        "us-east-1",
+    region: Optional[str] = typer.Option(
+        None,
         "--region",
-        envvar="AWS_REGION",
-        help="AWS region",
+        help="AWS region (default: AWS_REGION)",
     ),
     output_dir: Path = typer.Option(
         Path("output"),
@@ -210,13 +206,12 @@ def pipeline_run(
     document_id: Optional[str] = typer.Option(
         None,
         "--document-id",
-        help="Document ID: sync markdown + save Pipeline version after upload (Keycloak); required for --extract-metadata",
+        help="Document ID: sync markdown + save Pipeline version after upload (OIDC-authenticated API); required for --extract-metadata",
     ),
-    api_url: str = typer.Option(
-        "http://localhost:8102",
+    api_url: Optional[str] = typer.Option(
+        None,
         "--api-url",
-        envvar="OPENKMS_API_URL",
-        help="Backend API URL for PUT metadata",
+        help="Backend API URL (default: OPENKMS_API_URL)",
     ),
     extraction_schema: Optional[str] = typer.Option(
         None,
@@ -237,14 +232,12 @@ def pipeline_run(
     embedding_model_base_url: Optional[str] = typer.Option(
         None,
         "--embedding-model-base-url",
-        envvar="OPENKMS_EMBEDDING_MODEL_BASE_URL",
-        help="Override embedding model base URL (kb-index)",
+        help="Embedding base URL (default: OPENKMS_EMBEDDING_MODEL_BASE_URL; kb-index)",
     ),
     embedding_model_name: Optional[str] = typer.Option(
         None,
         "--embedding-model-name",
-        envvar="OPENKMS_EMBEDDING_MODEL_NAME",
-        help="Override embedding model name (kb-index)",
+        help="Embedding model name (default: OPENKMS_EMBEDDING_MODEL_NAME; kb-index)",
     ),
 ) -> None:
     """
@@ -263,6 +256,20 @@ def pipeline_run(
             f"Use 'openkms-cli pipeline list' to see supported pipelines.[/yellow]"
         )
         raise typer.Exit(1)
+
+    cfg = get_cli_settings()
+    if vlm_url is None:
+        vlm_url = cfg.vlm_url
+    if vlm_api_key is None:
+        vlm_api_key = cfg.vlm_api_key or None
+    if bucket is None:
+        bucket = cfg.aws_bucket_name
+    if endpoint_url is None:
+        endpoint_url = cfg.aws_endpoint_url or None
+    if region is None:
+        region = cfg.aws_region
+    if api_url is None:
+        api_url = cfg.openkms_api_url
 
     # --- kb-index pipeline ---
     if pipeline_name == "kb-index":
@@ -287,12 +294,22 @@ def pipeline_run(
         except Exception:
             console.print("[yellow]No API auth (proceeding without auth)[/yellow]")
 
+        eff_base = (
+            embedding_model_base_url
+            if embedding_model_base_url not in (None, "")
+            else (cfg.embedding_model_base_url or None)
+        )
+        eff_name = (
+            embedding_model_name
+            if embedding_model_name not in (None, "")
+            else (cfg.embedding_model_name or None)
+        )
         embedding_override = None
-        if embedding_model_base_url:
+        if eff_base:
             embedding_override = {
-                "base_url": embedding_model_base_url,
-                "api_key": os.environ.get("OPENKMS_EMBEDDING_MODEL_API_KEY", ""),
-                "model_name": embedding_model_name or "text-embedding-ada-002",
+                "base_url": eff_base,
+                "api_key": cfg.embedding_model_api_key,
+                "model_name": eff_name or "text-embedding-ada-002",
             }
 
         with Progress(
@@ -359,8 +376,8 @@ def pipeline_run(
         else:
             console.print("[yellow]No API auth; skipping markdown sync and pipeline version.[/yellow]")
 
-    access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
-    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    access_key = cfg.aws_access_key_id
+    secret_key = cfg.aws_secret_access_key
 
     is_local = not _is_s3_uri(input_uri)
 
@@ -516,7 +533,7 @@ def pipeline_run(
             else:
                 model_config = {
                     "base_url": extraction_model_base_url,
-                    "api_key": os.environ.get("EXTRACTION_MODEL_API_KEY", ""),
+                    "api_key": cfg.extraction_model_api_key,
                     "model_name": extraction_model_name or "gpt-4",
                 }
             try:

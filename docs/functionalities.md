@@ -43,6 +43,7 @@
 ### 2b. openkms-cli (CLI for document parsing)
 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
+- **Configuration**: `openkms_cli/settings.py` (`CliSettings`, pydantic-settings) lists every supported env var via `validation_alias`; parse/pipeline/auth read through `get_cli_settings()`; Typer no longer duplicates env via `envvar=`
 - **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`
 - **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
 - **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`
@@ -154,7 +155,7 @@
 
 ### 6b. Authentication
 
-- **OIDC mode** (default): external IdP (e.g. Keycloak) – Authorization Code + PKCE in browser; full logout via IdP when configured
+- **OIDC mode** (default): any OIDC IdP – Authorization Code + PKCE in browser (`oidc-client-ts`); RP-initiated logout when the IdP exposes `end_session_endpoint`
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
 - **Profile** (`/profile`): authenticated users see display name, email (if present), administrator vs user role, account ID (`sub`), and sign-in method (local vs OIDC); data from `GET /api/auth/me`. Linked from the header user menu.
@@ -215,7 +216,8 @@
 |--------|------|-------------|
 | GET | `/health` | Health check |
 | GET | `/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
-| GET | `/login/oauth2/code/keycloak` | OAuth2 callback (legacy path name; IdP redirect URI) |
+| GET | `/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
+| GET | `/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
 | GET | `/api/auth/public-config` | No auth: `{ auth_mode, allow_signup }` for SPA / CLI alignment with local vs OIDC IdP |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |

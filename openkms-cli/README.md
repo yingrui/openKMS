@@ -2,6 +2,10 @@
 
 CLI tools for openKMS document parsing and pipeline operations. Designed for backend integration—the openKMS backend can invoke these commands for async document parsing.
 
+## Configuration
+
+Environment variables are mapped explicitly in `openkms_cli/settings.py` (`CliSettings`): each variable name is listed as a `validation_alias` on the field (no hidden prefix). Values load from `openkms-cli/.env` first, then the current working directory `.env` (later wins). CLI flags override env when you pass them.
+
 ## Installation
 
 ```bash
@@ -40,13 +44,13 @@ openkms-cli parse run doc.pdf -c config.json
 
 **Options:**
 
-| Option | Env var | Default |
-|--------|---------|---------|
-| `--output`, `-o` | - | `<input_dir>/parsed` |
-| `--vlm-url` | `OPENKMS_VLM_URL` | `http://localhost:8101/` |
-| `--model` | `OPENKMS_VLM_MODEL` | `PaddlePaddle/PaddleOCR-VL-1.5` |
-| `--max-concurrency` | `OPENKMS_VLM_MAX_CONCURRENCY` | `3` |
-| `--config`, `-c` | - | - |
+| Option | When omitted, from env | Notes |
+|--------|------------------------|-------|
+| `--output`, `-o` | - | Default: `<input_dir>/parsed` |
+| `--vlm-url` | `OPENKMS_VLM_URL` | Default in settings: `http://localhost:8101/` |
+| `--model` | `OPENKMS_VLM_MODEL` | Default: `PaddlePaddle/PaddleOCR-VL-1.5` |
+| `--max-concurrency` | `OPENKMS_VLM_MAX_CONCURRENCY` | Default: `3` |
+| `--config`, `-c` | - | JSON overrides for `vlm_url`, `model`, `max_concurrency` after env resolution |
 
 **Output structure** (compatible with openKMS backend):
 
@@ -92,19 +96,24 @@ openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api
 
 **Pipeline run options:**
 
-| Option | Env var | Default |
-|--------|---------|---------|
-| `--pipeline-name` | - | `paddleocr-doc-parse` |
-| `--input` | - | (required for doc-parse) S3 URI or local file path |
-| `--knowledge-base-id` | - | (required for kb-index) Knowledge base ID to index |
-| `--s3-prefix` | - | (optional) Output prefix; when omitted with S3 input, uses file hash |
-| `--vlm-url` | `OPENKMS_VLM_URL` | `http://localhost:8101/` |
-| `--bucket` | `AWS_BUCKET_NAME` | `openkms` |
-| - | `AWS_ACCESS_KEY_ID` | (env only, e.g. `.env`) |
-| - | `AWS_SECRET_ACCESS_KEY` | (env only, e.g. `.env`) |
-| `--endpoint-url` | `AWS_ENDPOINT_URL` | - (MinIO) |
-| `--output-dir`, `-o` | - | `./output` (local temp before upload) |
-| `--skip-upload` | - | Parse only, do not upload to S3 |
+| Option | When omitted, from env | Notes |
+|--------|------------------------|-------|
+| `--pipeline-name` | - | Default: `paddleocr-doc-parse` |
+| `--input` | - | Required for doc-parse: S3 URI or local path |
+| `--knowledge-base-id` | - | Required for `kb-index` |
+| `--s3-prefix` | - | Optional; with S3 input, default prefix is file hash |
+| `--vlm-url` | `OPENKMS_VLM_URL` | |
+| `--vlm-api-key` | `OPENKMS_VLM_API_KEY` | Optional |
+| `--bucket` | `AWS_BUCKET_NAME` | Default: `openkms` |
+| `--endpoint-url` | `AWS_ENDPOINT_URL` | MinIO / custom S3 endpoint |
+| `--region` | `AWS_REGION` | Default: `us-east-1` |
+| - | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Required for S3 input and upload (unless `--skip-upload` with local input) |
+| `--api-url` | `OPENKMS_API_URL` | Default: `http://localhost:8102` |
+| `--embedding-model-base-url` | `OPENKMS_EMBEDDING_MODEL_BASE_URL` | `kb-index` embedding override |
+| `--embedding-model-name` | `OPENKMS_EMBEDDING_MODEL_NAME` | With base URL above; API key: `OPENKMS_EMBEDDING_MODEL_API_KEY` |
+| `--extraction-model-base-url` / `--extraction-model-name` | - | With base URL only: `OPENKMS_EXTRACTION_MODEL_API_KEY` (alias `EXTRACTION_MODEL_API_KEY`) |
+| `--output-dir`, `-o` | - | `./output` (local temp) |
+| `--skip-upload` | - | Parse only, no S3 upload |
 
 ## Backend Integration
 
@@ -138,6 +147,6 @@ app.add_typer(my_app, name="mycommand", help="...")
 
 ## Requirements
 
-- **Base**: Python ≥3.10, typer≥0.9.0, rich≥13.0
+- **Base**: Python ≥3.10, typer≥0.9.0, rich≥13.0, pydantic-settings (env → `CliSettings`)
 - **Parse**: PaddleOCR-VL, mlx-vlm-server running at VLM URL
 - **Pipeline**: boto3 (S3/MinIO credentials)

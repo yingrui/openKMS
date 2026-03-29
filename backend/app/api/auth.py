@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.oidc_discovery import get_oidc_provider_metadata
 
 _JWKS_CLIENT: PyJWKClient | None = None
 
@@ -28,28 +29,33 @@ LOCAL_JWT_ISS = "openkms-local"
 
 
 def _frontend_base() -> str:
-    return settings.keycloak_frontend_url.rstrip("/")
+    return settings.frontend_url.rstrip("/")
 
 
 def _get_jwks_client() -> PyJWKClient:
     global _JWKS_CLIENT
     if _JWKS_CLIENT is None:
-        base = settings.keycloak_auth_server_url.rstrip("/")
-        jwks_url = f"{base}/realms/{settings.keycloak_realm}/protocol/openid-connect/certs"
-        _JWKS_CLIENT = PyJWKClient(jwks_url)
+        meta = get_oidc_provider_metadata()
+        jwks_uri = meta.get("jwks_uri")
+        if not jwks_uri:
+            raise RuntimeError("OIDC metadata missing jwks_uri")
+        _JWKS_CLIENT = PyJWKClient(jwks_uri)
     return _JWKS_CLIENT
 
 
 def _verify_oidc_jwt(token: str) -> dict:
     try:
+        meta = get_oidc_provider_metadata()
         jwks = _get_jwks_client()
         key = jwks.get_signing_key_from_jwt(token)
-        return jwt.decode(
-            token,
-            key.key,
-            algorithms=["RS256"],
-            options={"verify_aud": False},
-        )
+        issuer = meta.get("issuer")
+        kw: dict = {
+            "algorithms": ["RS256"],
+            "options": {"verify_aud": False},
+        }
+        if issuer:
+            kw["issuer"] = issuer
+        return jwt.decode(token, key.key, **kw)
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid or expired token") from e
 
@@ -100,7 +106,7 @@ def mint_local_cli_jwt() -> str:
         "name": "openkms-cli",
         "email": None,
         "realm_access": {"roles": []},
-        "azp": settings.keycloak_service_client_id,
+        "azp": settings.oidc_service_client_id,
         "iss": LOCAL_JWT_ISS,
         "iat": now,
         "exp": exp,
@@ -186,7 +192,7 @@ async def require_service_client(request: Request) -> str:
     token = await require_auth(request)
     payload = request.state.openkms_jwt_payload
     azp = payload.get("azp") or payload.get("client_id")
-    if azp != settings.keycloak_service_client_id:
+    if azp != settings.oidc_service_client_id:
         raise HTTPException(status_code=403, detail="Service client required")
     return token
 
@@ -208,45 +214,30 @@ async def sync_session(request: Request) -> dict:
     return {"ok": True}
 
 
-_KEYCLOAK_AUTH = "{base}/realms/{realm}/protocol/openid-connect/auth"
-_KEYCLOAK_TOKEN = "{base}/realms/{realm}/protocol/openid-connect/token"
-_KEYCLOAK_LOGOUT = "{base}/realms/{realm}/protocol/openid-connect/logout"
-
-
-def _auth_url() -> str:
-    base = settings.keycloak_auth_server_url.rstrip("/")
-    return _KEYCLOAK_AUTH.format(base=base, realm=settings.keycloak_realm)
-
-
-def _token_url() -> str:
-    base = settings.keycloak_auth_server_url.rstrip("/")
-    return _KEYCLOAK_TOKEN.format(base=base, realm=settings.keycloak_realm)
-
-
-def _logout_url() -> str:
-    base = settings.keycloak_auth_server_url.rstrip("/")
-    return _KEYCLOAK_LOGOUT.format(base=base, realm=settings.keycloak_realm)
-
-
 @router.get("/login")
 async def login(request: Request) -> RedirectResponse:
     """Redirect to OIDC authorization endpoint (oidc mode only)."""
     if settings.auth_mode == "local":
         return RedirectResponse(url=f"{_frontend_base()}/login?notice=local_auth", status_code=302)
+    meta = get_oidc_provider_metadata()
+    auth_ep = meta.get("authorization_endpoint")
+    if not auth_ep:
+        raise HTTPException(status_code=500, detail="OIDC metadata missing authorization_endpoint")
     state = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
     params = {
-        "client_id": settings.keycloak_client_id,
-        "redirect_uri": settings.keycloak_redirect_uri,
+        "client_id": settings.oidc_client_id,
+        "redirect_uri": settings.oidc_redirect_uri,
         "response_type": "code",
         "scope": "openid",
         "state": state,
     }
-    url = f"{_auth_url()}?{urlencode(params)}"
+    url = f"{auth_ep}?{urlencode(params)}"
     return RedirectResponse(url=url, status_code=302)
 
 
-@router.get("/login/oauth2/code/keycloak")
+@router.get("/login/oauth2/code/oidc")
+@router.get("/login/oauth2/code/keycloak", include_in_schema=False)
 async def oauth2_callback(
     request: Request,
     response: Response,
@@ -267,15 +258,21 @@ async def oauth2_callback(
         frontend = _frontend_base()
         return RedirectResponse(url=f"{frontend}/?error=no_code", status_code=302)
 
+    meta = get_oidc_provider_metadata()
+    token_ep = meta.get("token_endpoint")
+    if not token_ep:
+        frontend = _frontend_base()
+        return RedirectResponse(url=f"{frontend}/?error=no_token_endpoint", status_code=302)
+
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
-            _token_url(),
+            token_ep,
             data={
                 "grant_type": "authorization_code",
-                "client_id": settings.keycloak_client_id,
-                "client_secret": settings.keycloak_client_secret,
+                "client_id": settings.oidc_client_id,
+                "client_secret": settings.oidc_client_secret,
                 "code": code,
-                "redirect_uri": settings.keycloak_redirect_uri,
+                "redirect_uri": settings.oidc_redirect_uri,
             },
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
@@ -306,11 +303,15 @@ async def logout(request: Request) -> RedirectResponse:
     request.session.clear()
     if settings.auth_mode == "local":
         return RedirectResponse(url=_frontend_base(), status_code=302)
+    meta = get_oidc_provider_metadata()
+    end = meta.get("end_session_endpoint")
+    if not end:
+        return RedirectResponse(url=_frontend_base(), status_code=302)
     params = {
         "post_logout_redirect_uri": _frontend_base(),
-        "client_id": settings.keycloak_logout_client_id,
+        "client_id": settings.oidc_post_logout_client_id,
     }
-    url = f"{_logout_url()}?{urlencode(params)}"
+    url = f"{end}?{urlencode(params)}"
     return RedirectResponse(url=url, status_code=302)
 
 

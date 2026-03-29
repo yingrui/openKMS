@@ -8,6 +8,8 @@ import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn
 
+from .settings import get_cli_settings
+
 console = Console()
 
 parse_app = typer.Typer(help="Parse documents (PDF, images) using PaddleOCR-VL")
@@ -42,23 +44,20 @@ def parse_run(
         path_type=Path,
         help="Output directory. Default: <input_dir>/parsed or ./parsed",
     ),
-    vlm_url: str = typer.Option(
-        "http://localhost:8101/",
+    vlm_url: Optional[str] = typer.Option(
+        None,
         "--vlm-url",
-        envvar="OPENKMS_VLM_URL",
-        help="VLM server URL (mlx-vlm-server)",
+        help="VLM server URL (default: OPENKMS_VLM_URL)",
     ),
-    model: str = typer.Option(
-        "PaddlePaddle/PaddleOCR-VL-1.5",
+    model: Optional[str] = typer.Option(
+        None,
         "--model",
-        envvar="OPENKMS_VLM_MODEL",
-        help="VLM model name",
+        help="VLM model name (default: OPENKMS_VLM_MODEL)",
     ),
-    max_concurrency: int = typer.Option(
-        3,
+    max_concurrency: Optional[int] = typer.Option(
+        None,
         "--max-concurrency",
-        envvar="OPENKMS_VLM_MAX_CONCURRENCY",
-        help="Max concurrent VLM requests",
+        help="Max concurrent VLM requests (default: OPENKMS_VLM_MAX_CONCURRENCY)",
     ),
     config_path: Optional[Path] = typer.Option(
         None,
@@ -78,6 +77,14 @@ def parse_run(
       {file_hash}/block_*.png
       {file_hash}/markdown_out/*.md, imgs/*.jpg
     """
+    s = get_cli_settings()
+    if vlm_url is None:
+        vlm_url = s.vlm_url
+    if model is None:
+        model = s.vlm_model
+    if max_concurrency is None:
+        max_concurrency = s.vlm_max_concurrency
+
     if config_path:
         try:
             cfg = json.loads(config_path.read_text())

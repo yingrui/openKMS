@@ -1,4 +1,8 @@
-"""Application configuration."""
+"""Application configuration.
+
+Every setting that reads from the environment lists its variable name explicitly in
+``validation_alias`` (no implicit OPENKMS_ + field name). AWS_* vars keep their standard names.
+"""
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -13,39 +17,48 @@ load_dotenv(_ENV_FILE)
 class Settings(BaseSettings):
     """Application settings loaded from environment."""
 
-    # Database
-    database_host: str = "localhost"
-    database_port: int = 5432
-    database_user: str = "postgres"
-    database_password: str = ""
-    database_name: str = "openkms"
+    # --- Database ---
+    database_host: str = Field(default="localhost", validation_alias="OPENKMS_DATABASE_HOST")
+    database_port: int = Field(default=5432, validation_alias="OPENKMS_DATABASE_PORT")
+    database_user: str = Field(default="postgres", validation_alias="OPENKMS_DATABASE_USER")
+    database_password: str = Field(default="", validation_alias="OPENKMS_DATABASE_PASSWORD")
+    database_name: str = Field(default="openkms", validation_alias="OPENKMS_DATABASE_NAME")
 
-    # VLM Server (mlx-vlm for document parsing)
-    vlm_url: str = "http://localhost:8101"
-    vlm_model: str = "mlx-community/Qwen2-VL-2B-Instruct-4bit"
+    # --- VLM Server (mlx-vlm for document parsing) ---
+    vlm_url: str = Field(default="http://localhost:8101", validation_alias="OPENKMS_VLM_URL")
+    vlm_model: str = Field(
+        default="mlx-community/Qwen2-VL-2B-Instruct-4bit",
+        validation_alias="OPENKMS_VLM_MODEL",
+    )
 
-    # PaddleOCRVL (uses vlm_url / mlx-vlm-server as VLM backend for document parsing)
-    paddleocr_vl_server_url: str = "http://localhost:8101/"  # deprecated: use vlm_url
-    paddleocr_vl_model: str = "PaddlePaddle/PaddleOCR-VL-1.5"
+    # --- PaddleOCRVL (deprecated: prefer vlm_url) ---
+    paddleocr_vl_server_url: str = Field(
+        default="http://localhost:8101/",
+        validation_alias="OPENKMS_PADDLEOCR_VL_SERVER_URL",
+    )
+    paddleocr_vl_model: str = Field(
+        default="PaddlePaddle/PaddleOCR-VL-1.5",
+        validation_alias="OPENKMS_PADDLEOCR_VL_MODEL",
+    )
 
-    # Metadata extraction (LLM for document metadata)
-    extraction_model_id: str | None = None
+    # --- Metadata extraction (LLM for document metadata) ---
+    extraction_model_id: str | None = Field(default=None, validation_alias="OPENKMS_EXTRACTION_MODEL_ID")
 
-    # Backend URL for CLI (worker passes to openkms-cli --api-url)
+    # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 
-    # App
-    app_title: str = "openKMS Backend"
-    app_version: str = "0.1.0"
-    debug: bool = False
+    # --- App ---
+    app_title: str = Field(default="openKMS Backend", validation_alias="OPENKMS_APP_TITLE")
+    app_version: str = Field(default="0.1.0", validation_alias="OPENKMS_APP_VERSION")
+    debug: bool = Field(default=False, validation_alias="OPENKMS_DEBUG")
 
-    # Authentication: oidc (external OpenID Connect IdP, e.g. Keycloak) | local (PostgreSQL users)
-    auth_mode: str = Field(default="oidc")
-    allow_signup: bool = Field(default=True)
-    initial_admin_user: str | None = Field(default=None)
-    local_jwt_exp_hours: int = Field(default=168)
-    cli_basic_user: str = Field(default="")
-    cli_basic_password: str = Field(default="")
+    # --- Authentication: oidc | local ---
+    auth_mode: str = Field(default="oidc", validation_alias="OPENKMS_AUTH_MODE")
+    allow_signup: bool = Field(default=True, validation_alias="OPENKMS_ALLOW_SIGNUP")
+    initial_admin_user: str | None = Field(default=None, validation_alias="OPENKMS_INITIAL_ADMIN_USER")
+    local_jwt_exp_hours: int = Field(default=168, validation_alias="OPENKMS_LOCAL_JWT_EXP_HOURS")
+    cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
+    cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
 
     @field_validator("auth_mode")
     @classmethod
@@ -54,35 +67,39 @@ class Settings(BaseSettings):
             raise ValueError("OPENKMS_AUTH_MODE must be 'oidc' or 'local'")
         return v
 
-    # Keycloak / OIDC provider (env vars: KEYCLOAK_*, no OPENKMS_ prefix)
-    keycloak_auth_server_url: str = Field(default="http://localhost:8081", validation_alias="KEYCLOAK_AUTH_SERVER_URL")
-    keycloak_realm: str = Field(default="openkms", validation_alias="KEYCLOAK_REALM")
-    keycloak_client_id: str = Field(default="openkms-backend", validation_alias="KEYCLOAK_CLIENT_ID")
-    keycloak_client_secret: str = Field(default="", validation_alias="KEYCLOAK_CLIENT_SECRET")
-    keycloak_redirect_uri: str = Field(
-        default="http://localhost:8102/login/oauth2/code/keycloak",
-        validation_alias="KEYCLOAK_REDIRECT_URI",
+    # --- OIDC ---
+    oidc_issuer: str = Field(default="", validation_alias="OPENKMS_OIDC_ISSUER")
+    oidc_auth_server_base_url: str = Field(
+        default="http://localhost:8081",
+        validation_alias="OPENKMS_OIDC_AUTH_SERVER_BASE_URL",
     )
-    keycloak_frontend_url: str = Field(
-        default="http://localhost:5173",
-        validation_alias="KEYCLOAK_FRONTEND_URL",
+    oidc_realm: str = Field(default="openkms", validation_alias="OPENKMS_OIDC_REALM")
+    oidc_client_id: str = Field(default="openkms-backend", validation_alias="OPENKMS_OIDC_CLIENT_ID")
+    oidc_client_secret: str = Field(default="", validation_alias="OPENKMS_OIDC_CLIENT_SECRET")
+    oidc_redirect_uri: str = Field(
+        default="http://localhost:8102/login/oauth2/code/oidc",
+        validation_alias="OPENKMS_OIDC_REDIRECT_URI",
     )
-    keycloak_logout_client_id: str = Field(
+    frontend_url: str = Field(default="http://localhost:5173", validation_alias="OPENKMS_FRONTEND_URL")
+    oidc_post_logout_client_id: str = Field(
         default="openkms-frontend",
-        validation_alias="KEYCLOAK_LOGOUT_CLIENT_ID",
+        validation_alias="OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID",
     )
-    keycloak_service_client_id: str = Field(
-        default="openkms-cli",
-        validation_alias="KEYCLOAK_SERVICE_CLIENT_ID",
+    oidc_service_client_id: str = Field(default="openkms-cli", validation_alias="OPENKMS_OIDC_SERVICE_CLIENT_ID")
+
+    # --- Session (OAuth2 session cookie signing) ---
+    secret_key: str = Field(
+        default="openkms-dev-secret-change-in-production",
+        validation_alias="OPENKMS_SECRET_KEY",
     )
 
-    # Session (for OAuth2 state and post-login)
-    secret_key: str = "openkms-dev-secret-change-in-production"
+    # --- DataSource credential encryption (Fernet key, base64) ---
+    datasource_encryption_key: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_DATASOURCE_ENCRYPTION_KEY",
+    )
 
-    # DataSource credential encryption (Fernet key, base64). If unset, derived from secret_key (dev only).
-    datasource_encryption_key: str | None = None
-
-    # S3/MinIO (env vars: AWS_*, no OPENKMS_ prefix)
+    # --- S3/MinIO (standard AWS env names, no OPENKMS_ prefix) ---
     aws_access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
     aws_secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")
     aws_endpoint_url: str | None = Field(default=None, validation_alias="AWS_ENDPOINT_URL")
@@ -103,6 +120,16 @@ class Settings(BaseSettings):
         )
 
     @property
+    def oidc_issuer_url(self) -> str:
+        """Canonical issuer URL (explicit OPENKMS_OIDC_ISSUER or base + realm)."""
+        explicit = (self.oidc_issuer or "").strip().rstrip("/")
+        if explicit:
+            return explicit
+        base = (self.oidc_auth_server_base_url or "").strip().rstrip("/") or "http://localhost:8081"
+        realm = (self.oidc_realm or "").strip() or "openkms"
+        return f"{base}/realms/{realm}"
+
+    @property
     def database_url_sync(self) -> str:
         """Build sync PostgreSQL connection URL (for migrations)."""
         return (
@@ -110,7 +137,7 @@ class Settings(BaseSettings):
             f"@{self.database_host}:{self.database_port}/{self.database_name}"
         )
 
-    model_config = {"env_prefix": "OPENKMS_", "env_file": _ENV_FILE, "extra": "ignore"}
+    model_config = {"env_file": _ENV_FILE, "extra": "ignore"}
 
 
 settings = Settings()

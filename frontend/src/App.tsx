@@ -8,6 +8,8 @@ import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
 import { Profile } from './pages/Profile';
 import { Login } from './pages/Login';
+import { OidcCallback } from './pages/OidcCallback';
+import { OidcSilentRenew } from './pages/OidcSilentRenew';
 import { Signup } from './pages/Signup';
 import { DocumentChannel } from './pages/DocumentChannel';
 import { DocumentsIndex } from './pages/DocumentsIndex';
@@ -64,6 +66,8 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/auth/callback" element={<OidcCallback />} />
+        <Route path="/auth/silent-renew" element={<OidcSilentRenew />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="documents" element={<Outlet />}>

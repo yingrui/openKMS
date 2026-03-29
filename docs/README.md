@@ -25,7 +25,7 @@ openKMS organizes content in **channel trees** (similar to Google Drive folders)
 - **Frontend**: React 19, Vite 7, TypeScript, React Router
 - **Backend**: FastAPI, SQLAlchemy (async), PostgreSQL
 - **Document Parsing**: PaddleOCR-VL with mlx-vlm-server as VLM backend; CLI (`openkms-cli`) configurable as pipeline, invoked by procrastinate jobs
-- **Auth**: OIDC IdP (e.g. Keycloak) or local users in PostgreSQL (`OPENKMS_AUTH_MODE`)
+- **Auth**: OpenID Connect IdP (issuer discovery + PKCE SPA) or local users in PostgreSQL (`OPENKMS_AUTH_MODE`)
 
 ### Project Structure
 

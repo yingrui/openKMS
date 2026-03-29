@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Keycloak from 'keycloak-js';
+import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
+import { getUserManager } from '../oidc/userManager';
 import { setAuthTokenProvider } from '../data/apiClient';
 import './AuthContext.css';
 
@@ -37,33 +38,37 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-let keycloak: Keycloak | null = null;
-let initPromise: Promise<boolean> | null = null;
-
-function getKeycloak(forceNew = false) {
-  if (forceNew) {
-    keycloak = null;
-    initPromise = null;
+function decodeAccessTokenPayload(accessToken: string): Record<string, unknown> | null {
+  try {
+    const segment = accessToken.split('.')[1];
+    if (!segment) return null;
+    const base64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    const json = atob(padded);
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    return null;
   }
-  if (!keycloak) {
-    keycloak = new Keycloak({
-      url: config.keycloak.url,
-      realm: config.keycloak.realm,
-      clientId: config.keycloak.clientId,
-    });
-  }
-  return keycloak;
 }
 
-function parseUserFromToken(kc: Keycloak): AuthUser | null {
-  if (!kc.tokenParsed) return null;
-  const p = kc.tokenParsed as Record<string, unknown>;
-  const realmAccess = (p.realm_access as { roles?: string[] }) ?? {};
-  const roles: string[] = realmAccess.roles ?? [];
+function parseUserFromOidc(user: User | null | undefined): AuthUser | null {
+  if (!user) return null;
+  const p = user.profile;
+  let roles: string[] = [];
+  const payload = user.access_token ? decodeAccessTokenPayload(user.access_token) : null;
+  const ra = payload?.realm_access;
+  if (ra && typeof ra === 'object' && ra !== null && Array.isArray((ra as { roles?: unknown }).roles)) {
+    roles = (ra as { roles: string[] }).roles;
+  }
+  const username =
+    (typeof p.preferred_username === 'string' && p.preferred_username) ||
+    (typeof p.name === 'string' && p.name) ||
+    (typeof p.sub === 'string' && p.sub) ||
+    'user';
   return {
-    username: (p.preferred_username as string) || 'user',
-    email: p.email as string | undefined,
-    name: (p.name as string) || (p.preferred_username as string),
+    username,
+    email: typeof p.email === 'string' ? p.email : undefined,
+    name: (typeof p.name === 'string' && p.name) || username,
     roles,
   };
 }
@@ -340,85 +345,32 @@ function OidcAuthProvider({
     }
   }, []);
 
-  const runKeycloakInit = useCallback(async () => {
-    const kc = getKeycloak();
-
-    const onAuthError = () => {
-      setAuthError('Authentication failed');
-      setIsAuthenticated(false);
-      setUser(null);
-    };
-
-    const onTokenExpired = () => {
-      kc.updateToken(-1).catch(() => {
-        setAuthError('Session expired');
-        setIsAuthenticated(false);
-        setUser(null);
-      });
-    };
-
-    kc.onAuthError = onAuthError;
-    kc.onTokenExpired = onTokenExpired;
-
-    const doInit = async (): Promise<boolean> => {
-      const redirectUri =
-        typeof window !== 'undefined'
-          ? window.location.origin + window.location.pathname + window.location.search
-          : config.origin;
-      return kc.init({
-        onLoad: 'check-sso',
-        redirectUri,
-        pkceMethod: 'S256',
-      });
-    };
-
-    if (initPromise !== null) {
-      try {
-        const auth = await initPromise;
-        setIsAuthenticated(auth);
-        if (auth && kc.tokenParsed) {
-          setUser(parseUserFromToken(kc));
-          const token = await kc.updateToken(30).then(() => kc.token);
-          if (token) await syncTokenToBackend(token);
-        } else {
-          setUser(null);
-        }
-      } catch (e) {
-        console.error('OIDC init failed:', e);
-        const base = config.keycloak.url.replace(/\/$/, '');
-        const hint = `${base}/realms/${config.keycloak.realm}`;
-        const msg =
-          e instanceof Error && e.message
-            ? `Cannot reach identity provider: ${e.message}. Check ${hint}`
-            : `Cannot reach identity provider at ${hint}. Check VITE_KEYCLOAK_URL.`;
-        setAuthError(msg);
-        setIsAuthenticated(false);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    initPromise = doInit();
+  const runOidcInit = useCallback(async () => {
+    const mgr = getUserManager();
     try {
-      const auth = await initPromise;
-      setIsAuthenticated(auth);
-      if (auth && kc.tokenParsed) {
-        setUser(parseUserFromToken(kc));
-        const token = await kc.updateToken(30).then(() => kc.token);
-        if (token) await syncTokenToBackend(token);
+      let u = await mgr.getUser();
+      if (u?.expired) {
+        try {
+          u = await mgr.signinSilent();
+        } catch {
+          u = null;
+        }
+      }
+      if (u && !u.expired) {
+        setUser(parseUserFromOidc(u));
+        setIsAuthenticated(true);
+        if (u.access_token) await syncTokenToBackend(u.access_token);
       } else {
         setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (e) {
       console.error('OIDC init failed:', e);
-      const base = config.keycloak.url.replace(/\/$/, '');
-      const hint = `${base}/realms/${config.keycloak.realm}`;
+      const hint = config.oidc.authority;
       const msg =
         e instanceof Error && e.message
-          ? `Cannot reach identity provider: ${e.message}. Check ${hint}`
-          : `Cannot reach identity provider at ${hint}. Check VITE_KEYCLOAK_URL.`;
+          ? `Cannot reach identity provider: ${e.message}. Check VITE_OIDC_ISSUER (${hint})`
+          : `Cannot reach identity provider. Check VITE_OIDC_ISSUER (${hint}).`;
       setAuthError(msg);
       setIsAuthenticated(false);
       setUser(null);
@@ -428,30 +380,44 @@ function OidcAuthProvider({
   }, []);
 
   useEffect(() => {
-    void runKeycloakInit();
-  }, [runKeycloakInit]);
+    void runOidcInit();
+  }, [runOidcInit]);
+
+  useEffect(() => {
+    const mgr = getUserManager();
+    const onLoaded = (u: User) => {
+      setUser(parseUserFromOidc(u));
+      setIsAuthenticated(true);
+      if (u.access_token) void syncTokenToBackend(u.access_token);
+    };
+    const onUnloaded = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+    mgr.events.addUserLoaded(onLoaded);
+    mgr.events.addUserUnloaded(onUnloaded);
+    return () => {
+      mgr.events.removeUserLoaded(onLoaded);
+      mgr.events.removeUserUnloaded(onUnloaded);
+    };
+  }, []);
 
   const clearAuthError = useCallback(() => setAuthError(null), []);
 
   const retryAuth = useCallback(() => {
     setAuthError(null);
     setIsLoading(true);
-    initPromise = null;
-    getKeycloak(true);
-    void runKeycloakInit();
-  }, [runKeycloakInit]);
+    void getUserManager()
+      .removeUser()
+      .then(() => runOidcInit());
+  }, [runOidcInit]);
 
   const login = useCallback(() => {
     setAuthError(null);
-    const redirectUri =
-      typeof window !== 'undefined'
-        ? window.location.origin + window.location.pathname + window.location.search
-        : config.origin;
-    getKeycloak().login({ redirectUri });
+    void getUserManager().signinRedirect();
   }, []);
 
   const logout = useCallback(async () => {
-    const kc = getKeycloak();
     setAuthError(null);
     try {
       await fetch(`${config.apiUrl}/clear-session`, {
@@ -461,28 +427,31 @@ function OidcAuthProvider({
     } catch {
       // proceed
     }
-    const redirectUri = config.origin;
-    if (typeof kc.logout === 'function') {
-      kc.logout({ redirectUri });
-      return;
+    try {
+      await getUserManager().signoutRedirect();
+    } catch {
+      await getUserManager().removeUser();
+      setIsAuthenticated(false);
+      setUser(null);
+      navigate('/', { replace: true });
     }
-    if (typeof kc.clearToken === 'function') kc.clearToken();
-    setIsAuthenticated(false);
-    setUser(null);
-    navigate('/', { replace: true });
   }, [navigate]);
 
   const getToken = useCallback(async () => {
-    const kc = getKeycloak();
+    const mgr = getUserManager();
     try {
-      const refreshed = await kc.updateToken(30);
-      if (refreshed && kc.tokenParsed) {
-        const u = parseUserFromToken(kc);
-        if (u) setUser(u);
-        const token = kc.token;
-        if (token) await syncTokenToBackend(token);
+      let u = await mgr.getUser();
+      if (!u) return undefined;
+      if (u.expired) {
+        u = await mgr.signinSilent();
+        if (!u) return undefined;
       }
-      return kc.token ?? undefined;
+      if (u.access_token) {
+        const parsed = parseUserFromOidc(u);
+        if (parsed) setUser(parsed);
+        await syncTokenToBackend(u.access_token);
+      }
+      return u.access_token;
     } catch {
       return undefined;
     }

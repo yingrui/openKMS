@@ -111,49 +111,31 @@ Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate j
 3. Optional: `OPENKMS_ALLOW_SIGNUP=false` to disable public registration; `OPENKMS_INITIAL_ADMIN_USER` to grant admin when the signup **username** matches (case-insensitive).
 4. **openkms-cli**: `OPENKMS_AUTH_MODE=local`, `OPENKMS_CLI_BASIC_USER`, `OPENKMS_CLI_BASIC_PASSWORD` (must match backend). Use only on trusted networks without TLS.
 
-#### OIDC setup (e.g. Keycloak)
+#### OIDC setup (any standards-compliant IdP)
 
-The frontend uses the Keycloak JavaScript adapter (Authorization Code + PKCE) when `VITE_AUTH_MODE=oidc`. Configure a **public** client in your IdP (Keycloak example below):
+The SPA uses **`oidc-client-ts`** (Authorization Code + PKCE) when the backend reports `oidc` mode. Set **`VITE_OIDC_ISSUER`** to your IdP’s issuer URL (same value as token `iss` / discovery document parent). Example for **Keycloak**: `http://localhost:8081/realms/openkms`.
 
-1. **Create client** `openkms-frontend`:
-   - Client authentication: **Off**
-   - Standard flow: **Enabled**
-   - Direct access grants: Off
+1. **Public browser client** (e.g. `openkms-frontend` in Keycloak):
+   - Enable authorization code flow; **PKCE** (S256) required by `oidc-client-ts`.
+   - **Redirect URIs**: `http://localhost:5173/auth/callback`, `http://localhost:5173/auth/silent-renew` (and production equivalents).
+   - **Post-logout redirect**: your SPA origin (e.g. `http://localhost:5173`).
+   - **Web origins / CORS**: SPA origin as required by your IdP.
 
-2. **Valid Redirect URIs** (where Keycloak redirects after login):
-   - Dev: `http://localhost:5173`, `http://localhost:5173/*`
-   - Prod: your frontend origin (e.g. `https://app.example.com`, `https://app.example.com/*`)
-
-3. **Valid Post Logout Redirect URIs** (for full logout):
-   - Dev: `http://localhost:5173`
-   - Prod: your frontend origin
-
-4. **Web Origins**: add the same origin(s) as above.
-
-5. **Frontend env** (`.env` or `frontend/.env`):
+2. **Frontend env** (`.env` or `frontend/.env`):
    ```
-   VITE_KEYCLOAK_URL=http://localhost:8081
-   VITE_KEYCLOAK_REALM=openkms
-   VITE_KEYCLOAK_CLIENT_ID=openkms-frontend
+   VITE_OIDC_ISSUER=http://localhost:8081/realms/openkms
+   VITE_OIDC_CLIENT_ID=openkms-frontend
    ```
+   If **`VITE_OIDC_ISSUER`** is unset, set **`VITE_OIDC_AUTH_SERVER_BASE_URL`** and **`VITE_OIDC_REALM`** so the SPA builds `{base}/realms/{realm}` as authority.
 
-6. **Backend env**: see `backend/.env.example` for `KEYCLOAK_*` (realm, server URL, backend client for sync-session verification).
+3. **Backend env**: prefer **`OPENKMS_OIDC_ISSUER`** (full issuer URL). Otherwise set **`OPENKMS_OIDC_AUTH_SERVER_BASE_URL`** + **`OPENKMS_OIDC_REALM`**. The backend loads **`{issuer}/.well-known/openid-configuration`** for JWKS and OAuth endpoints. See `backend/.env.example` for confidential client id, secret, and redirect URI (`/login/oauth2/code/oidc`).
 
-7. **openkms-cli client** (for pipeline jobs and manual CLI runs with auth):
+4. **openkms-cli client** (machine / client credentials):
 
-   Create a confidential client in Keycloak for machine-to-machine auth:
-   - **Client ID**: `openkms-cli`
-   - **Client authentication**: **On**
-   - **Service accounts roles**: Enabled (or Standard flow disabled, Client credentials flow enabled)
-   - **Client secret**: create/regenerate in Credentials tab and set in `openkms-cli/.env`:
-     ```
-     AUTH_URL=http://localhost:8081
-     AUTH_REALM=openkms
-     AUTH_CLIENT_ID=openkms-cli
-     AUTH_CLIENT_SECRET=<your-secret-from-keycloak>
-     ```
-   - Ensure backend `KEYCLOAK_SERVICE_CLIENT_ID=openkms-cli` (default) so the backend accepts tokens from this client for service endpoints (e.g. `GET /api/models/{id}/config`).
+   Create a **confidential** client in your IdP (Keycloak example: enable client credentials, service account):
+   - **Client ID**: `openkms-cli` (must match backend **`OPENKMS_OIDC_SERVICE_CLIENT_ID`**)
+   - Set `OPENKMS_OIDC_AUTH_SERVER_BASE_URL`, `OPENKMS_OIDC_REALM`, `OPENKMS_OIDC_SERVICE_CLIENT_ID`, and `OPENKMS_OIDC_SERVICE_CLIENT_SECRET` in `openkms-cli/.env` (Keycloak-style token URL), or set **`OPENKMS_OIDC_TOKEN_URL`** to the token endpoint for other IdPs.
 
-**If logout shows Keycloak 400**: ensure the frontend origin is in "Valid Post Logout Redirect URIs" for `openkms-frontend`.
+**Logout errors from the IdP**: ensure the SPA origin is allowed as a post-logout redirect for the browser client.
 
-**Console access**: only users with the realm role `admin` can see and access the Console. In Keycloak: Realm → Roles → create `admin` if needed, then assign it to users or groups.
+**Console access**: OIDC users need an **`admin`** role in JWT `realm_access.roles` (Keycloak: realm role `admin`). Other IdPs may use different claim shapes; extend parsing if you use groups or custom claims.

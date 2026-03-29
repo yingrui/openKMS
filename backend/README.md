@@ -34,12 +34,17 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_INITIAL_ADMIN_USER` | (empty) | Local mode: grant `is_admin` when signup username matches (case-insensitive) |
 | `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: CLI HTTP Basic username |
 | `OPENKMS_CLI_BASIC_PASSWORD` | (empty) | Local mode: CLI HTTP Basic password |
-| `KEYCLOAK_AUTH_SERVER_URL` | http://localhost:8081 | OIDC IdP server (e.g. Keycloak) |
-| `KEYCLOAK_REALM` | openkms | Keycloak realm |
-| `KEYCLOAK_CLIENT_ID` | openkms-backend | OAuth2 client ID |
-| `KEYCLOAK_CLIENT_SECRET` | (empty) | OAuth2 client secret |
-| `KEYCLOAK_REDIRECT_URI` | http://localhost:8102/login/oauth2/code/keycloak | OAuth2 callback (add to Keycloak client Valid Redirect URIs) |
-| `KEYCLOAK_FRONTEND_URL` | http://localhost:5173 | Redirect after login/logout |
+| `OPENKMS_OIDC_ISSUER` | (empty) | Full OIDC issuer URL; if set, overrides base+realm below |
+| `OPENKMS_OIDC_AUTH_SERVER_BASE_URL` | http://localhost:8081 | IdP base URL when issuer is derived as `{base}/realms/{realm}` |
+| `OPENKMS_OIDC_REALM` | openkms | Realm segment for derived issuer |
+| `OPENKMS_OIDC_CLIENT_ID` | openkms-backend | OAuth2 confidential client (backend code exchange) |
+| `OPENKMS_OIDC_CLIENT_SECRET` | (empty) | OAuth2 client secret |
+| `OPENKMS_OIDC_REDIRECT_URI` | http://localhost:8102/login/oauth2/code/oidc | OAuth2 callback URL registered on that client |
+| `OPENKMS_FRONTEND_URL` | http://localhost:5173 | SPA origin (CORS + redirects) |
+| `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | openkms-frontend | Browser client id for RP-initiated logout |
+| `OPENKMS_OIDC_SERVICE_CLIENT_ID` | openkms-cli | `azp` for service-only API (CLI client credentials) |
+
+**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** no longer reads `AUTH_URL` / `AUTH_*`; use `OPENKMS_OIDC_AUTH_SERVER_BASE_URL`, `OPENKMS_OIDC_REALM`, `OPENKMS_OIDC_SERVICE_CLIENT_ID`, and `OPENKMS_OIDC_SERVICE_CLIENT_SECRET` (or `OPENKMS_OIDC_TOKEN_URL` for a full token endpoint URL).
 
 ## Database
 
@@ -116,9 +121,10 @@ Docs: http://localhost:8102/docs
 ## Endpoints
 
 - `GET /health` – Health check
-- `GET /login` – Redirect to Keycloak login (OAuth2)
-- `GET /login/oauth2/code/keycloak` – OAuth2 callback (Keycloak redirect URI)
-- `GET /logout` – Clear session, redirect to Keycloak logout
+- `GET /login` – Redirect to OIDC authorization endpoint (oidc mode)
+- `GET /login/oauth2/code/oidc` – OAuth2 callback (preferred redirect URI)
+- `GET /login/oauth2/code/keycloak` – Same callback (legacy path for existing IdP configs)
+- `GET /logout` – Clear session; oidc mode redirects to IdP end-session when configured
 - `POST /api/documents/upload` – Upload document (PDF/image), parse via VLM, store in DB
 - `GET /api/documents/{id}` – Get document metadata
 - `GET /api/documents/{id}/parsing` – Get parsing result (result.json format)

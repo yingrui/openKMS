@@ -312,7 +312,7 @@ TypeScript compilation (`tsc -b`) is only invoked via `build`; there is no stand
 | Item | Details |
 |------|---------|
 | Default secret key | `backend/app/config.py` – `secret_key = "openkms-dev-secret-change-in-production"`. Require explicit `secret_key` in production; reject startup with default secret. |
-| CORS single origin | `backend/app/main.py` – only `keycloak_frontend_url` is allowed |
+| CORS single origin | `backend/app/main.py` – only `OPENKMS_FRONTEND_URL` (`settings.frontend_url`) is allowed |
 | Legacy logout | `GET /logout` endpoint is marked as legacy; consider removing |
 | Migration seed data | Alembic migrations seed `http://localhost:8101/` and fixed IDs – not environment-aware |
 

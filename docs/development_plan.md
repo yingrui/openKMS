@@ -12,7 +12,7 @@
 - Document versions: `document_versions` table; explicit snapshots of markdown + metadata (`POST /versions`, `GET /versions`, `GET /versions/{id}`, `POST /versions/{id}/restore`); version checkpoint uses JSON field **`tag`** (DB column `tag`); UI: version column in Document Information (3-column stats), Save version when working copy newer than last snapshot, optional tag in Save as version modal, **Versions** modal as a table (Version / Tag / Saved / Actions); list/preview/restore with optional save-current-first; not created on routine markdown/metadata save
 - Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
 - Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
-- Authentication: `OPENKMS_AUTH_MODE=oidc` (default, external IdP e.g. Keycloak) or `local` (PostgreSQL users, `/api/auth/*`, CLI HTTP Basic); backend verifies JWT Bearer or session; `GET /api/auth/public-config` (no auth) exposes `auth_mode` and `allow_signup` so the SPA matches the server; frontend resolves local vs OIDC from the API with `VITE_AUTH_MODE` as fallback; Vite proxy for API in dev
+- Authentication: `OPENKMS_AUTH_MODE=oidc` (default, OIDC via issuer discovery + JWKS) or `local` (PostgreSQL users, `/api/auth/*`, CLI HTTP Basic); backend verifies JWT Bearer or session; `GET /api/auth/public-config` (no auth) exposes `auth_mode` and `allow_signup` so the SPA matches the server; SPA OIDC uses `oidc-client-ts` (`VITE_OIDC_ISSUER`); frontend resolves local vs OIDC from the API with `VITE_AUTH_MODE` as fallback; Vite proxy for API in dev
 - User profile: `/profile` shows current user from `GET /api/auth/me` (header menu); Console → Users & Roles: `/api/admin/users` CRUD in local mode, IdP notice in OIDC mode
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
@@ -31,6 +31,7 @@
 - [x] Use PaddleOCR-VL for parsing (optional `pip install openkms-cli[parse]`)
 - [x] CLI commands: `openkms-cli parse run <input> [--output <path>] [--config <path>]`
 - [x] Configurable via CLI args, env vars, config file (VLM URL, model, concurrency)
+- [x] Explicit env → settings: `openkms_cli/settings.py` (`CliSettings`), `get_cli_settings()`; pipeline/parse/auth use it; pydantic-settings dependency
 - [x] Design for backend integration: subprocess-invokable
 - [x] Pipeline CLI: `openkms-cli pipeline list` (list supported pipelines), `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
@@ -101,7 +102,7 @@
 
 ### 4. Authentication
 
-- [x] Integrate OIDC IdP with frontend (Keycloak JS; login/logout) when `VITE_AUTH_MODE=oidc`
+- [x] Integrate OIDC IdP with frontend (`oidc-client-ts`, discovery + PKCE; login/logout) when API reports `oidc`
 - [x] Local auth mode: PostgreSQL `users`, `/api/auth/register|login|me`, frontend `/login` & `/signup`, CLI HTTP Basic
 - [x] `GET /api/auth/public-config` + SPA uses API-reported mode (compatibility with local vs central IdP); optional mismatch banner vs `VITE_AUTH_MODE`
 - [x] Profile page `/profile` and `fetchAuthMe`; admin user APIs `/api/admin/users` + Console Users (local only)

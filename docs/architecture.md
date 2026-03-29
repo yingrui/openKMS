@@ -116,10 +116,11 @@ backend/
 ├── app/
 │   ├── main.py                  # FastAPI app, CORS, routers, procrastinate lifespan; rejects default secret in production
 │   ├── config.py                # Settings (env: OPENKMS_*); vlm_url primary for VLM
+│   ├── oidc_discovery.py        # Cached GET {issuer}/.well-known/openid-configuration (JWKS + OAuth endpoints)
 │   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
 │   ├── database.py              # Async engine, get_db, init_db
 │   ├── api/
-│   │   ├── auth.py              # OIDC or local auth: JWKS / HS256 JWT, require_auth, /api/auth/*, sync-session
+│   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth; /api/auth/*; sync-session
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id), PUT metadata, PUT markdown, POST restore-markdown, POST rebuild-page-index, POST/GET versions, GET version, POST version restore, POST extract-metadata, GET page-index, GET section (by line range)
 │   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
@@ -202,6 +203,7 @@ openkms-cli/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m openkms_cli
 │   ├── app.py               # Typer app, registers subcommands
+│   ├── settings.py          # CliSettings: explicit env var names (validation_alias); pydantic-settings
 │   ├── auth.py              # OIDC client credentials or local HTTP Basic (try_api_request_auth)
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
@@ -212,6 +214,7 @@ openkms-cli/
 ```
 
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
+- **Configuration**: `openkms_cli/settings.py` maps each environment variable explicitly (no hidden prefix); loads `openkms-cli/.env` then cwd `.env`; CLI flags override when passed
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
@@ -329,9 +332,9 @@ sequenceDiagram
 
 ## Authentication (`OPENKMS_AUTH_MODE`)
 
-Two modes (default **`oidc`**). Deployments should keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for `auth_mode` and `allow_signup`, chooses Keycloak JS vs local forms from the API, and shows a banner if `VITE_AUTH_MODE` is set and disagrees. `VITE_AUTH_MODE` is only a fallback when that request fails.
+Two modes (default **`oidc`**). Deployments should keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for `auth_mode` and `allow_signup`, chooses **OIDC (Authorization Code + PKCE via `oidc-client-ts`)** vs local forms from the API, and shows a banner if `VITE_AUTH_MODE` is set and disagrees. `VITE_AUTH_MODE` is only a fallback when that request fails.
 
-### OIDC mode (external IdP, e.g. Keycloak)
+### OIDC mode (standards-compliant OpenID Connect IdP)
 
 ```mermaid
 flowchart LR
@@ -353,9 +356,9 @@ flowchart LR
   end
 ```
 
-- **Backend**: JWT validated via IdP JWKS (`KEYCLOAK_*` URLs today). Session cookie optional after `POST /sync-session`.
-- **Frontend**: Keycloak JS when `public-config` reports `oidc` (or fallback `VITE_AUTH_MODE`); Authorization Code + PKCE; `POST /sync-session` after login.
-- `GET /login` / `GET /login/oauth2/code/keycloak` – backend OAuth redirect and callback (legacy path name; OIDC callback).
+- **Backend**: Resolves **`OPENKMS_OIDC_ISSUER`** or **`{OPENKMS_OIDC_AUTH_SERVER_BASE_URL}/realms/{OPENKMS_OIDC_REALM}`**, fetches **`{issuer}/.well-known/openid-configuration`**, validates JWTs with **`jwks_uri`**, and uses discovery **`authorization_endpoint`**, **`token_endpoint`**, **`end_session_endpoint`**. Session cookie optional after `POST /sync-session`.
+- **Frontend**: **`oidc-client-ts`** (`UserManager`) when `public-config` reports `oidc`; redirect URIs **`/auth/callback`** and **`/auth/silent-renew`**; `POST /sync-session` after login.
+- `GET /login` / `GET /login/oauth2/code/oidc` (and legacy `/login/oauth2/code/keycloak`) – backend OAuth redirect and callback for the confidential client.
 - `GET /logout` – clears session; redirects to IdP logout when configured.
 
 ### Local mode (PostgreSQL users)
@@ -378,9 +381,9 @@ flowchart LR
 |-------|--------|
 | Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id, OPENKMS_BACKEND_URL (for CLI metadata extraction) |
 | Backend | `OPENKMS_AUTH_MODE` – `oidc` (default) or `local`; `OPENKMS_ALLOW_SIGNUP`, `OPENKMS_INITIAL_ADMIN_USER`, `OPENKMS_CLI_BASIC_*`, `OPENKMS_LOCAL_JWT_EXP_HOURS` |
-| Backend | `KEYCLOAK_*` – OIDC IdP (e.g. Keycloak): server, realm, clients, redirect URI, frontend URL, service client id for CLI JWT |
+| Backend | `OPENKMS_OIDC_*`, `OPENKMS_FRONTEND_URL` – issuer, confidential client, SPA origin, post-logout client id, service client id (`azp`) for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
-| Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback), `keycloak` (oidc). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
+| Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback), `oidc` (`VITE_OIDC_*`). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
 | Vite dev | Proxy `/api`, `/sync-session`, `/clear-session` → backend; `/buckets/openkms` → MinIO |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit, alembic-migrations) |
