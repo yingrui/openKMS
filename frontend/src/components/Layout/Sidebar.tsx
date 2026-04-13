@@ -179,68 +179,72 @@ export function Sidebar() {
           <span className="sidebar-title">openKMS</span>
         </div>
       </div>
-      <nav className="sidebar-nav">
+      <nav className={`sidebar-nav ${onConsole && canAccessConsole ? 'sidebar-nav--console' : ''}`}>
         {onConsole && canAccessConsole ? (
           <>
-            <Link to="/" className="sidebar-link sidebar-link-exit">
-              <ArrowLeft size={18} strokeWidth={1.75} />
-              <span>Exit Console</span>
-            </Link>
-            {canAccessPath('/console') && (
-            <NavLink to="/console" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <LayoutDashboard size={18} strokeWidth={1.75} />
-              <span>Overview</span>
-            </NavLink>
-            )}
-            {canAccessPath('/console/permission-management') && (
-              <>
-                <div className="sidebar-menu-label">Permission management</div>
-                <NavLink
-                  to="/console/permission-management"
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-                >
-                  <KeyRound size={18} strokeWidth={1.75} />
-                  <span>Permissions</span>
+            <div className="sidebar-nav-console-scroll">
+              {canAccessPath('/console') && (
+                <NavLink to="/console" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                  <LayoutDashboard size={18} strokeWidth={1.75} />
+                  <span>Overview</span>
                 </NavLink>
-              </>
-            )}
-            {canAccessPath('/console/data-security/groups') && (
-              <>
-                <div className="sidebar-menu-label">Data security</div>
-                <NavLink
-                  to="/console/data-security/groups"
-                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-                >
-                  <Shield size={18} strokeWidth={1.75} />
-                  <span>Access groups</span>
+              )}
+              {canAccessPath('/console/permission-management') && (
+                <>
+                  <div className="sidebar-menu-label">Permission management</div>
+                  <NavLink
+                    to="/console/permission-management"
+                    className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                  >
+                    <KeyRound size={18} strokeWidth={1.75} />
+                    <span>Permissions</span>
+                  </NavLink>
+                </>
+              )}
+              {canAccessPath('/console/data-security/groups') && (
+                <>
+                  <div className="sidebar-menu-label">Data security</div>
+                  <NavLink
+                    to="/console/data-security/groups"
+                    className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                  >
+                    <Shield size={18} strokeWidth={1.75} />
+                    <span>Access groups</span>
+                  </NavLink>
+                </>
+              )}
+              {showConsoleDataLabel && <div className="sidebar-menu-label">Console</div>}
+              {canAccessPath('/console/data-sources') && (
+                <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                  <Database size={18} strokeWidth={1.75} />
+                  <span>Data Sources</span>
                 </NavLink>
-              </>
-            )}
-            {showConsoleDataLabel && <div className="sidebar-menu-label">Console</div>}
-            {canAccessPath('/console/data-sources') && (
-              <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <Database size={18} strokeWidth={1.75} />
-                <span>Data Sources</span>
-              </NavLink>
-            )}
-            {canAccessPath('/console/settings') && (
-              <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <Settings size={18} strokeWidth={1.75} />
-                <span>System Settings</span>
-              </NavLink>
-            )}
-            {canAccessPath('/console/users') && (
-              <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <Users size={18} strokeWidth={1.75} />
-                <span>Users &amp; roles</span>
-              </NavLink>
-            )}
-            {canAccessPath('/console/feature-toggles') && (
-              <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <ToggleLeft size={18} strokeWidth={1.75} />
-                <span>Feature Toggles</span>
-              </NavLink>
-            )}
+              )}
+              {canAccessPath('/console/settings') && (
+                <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                  <Settings size={18} strokeWidth={1.75} />
+                  <span>System Settings</span>
+                </NavLink>
+              )}
+              {canAccessPath('/console/users') && (
+                <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                  <Users size={18} strokeWidth={1.75} />
+                  <span>Users &amp; roles</span>
+                </NavLink>
+              )}
+              {canAccessPath('/console/feature-toggles') && (
+                <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                  <ToggleLeft size={18} strokeWidth={1.75} />
+                  <span>Feature Toggles</span>
+                </NavLink>
+              )}
+            </div>
+            <div className="sidebar-nav-console-footer">
+              <Link to="/" className="sidebar-link sidebar-link-exit">
+                <ArrowLeft size={18} strokeWidth={1.75} />
+                <span>Exit Console</span>
+              </Link>
+            </div>
           </>
         ) : (
           <>

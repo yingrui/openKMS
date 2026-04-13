@@ -91,6 +91,14 @@
   color: var(--color-accent);
 }
 
+.header-console-link--exit {
+  color: var(--color-text-muted);
+}
+
+.header-console-link--exit:hover {
+  color: var(--color-accent);
+}
+
 .header-theme-btn {
   padding: 8px;
   border-radius: var(--radius-sm);

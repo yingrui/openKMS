@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn } from 'lucide-react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
 
 export function Header() {
+  const location = useLocation();
+  const onConsole = location.pathname.startsWith('/console');
   const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -39,16 +41,22 @@ export function Header() {
         <kbd className="header-search-kbd">⌘K</kbd>
       </div>
       <div className="header-actions">
-        {canAccessConsole && (
-          <NavLink
-            to="/console"
-            className={({ isActive }) =>
-              `header-console-link ${isActive ? 'header-console-link-active' : ''}`
-            }
-          >
-            <span>Console</span>
-          </NavLink>
-        )}
+        {canAccessConsole &&
+          (onConsole ? (
+            <Link to="/" className="header-console-link header-console-link--exit">
+              <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
+              <span>Exit Console</span>
+            </Link>
+          ) : (
+            <NavLink
+              to="/console"
+              className={({ isActive }) =>
+                `header-console-link ${isActive ? 'header-console-link-active' : ''}`
+              }
+            >
+              <span>Console</span>
+            </NavLink>
+          ))}
         <button
           type="button"
           onClick={toggleTheme}
