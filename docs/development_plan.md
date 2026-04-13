@@ -17,6 +17,7 @@
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
 - Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters), Q&A proxy, settings (chunk_config, faq_prompt, metadata_keys); doc_metadata propagated from documents to FAQs/chunks per metadata_keys; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
+- **Wiki spaces**: `wiki_spaces`, `wiki_pages`, `wiki_files` (+ `access_group_wiki_spaces`); API `/api/wiki-spaces` (scoped like KBs when `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`); PageIndex cache on page body; file uploads + presigned GET; **POST `/api/wiki-spaces/{id}/import/vault`** (folder multipart or zip) for Obsidian-style bulk import; permissions `wikis:read` / `wikis:write`; feature toggle `wikiSpaces`; UI `/wikis`, editor, vault import on space detail (**folder**: in-app modal with skip options, then folder picker; after the browser’s upload confirmation, import starts immediately—no extra in-app confirm); **openkms-cli** `wiki put`, `wiki sync`, `wiki upload-file`
 - Console: settings, users, feature toggles, object types, link types, data sources, datasets, permission management, data security (groups + resource scopes); entry gated by `console:*` permissions or JWT `admin`; per-page permissions (e.g. `console:feature_toggles`)
 - Evaluation (experimental, feature toggle): query + expected answer pairs per KB; topic column; CSV import (topic, query, answer); **items list** paginated (`GET .../items` `offset`/`limit`, default limit 10); run types **search_retrieval** (hybrid search + judge) and **qa_answer** (KB agent + judge); persisted **evaluation_runs** / **evaluation_run_items**; list/get/delete/compare runs in API and dataset detail UI; sidebar link when evaluationDatasets enabled
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start; backend README + dev setup doc: pgvector install, Docker/PGDG, `$libdir/vector` troubleshooting
@@ -27,6 +28,7 @@
 
 ### 0. openkms-cli (document parsing CLI)
 
+- [x] Wiki CLI: `openkms-cli wiki put|sync|upload-file` for wiki space pages and assets (authenticated API)
 - [x] Create `openkms-cli/` folder with Typer CLI (typer>=0.9.0)
 - [x] Use PaddleOCR-VL for parsing (optional `pip install openkms-cli[parse]`)
 - [x] CLI commands: `openkms-cli parse run <input> [--output <path>] [--config <path>]`
@@ -109,7 +111,7 @@
 - [x] Protect backend routes with JWT Bearer or session (or local Basic for CLI)
 - [x] Operation permissions: `security_permissions` (catalog), `security_roles`, `security_role_permissions`, `user_security_roles`; `require_permission` + `GET /api/auth/permission-catalog` (from DB) + admin CRUD `/api/admin/security-permissions`; OIDC resolves permissions by matching JWT realm role names to `security_roles.name`; Console sidebar and APIs use granular `console:*` keys; JWT realm `admin` / `local-cli` bypass
 - [x] Pattern-based access control: optional `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` middleware; default `frontend_route_patterns` / `backend_api_patterns` per catalog key (Alembic); SPA `canAccessPath` from permission-catalog union; docs and `.env.example` updated
-- [x] Access groups: `access_groups`, junctions for channels/KBs/evaluation/datasets/object_types/link_types; `/api/admin/groups` + Console Data security UI; `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` for local non-admin list/get/mutate filters (no OIDC enforcement in phase 1)
+- [x] Access groups: `access_groups`, junctions for channels/KBs/wiki/evaluation/datasets/object_types/link_types; **data resources** (`data_resources`, `access_group_data_resources`) with `/api/admin/data-resources` + Console **Data resources** page; group scopes include `data_resource_ids`; `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` unions legacy ID lists with resource predicates (`data_scope` + `data_resource_policy`) for local non-admin filters (no OIDC enforcement in phase 1); **OIDC**: console may still manage groups, scopes, and data resources; `PUT` group members remains local-only
 - [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT requires `console:feature_toggles`)
 - [x] Backend `require_admin` retained where needed; sensitive console routes migrated to `require_permission`
 - [x] Backend dependency management via pyproject.toml + uv.lock (replaces requirements.txt)

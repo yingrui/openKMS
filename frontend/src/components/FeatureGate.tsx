@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 
-type FeatureId = 'articles' | 'knowledgeBases' | 'objectsAndLinks' | 'evaluationDatasets';
+type FeatureId = 'articles' | 'knowledgeBases' | 'wikiSpaces' | 'objectsAndLinks' | 'evaluationDatasets';
 
 export function FeatureGate({
   feature,

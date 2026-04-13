@@ -285,10 +285,12 @@ export async function putGroupMembers(groupId: string, userIds: string[]) {
 export type GroupScopesOut = {
   channel_ids: string[];
   knowledge_base_ids: string[];
+  wiki_space_ids: string[];
   evaluation_dataset_ids: string[];
   dataset_ids: string[];
   object_type_ids: string[];
   link_type_ids: string[];
+  data_resource_ids: string[];
 };
 
 export async function fetchGroupScopes(groupId: string): Promise<GroupScopesOut> {
@@ -299,6 +301,87 @@ export async function fetchGroupScopes(groupId: string): Promise<GroupScopesOut>
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+export type DataResourceOut = {
+  id: string;
+  name: string;
+  description: string | null;
+  resource_kind: string;
+  attributes: Record<string, unknown>;
+  anchor_channel_id: string | null;
+  anchor_knowledge_base_id: string | null;
+};
+
+export async function fetchDataResources(): Promise<DataResourceOut[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/admin/data-resources`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function fetchResourceKinds(): Promise<string[]> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/admin/data-resources/kinds`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function createDataResource(body: {
+  name: string;
+  description?: string | null;
+  resource_kind: string;
+  attributes?: Record<string, unknown>;
+  anchor_channel_id?: string | null;
+  anchor_knowledge_base_id?: string | null;
+}): Promise<DataResourceOut> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/admin/data-resources`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function patchDataResource(
+  id: string,
+  body: {
+    name?: string;
+    description?: string | null;
+    resource_kind?: string;
+    attributes?: Record<string, unknown>;
+    anchor_channel_id?: string | null;
+    anchor_knowledge_base_id?: string | null;
+  }
+): Promise<DataResourceOut> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function deleteDataResource(id: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
+    method: 'DELETE',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await parseError(res));
 }
 
 export async function putGroupScopes(groupId: string, body: Partial<GroupScopesOut>) {

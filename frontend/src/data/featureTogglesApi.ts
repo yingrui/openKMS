@@ -5,6 +5,7 @@ import { getAuthHeaders } from './apiClient';
 export interface FeatureToggles {
   articles: boolean;
   knowledgeBases: boolean;
+  wikiSpaces: boolean;
   objectsAndLinks: boolean;
   evaluationDatasets: boolean;
   hasNeo4jDataSource?: boolean;

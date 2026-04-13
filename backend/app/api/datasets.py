@@ -14,7 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth
 from app.services.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 from app.database import get_db
-from app.services.data_scope import effective_dataset_ids, scope_applies
+from app.services.data_scope import scope_applies, user_group_ids
+from app.services.data_resource_policy import dataset_visible
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -47,17 +48,22 @@ router = APIRouter(
 )
 
 
-async def _scoped_dataset_ids(request: Request, db: AsyncSession) -> set[str] | None:
+async def _dataset_scope_restricted(request: Request, db: AsyncSession) -> bool:
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if not isinstance(sub, str) or not scope_applies(p, sub):
-        return None
-    return await effective_dataset_ids(db, sub)
+        return False
+    gids = await user_group_ids(db, sub)
+    return bool(gids)
 
 
 async def _require_dataset_in_scope(request: Request, db: AsyncSession, dataset_id: str) -> None:
-    allowed = await _scoped_dataset_ids(request, db)
-    if allowed is not None and dataset_id not in allowed:
+    row = await db.get(Dataset, dataset_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and not await dataset_visible(db, p, sub, row):
         raise HTTPException(status_code=404, detail="Dataset not found")
 
 
@@ -72,8 +78,7 @@ async def list_tables_from_source(
     db: AsyncSession = Depends(get_db),
 ):
     """List PostgreSQL tables from a data source (for picker when creating dataset)."""
-    allowed = await _scoped_dataset_ids(request, db)
-    if allowed is not None:
+    if await _dataset_scope_restricted(request, db):
         raise HTTPException(
             status_code=403,
             detail="Table listing is not available when your account is restricted by group data scopes",
@@ -115,13 +120,12 @@ async def list_datasets(
     query = select(Dataset).order_by(Dataset.created_at.desc())
     if data_source_id:
         query = query.where(Dataset.data_source_id == data_source_id)
-    allowed = await _scoped_dataset_ids(request, db)
-    if allowed is not None:
-        if not allowed:
-            return DatasetListResponse(items=[], total=0)
-        query = query.where(Dataset.id.in_(allowed))
     result = await db.execute(query)
-    items = result.scalars().all()
+    items = list(result.scalars().all())
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str):
+        items = [d for d in items if await dataset_visible(db, p, sub, d)]
     ds_ids = {d.data_source_id for d in items}
     ds_map = {}
     if ds_ids:
@@ -153,8 +157,7 @@ async def create_dataset(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a dataset."""
-    allowed = await _scoped_dataset_ids(request, db)
-    if allowed is not None:
+    if await _dataset_scope_restricted(request, db):
         raise HTTPException(
             status_code=403,
             detail="Creating datasets is not allowed when your account is restricted by group data scopes",

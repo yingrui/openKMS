@@ -7,11 +7,11 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home, Documents, Articles, Knowledge Bases, Glossaries, Pipelines, Jobs, Models"]
+    FE["Home, Documents, Articles, Knowledge Bases, Wikis, Glossaries, Pipelines, Jobs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["channels, documents, knowledge-bases, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["channels, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -46,12 +46,13 @@ flowchart TB
   CLI --> VLM
   CLI -->|metadata extraction, embeddings| LLM
   CLI -->|kb-index: chunks, FAQ embeddings| Backend
+  CLI -->|wiki put/sync/upload-file| Backend
 ```
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_knowledge_bases**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**) for data-security scopes, documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
-| **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
+| **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; wiki assets under `wiki/{space_id}/files/{file_id}/…` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
 | **QA Agent** | Separate FastAPI + LangGraph service; retrieves via backend search API (no DB access), generates answers via LLM; configurable per knowledge base |
@@ -73,6 +74,7 @@ flowchart TB
     Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
     Articles[Articles, ArticleDetail]
     KB[KnowledgeBaseList, KnowledgeBaseDetail]
+    Wiki[WikiSpaceList, WikiSpaceDetail, WikiPageEditor]
     Eval[EvaluationDatasetList, EvaluationDatasetDetail]
     Glossaries[GlossaryList, GlossaryDetail]
     Pipelines[Pipelines]
@@ -105,11 +107,12 @@ frontend/src/
     ├── DocumentDetail.tsx
     ├── Articles.tsx, ArticleDetail.tsx
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
+    ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiPageEditor.tsx
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── OntologyList.tsx, ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx, ObjectExplorer.tsx
-    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
+    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 
 ## Backend Structure
@@ -127,7 +130,7 @@ backend/
 │   ├── api/
 │   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me + permission-catalog with route/API patterns), sync-session
 │   │   ├── admin/
-│   │   │   ├── groups.py        # CRUD /api/admin/groups, members PUT, scopes PUT (access groups + resource allow lists)
+│   │   │   ├── groups.py        # CRUD /api/admin/groups, scopes PUT (any auth); members PUT local-only (OIDC: GET empty, PUT 403)
 │   │   │   ├── security_roles.py  # GET /api/admin/security-roles, PUT …/permissions
 │   │   │   ├── security_permissions.py  # CRUD /api/admin/security-permissions (catalog rows)
 │   │   │   └── permission_reference.py  # GET /api/admin/permission-reference (routes + APIs + operation_key_hints for admins)
@@ -140,6 +143,7 @@ backend/
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
+│   │   ├── wiki_spaces.py      # /api/wiki-spaces: spaces, pages (incl. PUT by-path), files, page-index; POST import/vault (zip/bulk), POST import/vault/markdown-file (single .md + rewrite)
 │   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, import (CSV), run (search_retrieval | qa_answer), runs list/get/delete/compare
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
@@ -158,7 +162,8 @@ backend/
 │   │   ├── user.py            # User (local auth: email, username, password_hash, is_admin)
 │   │   ├── security_role.py # SecurityRole, SecurityRolePermission, UserSecurityRole
 │   │   ├── security_permission.py # SecurityPermission (key, label, description, JSONB route/API patterns, sort_order)
-│   │   ├── access_group.py  # AccessGroup, AccessGroupUser, junctions for channels/KBs/eval/datasets/object_types/link_types
+│   │   ├── access_group.py  # AccessGroup, AccessGroupUser, junctions for channels/KBs/wiki/eval/datasets/object_types/link_types/data_resources
+│   │   ├── data_resource.py  # DataResource, AccessGroupDataResource
 │   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK, key_property, is_master_data, display_property)
 │   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
 │   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
@@ -197,6 +202,7 @@ backend/
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
+│       ├── wiki_vault_import.py          # Obsidian vault bulk import: path rules, zip safety, binary upload, markdown asset URL rewrite; strip NUL from text for PostgreSQL
 │       ├── storage.py                    # S3/MinIO client (upload, delete)
 │       ├── permission_catalog.py       # PERM_* constants, OPERATION_KEY_HINTS for admin reference UI
 │       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions when table empty
@@ -207,7 +213,8 @@ backend/
 │       ├── security_permission_service.py  # List/sort permissions from DB; keys set for role validation
 │       ├── permission_resolution.py    # Permissions: local via user_security_roles; OIDC via JWT realm role name matching security_roles.name
 │       ├── user_roles_sync.py          # Sync user_security_roles from users.is_admin; create member role with `all` if missing
-│       └── data_scope.py               # OPENKMS_ENFORCE_GROUP_DATA_SCOPES: effective channel/KB/eval/dataset/ontology IDs
+│       ├── data_scope.py               # OPENKMS_ENFORCE_GROUP_DATA_SCOPES: effective channel/KB/eval/dataset/ontology IDs; channel subtree expansion
+│       └── data_resource_policy.py     # Validate data resource payloads; SQL predicates (documents); entity matchers (KB, eval, dataset, ontology types)
 ├── scripts/
 │   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
 │   └── seed_mock_insurance_data.py  # Create mock diseases, insurance_products, disease_insurance_product tables in schema 'mock'

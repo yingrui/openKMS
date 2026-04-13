@@ -19,7 +19,11 @@ export function MainLayout() {
     permissionPatternsReady,
   } = useAuth();
   const isHome = location.pathname === '/';
-  const isDetailPage = location.pathname.startsWith('/documents/view') || location.pathname.startsWith('/articles/view') || location.pathname.startsWith('/knowledge-bases/');
+  const isDetailPage =
+    location.pathname.startsWith('/documents/view') ||
+    location.pathname.startsWith('/articles/view') ||
+    location.pathname.startsWith('/knowledge-bases/') ||
+    location.pathname.startsWith('/wikis/');
   const showAuthRequired = !isLoading && !isAuthenticated && !isHome;
   const showPathDenied =
     !isLoading && isAuthenticated && permissionPatternsReady && !canAccessPath(location.pathname);

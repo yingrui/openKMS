@@ -24,6 +24,8 @@ import {
   ClipboardList,
   Shield,
   KeyRound,
+  Library,
+  Tags,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -201,16 +203,28 @@ export function Sidebar() {
                   </NavLink>
                 </>
               )}
-              {canAccessPath('/console/data-security/groups') && (
+              {(canAccessPath('/console/data-security/groups') ||
+                canAccessPath('/console/data-security/data-resources')) && (
                 <>
                   <div className="sidebar-menu-label">Data security</div>
-                  <NavLink
-                    to="/console/data-security/groups"
-                    className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-                  >
-                    <Shield size={18} strokeWidth={1.75} />
-                    <span>Access groups</span>
-                  </NavLink>
+                  {canAccessPath('/console/data-security/groups') && (
+                    <NavLink
+                      to="/console/data-security/groups"
+                      className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                    >
+                      <Shield size={18} strokeWidth={1.75} />
+                      <span>Access groups</span>
+                    </NavLink>
+                  )}
+                  {canAccessPath('/console/data-security/data-resources') && (
+                    <NavLink
+                      to="/console/data-security/data-resources"
+                      className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                    >
+                      <Tags size={18} strokeWidth={1.75} />
+                      <span>Data resources</span>
+                    </NavLink>
+                  )}
                 </>
               )}
               {showConsoleDataLabel && <div className="sidebar-menu-label">Console</div>}
@@ -410,6 +424,17 @@ export function Sidebar() {
           >
             <Database size={18} strokeWidth={1.75} />
             <span>Knowledge Bases</span>
+          </NavLink>
+        )}
+        {toggles.wikiSpaces && canAccessPath('/wikis') && (
+          <NavLink
+            to="/wikis"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <Library size={18} strokeWidth={1.75} />
+            <span>Wikis</span>
           </NavLink>
         )}
         {toggles.evaluationDatasets && canAccessPath('/evaluation-datasets') && (

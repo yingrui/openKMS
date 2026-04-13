@@ -34,7 +34,12 @@ from app.schemas.document import (
     MetadataUpdateBody,
     ParsingResultResponse,
 )
-from app.services.data_scope import effective_channel_ids, scope_applies
+from app.services.data_scope import scope_applies
+from app.services.data_resource_policy import (
+    channel_allowed_for_document_upload,
+    document_passes_scoped_predicate,
+    scoped_document_predicate,
+)
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
@@ -42,27 +47,12 @@ from app.services.storage import delete_objects_by_prefix, get_object, get_redir
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
 
-async def _scoped_channel_ids(request: Request, db: AsyncSession) -> set[str] | None:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str):
-        return None
-    if not scope_applies(p, sub):
-        return None
-    return await effective_channel_ids(db, sub)
-
-
 async def _require_document_in_scope(request: Request, db: AsyncSession, doc: Document) -> None:
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if not isinstance(sub, str):
         return
-    if not scope_applies(p, sub):
-        return
-    allowed = await effective_channel_ids(db, sub)
-    if allowed is None:
-        return
-    if doc.channel_id not in allowed:
+    if not await document_passes_scoped_predicate(db, p, sub, doc):
         raise HTTPException(status_code=404, detail="Document not found")
 
 
@@ -113,12 +103,14 @@ def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id
 @router.get("/stats")
 async def get_document_stats(request: Request, db: AsyncSession = Depends(get_db)):
     """Return document counts for the documents index (e.g. total)."""
-    allowed = await _scoped_channel_ids(request, db)
-    if allowed is not None and not allowed:
-        return {"total": 0}
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    scope_pred = (
+        await scoped_document_predicate(db, p, sub) if isinstance(sub, str) else None
+    )
     q = select(func.count(Document.id))
-    if allowed is not None:
-        q = q.where(Document.channel_id.in_(allowed))
+    if scope_pred is not None:
+        q = q.where(scope_pred)
     result = await db.execute(q)
     total = result.scalar_one()
     return {"total": total}
@@ -135,13 +127,15 @@ async def list_documents(
 ):
     """List documents, optionally filtered by channel and/or name search. Supports pagination."""
     base_query = select(Document)
-    allowed = await _scoped_channel_ids(request, db)
-    if allowed is not None:
-        if not allowed:
-            return DocumentListResponse(items=[], total=0)
-        base_query = base_query.where(Document.channel_id.in_(allowed))
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    scope_pred = (
+        await scoped_document_predicate(db, p, sub) if isinstance(sub, str) else None
+    )
 
     if channel_id:
+        from sqlalchemy import and_
+
         result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
         all_channels = list(result.scalars().all())
         target = next((c for c in all_channels if c.id == channel_id), None)
@@ -149,11 +143,16 @@ async def list_documents(
             raise HTTPException(status_code=404, detail="Channel not found")
         ids_to_include: set[str] = set()
         _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
-        if allowed is not None:
-            ids_to_include &= allowed
-            if not ids_to_include:
-                return DocumentListResponse(items=[], total=0)
-        base_query = base_query.where(Document.channel_id.in_(ids_to_include))
+        if not ids_to_include:
+            return DocumentListResponse(items=[], total=0)
+        if scope_pred is not None:
+            base_query = base_query.where(
+                and_(Document.channel_id.in_(ids_to_include), scope_pred)
+            )
+        else:
+            base_query = base_query.where(Document.channel_id.in_(ids_to_include))
+    elif scope_pred is not None:
+        base_query = base_query.where(scope_pred)
 
     if search:
         base_query = base_query.where(Document.name.ilike(f"%{search}%"))
@@ -176,9 +175,11 @@ async def upload_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a document: store original to S3, create record. No parsing at upload time."""
-    allowed = await _scoped_channel_ids(request, db)
-    if allowed is not None and channel_id not in allowed:
-        raise HTTPException(status_code=404, detail="Channel not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        if not await channel_allowed_for_document_upload(db, sub, channel_id):
+            raise HTTPException(status_code=404, detail="Channel not found")
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -305,9 +306,11 @@ async def update_document(
     if body.name is not None:
         doc.name = body.name.strip() or doc.name
     if body.channel_id is not None:
-        allowed = await _scoped_channel_ids(request, db)
-        if allowed is not None and body.channel_id not in allowed:
-            raise HTTPException(status_code=404, detail="Channel not found")
+        p = request.state.openkms_jwt_payload
+        sub = p.get("sub")
+        if isinstance(sub, str) and scope_applies(p, sub):
+            if not await channel_allowed_for_document_upload(db, sub, body.channel_id):
+                raise HTTPException(status_code=404, detail="Channel not found")
         channel = await db.get(DocumentChannel, body.channel_id)
         if not channel:
             raise HTTPException(status_code=404, detail="Channel not found")

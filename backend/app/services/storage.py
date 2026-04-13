@@ -144,3 +144,10 @@ def object_exists(key: str) -> bool:
         return False
 
 
+def delete_object(key: str) -> None:
+    """Delete a single object from S3."""
+    if not settings.storage_enabled:
+        return
+    _client().delete_object(Bucket=_bucket(), Key=key)
+
+

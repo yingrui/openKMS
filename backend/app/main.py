@@ -15,6 +15,7 @@ from app.api.jobs import router as jobs_router
 from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.knowledge_bases import router as knowledge_bases_router
+from app.api.wiki_spaces import router as wiki_spaces_router
 from app.api.glossaries import router as glossaries_router
 from app.api.object_types import router as object_types_router
 from app.api.link_types import router as link_types_router
@@ -24,6 +25,7 @@ from app.api.data_sources import router as data_sources_router
 from app.api.datasets import router as datasets_router
 from app.api.evaluation_datasets import router as evaluation_datasets_router
 from app.api.users_admin import router as users_admin_router
+from app.api.admin.data_resources import router as admin_data_resources_router
 from app.api.admin.groups import router as admin_groups_router
 from app.api.admin.security_roles import router as admin_security_roles_router
 from app.api.admin.security_permissions import router as admin_security_permissions_router
@@ -100,6 +102,7 @@ app.include_router(models_router, prefix="/api")
 app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")
+app.include_router(wiki_spaces_router, prefix="/api")
 app.include_router(glossaries_router, prefix="/api")
 app.include_router(object_types_router, prefix="/api")
 app.include_router(link_types_router, prefix="/api")
@@ -109,6 +112,7 @@ app.include_router(datasets_router, prefix="/api")
 app.include_router(evaluation_datasets_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")
 app.include_router(admin_groups_router, prefix="/api")
+app.include_router(admin_data_resources_router, prefix="/api")
 app.include_router(admin_security_roles_router, prefix="/api")
 app.include_router(admin_security_permissions_router, prefix="/api")
 app.include_router(admin_permission_reference_router, prefix="/api")

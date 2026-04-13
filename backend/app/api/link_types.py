@@ -11,7 +11,7 @@ from app.api.auth import require_any_permission, require_auth
 from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count, get_dataset_row_count_where_not_null
 from app.database import get_db
-from app.services.data_scope import effective_link_type_ids, scope_applies
+from app.services.data_resource_policy import link_type_visible
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
@@ -37,12 +37,13 @@ router = APIRouter(
 
 
 async def _require_link_type_in_scope(request: Request, db: AsyncSession, link_type_id: str) -> None:
+    lt = await db.get(LinkType, link_type_id)
+    if not lt:
+        raise HTTPException(status_code=404, detail="Link type not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_link_type_ids(db, sub)
-        if allowed is not None and link_type_id not in allowed:
-            raise HTTPException(status_code=404, detail="Link type not found")
+    if isinstance(sub, str) and not await link_type_visible(db, p, sub, lt):
+        raise HTTPException(status_code=404, detail="Link type not found")
 
 
 class IndexToNeo4jRequest(BaseModel):
@@ -191,16 +192,12 @@ async def list_link_types(
 ):
     """List all link types. When count_from_neo4j=true, link_count comes from Neo4j (Links page)."""
     query = select(LinkType).order_by(LinkType.created_at.desc())
+    result = await db.execute(query)
+    types = list(result.scalars().all())
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_link_type_ids(db, sub)
-        if allowed is not None:
-            if not allowed:
-                return LinkTypeListResponse(items=[], total=0)
-            query = query.where(LinkType.id.in_(allowed))
-    result = await db.execute(query)
-    types = result.scalars().all()
+    if isinstance(sub, str):
+        types = [t for t in types if await link_type_visible(db, p, sub, t)]
     neo4j_driver = None
     if count_from_neo4j:
         neo4j_ds = await _get_first_neo4j_datasource(db)
@@ -281,7 +278,10 @@ async def get_link_type(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    await _require_link_type_in_scope(request, db, link_type_id)
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and not await link_type_visible(db, p, sub, link_type):
+        raise HTTPException(status_code=404, detail="Link type not found")
     count_override = None
     if count_from_neo4j:
         neo4j_ds = await _get_first_neo4j_datasource(db)

@@ -77,6 +77,20 @@
 
 - Toggle visibility via Console → Feature Toggles
 
+### 4c. Wiki spaces (Feature Toggle)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Wiki space CRUD | ✅ | `/api/wiki-spaces`; list/create/update/delete; optional **group data scopes** via `access_group_wiki_spaces` (local mode, same pattern as knowledge bases) |
+| Wiki pages | ✅ | Path-per-space (e.g. `guides/onboarding`); `GET/POST/PATCH/DELETE` by id; **PUT upsert** `.../pages/by-path/{path}` for CLI; markdown `body`; cached **page_index** JSONB; `GET .../pages/{id}/page-index` |
+| Wiki files | ✅ | `POST .../files` (multipart), `GET .../files/{id}/content` (presigned redirect), `DELETE .../files/{id}`; objects under `wiki/{space_id}/files/...` in S3/MinIO |
+| Vault import | ✅ | **Zip:** `POST .../import/vault` with `archive`. **Folder (UI):** **Import folder** opens an in-app dialog (skip `.pdf` / Office extensions), then **Choose vault folder…**; the browser’s mandatory upload confirmation appears, then import starts immediately (no extra in-app confirm); paths omit the picked OS folder name (first segment of `webkitRelativePath` stripped so wiki paths start at vault contents); sequential uploads with progress; same skip rules, limits (~2000 files, 80 MB total, 25 MB/file), and image rewrites as bulk import; binaries require storage; **NUL bytes** stripped from markdown/title/path text before insert (PostgreSQL UTF-8) |
+| Permissions | ✅ | `wikis:read` / `wikis:write` with default SPA/API patterns; strict pattern middleware coverage via seeded `security_permissions` |
+| UI | ✅ | `/wikis`, `/wikis/:id`, `/wikis/:id/pages/:pageId`; wiki space detail: **Import folder** / **Import zip**; sidebar **Wikis** when toggle + path allowed; preview uses `react-markdown` with `/api/...` image URL resolution |
+| openkms-cli | ✅ | `openkms-cli wiki put`, `wiki sync`, `wiki upload-file` (auth: OIDC or local Basic) |
+
+- Toggle: `wikiSpaces` (default on); Console → Feature Toggles
+
 ### 4a. Evaluation (Feature Toggle, Experimental)
 
 | Feature | Status | Description |
@@ -149,7 +163,7 @@
 - **Entry**: header **Console** opens `/console` when outside console routes; on `/console/*` the same control reads **Exit Console** and returns home (`/`). **Exit Console** is also pinned at the **bottom** of the console sidebar (scrollable nav above). `/console/*` requires permission `all`, any `console:*` from `GET /api/auth/me`, or JWT realm role `admin` (OIDC) / full catalog for IdP admins. **Sidebar** (main app and console) shows a link only when `canAccessPath` matches that route against the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` (same rules as the main layout route gate), in addition to feature toggles where applicable.
 - **Console overview** (`/console`): Introduces **console sidebar** tools only—permissions, data security, data sources, users & feature toggles, settings; cards link when `canAccessPath` allows; quick links to Permissions and Access groups when those permissions apply; optional nudge when the catalog still has only **`all`** (until `openkms_permissions_onboarding_dismissed` is set).
 - **Permission management** (`/console/permission-management`): **Permission catalog** is stored in **`security_permissions`**; the page loads rows from **`GET /api/admin/security-permissions`** (includes `id` for edit/delete). Under **Roles**, **All** selects catalog-only mode (add/edit/delete permission rows). Choosing a **named role** shows checkboxes to draft which keys that role receives; **Save role permissions** calls **`PUT /api/admin/security-roles/{id}/permissions`** once—no auto-save on each toggle. Switching roles with unsaved changes prompts to discard. Migrations seed **`all`** when the catalog table is empty and backfill default pattern rows for every hinted operation key (`a2b3c4d5e6f7`); admins may add keys via **Add permission**, **Add missing suggested keys** (from **`operation_key_hints`** on **`GET /api/admin/permission-reference`**), or **`POST /api/admin/security-permissions`**, using the in-page **Route & API reference** (and **Operation keys** tab) for path patterns. Roles may only assign keys that exist in **`security_permissions`**. The built-in **`all`** row cannot be edited or deleted. **Migration** seeds the **admin** role with **`all`**; **member** is created on first non-admin local sign-in (also starts with **`all`**). You cannot remove **`all`** from a role that still has only **`all`** in one step—add another permission, save, then remove **`all`**. **Local**: `user_security_roles` synced from `is_admin`. **OIDC**: JWT `realm_access.roles` match **`security_roles.name`**; realm **`admin`** bypasses permission checks.
-- **Data security** (`/console/data-security/groups`, `/console/data-security/groups/:id/access`): **local** only—CRUD access groups, assign local users, multi-select scopes (channels, KBs, evaluation datasets, datasets, object types, link types). Enforcement: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` (default `false`); when `true`, **local** non-admin users with group membership are filtered on documents/channels, knowledge bases, evaluation APIs, object/link type lists, etc.; users with **no** group rows are not filtered (legacy). **OIDC**: scope enforcement skipped in this phase.
+- **Data security** (`/console/data-security/groups`, `/console/data-security/groups/:id/access`, `/console/data-security/data-resources`): requires `console:groups`. **Access groups**, **data resources**, and per-group **resource scopes** (channels, KBs, wiki spaces, evaluation datasets, datasets, object types, link types, **data resource** attachments) are editable in **both** local and OIDC modes. **Assigning local users to access groups** is available only when `OPENKMS_AUTH_MODE=local` (OIDC: membership is outside this app; Console shows scopes only on the group data access page). **Data resources** CRUD via `/api/admin/data-resources`; kinds: `document`, `knowledge_base`, `evaluation_dataset`, `dataset`, `object_type`, `link_type`. Enforcement: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` (default `false`); when `true`, **local** non-admin users with group membership see the **union** of legacy ID allow lists **or** rows matching any granted data resource for that entity family (documents: channel subtree + `metadata.*` / `channel_id` JSONB filters; KBs: anchor or `kb_id`/`name`; others: id keys in attributes). Users with **no** group rows are not filtered (legacy). **OIDC**: scope enforcement skipped in this phase.
 - **Data Sources** (`/console/data-sources`): `console:data_sources` (or admin). **Datasets and schema** (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`): `console:datasets` / `console:object_types` / `console:link_types` **or** `ontology:read` / `ontology:write` as applicable (API uses `require_any_permission`); System Settings, Users & Roles, Feature Toggles remain `console:*` (or admin).
 - **Users & Roles** (`/console/users`): requires `console:users`. **Local auth**: list users, toggle `is_admin` (syncs security role links), delete/add users. **OIDC auth**: read-only notice.
 - Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
@@ -235,10 +249,13 @@
 | POST | `/api/admin/security-permissions` | `console:permissions`: create catalog row |
 | PATCH | `/api/admin/security-permissions/{id}` | `console:permissions`: update label, description, patterns, sort_order (built-in `all` row rejected) |
 | DELETE | `/api/admin/security-permissions/{id}` | `console:permissions`: delete row (`all` and keys still assigned to roles are rejected) |
-| GET/POST | `/api/admin/groups` | `console:groups`, local only: list/create access groups |
+| GET/POST | `/api/admin/groups` | `console:groups`: list/create access groups |
 | GET/PATCH/DELETE | `/api/admin/groups/{id}` | `console:groups`: get/update/delete group |
-| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: list/replace member user ids |
-| GET/PUT | `/api/admin/groups/{id}/scopes` | `console:groups`: get/replace resource id lists per category |
+| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: list/replace member user ids (**local** auth only for `PUT`; **OIDC**: `GET` returns `[]`, `PUT` **403**) |
+| GET/PUT | `/api/admin/groups/{id}/scopes` | `console:groups`: get/replace resource id lists per category (includes `data_resource_ids`) |
+| GET/POST | `/api/admin/data-resources` | `console:groups`: list/create **data resources** |
+| GET | `/api/admin/data-resources/kinds` | `console:groups`: allowed `resource_kind` strings |
+| GET/PATCH/DELETE | `/api/admin/data-resources/{id}` | `console:groups`: get/update/delete data resource |
 | POST | `/api/auth/logout` | Clear server session |
 | POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | POST | `/clear-session` | Clear backend session (called before logout) |

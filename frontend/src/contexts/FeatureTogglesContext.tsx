@@ -8,6 +8,7 @@ export type { FeatureToggles } from '../data/featureTogglesApi';
 const defaults: FeatureToggles = {
   articles: true,
   knowledgeBases: true,
+  wikiSpaces: true,
   objectsAndLinks: true,
   evaluationDatasets: false,
   hasNeo4jDataSource: false,

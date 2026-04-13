@@ -7,10 +7,12 @@ import { PERM_CONSOLE_GROUPS } from '../../config/permissions';
 import { getAuthHeaders } from '../../data/apiClient';
 import { fetchAdminUsersPage, type LocalUserRow } from '../../data/adminUsersApi';
 import {
+  fetchDataResources,
   fetchGroupMembers,
   fetchGroupScopes,
   putGroupMembers,
   putGroupScopes,
+  type DataResourceOut,
   type GroupScopesOut,
 } from '../../data/securityAdminApi';
 import './ConsoleGroupDataAccess.css';
@@ -31,16 +33,19 @@ type Opt = { id: string; name: string };
 
 export function ConsoleGroupDataAccess() {
   const { groupId } = useParams<{ groupId: string }>();
-  const { hasPermission } = useAuth();
+  const { hasPermission, authMode } = useAuth();
+  const membershipLocal = authMode === 'local';
   const [scopes, setScopes] = useState<GroupScopesOut | null>(null);
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [allUsers, setAllUsers] = useState<LocalUserRow[]>([]);
   const [channels, setChannels] = useState<{ id: string; label: string }[]>([]);
   const [kbs, setKbs] = useState<Opt[]>([]);
+  const [wikis, setWikis] = useState<Opt[]>([]);
   const [evals, setEvals] = useState<Opt[]>([]);
   const [datasets, setDatasets] = useState<Opt[]>([]);
   const [objectTypes, setObjectTypes] = useState<Opt[]>([]);
   const [linkTypes, setLinkTypes] = useState<Opt[]>([]);
+  const [dataResources, setDataResources] = useState<DataResourceOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -49,18 +54,25 @@ export function ConsoleGroupDataAccess() {
     setLoading(true);
     try {
       const headers = await getAuthHeaders();
-      const [sc, mem, usersPage, chRes, kbRes, evRes, dsRes, otRes, ltRes] = await Promise.all([
+      const [sc, mem, usersPage, chRes, kbRes, wikiRes, evRes, dsRes, otRes, ltRes, drList] = await Promise.all([
         fetchGroupScopes(groupId),
-        fetchGroupMembers(groupId),
-        fetchAdminUsersPage().catch(() => ({ users: [] as LocalUserRow[] })),
+        membershipLocal ? fetchGroupMembers(groupId) : Promise.resolve({ users: [] as { id: string }[] }),
+        membershipLocal
+          ? fetchAdminUsersPage().catch(() => ({ users: [] as LocalUserRow[] }))
+          : Promise.resolve({ users: [] as LocalUserRow[] }),
         fetch(`${config.apiUrl}/api/document-channels`, { headers, credentials: 'include' }),
         fetch(`${config.apiUrl}/api/knowledge-bases`, { headers, credentials: 'include' }),
+        fetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' }),
         fetch(`${config.apiUrl}/api/evaluation-datasets`, { headers, credentials: 'include' }),
         fetch(`${config.apiUrl}/api/datasets`, { headers, credentials: 'include' }),
         fetch(`${config.apiUrl}/api/object-types`, { headers, credentials: 'include' }),
         fetch(`${config.apiUrl}/api/link-types`, { headers, credentials: 'include' }),
+        fetchDataResources().catch(() => [] as DataResourceOut[]),
       ]);
-      setScopes(sc);
+      setScopes({
+        ...sc,
+        data_resource_ids: sc.data_resource_ids ?? [],
+      });
       setMemberIds(mem.users.map((u) => u.id));
       if (usersPage.users?.length) setAllUsers(usersPage.users);
 
@@ -72,6 +84,11 @@ export function ConsoleGroupDataAccess() {
         const j = await kbRes.json();
         const items = (j.items ?? []) as { id: string; name: string }[];
         setKbs(items.map((x) => ({ id: x.id, name: x.name })));
+      }
+      if (wikiRes.ok) {
+        const j = await wikiRes.json();
+        const items = (j.items ?? []) as { id: string; name: string }[];
+        setWikis(items.map((x) => ({ id: x.id, name: x.name })));
       }
       if (evRes.ok) {
         const j = await evRes.json();
@@ -98,12 +115,13 @@ export function ConsoleGroupDataAccess() {
         const items = (j.items ?? []) as { id: string; name: string }[];
         setLinkTypes(items.map((x) => ({ id: x.id, name: x.name })));
       }
+      setDataResources(Array.isArray(drList) ? drList : []);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, membershipLocal]);
 
   useEffect(() => {
     void load();
@@ -155,13 +173,22 @@ export function ConsoleGroupDataAccess() {
     const sections: { key: keyof GroupScopesOut; title: string; options: { id: string; label: string }[] }[] = [
       { key: 'channel_ids', title: 'Document channels', options: channels },
       { key: 'knowledge_base_ids', title: 'Knowledge bases', options: kbs.map((x) => ({ id: x.id, label: x.name })) },
+      { key: 'wiki_space_ids', title: 'Wiki spaces', options: wikis.map((x) => ({ id: x.id, label: x.name })) },
       { key: 'evaluation_dataset_ids', title: 'Evaluation datasets', options: evals.map((x) => ({ id: x.id, label: x.name })) },
       { key: 'dataset_ids', title: 'Datasets', options: datasets.map((x) => ({ id: x.id, label: x.name })) },
       { key: 'object_type_ids', title: 'Object types', options: objectTypes.map((x) => ({ id: x.id, label: x.name })) },
       { key: 'link_type_ids', title: 'Link types', options: linkTypes.map((x) => ({ id: x.id, label: x.name })) },
+      {
+        key: 'data_resource_ids',
+        title: 'Data resources (named filters)',
+        options: dataResources.map((x) => ({
+          id: x.id,
+          label: `${x.name} (${x.resource_kind})`,
+        })),
+      },
     ];
     return sections;
-  }, [scopes, channels, kbs, evals, datasets, objectTypes, linkTypes]);
+  }, [scopes, channels, kbs, wikis, evals, datasets, objectTypes, linkTypes, dataResources]);
 
   if (!hasPermission(PERM_CONSOLE_GROUPS)) {
     return <Navigate to="/console" replace />;
@@ -178,8 +205,10 @@ export function ConsoleGroupDataAccess() {
         </Link>
         <h1>Group data access</h1>
         <p className="page-subtitle">
-          When <code>OPENKMS_ENFORCE_GROUP_DATA_SCOPES</code> is on (local mode), users in this group only see the
-          selected resources. Empty selections for a category mean no access for that category when the flag is on.
+          When <code>OPENKMS_ENFORCE_GROUP_DATA_SCOPES</code> is on (local mode), users in this group see the union of
+          legacy ID selections and attached <strong>data resources</strong> (per-kind filters). Empty legacy lists with
+          no data resources mean no access for that category when the flag is on. In OIDC mode, manage group names and
+          resource scopes here; user membership in access groups is not edited in this console.
         </p>
       </div>
 
@@ -189,20 +218,29 @@ export function ConsoleGroupDataAccess() {
         <>
           <section className="console-group-access-section">
             <h2>Members</h2>
-            <p className="console-group-access-hint">Local users only. OIDC directory sync is planned.</p>
-            <div className="console-group-access-checkgrid">
-              {allUsers.map((u) => (
-                <label key={u.id} className="console-group-access-check">
-                  <input type="checkbox" checked={memberIds.includes(u.id)} onChange={() => toggleMember(u.id)} />
-                  <span>
-                    {u.username} <span className="muted">({u.email})</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-            <button type="button" className="btn-primary" disabled={saving} onClick={() => void onSaveMembers()}>
-              Save members
-            </button>
+            {membershipLocal ? (
+              <>
+                <p className="console-group-access-hint">Assign local users to this access group.</p>
+                <div className="console-group-access-checkgrid">
+                  {allUsers.map((u) => (
+                    <label key={u.id} className="console-group-access-check">
+                      <input type="checkbox" checked={memberIds.includes(u.id)} onChange={() => toggleMember(u.id)} />
+                      <span>
+                        {u.username} <span className="muted">({u.email})</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <button type="button" className="btn-primary" disabled={saving} onClick={() => void onSaveMembers()}>
+                  Save members
+                </button>
+              </>
+            ) : (
+              <p className="console-group-access-hint">
+                In OIDC mode, access group membership is not managed here. Define groups and scopes below; map users to
+                groups in your identity provider (future sync may surface members in the app).
+              </p>
+            )}
           </section>
 
           <section className="console-group-access-section">

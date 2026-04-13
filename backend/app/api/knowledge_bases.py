@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from app.api.auth import require_auth
 from app.database import get_db
-from app.services.data_scope import effective_knowledge_base_ids, scope_applies
+from app.services.data_resource_policy import knowledge_base_visible
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
@@ -68,10 +68,8 @@ async def get_kb_scoped(
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_knowledge_base_ids(db, sub)
-        if allowed is not None and kb_id not in allowed:
-            raise HTTPException(status_code=404, detail="Knowledge base not found")
+    if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
     return kb
 
 
@@ -121,12 +119,8 @@ async def list_knowledge_bases(request: Request, db: AsyncSession = Depends(get_
     kbs = list(result.scalars().all())
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_knowledge_base_ids(db, sub)
-        if allowed is not None:
-            if not allowed:
-                return KnowledgeBaseListResponse(items=[], total=0)
-            kbs = [kb for kb in kbs if kb.id in allowed]
+    if isinstance(sub, str):
+        kbs = [kb for kb in kbs if await knowledge_base_visible(db, p, sub, kb)]
     items = []
     for kb in kbs:
         stats = await _kb_stats(db, kb.id)

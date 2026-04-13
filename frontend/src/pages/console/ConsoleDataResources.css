@@ -1,0 +1,40 @@
+.console-dr-json {
+  width: 100%;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.8125rem;
+}
+
+.console-dr-table-title {
+  margin-top: 2rem;
+  font-size: 1.05rem;
+}
+
+.console-dr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.console-dr-table th,
+.console-dr-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.console-dr-attr-cell code {
+  font-size: 0.75rem;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.console-ds-groups-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-link.danger {
+  color: var(--color-error, #b91c1c);
+}

@@ -15,6 +15,7 @@ import { DocumentChannel } from './pages/DocumentChannel';
 import { DocumentsIndex } from './pages/DocumentsIndex';
 import { Articles } from './pages/Articles';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
+import { WikiSpaceList } from './pages/WikiSpaceList';
 import { GlossaryList } from './pages/GlossaryList';
 import { GlossaryDetail } from './pages/GlossaryDetail';
 import { DocumentChannels } from './pages/DocumentChannels';
@@ -30,6 +31,7 @@ import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
 import { ConsoleDataSecurityGroups } from './pages/console/ConsoleDataSecurityGroups';
 import { ConsoleGroupDataAccess } from './pages/console/ConsoleGroupDataAccess';
+import { ConsoleDataResources } from './pages/console/ConsoleDataResources';
 import { EvaluationDatasetList } from './pages/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/EvaluationDatasetDetail';
 import { FeatureGate } from './components/FeatureGate';
@@ -48,6 +50,8 @@ const LinksList = lazy(() => import('./pages/LinksList').then((m) => ({ default:
 const LinkTypeDetail = lazy(() => import('./pages/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
 const ObjectExplorer = lazy(() => import('./pages/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
 const DocumentDetail = lazy(() => import('./pages/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
+const WikiSpaceDetail = lazy(() => import('./pages/WikiSpaceDetail').then((m) => ({ default: m.WikiSpaceDetail })));
+const WikiPageEditor = lazy(() => import('./pages/WikiPageEditor').then((m) => ({ default: m.WikiPageEditor })));
 const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })));
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
@@ -89,6 +93,9 @@ function App() {
           <Route path="articles/view/:id" element={<FeatureGate feature="articles"><ArticleDetail /></FeatureGate>} />
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
+          <Route path="wikis" element={<FeatureGate feature="wikiSpaces"><WikiSpaceList /></FeatureGate>} />
+          <Route path="wikis/:id" element={<FeatureGate feature="wikiSpaces"><WikiSpaceDetail /></FeatureGate>} />
+          <Route path="wikis/:id/pages/:pageId" element={<FeatureGate feature="wikiSpaces"><WikiPageEditor /></FeatureGate>} />
           <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />
           <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
@@ -120,6 +127,7 @@ function App() {
             <Route path="permission-management" element={<ConsolePermissionManagement />} />
             <Route path="data-security/groups" element={<ConsoleDataSecurityGroups />} />
             <Route path="data-security/groups/:groupId/access" element={<ConsoleGroupDataAccess />} />
+            <Route path="data-security/data-resources" element={<ConsoleDataResources />} />
             <Route path="data-sources" element={<ConsoleDataSources />} />
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />

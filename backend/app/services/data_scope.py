@@ -14,6 +14,7 @@ from app.models.access_group import (
     AccessGroupLinkType,
     AccessGroupObjectType,
     AccessGroupUser,
+    AccessGroupWikiSpace,
 )
 from app.models.document_channel import DocumentChannel
 
@@ -65,15 +66,8 @@ def _expand_channel_ids(all_channels: list[DocumentChannel], roots: set[str]) ->
     return out
 
 
-async def effective_channel_ids(db: AsyncSession, user_id: str) -> set[str] | None:
-    """None = unrestricted. Empty set = no channels. Non-empty = allowed IDs including descendants."""
-    gids = await user_group_ids(db, user_id)
-    if not gids:
-        return None
-    result = await db.execute(
-        select(AccessGroupChannel.channel_id).where(AccessGroupChannel.group_id.in_(gids))
-    )
-    roots = {str(row[0]) for row in result.all()}
+async def expanded_channel_ids_for_roots(db: AsyncSession, roots: set[str]) -> set[str]:
+    """All channel IDs at or under roots, plus ancestor chain up to root (for tree UX)."""
     if not roots:
         return set()
     ch_result = await db.execute(select(DocumentChannel))
@@ -92,6 +86,20 @@ async def effective_channel_ids(db: AsyncSession, user_id: str) -> set[str] | No
     return full
 
 
+async def effective_channel_ids(db: AsyncSession, user_id: str) -> set[str] | None:
+    """None = unrestricted. Empty set = no channels. Non-empty = allowed IDs including descendants."""
+    gids = await user_group_ids(db, user_id)
+    if not gids:
+        return None
+    result = await db.execute(
+        select(AccessGroupChannel.channel_id).where(AccessGroupChannel.group_id.in_(gids))
+    )
+    roots = {str(row[0]) for row in result.all()}
+    if not roots:
+        return set()
+    return await expanded_channel_ids_for_roots(db, roots)
+
+
 async def _union_resource_ids(
     db: AsyncSession, group_ids: list[str], model, fk_column: str
 ) -> set[str] | None:
@@ -108,6 +116,11 @@ async def _union_resource_ids(
 async def effective_knowledge_base_ids(db: AsyncSession, user_id: str) -> set[str] | None:
     gids = await user_group_ids(db, user_id)
     return await _union_resource_ids(db, gids, AccessGroupKnowledgeBase, "knowledge_base_id")
+
+
+async def effective_wiki_space_ids(db: AsyncSession, user_id: str) -> set[str] | None:
+    gids = await user_group_ids(db, user_id)
+    return await _union_resource_ids(db, gids, AccessGroupWikiSpace, "wiki_space_id")
 
 
 async def effective_evaluation_dataset_ids(db: AsyncSession, user_id: str) -> set[str] | None:

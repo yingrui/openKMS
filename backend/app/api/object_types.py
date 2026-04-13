@@ -11,7 +11,7 @@ from app.api.auth import require_any_permission, require_auth
 from app.services.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
-from app.services.data_scope import effective_object_type_ids, scope_applies
+from app.services.data_resource_policy import object_type_visible
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.credential_encryption import decrypt
@@ -36,12 +36,13 @@ router = APIRouter(
 
 
 async def _require_object_type_in_scope(request: Request, db: AsyncSession, object_type_id: str) -> None:
+    ot = await db.get(ObjectType, object_type_id)
+    if not ot:
+        raise HTTPException(status_code=404, detail="Object type not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_object_type_ids(db, sub)
-        if allowed is not None and object_type_id not in allowed:
-            raise HTTPException(status_code=404, detail="Object type not found")
+    if isinstance(sub, str) and not await object_type_visible(db, p, sub, ot):
+        raise HTTPException(status_code=404, detail="Object type not found")
 
 
 class IndexToNeo4jRequest(BaseModel):
@@ -209,16 +210,12 @@ async def list_object_types(
     query = select(ObjectType).order_by(ObjectType.created_at.desc())
     if is_master_data is not None:
         query = query.where(ObjectType.is_master_data == is_master_data)
+    result = await db.execute(query)
+    types = list(result.scalars().all())
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_object_type_ids(db, sub)
-        if allowed is not None:
-            if not allowed:
-                return ObjectTypeListResponse(items=[], total=0)
-            query = query.where(ObjectType.id.in_(allowed))
-    result = await db.execute(query)
-    types = result.scalars().all()
+    if isinstance(sub, str):
+        types = [t for t in types if await object_type_visible(db, p, sub, t)]
     items = []
     neo4j_driver = None
     if count_from_neo4j:
@@ -292,10 +289,8 @@ async def get_object_type(
         raise HTTPException(status_code=404, detail="Object type not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_object_type_ids(db, sub)
-        if allowed is not None and object_type_id not in allowed:
-            raise HTTPException(status_code=404, detail="Object type not found")
+    if isinstance(sub, str) and not await object_type_visible(db, p, sub, obj_type):
+        raise HTTPException(status_code=404, detail="Object type not found")
     if count_from_neo4j:
         neo4j_ds = await _get_first_neo4j_datasource(db)
         if neo4j_ds:

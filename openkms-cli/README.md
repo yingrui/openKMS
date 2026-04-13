@@ -38,6 +38,14 @@ openkms-cli pipeline run --input ./doc.pdf --s3-prefix <prefix>
 openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>
 ```
 
+**Wiki** — upsert markdown pages and upload assets (requires API auth: OIDC client credentials or local HTTP Basic, same as pipeline metadata sync):
+
+```bash
+openkms-cli wiki put --space-id <uuid> --path guides/onboarding --file ./page.md
+openkms-cli wiki sync --space-id <uuid> --dir ./my-wiki-root
+openkms-cli wiki upload-file --space-id <uuid> --file ./diagram.png
+```
+
 Doc-parse pipelines need S3 credentials in `.env` unless you use **`--skip-upload`** with a local **`--input`** file.
 
 **Module entry:**

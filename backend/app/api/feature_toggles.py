@@ -10,7 +10,13 @@ from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.feature_toggle import FeatureToggle
 
-DEFAULTS = {"articles": True, "knowledgeBases": True, "objectsAndLinks": True, "evaluationDatasets": False}
+DEFAULTS = {
+    "articles": True,
+    "knowledgeBases": True,
+    "wikiSpaces": True,
+    "objectsAndLinks": True,
+    "evaluationDatasets": False,
+}
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 
@@ -18,6 +24,7 @@ router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 class FeatureTogglesResponse(BaseModel):
     articles: bool = True
     knowledgeBases: bool = True
+    wikiSpaces: bool = True
     objectsAndLinks: bool = True
     evaluationDatasets: bool = False
     hasNeo4jDataSource: bool = False
@@ -26,6 +33,7 @@ class FeatureTogglesResponse(BaseModel):
 class FeatureTogglesUpdate(BaseModel):
     articles: bool | None = None
     knowledgeBases: bool | None = None
+    wikiSpaces: bool | None = None
     objectsAndLinks: bool | None = None
     evaluationDatasets: bool | None = None
 

@@ -25,6 +25,8 @@ from app.services.permission_catalog import (
     PERM_EVAL_WRITE,
     PERM_KB_READ,
     PERM_KB_WRITE,
+    PERM_WIKIS_READ,
+    PERM_WIKIS_WRITE,
     PERM_ONTOLOGY_READ,
     PERM_ONTOLOGY_WRITE,
 )
@@ -98,8 +100,14 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         [],
     ),
     PERM_CONSOLE_GROUPS: (
-        ["/console", "/console/data-security/groups", "/console/data-security/groups/*"],
-        ["/api/admin/groups/*"],
+        [
+            "/console",
+            "/console/data-security/groups",
+            "/console/data-security/groups/*",
+            "/console/data-security/data-resources",
+            "/console/data-security/data-resources/*",
+        ],
+        ["/api/admin/groups/*", "/api/admin/data-resources", "/api/admin/data-resources/*"],
     ),
     PERM_CONSOLE_PERMISSIONS: (
         ["/console", "/console/permission-management"],
@@ -152,6 +160,25 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "PUT /api/glossaries/*",
             "PATCH /api/glossaries/*",
             "DELETE /api/glossaries/*",
+        ],
+    ),
+    PERM_WIKIS_READ: (
+        ["/wikis", "/wikis/*"],
+        [
+            "GET /api/wiki-spaces",
+            "GET /api/wiki-spaces/*",
+            "HEAD /api/wiki-spaces",
+            "HEAD /api/wiki-spaces/*",
+        ],
+    ),
+    PERM_WIKIS_WRITE: (
+        ["/wikis", "/wikis/*"],
+        [
+            "POST /api/wiki-spaces",
+            "POST /api/wiki-spaces/*",
+            "PUT /api/wiki-spaces/*",
+            "PATCH /api/wiki-spaces/*",
+            "DELETE /api/wiki-spaces/*",
         ],
     ),
     PERM_EVAL_READ: (

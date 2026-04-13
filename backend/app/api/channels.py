@@ -10,7 +10,8 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
-from app.services.data_scope import effective_channel_ids, scope_applies
+from app.services.data_scope import scope_applies
+from app.services.data_resource_policy import effective_channel_ids_with_data_resources
 from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelUpdate
 
@@ -22,9 +23,7 @@ async def _scoped_channel_ids(request: Request, db: AsyncSession) -> set[str] | 
     sub = p.get("sub")
     if not isinstance(sub, str):
         return None
-    if not scope_applies(p, sub):
-        return None
-    return await effective_channel_ids(db, sub)
+    return await effective_channel_ids_with_data_resources(db, p, sub)
 
 
 def _require_channel_in_scope(allowed: set[str] | None, channel_id: str) -> None:

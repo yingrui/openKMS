@@ -13,7 +13,7 @@ import {
 import './ConsoleDataSecurityGroups.css';
 
 export function ConsoleDataSecurityGroups() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, authMode } = useAuth();
   const [groups, setGroups] = useState<AccessGroupOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
@@ -84,8 +84,10 @@ export function ConsoleDataSecurityGroups() {
       <div className="page-header">
         <h1>Access groups</h1>
         <p className="page-subtitle">
-          Local users only in this release. Assign members and resource scopes per group under{' '}
-          <strong>Data security</strong>.
+          Create access groups and attach resource scopes per group under <strong>Data security</strong>.
+          {authMode === 'local'
+            ? ' In local auth you can also assign users on each group’s data access page.'
+            : ' In OIDC mode, user membership is managed outside this app; use each group’s data access page for scopes only.'}
         </p>
       </div>
 

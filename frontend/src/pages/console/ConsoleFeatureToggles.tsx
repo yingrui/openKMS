@@ -13,6 +13,11 @@ const features = [
     description: 'Knowledge bases with RAG Q&A. Lower priority feature.',
   },
   {
+    id: 'wikiSpaces' as const,
+    name: 'Wiki spaces',
+    description: 'Markdown wiki pages per space; CLI and UI editing; optional image uploads.',
+  },
+  {
     id: 'objectsAndLinks' as const,
     name: 'Objects & Links',
     description: 'Ontology layer: object types, link types, and their instances. Schema managed in Object Types and Link Types.',

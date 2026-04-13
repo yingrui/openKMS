@@ -28,6 +28,8 @@ PERM_CHANNELS_READ = "channels:read"
 PERM_CHANNELS_WRITE = "channels:write"
 PERM_KB_READ = "knowledge_bases:read"
 PERM_KB_WRITE = "knowledge_bases:write"
+PERM_WIKIS_READ = "wikis:read"
+PERM_WIKIS_WRITE = "wikis:write"
 PERM_EVAL_READ = "evaluation:read"
 PERM_EVAL_WRITE = "evaluation:write"
 PERM_ONTOLOGY_READ = "ontology:read"
@@ -151,6 +153,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_KB_WRITE,
         "Manage knowledge bases",
         "Create and edit knowledge bases and related resources.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_WIKIS_READ,
+        "View wiki spaces",
+        "Wiki spaces, pages, and file downloads.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_WIKIS_WRITE,
+        "Manage wiki spaces",
+        "Create and edit wiki spaces, pages, and uploads.",
         "content",
     ),
     OperationKeyHint(

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
-from app.services.data_scope import effective_evaluation_dataset_ids, scope_applies
+from app.services.data_resource_policy import evaluation_dataset_visible
 from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
@@ -58,10 +58,8 @@ async def get_eval_dataset_scoped(
         raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_evaluation_dataset_ids(db, sub)
-        if allowed is not None and dataset_id not in allowed:
-            raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+    if isinstance(sub, str) and not await evaluation_dataset_visible(db, p, sub, ds):
+        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     return ds
 
 
@@ -218,12 +216,8 @@ async def list_evaluation_datasets(
     datasets = list(result.scalars().all())
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_evaluation_dataset_ids(db, sub)
-        if allowed is not None:
-            if not allowed:
-                return EvaluationDatasetListResponse(items=[], total=0)
-            datasets = [ds for ds in datasets if ds.id in allowed]
+    if isinstance(sub, str):
+        datasets = [ds for ds in datasets if await evaluation_dataset_visible(db, p, sub, ds)]
     items = []
     for ds in datasets:
         kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
