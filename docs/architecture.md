@@ -52,7 +52,7 @@ flowchart TB
 | Layer | Components |
 |-------|------------|
 | **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
-| **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; wiki assets under `wiki/{space_id}/files/{file_id}/…` |
+| **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
 | **QA Agent** | Separate FastAPI + LangGraph service; retrieves via backend search API (no DB access), generates answers via LLM; configurable per knowledge base |
@@ -202,7 +202,7 @@ backend/
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
-│       ├── wiki_vault_import.py          # Obsidian vault bulk import: path rules, zip safety, binary upload, markdown asset URL rewrite; strip NUL from text for PostgreSQL
+│       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, markdown mirrors, link rewrite; strip NUL for PostgreSQL
 │       ├── storage.py                    # S3/MinIO client (upload, delete)
 │       ├── permission_catalog.py       # PERM_* constants, OPERATION_KEY_HINTS for admin reference UI
 │       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions when table empty

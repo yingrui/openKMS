@@ -38,10 +38,14 @@ from app.services.page_index import md_to_tree_from_markdown
 from app.services.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
 from app.services.storage import delete_object, delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
 from app.services.wiki_vault_import import (
+    delete_wiki_page_markdown_mirror,
     import_markdown_vault_file,
     import_vault_entries,
     iter_zip_vault_entries,
     normalize_vault_entry_path,
+    upload_wiki_page_markdown_mirror,
+    vault_mirror_key_fits,
+    vault_mirror_object_key,
 )
 
 router = APIRouter(prefix="/wiki-spaces", tags=["wiki-spaces"])
@@ -244,6 +248,9 @@ async def create_page(
     db.add(page)
     await db.flush()
     await db.refresh(page)
+    upload_wiki_page_markdown_mirror(
+        space.id, page.path, page.body or "", storage_enabled=settings.storage_enabled
+    )
     return _page_to_response(page)
 
 
@@ -304,6 +311,9 @@ async def upsert_page_by_path(
         db.add(page)
     await db.flush()
     await db.refresh(page)
+    upload_wiki_page_markdown_mirror(
+        space.id, page.path, page.body or "", storage_enabled=settings.storage_enabled
+    )
     return _page_to_response(page)
 
 
@@ -322,7 +332,10 @@ async def delete_page_by_path(
     page = result.scalar_one_or_none()
     if not page:
         raise HTTPException(status_code=404, detail="Wiki page not found")
+    wiki_path = page.path
     await db.delete(page)
+    await db.flush()
+    delete_wiki_page_markdown_mirror(space.id, wiki_path, storage_enabled=settings.storage_enabled)
 
 
 @router.get(
@@ -360,6 +373,10 @@ async def patch_page(
     _recompute_page_index(page)
     await db.flush()
     await db.refresh(page)
+    if body.body is not None:
+        upload_wiki_page_markdown_mirror(
+            space.id, page.path, page.body or "", storage_enabled=settings.storage_enabled
+        )
     return _page_to_response(page)
 
 
@@ -374,7 +391,10 @@ async def delete_page(
     db: AsyncSession = Depends(get_db),
 ):
     page = await _get_page_in_space(db, space.id, page_id)
+    wiki_path = page.path
     await db.delete(page)
+    await db.flush()
+    delete_wiki_page_markdown_mirror(space.id, wiki_path, storage_enabled=settings.storage_enabled)
 
 
 @router.get(
@@ -444,9 +464,15 @@ async def upload_wiki_file(
         await _get_page_in_space(db, space.id, wiki_page_id)
 
     fid = str(uuid.uuid4())
-    orig_name = file.filename or "upload"
-    safe = _safe_storage_basename(orig_name)
-    key = f"wiki/{space.id}/files/{fid}/{safe}"
+    orig_name = (file.filename or "upload").replace("\\", "/")
+    norm = normalize_vault_entry_path(orig_name)
+    if norm and vault_mirror_key_fits(space.id, norm):
+        key = vault_mirror_object_key(space.id, norm)
+        filename_for_db = norm
+    else:
+        safe = _safe_storage_basename(orig_name)
+        key = f"wiki/{space.id}/files/{fid}/{safe}"
+        filename_for_db = orig_name
 
     content_type = file.content_type
     upload_object(key, raw, content_type=content_type)
@@ -456,7 +482,7 @@ async def upload_wiki_file(
         wiki_space_id=space.id,
         wiki_page_id=wiki_page_id,
         storage_key=key,
-        filename=orig_name,
+        filename=filename_for_db,
         content_type=content_type,
         size_bytes=len(raw),
     )
@@ -525,7 +551,13 @@ async def import_vault_markdown_file(
 ):
     """Import one vault .md after binaries are uploaded; rewrites links using WikiFile rows in this space."""
     try:
-        wiki_path, warns = await import_markdown_vault_file(db, space.id, payload.vault_path, payload.body)
+        wiki_path, warns = await import_markdown_vault_file(
+            db,
+            space.id,
+            payload.vault_path,
+            payload.body,
+            storage_enabled=settings.storage_enabled,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return WikiVaultMarkdownImportResponse(wiki_path=wiki_path, warnings=warns)

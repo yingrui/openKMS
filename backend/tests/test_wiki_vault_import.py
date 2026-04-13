@@ -12,6 +12,8 @@ from app.services.wiki_vault_import import (
     should_skip_vault_path,
     strip_nul_bytes,
     title_from_markdown_body,
+    vault_mirror_key_fits,
+    vault_mirror_object_key,
 )
 
 
@@ -49,6 +51,17 @@ def test_strip_nul_bytes():
     assert strip_nul_bytes("") == ""
     assert strip_nul_bytes("a\x00b") == "ab"
     assert strip_nul_bytes("\x00\x00") == ""
+
+
+def test_vault_mirror_object_key():
+    assert vault_mirror_object_key("sp1", "notes/a.md") == "wiki/sp1/vault/notes/a.md"
+
+
+def test_vault_mirror_key_fits():
+    sid = "abc"
+    assert vault_mirror_key_fits(sid, "x.md") is True
+    long_path = "x" * 1010 + ".md"
+    assert vault_mirror_key_fits(sid, long_path) is False
 
 
 def test_rewrite_markdown_relative_image():

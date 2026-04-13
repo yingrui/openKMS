@@ -14,13 +14,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.wiki_models import WikiFile, WikiPage
 from app.services.page_index import md_to_tree_from_markdown
-from app.services.storage import upload_object
+from app.services.storage import delete_object, object_exists, upload_object
 
 # Limits (defense in depth; tune via env later if needed)
 MAX_VAULT_FILES = 2000
 MAX_VAULT_TOTAL_BYTES = 80 * 1024 * 1024
 MAX_VAULT_FILE_BYTES = 25 * 1024 * 1024
 MAX_WIKI_FILENAME_LEN = 512
+# S3 / MinIO object key maximum length (UTF-8 bytes approximated by len() for ASCII-heavy paths).
+MAX_S3_OBJECT_KEY_LEN = 1024
 
 
 def strip_nul_bytes(s: str) -> str:
@@ -28,6 +30,44 @@ def strip_nul_bytes(s: str) -> str:
     if not s:
         return s
     return s.replace("\x00", "")
+
+
+def vault_mirror_object_key(space_id: str, norm_vault_path: str) -> str:
+    """S3 key: wiki/{space_id}/vault/{relative_path} — mirrors vault layout for operators."""
+    return f"wiki/{space_id}/vault/{norm_vault_path}"
+
+
+def vault_mirror_key_fits(space_id: str, norm_vault_path: str) -> bool:
+    return len(vault_mirror_object_key(space_id, norm_vault_path)) <= MAX_S3_OBJECT_KEY_LEN
+
+
+def upload_wiki_page_markdown_mirror(
+    space_id: str, wiki_path: str, body: str, *, storage_enabled: bool
+) -> None:
+    """Write wiki page body to vault mirror path …/vault/{wiki_path}.md (UTF-8)."""
+    if not storage_enabled:
+        return
+    norm_md = f"{wiki_path}.md"
+    if not vault_mirror_key_fits(space_id, norm_md):
+        return
+    clean = strip_nul_bytes(body)
+    upload_object(
+        vault_mirror_object_key(space_id, norm_md),
+        clean.encode("utf-8"),
+        content_type="text/markdown; charset=utf-8",
+    )
+
+
+def delete_wiki_page_markdown_mirror(space_id: str, wiki_path: str, *, storage_enabled: bool) -> None:
+    """Remove vault mirror …/vault/{wiki_path}.md if present."""
+    if not storage_enabled:
+        return
+    norm_md = f"{wiki_path}.md"
+    if not vault_mirror_key_fits(space_id, norm_md):
+        return
+    key = vault_mirror_object_key(space_id, norm_md)
+    if object_exists(key):
+        delete_object(key)
 
 
 # Match any path segment case-insensitively (e.g. `.Git` on case-insensitive volumes).
@@ -273,9 +313,12 @@ async def import_vault_entries(
             result.warnings.append(f"Path too long for DB filename, skipped: {norm[:80]}...")
             result.skipped.append(norm)
             continue
+        if not vault_mirror_key_fits(space_id, norm):
+            result.warnings.append(f"S3 key too long, skipped: {norm[:80]}...")
+            result.skipped.append(norm)
+            continue
         fid = str(uuid.uuid4())
-        safe = _safe_storage_basename(norm)
-        key = f"wiki/{space_id}/files/{fid}/{safe}"
+        key = vault_mirror_object_key(space_id, norm)
         upload_object(key, raw, content_type=None)
         wf = WikiFile(
             id=fid,
@@ -293,6 +336,8 @@ async def import_vault_entries(
         result.files_uploaded += 1
 
     await db.flush()
+
+    md_mirror_payloads: list[tuple[str, str]] = []
 
     for norm_md, body in md_items:
         wiki_path = md_relative_path_to_wiki_path(norm_md)
@@ -328,8 +373,21 @@ async def import_vault_entries(
             _recompute_page_index(page)
             db.add(page)
         result.pages_upserted += 1
+        md_mirror_payloads.append((norm_md, new_body))
 
     await db.flush()
+
+    if storage_enabled:
+        for norm_md, new_body in md_mirror_payloads:
+            if not vault_mirror_key_fits(space_id, norm_md):
+                result.warnings.append(f"Vault mirror not stored (S3 key too long): {norm_md[:80]}...")
+                continue
+            upload_object(
+                vault_mirror_object_key(space_id, norm_md),
+                new_body.encode("utf-8"),
+                content_type="text/markdown; charset=utf-8",
+            )
+
     return result
 
 
@@ -353,6 +411,8 @@ async def import_markdown_vault_file(
     space_id: str,
     raw_vault_path: str,
     body: str,
+    *,
+    storage_enabled: bool = False,
 ) -> tuple[str, list[str]]:
     """
     Upsert one markdown page from vault-relative path (e.g. wiki/a.md).
@@ -394,4 +454,13 @@ async def import_markdown_vault_file(
         _recompute_page_index(page)
         db.add(page)
     await db.flush()
+    if storage_enabled:
+        if vault_mirror_key_fits(space_id, norm):
+            upload_object(
+                vault_mirror_object_key(space_id, norm),
+                new_body.encode("utf-8"),
+                content_type="text/markdown; charset=utf-8",
+            )
+        else:
+            warns.append(f"Vault mirror not stored (S3 key too long): {norm}")
     return wiki_path, warns
