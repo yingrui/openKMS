@@ -25,7 +25,11 @@ FRONTEND_FEATURES: list[dict[str, Any]] = [
     {"path_pattern": "/jobs/*", "label": "Job detail", "section": "Automation", "note": None},
     {"path_pattern": "/models", "label": "Models", "section": "Automation", "note": None},
     {"path_pattern": "/models/*", "label": "Model detail", "section": "Automation", "note": None},
-    {"path_pattern": "/ontology", "label": "Ontology", "section": "Objects & links", "note": "Feature toggle: objectsAndLinks"},
+    {"path_pattern": "/ontology", "label": "Ontology overview", "section": "Objects & links", "note": "Feature toggle: objectsAndLinks"},
+    {"path_pattern": "/ontology/datasets", "label": "Ontology · Datasets", "section": "Objects & links", "note": "console:datasets or ontology:read/write"},
+    {"path_pattern": "/ontology/datasets/*", "label": "Ontology · Dataset detail", "section": "Objects & links", "note": "console:datasets or ontology:read/write"},
+    {"path_pattern": "/ontology/object-types", "label": "Ontology · Object types (schema)", "section": "Objects & links", "note": "console:object_types or ontology:write"},
+    {"path_pattern": "/ontology/link-types", "label": "Ontology · Link types (schema)", "section": "Objects & links", "note": "console:link_types or ontology:write"},
     {"path_pattern": "/objects", "label": "Objects list", "section": "Objects & links", "note": "Feature toggle: objectsAndLinks"},
     {"path_pattern": "/objects/*", "label": "Object type / instances", "section": "Objects & links", "note": "Feature toggle: objectsAndLinks"},
     {"path_pattern": "/links", "label": "Links list", "section": "Objects & links", "note": "Feature toggle: objectsAndLinks"},
@@ -42,10 +46,6 @@ FRONTEND_FEATURES: list[dict[str, Any]] = [
     {"path_pattern": "/console/users", "label": "Console · Users", "section": "Console", "note": "console:users"},
     {"path_pattern": "/console/feature-toggles", "label": "Console · Feature toggles", "section": "Console", "note": "console:feature_toggles"},
     {"path_pattern": "/console/data-sources", "label": "Console · Data sources", "section": "Console", "note": "console:data_sources"},
-    {"path_pattern": "/console/datasets", "label": "Console · Datasets", "section": "Console", "note": "console:datasets"},
-    {"path_pattern": "/console/datasets/*", "label": "Console · Dataset detail", "section": "Console", "note": "console:datasets"},
-    {"path_pattern": "/console/object-types", "label": "Console · Object types", "section": "Console", "note": "console:object_types"},
-    {"path_pattern": "/console/link-types", "label": "Console · Link types", "section": "Console", "note": "console:link_types"},
     {"path_pattern": "/console/settings", "label": "Console · Settings", "section": "Console", "note": "console:settings"},
 ]
 

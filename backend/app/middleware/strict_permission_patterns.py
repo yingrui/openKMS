@@ -15,7 +15,7 @@ from app.config import settings
 from app.database import async_session_maker
 from app.services.permission_catalog import PERM_ALL
 from app.services.permission_pattern_cache import get_compiled_pattern_rules
-from app.services.permission_pattern_engine import resolve_required_permission_key
+from app.services.permission_pattern_engine import resolve_required_permission_keys
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
 # No authentication required
@@ -96,9 +96,9 @@ class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
 
         async with async_session_maker() as db:
             rules = await get_compiled_pattern_rules(db, float(settings.permission_pattern_cache_ttl_seconds))
-            required_key = resolve_required_permission_key(method, path, rules)
+            required_keys = resolve_required_permission_keys(method, path, rules)
 
-            if required_key is None:
+            if required_keys is None:
                 return JSONResponse(
                     {
                         "detail": "No permission pattern covers this API path. "
@@ -112,10 +112,11 @@ class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
             else:
                 perms = await resolve_oidc_permission_keys(db, payload)
 
-        if PERM_ALL in perms or required_key in perms:
+        if PERM_ALL in perms or (required_keys and perms.intersection(required_keys)):
             return await call_next(request)
 
+        need = ", ".join(sorted(required_keys))
         return JSONResponse(
-            {"detail": f"Missing permission: {required_key}"},
+            {"detail": f"Missing permission: need one of ({need})"},
             status_code=403,
         )

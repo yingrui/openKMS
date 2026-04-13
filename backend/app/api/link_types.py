@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_auth, require_permission
-from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES
+from app.api.auth import require_any_permission, require_auth
+from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count, get_dataset_row_count_where_not_null
 from app.database import get_db
 from app.services.data_scope import effective_link_type_ids, scope_applies
@@ -239,7 +239,7 @@ async def list_link_types(
 @router.post("", response_model=LinkTypeResponse, status_code=201)
 async def create_link_type(
     body: LinkTypeCreate,
-    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
+    _: None = Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create link type. Admin only."""
@@ -313,7 +313,7 @@ async def update_link_type(
     link_type_id: str,
     body: LinkTypeUpdate,
     request: Request,
-    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
+    _: None = Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Update link type. Admin only."""
@@ -360,7 +360,7 @@ async def update_link_type(
 async def delete_link_type(
     link_type_id: str,
     request: Request,
-    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
+    _: None = Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete link type. Admin only. Cascades to link instances."""
@@ -383,7 +383,7 @@ def _neo4j_safe_rel_type(name: str) -> str:
     return s or "RELATES_TO"
 
 
-@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_LINK_TYPES))])
+@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE))])
 async def index_links_to_neo4j(
     body: IndexToNeo4jRequest,
     db: AsyncSession = Depends(get_db),
@@ -693,7 +693,7 @@ async def create_link_instance(
     link_type_id: str,
     body: LinkInstanceCreate,
     request: Request,
-    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
+    _: None = Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     link_type = await db.get(LinkType, link_type_id)
@@ -742,7 +742,7 @@ async def delete_link_instance(
     link_type_id: str,
     link_id: str,
     request: Request,
-    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
+    _: None = Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     link_type = await db.get(LinkType, link_type_id)

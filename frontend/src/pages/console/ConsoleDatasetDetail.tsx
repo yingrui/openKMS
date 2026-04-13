@@ -109,7 +109,7 @@ export function ConsoleDatasetDetail() {
   return (
     <div className="console-dataset-detail">
       <div className="console-dataset-detail-header">
-        <Link to="/console/datasets" className="console-dataset-detail-back">
+        <Link to="/ontology/datasets" className="console-dataset-detail-back">
           <ArrowLeft size={18} />
           <span>Back to Datasets</span>
         </Link>

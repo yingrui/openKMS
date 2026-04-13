@@ -21,7 +21,7 @@
 - Evaluation (experimental, feature toggle): query + expected answer pairs per KB; topic column; CSV import (topic, query, answer); **items list** paginated (`GET .../items` `offset`/`limit`, default limit 10); run types **search_retrieval** (hybrid search + judge) and **qa_answer** (KB agent + judge); persisted **evaluation_runs** / **evaluation_run_items**; list/get/delete/compare runs in API and dataset detail UI; sidebar link when evaluationDatasets enabled
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start; backend README + dev setup doc: pgvector install, Docker/PGDG, `$libdir/vector` troubleshooting
 - Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /ontology (overview), /objects, /links; feature toggle objectsAndLinks
-- Data Sources & Datasets: Console → Data Sources (PostgreSQL/Neo4j connections, encrypted creds), Datasets (map PG tables); future: link datasets to Object Types / Link Types
+- Data Sources: Console → Data Sources (PostgreSQL/Neo4j connections, encrypted creds). Datasets & object/link **schema** admin: Ontology sidebar (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`); `ontology:read`/`ontology:write` can use the same APIs as `console:datasets` / `console:object_types` / `console:link_types` where wired with `require_any_permission`.
 
 ## Short-Term (Next Steps)
 
@@ -75,7 +75,7 @@
 - [x] Search filter on object instances
 - [x] Feature toggle `objectsAndLinks` (gates sidebar and routes)
 
-### 4b. Data Sources & Datasets (Console)
+### 4b. Data Sources (Console) & Datasets / schema (Ontology)
 
 - [x] Data sources: CRUD for PostgreSQL and Neo4j connections; credentials encrypted (Fernet)
 - [x] Test connection: POST /api/data-sources/{id}/test
@@ -83,7 +83,7 @@
 - [x] Datasets: CRUD for PostgreSQL tables (schema + table) linked to data sources
 - [x] List tables: GET /api/datasets/from-source/{id} for table picker
 - [x] Console Data Sources page: table, Add/Edit modal, Test button
-- [x] Console Datasets page: table, Add/Edit with table picker, filter by data source, search
+- [x] Datasets UI under Ontology (`/ontology/datasets`, detail `/ontology/datasets/:id`); legacy `/console/datasets` redirects
 - [x] Dataset detail: click dataset → Data tab (rows with pagination, page size selector) and Metadata tab (column info)
 - [x] Dataset rows/metadata API: GET /api/datasets/{id}/rows, GET /api/datasets/{id}/metadata
 - [x] seed_mock_insurance_data.py: mock diseases, insurance products, relationships for demo datasets
@@ -93,7 +93,7 @@
 - [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
 - [x] Many-to-one/one-to-many: link_count from source object type dataset where FK column is not null
 - [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links buttons when Neo4j data source exists; POST /api/object-types/index-to-neo4j, POST /api/link-types/index-to-neo4j
-- [x] Ontology sidebar: clickable "Ontology" menu (links to /ontology); subnav Objects, Links, Object Explorer when on ontology pages
+- [x] Ontology sidebar: Datasets, Object types, Link types, Objects, Links, Object Explorer; schema admin at `/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`
 - [x] Objects & Links visible when Neo4j data source exists (hasNeo4jDataSource in feature toggles)
 - [x] Object Explorer: graph view at /object-explorer (react-force-graph-2d, Cypher execution, object/link type selection)
 - [x] Objects page: instances and instance_count from Neo4j; Console Object Types: counts from datasets

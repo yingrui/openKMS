@@ -65,11 +65,11 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ["/api/data-sources/*"],
     ),
     PERM_CONSOLE_DATASETS: (
-        ["/console", "/console/datasets", "/console/datasets/*"],
+        ["/console", "/ontology/datasets", "/ontology/datasets/*"],
         ["/api/datasets/*"],
     ),
     PERM_CONSOLE_OBJECT_TYPES: (
-        ["/console", "/console/object-types"],
+        ["/console", "/ontology/object-types"],
         [
             "POST /api/object-types",
             "PUT /api/object-types",
@@ -82,7 +82,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_CONSOLE_LINK_TYPES: (
-        ["/console", "/console/link-types"],
+        ["/console", "/ontology/link-types"],
         [
             "POST /api/link-types",
             "PUT /api/link-types",
@@ -170,6 +170,10 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_ONTOLOGY_READ: (
         [
             "/ontology",
+            "/ontology/datasets",
+            "/ontology/datasets/*",
+            "/ontology/object-types",
+            "/ontology/link-types",
             "/objects",
             "/objects/*",
             "/links",
@@ -181,6 +185,9 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "HEAD /api/object-types/*",
             "GET /api/link-types/*",
             "HEAD /api/link-types/*",
+            "GET /api/datasets",
+            "GET /api/datasets/*",
+            "HEAD /api/datasets/*",
             "GET /api/ontology/*",
             "HEAD /api/ontology/*",
             "POST /api/ontology/explore",
@@ -189,6 +196,10 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_ONTOLOGY_WRITE: (
         [
             "/ontology",
+            "/ontology/datasets",
+            "/ontology/datasets/*",
+            "/ontology/object-types",
+            "/ontology/link-types",
             "/objects",
             "/objects/*",
             "/links",
@@ -196,9 +207,22 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/object-explorer",
         ],
         [
+            "POST /api/datasets",
+            "PUT /api/datasets/*",
+            "DELETE /api/datasets/*",
+            "POST /api/object-types",
+            "PUT /api/object-types",
+            "PUT /api/object-types/*",
+            "DELETE /api/object-types/*",
+            "POST /api/object-types/index-to-neo4j",
             "POST /api/object-types/*/objects",
             "PUT /api/object-types/*/objects/*",
             "DELETE /api/object-types/*/objects/*",
+            "POST /api/link-types",
+            "PUT /api/link-types",
+            "PUT /api/link-types/*",
+            "DELETE /api/link-types/*",
+            "POST /api/link-types/index-to-neo4j",
             "POST /api/link-types/*/links",
             "DELETE /api/link-types/*/links/*",
         ],

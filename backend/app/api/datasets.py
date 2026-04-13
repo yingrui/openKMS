@@ -11,8 +11,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_auth, require_permission
-from app.services.permission_catalog import PERM_CONSOLE_DATASETS
+from app.api.auth import require_any_permission, require_auth
+from app.services.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 from app.database import get_db
 from app.services.data_scope import effective_dataset_ids, scope_applies
 from app.models.data_source import DataSource
@@ -64,7 +64,7 @@ async def _require_dataset_in_scope(request: Request, db: AsyncSession, dataset_
 @router.get(
     "/from-source/{data_source_id}",
     response_model=list[TableInfo],
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE))],
 )
 async def list_tables_from_source(
     data_source_id: str,
@@ -105,7 +105,7 @@ async def list_tables_from_source(
         raise HTTPException(status_code=502, detail=f"Failed to list tables: {e}") from e
 
 
-@router.get("", response_model=DatasetListResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.get("", response_model=DatasetListResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))])
 async def list_datasets(
     request: Request,
     data_source_id: str | None = None,
@@ -146,7 +146,7 @@ async def list_datasets(
     )
 
 
-@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
 async def create_dataset(
     request: Request,
     body: DatasetCreate,
@@ -285,7 +285,7 @@ async def fetch_dataset_rows(
 @router.get(
     "/{dataset_id}/rows",
     response_model=DatasetRowsResponse,
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))],
 )
 async def get_dataset_rows(
     dataset_id: str,
@@ -327,7 +327,7 @@ async def get_dataset_rows(
 @router.get(
     "/{dataset_id}/metadata",
     response_model=list[ColumnMetadata],
-    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))],
 )
 async def get_dataset_metadata(
     dataset_id: str,
@@ -372,7 +372,7 @@ async def get_dataset_metadata(
         raise HTTPException(status_code=502, detail=f"Failed to fetch metadata: {e}") from e
 
 
-@router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))])
 async def get_dataset(
     dataset_id: str,
     request: Request,
@@ -396,7 +396,7 @@ async def get_dataset(
     )
 
 
-@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
 async def update_dataset(
     dataset_id: str,
     request: Request,
@@ -429,7 +429,7 @@ async def update_dataset(
     )
 
 
-@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
 async def delete_dataset(
     dataset_id: str,
     request: Request,

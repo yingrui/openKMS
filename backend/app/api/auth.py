@@ -225,6 +225,38 @@ def require_permission(permission: str):
     return _check
 
 
+async def ensure_any_permission(request: Request, db: AsyncSession, *permissions: str) -> None:
+    """Grant if admin, local-cli, all, or the user holds any of the given permission keys."""
+    if not permissions:
+        raise HTTPException(status_code=500, detail="No permissions provided")
+    await require_auth(request)
+    payload = request.state.openkms_jwt_payload
+    if jwt_payload_is_admin(payload):
+        return
+    sub = payload.get("sub")
+    if sub == "local-cli":
+        return
+    if not isinstance(sub, str):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if settings.auth_mode == "local":
+        perms = await resolve_user_permission_keys(db, sub)
+    else:
+        perms = await resolve_oidc_permission_keys(db, payload)
+    if PERM_ALL in perms:
+        return
+    if any(p in perms for p in permissions):
+        return
+    need = " or ".join(permissions)
+    raise HTTPException(status_code=403, detail=f"Missing permission: need one of ({need})")
+
+
+def require_any_permission(*permissions: str):
+    async def _check(request: Request, db: AsyncSession = Depends(get_db)) -> None:
+        await ensure_any_permission(request, db, *permissions)
+
+    return _check
+
+
 async def require_service_client(request: Request) -> str:
     token = await require_auth(request)
     payload = request.state.openkms_jwt_payload

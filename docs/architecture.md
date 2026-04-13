@@ -78,8 +78,8 @@ flowchart TB
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
-    Ontology[OntologyList - overview; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer]
-    Console[Console: Overview, Permission management, Data security (groups + scopes), Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, DatasetDetail]
+    Ontology[OntologyList; Datasets, DatasetDetail, ConsoleObjectTypes, ConsoleLinkTypes; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer]
+    Console[Console: Overview, Permission management, Data security, DataSources, Settings, Users, FeatureToggles]
   end
 
   Providers --> Pages
@@ -109,7 +109,7 @@ frontend/src/
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── OntologyList.tsx, ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx, ObjectExplorer.tsx
-    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, ConsoleDatasetDetail
+    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 
 ## Backend Structure

@@ -7,8 +7,8 @@ from pydantic import BaseModel
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_auth, require_permission
-from app.services.permission_catalog import PERM_CONSOLE_OBJECT_TYPES
+from app.api.auth import require_any_permission, require_auth
+from app.services.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
 from app.services.data_scope import effective_object_type_ids, scope_applies
@@ -254,7 +254,7 @@ async def list_object_types(
 @router.post("", response_model=ObjectTypeResponse, status_code=201)
 async def create_object_type(
     body: ObjectTypeCreate,
-    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create object type. Admin only."""
@@ -324,7 +324,7 @@ async def get_object_type(
 async def update_object_type(
     object_type_id: str,
     body: ObjectTypeUpdate,
-    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Update object type. Admin only."""
@@ -360,7 +360,7 @@ async def update_object_type(
 @router.delete("/{object_type_id}", status_code=204)
 async def delete_object_type(
     object_type_id: str,
-    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete object type. Admin only. Cascades to instances."""
@@ -370,7 +370,11 @@ async def delete_object_type(
     await db.delete(obj_type)
 
 
-@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES))])
+@router.post(
+    "/index-to-neo4j",
+    response_model=IndexToNeo4jResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))],
+)
 async def index_objects_to_neo4j(
     body: IndexToNeo4jRequest,
     db: AsyncSession = Depends(get_db),
@@ -555,7 +559,7 @@ async def create_object_instance(
     object_type_id: str,
     request: Request,
     body: ObjectInstanceCreate,
-    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     obj_type = await db.get(ObjectType, object_type_id)
@@ -605,7 +609,7 @@ async def update_object_instance(
     object_id: str,
     request: Request,
     body: ObjectInstanceUpdate,
-    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await _require_object_type_in_scope(request, db, object_type_id)
@@ -630,7 +634,7 @@ async def delete_object_instance(
     object_type_id: str,
     object_id: str,
     request: Request,
-    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
+    _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
     await _require_object_type_in_scope(request, db, object_type_id)

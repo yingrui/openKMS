@@ -131,17 +131,36 @@ def compile_rules_from_rows(rows: list[SecurityPermission]) -> list[CompiledRule
     return out
 
 
+def resolve_required_permission_keys(
+    method: str,
+    path: str,
+    rules: list[CompiledRule],
+) -> frozenset[str] | None:
+    """Return all permission keys tied at the best (specificity, segment_count) among matches, or None."""
+    path_segs = path_to_segments(path)
+    matches: list[CompiledRule] = []
+    for rule in rules:
+        if match_rule(method, path_segs, rule):
+            matches.append(rule)
+    if not matches:
+        return None
+    best_spec = max(r.specificity for r in matches)
+    tier_a = [r for r in matches if r.specificity == best_spec]
+    best_seg = max(r.segment_count for r in tier_a)
+    keys = frozenset(r.permission_key for r in tier_a if r.segment_count == best_seg)
+    return keys if keys else None
+
+
 def resolve_required_permission_key(
     method: str,
     path: str,
     rules: list[CompiledRule],
 ) -> str | None:
-    """Return permission key for the highest-specificity matching rule, or None."""
-    path_segs = path_to_segments(path)
-    for rule in rules:
-        if match_rule(method, path_segs, rule):
-            return rule.permission_key
-    return None
+    """Return one key for the best match (deterministic); prefer single-key ties for logging."""
+    keys = resolve_required_permission_keys(method, path, rules)
+    if not keys:
+        return None
+    return min(keys)
 
 
 # --- Frontend-style path patterns (same as SPA gate) ---

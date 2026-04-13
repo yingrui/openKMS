@@ -146,7 +146,11 @@ export function Sidebar() {
     }
   };
 
-  const onOntology = location.pathname.startsWith('/ontology') || location.pathname.startsWith('/objects') || location.pathname.startsWith('/links') || location.pathname.startsWith('/object-explorer');
+  const onOntology =
+    location.pathname.startsWith('/ontology') ||
+    location.pathname.startsWith('/objects') ||
+    location.pathname.startsWith('/links') ||
+    location.pathname.startsWith('/object-explorer');
   const onConsole = location.pathname.startsWith('/console');
   const { canAccessConsole, canAccessPath } = useAuth();
   const { toggles } = useFeatureToggles();
@@ -154,15 +158,15 @@ export function Sidebar() {
   const showOntologySection =
     (toggles.objectsAndLinks || toggles.hasNeo4jDataSource) &&
     (canAccessPath('/ontology') ||
+      canAccessPath('/ontology/datasets') ||
+      canAccessPath('/ontology/object-types') ||
+      canAccessPath('/ontology/link-types') ||
       canAccessPath('/objects') ||
       canAccessPath('/links') ||
       canAccessPath('/object-explorer'));
 
   const showConsoleDataLabel =
     canAccessPath('/console/data-sources') ||
-    canAccessPath('/console/datasets') ||
-    canAccessPath('/console/object-types') ||
-    canAccessPath('/console/link-types') ||
     canAccessPath('/console/settings') ||
     canAccessPath('/console/users') ||
     canAccessPath('/console/feature-toggles');
@@ -217,24 +221,6 @@ export function Sidebar() {
               <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Database size={18} strokeWidth={1.75} />
                 <span>Data Sources</span>
-              </NavLink>
-            )}
-            {canAccessPath('/console/datasets') && (
-              <NavLink to="/console/datasets" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <Table size={18} strokeWidth={1.75} />
-                <span>Datasets</span>
-              </NavLink>
-            )}
-            {canAccessPath('/console/object-types') && (
-              <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <Box size={18} strokeWidth={1.75} />
-                <span>Object Types</span>
-              </NavLink>
-            )}
-            {canAccessPath('/console/link-types') && (
-              <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-                <Link2 size={18} strokeWidth={1.75} />
-                <span>Link Types</span>
               </NavLink>
             )}
             {canAccessPath('/console/settings') && (
@@ -330,6 +316,39 @@ export function Sidebar() {
             )}
             {onOntology && (
               <div className="sidebar-subnav">
+                {canAccessPath('/ontology/datasets') && (
+                  <NavLink
+                    to="/ontology/datasets"
+                    className={({ isActive }) =>
+                      `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                    }
+                  >
+                    <Table size={18} strokeWidth={1.75} />
+                    <span>Datasets</span>
+                  </NavLink>
+                )}
+                {canAccessPath('/ontology/object-types') && (
+                  <NavLink
+                    to="/ontology/object-types"
+                    className={({ isActive }) =>
+                      `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                    }
+                  >
+                    <Box size={18} strokeWidth={1.75} />
+                    <span>Object types</span>
+                  </NavLink>
+                )}
+                {canAccessPath('/ontology/link-types') && (
+                  <NavLink
+                    to="/ontology/link-types"
+                    className={({ isActive }) =>
+                      `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                    }
+                  >
+                    <Link2 size={18} strokeWidth={1.75} />
+                    <span>Link types</span>
+                  </NavLink>
+                )}
                 {canAccessPath('/objects') && (
                 <NavLink
                   to="/objects"

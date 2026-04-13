@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Outlet, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
@@ -57,6 +57,11 @@ function EvaluationDatasetDetailPage() {
   return <EvaluationDatasetDetail key={id ?? ''} />;
 }
 
+function LegacyConsoleDatasetRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/ontology/datasets/${id ?? ''}`} replace />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -94,22 +99,28 @@ function App() {
           <Route path="jobs/:jobId" element={<JobDetail />} />
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
-          <Route path="ontology" element={<FeatureGate feature="objectsAndLinks"><OntologyList /></FeatureGate>} />
+          <Route path="ontology" element={<FeatureGate feature="objectsAndLinks"><Outlet /></FeatureGate>}>
+            <Route index element={<OntologyList />} />
+            <Route path="datasets" element={<ConsoleDatasets />} />
+            <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
+            <Route path="object-types" element={<ConsoleObjectTypes />} />
+            <Route path="link-types" element={<ConsoleLinkTypes />} />
+          </Route>
           <Route path="objects" element={<FeatureGate feature="objectsAndLinks"><ObjectsList /></FeatureGate>} />
           <Route path="objects/:typeId" element={<FeatureGate feature="objectsAndLinks"><ObjectTypeDetail /></FeatureGate>} />
           <Route path="links" element={<FeatureGate feature="objectsAndLinks"><LinksList /></FeatureGate>} />
           <Route path="links/:typeId" element={<FeatureGate feature="objectsAndLinks"><LinkTypeDetail /></FeatureGate>} />
           <Route path="object-explorer" element={<FeatureGate feature="objectsAndLinks"><ObjectExplorer /></FeatureGate>} />
+          <Route path="console/datasets" element={<Navigate to="/ontology/datasets" replace />} />
+          <Route path="console/datasets/:id" element={<LegacyConsoleDatasetRedirect />} />
+          <Route path="console/object-types" element={<Navigate to="/ontology/object-types" replace />} />
+          <Route path="console/link-types" element={<Navigate to="/ontology/link-types" replace />} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />
             <Route path="permission-management" element={<ConsolePermissionManagement />} />
             <Route path="data-security/groups" element={<ConsoleDataSecurityGroups />} />
             <Route path="data-security/groups/:groupId/access" element={<ConsoleGroupDataAccess />} />
-            <Route path="object-types" element={<ConsoleObjectTypes />} />
-            <Route path="link-types" element={<ConsoleLinkTypes />} />
             <Route path="data-sources" element={<ConsoleDataSources />} />
-            <Route path="datasets" element={<ConsoleDatasets />} />
-            <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />
             <Route path="feature-toggles" element={<ConsoleFeatureToggles />} />

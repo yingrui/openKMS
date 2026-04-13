@@ -150,32 +150,3 @@
   color: var(--color-text-secondary);
 }
 
-.console-overview-intro-footnote {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 24px 0 0 0;
-  padding: 14px 16px;
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  background: var(--color-bg-subtle, var(--color-bg-elevated));
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  max-width: 52rem;
-}
-
-.console-overview-intro-footnote-icon {
-  flex-shrink: 0;
-  margin-top: 2px;
-  opacity: 0.85;
-}
-
-.console-overview-intro-footnote a {
-  color: var(--color-accent);
-  font-weight: 500;
-}
-
-.console-overview-intro-footnote strong {
-  color: var(--color-text-secondary);
-  font-weight: 600;
-}

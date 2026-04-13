@@ -108,22 +108,22 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); managed in Console → Object Types; Edit dialog: wider, property name/type read-only when editing, primary key radio selector; Master Data flag (only master data types usable for document labels); display_property for label picker display |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); managed under Ontology → Object types (`/ontology/object-types`); Edit dialog: wider, property name/type read-only when editing, primary key radio selector; Master Data flag (only master data types usable for document labels); display_property for label picker display |
 | Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
-| Link types | ✅ | Schema for relationships between two object types; managed in Console → Link Types |
+| Link types | ✅ | Schema for relationships between two object types; managed under Ontology → Link types (`/ontology/link-types`) |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
 | Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
 | Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; checkbox selection for object/link types, directional arrows; layout modes (force, left-to-right, top-to-bottom, radial); zoom in/out/fit, fullscreen; style panel overlays canvas with Object/Link type color pickers |
 | Ontology overview | ✅ | Single page at `/ontology` showing all object types and link types with links to detail pages |
-| Ontology sidebar | ✅ | Clickable "Ontology" menu (links to `/ontology`); subnav Objects, Links, Object Explorer when on ontology pages; shown when Neo4j exists or objectsAndLinks toggle |
+| Ontology sidebar | ✅ | "Ontology" links to `/ontology`; subnav Datasets, Object types, Link types, Objects, Links, Object Explorer when on ontology pages; shown when Neo4j exists or objectsAndLinks toggle |
 | Search | ✅ | Optional search filter on object instances |
 | Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
-| Console counts | ✅ | Console Object Types and Link Types: instance_count and link_count from datasets (PostgreSQL) |
+| Schema admin counts | ✅ | Ontology Object types / Link types pages: instance_count and link_count from datasets (PostgreSQL) |
 
 - Toggle visibility via Console → Feature Toggles
 
-### 5b. Data Sources & Datasets (Console, Admin)
+### 5b. Data Sources (Console) & Datasets / schema (Ontology, Admin)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
@@ -131,9 +131,9 @@
 | Credential encryption | ✅ | Username/password encrypted with Fernet before storage; key from OPENKMS_DATASOURCE_ENCRYPTION_KEY or derived from secret_key |
 | Test connection | ✅ | `POST /api/data-sources/{id}/test` validates connectivity |
 | Neo4j delete all | ✅ | `POST /api/data-sources/{id}/neo4j-delete-all` wipes all nodes and relationships; confirmation modal in Console |
-| Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; Console → Datasets |
+| Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; **Ontology → Datasets** (`/ontology/datasets`); legacy `/console/datasets` redirects |
 | List tables from source | ✅ | `GET /api/datasets/from-source/{id}` returns tables for picker when creating dataset |
-| Dataset detail | ✅ | Click dataset name → `/console/datasets/:id` with Data tab (rows, pagination) and Metadata tab (column info) |
+| Dataset detail | ✅ | Click dataset name → `/ontology/datasets/:id` with Data tab (rows, pagination) and Metadata tab (column info) |
 | Dataset rows | ✅ | `GET /api/datasets/{id}/rows?limit=&offset=` fetches paginated rows from table |
 | Dataset metadata | ✅ | `GET /api/datasets/{id}/metadata` returns column name, type, nullable, position from information_schema |
 | Search datasets | ✅ | Client-side search by display name, schema.table, data source on list page |
@@ -142,15 +142,15 @@
 | Link type FK mapping | ✅ | Source/Target key properties; junction table columns (source_dataset_column, target_dataset_column) for many-to-many |
 | M:M junction table links | ✅ | When link type has dataset_id, links and link_count come from junction table; Add/Delete disabled for dataset-backed links |
 | M:1/1:M link count | ✅ | When source object type has dataset and source_key_property (FK column), link_count from rows where FK is not null |
-| Index to Neo4j | ✅ | Object Types and Link Types: Index Objects/Links button when Neo4j data source exists; indexes datasets as nodes, link types as relationships |
+| Index to Neo4j | ✅ | Ontology **Object types** / **Link types** pages: Index Objects/Links button when Neo4j data source exists; indexes datasets as nodes, link types as relationships |
 
 ### 6. Console (Admin)
 
 - **Entry**: header “Console” and `/console/*` require permission `all`, any `console:*` from `GET /api/auth/me`, or JWT realm role `admin` (OIDC) / full catalog for IdP admins. **Sidebar** (main app and console) shows a link only when `canAccessPath` matches that route against the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` (same rules as the main layout route gate), in addition to feature toggles where applicable.
-- **Console overview** (`/console`): Feature introduction for each console area; cards link to the corresponding page when `canAccessPath` allows; quick links to Permissions and Access groups when those permissions apply; optional nudge to expand the catalog when only **`all`** is defined (until `openkms_permissions_onboarding_dismissed` is set).
+- **Console overview** (`/console`): Introduces **console sidebar** tools only—permissions, data security, data sources, users & feature toggles, settings; cards link when `canAccessPath` allows; quick links to Permissions and Access groups when those permissions apply; optional nudge when the catalog still has only **`all`** (until `openkms_permissions_onboarding_dismissed` is set).
 - **Permission management** (`/console/permission-management`): **Permission catalog** is stored in **`security_permissions`**; the page loads rows from **`GET /api/admin/security-permissions`** (includes `id` for edit/delete). Under **Roles**, **All** selects catalog-only mode (add/edit/delete permission rows). Choosing a **named role** shows checkboxes to draft which keys that role receives; **Save role permissions** calls **`PUT /api/admin/security-roles/{id}/permissions`** once—no auto-save on each toggle. Switching roles with unsaved changes prompts to discard. Migrations seed **`all`** when the catalog table is empty and backfill default pattern rows for every hinted operation key (`a2b3c4d5e6f7`); admins may add keys via **Add permission**, **Add missing suggested keys** (from **`operation_key_hints`** on **`GET /api/admin/permission-reference`**), or **`POST /api/admin/security-permissions`**, using the in-page **Route & API reference** (and **Operation keys** tab) for path patterns. Roles may only assign keys that exist in **`security_permissions`**. The built-in **`all`** row cannot be edited or deleted. **Migration** seeds the **admin** role with **`all`**; **member** is created on first non-admin local sign-in (also starts with **`all`**). You cannot remove **`all`** from a role that still has only **`all`** in one step—add another permission, save, then remove **`all`**. **Local**: `user_security_roles` synced from `is_admin`. **OIDC**: JWT `realm_access.roles` match **`security_roles.name`**; realm **`admin`** bypasses permission checks.
 - **Data security** (`/console/data-security/groups`, `/console/data-security/groups/:id/access`): **local** only—CRUD access groups, assign local users, multi-select scopes (channels, KBs, evaluation datasets, datasets, object types, link types). Enforcement: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` (default `false`); when `true`, **local** non-admin users with group membership are filtered on documents/channels, knowledge bases, evaluation APIs, object/link type lists, etc.; users with **no** group rows are not filtered (legacy). **OIDC**: scope enforcement skipped in this phase.
-- Data Sources, Datasets, Object Types, Link Types, System Settings, Users & Roles, Feature Toggles (each requires the matching `console:*` permission or admin JWT).
+- **Data Sources** (`/console/data-sources`): `console:data_sources` (or admin). **Datasets and schema** (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`): `console:datasets` / `console:object_types` / `console:link_types` **or** `ontology:read` / `ontology:write` as applicable (API uses `require_any_permission`); System Settings, Users & Roles, Feature Toggles remain `console:*` (or admin).
 - **Users & Roles** (`/console/users`): requires `console:users`. **Local auth**: list users, toggle `is_admin` (syncs security role links), delete/add users. **OIDC auth**: read-only notice.
 - Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
@@ -168,8 +168,8 @@
 
 - Public landing page for non-authorized users
 - Pain points: knowledge scattered, unstructured content, manual work
-- Benefits: centralized hub, RAG-ready knowledge bases, enterprise security
-- Functionalities: document management, articles, knowledge bases, pipelines
+- Benefits: centralized document hub, RAG-ready knowledge bases, fine-grained roles and console for permissions / data security / platform settings
+- Functionalities sections: document management, articles, knowledge bases (including semantic search when pgvector is configured), ontology & graph (datasets, object/link types, optional Neo4j), pipelines & automation (jobs, per-channel pipelines, model linkage)
 
 ### 7. Pipelines
 

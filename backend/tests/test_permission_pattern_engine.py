@@ -8,6 +8,7 @@ from app.services.permission_pattern_engine import (
     path_matches_segments,
     path_to_segments,
     resolve_required_permission_key,
+    resolve_required_permission_keys,
 )
 
 
@@ -61,6 +62,16 @@ def test_resolve_method_matters():
     rules = compile_rules_from_rows(rows)
     assert resolve_required_permission_key("GET", "/api/x/1", rules) == "r"
     assert resolve_required_permission_key("POST", "/api/x/1", rules) == "w"
+
+
+def test_resolve_keys_tie_returns_all_keys_at_best_tier():
+    rows = [
+        _row("console", "C", ["POST /api/object-types"]),
+        _row("ontology", "O", ["POST /api/object-types"]),
+    ]
+    rules = compile_rules_from_rows(rows)
+    keys = resolve_required_permission_keys("POST", "/api/object-types", rules)
+    assert keys == frozenset({"console", "ontology"})
 
 
 def test_frontend_glob():

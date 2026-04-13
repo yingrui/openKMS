@@ -234,7 +234,7 @@ export function ConsoleDatasets() {
                 filteredItems.map((d) => (
                   <tr key={d.id}>
                     <td>
-                      <Link to={`/console/datasets/${d.id}`} className="console-dataset-link">
+                      <Link to={`/ontology/datasets/${d.id}`} className="console-dataset-link">
                         <strong>{d.display_name || `${d.schema_name}.${d.table_name}`}</strong>
                       </Link>
                     </td>

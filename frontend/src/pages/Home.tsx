@@ -1,4 +1,4 @@
-import { FileStack, FileText, Database, Search, Layers, Zap, Shield } from 'lucide-react';
+import { FileStack, FileText, Database, Search, Layers, Zap, Shield, Network } from 'lucide-react';
 import './Home.css';
 
 const painPoints = [
@@ -33,7 +33,7 @@ const benefits = [
   {
     icon: Shield,
     title: 'Enterprise-ready security',
-    text: 'OIDC SSO or local accounts, role-based access, and admin-only console. Control who sees what.',
+    text: 'OIDC SSO or local accounts, fine-grained roles, and a console for permissions, data security, and platform settings.',
   },
 ];
 
@@ -51,12 +51,29 @@ const functionalities = [
   {
     icon: Database,
     title: 'Knowledge bases',
-    items: ['RAG Q&A over your documents', 'Vector embeddings (planned)', 'Ask questions in natural language'],
+    items: [
+      'RAG Q&A over your documents',
+      'Semantic search over chunks and FAQs (pgvector when configured)',
+      'Ask questions in natural language',
+    ],
+  },
+  {
+    icon: Network,
+    title: 'Ontology & graph',
+    items: [
+      'Datasets mapped from PostgreSQL data sources',
+      'Object types and link types for your domain model',
+      'Optional Neo4j indexing and graph exploration',
+    ],
   },
   {
     icon: Layers,
     title: 'Pipelines & automation',
-    items: ['Extraction pipelines (planned)', 'Async document parsing jobs', 'Configurable per-channel processing'],
+    items: [
+      'Configurable document pipelines and command templates',
+      'Async parsing jobs; per-channel pipeline and auto-process',
+      'Models linked to pipelines for OCR / VL / extraction',
+    ],
   },
 ];
 
