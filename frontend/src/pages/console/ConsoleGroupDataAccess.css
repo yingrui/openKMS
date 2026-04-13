@@ -1,0 +1,73 @@
+.console-group-access-back {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.console-group-access-muted {
+  color: var(--color-text-muted);
+}
+
+.console-group-access-section {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.console-group-access-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.console-group-access-section h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.console-group-access-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.console-group-access-checkgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.console-group-access-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.875rem;
+}
+
+.console-group-access-check .muted {
+  color: var(--color-text-muted);
+}
+
+.console-group-access-block {
+  margin-bottom: 1rem;
+}
+
+.console-group-access .btn-primary {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.console-group-access .btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

@@ -50,7 +50,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_knowledge_bases**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**) for data-security scopes, documents, document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -79,7 +79,7 @@ flowchart TB
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
     Ontology[OntologyList - overview; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer]
-    Console[Console: Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, DatasetDetail]
+    Console[Console: Overview, Permission management, Data security (groups + scopes), Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, DatasetDetail]
   end
 
   Providers --> Pages
@@ -89,12 +89,12 @@ flowchart TB
 frontend/src/
 ├── main.tsx                 # Entry
 ├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels), ErrorBoundary, Suspense + lazy routes
-├── config/index.ts          # API URL
+├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # channelsApi, documentsApi, knowledgeBasesApi, evaluationDatasetsApi, glossariesApi, pipelinesApi, jobsApi, modelsApi, providersApi, ontologyApi, dataSourcesApi, datasetsApi, featureTogglesApi, channelUtils
+├── data/                    # channelsApi, …, featureTogglesApi, securityAdminApi (admin permission catalog + roles), channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -108,7 +108,7 @@ frontend/src/
     ├── GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── OntologyList.tsx, ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx, ObjectExplorer.tsx
-    └── console/             # ConsoleLayout, Overview, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, ConsoleDatasetDetail
+    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, Settings, Users, FeatureToggles, ObjectTypes, LinkTypes, DataSources, Datasets, ConsoleDatasetDetail
 ```
 
 ## Backend Structure
@@ -122,7 +122,12 @@ backend/
 │   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
 │   ├── database.py              # Async engine, get_db, init_db
 │   ├── api/
-│   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth; /api/auth/*; sync-session
+│   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me + permission-catalog with route/API patterns), sync-session
+│   │   ├── admin/
+│   │   │   ├── groups.py        # CRUD /api/admin/groups, members PUT, scopes PUT (access groups + resource allow lists)
+│   │   │   ├── security_roles.py  # GET /api/admin/security-roles, PUT …/permissions
+│   │   │   ├── security_permissions.py  # CRUD /api/admin/security-permissions (catalog rows)
+│   │   │   └── permission_reference.py  # GET /api/admin/permission-reference (routes + APIs + operation_key_hints for admins)
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id), PUT metadata, PUT markdown, POST restore-markdown, POST rebuild-page-index, POST/GET versions, GET version, POST version restore, POST extract-metadata, GET page-index, GET section (by line range)
 │   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
@@ -137,7 +142,7 @@ backend/
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
-│   │   ├── users_admin.py      # GET/POST/PATCH/DELETE /api/admin/users (admin; local user CRUD + OIDC notice)
+│   │   ├── users_admin.py      # GET/POST/PATCH/DELETE /api/admin/users (console:users; local user CRUD + OIDC notice)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
 │   ├── models/
 │   │   ├── document.py          # Document model (+ status, metadata JSONB)
@@ -148,6 +153,9 @@ backend/
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
 │   │   ├── user.py            # User (local auth: email, username, password_hash, is_admin)
+│   │   ├── security_role.py # SecurityRole, SecurityRolePermission, UserSecurityRole
+│   │   ├── security_permission.py # SecurityPermission (key, label, description, JSONB route/API patterns, sort_order)
+│   │   ├── access_group.py  # AccessGroup, AccessGroupUser, junctions for channels/KBs/eval/datasets/object_types/link_types
 │   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK, key_property, is_master_data, display_property)
 │   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
 │   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
@@ -186,7 +194,14 @@ backend/
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
-│       └── storage.py                    # S3/MinIO client (upload, delete)
+│       ├── storage.py                    # S3/MinIO client (upload, delete)
+│       ├── permission_catalog.py       # PERM_* constants, OPERATION_KEY_HINTS for admin reference UI
+│       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions
+│       ├── permission_reference.py     # Frontend route catalog + OpenAPI-derived API list for admin permission setup
+│       ├── security_permission_service.py  # List/sort permissions from DB; keys set for role validation
+│       ├── permission_resolution.py    # Permissions: local via user_security_roles; OIDC via JWT realm role name matching security_roles.name
+│       ├── user_roles_sync.py          # Sync user_security_roles from users.is_admin; create member role with `all` if missing
+│       └── data_scope.py               # OPENKMS_ENFORCE_GROUP_DATA_SCOPES: effective channel/KB/eval/dataset/ontology IDs
 ├── scripts/
 │   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
 │   └── seed_mock_insurance_data.py  # Create mock diseases, insurance_products, disease_insurance_product tables in schema 'mock'
@@ -374,7 +389,7 @@ flowchart LR
 ### Shared
 
 - **Route protection**: All pages except home (and `/login`, `/signup` in local mode) require auth. **`/profile`** shows the current user from `GET /api/auth/me` (administrator flag, role list, header user menu).
-- **Console**: `admin` in `realm_access.roles` (OIDC) or `is_admin` on user (local JWT). Non-admins redirected from console routes.
+- **Console**: `admin` in `realm_access.roles` (OIDC) grants full permissions (all keys from `security_permissions`). Other OIDC users: each JWT realm role whose **name equals** a `security_roles.name` row contributes that role’s permission keys (union). Local: `is_admin` or `user_security_roles`.
 - `POST /clear-session` – clears backend session cookie.
 
 ## Configuration

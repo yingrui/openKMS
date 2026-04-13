@@ -138,4 +138,4 @@ The SPA uses **`oidc-client-ts`** (Authorization Code + PKCE) when the backend r
 
 **Logout errors from the IdP**: ensure the SPA origin is allowed as a post-logout redirect for the browser client.
 
-**Console access**: OIDC users need an **`admin`** role in JWT `realm_access.roles` (Keycloak: realm role `admin`). Other IdPs may use different claim shapes; extend parsing if you use groups or custom claims.
+**Console access (OIDC)**: Realm role **`admin`** in JWT `realm_access.roles` still grants full console access (all keys from `security_permissions`). For other users, each string in `realm_access.roles` must match a **`security_roles.name`** row in PostgreSQL; that role’s permission keys (from **Permission management**) apply. Align IdP role names with security role names (e.g. `member`, `content-editor`). Other IdPs with different claim shapes may require extending JWT parsing in `auth.py` / `permission_resolution.py`.

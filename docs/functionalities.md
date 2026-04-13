@@ -146,19 +146,21 @@
 
 ### 6. Console (Admin)
 
-- Overview, Data Sources, Datasets, Object Types, Link Types, System Settings, Users & Roles, Feature Toggles
-- **Admin-only**: visible and accessible only to users with realm role `admin` (OIDC JWT) or local user `is_admin`
-- **Users & Roles** (`/console/users`): admin-only. **Local auth**: list users from PostgreSQL, toggle Admin role, delete users (safeguards: last admin, no self-delete), add user with password. **OIDC auth**: read-only notice only—no user directory in openKMS
+- **Entry**: header “Console” and `/console/*` require permission `all`, any `console:*` from `GET /api/auth/me`, or JWT realm role `admin` (OIDC) / full catalog for IdP admins. Sidebar links are gated per permission (e.g. `console:data_sources`, `console:groups`).
+- **Permission management** (`/console/permission-management`): **Permission catalog** is stored in **`security_permissions`**; the page loads rows from **`GET /api/admin/security-permissions`** (includes `id` for edit/delete). Under **Roles**, **All** selects catalog-only mode (add/edit/delete permission rows). Choosing a **named role** shows checkboxes to draft which keys that role receives; **Save role permissions** calls **`PUT /api/admin/security-roles/{id}/permissions`** once—no auto-save on each toggle. Switching roles with unsaved changes prompts to discard. Migration seeds **only** the **`all`** row; admins define other keys via **Add permission**, **Add missing suggested keys** (from **`operation_key_hints`** on **`GET /api/admin/permission-reference`**), or **`POST /api/admin/security-permissions`**, using the in-page **Route & API reference** (and **Operation keys** tab) for path patterns. Roles may only assign keys that exist in **`security_permissions`**. The built-in **`all`** row cannot be edited or deleted. **Migration** seeds the **admin** role with **`all`**; **member** is created on first non-admin local sign-in (also starts with **`all`**). You cannot remove **`all`** from a role that still has only **`all`** in one step—add another permission, save, then remove **`all`**. **Local**: `user_security_roles` synced from `is_admin`. **OIDC**: JWT `realm_access.roles` match **`security_roles.name`**; realm **`admin`** bypasses permission checks. **Console Overview** may link to this page when the catalog is still only **`all`** and onboarding was not dismissed.
+- **Data security** (`/console/data-security/groups`, `/console/data-security/groups/:id/access`): **local** only—CRUD access groups, assign local users, multi-select scopes (channels, KBs, evaluation datasets, datasets, object types, link types). Enforcement: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` (default `false`); when `true`, **local** non-admin users with group membership are filtered on documents/channels, knowledge bases, evaluation APIs, object/link type lists, etc.; users with **no** group rows are not filtered (legacy). **OIDC**: scope enforcement skipped in this phase.
+- Overview, Data Sources, Datasets, Object Types, Link Types, System Settings, Users & Roles, Feature Toggles (each requires the matching `console:*` permission or admin JWT).
+- **Users & Roles** (`/console/users`): requires `console:users`. **Local auth**: list users, toggle `is_admin` (syncs security role links), delete/add users. **OIDC auth**: read-only notice.
 - Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
-- `PUT /api/feature-toggles` (admin-only) updates toggle state; backend `require_admin` checks JWT realm role
+- `PUT /api/feature-toggles` requires `console:feature_toggles` (or JWT admin)
 
 ### 6b. Authentication
 
 - **OIDC mode** (default): any OIDC IdP – Authorization Code + PKCE in browser (`oidc-client-ts`); RP-initiated logout when the IdP exposes `end_session_endpoint`
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
-- **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles** from the JWT (e.g. Keycloak `realm_access.roles`), and account ID (`sub`); data from `GET /api/auth/me`. Linked from the header user menu.
+- **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles**, and resolved **permissions** (local users: DB keys such as `all` or granular `console:*`; OIDC IdP admins receive the full catalog); data from `GET /api/auth/me`. Linked from the header user menu.
 - Protected routes: all except home require auth (plus `/login` and `/signup` in local mode); unauthenticated users see "Authentication Required" message
 
 ### 6c. Home (Landing Page)
@@ -221,15 +223,29 @@
 | GET | `/api/auth/public-config` | No auth: `{ auth_mode, allow_signup }` for SPA / CLI alignment with local vs OIDC IdP |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
-| GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic |
+| GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic; includes `permissions` (resolved keys) |
+| GET | `/api/auth/permission-catalog` | Authenticated: list of permission entries (`key`, `label`, `description`, `frontend_route_patterns`, `backend_api_patterns`) for the Console matrix and details UI |
+| GET | `/api/admin/security-roles` | `console:permissions`: roles and permission keys (includes `all`); `is_system_role` true only for **admin** (cannot delete) |
+| POST | `/api/admin/security-roles` | `console:permissions`: create role; reserved names `admin` / `member` rejected |
+| DELETE | `/api/admin/security-roles/{role_id}` | `console:permissions`: delete role (**admin** role rejected) |
+| PUT | `/api/admin/security-roles/{role_id}/permissions` | `console:permissions`: replace keys (each must exist in `security_permissions`); cannot drop sole `all` without adding another permission first (see Permissions page) |
+| GET | `/api/admin/permission-reference` | `console:permissions`: frontend feature path patterns + full OpenAPI operation list (method, path, summary, tags) to help configure `security_permissions` |
+| GET | `/api/admin/security-permissions` | `console:permissions`: list permission catalog rows (id, key, label, patterns, sort_order) |
+| POST | `/api/admin/security-permissions` | `console:permissions`: create catalog row |
+| PATCH | `/api/admin/security-permissions/{id}` | `console:permissions`: update label, description, patterns, sort_order (built-in `all` row rejected) |
+| DELETE | `/api/admin/security-permissions/{id}` | `console:permissions`: delete row (`all` and keys still assigned to roles are rejected) |
+| GET/POST | `/api/admin/groups` | `console:groups`, local only: list/create access groups |
+| GET/PATCH/DELETE | `/api/admin/groups/{id}` | `console:groups`: get/update/delete group |
+| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: list/replace member user ids |
+| GET/PUT | `/api/admin/groups/{id}/scopes` | `console:groups`: get/replace resource id lists per category |
 | POST | `/api/auth/logout` | Clear server session |
 | POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | POST | `/clear-session` | Clear backend session (called before logout) |
 | GET | `/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
-| GET | `/api/admin/users` | Admin-only: auth mode, IdP notice, `users` (local only) |
-| POST | `/api/admin/users` | Admin-only, **local** only: create user (`email`, `username`, `password`, `is_admin`) |
-| PATCH | `/api/admin/users/{id}` | Admin-only, **local** only: set `is_admin` |
-| DELETE | `/api/admin/users/{id}` | Admin-only, **local** only: delete user |
+| GET | `/api/admin/users` | `console:users`: auth mode, IdP notice, `users` (local only) |
+| POST | `/api/admin/users` | `console:users`, **local** only: create user (`email`, `username`, `password`, `is_admin`) |
+| PATCH | `/api/admin/users/{id}` | `console:users`, **local** only: set `is_admin` (syncs security roles) |
+| DELETE | `/api/admin/users/{id}` | `console:users`, **local** only: delete user |
 | GET | `/api/document-channels` | List document channels (tree) |
 | GET | `/api/document-channels/{id}` | Get channel by ID (includes label_config, extraction_schema) |
 | POST | `/api/document-channels` | Create channel |
@@ -351,21 +367,21 @@
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
 | POST | `/api/link-types/index-to-neo4j` | Index link types (M:M junction + M:1/1:M from source dataset) to Neo4j as relationships (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
-| GET | `/api/data-sources` | List data sources (admin-only) |
-| POST | `/api/data-sources` | Create data source (admin-only) |
-| GET | `/api/data-sources/{id}` | Get data source (admin-only) |
-| PUT | `/api/data-sources/{id}` | Update data source (admin-only) |
-| DELETE | `/api/data-sources/{id}` | Delete data source (admin-only) |
-| POST | `/api/data-sources/{id}/test` | Test connection (admin-only) |
-| POST | `/api/data-sources/{id}/neo4j-delete-all` | Delete all nodes and relationships in Neo4j (admin-only, Neo4j only) |
-| GET | `/api/datasets` | List datasets (admin-only, optional ?data_source_id=) |
-| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (admin-only) |
-| POST | `/api/datasets` | Create dataset (admin-only) |
-| GET | `/api/datasets/{id}` | Get dataset (admin-only) |
-| GET | `/api/datasets/{id}/rows` | Get paginated rows from dataset table (admin-only; ?limit=, ?offset=) |
-| GET | `/api/datasets/{id}/metadata` | Get column metadata from information_schema (admin-only) |
-| PUT | `/api/datasets/{id}` | Update dataset (admin-only) |
-| DELETE | `/api/datasets/{id}` | Delete dataset (admin-only) |
+| GET | `/api/data-sources` | List data sources (`console:data_sources`) |
+| POST | `/api/data-sources` | Create data source (`console:data_sources`) |
+| GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |
+| PUT | `/api/data-sources/{id}` | Update data source (`console:data_sources`) |
+| DELETE | `/api/data-sources/{id}` | Delete data source (`console:data_sources`) |
+| POST | `/api/data-sources/{id}/test` | Test connection (`console:data_sources`) |
+| POST | `/api/data-sources/{id}/neo4j-delete-all` | Delete all nodes and relationships in Neo4j (`console:data_sources`, Neo4j only) |
+| GET | `/api/datasets` | List datasets (`console:datasets`, optional ?data_source_id=) |
+| GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |
+| POST | `/api/datasets` | Create dataset (`console:datasets`) |
+| GET | `/api/datasets/{id}` | Get dataset (`console:datasets`) |
+| GET | `/api/datasets/{id}/rows` | Get paginated rows from dataset table (`console:datasets`; ?limit=, ?offset=) |
+| GET | `/api/datasets/{id}/metadata` | Get column metadata from information_schema (`console:datasets`) |
+| PUT | `/api/datasets/{id}` | Update dataset (`console:datasets`) |
+| DELETE | `/api/datasets/{id}` | Delete dataset (`console:datasets`) |
 | GET | `/api/feature-toggles` | Get feature toggle state (includes hasNeo4jDataSource; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 

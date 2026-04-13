@@ -13,6 +13,8 @@ export interface AuthUser {
   email?: string;
   name?: string;
   roles: string[];
+  /** From GET /api/auth/me (full list for IdP admins). */
+  permissions: string[];
 }
 
 interface AuthContextValue {
@@ -34,6 +36,9 @@ interface AuthContextValue {
   authModeReady: boolean;
   /** Local mode only: server allows POST /api/auth/register. */
   allowSignup: boolean;
+  /** True if JWT admin or user has `console:access`. */
+  canAccessConsole: boolean;
+  hasPermission: (permissionKey: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -70,21 +75,64 @@ function parseUserFromOidc(user: User | null | undefined): AuthUser | null {
     email: typeof p.email === 'string' ? p.email : undefined,
     name: (typeof p.name === 'string' && p.name) || username,
     roles,
+    permissions: [],
   };
 }
 
-function userFromMeJson(u: { username: string; email?: string; is_admin?: boolean }): AuthUser {
-  const roles = u.is_admin ? [ADMIN_ROLE] : [];
+function userFromMeJson(u: {
+  username: string;
+  email?: string;
+  is_admin?: boolean;
+  roles?: string[];
+  permissions?: string[];
+}): AuthUser {
+  const roles = u.roles?.length ? u.roles : u.is_admin ? [ADMIN_ROLE] : [];
   return {
     username: u.username,
     email: u.email,
     name: u.username,
     roles,
+    permissions: Array.isArray(u.permissions) ? u.permissions : [],
   };
 }
 
 function hasAdminRole(user: AuthUser | null): boolean {
   return user?.roles?.includes(ADMIN_ROLE) ?? false;
+}
+
+function buildPermissionHelpers(user: AuthUser | null) {
+  const isAdmin = hasAdminRole(user);
+  const hasPermission = (key: string) => {
+    if (!user) return false;
+    if (user.roles.includes(ADMIN_ROLE)) return true;
+    if (user.permissions.includes('all')) return true;
+    return user.permissions.includes(key);
+  };
+  const canAccessConsole =
+    isAdmin ||
+    (user?.permissions.includes('all') ?? false) ||
+    (user?.permissions.some((p) => p.startsWith('console:')) ?? false);
+  return { hasPermission, canAccessConsole };
+}
+
+async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | null> {
+  try {
+    const res = await fetch(`${config.apiUrl}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      username: string;
+      email?: string;
+      is_admin?: boolean;
+      roles?: string[];
+      permissions?: string[];
+    };
+    return userFromMeJson(data);
+  } catch {
+    return null;
+  }
 }
 
 async function syncTokenToBackend(token: string) {
@@ -168,6 +216,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       authMode,
       authModeReady: ready,
       allowSignup,
+      canAccessConsole: false,
+      hasPermission: () => false,
     }),
     [authMode, ready, allowSignup]
   );
@@ -285,6 +335,7 @@ function LocalAuthProvider({
   }, [getToken]);
 
   const isAdmin = hasAdminRole(user);
+  const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
 
   return (
     <AuthContext.Provider
@@ -303,6 +354,8 @@ function LocalAuthProvider({
         authMode,
         authModeReady,
         allowSignup,
+        canAccessConsole,
+        hasPermission,
       }}
     >
       {children}
@@ -357,9 +410,14 @@ function OidcAuthProvider({
         }
       }
       if (u && !u.expired) {
-        setUser(parseUserFromOidc(u));
+        let profile = parseUserFromOidc(u);
+        if (u.access_token) {
+          await syncTokenToBackend(u.access_token);
+          const me = await fetchAuthMeWithBearer(u.access_token);
+          if (me) profile = me;
+        }
+        setUser(profile);
         setIsAuthenticated(true);
-        if (u.access_token) await syncTokenToBackend(u.access_token);
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -386,9 +444,16 @@ function OidcAuthProvider({
   useEffect(() => {
     const mgr = getUserManager();
     const onLoaded = (u: User) => {
-      setUser(parseUserFromOidc(u));
-      setIsAuthenticated(true);
-      if (u.access_token) void syncTokenToBackend(u.access_token);
+      void (async () => {
+        let profile = parseUserFromOidc(u);
+        if (u.access_token) {
+          await syncTokenToBackend(u.access_token);
+          const me = await fetchAuthMeWithBearer(u.access_token);
+          if (me) profile = me;
+        }
+        setUser(profile);
+        setIsAuthenticated(true);
+      })();
     };
     const onUnloaded = () => {
       setUser(null);
@@ -447,9 +512,9 @@ function OidcAuthProvider({
         if (!u) return undefined;
       }
       if (u.access_token) {
-        const parsed = parseUserFromOidc(u);
-        if (parsed) setUser(parsed);
         await syncTokenToBackend(u.access_token);
+        const me = await fetchAuthMeWithBearer(u.access_token);
+        setUser(me ?? parseUserFromOidc(u) ?? null);
       }
       return u.access_token;
     } catch {
@@ -462,6 +527,7 @@ function OidcAuthProvider({
   }, [getToken]);
 
   const isAdmin = hasAdminRole(user);
+  const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
 
   return (
     <AuthContext.Provider
@@ -480,6 +546,8 @@ function OidcAuthProvider({
         authMode,
         authModeReady,
         allowSignup,
+        canAccessConsole,
+        hasPermission,
       }}
     >
       {children}

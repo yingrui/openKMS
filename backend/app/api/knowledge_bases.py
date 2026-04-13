@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import delete, func, select, update
 from sqlalchemy import cast
 from sqlalchemy.exc import DBAPIError
@@ -17,6 +17,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.services.data_scope import effective_knowledge_base_ids, scope_applies
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
@@ -55,6 +56,23 @@ router = APIRouter(
     tags=["knowledge-bases"],
     dependencies=[Depends(require_auth)],
 )
+
+
+async def get_kb_scoped(
+    kb_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> KnowledgeBase:
+    kb = await db.get(KnowledgeBase, kb_id)
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_knowledge_base_ids(db, sub)
+        if allowed is not None and kb_id not in allowed:
+            raise HTTPException(status_code=404, detail="Knowledge base not found")
+    return kb
 
 
 def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -> dict | None:
@@ -98,9 +116,17 @@ def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseRe
 # --- Knowledge Base CRUD ---
 
 @router.get("", response_model=KnowledgeBaseListResponse)
-async def list_knowledge_bases(db: AsyncSession = Depends(get_db)):
+async def list_knowledge_bases(request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc()))
-    kbs = result.scalars().all()
+    kbs = list(result.scalars().all())
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_knowledge_base_ids(db, sub)
+        if allowed is not None:
+            if not allowed:
+                return KnowledgeBaseListResponse(items=[], total=0)
+            kbs = [kb for kb in kbs if kb.id in allowed]
     items = []
     for kb in kbs:
         stats = await _kb_stats(db, kb.id)
@@ -129,19 +155,21 @@ async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = De
 
 
 @router.get("/{kb_id}", response_model=KnowledgeBaseResponse)
-async def get_knowledge_base(kb_id: str, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def get_knowledge_base(
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     stats = await _kb_stats(db, kb.id)
     return _kb_to_response(kb, stats)
 
 
 @router.put("/{kb_id}", response_model=KnowledgeBaseResponse)
-async def update_knowledge_base(kb_id: str, body: KnowledgeBaseUpdate, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def update_knowledge_base(
+    kb_id: str,
+    body: KnowledgeBaseUpdate,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(kb, field, value)
@@ -152,10 +180,11 @@ async def update_knowledge_base(kb_id: str, body: KnowledgeBaseUpdate, db: Async
 
 
 @router.delete("/{kb_id}", status_code=204)
-async def delete_knowledge_base(kb_id: str, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def delete_knowledge_base(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
     await db.execute(delete(FAQ).where(FAQ.knowledge_base_id == kb_id))
     await db.execute(delete(KBDocument).where(KBDocument.knowledge_base_id == kb_id))
@@ -165,10 +194,11 @@ async def delete_knowledge_base(kb_id: str, db: AsyncSession = Depends(get_db)):
 # --- KB Documents ---
 
 @router.get("/{kb_id}/documents", response_model=list[KBDocumentResponse])
-async def list_kb_documents(kb_id: str, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def list_kb_documents(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(KBDocument, Document)
         .join(Document, KBDocument.document_id == Document.id)
@@ -190,10 +220,12 @@ async def list_kb_documents(kb_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/{kb_id}/documents", response_model=KBDocumentResponse, status_code=201)
-async def add_kb_document(kb_id: str, body: KBDocumentAdd, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def add_kb_document(
+    kb_id: str,
+    body: KBDocumentAdd,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     doc = await db.get(Document, body.document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -225,7 +257,12 @@ async def add_kb_document(kb_id: str, body: KBDocumentAdd, db: AsyncSession = De
 
 
 @router.delete("/{kb_id}/documents/{document_id}", status_code=204)
-async def remove_kb_document(kb_id: str, document_id: str, db: AsyncSession = Depends(get_db)):
+async def remove_kb_document(
+    kb_id: str,
+    document_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(KBDocument).where(
             KBDocument.knowledge_base_id == kb_id,
@@ -245,11 +282,9 @@ async def list_faqs(
     kb_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
     total = (await db.execute(
         select(func.count()).select_from(FAQ).where(FAQ.knowledge_base_id == kb_id)
     )).scalar_one()
@@ -283,10 +318,12 @@ async def list_faqs(
 
 
 @router.post("/{kb_id}/faqs", response_model=FAQResponse, status_code=201)
-async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def create_faq(
+    kb_id: str,
+    body: FAQCreate,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     faq = FAQ(
         id=str(uuid.uuid4()),
         knowledge_base_id=kb_id,
@@ -312,11 +349,13 @@ async def create_faq(kb_id: str, body: FAQCreate, db: AsyncSession = Depends(get
 
 
 @router.put("/{kb_id}/faqs/batch-embeddings", status_code=204)
-async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsRequest, db: AsyncSession = Depends(get_db)):
+async def update_faqs_embeddings_batch(
+    kb_id: str,
+    body: FAQBatchEmbeddingsRequest,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline. Optionally updates doc_metadata."""
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
     for item in body.items:
         faq = await db.get(FAQ, item.id)
         if not faq or faq.knowledge_base_id != kb_id:
@@ -328,7 +367,13 @@ async def update_faqs_embeddings_batch(kb_id: str, body: FAQBatchEmbeddingsReque
 
 
 @router.put("/{kb_id}/faqs/{faq_id}", response_model=FAQResponse)
-async def update_faq(kb_id: str, faq_id: str, body: FAQUpdate, db: AsyncSession = Depends(get_db)):
+async def update_faq(
+    kb_id: str,
+    faq_id: str,
+    body: FAQUpdate,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     faq = await db.get(FAQ, faq_id)
     if not faq or faq.knowledge_base_id != kb_id:
         raise HTTPException(status_code=404, detail="FAQ not found")
@@ -351,7 +396,12 @@ async def update_faq(kb_id: str, faq_id: str, body: FAQUpdate, db: AsyncSession 
 
 
 @router.delete("/{kb_id}/faqs/{faq_id}", status_code=204)
-async def delete_faq(kb_id: str, faq_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_faq(
+    kb_id: str,
+    faq_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     faq = await db.get(FAQ, faq_id)
     if not faq or faq.knowledge_base_id != kb_id:
         raise HTTPException(status_code=404, detail="FAQ not found")
@@ -359,12 +409,13 @@ async def delete_faq(kb_id: str, faq_id: str, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/{kb_id}/faqs/generate", response_model=list[FAQGenerateResult])
-async def generate_faqs(kb_id: str, body: FAQGenerateRequest, db: AsyncSession = Depends(get_db)):
+async def generate_faqs(
+    kb_id: str,
+    body: FAQGenerateRequest,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     """Generate FAQ pairs from documents using an LLM. Returns preview only; use batch save to persist."""
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
-
     from app.models.api_model import ApiModel
     from sqlalchemy.orm import selectinload
 
@@ -403,11 +454,13 @@ async def generate_faqs(kb_id: str, body: FAQGenerateRequest, db: AsyncSession =
 
 
 @router.post("/{kb_id}/faqs/batch", response_model=list[FAQResponse])
-async def create_faqs_batch(kb_id: str, body: FAQBatchCreateRequest, db: AsyncSession = Depends(get_db)):
+async def create_faqs_batch(
+    kb_id: str,
+    body: FAQBatchCreateRequest,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     """Save selected FAQ pairs to the knowledge base."""
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
     created = []
     for item in body.items:
         doc_meta = item.doc_metadata
@@ -447,11 +500,9 @@ async def list_chunks(
     kb_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
     total = (await db.execute(
         select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
     )).scalar_one()
@@ -492,16 +543,21 @@ async def list_chunks(
 
 
 @router.delete("/{kb_id}/chunks", status_code=204)
-async def delete_all_chunks(kb_id: str, db: AsyncSession = Depends(get_db)):
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
+async def delete_all_chunks(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
 
 
 @router.put("/{kb_id}/chunks/{chunk_id}", response_model=ChunkResponse)
 async def update_chunk(
-    kb_id: str, chunk_id: str, body: ChunkUpdate, db: AsyncSession = Depends(get_db)
+    kb_id: str,
+    chunk_id: str,
+    body: ChunkUpdate,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
 ):
     """Update chunk content, labels, or doc_metadata."""
     chunk = await db.get(Chunk, chunk_id)
@@ -537,11 +593,13 @@ def _base64_to_floats(b64: str) -> list[float]:
 
 
 @router.post("/{kb_id}/chunks/batch", response_model=ChunkListResponse)
-async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: AsyncSession = Depends(get_db)):
+async def create_chunks_batch(
+    kb_id: str,
+    body: ChunkBatchCreateRequest,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     """Bulk create chunks with base64-encoded embeddings. Used by kb-index pipeline."""
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
     items = []
     for item in body.items:
         embedding_floats = _base64_to_floats(item.embedding)
@@ -577,7 +635,12 @@ async def create_chunks_batch(kb_id: str, body: ChunkBatchCreateRequest, db: Asy
 # --- Semantic Search ---
 
 @router.post("/{kb_id}/search", response_model=SearchResponse)
-async def semantic_search(kb_id: str, body: SearchRequest, db: AsyncSession = Depends(get_db)):
+async def semantic_search(
+    kb_id: str,
+    body: SearchRequest,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     """Search chunks and FAQs using vector similarity."""
     from app.services.kb_search import search_knowledge_base
 
@@ -599,12 +662,10 @@ async def ask_question(
     kb_id: str,
     body: AskRequest,
     token: str = Depends(require_auth),
+    kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Forward question to the configured QA agent service."""
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 

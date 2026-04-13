@@ -22,11 +22,24 @@ import {
   Network,
   Compass,
   ClipboardList,
+  Shield,
+  KeyRound,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import logo from '../../assets/logo.svg';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  PERM_CONSOLE_DATA_SOURCES,
+  PERM_CONSOLE_DATASETS,
+  PERM_CONSOLE_FEATURE_TOGGLES,
+  PERM_CONSOLE_GROUPS,
+  PERM_CONSOLE_LINK_TYPES,
+  PERM_CONSOLE_OBJECT_TYPES,
+  PERM_CONSOLE_PERMISSIONS,
+  PERM_CONSOLE_SETTINGS,
+  PERM_CONSOLE_USERS,
+} from '../../config/permissions';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
@@ -146,7 +159,7 @@ export function Sidebar() {
 
   const onOntology = location.pathname.startsWith('/ontology') || location.pathname.startsWith('/objects') || location.pathname.startsWith('/links') || location.pathname.startsWith('/object-explorer');
   const onConsole = location.pathname.startsWith('/console');
-  const { isAdmin } = useAuth();
+  const { canAccessConsole, hasPermission } = useAuth();
   const { toggles } = useFeatureToggles();
 
   return (
@@ -158,7 +171,7 @@ export function Sidebar() {
         </div>
       </div>
       <nav className="sidebar-nav">
-        {onConsole && isAdmin ? (
+        {onConsole && canAccessConsole ? (
           <>
             <Link to="/" className="sidebar-link sidebar-link-exit">
               <ArrowLeft size={18} strokeWidth={1.75} />
@@ -168,34 +181,69 @@ export function Sidebar() {
               <LayoutDashboard size={18} strokeWidth={1.75} />
               <span>Overview</span>
             </NavLink>
-            <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Database size={18} strokeWidth={1.75} />
-              <span>Data Sources</span>
-            </NavLink>
-            <NavLink to="/console/datasets" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Table size={18} strokeWidth={1.75} />
-              <span>Datasets</span>
-            </NavLink>
-            <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Box size={18} strokeWidth={1.75} />
-              <span>Object Types</span>
-            </NavLink>
-            <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Link2 size={18} strokeWidth={1.75} />
-              <span>Link Types</span>
-            </NavLink>
-            <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Settings size={18} strokeWidth={1.75} />
-              <span>System Settings</span>
-            </NavLink>
-            <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <Users size={18} strokeWidth={1.75} />
-              <span>Users & Roles</span>
-            </NavLink>
-            <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
-              <ToggleLeft size={18} strokeWidth={1.75} />
-              <span>Feature Toggles</span>
-            </NavLink>
+            <div className="sidebar-menu-label">Permission management</div>
+            {hasPermission(PERM_CONSOLE_PERMISSIONS) && (
+              <NavLink
+                to="/console/permission-management"
+                className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+              >
+                <KeyRound size={18} strokeWidth={1.75} />
+                <span>Permissions</span>
+              </NavLink>
+            )}
+            <div className="sidebar-menu-label">Data security</div>
+            {hasPermission(PERM_CONSOLE_GROUPS) && (
+              <NavLink
+                to="/console/data-security/groups"
+                className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+              >
+                <Shield size={18} strokeWidth={1.75} />
+                <span>Access groups</span>
+              </NavLink>
+            )}
+            <div className="sidebar-menu-label">Console</div>
+            {hasPermission(PERM_CONSOLE_DATA_SOURCES) && (
+              <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <Database size={18} strokeWidth={1.75} />
+                <span>Data Sources</span>
+              </NavLink>
+            )}
+            {hasPermission(PERM_CONSOLE_DATASETS) && (
+              <NavLink to="/console/datasets" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <Table size={18} strokeWidth={1.75} />
+                <span>Datasets</span>
+              </NavLink>
+            )}
+            {hasPermission(PERM_CONSOLE_OBJECT_TYPES) && (
+              <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <Box size={18} strokeWidth={1.75} />
+                <span>Object Types</span>
+              </NavLink>
+            )}
+            {hasPermission(PERM_CONSOLE_LINK_TYPES) && (
+              <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <Link2 size={18} strokeWidth={1.75} />
+                <span>Link Types</span>
+              </NavLink>
+            )}
+            {hasPermission(PERM_CONSOLE_SETTINGS) && (
+              <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <Settings size={18} strokeWidth={1.75} />
+                <span>System Settings</span>
+              </NavLink>
+            )}
+            {hasPermission(PERM_CONSOLE_USERS) && (
+              <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <Users size={18} strokeWidth={1.75} />
+                <span>Users &amp; roles</span>
+              </NavLink>
+            )}
+            {hasPermission(PERM_CONSOLE_FEATURE_TOGGLES) && (
+              <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <ToggleLeft size={18} strokeWidth={1.75} />
+                <span>Feature Toggles</span>
+              </NavLink>
+            )}
           </>
         ) : (
           <>

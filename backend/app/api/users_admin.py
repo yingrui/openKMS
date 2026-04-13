@@ -4,14 +4,16 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import _hash_password, get_jwt_payload, require_admin
+from app.api.auth import _hash_password, get_jwt_payload, require_permission
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.services.permission_catalog import PERM_CONSOLE_USERS
+from app.services.user_roles_sync import sync_security_roles_for_user
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
@@ -47,7 +49,7 @@ class AdminCreateUserBody(BaseModel):
 @router.get("", response_model=AdminUsersPageResponse)
 async def admin_users_page(
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(require_admin),
+    _: None = Depends(require_permission(PERM_CONSOLE_USERS)),
 ):
     if settings.auth_mode != "local":
         return AdminUsersPageResponse(
@@ -94,7 +96,7 @@ async def patch_local_user(
     body: PatchLocalUserBody,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(require_admin),
+    _: None = Depends(require_permission(PERM_CONSOLE_USERS)),
 ):
     if settings.auth_mode != "local":
         raise HTTPException(status_code=403, detail="User management is only available in local auth mode")
@@ -116,6 +118,7 @@ async def patch_local_user(
             raise HTTPException(status_code=400, detail="Cannot remove admin role from yourself")
 
     user.is_admin = body.is_admin
+    await sync_security_roles_for_user(db, user)
     await db.flush()
     await db.refresh(user)
     return LocalUserOut(
@@ -132,7 +135,7 @@ async def delete_local_user(
     user_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(require_admin),
+    _: None = Depends(require_permission(PERM_CONSOLE_USERS)),
 ):
     if settings.auth_mode != "local":
         raise HTTPException(status_code=403, detail="User management is only available in local auth mode")
@@ -154,14 +157,14 @@ async def delete_local_user(
         if admins <= 1:
             raise HTTPException(status_code=400, detail="Cannot delete the last admin")
 
-    await db.delete(user)
+    await db.execute(delete(User).where(User.id == user_id))
 
 
 @router.post("", response_model=LocalUserOut, status_code=201)
 async def create_local_user(
     body: AdminCreateUserBody,
     db: AsyncSession = Depends(get_db),
-    _: str = Depends(require_admin),
+    _: None = Depends(require_permission(PERM_CONSOLE_USERS)),
 ):
     if settings.auth_mode != "local":
         raise HTTPException(status_code=403, detail="User management is only available in local auth mode")
@@ -182,6 +185,8 @@ async def create_local_user(
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Email or username already exists") from None
 
+    await sync_security_roles_for_user(db, user)
+    await db.flush()
     await db.refresh(user)
     return LocalUserOut(
         id=str(user.id),

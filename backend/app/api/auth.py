@@ -20,6 +20,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.services.permission_catalog import PERM_ALL
+from app.services.security_permission_service import list_permissions_sorted, sorted_permission_keys
+from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 from app.oidc_discovery import get_oidc_provider_metadata
 
 _JWKS_CLIENT: PyJWKClient | None = None
@@ -178,14 +181,48 @@ async def get_jwt_payload(request: Request) -> dict:
     return request.state.openkms_jwt_payload
 
 
+def jwt_payload_is_admin(payload: dict) -> bool:
+    realm_access = payload.get("realm_access", {})
+    roles = realm_access.get("roles", [])
+    if not isinstance(roles, list):
+        return False
+    return "admin" in {str(r) for r in roles if r is not None}
+
+
 async def require_admin(request: Request) -> str:
     token = await require_auth(request)
     payload = request.state.openkms_jwt_payload
-    realm_access = payload.get("realm_access", {})
-    roles = realm_access.get("roles", [])
-    if "admin" not in roles:
+    if not jwt_payload_is_admin(payload):
         raise HTTPException(status_code=403, detail="Admin role required")
     return token
+
+
+async def ensure_permission(request: Request, db: AsyncSession, permission: str) -> None:
+    """Grant if JWT admin, local-cli service JWT, or DB-resolved permissions (local or OIDC role names)."""
+    await require_auth(request)
+    payload = request.state.openkms_jwt_payload
+    if jwt_payload_is_admin(payload):
+        return
+    sub = payload.get("sub")
+    if sub == "local-cli":
+        return
+    if not isinstance(sub, str):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if settings.auth_mode == "local":
+        perms = await resolve_user_permission_keys(db, sub)
+    else:
+        perms = await resolve_oidc_permission_keys(db, payload)
+    if PERM_ALL in perms:
+        return
+    if permission not in perms:
+        raise HTTPException(status_code=403, detail=f"Missing permission: {permission}")
+
+
+def require_permission(permission: str):
+    async def _check(request: Request, db: AsyncSession = Depends(get_db)) -> None:
+        await ensure_permission(request, db, permission)
+
+    return _check
 
 
 async def require_service_client(request: Request) -> str:
@@ -340,6 +377,10 @@ class AuthUserOut(BaseModel):
         default_factory=list,
         description="Realm roles from the JWT (e.g. Keycloak realm_access.roles).",
     )
+    permissions: list[str] = Field(
+        default_factory=list,
+        description="Resolved operation permissions; IdP admins receive the full catalog.",
+    )
 
 
 class TokenResponse(BaseModel):
@@ -409,8 +450,12 @@ async def register(
     except IntegrityError:
         raise HTTPException(status_code=409, detail="Email or username already registered") from None
 
+    from app.services.user_roles_sync import sync_security_roles_for_user
+
+    await sync_security_roles_for_user(db, user)
     token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
+    perm_set = await resolve_user_permission_keys(db, str(user.id))
     return TokenResponse(
         access_token=token,
         user=AuthUserOut(
@@ -419,6 +464,7 @@ async def register(
             username=user.username,
             is_admin=user.is_admin,
             roles=roles,
+            permissions=sorted(perm_set),
         ),
     )
 
@@ -439,6 +485,7 @@ async def login_json(body: LoginBody, db: AsyncSession = Depends(get_db)):
 
     token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
+    perm_set = await resolve_user_permission_keys(db, str(user.id))
     return TokenResponse(
         access_token=token,
         user=AuthUserOut(
@@ -447,12 +494,43 @@ async def login_json(body: LoginBody, db: AsyncSession = Depends(get_db)):
             username=user.username,
             is_admin=user.is_admin,
             roles=roles,
+            permissions=sorted(perm_set),
         ),
     )
 
 
+class PermissionCatalogEntry(BaseModel):
+    key: str
+    label: str
+    description: str = ""
+    frontend_route_patterns: list[str] = Field(default_factory=list)
+    backend_api_patterns: list[str] = Field(default_factory=list)
+
+
+@api_auth_router.get("/permission-catalog", response_model=list[PermissionCatalogEntry])
+async def permission_catalog(
+    _: str = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+) -> list[PermissionCatalogEntry]:
+    rows = await list_permissions_sorted(db)
+    out: list[PermissionCatalogEntry] = []
+    for r in rows:
+        fe = r.frontend_route_patterns if isinstance(r.frontend_route_patterns, list) else []
+        be = r.backend_api_patterns if isinstance(r.backend_api_patterns, list) else []
+        out.append(
+            PermissionCatalogEntry(
+                key=r.key,
+                label=r.label,
+                description=r.description or "",
+                frontend_route_patterns=[str(x) for x in fe],
+                backend_api_patterns=[str(x) for x in be],
+            )
+        )
+    return out
+
+
 @api_auth_router.get("/me", response_model=AuthUserOut)
-async def auth_me(request: Request):
+async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
     await require_auth(request)
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
@@ -470,12 +548,25 @@ async def auth_me(request: Request):
     username = p.get("preferred_username") or p.get("name") or "user"
     if not isinstance(username, str):
         username = "user"
+    if settings.auth_mode == "local":
+        u = await db.get(User, sub)
+        if u:
+            perm_set = await resolve_user_permission_keys(db, sub)
+            perms = sorted(perm_set)
+        else:
+            perms = []
+    elif is_admin:
+        perms = await sorted_permission_keys(db)
+    else:
+        perm_set = await resolve_oidc_permission_keys(db, p)
+        perms = sorted(perm_set)
     return AuthUserOut(
         id=sub,
         email=email or "",
         username=username,
         is_admin=is_admin,
         roles=role_strs,
+        permissions=perms,
     )
 
 

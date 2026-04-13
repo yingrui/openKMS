@@ -2,14 +2,16 @@
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import String, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_admin, require_auth
+from app.api.auth import require_auth, require_permission
+from app.services.permission_catalog import PERM_CONSOLE_OBJECT_TYPES
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
+from app.services.data_scope import effective_object_type_ids, scope_applies
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.credential_encryption import decrypt
@@ -31,6 +33,15 @@ router = APIRouter(
     tags=["object-types"],
     dependencies=[Depends(require_auth)],
 )
+
+
+async def _require_object_type_in_scope(request: Request, db: AsyncSession, object_type_id: str) -> None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_object_type_ids(db, sub)
+        if allowed is not None and object_type_id not in allowed:
+            raise HTTPException(status_code=404, detail="Object type not found")
 
 
 class IndexToNeo4jRequest(BaseModel):
@@ -189,6 +200,7 @@ def _query_neo4j_nodes(
 
 @router.get("", response_model=ObjectTypeListResponse)
 async def list_object_types(
+    request: Request,
     count_from_neo4j: bool = False,
     is_master_data: bool | None = None,
     db: AsyncSession = Depends(get_db),
@@ -197,6 +209,14 @@ async def list_object_types(
     query = select(ObjectType).order_by(ObjectType.created_at.desc())
     if is_master_data is not None:
         query = query.where(ObjectType.is_master_data == is_master_data)
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_object_type_ids(db, sub)
+        if allowed is not None:
+            if not allowed:
+                return ObjectTypeListResponse(items=[], total=0)
+            query = query.where(ObjectType.id.in_(allowed))
     result = await db.execute(query)
     types = result.scalars().all()
     items = []
@@ -234,7 +254,7 @@ async def list_object_types(
 @router.post("", response_model=ObjectTypeResponse, status_code=201)
 async def create_object_type(
     body: ObjectTypeCreate,
-    _: str = Depends(require_admin),
+    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create object type. Admin only."""
@@ -263,12 +283,19 @@ async def create_object_type(
 @router.get("/{object_type_id}", response_model=ObjectTypeResponse)
 async def get_object_type(
     object_type_id: str,
+    request: Request,
     count_from_neo4j: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_object_type_ids(db, sub)
+        if allowed is not None and object_type_id not in allowed:
+            raise HTTPException(status_code=404, detail="Object type not found")
     if count_from_neo4j:
         neo4j_ds = await _get_first_neo4j_datasource(db)
         if neo4j_ds:
@@ -297,7 +324,7 @@ async def get_object_type(
 async def update_object_type(
     object_type_id: str,
     body: ObjectTypeUpdate,
-    _: str = Depends(require_admin),
+    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Update object type. Admin only."""
@@ -333,7 +360,7 @@ async def update_object_type(
 @router.delete("/{object_type_id}", status_code=204)
 async def delete_object_type(
     object_type_id: str,
-    _: str = Depends(require_admin),
+    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete object type. Admin only. Cascades to instances."""
@@ -343,7 +370,7 @@ async def delete_object_type(
     await db.delete(obj_type)
 
 
-@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_admin)])
+@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES))])
 async def index_objects_to_neo4j(
     body: IndexToNeo4jRequest,
     db: AsyncSession = Depends(get_db),
@@ -425,6 +452,7 @@ async def index_objects_to_neo4j(
 @router.get("/{object_type_id}/objects", response_model=ObjectInstanceListResponse)
 async def list_object_instances(
     object_type_id: str,
+    request: Request,
     search: str | None = None,
     limit: int = Query(500, ge=1, le=1000),
     offset: int = Query(0, ge=0),
@@ -434,6 +462,7 @@ async def list_object_instances(
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
+    await _require_object_type_in_scope(request, db, object_type_id)
 
     id_prop = _resolve_id_property(obj_type)
 
@@ -524,13 +553,15 @@ async def list_object_instances(
 @router.post("/{object_type_id}/objects", response_model=ObjectInstanceResponse, status_code=201)
 async def create_object_instance(
     object_type_id: str,
+    request: Request,
     body: ObjectInstanceCreate,
-    _: str = Depends(require_admin),
+    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
+    await _require_object_type_in_scope(request, db, object_type_id)
     instance = ObjectInstance(
         id=str(uuid.uuid4()),
         object_type_id=object_type_id,
@@ -552,8 +583,10 @@ async def create_object_instance(
 async def get_object_instance(
     object_type_id: str,
     object_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_object_type_in_scope(request, db, object_type_id)
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:
         raise HTTPException(status_code=404, detail="Object not found")
@@ -570,10 +603,12 @@ async def get_object_instance(
 async def update_object_instance(
     object_type_id: str,
     object_id: str,
+    request: Request,
     body: ObjectInstanceUpdate,
-    _: str = Depends(require_admin),
+    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_object_type_in_scope(request, db, object_type_id)
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:
         raise HTTPException(status_code=404, detail="Object not found")
@@ -594,9 +629,11 @@ async def update_object_instance(
 async def delete_object_instance(
     object_type_id: str,
     object_id: str,
-    _: str = Depends(require_admin),
+    request: Request,
+    _: str = Depends(require_permission(PERM_CONSOLE_OBJECT_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_object_type_in_scope(request, db, object_type_id)
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:
         raise HTTPException(status_code=404, detail="Object not found")

@@ -2,14 +2,16 @@
 import re
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_admin, require_auth
+from app.api.auth import require_auth, require_permission
+from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count, get_dataset_row_count_where_not_null
 from app.database import get_db
+from app.services.data_scope import effective_link_type_ids, scope_applies
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
@@ -32,6 +34,15 @@ router = APIRouter(
     tags=["link-types"],
     dependencies=[Depends(require_auth)],
 )
+
+
+async def _require_link_type_in_scope(request: Request, db: AsyncSession, link_type_id: str) -> None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_link_type_ids(db, sub)
+        if allowed is not None and link_type_id not in allowed:
+            raise HTTPException(status_code=404, detail="Link type not found")
 
 
 class IndexToNeo4jRequest(BaseModel):
@@ -174,11 +185,21 @@ async def _to_response(db: AsyncSession, link_type: LinkType, link_count_overrid
 
 @router.get("", response_model=LinkTypeListResponse)
 async def list_link_types(
+    request: Request,
     count_from_neo4j: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     """List all link types. When count_from_neo4j=true, link_count comes from Neo4j (Links page)."""
-    result = await db.execute(select(LinkType).order_by(LinkType.created_at.desc()))
+    query = select(LinkType).order_by(LinkType.created_at.desc())
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_link_type_ids(db, sub)
+        if allowed is not None:
+            if not allowed:
+                return LinkTypeListResponse(items=[], total=0)
+            query = query.where(LinkType.id.in_(allowed))
+    result = await db.execute(query)
     types = result.scalars().all()
     neo4j_driver = None
     if count_from_neo4j:
@@ -218,7 +239,7 @@ async def list_link_types(
 @router.post("", response_model=LinkTypeResponse, status_code=201)
 async def create_link_type(
     body: LinkTypeCreate,
-    _: str = Depends(require_admin),
+    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Create link type. Admin only."""
@@ -253,12 +274,14 @@ async def create_link_type(
 @router.get("/{link_type_id}", response_model=LinkTypeResponse)
 async def get_link_type(
     link_type_id: str,
+    request: Request,
     count_from_neo4j: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    await _require_link_type_in_scope(request, db, link_type_id)
     count_override = None
     if count_from_neo4j:
         neo4j_ds = await _get_first_neo4j_datasource(db)
@@ -289,13 +312,15 @@ async def get_link_type(
 async def update_link_type(
     link_type_id: str,
     body: LinkTypeUpdate,
-    _: str = Depends(require_admin),
+    request: Request,
+    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Update link type. Admin only."""
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    await _require_link_type_in_scope(request, db, link_type_id)
     if body.name is not None:
         link_type.name = body.name
     if body.description is not None:
@@ -334,13 +359,15 @@ async def update_link_type(
 @router.delete("/{link_type_id}", status_code=204)
 async def delete_link_type(
     link_type_id: str,
-    _: str = Depends(require_admin),
+    request: Request,
+    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete link type. Admin only. Cascades to link instances."""
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    await _require_link_type_in_scope(request, db, link_type_id)
     await db.delete(link_type)
 
 
@@ -356,7 +383,7 @@ def _neo4j_safe_rel_type(name: str) -> str:
     return s or "RELATES_TO"
 
 
-@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_admin)])
+@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_LINK_TYPES))])
 async def index_links_to_neo4j(
     body: IndexToNeo4jRequest,
     db: AsyncSession = Depends(get_db),
@@ -502,6 +529,7 @@ async def index_links_to_neo4j(
 @router.get("/{link_type_id}/links", response_model=LinkInstanceListResponse)
 async def list_link_instances(
     link_type_id: str,
+    request: Request,
     limit: int = Query(500, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -510,6 +538,7 @@ async def list_link_instances(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    await _require_link_type_in_scope(request, db, link_type_id)
 
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
@@ -663,12 +692,14 @@ async def list_link_instances(
 async def create_link_instance(
     link_type_id: str,
     body: LinkInstanceCreate,
-    _: str = Depends(require_admin),
+    request: Request,
+    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    await _require_link_type_in_scope(request, db, link_type_id)
     if link_type.cardinality == "many-to-many" and link_type.dataset_id:
         raise HTTPException(
             status_code=400,
@@ -710,12 +741,14 @@ async def create_link_instance(
 async def delete_link_instance(
     link_type_id: str,
     link_id: str,
-    _: str = Depends(require_admin),
+    request: Request,
+    _: None = Depends(require_permission(PERM_CONSOLE_LINK_TYPES)),
     db: AsyncSession = Depends(get_db),
 ):
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
+    await _require_link_type_in_scope(request, db, link_type_id)
     if link_type.cardinality == "many-to-many" and link_type.dataset_id:
         raise HTTPException(
             status_code=400,

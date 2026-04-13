@@ -1,0 +1,117 @@
+.console-ds-groups-form {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.console-ds-groups-form h2 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.console-ds-groups-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.console-ds-groups-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8125rem;
+}
+
+.console-ds-groups-row input {
+  min-width: 180px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.console-ds-groups-grow {
+  flex: 1;
+  min-width: 200px;
+}
+
+.console-ds-groups-muted {
+  color: var(--color-text-muted);
+}
+
+.console-ds-groups-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.console-ds-groups-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.console-ds-groups-name {
+  font-weight: 600;
+}
+
+.console-ds-groups-desc {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.console-ds-groups-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.console-ds-groups-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+
+.console-ds-groups-edit input {
+  flex: 1;
+  min-width: 140px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary,
+.btn-primary,
+.btn-ghost {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent, #fff);
+  border-color: transparent;
+}
+
+.btn-ghost.danger {
+  color: var(--color-danger, #c62828);
+}

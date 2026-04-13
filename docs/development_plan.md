@@ -13,11 +13,11 @@
 - Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
 - Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
 - Authentication: `OPENKMS_AUTH_MODE=oidc` (default, OIDC via issuer discovery + JWKS) or `local` (PostgreSQL users, `/api/auth/*`, CLI HTTP Basic); backend verifies JWT Bearer or session; `GET /api/auth/public-config` (no auth) exposes `auth_mode` and `allow_signup` so the SPA matches the server; SPA OIDC uses `oidc-client-ts` (`VITE_OIDC_ISSUER`); frontend resolves local vs OIDC from the API with `VITE_AUTH_MODE` as fallback; Vite proxy for API in dev
-- User profile: `/profile` shows current user from `GET /api/auth/me` (`is_admin`, `roles` from JWT, header menu); Console → Users & Roles: `/api/admin/users` CRUD in local mode, IdP notice in OIDC mode
+- User profile: `/profile` shows current user from `GET /api/auth/me` (`is_admin`, `roles`, resolved `permissions`, header menu); Console → Users & Roles: `/api/admin/users` with `console:users`; Permission management (`/console/permission-management`): **All** under Roles edits the `security_permissions` catalog; a named role uses checkboxes + **Save role permissions** (draft, no per-click API); `GET /api/admin/permission-reference` includes `operation_key_hints`; overview nudge when catalog is only `all`; Data security (`/console/data-security/*`) remains local-user–centric; group data scopes behind `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`
 - Route protection: home public; other pages show "Authentication Required" when not logged in
 - Articles: UI placeholder with feature toggle
 - Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters), Q&A proxy, settings (chunk_config, faq_prompt, metadata_keys); doc_metadata propagated from documents to FAQs/chunks per metadata_keys; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
-- Console: settings, users, feature toggles (database-backed, includes objectsAndLinks, evaluationDatasets), object types, link types, data sources, datasets; admin-only (realm role `admin`)
+- Console: settings, users, feature toggles, object types, link types, data sources, datasets, permission management, data security (groups + resource scopes); entry gated by `console:*` permissions or JWT `admin`; per-page permissions (e.g. `console:feature_toggles`)
 - Evaluation (experimental, feature toggle): query + expected answer pairs per KB; topic column; CSV import (topic, query, answer); **items list** paginated (`GET .../items` `offset`/`limit`, default limit 10); run types **search_retrieval** (hybrid search + judge) and **qa_answer** (KB agent + judge); persisted **evaluation_runs** / **evaluation_run_items**; list/get/delete/compare runs in API and dataset detail UI; sidebar link when evaluationDatasets enabled
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start; backend README + dev setup doc: pgvector install, Docker/PGDG, `$libdir/vector` troubleshooting
 - Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /ontology (overview), /objects, /links; feature toggle objectsAndLinks
@@ -105,11 +105,12 @@
 - [x] Integrate OIDC IdP with frontend (`oidc-client-ts`, discovery + PKCE; login/logout) when API reports `oidc`
 - [x] Local auth mode: PostgreSQL `users`, `/api/auth/register|login|me`, frontend `/login` & `/signup`, CLI HTTP Basic
 - [x] `GET /api/auth/public-config` + SPA uses API-reported mode (compatibility with local vs central IdP); optional mismatch banner vs `VITE_AUTH_MODE`
-- [x] Profile page `/profile` and `fetchAuthMe`; admin user APIs `/api/admin/users` + Console Users (local only)
+- [x] Profile page `/profile` and `fetchAuthMe`; user admin APIs `/api/admin/users` + Console Users (`console:users`, local only)
 - [x] Protect backend routes with JWT Bearer or session (or local Basic for CLI)
-- [x] Role-based access: Console restricted to realm role `admin` (OIDC) or `is_admin` (local)
-- [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT admin-only)
-- [x] Backend `require_admin` dependency for admin-only endpoints (checks JWT `realm_access.roles`)
+- [x] Operation permissions: `security_permissions` (catalog), `security_roles`, `security_role_permissions`, `user_security_roles`; `require_permission` + `GET /api/auth/permission-catalog` (from DB) + admin CRUD `/api/admin/security-permissions`; OIDC resolves permissions by matching JWT realm role names to `security_roles.name`; Console sidebar and APIs use granular `console:*` keys; JWT realm `admin` / `local-cli` bypass
+- [x] Access groups: `access_groups`, junctions for channels/KBs/evaluation/datasets/object_types/link_types; `/api/admin/groups` + Console Data security UI; `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` for local non-admin list/get/mutate filters (no OIDC enforcement in phase 1)
+- [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT requires `console:feature_toggles`)
+- [x] Backend `require_admin` retained where needed; sensitive console routes migrated to `require_permission`
 - [x] Backend dependency management via pyproject.toml + uv.lock (replaces requirements.txt)
 
 ## Medium-Term

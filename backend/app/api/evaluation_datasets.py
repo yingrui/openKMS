@@ -4,12 +4,13 @@ import io
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.services.data_scope import effective_evaluation_dataset_ids, scope_applies
 from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
@@ -45,6 +46,23 @@ router = APIRouter(
     tags=["evaluation-datasets"],
     dependencies=[Depends(require_auth)],
 )
+
+
+async def get_eval_dataset_scoped(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> EvaluationDataset:
+    ds = await db.get(EvaluationDataset, dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_evaluation_dataset_ids(db, sub)
+        if allowed is not None and dataset_id not in allowed:
+            raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+    return ds
 
 
 async def _item_count(db: AsyncSession, dataset_id: str) -> int:
@@ -189,6 +207,7 @@ def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> 
 
 @router.get("", response_model=EvaluationDatasetListResponse)
 async def list_evaluation_datasets(
+    request: Request,
     knowledge_base_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -196,7 +215,15 @@ async def list_evaluation_datasets(
     if knowledge_base_id:
         q = q.where(EvaluationDataset.knowledge_base_id == knowledge_base_id)
     result = await db.execute(q)
-    datasets = result.scalars().all()
+    datasets = list(result.scalars().all())
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_evaluation_dataset_ids(db, sub)
+        if allowed is not None:
+            if not allowed:
+                return EvaluationDatasetListResponse(items=[], total=0)
+            datasets = [ds for ds in datasets if ds.id in allowed]
     items = []
     for ds in datasets:
         kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
@@ -228,11 +255,9 @@ async def create_evaluation_dataset(
 @router.get("/{dataset_id}", response_model=EvaluationDatasetResponse)
 async def get_evaluation_dataset(
     dataset_id: str,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
     count = await _item_count(db, ds.id)
     return _dataset_to_response(ds, kb.name if kb else None, count)
@@ -242,11 +267,9 @@ async def get_evaluation_dataset(
 async def update_evaluation_dataset(
     dataset_id: str,
     body: EvaluationDatasetUpdate,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(ds, field, value)
     await db.flush()
@@ -259,11 +282,9 @@ async def update_evaluation_dataset(
 @router.delete("/{dataset_id}", status_code=204)
 async def delete_evaluation_dataset(
     dataset_id: str,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     await db.delete(ds)
 
 
@@ -274,11 +295,9 @@ async def list_evaluation_dataset_items(
     dataset_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=200),
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     count_q = await db.execute(
         select(func.count()).select_from(EvaluationDatasetItem).where(
             EvaluationDatasetItem.evaluation_dataset_id == dataset_id
@@ -303,11 +322,9 @@ async def list_evaluation_dataset_items(
 async def create_evaluation_dataset_item(
     dataset_id: str,
     body: EvaluationDatasetItemCreate,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     item = EvaluationDatasetItem(
         id=str(uuid.uuid4()),
         evaluation_dataset_id=dataset_id,
@@ -335,6 +352,7 @@ async def update_evaluation_dataset_item(
     dataset_id: str,
     item_id: str,
     body: EvaluationDatasetItemUpdate,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     item = await db.get(EvaluationDatasetItem, item_id)
@@ -359,12 +377,10 @@ async def update_evaluation_dataset_item(
 async def import_evaluation_dataset_items(
     dataset_id: str,
     file: UploadFile = File(...),
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Import evaluation items from a CSV file. Expected columns: topic (optional), query, answer or expected_answer."""
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")
 
@@ -418,6 +434,7 @@ async def import_evaluation_dataset_items(
 async def delete_evaluation_dataset_item(
     dataset_id: str,
     item_id: str,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     item = await db.get(EvaluationDatasetItem, item_id)
@@ -434,13 +451,10 @@ async def compare_evaluation_runs(
     dataset_id: str,
     run_a: str = Query(..., description="First evaluation run id"),
     run_b: str = Query(..., description="Second evaluation run id"),
+    _: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Compare two runs item-by-item (pass/score deltas)."""
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
-
     ra = await db.get(EvaluationRun, run_a)
     rb = await db.get(EvaluationRun, run_b)
     if not ra or ra.evaluation_dataset_id != dataset_id:
@@ -500,12 +514,9 @@ async def list_evaluation_runs(
     dataset_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
-
     count_q = await db.execute(
         select(func.count()).select_from(EvaluationRun).where(
             EvaluationRun.evaluation_dataset_id == dataset_id
@@ -540,6 +551,7 @@ async def list_evaluation_runs(
 async def get_evaluation_run(
     dataset_id: str,
     run_id: str,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     run = await db.get(EvaluationRun, run_id)
@@ -564,6 +576,7 @@ async def get_evaluation_run(
 async def delete_evaluation_run(
     dataset_id: str,
     run_id: str,
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     run = await db.get(EvaluationRun, run_id)
@@ -577,6 +590,7 @@ async def run_evaluation(
     dataset_id: str,
     body: EvaluationRunRequestBody = Body(default_factory=EvaluationRunRequestBody),
     token: str = Depends(require_auth),
+    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Run evaluation (search retrieval or QA), persist report, return full results."""
@@ -588,9 +602,6 @@ async def run_evaluation(
             detail=f"Invalid evaluation_type. Allowed: {', '.join(sorted(ALLOWED_EVALUATION_TYPES))}",
         )
 
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
     kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")

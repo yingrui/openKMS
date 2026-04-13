@@ -41,6 +41,7 @@ async def init_db() -> None:
     from app.models import knowledge_base, kb_document, faq, chunk  # noqa: F401
     from app.models import glossary, glossary_term  # noqa: F401
     from app.models import user  # noqa: F401
+    from app.models import security_role, security_permission, access_group  # noqa: F401
     async with engine.begin() as conn:
         try:
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

@@ -31,6 +31,9 @@ import app.models.dataset  # noqa: F401 - register models with Base.metadata
 import app.models.evaluation_dataset  # noqa: F401 - register models with Base.metadata
 import app.models.evaluation_run  # noqa: F401 - register models with Base.metadata
 import app.models.user  # noqa: F401 - register models with Base.metadata
+import app.models.security_role  # noqa: F401 - register models with Base.metadata
+import app.models.security_permission  # noqa: F401 - register models with Base.metadata
+import app.models.access_group  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

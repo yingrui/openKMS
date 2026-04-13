@@ -2,7 +2,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +10,28 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
+from app.services.data_scope import effective_channel_ids, scope_applies
 from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelUpdate
 
 router = APIRouter(prefix="/document-channels", tags=["document-channels"], dependencies=[Depends(require_auth)])
+
+
+async def _scoped_channel_ids(request: Request, db: AsyncSession) -> set[str] | None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str):
+        return None
+    if not scope_applies(p, sub):
+        return None
+    return await effective_channel_ids(db, sub)
+
+
+def _require_channel_in_scope(allowed: set[str] | None, channel_id: str) -> None:
+    if allowed is None:
+        return
+    if channel_id not in allowed:
+        raise HTTPException(status_code=404, detail="Channel not found")
 
 
 def _strip_field_order(schema: dict[str, Any] | list | None) -> dict[str, Any] | list | None:
@@ -67,8 +85,14 @@ def _build_tree(channels: list[DocumentChannel], parent_id: str | None = None) -
 
 
 @router.get("/{channel_id}", response_model=ChannelNode)
-async def get_document_channel(channel_id: str, db: AsyncSession = Depends(get_db)):
+async def get_document_channel(
+    channel_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a single document channel by ID."""
+    allowed = await _scoped_channel_ids(request, db)
+    _require_channel_in_scope(allowed, channel_id)
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -88,21 +112,31 @@ async def get_document_channel(channel_id: str, db: AsyncSession = Depends(get_d
 
 
 @router.get("", response_model=list[ChannelNode])
-async def list_document_channels(db: AsyncSession = Depends(get_db)):
+async def list_document_channels(request: Request, db: AsyncSession = Depends(get_db)):
     """List document channels as tree (top-level only, children nested)."""
     result = await db.execute(
         select(DocumentChannel).order_by(DocumentChannel.sort_order, DocumentChannel.name)
     )
     channels = list(result.scalars().all())
+    allowed = await _scoped_channel_ids(request, db)
+    if allowed is not None:
+        channels = [c for c in channels if c.id in allowed]
     return _build_tree(channels, None)
 
 
 @router.post("", response_model=ChannelNode)
 async def create_document_channel(
     body: ChannelCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document channel."""
+    allowed = await _scoped_channel_ids(request, db)
+    if allowed is not None:
+        if body.parent_id:
+            _require_channel_in_scope(allowed, body.parent_id)
+        elif not allowed:
+            raise HTTPException(status_code=403, detail="Not allowed to create channels outside your access scope")
     if body.parent_id:
         parent = await db.get(DocumentChannel, body.parent_id)
         if not parent:
@@ -145,9 +179,14 @@ async def create_document_channel(
 @router.post("/merge", status_code=204)
 async def merge_document_channels(
     body: ChannelMergeBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Merge source channel(s) into target. Moves all documents to target, then deletes source channel(s)."""
+    allowed = await _scoped_channel_ids(request, db)
+    if allowed is not None:
+        _require_channel_in_scope(allowed, body.source_channel_id)
+        _require_channel_in_scope(allowed, body.target_channel_id)
     if body.source_channel_id == body.target_channel_id:
         raise HTTPException(status_code=400, detail="Source and target must be different")
 
@@ -199,9 +238,12 @@ async def merge_document_channels(
 @router.delete("/{channel_id}", status_code=204)
 async def delete_document_channel(
     channel_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document channel. Fails if channel has documents or sub-channels."""
+    allowed = await _scoped_channel_ids(request, db)
+    _require_channel_in_scope(allowed, channel_id)
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -239,9 +281,12 @@ def _collect_descendant_ids(channels: list[DocumentChannel], channel_id: str, ou
 async def reorder_document_channel(
     channel_id: str,
     body: ChannelReorderBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Move channel up or down among siblings (same parent)."""
+    allowed = await _scoped_channel_ids(request, db)
+    _require_channel_in_scope(allowed, channel_id)
     if body.direction not in ("up", "down"):
         raise HTTPException(status_code=400, detail="direction must be 'up' or 'down'")
     channel = await db.get(DocumentChannel, channel_id)
@@ -296,9 +341,12 @@ async def reorder_document_channel(
 async def update_document_channel(
     channel_id: str,
     body: ChannelUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a document channel."""
+    allowed = await _scoped_channel_ids(request, db)
+    _require_channel_in_scope(allowed, channel_id)
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")

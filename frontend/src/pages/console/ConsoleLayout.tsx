@@ -2,9 +2,9 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function ConsoleLayout() {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const { isAuthenticated, isLoading, canAccessConsole } = useAuth();
 
-  if (!isLoading && (!isAuthenticated || !isAdmin)) {
+  if (!isLoading && (!isAuthenticated || !canAccessConsole)) {
     return <Navigate to="/" replace />;
   }
 

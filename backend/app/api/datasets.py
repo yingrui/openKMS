@@ -6,13 +6,15 @@ from datetime import date, datetime
 from decimal import Decimal
 from urllib.parse import quote_plus
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import create_engine, text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_admin, require_auth
+from app.api.auth import require_auth, require_permission
+from app.services.permission_catalog import PERM_CONSOLE_DATASETS
 from app.database import get_db
+from app.services.data_scope import effective_dataset_ids, scope_applies
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -45,13 +47,37 @@ router = APIRouter(
 )
 
 
+async def _scoped_dataset_ids(request: Request, db: AsyncSession) -> set[str] | None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str) or not scope_applies(p, sub):
+        return None
+    return await effective_dataset_ids(db, sub)
+
+
+async def _require_dataset_in_scope(request: Request, db: AsyncSession, dataset_id: str) -> None:
+    allowed = await _scoped_dataset_ids(request, db)
+    if allowed is not None and dataset_id not in allowed:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+
 @router.get(
     "/from-source/{data_source_id}",
     response_model=list[TableInfo],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
 )
-async def list_tables_from_source(data_source_id: str, db: AsyncSession = Depends(get_db)):
+async def list_tables_from_source(
+    data_source_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """List PostgreSQL tables from a data source (for picker when creating dataset)."""
+    allowed = await _scoped_dataset_ids(request, db)
+    if allowed is not None:
+        raise HTTPException(
+            status_code=403,
+            detail="Table listing is not available when your account is restricted by group data scopes",
+        )
     ds = await db.get(DataSource, data_source_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -79,8 +105,9 @@ async def list_tables_from_source(data_source_id: str, db: AsyncSession = Depend
         raise HTTPException(status_code=502, detail=f"Failed to list tables: {e}") from e
 
 
-@router.get("", response_model=DatasetListResponse, dependencies=[Depends(require_admin)])
+@router.get("", response_model=DatasetListResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
 async def list_datasets(
+    request: Request,
     data_source_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -88,6 +115,11 @@ async def list_datasets(
     query = select(Dataset).order_by(Dataset.created_at.desc())
     if data_source_id:
         query = query.where(Dataset.data_source_id == data_source_id)
+    allowed = await _scoped_dataset_ids(request, db)
+    if allowed is not None:
+        if not allowed:
+            return DatasetListResponse(items=[], total=0)
+        query = query.where(Dataset.id.in_(allowed))
     result = await db.execute(query)
     items = result.scalars().all()
     ds_ids = {d.data_source_id for d in items}
@@ -114,9 +146,19 @@ async def list_datasets(
     )
 
 
-@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_admin)])
-async def create_dataset(body: DatasetCreate, db: AsyncSession = Depends(get_db)):
+@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+async def create_dataset(
+    request: Request,
+    body: DatasetCreate,
+    db: AsyncSession = Depends(get_db),
+):
     """Create a dataset."""
+    allowed = await _scoped_dataset_ids(request, db)
+    if allowed is not None:
+        raise HTTPException(
+            status_code=403,
+            detail="Creating datasets is not allowed when your account is restricted by group data scopes",
+        )
     ds = await db.get(DataSource, body.data_source_id)
     if not ds:
         raise HTTPException(status_code=400, detail="Data source not found")
@@ -243,10 +285,11 @@ async def fetch_dataset_rows(
 @router.get(
     "/{dataset_id}/rows",
     response_model=DatasetRowsResponse,
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
 )
 async def get_dataset_rows(
     dataset_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -255,6 +298,7 @@ async def get_dataset_rows(
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    await _require_dataset_in_scope(request, db, dataset_id)
     ds = await db.get(DataSource, dataset.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise HTTPException(status_code=400, detail="Dataset rows only supported for PostgreSQL sources")
@@ -283,13 +327,18 @@ async def get_dataset_rows(
 @router.get(
     "/{dataset_id}/metadata",
     response_model=list[ColumnMetadata],
-    dependencies=[Depends(require_admin)],
+    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
 )
-async def get_dataset_metadata(dataset_id: str, db: AsyncSession = Depends(get_db)):
+async def get_dataset_metadata(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Fetch column metadata from the dataset table (PostgreSQL only)."""
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    await _require_dataset_in_scope(request, db, dataset_id)
     ds = await db.get(DataSource, dataset.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise HTTPException(status_code=400, detail="Metadata only supported for PostgreSQL sources")
@@ -323,12 +372,17 @@ async def get_dataset_metadata(dataset_id: str, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=502, detail=f"Failed to fetch metadata: {e}") from e
 
 
-@router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_admin)])
-async def get_dataset(dataset_id: str, db: AsyncSession = Depends(get_db)):
+@router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+async def get_dataset(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Get a dataset by ID."""
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    await _require_dataset_in_scope(request, db, dataset_id)
     ds = await db.get(DataSource, dataset.data_source_id)
     return DatasetResponse(
         id=dataset.id,
@@ -342,9 +396,10 @@ async def get_dataset(dataset_id: str, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_admin)])
+@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
 async def update_dataset(
     dataset_id: str,
+    request: Request,
     body: DatasetUpdate,
     db: AsyncSession = Depends(get_db),
 ):
@@ -352,6 +407,7 @@ async def update_dataset(
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    await _require_dataset_in_scope(request, db, dataset_id)
     if body.schema_name is not None:
         dataset.schema_name = body.schema_name
     if body.table_name is not None:
@@ -373,10 +429,15 @@ async def update_dataset(
     )
 
 
-@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_admin)])
-async def delete_dataset(dataset_id: str, db: AsyncSession = Depends(get_db)):
+@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
+async def delete_dataset(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     """Delete a dataset."""
     dataset = await db.get(Dataset, dataset_id)
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found")
+    await _require_dataset_in_scope(request, db, dataset_id)
     await db.delete(dataset)

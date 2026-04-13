@@ -27,6 +27,9 @@ import { ConsoleObjectTypes } from './pages/console/ConsoleObjectTypes';
 import { ConsoleLinkTypes } from './pages/console/ConsoleLinkTypes';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
+import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
+import { ConsoleDataSecurityGroups } from './pages/console/ConsoleDataSecurityGroups';
+import { ConsoleGroupDataAccess } from './pages/console/ConsoleGroupDataAccess';
 import { EvaluationDatasetList } from './pages/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/EvaluationDatasetDetail';
 import { FeatureGate } from './components/FeatureGate';
@@ -99,6 +102,9 @@ function App() {
           <Route path="object-explorer" element={<FeatureGate feature="objectsAndLinks"><ObjectExplorer /></FeatureGate>} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />
+            <Route path="permission-management" element={<ConsolePermissionManagement />} />
+            <Route path="data-security/groups" element={<ConsoleDataSecurityGroups />} />
+            <Route path="data-security/groups/:groupId/access" element={<ConsoleGroupDataAccess />} />
             <Route path="object-types" element={<ConsoleObjectTypes />} />
             <Route path="link-types" element={<ConsoleLinkTypes />} />
             <Route path="data-sources" element={<ConsoleDataSources />} />

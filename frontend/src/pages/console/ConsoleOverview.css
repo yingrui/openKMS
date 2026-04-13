@@ -2,6 +2,47 @@
   width: 100%;
 }
 
+.console-overview-nudge {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.console-overview-nudge a {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.console-overview-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.console-overview-quick-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.console-overview-quick-card:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .console-overview-stats {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

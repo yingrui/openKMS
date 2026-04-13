@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
     cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
 
+    # --- Data security (group-scoped visibility; local mode only until IdP group sync) ---
+    enforce_group_data_scopes: bool = Field(
+        default=False,
+        validation_alias="OPENKMS_ENFORCE_GROUP_DATA_SCOPES",
+        description="When true, non-admin local users with access-group membership see only allowed resources.",
+    )
+
     @field_validator("auth_mode")
     @classmethod
     def validate_auth_mode(cls, v: str) -> str:

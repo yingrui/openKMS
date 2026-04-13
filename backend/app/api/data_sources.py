@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_admin, require_auth
+from app.api.auth import require_auth, require_permission
+from app.services.permission_catalog import PERM_CONSOLE_DATA_SOURCES
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
@@ -46,7 +47,7 @@ def _to_response(ds: DataSource) -> DataSourceResponse:
     )
 
 
-@router.get("", response_model=DataSourceListResponse, dependencies=[Depends(require_admin)])
+@router.get("", response_model=DataSourceListResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def list_data_sources(db: AsyncSession = Depends(get_db)):
     """List all data sources."""
     result = await db.execute(select(DataSource).order_by(DataSource.created_at.desc()))
@@ -54,7 +55,7 @@ async def list_data_sources(db: AsyncSession = Depends(get_db)):
     return DataSourceListResponse(items=[_to_response(d) for d in items], total=len(items))
 
 
-@router.post("", response_model=DataSourceResponse, status_code=201, dependencies=[Depends(require_admin)])
+@router.post("", response_model=DataSourceResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def create_data_source(body: DataSourceCreate, db: AsyncSession = Depends(get_db)):
     """Create a data source. Encrypts username and password."""
     ds = DataSource(
@@ -74,7 +75,7 @@ async def create_data_source(body: DataSourceCreate, db: AsyncSession = Depends(
     return _to_response(ds)
 
 
-@router.get("/{data_source_id}", response_model=DataSourceResponse, dependencies=[Depends(require_admin)])
+@router.get("/{data_source_id}", response_model=DataSourceResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def get_data_source(data_source_id: str, db: AsyncSession = Depends(get_db)):
     """Get a data source by ID."""
     ds = await db.get(DataSource, data_source_id)
@@ -83,7 +84,7 @@ async def get_data_source(data_source_id: str, db: AsyncSession = Depends(get_db
     return _to_response(ds)
 
 
-@router.put("/{data_source_id}", response_model=DataSourceResponse, dependencies=[Depends(require_admin)])
+@router.put("/{data_source_id}", response_model=DataSourceResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def update_data_source(
     data_source_id: str,
     body: DataSourceUpdate,
@@ -114,7 +115,7 @@ async def update_data_source(
     return _to_response(ds)
 
 
-@router.delete("/{data_source_id}", status_code=204, dependencies=[Depends(require_admin)])
+@router.delete("/{data_source_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def delete_data_source(data_source_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a data source. Cascades to datasets."""
     ds = await db.get(DataSource, data_source_id)
@@ -123,7 +124,7 @@ async def delete_data_source(data_source_id: str, db: AsyncSession = Depends(get
     await db.delete(ds)
 
 
-@router.post("/{data_source_id}/test", dependencies=[Depends(require_admin)])
+@router.post("/{data_source_id}/test", dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def test_data_source_connection(data_source_id: str, db: AsyncSession = Depends(get_db)):
     """Test connection to the data source."""
     ds = await db.get(DataSource, data_source_id)
@@ -171,7 +172,7 @@ async def test_data_source_connection(data_source_id: str, db: AsyncSession = De
         raise HTTPException(status_code=400, detail=f"Unsupported data source kind: {ds.kind}")
 
 
-@router.post("/{data_source_id}/neo4j-delete-all", dependencies=[Depends(require_admin)])
+@router.post("/{data_source_id}/neo4j-delete-all", dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
 async def neo4j_delete_all(data_source_id: str, db: AsyncSession = Depends(get_db)):
     """Delete all nodes and relationships in the Neo4j database. Admin only. Neo4j data sources only."""
     ds = await db.get(DataSource, data_source_id)

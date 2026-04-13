@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,11 +34,48 @@ from app.schemas.document import (
     MetadataUpdateBody,
     ParsingResultResponse,
 )
+from app.services.data_scope import effective_channel_ids, scope_applies
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
+
+
+async def _scoped_channel_ids(request: Request, db: AsyncSession) -> set[str] | None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str):
+        return None
+    if not scope_applies(p, sub):
+        return None
+    return await effective_channel_ids(db, sub)
+
+
+async def _require_document_in_scope(request: Request, db: AsyncSession, doc: Document) -> None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str):
+        return
+    if not scope_applies(p, sub):
+        return
+    allowed = await effective_channel_ids(db, sub)
+    if allowed is None:
+        return
+    if doc.channel_id not in allowed:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+
+async def get_scoped_document(
+    document_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Document:
+    doc = await db.get(Document, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    await _require_document_in_scope(request, db, doc)
+    return doc
 
 
 def _maybe_upload_page_index_from_markdown(doc: Document, markdown: str | None) -> None:
@@ -74,23 +111,35 @@ def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id
 
 
 @router.get("/stats")
-async def get_document_stats(db: AsyncSession = Depends(get_db)):
+async def get_document_stats(request: Request, db: AsyncSession = Depends(get_db)):
     """Return document counts for the documents index (e.g. total)."""
-    result = await db.execute(select(func.count(Document.id)))
+    allowed = await _scoped_channel_ids(request, db)
+    if allowed is not None and not allowed:
+        return {"total": 0}
+    q = select(func.count(Document.id))
+    if allowed is not None:
+        q = q.where(Document.channel_id.in_(allowed))
+    result = await db.execute(q)
     total = result.scalar_one()
     return {"total": total}
 
 
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
     channel_id: str | None = None,
     search: str | None = None,
     offset: int = 0,
     limit: int = 200,
-    db: AsyncSession = Depends(get_db),
 ):
     """List documents, optionally filtered by channel and/or name search. Supports pagination."""
     base_query = select(Document)
+    allowed = await _scoped_channel_ids(request, db)
+    if allowed is not None:
+        if not allowed:
+            return DocumentListResponse(items=[], total=0)
+        base_query = base_query.where(Document.channel_id.in_(allowed))
 
     if channel_id:
         result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
@@ -100,6 +149,10 @@ async def list_documents(
             raise HTTPException(status_code=404, detail="Channel not found")
         ids_to_include: set[str] = set()
         _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
+        if allowed is not None:
+            ids_to_include &= allowed
+            if not ids_to_include:
+                return DocumentListResponse(items=[], total=0)
         base_query = base_query.where(Document.channel_id.in_(ids_to_include))
 
     if search:
@@ -117,11 +170,15 @@ async def list_documents(
 
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     channel_id: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a document: store original to S3, create record. No parsing at upload time."""
+    allowed = await _scoped_channel_ids(request, db)
+    if allowed is not None and channel_id not in allowed:
+        raise HTTPException(status_code=404, detail="Channel not found")
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -180,14 +237,10 @@ async def upload_document(
 
 @router.delete("/{document_id}", status_code=204)
 async def delete_document(
-    document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document and its files from storage."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     if doc.file_hash and settings.storage_enabled:
         delete_objects_by_prefix(f"{doc.file_hash}/")
 
@@ -198,13 +251,10 @@ async def delete_document(
 @router.post("/{document_id}/reset-status", response_model=DocumentResponse)
 async def reset_document_status(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Reset document status to 'uploaded' if no active jobs exist for it."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     if doc.status not in (DocumentStatus.PENDING, DocumentStatus.FAILED):
         raise HTTPException(
             status_code=400,
@@ -237,13 +287,9 @@ async def reset_document_status(
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
-    document_id: str,
-    db: AsyncSession = Depends(get_db),
+    doc: Document = Depends(get_scoped_document),
 ):
     """Get document by ID."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     return DocumentResponse.model_validate(doc)
 
 
@@ -251,15 +297,17 @@ async def get_document(
 async def update_document(
     document_id: str,
     body: DocumentInfoUpdateBody,
+    request: Request,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Update document info (e.g. name, channel)."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if body.name is not None:
         doc.name = body.name.strip() or doc.name
     if body.channel_id is not None:
+        allowed = await _scoped_channel_ids(request, db)
+        if allowed is not None and body.channel_id not in allowed:
+            raise HTTPException(status_code=404, detail="Channel not found")
         channel = await db.get(DocumentChannel, body.channel_id)
         if not channel:
             raise HTTPException(status_code=404, detail="Channel not found")
@@ -273,12 +321,10 @@ async def update_document(
 async def update_document_markdown(
     document_id: str,
     body: MarkdownUpdateBody,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Update document markdown in database and rebuild page index from updated content."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     doc.markdown = body.markdown
     await db.commit()
     await db.refresh(doc)
@@ -291,12 +337,10 @@ async def update_document_markdown(
 @router.post("/{document_id}/restore-markdown", response_model=DocumentResponse)
 async def restore_document_markdown(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Restore markdown from object storage (original parsed content)."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if not doc.file_hash:
         raise HTTPException(status_code=400, detail="Document has no file hash; restore not available")
     if not settings.storage_enabled:
@@ -324,12 +368,10 @@ async def restore_document_markdown(
 @router.post("/{document_id}/rebuild-page-index")
 async def rebuild_page_index(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Rebuild page index from current document markdown (DB or S3) and store in S3."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if not doc.file_hash:
         raise HTTPException(
             status_code=400,
@@ -360,12 +402,10 @@ async def rebuild_page_index(
 @router.get("/{document_id}/page-index")
 async def get_document_page_index(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Return PageIndex tree structure for document. Built during pipeline; served from S3."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if not doc.file_hash:
         raise HTTPException(
             status_code=400,
@@ -413,6 +453,7 @@ async def get_document_section(
     document_id: str,
     start_line: int,
     end_line: int,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Return a section of document markdown by line range (1-based, inclusive).
@@ -421,9 +462,6 @@ async def get_document_section(
         raise HTTPException(status_code=400, detail="Invalid start_line or end_line (must be 1-based, start <= end)")
     if end_line - start_line + 1 > 500:
         raise HTTPException(status_code=400, detail="Section too large (max 500 lines)")
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if doc.status != DocumentStatus.COMPLETED:
         raise HTTPException(
             status_code=400,
@@ -443,14 +481,11 @@ async def get_document_section(
 async def create_document_version(
     document_id: str,
     body: DocumentVersionCreateBody,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
     claims: dict = Depends(get_jwt_payload),
 ):
     """Snapshot current markdown and metadata as a new explicit version."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     vn = await _next_document_version_number(db, document_id)
     sub = claims.get("sub")
     uname = claims.get("preferred_username") or claims.get("name")
@@ -474,13 +509,10 @@ async def create_document_version(
 @router.get("/{document_id}/versions", response_model=DocumentVersionListResponse)
 async def list_document_versions(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """List explicit versions (no full markdown in list)."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     result = await db.execute(
         select(DocumentVersion)
         .where(DocumentVersion.document_id == document_id)
@@ -494,13 +526,10 @@ async def list_document_versions(
 async def get_document_version(
     document_id: str,
     version_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Full version snapshot for preview or restore confirmation."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     dv = await db.get(DocumentVersion, version_id)
     if not dv or dv.document_id != document_id:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -512,14 +541,11 @@ async def restore_document_version(
     document_id: str,
     version_id: str,
     body: DocumentVersionRestoreBody,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
     claims: dict = Depends(get_jwt_payload),
 ):
     """Restore working copy markdown and metadata from a version."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     dv = await db.get(DocumentVersion, version_id)
     if not dv or dv.document_id != document_id:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -556,12 +582,10 @@ async def restore_document_version(
 async def update_document_metadata(
     document_id: str,
     body: MetadataUpdateBody,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Update document metadata (partial merge)."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     current = doc.doc_metadata or {}
     merged = {**current, **body.metadata}
     doc.doc_metadata = merged
@@ -573,12 +597,10 @@ async def update_document_metadata(
 @router.post("/{document_id}/extract-metadata", response_model=ExtractMetadataResponse)
 async def extract_document_metadata(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Extract metadata from document markdown using channel's LLM."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if not doc.markdown or not doc.markdown.strip():
         raise HTTPException(
             status_code=400,
@@ -646,12 +668,10 @@ async def extract_document_metadata(
 @router.get("/{document_id}/parsing", response_model=ParsingResultResponse)
 async def get_parsing_result(
     document_id: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Get document parsing result (result.json format for frontend)."""
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
     if not doc.parsing_result:
         raise HTTPException(status_code=404, detail="Parsing result not available")
     return ParsingResultResponse(**doc.parsing_result)
@@ -673,22 +693,12 @@ def _storage_key(file_hash: str, path: str) -> str:
     return f"{file_hash}/{path}"
 
 
-async def _document_file_hash_matches(db: AsyncSession, document_id: str, file_hash: str) -> bool:
-    """Lightweight verification: document exists and file_hash matches. No full document load."""
-    stmt = (
-        select(1)
-        .where(Document.id == document_id)
-        .where(Document.file_hash.ilike(file_hash))
-        .limit(1)
-    )
-    return (await db.execute(stmt)).scalar_one_or_none() is not None
-
-
 @router.get("/{document_id}/files/{file_hash}/{file_path:path}")
 async def get_document_file(
     document_id: str,
     file_hash: str,
     file_path: str,
+    doc: Document = Depends(get_scoped_document),
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to presigned S3 URL. Verifies document_id+file_hash match; frontend fetches directly from S3."""
@@ -698,7 +708,7 @@ async def get_document_file(
     if ".." in path or not path:
         raise HTTPException(status_code=400, detail="Invalid path")
 
-    if not await _document_file_hash_matches(db, document_id, file_hash):
+    if not doc.file_hash or doc.file_hash.lower() != file_hash.lower():
         raise HTTPException(status_code=404, detail="Document not found")
 
     try:
