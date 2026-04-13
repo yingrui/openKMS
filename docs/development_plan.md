@@ -108,6 +108,7 @@
 - [x] Profile page `/profile` and `fetchAuthMe`; user admin APIs `/api/admin/users` + Console Users (`console:users`, local only)
 - [x] Protect backend routes with JWT Bearer or session (or local Basic for CLI)
 - [x] Operation permissions: `security_permissions` (catalog), `security_roles`, `security_role_permissions`, `user_security_roles`; `require_permission` + `GET /api/auth/permission-catalog` (from DB) + admin CRUD `/api/admin/security-permissions`; OIDC resolves permissions by matching JWT realm role names to `security_roles.name`; Console sidebar and APIs use granular `console:*` keys; JWT realm `admin` / `local-cli` bypass
+- [x] Pattern-based access control: optional `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` middleware; default `frontend_route_patterns` / `backend_api_patterns` per catalog key (Alembic); SPA `canAccessPath` from permission-catalog union; docs and `.env.example` updated
 - [x] Access groups: `access_groups`, junctions for channels/KBs/evaluation/datasets/object_types/link_types; `/api/admin/groups` + Console Data security UI; `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` for local non-admin list/get/mutate filters (no OIDC enforcement in phase 1)
 - [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT requires `console:feature_toggles`)
 - [x] Backend `require_admin` retained where needed; sensitive console routes migrated to `require_permission`

@@ -4,6 +4,12 @@ import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
 import { getUserManager } from '../oidc/userManager';
 import { setAuthTokenProvider } from '../data/apiClient';
+import {
+  buildFrontendPatternUnion,
+  isSpaPublicPath,
+  pathnameAllowedByPatterns,
+  type PermissionCatalogEntry,
+} from '../utils/permissionPatterns';
 import './AuthContext.css';
 
 const ADMIN_ROLE = 'admin';
@@ -39,6 +45,10 @@ interface AuthContextValue {
   /** True if JWT admin or user has `console:access`. */
   canAccessConsole: boolean;
   hasPermission: (permissionKey: string) => boolean;
+  /** Union of ``frontend_route_patterns`` for the user's keys; public SPA paths always allowed. */
+  canAccessPath: (pathname: string) => boolean;
+  /** False until permission-catalog fetch finished (or skipped when logged out). */
+  permissionPatternsReady: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -113,6 +123,86 @@ function buildPermissionHelpers(user: AuthUser | null) {
     (user?.permissions.includes('all') ?? false) ||
     (user?.permissions.some((p) => p.startsWith('console:')) ?? false);
   return { hasPermission, canAccessConsole };
+}
+
+function useFrontendPermissionGate(
+  isAuthenticated: boolean,
+  user: AuthUser | null,
+  getToken: () => Promise<string | undefined>,
+): { canAccessPath: (pathname: string) => boolean; permissionPatternsReady: boolean } {
+  const [catalog, setCatalog] = useState<PermissionCatalogEntry[] | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setCatalog(null);
+      setReady(true);
+      return;
+    }
+    let cancelled = false;
+    setReady(false);
+    void (async () => {
+      try {
+        const headers: Record<string, string> = {};
+        const token = await getToken();
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        const res = await fetch(`${config.apiUrl}/api/auth/permission-catalog`, {
+          credentials: 'include',
+          headers,
+        });
+        if (cancelled) {
+          return;
+        }
+        if (!res.ok) {
+          setCatalog(null);
+        } else {
+          const data = (await res.json()) as PermissionCatalogEntry[];
+          setCatalog(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setCatalog(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.username, user?.email, getToken]);
+
+  const canAccessPath = useCallback(
+    (pathname: string) => {
+      if (!isAuthenticated || !user) {
+        return true;
+      }
+      if (user.roles.includes(ADMIN_ROLE) || user.permissions.includes('all')) {
+        return true;
+      }
+      if (isSpaPublicPath(pathname)) {
+        return true;
+      }
+      if (!ready) {
+        return true;
+      }
+      if (catalog === null) {
+        return true;
+      }
+      const union = buildFrontendPatternUnion(catalog, user.permissions);
+      if (union.length === 0) {
+        return false;
+      }
+      return pathnameAllowedByPatterns(pathname, union);
+    },
+    [isAuthenticated, user, ready, catalog],
+  );
+
+  return { canAccessPath, permissionPatternsReady: ready };
 }
 
 async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | null> {
@@ -218,6 +308,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       allowSignup,
       canAccessConsole: false,
       hasPermission: () => false,
+      canAccessPath: () => true,
+      permissionPatternsReady: false,
     }),
     [authMode, ready, allowSignup]
   );
@@ -336,6 +428,7 @@ function LocalAuthProvider({
 
   const isAdmin = hasAdminRole(user);
   const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
+  const { canAccessPath, permissionPatternsReady } = useFrontendPermissionGate(isAuthenticated, user, getToken);
 
   return (
     <AuthContext.Provider
@@ -356,6 +449,8 @@ function LocalAuthProvider({
         allowSignup,
         canAccessConsole,
         hasPermission,
+        canAccessPath,
+        permissionPatternsReady,
       }}
     >
       {children}
@@ -528,6 +623,7 @@ function OidcAuthProvider({
 
   const isAdmin = hasAdminRole(user);
   const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
+  const { canAccessPath, permissionPatternsReady } = useFrontendPermissionGate(isAuthenticated, user, getToken);
 
   return (
     <AuthContext.Provider
@@ -548,6 +644,8 @@ function OidcAuthProvider({
         allowSignup,
         canAccessConsole,
         hasPermission,
+        canAccessPath,
+        permissionPatternsReady,
       }}
     >
       {children}

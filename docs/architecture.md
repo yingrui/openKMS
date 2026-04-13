@@ -61,7 +61,7 @@ flowchart TB
 ```mermaid
 flowchart TB
   subgraph Providers["Provider hierarchy"]
-    Auth[AuthContext]
+    Auth[AuthContext + permission-catalog union / canAccessPath]
     FT[FeatureTogglesContext]
     DC[DocumentChannelsContext]
     Auth --> FT
@@ -89,6 +89,7 @@ flowchart TB
 frontend/src/
 ├── main.tsx                 # Entry
 ├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels), ErrorBoundary, Suspense + lazy routes
+├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
 ├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
 ├── components/Layout/       # MainLayout, Sidebar, Header
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
@@ -116,7 +117,9 @@ frontend/src/
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI app, CORS, routers, procrastinate lifespan; rejects default secret in production
+│   ├── main.py                  # FastAPI app, middleware (StrictPermissionPattern inside Session/CORS stack), routers, procrastinate lifespan; rejects default secret in production
+│   ├── middleware/
+│   │   └── strict_permission_patterns.py  # Optional OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT: catalog pattern match + permission key check
 │   ├── config.py                # Settings (env: OPENKMS_*); vlm_url primary for VLM
 │   ├── oidc_discovery.py        # Cached GET {issuer}/.well-known/openid-configuration (JWKS + OAuth endpoints)
 │   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
@@ -196,7 +199,10 @@ backend/
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
 │       ├── storage.py                    # S3/MinIO client (upload, delete)
 │       ├── permission_catalog.py       # PERM_* constants, OPERATION_KEY_HINTS for admin reference UI
-│       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions
+│       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions when table empty
+│       ├── permission_pattern_engine.py   # Compile ``backend_api_patterns`` / match method+path; frontend-style glob helpers
+│       ├── permission_pattern_cache.py    # TTL cache for compiled rules; invalidated on admin catalog mutations
+│       ├── permission_default_patterns.py # Default frontend/backend pattern lists per PERM_* (used by Alembic backfill)
 │       ├── permission_reference.py     # Frontend route catalog + OpenAPI-derived API list for admin permission setup
 │       ├── security_permission_service.py  # List/sort permissions from DB; keys set for role validation
 │       ├── permission_resolution.py    # Permissions: local via user_security_roles; OIDC via JWT realm role name matching security_roles.name

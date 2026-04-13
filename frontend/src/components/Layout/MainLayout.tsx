@@ -1,5 +1,5 @@
-import { Outlet, useLocation } from 'react-router-dom';
-import { X, LogIn } from 'lucide-react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { X, LogIn, Home } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,10 +7,22 @@ import '../../App.css';
 
 export function MainLayout() {
   const location = useLocation();
-  const { isAuthenticated, isLoading, authError, clearAuthError, retryAuth, login } = useAuth();
+  const navigate = useNavigate();
+  const {
+    isAuthenticated,
+    isLoading,
+    authError,
+    clearAuthError,
+    retryAuth,
+    login,
+    canAccessPath,
+    permissionPatternsReady,
+  } = useAuth();
   const isHome = location.pathname === '/';
   const isDetailPage = location.pathname.startsWith('/documents/view') || location.pathname.startsWith('/articles/view') || location.pathname.startsWith('/knowledge-bases/');
   const showAuthRequired = !isLoading && !isAuthenticated && !isHome;
+  const showPathDenied =
+    !isLoading && isAuthenticated && permissionPatternsReady && !canAccessPath(location.pathname);
 
   return (
     <div className="app-layout">
@@ -51,10 +63,23 @@ export function MainLayout() {
             </div>
           </div>
         )}
-        {!showAuthRequired && (
-        <div className={`app-content ${isDetailPage ? 'app-content--compact' : ''}`}>
-          <Outlet />
-        </div>
+        {!showAuthRequired && showPathDenied && (
+          <div className="auth-required-message" role="alert">
+            <h2 className="auth-required-title">Access denied</h2>
+            <p className="auth-required-text">
+              You do not have permission to open this page. Ask an administrator for the appropriate access, or go
+              back to home.
+            </p>
+            <button type="button" onClick={() => navigate('/', { replace: true })} className="auth-required-btn">
+              <Home size={20} />
+              <span>Home</span>
+            </button>
+          </div>
+        )}
+        {!showAuthRequired && !showPathDenied && (
+          <div className={`app-content ${isDetailPage ? 'app-content--compact' : ''}`}>
+            <Outlet />
+          </div>
         )}
       </main>
     </div>

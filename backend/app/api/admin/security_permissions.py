@@ -15,6 +15,7 @@ from app.api.auth import require_permission
 from app.database import get_db
 from app.models.security_permission import SecurityPermission
 from app.services.permission_catalog import PERM_CONSOLE_PERMISSIONS, PERM_ALL
+from app.services.permission_pattern_cache import invalidate_permission_pattern_cache
 from app.services.security_permission_service import (
     get_permission_by_key,
     list_permissions_sorted,
@@ -128,6 +129,7 @@ async def create_security_permission(
         await db.flush()
     except IntegrityError:
         raise HTTPException(status_code=409, detail="A permission with this key already exists") from None
+    invalidate_permission_pattern_cache()
     return _to_out(row)
 
 
@@ -159,6 +161,7 @@ async def patch_security_permission(
     if body.sort_order is not None:
         row.sort_order = body.sort_order
     await db.flush()
+    invalidate_permission_pattern_cache()
     return _to_out(row)
 
 
@@ -179,3 +182,4 @@ async def delete_security_permission(
             detail="Cannot delete: this permission is still assigned to one or more roles",
         )
     await db.delete(row)
+    invalidate_permission_pattern_cache()

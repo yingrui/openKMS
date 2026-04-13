@@ -30,6 +30,7 @@ from app.api.admin.security_permissions import router as admin_security_permissi
 from app.api.admin.permission_reference import router as admin_permission_reference_router
 from app.config import settings
 from app.database import init_db
+from app.middleware.strict_permission_patterns import StrictPermissionPatternMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Order: each add_middleware wraps the stack; last added is outermost on the request.
+# Session must run before StrictPermissionPatternMiddleware (which calls require_auth).
+app.add_middleware(StrictPermissionPatternMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_url.rstrip("/")],

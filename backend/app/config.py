@@ -67,6 +67,18 @@ class Settings(BaseSettings):
         description="When true, non-admin local users with access-group membership see only allowed resources.",
     )
 
+    enforce_permission_patterns_strict: bool = Field(
+        default=False,
+        validation_alias="OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT",
+        description="When true, authenticated /api requests must match a catalog backend_api_pattern and user must hold that key.",
+    )
+    permission_pattern_cache_ttl_seconds: int = Field(
+        default=60,
+        ge=5,
+        validation_alias="OPENKMS_PERMISSION_PATTERN_CACHE_TTL_SECONDS",
+        description="TTL for compiled permission pattern rules loaded from security_permissions.",
+    )
+
     @field_validator("auth_mode")
     @classmethod
     def validate_auth_mode(cls, v: str) -> str:
