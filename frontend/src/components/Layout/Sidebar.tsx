@@ -29,17 +29,6 @@ import { useEffect, useState } from 'react';
 
 import logo from '../../assets/logo.svg';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-  PERM_CONSOLE_DATA_SOURCES,
-  PERM_CONSOLE_DATASETS,
-  PERM_CONSOLE_FEATURE_TOGGLES,
-  PERM_CONSOLE_GROUPS,
-  PERM_CONSOLE_LINK_TYPES,
-  PERM_CONSOLE_OBJECT_TYPES,
-  PERM_CONSOLE_PERMISSIONS,
-  PERM_CONSOLE_SETTINGS,
-  PERM_CONSOLE_USERS,
-} from '../../config/permissions';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
@@ -159,8 +148,24 @@ export function Sidebar() {
 
   const onOntology = location.pathname.startsWith('/ontology') || location.pathname.startsWith('/objects') || location.pathname.startsWith('/links') || location.pathname.startsWith('/object-explorer');
   const onConsole = location.pathname.startsWith('/console');
-  const { canAccessConsole, hasPermission } = useAuth();
+  const { canAccessConsole, canAccessPath } = useAuth();
   const { toggles } = useFeatureToggles();
+
+  const showOntologySection =
+    (toggles.objectsAndLinks || toggles.hasNeo4jDataSource) &&
+    (canAccessPath('/ontology') ||
+      canAccessPath('/objects') ||
+      canAccessPath('/links') ||
+      canAccessPath('/object-explorer'));
+
+  const showConsoleDataLabel =
+    canAccessPath('/console/data-sources') ||
+    canAccessPath('/console/datasets') ||
+    canAccessPath('/console/object-types') ||
+    canAccessPath('/console/link-types') ||
+    canAccessPath('/console/settings') ||
+    canAccessPath('/console/users') ||
+    canAccessPath('/console/feature-toggles');
 
   return (
     <aside className="sidebar">
@@ -177,68 +182,74 @@ export function Sidebar() {
               <ArrowLeft size={18} strokeWidth={1.75} />
               <span>Exit Console</span>
             </Link>
+            {canAccessPath('/console') && (
             <NavLink to="/console" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
               <LayoutDashboard size={18} strokeWidth={1.75} />
               <span>Overview</span>
             </NavLink>
-            <div className="sidebar-menu-label">Permission management</div>
-            {hasPermission(PERM_CONSOLE_PERMISSIONS) && (
-              <NavLink
-                to="/console/permission-management"
-                className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-              >
-                <KeyRound size={18} strokeWidth={1.75} />
-                <span>Permissions</span>
-              </NavLink>
             )}
-            <div className="sidebar-menu-label">Data security</div>
-            {hasPermission(PERM_CONSOLE_GROUPS) && (
-              <NavLink
-                to="/console/data-security/groups"
-                className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-              >
-                <Shield size={18} strokeWidth={1.75} />
-                <span>Access groups</span>
-              </NavLink>
+            {canAccessPath('/console/permission-management') && (
+              <>
+                <div className="sidebar-menu-label">Permission management</div>
+                <NavLink
+                  to="/console/permission-management"
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
+                  <KeyRound size={18} strokeWidth={1.75} />
+                  <span>Permissions</span>
+                </NavLink>
+              </>
             )}
-            <div className="sidebar-menu-label">Console</div>
-            {hasPermission(PERM_CONSOLE_DATA_SOURCES) && (
+            {canAccessPath('/console/data-security/groups') && (
+              <>
+                <div className="sidebar-menu-label">Data security</div>
+                <NavLink
+                  to="/console/data-security/groups"
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
+                  <Shield size={18} strokeWidth={1.75} />
+                  <span>Access groups</span>
+                </NavLink>
+              </>
+            )}
+            {showConsoleDataLabel && <div className="sidebar-menu-label">Console</div>}
+            {canAccessPath('/console/data-sources') && (
               <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Database size={18} strokeWidth={1.75} />
                 <span>Data Sources</span>
               </NavLink>
             )}
-            {hasPermission(PERM_CONSOLE_DATASETS) && (
+            {canAccessPath('/console/datasets') && (
               <NavLink to="/console/datasets" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Table size={18} strokeWidth={1.75} />
                 <span>Datasets</span>
               </NavLink>
             )}
-            {hasPermission(PERM_CONSOLE_OBJECT_TYPES) && (
+            {canAccessPath('/console/object-types') && (
               <NavLink to="/console/object-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Box size={18} strokeWidth={1.75} />
                 <span>Object Types</span>
               </NavLink>
             )}
-            {hasPermission(PERM_CONSOLE_LINK_TYPES) && (
+            {canAccessPath('/console/link-types') && (
               <NavLink to="/console/link-types" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Link2 size={18} strokeWidth={1.75} />
                 <span>Link Types</span>
               </NavLink>
             )}
-            {hasPermission(PERM_CONSOLE_SETTINGS) && (
+            {canAccessPath('/console/settings') && (
               <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Settings size={18} strokeWidth={1.75} />
                 <span>System Settings</span>
               </NavLink>
             )}
-            {hasPermission(PERM_CONSOLE_USERS) && (
+            {canAccessPath('/console/users') && (
               <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <Users size={18} strokeWidth={1.75} />
                 <span>Users &amp; roles</span>
               </NavLink>
             )}
-            {hasPermission(PERM_CONSOLE_FEATURE_TOGGLES) && (
+            {canAccessPath('/console/feature-toggles') && (
               <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                 <ToggleLeft size={18} strokeWidth={1.75} />
                 <span>Feature Toggles</span>
@@ -256,6 +267,7 @@ export function Sidebar() {
           <HomeIcon size={18} strokeWidth={1.75} />
           <span>Home</span>
         </NavLink>
+        {canAccessPath('/documents') && (
         <div className="sidebar-menu-group">
           <NavLink
             to="/documents"
@@ -278,7 +290,8 @@ export function Sidebar() {
             </div>
           )}
         </div>
-        {toggles.articles && (
+        )}
+        {toggles.articles && canAccessPath('/articles') && (
           <div className="sidebar-menu-group">
             <NavLink
               to="/articles"
@@ -302,8 +315,9 @@ export function Sidebar() {
             )}
           </div>
         )}
-        {(toggles.objectsAndLinks || toggles.hasNeo4jDataSource) && (
+        {showOntologySection && (
           <div className="sidebar-menu-group">
+            {canAccessPath('/ontology') && (
             <NavLink
               to="/ontology"
               className={({ isActive }) =>
@@ -313,8 +327,10 @@ export function Sidebar() {
               <Network size={18} strokeWidth={1.75} />
               <span>Ontology</span>
             </NavLink>
+            )}
             {onOntology && (
               <div className="sidebar-subnav">
+                {canAccessPath('/objects') && (
                 <NavLink
                   to="/objects"
                   className={({ isActive }) =>
@@ -324,6 +340,8 @@ export function Sidebar() {
                   <Box size={18} strokeWidth={1.75} />
                   <span>Objects</span>
                 </NavLink>
+                )}
+                {canAccessPath('/links') && (
               <NavLink
                 to="/links"
                 className={({ isActive }) =>
@@ -333,6 +351,8 @@ export function Sidebar() {
                 <Link2 size={18} strokeWidth={1.75} />
                 <span>Links</span>
               </NavLink>
+                )}
+                {canAccessPath('/object-explorer') && (
               <NavLink
                 to="/object-explorer"
                 className={({ isActive }) =>
@@ -342,10 +362,12 @@ export function Sidebar() {
                 <Compass size={18} strokeWidth={1.75} />
                 <span>Object Explorer</span>
               </NavLink>
+                )}
               </div>
             )}
           </div>
         )}
+        {canAccessPath('/glossaries') && (
         <NavLink
           to="/glossaries"
           className={({ isActive }) =>
@@ -355,7 +377,8 @@ export function Sidebar() {
           <BookOpen size={18} strokeWidth={1.75} />
           <span>Glossaries</span>
         </NavLink>
-        {toggles.knowledgeBases && (
+        )}
+        {toggles.knowledgeBases && canAccessPath('/knowledge-bases') && (
           <NavLink
             to="/knowledge-bases"
             className={({ isActive }) =>
@@ -366,7 +389,7 @@ export function Sidebar() {
             <span>Knowledge Bases</span>
           </NavLink>
         )}
-        {toggles.evaluationDatasets && (
+        {toggles.evaluationDatasets && canAccessPath('/evaluation-datasets') && (
           <NavLink
             to="/evaluation-datasets"
             className={({ isActive }) =>
@@ -377,6 +400,7 @@ export function Sidebar() {
             <span>Evaluation</span>
           </NavLink>
         )}
+        {canAccessPath('/pipelines') && (
         <NavLink
           to="/pipelines"
           className={({ isActive }) =>
@@ -386,6 +410,8 @@ export function Sidebar() {
           <GitBranch size={18} strokeWidth={1.75} />
           <span>Pipelines</span>
         </NavLink>
+        )}
+        {canAccessPath('/jobs') && (
         <NavLink
           to="/jobs"
           className={({ isActive }) =>
@@ -395,6 +421,8 @@ export function Sidebar() {
           <ListTodo size={18} strokeWidth={1.75} />
           <span>Jobs</span>
         </NavLink>
+        )}
+        {canAccessPath('/models') && (
         <NavLink
           to="/models"
           className={({ isActive }) =>
@@ -404,6 +432,7 @@ export function Sidebar() {
           <Cpu size={18} strokeWidth={1.75} />
           <span>Models</span>
         </NavLink>
+        )}
           </>
         )}
       </nav>

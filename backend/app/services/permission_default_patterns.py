@@ -36,7 +36,15 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ["/*"],
     ),
     PERM_CONSOLE_ACCESS: (
-        ["/console"],
+        [
+            "/console",
+            "/pipelines",
+            "/pipelines/*",
+            "/jobs",
+            "/jobs/*",
+            "/models",
+            "/models/*",
+        ],
         [
             "/api/models/*",
             "/api/pipelines/*",

@@ -91,7 +91,7 @@ frontend/src/
 ├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels), ErrorBoundary, Suspense + lazy routes
 ├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
 ├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
-├── components/Layout/       # MainLayout, Sidebar, Header
+├── components/Layout/       # MainLayout (route gate), Sidebar (nav items gated by canAccessPath + toggles), Header
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
 ├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
