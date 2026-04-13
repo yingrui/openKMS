@@ -143,7 +143,6 @@ flowchart LR
   end
 
   subgraph Mocks["Still using mocks"]
-    C1[ConsoleOverview - hardcoded 3,2,7,12]
     C2[ConsoleUsers]
     C3[ConsoleSettings]
     K1[KnowledgeBaseList]
@@ -158,7 +157,6 @@ flowchart LR
 
 | File | Description |
 |------|-------------|
-| `pages/console/ConsoleOverview.tsx` | Hardcoded stats (3, 2, 7, 12) |
 | `pages/console/ConsoleUsers.tsx` | Mock users; Add User button is non-functional |
 | `pages/console/ConsoleSettings.tsx` | Form inputs are not wired to any API |
 | `pages/DocumentsIndex.tsx` | Uses `fetchDocumentStats()` (real); document count is from API |
