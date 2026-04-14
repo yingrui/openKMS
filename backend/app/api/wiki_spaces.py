@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import uuid
 import zipfile
+from datetime import datetime, timezone
 from typing import Annotated
 from urllib.parse import unquote
 
@@ -29,6 +30,9 @@ from app.schemas.wiki import (
     WikiSpaceListResponse,
     WikiSpaceResponse,
     WikiSpaceUpdate,
+    WikiLinkGraphLink,
+    WikiLinkGraphNode,
+    WikiLinkGraphResponse,
     WikiVaultImportResponse,
     WikiVaultMarkdownFileBody,
     WikiVaultMarkdownImportResponse,
@@ -36,7 +40,21 @@ from app.schemas.wiki import (
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
-from app.services.storage import delete_object, delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
+from app.services.storage import (
+    delete_object,
+    delete_objects_by_prefix,
+    get_object,
+    get_redirect_url,
+    object_exists,
+    object_last_modified,
+    upload_object,
+)
+from app.services.wiki_link_graph import (
+    build_link_graph_payload,
+    graph_payload_from_json_bytes,
+    graph_payload_to_json_bytes,
+    link_graph_cache_key,
+)
 from app.services.wiki_vault_import import (
     delete_wiki_page_markdown_mirror,
     import_markdown_vault_file,
@@ -81,6 +99,27 @@ def _page_to_response(page: WikiPage) -> WikiPageResponse:
         metadata=page.metadata_,
         created_at=page.created_at,
         updated_at=page.updated_at,
+    )
+
+
+def _dt_to_utc(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _wiki_link_graph_from_payload(payload: dict) -> WikiLinkGraphResponse:
+    sm = payload.get("source_max_updated_at")
+    sm_dt: datetime | None = None
+    if isinstance(sm, str):
+        try:
+            sm_dt = datetime.fromisoformat(sm.replace("Z", "+00:00"))
+        except ValueError:
+            sm_dt = None
+    return WikiLinkGraphResponse(
+        nodes=[WikiLinkGraphNode(**n) for n in payload.get("nodes", [])],
+        links=[WikiLinkGraphLink(**l) for l in payload.get("links", [])],
+        source_max_updated_at=sm_dt,
     )
 
 
@@ -422,6 +461,37 @@ async def get_page_index(
     if page.page_index is not None:
         return page.page_index
     return md_to_tree_from_markdown(page.body or "", doc_name=page.title or page.path)
+
+
+@router.get(
+    "/{space_id}/graph",
+    response_model=WikiLinkGraphResponse,
+    dependencies=[Depends(require_permission(PERM_WIKIS_READ))],
+)
+async def get_wiki_link_graph(
+    space: WikiSpace = Depends(get_wiki_space_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Directed page graph for Graph View. Cached in S3 when storage is enabled."""
+    result = await db.execute(select(WikiPage).where(WikiPage.wiki_space_id == space.id))
+    pages = list(result.scalars().all())
+    max_u = max((p.updated_at for p in pages), default=None) if pages else None
+
+    cache_key = link_graph_cache_key(space.id)
+    if settings.storage_enabled and pages and max_u is not None:
+        lm = object_last_modified(cache_key)
+        if lm is not None and _dt_to_utc(lm) >= _dt_to_utc(max_u):
+            try:
+                raw = get_object(cache_key)
+                payload = graph_payload_from_json_bytes(raw)
+                return _wiki_link_graph_from_payload(payload)
+            except Exception:
+                pass
+
+    payload = build_link_graph_payload(pages)
+    if settings.storage_enabled and pages:
+        upload_object(cache_key, graph_payload_to_json_bytes(payload), content_type="application/json")
+    return _wiki_link_graph_from_payload(payload)
 
 
 @router.get(

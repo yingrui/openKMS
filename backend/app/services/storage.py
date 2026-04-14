@@ -1,5 +1,6 @@
 """S3/MinIO object storage service."""
 
+from datetime import datetime, timezone
 from typing import BinaryIO
 
 from app.config import settings
@@ -142,6 +143,20 @@ def object_exists(key: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def object_last_modified(key: str) -> datetime | None:
+    """Return S3 LastModified for the object, or None if missing or storage disabled."""
+    if not settings.storage_enabled:
+        return None
+    try:
+        resp = _client().head_object(Bucket=_bucket(), Key=key)
+        lm = resp.get("LastModified")
+        if lm is None:
+            return None
+        return lm if lm.tzinfo else lm.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
 
 
 def delete_object(key: str) -> None:

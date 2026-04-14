@@ -3,7 +3,7 @@ import type { Components } from 'react-markdown';
 import { Link, useParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Network, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '../config';
 import { WikiPagesTree } from '../components/wiki/WikiPagesTree';
@@ -177,6 +177,14 @@ export function WikiPageEditor() {
                   Preview
                 </button>
               </div>
+              <Link
+                to={`/wikis/${spaceId}/graph?focus=${encodeURIComponent(pageId)}`}
+                className="btn btn-secondary wiki-page-editor-graph-link"
+                title="Open Graph View for this wiki space"
+              >
+                <Network size={18} />
+                Graph View
+              </Link>
               <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void handleSave()}>
                 <Save size={18} />
                 {saving ? 'Saving…' : 'Save'}

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, FolderUp, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createWikiPage,
@@ -236,6 +236,10 @@ export function WikiSpaceDetail() {
               {space.description && <p className="wiki-space-detail-desc">{space.description}</p>}
             </div>
             <div className="wiki-space-detail-actions">
+              <Link to={`/wikis/${spaceId}/graph`} className="btn btn-secondary">
+                <Network size={18} />
+                Graph View
+              </Link>
               <button
                 type="button"
                 className="btn btn-secondary wiki-space-detail-import-folder-btn"

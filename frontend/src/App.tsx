@@ -51,6 +51,7 @@ const LinkTypeDetail = lazy(() => import('./pages/LinkTypeDetail').then((m) => (
 const ObjectExplorer = lazy(() => import('./pages/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
 const DocumentDetail = lazy(() => import('./pages/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
 const WikiSpaceDetail = lazy(() => import('./pages/WikiSpaceDetail').then((m) => ({ default: m.WikiSpaceDetail })));
+const WikiSpaceGraph = lazy(() => import('./pages/WikiSpaceGraph').then((m) => ({ default: m.WikiSpaceGraph })));
 const WikiPageEditor = lazy(() => import('./pages/WikiPageEditor').then((m) => ({ default: m.WikiPageEditor })));
 const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })));
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
@@ -94,6 +95,7 @@ function App() {
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
           <Route path="wikis" element={<FeatureGate feature="wikiSpaces"><WikiSpaceList /></FeatureGate>} />
+          <Route path="wikis/:id/graph" element={<FeatureGate feature="wikiSpaces"><WikiSpaceGraph /></FeatureGate>} />
           <Route path="wikis/:id" element={<FeatureGate feature="wikiSpaces"><WikiSpaceDetail /></FeatureGate>} />
           <Route path="wikis/:id/pages/:pageId" element={<FeatureGate feature="wikiSpaces"><WikiPageEditor /></FeatureGate>} />
           <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />

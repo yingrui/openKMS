@@ -103,3 +103,22 @@ class WikiVaultMarkdownFileBody(BaseModel):
 class WikiVaultMarkdownImportResponse(BaseModel):
     wiki_path: str
     warnings: list[str]
+
+
+class WikiLinkGraphNode(BaseModel):
+    id: str
+    path: str
+    title: str
+
+
+class WikiLinkGraphLink(BaseModel):
+    source: str
+    target: str
+
+
+class WikiLinkGraphResponse(BaseModel):
+    """Directed page graph: edges are ``source`` page linking to ``target`` page."""
+
+    nodes: list[WikiLinkGraphNode]
+    links: list[WikiLinkGraphLink]
+    source_max_updated_at: datetime | None = None

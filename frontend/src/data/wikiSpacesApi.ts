@@ -63,6 +63,23 @@ export interface WikiFileListResponse {
   total: number;
 }
 
+export interface WikiLinkGraphNode {
+  id: string;
+  path: string;
+  title: string;
+}
+
+export interface WikiLinkGraphLink {
+  source: string;
+  target: string;
+}
+
+export interface WikiLinkGraphResponse {
+  nodes: WikiLinkGraphNode[];
+  links: WikiLinkGraphLink[];
+  source_max_updated_at?: string | null;
+}
+
 export async function fetchWikiSpaces(): Promise<WikiSpaceListResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' });
@@ -110,6 +127,16 @@ export async function deleteWikiSpace(spaceId: string): Promise<void> {
 export async function fetchWikiSpace(spaceId: string): Promise<WikiSpaceResponse> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, { headers, credentials: 'include' });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function fetchWikiSpaceGraph(spaceId: string): Promise<WikiLinkGraphResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/graph`, {
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
