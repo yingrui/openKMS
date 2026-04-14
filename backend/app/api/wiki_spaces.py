@@ -44,8 +44,8 @@ from app.services.wiki_vault_import import (
     iter_zip_vault_entries,
     normalize_vault_entry_path,
     upload_wiki_page_markdown_mirror,
+    upsert_vault_mirror_wiki_file,
     vault_mirror_key_fits,
-    vault_mirror_object_key,
 )
 
 router = APIRouter(prefix="/wiki-spaces", tags=["wiki-spaces"])
@@ -478,27 +478,27 @@ async def upload_wiki_file(
     fid = str(uuid.uuid4())
     orig_name = (file.filename or "upload").replace("\\", "/")
     norm = normalize_vault_entry_path(orig_name)
+    content_type = file.content_type
+
     if norm and vault_mirror_key_fits(space.id, norm):
-        key = vault_mirror_object_key(space.id, norm)
-        filename_for_db = norm
+        wf = await upsert_vault_mirror_wiki_file(
+            db, space.id, norm, raw, content_type=content_type, wiki_page_id=wiki_page_id
+        )
     else:
         safe = _safe_storage_basename(orig_name)
         key = f"wiki/{space.id}/files/{fid}/{safe}"
         filename_for_db = orig_name
-
-    content_type = file.content_type
-    upload_object(key, raw, content_type=content_type)
-
-    wf = WikiFile(
-        id=fid,
-        wiki_space_id=space.id,
-        wiki_page_id=wiki_page_id,
-        storage_key=key,
-        filename=filename_for_db,
-        content_type=content_type,
-        size_bytes=len(raw),
-    )
-    db.add(wf)
+        upload_object(key, raw, content_type=content_type)
+        wf = WikiFile(
+            id=fid,
+            wiki_space_id=space.id,
+            wiki_page_id=wiki_page_id,
+            storage_key=key,
+            filename=filename_for_db,
+            content_type=content_type,
+            size_bytes=len(raw),
+        )
+        db.add(wf)
     await db.flush()
     await db.refresh(wf)
     return WikiFileResponse(

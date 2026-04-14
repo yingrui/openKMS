@@ -70,6 +70,45 @@ def delete_wiki_page_markdown_mirror(space_id: str, wiki_path: str, *, storage_e
         delete_object(key)
 
 
+async def upsert_vault_mirror_wiki_file(
+    db: AsyncSession,
+    space_id: str,
+    norm: str,
+    raw: bytes,
+    *,
+    content_type: str | None,
+    wiki_page_id: str | None = None,
+) -> WikiFile:
+    """
+    Upload bytes to the vault mirror S3 key and insert or update wiki_files.
+    Re-uploading the same vault-relative path reuses storage_key (unique) and overwrites S3.
+    """
+    key = vault_mirror_object_key(space_id, norm)
+    upload_object(key, raw, content_type=content_type)
+    res = await db.execute(select(WikiFile).where(WikiFile.storage_key == key))
+    existing = res.scalar_one_or_none()
+    if existing is not None:
+        if existing.wiki_space_id != space_id:
+            raise ValueError("Storage key is already used in another wiki space")
+        existing.content_type = content_type
+        existing.size_bytes = len(raw)
+        existing.filename = norm
+        existing.wiki_page_id = wiki_page_id
+        return existing
+    fid = str(uuid.uuid4())
+    wf = WikiFile(
+        id=fid,
+        wiki_space_id=space_id,
+        wiki_page_id=wiki_page_id,
+        storage_key=key,
+        filename=norm,
+        content_type=content_type,
+        size_bytes=len(raw),
+    )
+    db.add(wf)
+    return wf
+
+
 # Match any path segment case-insensitively (e.g. `.Git` on case-insensitive volumes).
 _SKIP_DIR_SEGMENTS_CI = frozenset(
     {
@@ -317,20 +356,8 @@ async def import_vault_entries(
             result.warnings.append(f"S3 key too long, skipped: {norm[:80]}...")
             result.skipped.append(norm)
             continue
-        fid = str(uuid.uuid4())
-        key = vault_mirror_object_key(space_id, norm)
-        upload_object(key, raw, content_type=None)
-        wf = WikiFile(
-            id=fid,
-            wiki_space_id=space_id,
-            wiki_page_id=None,
-            storage_key=key,
-            filename=norm,
-            content_type=None,
-            size_bytes=len(raw),
-        )
-        db.add(wf)
-        path_to_file_id[norm] = fid
+        wf = await upsert_vault_mirror_wiki_file(db, space_id, norm, raw, content_type=None, wiki_page_id=None)
+        path_to_file_id[norm] = wf.id
         base = norm.rsplit("/", 1)[-1]
         basename_to_ids.setdefault(base, []).append(fid)
         result.files_uploaded += 1

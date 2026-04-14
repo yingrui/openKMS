@@ -202,7 +202,7 @@ backend/
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
-│       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, markdown mirrors, link rewrite; strip NUL for PostgreSQL
+│       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, upsert wiki_files on same path, markdown mirrors, link rewrite; strip NUL for PostgreSQL
 │       ├── storage.py                    # S3/MinIO client (upload, delete)
 │       ├── permission_catalog.py       # PERM_* constants, OPERATION_KEY_HINTS for admin reference UI
 │       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions when table empty
