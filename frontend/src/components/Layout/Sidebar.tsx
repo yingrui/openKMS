@@ -319,6 +319,17 @@ export function Sidebar() {
             )}
           </div>
         )}
+        {toggles.wikiSpaces && canAccessPath('/wikis') && (
+          <NavLink
+            to="/wikis"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <Library size={18} strokeWidth={1.75} />
+            <span>Wiki Spaces</span>
+          </NavLink>
+        )}
         {showOntologySection && (
           <div className="sidebar-menu-group">
             {canAccessPath('/ontology') && (
@@ -424,17 +435,6 @@ export function Sidebar() {
           >
             <Database size={18} strokeWidth={1.75} />
             <span>Knowledge Bases</span>
-          </NavLink>
-        )}
-        {toggles.wikiSpaces && canAccessPath('/wikis') && (
-          <NavLink
-            to="/wikis"
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-            }
-          >
-            <Library size={18} strokeWidth={1.75} />
-            <span>Wikis</span>
           </NavLink>
         )}
         {toggles.evaluationDatasets && canAccessPath('/evaluation-datasets') && (

@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home, Documents, Articles, Knowledge Bases, Wikis, Glossaries, Pipelines, Jobs, Models"]
+    FE["Home, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Jobs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
