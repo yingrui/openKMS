@@ -63,8 +63,12 @@ class WikiPageResponse(BaseModel):
 
 
 class WikiPageListResponse(BaseModel):
+    """Page list; ``total`` counts all rows matching ``path_prefix`` when paginating."""
+
     items: list[WikiPageResponse]
     total: int
+    limit: int | None = None  # None = client omitted limit (full ``items``)
+    offset: int = 0
 
 
 class WikiFileResponse(BaseModel):

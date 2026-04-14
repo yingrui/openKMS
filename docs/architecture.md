@@ -143,7 +143,7 @@ backend/
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── wiki_spaces.py      # /api/wiki-spaces: spaces, pages (incl. PUT by-path), files, page-index; POST import/vault (zip/bulk), POST import/vault/markdown-file (single .md + rewrite)
+│   │   ├── wiki_spaces.py      # /api/wiki-spaces: spaces, pages list (optional limit/offset/path_prefix), pages CRUD, PUT by-path, files, page-index; POST import/vault (zip/bulk), POST import/vault/markdown-file (single .md + rewrite)
 │   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, import (CSV), run (search_retrieval | qa_answer), runs list/get/delete/compare
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables

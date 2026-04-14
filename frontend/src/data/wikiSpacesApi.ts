@@ -41,7 +41,12 @@ export interface WikiPageResponse {
 export interface WikiPageListResponse {
   items: WikiPageResponse[];
   total: number;
+  limit?: number | null;
+  offset?: number;
 }
+
+/** Default page size for wiki space detail list (server allows up to 500). */
+export const WIKI_PAGES_LIST_PAGE_SIZE = 25;
 
 export interface WikiFileResponse {
   id: string;
@@ -109,10 +114,18 @@ export async function fetchWikiSpace(spaceId: string): Promise<WikiSpaceResponse
   return res.json();
 }
 
-export async function fetchWikiPages(spaceId: string, pathPrefix?: string): Promise<WikiPageListResponse> {
+export async function fetchWikiPages(
+  spaceId: string,
+  pathPrefix?: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<WikiPageListResponse> {
   const headers = await getAuthHeaders();
-  const q = pathPrefix ? `?path_prefix=${encodeURIComponent(pathPrefix)}` : '';
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages${q}`, {
+  const params = new URLSearchParams();
+  if (pathPrefix) params.set('path_prefix', pathPrefix);
+  if (opts?.limit != null) params.set('limit', String(opts.limit));
+  if (opts?.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
+  const q = params.toString();
+  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages${q ? `?${q}` : ''}`, {
     headers,
     credentials: 'include',
   });

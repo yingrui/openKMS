@@ -8,7 +8,7 @@ import zipfile
 from typing import Annotated
 from urllib.parse import unquote
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -208,15 +208,27 @@ async def delete_wiki_space(
 async def list_pages(
     space: WikiSpace = Depends(get_wiki_space_scoped),
     db: AsyncSession = Depends(get_db),
-    path_prefix: str | None = None,
+    path_prefix: str | None = Query(None),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
 ):
-    q = select(WikiPage).where(WikiPage.wiki_space_id == space.id).order_by(WikiPage.path)
+    filters = [WikiPage.wiki_space_id == space.id]
     if path_prefix:
         pfx = normalize_wiki_path(path_prefix)
-        q = q.where(or_(WikiPage.path == pfx, WikiPage.path.startswith(pfx + "/")))
+        filters.append(or_(WikiPage.path == pfx, WikiPage.path.startswith(pfx + "/")))
+    count_stmt = select(func.count()).select_from(WikiPage).where(*filters)
+    total = int((await db.execute(count_stmt)).scalar_one())
+    q = select(WikiPage).where(*filters).order_by(WikiPage.path)
+    if limit is not None:
+        q = q.offset(offset).limit(limit)
     result = await db.execute(q)
     pages = list(result.scalars().all())
-    return WikiPageListResponse(items=[_page_to_response(p) for p in pages], total=len(pages))
+    return WikiPageListResponse(
+        items=[_page_to_response(p) for p in pages],
+        total=total,
+        limit=limit,
+        offset=offset if limit is not None else 0,
+    )
 
 
 @router.post(

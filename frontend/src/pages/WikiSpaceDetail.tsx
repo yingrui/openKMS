@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
+import { useEffect, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, FileText, FolderUp, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +13,7 @@ import {
   type VaultImportSkipOptions,
   type VaultImportProgress,
   vaultSkipExtensionSet,
+  WIKI_PAGES_LIST_PAGE_SIZE,
   type WikiPageResponse,
   type WikiSpaceResponse,
   type WikiVaultImportResponse,
@@ -29,6 +30,9 @@ export function WikiSpaceDetail() {
   const { id: spaceId } = useParams<{ id: string }>();
   const [space, setSpace] = useState<WikiSpaceResponse | null>(null);
   const [pages, setPages] = useState<WikiPageResponse[]>([]);
+  const [pagesTotal, setPagesTotal] = useState(0);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [listNonce, setListNonce] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showNewPage, setShowNewPage] = useState(false);
   const [newPath, setNewPath] = useState('');
@@ -39,24 +43,45 @@ export function WikiSpaceDetail() {
   const [vaultFolderModalOpen, setVaultFolderModalOpen] = useState(false);
   const [vaultSkipOpts, setVaultSkipOpts] = useState<VaultImportSkipOptions>(() => defaultVaultImportSkipOptions());
 
-  const load = useCallback(async () => {
-    if (!spaceId) return;
-    setLoading(true);
-    try {
-      const [sp, pg] = await Promise.all([fetchWikiSpace(spaceId), fetchWikiPages(spaceId)]);
-      setSpace(sp);
-      setPages(pg.items);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load');
-      setSpace(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [spaceId]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!spaceId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const offset = pageIndex * WIKI_PAGES_LIST_PAGE_SIZE;
+        const [sp, pg] = await Promise.all([
+          fetchWikiSpace(spaceId),
+          fetchWikiPages(spaceId, undefined, {
+            limit: WIKI_PAGES_LIST_PAGE_SIZE,
+            offset,
+          }),
+        ]);
+        if (cancelled) return;
+        setSpace(sp);
+        const total = pg.total;
+        setPagesTotal(total);
+        const maxPage = Math.max(0, Math.ceil(total / WIKI_PAGES_LIST_PAGE_SIZE) - 1);
+        if (total > 0 && pageIndex > maxPage) {
+          setPageIndex(maxPage);
+          return;
+        }
+        setPages(pg.items);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          toast.error(e instanceof Error ? e.message : 'Failed to load');
+          setSpace(null);
+          setPages([]);
+          setPagesTotal(0);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [spaceId, pageIndex, listNonce]);
 
   const handleCreatePage = async () => {
     const path = newPath.trim();
@@ -73,7 +98,6 @@ export function WikiSpaceDetail() {
       setShowNewPage(false);
       setNewPath('');
       toast.success('Page created');
-      void load();
       window.location.href = `/wikis/${spaceId}/pages/${p.id}`;
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Create failed');
@@ -118,7 +142,8 @@ export function WikiSpaceDetail() {
           `${r.warnings.length} warning(s): ${r.warnings.slice(0, 3).join(' · ')}${r.warnings.length > 3 ? '…' : ''}`
         );
       }
-      void load();
+      setPageIndex(0);
+      setListNonce((n) => n + 1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Vault import failed');
     } finally {
@@ -140,7 +165,8 @@ export function WikiSpaceDetail() {
           `${r.warnings.length} warning(s): ${r.warnings.slice(0, 3).join(' · ')}${r.warnings.length > 3 ? '…' : ''}`
         );
       }
-      void load();
+      setPageIndex(0);
+      setListNonce((n) => n + 1);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Vault import failed');
     } finally {
@@ -153,7 +179,7 @@ export function WikiSpaceDetail() {
     try {
       await deleteWikiPage(spaceId, p.id);
       toast.success('Page deleted');
-      void load();
+      setListNonce((n) => n + 1);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Delete failed');
     }
@@ -186,6 +212,10 @@ export function WikiSpaceDetail() {
           )
         )
       : 0;
+
+  const pageCount = Math.max(1, Math.ceil(pagesTotal / WIKI_PAGES_LIST_PAGE_SIZE));
+  const showingFrom = pagesTotal === 0 ? 0 : pageIndex * WIKI_PAGES_LIST_PAGE_SIZE + 1;
+  const showingTo = pagesTotal === 0 ? 0 : Math.min(pagesTotal, pageIndex * WIKI_PAGES_LIST_PAGE_SIZE + pages.length);
 
   return (
     <div className="wiki-space-detail">
@@ -239,27 +269,55 @@ export function WikiSpaceDetail() {
 
           <section className="wiki-space-detail-section">
             <h2>Pages</h2>
-            {pages.length === 0 ? (
+            {pagesTotal === 0 ? (
               <p className="wiki-space-detail-muted">No pages yet.</p>
             ) : (
-              <ul className="wiki-space-detail-pages">
-                {pages.map((p) => (
-                  <li key={p.id} className="wiki-space-detail-page-row">
-                    <Link to={`/wikis/${spaceId}/pages/${p.id}`} className="wiki-space-detail-page-link">
-                      <FileText size={18} />
-                      <span className="wiki-space-detail-page-path">{p.path}</span>
-                    </Link>
+              <>
+                <p className="wiki-space-detail-pages-summary" aria-live="polite">
+                  Showing {showingFrom}–{showingTo} of {pagesTotal}
+                </p>
+                <ul className="wiki-space-detail-pages">
+                  {pages.map((p) => (
+                    <li key={p.id} className="wiki-space-detail-page-row">
+                      <Link to={`/wikis/${spaceId}/pages/${p.id}`} className="wiki-space-detail-page-link">
+                        <FileText size={18} />
+                        <span className="wiki-space-detail-page-path">{p.path}</span>
+                      </Link>
+                      <button
+                        type="button"
+                        className="wiki-space-detail-icon-btn"
+                        aria-label="Delete page"
+                        onClick={() => void handleDeletePage(p)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {pageCount > 1 && (
+                  <nav className="wiki-space-detail-pagination" aria-label="Pages pagination">
                     <button
                       type="button"
-                      className="wiki-space-detail-icon-btn"
-                      aria-label="Delete page"
-                      onClick={() => void handleDeletePage(p)}
+                      className="btn btn-secondary btn-sm"
+                      disabled={pageIndex <= 0}
+                      onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
                     >
-                      <Trash2 size={16} />
+                      Previous
                     </button>
-                  </li>
-                ))}
-              </ul>
+                    <span className="wiki-space-detail-pagination-status">
+                      Page {pageIndex + 1} of {pageCount}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled={pageIndex >= pageCount - 1}
+                      onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+                    >
+                      Next
+                    </button>
+                  </nav>
+                )}
+              </>
             )}
           </section>
         </>
