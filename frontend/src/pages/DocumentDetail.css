@@ -1482,3 +1482,120 @@
 [data-theme="dark"] .doc-status-running { background: #1e3a5f; color: #93c5fd; }
 [data-theme="dark"] .doc-status-completed { background: #14532d; color: #86efac; }
 [data-theme="dark"] .doc-status-failed { background: #450a0a; color: #fca5a5; }
+
+.document-detail-lineage {
+  margin-top: 4px;
+}
+
+.document-detail-lineage-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 4px;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+
+.document-detail-lineage-header:hover {
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  color: var(--color-accent);
+}
+
+.document-detail-lineage-header span {
+  flex: 1;
+}
+
+.document-detail-lineage-hint {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  padding-left: 2px;
+}
+
+.document-detail-lineage-panel {
+  margin-top: 8px;
+}
+
+.document-detail-lineage-subtitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--color-text-secondary);
+}
+
+.document-detail-lineage-tables {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 720px) {
+  .document-detail-lineage-tables {
+    grid-template-columns: 1fr;
+  }
+}
+
+.document-detail-lineage-dir {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.document-detail-lineage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.document-detail-lineage-table th,
+.document-detail-lineage-table td {
+  border: 1px solid var(--color-border);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.document-detail-lineage-table th {
+  background: color-mix(in srgb, var(--color-bg-elevated) 88%, var(--color-border));
+}
+
+.document-detail-lineage-rm {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.document-detail-lineage-rm:hover {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+.document-detail-lineage-add {
+  margin-top: 8px;
+}
+
+.document-detail-lineage-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.document-detail-lineage-add-row .document-detail-info-input {
+  flex: 1 1 140px;
+  min-width: 120px;
+}

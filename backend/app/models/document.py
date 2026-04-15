@@ -26,6 +26,10 @@ class Document(Base):
     markdown: Mapped[str | None] = mapped_column(Text, nullable=True)
     parsing_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     doc_metadata: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
+    series_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    lifecycle_status: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -2,7 +2,7 @@
 from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -11,6 +11,7 @@ from sqlalchemy.sql import func
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
+from app.services.document_lifecycle import document_current_sql
 from app.models.knowledge_base import KnowledgeBase
 from app.models.api_model import ApiModel
 from app.schemas.knowledge_base import SearchRequest, SearchResponse, SearchResult
@@ -54,6 +55,7 @@ async def search_knowledge_base(
     search_type: str = "all",
     label_filters: dict[str, str | list[str]] | None = None,
     metadata_filters: dict[str, Any] | None = None,
+    include_historical_documents: bool = False,
     db: AsyncSession | None = None,
 ) -> SearchResponse:
     """Search chunks and FAQs using vector similarity. Caller must provide db session."""
@@ -101,6 +103,11 @@ async def search_knowledge_base(
         faq_meta_cond = _build_metadata_filter_conditions(FAQ.doc_metadata, metadata_filters)
         faq_where.append(faq_meta_cond)
 
+    if not include_historical_documents:
+        at_expr = func.now()
+        chunk_where.append(document_current_sql(at_expr))
+        faq_where.append(or_(FAQ.document_id.is_(None), document_current_sql(at_expr)))
+
     try:
         if search_type in ("all", "chunks"):
             chunk_query = (
@@ -139,6 +146,7 @@ async def search_knowledge_base(
                     FAQ.doc_metadata,
                     FAQ.embedding.cosine_distance(query_embedding).label("distance"),
                 )
+                .outerjoin(Document, FAQ.document_id == Document.id)
                 .where(*faq_where)
                 .order_by("distance")
                 .limit(top_k)

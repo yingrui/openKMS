@@ -193,6 +193,7 @@ class SearchRequest(BaseModel):
     search_type: str = "all"
     label_filters: dict[str, str | list[str]] | None = None
     metadata_filters: dict[str, Any] | None = None
+    include_historical_documents: bool = False
 
 
 class SearchResult(BaseModel):

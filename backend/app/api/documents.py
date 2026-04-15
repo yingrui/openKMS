@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi.responses import RedirectResponse
@@ -19,10 +20,16 @@ from app.database import get_db
 from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
+from app.models.document_relationship import DocumentRelationship
 from app.models.document_version import DocumentVersion
+from app.constants import DocumentRelationType
 from app.schemas.document import (
     DocumentInfoUpdateBody,
+    DocumentLifecycleUpdateBody,
     DocumentListResponse,
+    DocumentRelationshipCreateBody,
+    DocumentRelationshipEdge,
+    DocumentRelationshipsResponse,
     DocumentResponse,
     DocumentVersionCreateBody,
     DocumentVersionDetailResponse,
@@ -202,14 +209,16 @@ async def upload_document(
 
     upload_object(f"{file_hash}/original.{ext}", content)
 
+    new_id = str(uuid4())
     doc = Document(
-        id=str(uuid4()),
+        id=new_id,
         name=filename,
         file_type=filename.split(".")[-1].upper() if "." in filename else "PDF",
         size_bytes=len(content),
         channel_id=channel_id,
         file_hash=file_hash,
         status=DocumentStatus.UPLOADED,
+        series_id=new_id,
     )
     db.add(doc)
     await db.flush()
@@ -292,6 +301,143 @@ async def get_document(
 ):
     """Get document by ID."""
     return DocumentResponse.model_validate(doc)
+
+
+@router.patch("/{document_id}/lifecycle", response_model=DocumentResponse)
+async def patch_document_lifecycle(
+    document_id: str,
+    body: DocumentLifecycleUpdateBody,
+    doc: Document = Depends(get_scoped_document),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update policy lifecycle fields (series, validity window, lifecycle status)."""
+    data = body.model_dump(exclude_unset=True)
+    if "series_id" in data and data["series_id"] is not None:
+        sid = (data["series_id"] or "").strip()
+        if not sid:
+            raise HTTPException(status_code=400, detail="series_id cannot be empty")
+        doc.series_id = sid
+    if "effective_from" in data:
+        doc.effective_from = data["effective_from"]
+    if "effective_to" in data:
+        doc.effective_to = data["effective_to"]
+    if "lifecycle_status" in data:
+        doc.lifecycle_status = data["lifecycle_status"]
+    await db.commit()
+    await db.refresh(doc)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.get("/{document_id}/relationships", response_model=DocumentRelationshipsResponse)
+async def list_document_relationships(
+    document_id: str,
+    doc: Document = Depends(get_scoped_document),
+    db: AsyncSession = Depends(get_db),
+):
+    """List edges where this document is source (outgoing) or target (incoming)."""
+    out_result = await db.execute(
+        select(DocumentRelationship, Document.name)
+        .join(Document, DocumentRelationship.target_document_id == Document.id)
+        .where(DocumentRelationship.source_document_id == document_id)
+        .order_by(DocumentRelationship.created_at.desc())
+    )
+    outgoing: list[DocumentRelationshipEdge] = []
+    for rel, peer_name in out_result.all():
+        outgoing.append(
+            DocumentRelationshipEdge(
+                id=rel.id,
+                relation_type=rel.relation_type,
+                peer_document_id=rel.target_document_id,
+                peer_document_name=peer_name,
+                note=rel.note,
+                created_at=rel.created_at,
+            )
+        )
+
+    inc_result = await db.execute(
+        select(DocumentRelationship, Document.name)
+        .join(Document, DocumentRelationship.source_document_id == Document.id)
+        .where(DocumentRelationship.target_document_id == document_id)
+        .order_by(DocumentRelationship.created_at.desc())
+    )
+    incoming: list[DocumentRelationshipEdge] = []
+    for rel, peer_name in inc_result.all():
+        incoming.append(
+            DocumentRelationshipEdge(
+                id=rel.id,
+                relation_type=rel.relation_type,
+                peer_document_id=rel.source_document_id,
+                peer_document_name=peer_name,
+                note=rel.note,
+                created_at=rel.created_at,
+            )
+        )
+
+    return DocumentRelationshipsResponse(outgoing=outgoing, incoming=incoming)
+
+
+@router.post("/{document_id}/relationships", response_model=DocumentRelationshipEdge)
+async def create_document_relationship(
+    document_id: str,
+    body: DocumentRelationshipCreateBody,
+    request: Request,
+    doc: Document = Depends(get_scoped_document),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a directed edge from this document to the target (e.g. supersedes, amends)."""
+    if body.target_document_id == document_id:
+        raise HTTPException(status_code=400, detail="Cannot relate a document to itself")
+    try:
+        DocumentRelationType(body.relation_type)
+    except ValueError:
+        allowed = ", ".join(sorted(x.value for x in DocumentRelationType))
+        raise HTTPException(status_code=400, detail=f"relation_type must be one of: {allowed}")
+
+    peer = await db.get(Document, body.target_document_id)
+    if not peer:
+        raise HTTPException(status_code=404, detail="Target document not found")
+    await _require_document_in_scope(request, db, peer)
+
+    rel = DocumentRelationship(
+        id=str(uuid4()),
+        source_document_id=document_id,
+        target_document_id=body.target_document_id,
+        relation_type=body.relation_type,
+        note=body.note,
+    )
+    db.add(rel)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A relationship of this type between these documents already exists",
+        ) from None
+    await db.refresh(rel)
+    return DocumentRelationshipEdge(
+        id=rel.id,
+        relation_type=rel.relation_type,
+        peer_document_id=rel.target_document_id,
+        peer_document_name=peer.name,
+        note=rel.note,
+        created_at=rel.created_at,
+    )
+
+
+@router.delete("/{document_id}/relationships/{relationship_id}", status_code=204)
+async def delete_document_relationship(
+    document_id: str,
+    relationship_id: str,
+    doc: Document = Depends(get_scoped_document),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an outgoing relationship (source must be this document)."""
+    rel = await db.get(DocumentRelationship, relationship_id)
+    if not rel or rel.source_document_id != document_id:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+    await db.delete(rel)
+    await db.commit()
 
 
 @router.put("/{document_id}", response_model=DocumentResponse)

@@ -13,8 +13,38 @@ export interface DocumentResponse {
   markdown?: string | null;
   parsing_result?: Record<string, unknown> | null;
   metadata?: Record<string, unknown> | null;
+  series_id?: string;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  lifecycle_status?: string | null;
+  is_current_for_rag?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/** KB indexing / semantic search default: only `in_force` documents within effective dates; legacy rows treated as current. */
+export const DOCUMENT_RELATION_TYPES = [
+  'supersedes',
+  'amends',
+  'repeals',
+  'implements',
+  'see_also',
+] as const;
+
+export const DOCUMENT_LIFECYCLE_STATUSES = ['draft', 'in_force', 'superseded', 'withdrawn'] as const;
+
+export interface DocumentRelationshipEdge {
+  id: string;
+  relation_type: string;
+  peer_document_id: string;
+  peer_document_name?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+export interface DocumentRelationshipsResponse {
+  outgoing: DocumentRelationshipEdge[];
+  incoming: DocumentRelationshipEdge[];
 }
 
 export interface DocumentListResponse {
@@ -205,6 +235,85 @@ export async function extractDocumentMetadata(documentId: string): Promise<Extra
     throw new Error(typeof err.detail === 'string' ? err.detail : 'Extraction failed');
   }
   return res.json();
+}
+
+export async function patchDocumentLifecycle(
+  documentId: string,
+  params: {
+    series_id?: string;
+    effective_from?: string | null;
+    effective_to?: string | null;
+    lifecycle_status?: string | null;
+  }
+): Promise<DocumentResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/lifecycle`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(params),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
+  }
+  return res.json();
+}
+
+export async function fetchDocumentRelationships(
+  documentId: string
+): Promise<DocumentRelationshipsResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const msg = await res.text();
+    throw new Error(msg || `Failed to load relationships: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createDocumentRelationship(
+  documentId: string,
+  body: { target_document_id: string; relation_type: string; note?: string | null }
+): Promise<DocumentRelationshipEdge> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({
+      target_document_id: body.target_document_id,
+      relation_type: body.relation_type,
+      note: body.note ?? null,
+    }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to create relationship');
+  }
+  return res.json();
+}
+
+export async function deleteDocumentRelationship(
+  documentId: string,
+  relationshipId: string
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${config.apiUrl}/api/documents/${documentId}/relationships/${encodeURIComponent(relationshipId)}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Delete failed');
+  }
 }
 
 export async function updateDocument(

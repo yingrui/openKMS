@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { forceCollide } from 'd3-force';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Crosshair, Loader2, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Expand, Loader2, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchWikiSpace, fetchWikiSpaceGraph } from '../data/wikiSpacesApi';
 import type { WikiLinkGraphResponse } from '../data/wikiSpacesApi';
@@ -26,8 +26,9 @@ const COLORS = {
     nodeFocusStroke: '#818cf8',
     label: '#57534e',
     labelFocus: '#4338ca',
-    link: 'rgba(87, 83, 78, 0.55)',
-    linkArrow: 'rgba(87, 83, 78, 0.65)',
+    /** Low alpha so crossings don’t hide nodes/labels */
+    link: 'rgba(87, 83, 78, 0.28)',
+    linkArrow: 'rgba(87, 83, 78, 0.42)',
   },
   dark: {
     bg: '#0c0a09',
@@ -37,15 +38,154 @@ const COLORS = {
     nodeFocusStroke: '#a5b4fc',
     label: '#d6d3d1',
     labelFocus: '#c7d2fe',
-    link: 'rgba(214, 211, 209, 0.45)',
-    linkArrow: 'rgba(214, 211, 209, 0.6)',
+    link: 'rgba(214, 211, 209, 0.22)',
+    linkArrow: 'rgba(214, 211, 209, 0.38)',
   },
 } as const;
 
-function truncateLabel(s: string, maxChars: number): string {
-  const t = s.trim();
-  if (t.length <= maxChars) return t;
-  return `${t.slice(0, Math.max(0, maxChars - 1))}…`;
+/** Break label into lines that fit `maxWidth` (px); long words split by character. No truncation. */
+function wrapLabelLines(text: string, maxWidth: number, ctx: CanvasRenderingContext2D): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
+  const words = trimmed.split(/\s+/);
+  const lines: string[] = [];
+  let line = '';
+
+  const pushLongWord = (word: string) => {
+    let chunk = '';
+    for (const ch of word) {
+      const next = chunk + ch;
+      if (ctx.measureText(next).width <= maxWidth) {
+        chunk = next;
+      } else {
+        if (chunk) lines.push(chunk);
+        chunk = ch;
+      }
+    }
+    if (chunk) line = chunk;
+    else line = '';
+  };
+
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width <= maxWidth) {
+      line = test;
+      continue;
+    }
+    if (line) {
+      lines.push(line);
+      line = '';
+    }
+    if (ctx.measureText(word).width <= maxWidth) {
+      line = word;
+    } else {
+      pushLongWord(word);
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/**
+ * IDs of nodes closest to the layout centroid, dropping the farthest fraction so
+ * zoom-to-fit does not shrink the view to include lone outlier notes.
+ */
+function coreNodeIdsForSpatialZoom(
+  nodes: Array<{ id: string; x?: number; y?: number }>,
+  keepFraction = 0.82
+): Set<string> | null {
+  const positioned = nodes.filter(
+    (n) => typeof n.x === 'number' && typeof n.y === 'number' && Number.isFinite(n.x) && Number.isFinite(n.y)
+  );
+  if (positioned.length < 8) return null;
+
+  let cx = 0;
+  let cy = 0;
+  for (const n of positioned) {
+    cx += n.x!;
+    cy += n.y!;
+  }
+  cx /= positioned.length;
+  cy /= positioned.length;
+
+  const scored = positioned.map((n) => ({
+    id: n.id,
+    d: Math.hypot(n.x! - cx, n.y! - cy),
+  }));
+  scored.sort((a, b) => a.d - b.d);
+
+  const keep = Math.max(5, Math.ceil(positioned.length * keepFraction));
+  if (keep >= positioned.length) return null;
+
+  return new Set(scored.slice(0, keep).map((s) => s.id));
+}
+
+type GraphControlRef = ForceGraphMethods<GNode, GLink> & {
+  graphData?: () => { nodes: Array<GNode & { x?: number; y?: number }> };
+};
+
+type SimNode = GNode & { x?: number; y?: number; vx?: number; vy?: number };
+
+/**
+ * Pull every node toward the degree-weighted centroid so loosely linked / peripheral
+ * notes drift toward the main cluster. Plain d3.forceCenter only translates the whole graph.
+ */
+function forceHubPull(baseStrength: number) {
+  let nodes: SimNode[] = [];
+  const force = (alpha: number) => {
+    let wx = 0;
+    let wy = 0;
+    let wsum = 0;
+    for (const n of nodes) {
+      const { x, y } = n;
+      if (typeof x !== 'number' || typeof y !== 'number') continue;
+      const w = 1 + Math.max(0, n.deg);
+      wx += x * w;
+      wy += y * w;
+      wsum += w;
+    }
+    if (wsum < 1e-9) return;
+    const cx = wx / wsum;
+    const cy = wy / wsum;
+    const k = baseStrength * alpha;
+    for (const n of nodes) {
+      const { x, y } = n;
+      if (typeof x !== 'number' || typeof y !== 'number') continue;
+      const dx = cx - x;
+      const dy = cy - y;
+      n.vx = (n.vx ?? 0) + dx * k;
+      n.vy = (n.vy ?? 0) + dy * k;
+    }
+  };
+  force.initialize = (init: SimNode[], _random?: () => number) => {
+    nodes = init;
+  };
+  return force;
+}
+
+function zoomToFitMainCluster(
+  g: GraphControlRef,
+  durationMs: number,
+  paddingPx: number,
+  filterFocusId?: string
+): void {
+  if (typeof g.zoomToFit !== 'function') return;
+  if (filterFocusId) {
+    g.zoomToFit(durationMs, paddingPx, (n: object) => (n as GNode).id === filterFocusId);
+    return;
+  }
+  const raw = g.graphData?.();
+  const nodes = raw?.nodes;
+  if (!nodes?.length) {
+    g.zoomToFit(durationMs, paddingPx);
+    return;
+  }
+  const core = coreNodeIdsForSpatialZoom(nodes);
+  if (core && core.size >= 3) {
+    g.zoomToFit(durationMs, paddingPx, (n: object) => core.has((n as GNode).id));
+  } else {
+    g.zoomToFit(durationMs, paddingPx);
+  }
 }
 
 function useDataTheme(): 'light' | 'dark' {
@@ -150,33 +290,38 @@ export function WikiSpaceGraph() {
     if (!fg) return;
 
     const count = graphData.nodes.length;
-    /** Strong repulsion; scales with √n (reduces central “hairball”). */
-    const chargeMag = Math.min(1400, 220 + Math.sqrt(count) * 72);
+    /** Repulsion (slightly moderated so hub pull can bring satellites inward). */
+    const chargeMag = Math.min(1280, 200 + Math.sqrt(count) * 66) * 0.9;
     const charge = fg.d3Force('charge');
     if (charge && typeof charge.strength === 'function') {
       charge.strength(-chargeMag);
     }
 
-    const linkDist = 115 + Math.min(140, count * 0.55);
+    const linkDist = 105 + Math.min(120, count * 0.5);
     const linkF = fg.d3Force('link');
     if (linkF && typeof linkF.distance === 'function') {
       linkF.distance(linkDist);
     }
     if (linkF && typeof linkF.strength === 'function') {
-      linkF.strength(0.32);
+      linkF.strength(0.48);
     }
 
     const center = fg.d3Force('center');
     if (center && typeof center.strength === 'function') {
-      center.strength(0.04);
+      center.strength(0.1);
     }
+
+    /** Attract toward high-degree “mass” so isolated notes sit nearer the dense region. */
+    const hubStrength = Math.min(0.1, 0.032 + count * 0.00045);
+    fg.d3Force('hubPull', forceHubPull(hubStrength));
 
     const maxD = Math.max(1, maxDeg);
     const coll = forceCollide<GNode & { x?: number; y?: number }>()
       .radius((d: GNode) => {
         const t = Math.log1p(d.deg) / Math.log1p(maxD);
         const dotR = 3.5 + t * 6.5;
-        return 38 + dotR * 3.2;
+        /** Extra room for multi-line wrapped titles under the dot */
+        return 52 + dotR * 3.2;
       })
       .strength(1)
       .iterations(4);
@@ -199,14 +344,10 @@ export function WikiSpaceGraph() {
   );
 
   const handleEngineStop = useCallback(() => {
-    const g = graphRef.current;
+    const g = graphRef.current as GraphControlRef | undefined;
     if (!g || typeof g.zoomToFit !== 'function' || zoomedRef.current) return;
     zoomedRef.current = true;
-    if (focusId) {
-      g.zoomToFit(500, 72, (n: object) => (n as GNode).id === focusId);
-    } else {
-      g.zoomToFit(420, 56);
-    }
+    zoomToFitMainCluster(g, 480, 44, focusId);
   }, [focusId]);
 
   const paintNode = useCallback(
@@ -233,11 +374,13 @@ export function WikiSpaceGraph() {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       const maxW = 140 / globalScale;
-      let text = truncateLabel(n.name, 48);
-      while (text.length > 2 && ctx.measureText(text).width > maxW) {
-        text = `${text.slice(0, -2)}…`;
+      const lines = wrapLabelLines(n.name, maxW, ctx);
+      const lineGap = 1.1;
+      const lineHeight = fontSize * lineGap;
+      const top = y + r + 3 / globalScale;
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], x, top + i * lineHeight);
       }
-      ctx.fillText(text, x, y + r + 3 / globalScale);
     },
     [focusId, maxDeg, palette]
   );
@@ -269,7 +412,10 @@ export function WikiSpaceGraph() {
             <button
               type="button"
               className="wiki-space-graph-icon-btn"
-              onClick={() => graphRef.current?.d3ReheatSimulation?.()}
+              onClick={() => {
+                zoomedRef.current = false;
+                graphRef.current?.d3ReheatSimulation?.();
+              }}
               title="Reheat layout"
               aria-label="Reheat layout"
             >
@@ -278,11 +424,15 @@ export function WikiSpaceGraph() {
             <button
               type="button"
               className="wiki-space-graph-icon-btn"
-              onClick={() => graphRef.current?.centerAt(0, 0, 200)}
-              title="Center view"
-              aria-label="Center view"
+              onClick={() => {
+                const g = graphRef.current as GraphControlRef | undefined;
+                if (!g) return;
+                zoomToFitMainCluster(g, 420, 44, focusId);
+              }}
+              title="Fit main cluster (ignore distant notes)"
+              aria-label="Fit main cluster"
             >
-              <Crosshair size={16} />
+              <Expand size={16} />
             </button>
             <button
               type="button"
@@ -319,8 +469,8 @@ export function WikiSpaceGraph() {
                 backgroundColor={palette.bg}
                 nodeLabel={(n) => (n as GNode).name}
                 linkColor={() => palette.link}
-                linkWidth={1.15}
-                linkDirectionalArrowLength={4}
+                linkWidth={0.85}
+                linkDirectionalArrowLength={3.5}
                 linkDirectionalArrowRelPos={1}
                 linkDirectionalArrowColor={() => palette.linkArrow}
                 linkDirectionalParticles={0}
@@ -342,7 +492,8 @@ export function WikiSpaceGraph() {
           </div>
           {graphData.nodes.length > 0 && (
             <p className="wiki-space-graph-hint">
-              Drag to pan, scroll to zoom. Click a note to open it. Larger dots are more connected.
+              Drag to pan, scroll to zoom. Click a note to open it. Larger dots are more connected. If distant
+              notes shrink the view, use Fit main cluster (expand icon) to frame the dense part.
             </p>
           )}
         </div>

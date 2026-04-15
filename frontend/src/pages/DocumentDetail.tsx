@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -9,14 +9,20 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { toast } from 'sonner';
 import {
+  createDocumentRelationship,
   createDocumentVersion,
+  deleteDocumentRelationship,
+  DOCUMENT_LIFECYCLE_STATUSES,
+  DOCUMENT_RELATION_TYPES,
   extractDocumentMetadata,
   fetchDocumentById,
+  fetchDocumentRelationships,
   fetchPageIndex,
   getDocumentFileUrl,
   getDocumentFilesBaseUrl,
   getDocumentVersion,
   listDocumentVersions,
+  patchDocumentLifecycle,
   rebuildPageIndex,
   resetDocumentStatus,
   restoreDocumentMarkdown,
@@ -24,6 +30,7 @@ import {
   updateDocument,
   updateDocumentMetadata,
   updateDocumentMarkdown,
+  type DocumentRelationshipsResponse,
   type DocumentResponse,
   type DocumentVersionDetail,
   type DocumentVersionListItem,
@@ -319,6 +326,19 @@ export function DocumentDetail() {
     version_number: number;
   } | null>(null);
   const [versionSnapshotLoading, setVersionSnapshotLoading] = useState(false);
+  const [lineageRels, setLineageRels] = useState<DocumentRelationshipsResponse | null>(null);
+  const [lineageLoading, setLineageLoading] = useState(false);
+  const [lifecycleEdit, setLifecycleEdit] = useState(false);
+  const [editSeriesId, setEditSeriesId] = useState('');
+  const [editLifecycleStatus, setEditLifecycleStatus] = useState('');
+  const [editEffectiveFrom, setEditEffectiveFrom] = useState('');
+  const [editEffectiveTo, setEditEffectiveTo] = useState('');
+  const [lifecycleSaving, setLifecycleSaving] = useState(false);
+  const [newRelTarget, setNewRelTarget] = useState('');
+  const [newRelType, setNewRelType] = useState<string>('supersedes');
+  const [newRelNote, setNewRelNote] = useState('');
+  const [relSaving, setRelSaving] = useState(false);
+  const [lineageSectionOpen, setLineageSectionOpen] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -347,6 +367,7 @@ export function DocumentDetail() {
                 file_type: 'MD',
                 size_bytes: 0,
                 channel_id: '',
+                series_id: id!,
                 created_at: '',
                 updated_at: '',
               });
@@ -732,6 +753,100 @@ export function DocumentDetail() {
     refreshLatestVersionSnapshot();
   }, [id, docConfig, refreshLatestVersionSnapshot]);
 
+  const refreshLineage = useCallback(async () => {
+    if (!id || docConfig) return;
+    setLineageLoading(true);
+    try {
+      const data = await fetchDocumentRelationships(id);
+      setLineageRels(data);
+    } catch {
+      setLineageRels(null);
+    } finally {
+      setLineageLoading(false);
+    }
+  }, [id, docConfig]);
+
+  useEffect(() => {
+    setLineageSectionOpen(false);
+  }, [id]);
+
+  useEffect(() => {
+    if (!lineageSectionOpen || !id || docConfig) return;
+    void refreshLineage();
+  }, [lineageSectionOpen, id, docConfig, refreshLineage]);
+
+  useEffect(() => {
+    if (!lifecycleEdit || !document) return;
+    setEditSeriesId(document.series_id ?? document.id);
+    setEditLifecycleStatus(document.lifecycle_status ?? '');
+    const toLocal = (iso: string | null | undefined) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return '';
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    setEditEffectiveFrom(toLocal(document.effective_from ?? null));
+    setEditEffectiveTo(toLocal(document.effective_to ?? null));
+  }, [lifecycleEdit, document]);
+
+  const handleSaveLifecycle = useCallback(async () => {
+    if (!id) return;
+    setLifecycleSaving(true);
+    try {
+      const updated = await patchDocumentLifecycle(id, {
+        series_id: editSeriesId.trim() || undefined,
+        lifecycle_status: editLifecycleStatus || null,
+        effective_from: editEffectiveFrom ? new Date(editEffectiveFrom).toISOString() : null,
+        effective_to: editEffectiveTo ? new Date(editEffectiveTo).toISOString() : null,
+      });
+      setDocument(updated);
+      setLifecycleEdit(false);
+      toast.success('Lifecycle saved');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save');
+    } finally {
+      setLifecycleSaving(false);
+    }
+  }, [id, editSeriesId, editLifecycleStatus, editEffectiveFrom, editEffectiveTo]);
+
+  const handleAddRelationship = useCallback(async () => {
+    if (!id || !newRelTarget.trim()) {
+      toast.error('Target document ID required');
+      return;
+    }
+    setRelSaving(true);
+    try {
+      await createDocumentRelationship(id, {
+        target_document_id: newRelTarget.trim(),
+        relation_type: newRelType,
+        note: newRelNote.trim() || null,
+      });
+      setNewRelTarget('');
+      setNewRelNote('');
+      await refreshLineage();
+      toast.success('Relationship added');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to add');
+    } finally {
+      setRelSaving(false);
+    }
+  }, [id, newRelTarget, newRelType, newRelNote, refreshLineage]);
+
+  const handleDeleteRelationship = useCallback(
+    async (relationshipId: string) => {
+      if (!id) return;
+      try {
+        await deleteDocumentRelationship(id, relationshipId);
+        await refreshLineage();
+        toast.success('Removed');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to remove');
+      }
+    },
+    [id, refreshLineage]
+  );
+
   const showSaveVersionButton = useMemo(() => {
     if (docConfig || !document || versionSnapshotLoading) return false;
     if (!latestVersionSnapshot) return true;
@@ -1061,6 +1176,271 @@ export function DocumentDetail() {
                       </div>
                     </div>
                   </div>
+                  {!docConfig && (
+                    <>
+                      <hr className="document-detail-info-divider" />
+                      <div className="document-detail-lineage">
+                        <button
+                          type="button"
+                          className="document-detail-lineage-header"
+                          onClick={() => setLineageSectionOpen((o) => !o)}
+                          aria-expanded={lineageSectionOpen}
+                          aria-controls="document-lineage-panel"
+                          id="document-lineage-heading"
+                        >
+                          <GitBranch size={16} aria-hidden />
+                          <span>Lineage & lifecycle</span>
+                          {lineageSectionOpen ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
+                        </button>
+                        {!lineageSectionOpen && (
+                          <p className="document-detail-lineage-hint document-detail-muted">
+                            Policy series, validity window, relationships to other documents. Click to expand.
+                          </p>
+                        )}
+                        {lineageSectionOpen && (
+                          <div
+                            id="document-lineage-panel"
+                            className="document-detail-lineage-panel"
+                            role="region"
+                            aria-labelledby="document-lineage-heading"
+                          >
+                        <p className="document-detail-muted" style={{ marginBottom: '0.75rem' }}>
+                          Series groups policy editions. Relationships model supersedes, amendments, etc. Default KB search and
+                          indexing use only documents that are current for RAG (
+                          <code>in_force</code> within effective dates; unset lifecycle treated as current).
+                        </p>
+                        <dl className="document-detail-info-list document-detail-info-list--col">
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>Current for RAG</dt>
+                            <dd>
+                              {document.is_current_for_rag === false ? (
+                                <span className="doc-status doc-status-failed">No</span>
+                              ) : (
+                                <span className="doc-status doc-status-completed">Yes</span>
+                              )}
+                            </dd>
+                          </div>
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>Series ID</dt>
+                            <dd className="document-detail-info-hash" title={document.series_id ?? document.id}>
+                              {lifecycleEdit ? (
+                                <input
+                                  type="text"
+                                  className="document-detail-info-input"
+                                  value={editSeriesId}
+                                  onChange={(e) => setEditSeriesId(e.target.value)}
+                                  aria-label="Series ID"
+                                />
+                              ) : (
+                                document.series_id ?? document.id
+                              )}
+                            </dd>
+                          </div>
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>Lifecycle</dt>
+                            <dd>
+                              {lifecycleEdit ? (
+                                <select
+                                  className="document-detail-info-input"
+                                  value={editLifecycleStatus}
+                                  onChange={(e) => setEditLifecycleStatus(e.target.value)}
+                                  aria-label="Lifecycle status"
+                                >
+                                  <option value="">— (legacy / default current)</option>
+                                  {DOCUMENT_LIFECYCLE_STATUSES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                document.lifecycle_status ?? '—'
+                              )}
+                            </dd>
+                          </div>
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>Effective from</dt>
+                            <dd>
+                              {lifecycleEdit ? (
+                                <input
+                                  type="datetime-local"
+                                  className="document-detail-info-input"
+                                  value={editEffectiveFrom}
+                                  onChange={(e) => setEditEffectiveFrom(e.target.value)}
+                                  aria-label="Effective from"
+                                />
+                              ) : (
+                                (document.effective_from && new Date(document.effective_from).toLocaleString()) || '—'
+                              )}
+                            </dd>
+                          </div>
+                          <div className="document-detail-info-item document-detail-info-item--compact">
+                            <dt>Effective to</dt>
+                            <dd>
+                              {lifecycleEdit ? (
+                                <input
+                                  type="datetime-local"
+                                  className="document-detail-info-input"
+                                  value={editEffectiveTo}
+                                  onChange={(e) => setEditEffectiveTo(e.target.value)}
+                                  aria-label="Effective to"
+                                />
+                              ) : (
+                                (document.effective_to && new Date(document.effective_to).toLocaleString()) || '—'
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
+                        <div className="document-detail-metadata-edit-actions" style={{ marginBottom: '1rem' }}>
+                          {lifecycleEdit ? (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                onClick={() => void handleSaveLifecycle()}
+                                disabled={lifecycleSaving}
+                              >
+                                {lifecycleSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                Save lifecycle
+                              </button>
+                              <button
+                                type="button"
+                                className="document-detail-metadata-cancel-btn"
+                                onClick={() => setLifecycleEdit(false)}
+                                disabled={lifecycleSaving}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="document-detail-metadata-edit-btn"
+                              onClick={() => setLifecycleEdit(true)}
+                            >
+                              <Edit3 size={12} />
+                              Edit lifecycle
+                            </button>
+                          )}
+                        </div>
+
+                        <h4 className="document-detail-lineage-subtitle">Relationships</h4>
+                        {lineageLoading ? (
+                          <p className="document-detail-muted">Loading…</p>
+                        ) : (
+                          <>
+                            <div className="document-detail-lineage-tables">
+                              <div>
+                                <div className="document-detail-lineage-dir">Outgoing (this → other)</div>
+                                {lineageRels && lineageRels.outgoing.length > 0 ? (
+                                  <table className="document-detail-lineage-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Type</th>
+                                        <th>Other document</th>
+                                        <th />
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {lineageRels.outgoing.map((r) => (
+                                        <tr key={r.id}>
+                                          <td>{r.relation_type}</td>
+                                          <td>
+                                            <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
+                                          </td>
+                                          <td>
+                                            <button
+                                              type="button"
+                                              className="document-detail-lineage-rm"
+                                              title="Remove"
+                                              onClick={() => void handleDeleteRelationship(r.id)}
+                                            >
+                                              <Trash2 size={14} />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <p className="document-detail-muted">None</p>
+                                )}
+                              </div>
+                              <div>
+                                <div className="document-detail-lineage-dir">Incoming (other → this)</div>
+                                {lineageRels && lineageRels.incoming.length > 0 ? (
+                                  <table className="document-detail-lineage-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Type</th>
+                                        <th>Other document</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {lineageRels.incoming.map((r) => (
+                                        <tr key={r.id}>
+                                          <td>{r.relation_type}</td>
+                                          <td>
+                                            <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <p className="document-detail-muted">None</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="document-detail-lineage-add">
+                              <span className="document-detail-lineage-dir">Add outgoing edge</span>
+                              <div className="document-detail-lineage-add-row">
+                                <select
+                                  value={newRelType}
+                                  onChange={(e) => setNewRelType(e.target.value)}
+                                  className="document-detail-info-input"
+                                  aria-label="Relation type"
+                                >
+                                  {DOCUMENT_RELATION_TYPES.map((t) => (
+                                    <option key={t} value={t}>
+                                      {t}
+                                    </option>
+                                  ))}
+                                </select>
+                                <input
+                                  type="text"
+                                  className="document-detail-info-input"
+                                  placeholder="Target document ID"
+                                  value={newRelTarget}
+                                  onChange={(e) => setNewRelTarget(e.target.value)}
+                                  aria-label="Target document ID"
+                                />
+                                <input
+                                  type="text"
+                                  className="document-detail-info-input"
+                                  placeholder="Note (optional)"
+                                  value={newRelNote}
+                                  onChange={(e) => setNewRelNote(e.target.value)}
+                                  aria-label="Note"
+                                />
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => void handleAddRelationship()}
+                                  disabled={relSaving}
+                                >
+                                  {relSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                  Add
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                   {showMetadataSection && (
                     <>
                       <hr className="document-detail-info-divider" />

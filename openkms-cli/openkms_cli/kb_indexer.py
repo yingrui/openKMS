@@ -182,6 +182,7 @@ def run_indexer(
     kb_data = kb_resp.json()
     chunk_config = kb_data.get("chunk_config") or {}
     metadata_keys = kb_data.get("metadata_keys") or []
+    lifecycle_index_mode = chunk_config.get("lifecycle_index_mode", "current_only")
 
     if embedding_override:
         model_config = embedding_override
@@ -224,6 +225,8 @@ def run_indexer(
         if not doc_resp.ok:
             continue
         doc_data = doc_resp.json()
+        if lifecycle_index_mode == "current_only" and doc_data.get("is_current_for_rag") is False:
+            continue
         markdown = doc_data.get("markdown") or ""
         if not markdown.strip():
             continue
@@ -261,6 +264,19 @@ def run_indexer(
         if len(items) < limit:
             break
         offset += limit
+
+    if faqs and lifecycle_index_mode == "current_only":
+        kept_faqs: list[dict[str, Any]] = []
+        for f in faqs:
+            did = f.get("document_id")
+            if not did:
+                kept_faqs.append(f)
+                continue
+            dr = requests.get(f"{base}/api/documents/{did}", headers=headers, auth=basic, timeout=30)
+            if dr.ok and dr.json().get("is_current_for_rag") is False:
+                continue
+            kept_faqs.append(f)
+        faqs = kept_faqs
 
     def _save_chunks_to_output(
         chunks: list[dict],

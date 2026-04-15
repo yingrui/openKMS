@@ -25,6 +25,11 @@ class DocumentResponse(BaseModel):
     markdown: str | None = None
     parsing_result: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
+    series_id: str
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
+    lifecycle_status: str | None = None
+    is_current_for_rag: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -35,6 +40,8 @@ class DocumentResponse(BaseModel):
     def _map_doc_metadata(cls, data: Any) -> Any:
         """Map Document.doc_metadata to metadata (SQLAlchemy reserves 'metadata')."""
         if hasattr(data, "doc_metadata"):
+            from app.services.document_lifecycle import document_effective_for_rag
+
             return {
                 "id": data.id,
                 "name": data.name,
@@ -46,10 +53,46 @@ class DocumentResponse(BaseModel):
                 "markdown": data.markdown,
                 "parsing_result": data.parsing_result,
                 "metadata": data.doc_metadata,
+                "series_id": data.series_id,
+                "effective_from": data.effective_from,
+                "effective_to": data.effective_to,
+                "lifecycle_status": data.lifecycle_status,
+                "is_current_for_rag": document_effective_for_rag(data),
                 "created_at": data.created_at,
                 "updated_at": data.updated_at,
             }
         return data
+
+
+class DocumentLifecycleUpdateBody(BaseModel):
+    """Body for PATCH /documents/{id}/lifecycle (partial)."""
+
+    series_id: str | None = None
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
+    lifecycle_status: str | None = None
+
+
+class DocumentRelationshipCreateBody(BaseModel):
+    """Body for POST /documents/{id}/relationships — edge source is path document."""
+
+    target_document_id: str
+    relation_type: str
+    note: str | None = None
+
+
+class DocumentRelationshipEdge(BaseModel):
+    id: str
+    relation_type: str
+    peer_document_id: str
+    peer_document_name: str | None = None
+    note: str | None = None
+    created_at: datetime
+
+
+class DocumentRelationshipsResponse(BaseModel):
+    outgoing: list[DocumentRelationshipEdge]
+    incoming: list[DocumentRelationshipEdge]
 
 
 class MetadataUpdateBody(BaseModel):

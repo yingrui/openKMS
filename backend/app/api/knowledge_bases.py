@@ -645,6 +645,7 @@ async def semantic_search(
         search_type=body.search_type,
         label_filters=body.label_filters,
         metadata_filters=body.metadata_filters,
+        include_historical_documents=body.include_historical_documents,
         db=db,
     )
 
