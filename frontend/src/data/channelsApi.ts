@@ -1,6 +1,6 @@
 /** API for document channels (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface ExtractionSchemaField {
   key: string;
@@ -32,7 +32,7 @@ export interface ChannelNode {
 
 export async function fetchChannelById(channelId: string): Promise<ChannelNode> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -43,7 +43,7 @@ export async function fetchChannelById(channelId: string): Promise<ChannelNode> 
 export async function fetchDocumentChannels(): Promise<ChannelNode[]> {
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${config.apiUrl}/api/document-channels`, {
+    const res = await authAwareFetch(`${config.apiUrl}/api/document-channels`, {
       headers: { ...headers },
       credentials: 'include',
     });
@@ -71,7 +71,7 @@ export async function createDocumentChannel(params: {
 }): Promise<ChannelNode> {
   try {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`${config.apiUrl}/api/document-channels`, {
+    const res = await authAwareFetch(`${config.apiUrl}/api/document-channels`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(params),
@@ -104,7 +104,7 @@ export async function updateChannel(
 ): Promise<ChannelNode> {
   try {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
+    const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders },
       body: JSON.stringify(params),
@@ -126,7 +126,7 @@ export async function mergeChannels(params: {
   include_descendants?: boolean;
 }): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/document-channels/merge`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/merge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({
@@ -144,7 +144,7 @@ export async function mergeChannels(params: {
 
 export async function deleteChannel(channelId: string): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
     method: 'DELETE',
     headers: authHeaders,
     credentials: 'include',
@@ -157,7 +157,7 @@ export async function deleteChannel(channelId: string): Promise<void> {
 
 export async function reorderChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
   const authHeaders = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/document-channels/${channelId}/reorder`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}/reorder`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders },
     body: JSON.stringify({ direction }),

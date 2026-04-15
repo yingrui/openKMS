@@ -1,6 +1,6 @@
 /** API for evaluation datasets (KB search retrieval evaluation). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface EvaluationDatasetResponse {
   id: string;
@@ -104,7 +104,7 @@ export async function fetchEvaluationDatasets(params?: {
   const query = new URLSearchParams();
   if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -114,7 +114,7 @@ export async function fetchEvaluationDatasets(params?: {
 
 export async function fetchEvaluationDataset(id: string): Promise<EvaluationDatasetResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -128,7 +128,7 @@ export async function createEvaluationDataset(data: {
   description?: string | null;
 }): Promise<EvaluationDatasetResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -146,7 +146,7 @@ export async function updateEvaluationDataset(
   data: { name?: string; description?: string | null }
 ): Promise<EvaluationDatasetResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -161,7 +161,7 @@ export async function updateEvaluationDataset(
 
 export async function deleteEvaluationDataset(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -178,7 +178,7 @@ export async function fetchEvaluationDatasetItems(
   if (params?.offset != null) q.set('offset', String(params.offset));
   if (params?.limit != null) q.set('limit', String(params.limit));
   const qs = q.toString() ? `?${q.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -191,7 +191,7 @@ export async function createEvaluationDatasetItem(
   data: { query: string; expected_answer: string; topic?: string | null; sort_order?: number }
 ): Promise<EvaluationDatasetItemResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -210,7 +210,7 @@ export async function updateEvaluationDatasetItem(
   data: { query?: string; expected_answer?: string; topic?: string | null; sort_order?: number }
 ): Promise<EvaluationDatasetItemResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/${itemId}`,
     {
       method: 'PUT',
@@ -231,7 +231,7 @@ export async function deleteEvaluationDatasetItem(
   itemId: string
 ): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/${itemId}`,
     {
       method: 'DELETE',
@@ -249,7 +249,7 @@ export async function importEvaluationDatasetItems(
   const headers = await getAuthHeaders();
   const formData = new FormData();
   formData.append('file', file);
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/import`,
     {
       method: 'POST',
@@ -270,7 +270,7 @@ export async function runEvaluation(
   body?: { evaluation_type?: string }
 ): Promise<EvaluationRunResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/run`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
@@ -294,7 +294,7 @@ export async function listEvaluationRuns(
   if (params?.offset != null) q.set('offset', String(params.offset));
   if (params?.limit != null) q.set('limit', String(params.limit));
   const qs = q.toString() ? `?${q.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -307,7 +307,7 @@ export async function getEvaluationRun(
   runId: string
 ): Promise<EvaluationRunResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/${encodeURIComponent(runId)}`,
     { headers: { ...headers }, credentials: 'include' }
   );
@@ -317,7 +317,7 @@ export async function getEvaluationRun(
 
 export async function deleteEvaluationRun(datasetId: string, runId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/${encodeURIComponent(runId)}`,
     { method: 'DELETE', headers: { ...headers }, credentials: 'include' }
   );
@@ -331,7 +331,7 @@ export async function compareEvaluationRuns(
 ): Promise<EvaluationCompareResponse> {
   const headers = await getAuthHeaders();
   const q = new URLSearchParams({ run_a: runA, run_b: runB });
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/compare?${q.toString()}`,
     { headers: { ...headers }, credentials: 'include' }
   );

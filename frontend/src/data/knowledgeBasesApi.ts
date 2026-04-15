@@ -1,6 +1,6 @@
 /** API for knowledge base management (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 // --- Types ---
 
@@ -106,7 +106,7 @@ export interface AskResponse {
 
 export async function fetchKnowledgeBases(): Promise<KnowledgeBaseListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -116,7 +116,7 @@ export async function fetchKnowledgeBases(): Promise<KnowledgeBaseListResponse> 
 
 export async function fetchKnowledgeBase(kbId: string): Promise<KnowledgeBaseResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -129,7 +129,7 @@ export async function createKnowledgeBase(data: {
   description?: string;
 }): Promise<KnowledgeBaseResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -156,7 +156,7 @@ export async function updateKnowledgeBase(
   }
 ): Promise<KnowledgeBaseResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -171,7 +171,7 @@ export async function updateKnowledgeBase(
 
 export async function deleteKnowledgeBase(kbId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -186,7 +186,7 @@ export async function deleteKnowledgeBase(kbId: string): Promise<void> {
 
 export async function fetchKBDocuments(kbId: string): Promise<KBDocumentResponse[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -196,7 +196,7 @@ export async function fetchKBDocuments(kbId: string): Promise<KBDocumentResponse
 
 export async function addKBDocument(kbId: string, documentId: string): Promise<KBDocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ document_id: documentId }),
@@ -211,7 +211,7 @@ export async function addKBDocument(kbId: string, documentId: string): Promise<K
 
 export async function removeKBDocument(kbId: string, documentId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents/${documentId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents/${documentId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -233,7 +233,7 @@ export async function fetchFAQs(
   if (params?.offset != null) query.set('offset', String(params.offset));
   if (params?.limit != null) query.set('limit', String(params.limit));
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -251,7 +251,7 @@ export async function createFAQ(
   }
 ): Promise<FAQResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -274,7 +274,7 @@ export async function updateFAQ(
   }
 ): Promise<FAQResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -289,7 +289,7 @@ export async function updateFAQ(
 
 export async function deleteFAQ(kbId: string, faqId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -306,7 +306,7 @@ export async function generateFAQs(
   data: { document_ids: string[]; model_id: string; prompt?: string }
 ): Promise<FAQGenerateResult[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/generate`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -331,7 +331,7 @@ export async function saveFAQs(
   }[]
 ): Promise<FAQResponse[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/batch`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/batch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ items }),
@@ -355,7 +355,7 @@ export async function fetchChunks(
   if (params?.offset) query.set('offset', String(params.offset));
   if (params?.limit) query.set('limit', String(params.limit));
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -369,7 +369,7 @@ export async function updateChunk(
   data: { content?: string; doc_metadata?: Record<string, unknown> | null }
 ): Promise<ChunkResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -384,7 +384,7 @@ export async function updateChunk(
 
 export async function deleteAllChunks(kbId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -408,7 +408,7 @@ export async function searchKnowledgeBase(
   }
 ): Promise<SearchResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/search`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -428,7 +428,7 @@ export async function askQuestion(
   data: { question: string; conversation_history?: Array<{ role: string; content: string }> }
 ): Promise<AskResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/ask`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/ask`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),

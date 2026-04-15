@@ -1,6 +1,6 @@
 /** API for datasets. */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface DatasetResponse {
   id: string;
@@ -28,7 +28,7 @@ export async function fetchDatasets(params?: { data_source_id?: string }): Promi
   const qs = params?.data_source_id
     ? `?data_source_id=${encodeURIComponent(params.data_source_id)}`
     : '';
-  const res = await fetch(`${config.apiUrl}/api/datasets${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -38,7 +38,7 @@ export async function fetchDatasets(params?: { data_source_id?: string }): Promi
 
 export async function fetchTablesFromSource(dataSourceId: string): Promise<TableInfo[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/datasets/from-source/${dataSourceId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets/from-source/${dataSourceId}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -53,7 +53,7 @@ export async function createDataset(data: {
   display_name?: string;
 }): Promise<DatasetResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/datasets`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -71,7 +71,7 @@ export async function updateDataset(
   data: { schema_name?: string; table_name?: string; display_name?: string }
 ): Promise<DatasetResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -86,7 +86,7 @@ export async function updateDataset(
 
 export async function fetchDataset(id: string): Promise<DatasetResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -120,7 +120,7 @@ export async function fetchDatasetRows(
   if (params?.limit != null) qs.set('limit', String(params.limit));
   if (params?.offset != null) qs.set('offset', String(params.offset));
   const suffix = qs.toString() ? `?${qs}` : '';
-  const res = await fetch(`${config.apiUrl}/api/datasets/${id}/rows${suffix}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets/${id}/rows${suffix}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -133,7 +133,7 @@ export async function fetchDatasetRows(
 
 export async function fetchDatasetMetadata(id: string): Promise<ColumnMetadata[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/datasets/${id}/metadata`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets/${id}/metadata`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -146,7 +146,7 @@ export async function fetchDatasetMetadata(id: string): Promise<ColumnMetadata[]
 
 export async function deleteDataset(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/datasets/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',

@@ -1,6 +1,6 @@
 /** API for data sources. */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface DataSourceResponse {
   id: string;
@@ -23,7 +23,7 @@ export interface DataSourceListResponse {
 
 export async function fetchDataSources(): Promise<DataSourceListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -33,7 +33,7 @@ export async function fetchDataSources(): Promise<DataSourceListResponse> {
 
 export async function fetchDataSource(id: string): Promise<DataSourceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -52,7 +52,7 @@ export async function createDataSource(data: {
   options?: Record<string, unknown>;
 }): Promise<DataSourceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -79,7 +79,7 @@ export async function updateDataSource(
   }
 ): Promise<DataSourceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -94,7 +94,7 @@ export async function updateDataSource(
 
 export async function deleteDataSource(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -107,7 +107,7 @@ export async function deleteDataSource(id: string): Promise<void> {
 
 export async function testDataSourceConnection(id: string): Promise<{ ok: boolean; message: string }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources/${id}/test`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}/test`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -119,7 +119,7 @@ export async function testDataSourceConnection(id: string): Promise<{ ok: boolea
 
 export async function neo4jDeleteAll(id: string): Promise<{ ok: boolean; message: string }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/data-sources/${id}/neo4j-delete-all`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}/neo4j-delete-all`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',

@@ -27,6 +27,5 @@ class DocumentRelationType(StrEnum):
 
     SUPERSEDES = "supersedes"
     AMENDS = "amends"
-    REPEALS = "repeals"
     IMPLEMENTS = "implements"
     SEE_ALSO = "see_also"

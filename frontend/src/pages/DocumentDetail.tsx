@@ -1176,271 +1176,6 @@ export function DocumentDetail() {
                       </div>
                     </div>
                   </div>
-                  {!docConfig && (
-                    <>
-                      <hr className="document-detail-info-divider" />
-                      <div className="document-detail-lineage">
-                        <button
-                          type="button"
-                          className="document-detail-lineage-header"
-                          onClick={() => setLineageSectionOpen((o) => !o)}
-                          aria-expanded={lineageSectionOpen}
-                          aria-controls="document-lineage-panel"
-                          id="document-lineage-heading"
-                        >
-                          <GitBranch size={16} aria-hidden />
-                          <span>Lineage & lifecycle</span>
-                          {lineageSectionOpen ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
-                        </button>
-                        {!lineageSectionOpen && (
-                          <p className="document-detail-lineage-hint document-detail-muted">
-                            Policy series, validity window, relationships to other documents. Click to expand.
-                          </p>
-                        )}
-                        {lineageSectionOpen && (
-                          <div
-                            id="document-lineage-panel"
-                            className="document-detail-lineage-panel"
-                            role="region"
-                            aria-labelledby="document-lineage-heading"
-                          >
-                        <p className="document-detail-muted" style={{ marginBottom: '0.75rem' }}>
-                          Series groups policy editions. Relationships model supersedes, amendments, etc. Default KB search and
-                          indexing use only documents that are current for RAG (
-                          <code>in_force</code> within effective dates; unset lifecycle treated as current).
-                        </p>
-                        <dl className="document-detail-info-list document-detail-info-list--col">
-                          <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>Current for RAG</dt>
-                            <dd>
-                              {document.is_current_for_rag === false ? (
-                                <span className="doc-status doc-status-failed">No</span>
-                              ) : (
-                                <span className="doc-status doc-status-completed">Yes</span>
-                              )}
-                            </dd>
-                          </div>
-                          <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>Series ID</dt>
-                            <dd className="document-detail-info-hash" title={document.series_id ?? document.id}>
-                              {lifecycleEdit ? (
-                                <input
-                                  type="text"
-                                  className="document-detail-info-input"
-                                  value={editSeriesId}
-                                  onChange={(e) => setEditSeriesId(e.target.value)}
-                                  aria-label="Series ID"
-                                />
-                              ) : (
-                                document.series_id ?? document.id
-                              )}
-                            </dd>
-                          </div>
-                          <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>Lifecycle</dt>
-                            <dd>
-                              {lifecycleEdit ? (
-                                <select
-                                  className="document-detail-info-input"
-                                  value={editLifecycleStatus}
-                                  onChange={(e) => setEditLifecycleStatus(e.target.value)}
-                                  aria-label="Lifecycle status"
-                                >
-                                  <option value="">— (legacy / default current)</option>
-                                  {DOCUMENT_LIFECYCLE_STATUSES.map((s) => (
-                                    <option key={s} value={s}>
-                                      {s}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                document.lifecycle_status ?? '—'
-                              )}
-                            </dd>
-                          </div>
-                          <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>Effective from</dt>
-                            <dd>
-                              {lifecycleEdit ? (
-                                <input
-                                  type="datetime-local"
-                                  className="document-detail-info-input"
-                                  value={editEffectiveFrom}
-                                  onChange={(e) => setEditEffectiveFrom(e.target.value)}
-                                  aria-label="Effective from"
-                                />
-                              ) : (
-                                (document.effective_from && new Date(document.effective_from).toLocaleString()) || '—'
-                              )}
-                            </dd>
-                          </div>
-                          <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>Effective to</dt>
-                            <dd>
-                              {lifecycleEdit ? (
-                                <input
-                                  type="datetime-local"
-                                  className="document-detail-info-input"
-                                  value={editEffectiveTo}
-                                  onChange={(e) => setEditEffectiveTo(e.target.value)}
-                                  aria-label="Effective to"
-                                />
-                              ) : (
-                                (document.effective_to && new Date(document.effective_to).toLocaleString()) || '—'
-                              )}
-                            </dd>
-                          </div>
-                        </dl>
-                        <div className="document-detail-metadata-edit-actions" style={{ marginBottom: '1rem' }}>
-                          {lifecycleEdit ? (
-                            <>
-                              <button
-                                type="button"
-                                className="btn btn-primary btn-sm"
-                                onClick={() => void handleSaveLifecycle()}
-                                disabled={lifecycleSaving}
-                              >
-                                {lifecycleSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                Save lifecycle
-                              </button>
-                              <button
-                                type="button"
-                                className="document-detail-metadata-cancel-btn"
-                                onClick={() => setLifecycleEdit(false)}
-                                disabled={lifecycleSaving}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="document-detail-metadata-edit-btn"
-                              onClick={() => setLifecycleEdit(true)}
-                            >
-                              <Edit3 size={12} />
-                              Edit lifecycle
-                            </button>
-                          )}
-                        </div>
-
-                        <h4 className="document-detail-lineage-subtitle">Relationships</h4>
-                        {lineageLoading ? (
-                          <p className="document-detail-muted">Loading…</p>
-                        ) : (
-                          <>
-                            <div className="document-detail-lineage-tables">
-                              <div>
-                                <div className="document-detail-lineage-dir">Outgoing (this → other)</div>
-                                {lineageRels && lineageRels.outgoing.length > 0 ? (
-                                  <table className="document-detail-lineage-table">
-                                    <thead>
-                                      <tr>
-                                        <th>Type</th>
-                                        <th>Other document</th>
-                                        <th />
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {lineageRels.outgoing.map((r) => (
-                                        <tr key={r.id}>
-                                          <td>{r.relation_type}</td>
-                                          <td>
-                                            <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
-                                          </td>
-                                          <td>
-                                            <button
-                                              type="button"
-                                              className="document-detail-lineage-rm"
-                                              title="Remove"
-                                              onClick={() => void handleDeleteRelationship(r.id)}
-                                            >
-                                              <Trash2 size={14} />
-                                            </button>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                ) : (
-                                  <p className="document-detail-muted">None</p>
-                                )}
-                              </div>
-                              <div>
-                                <div className="document-detail-lineage-dir">Incoming (other → this)</div>
-                                {lineageRels && lineageRels.incoming.length > 0 ? (
-                                  <table className="document-detail-lineage-table">
-                                    <thead>
-                                      <tr>
-                                        <th>Type</th>
-                                        <th>Other document</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {lineageRels.incoming.map((r) => (
-                                        <tr key={r.id}>
-                                          <td>{r.relation_type}</td>
-                                          <td>
-                                            <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
-                                          </td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                ) : (
-                                  <p className="document-detail-muted">None</p>
-                                )}
-                              </div>
-                            </div>
-                            <div className="document-detail-lineage-add">
-                              <span className="document-detail-lineage-dir">Add outgoing edge</span>
-                              <div className="document-detail-lineage-add-row">
-                                <select
-                                  value={newRelType}
-                                  onChange={(e) => setNewRelType(e.target.value)}
-                                  className="document-detail-info-input"
-                                  aria-label="Relation type"
-                                >
-                                  {DOCUMENT_RELATION_TYPES.map((t) => (
-                                    <option key={t} value={t}>
-                                      {t}
-                                    </option>
-                                  ))}
-                                </select>
-                                <input
-                                  type="text"
-                                  className="document-detail-info-input"
-                                  placeholder="Target document ID"
-                                  value={newRelTarget}
-                                  onChange={(e) => setNewRelTarget(e.target.value)}
-                                  aria-label="Target document ID"
-                                />
-                                <input
-                                  type="text"
-                                  className="document-detail-info-input"
-                                  placeholder="Note (optional)"
-                                  value={newRelNote}
-                                  onChange={(e) => setNewRelNote(e.target.value)}
-                                  aria-label="Note"
-                                />
-                                <button
-                                  type="button"
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => void handleAddRelationship()}
-                                  disabled={relSaving}
-                                >
-                                  {relSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                  Add
-                                </button>
-                              </div>
-                            </div>
-                          </>
-                        )}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
                   {showMetadataSection && (
                     <>
                       <hr className="document-detail-info-divider" />
@@ -1736,6 +1471,282 @@ export function DocumentDetail() {
                             )}
                             <span>{extracting ? 'Extracting…' : 'Extract'}</span>
                           </button>
+                          )}
+                        </div>
+
+                        <hr className="document-detail-info-divider document-detail-metadata-lineage-divider" />
+                        <div className="document-detail-lineage document-detail-lineage--in-metadata">
+                          <button
+                            type="button"
+                            className="document-detail-lineage-header"
+                            onClick={() => setLineageSectionOpen((o) => !o)}
+                            aria-expanded={lineageSectionOpen}
+                            aria-controls="document-lineage-panel"
+                            id="document-lineage-heading"
+                          >
+                            <GitBranch size={16} aria-hidden />
+                            <span>Lineage & lifecycle</span>
+                            {lineageSectionOpen ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
+                          </button>
+                          {!lineageSectionOpen && (
+                            <p className="document-detail-lineage-hint document-detail-muted">
+                              Policy series, validity window, relationships to other documents. Click to expand.
+                            </p>
+                          )}
+                          {lineageSectionOpen && document && (
+                            <div
+                              id="document-lineage-panel"
+                              className="document-detail-lineage-panel"
+                              role="region"
+                              aria-labelledby="document-lineage-heading"
+                            >
+                              <p className="document-detail-lineage-intro document-detail-muted">
+                                <strong>Series</strong> groups editions of one policy. <strong>Relationships</strong> link this file to
+                                others (replaces, amends, and so on).
+                              </p>
+
+                              <div className="document-detail-lineage-lifecycle-card">
+                                <div className="document-detail-lineage-lifecycle-toolbar">
+                                  <span className="document-detail-lineage-lifecycle-toolbar-label">Lifecycle</span>
+                                  <div className="document-detail-lineage-lifecycle-toolbar-actions">
+                                    {lifecycleEdit ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          className="btn btn-primary btn-sm"
+                                          onClick={() => void handleSaveLifecycle()}
+                                          disabled={lifecycleSaving}
+                                        >
+                                          {lifecycleSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                          Save
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="document-detail-metadata-cancel-btn"
+                                          onClick={() => setLifecycleEdit(false)}
+                                          disabled={lifecycleSaving}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="document-detail-metadata-edit-btn"
+                                        onClick={() => setLifecycleEdit(true)}
+                                      >
+                                        <Edit3 size={12} />
+                                        Edit
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="document-detail-lineage-field-grid">
+                                  <div className="document-detail-lineage-field">
+                                    <span className="document-detail-lineage-field-label">Applicable</span>
+                                    <div>
+                                      {document.is_current_for_rag === false ? (
+                                        <span className="document-detail-lineage-pill document-detail-lineage-pill--off">
+                                          Not applicable
+                                        </span>
+                                      ) : (
+                                        <span className="document-detail-lineage-pill document-detail-lineage-pill--on">
+                                          Applicable
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="document-detail-lineage-field">
+                                    <span className="document-detail-lineage-field-label">Lifecycle status</span>
+                                    <div className="document-detail-lineage-field-value">
+                                      {lifecycleEdit ? (
+                                        <select
+                                          className="document-detail-info-input document-detail-lineage-input"
+                                          value={editLifecycleStatus}
+                                          onChange={(e) => setEditLifecycleStatus(e.target.value)}
+                                          aria-label="Lifecycle status"
+                                        >
+                                          <option value="">— (unset)</option>
+                                          {DOCUMENT_LIFECYCLE_STATUSES.map((s) => (
+                                            <option key={s} value={s}>
+                                              {s}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      ) : (
+                                        <span>{document.lifecycle_status ?? '—'}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="document-detail-lineage-field document-detail-lineage-field--full">
+                                    <span className="document-detail-lineage-field-label">Series ID</span>
+                                    <div className="document-detail-lineage-field-value">
+                                      {lifecycleEdit ? (
+                                        <input
+                                          type="text"
+                                          className="document-detail-info-input document-detail-lineage-input"
+                                          value={editSeriesId}
+                                          onChange={(e) => setEditSeriesId(e.target.value)}
+                                          aria-label="Series ID"
+                                        />
+                                      ) : (
+                                        <code className="document-detail-lineage-series-id" title={document.series_id ?? document.id}>
+                                          {document.series_id ?? document.id}
+                                        </code>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="document-detail-lineage-field">
+                                    <span className="document-detail-lineage-field-label">Effective from</span>
+                                    <div className="document-detail-lineage-field-value">
+                                      {lifecycleEdit ? (
+                                        <input
+                                          type="datetime-local"
+                                          className="document-detail-info-input document-detail-lineage-input"
+                                          value={editEffectiveFrom}
+                                          onChange={(e) => setEditEffectiveFrom(e.target.value)}
+                                          aria-label="Effective from"
+                                        />
+                                      ) : (
+                                        <span>{(document.effective_from && new Date(document.effective_from).toLocaleString()) || '—'}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="document-detail-lineage-field">
+                                    <span className="document-detail-lineage-field-label">Effective to</span>
+                                    <div className="document-detail-lineage-field-value">
+                                      {lifecycleEdit ? (
+                                        <input
+                                          type="datetime-local"
+                                          className="document-detail-info-input document-detail-lineage-input"
+                                          value={editEffectiveTo}
+                                          onChange={(e) => setEditEffectiveTo(e.target.value)}
+                                          aria-label="Effective to"
+                                        />
+                                      ) : (
+                                        <span>{(document.effective_to && new Date(document.effective_to).toLocaleString()) || '—'}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="document-detail-lineage-rel-block">
+                              <h4 className="document-detail-lineage-section-title">Relationships</h4>
+                              {lineageLoading ? (
+                                <p className="document-detail-muted">Loading…</p>
+                              ) : (
+                                <>
+                                  <div className="document-detail-lineage-tables">
+                                    <div>
+                                      <div className="document-detail-lineage-dir">Outgoing (this → other)</div>
+                                      {lineageRels && lineageRels.outgoing.length > 0 ? (
+                                        <table className="document-detail-lineage-table">
+                                          <thead>
+                                            <tr>
+                                              <th>Type</th>
+                                              <th>Other document</th>
+                                              <th />
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {lineageRels.outgoing.map((r) => (
+                                              <tr key={r.id}>
+                                                <td>{r.relation_type}</td>
+                                                <td>
+                                                  <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
+                                                </td>
+                                                <td>
+                                                  <button
+                                                    type="button"
+                                                    className="document-detail-lineage-rm"
+                                                    title="Remove"
+                                                    onClick={() => void handleDeleteRelationship(r.id)}
+                                                  >
+                                                    <Trash2 size={14} />
+                                                  </button>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      ) : (
+                                        <p className="document-detail-muted document-detail-lineage-empty">No outgoing links.</p>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="document-detail-lineage-dir">Incoming (other → this)</div>
+                                      {lineageRels && lineageRels.incoming.length > 0 ? (
+                                        <table className="document-detail-lineage-table">
+                                          <thead>
+                                            <tr>
+                                              <th>Type</th>
+                                              <th>Other document</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {lineageRels.incoming.map((r) => (
+                                              <tr key={r.id}>
+                                                <td>{r.relation_type}</td>
+                                                <td>
+                                                  <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      ) : (
+                                        <p className="document-detail-muted document-detail-lineage-empty">No incoming links.</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="document-detail-lineage-add">
+                                    <span className="document-detail-lineage-dir">Add outgoing edge</span>
+                                    <div className="document-detail-lineage-add-row">
+                                      <select
+                                        value={newRelType}
+                                        onChange={(e) => setNewRelType(e.target.value)}
+                                        className="document-detail-info-input"
+                                        aria-label="Relation type"
+                                      >
+                                        {DOCUMENT_RELATION_TYPES.map((t) => (
+                                          <option key={t} value={t}>
+                                            {t}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <input
+                                        type="text"
+                                        className="document-detail-info-input"
+                                        placeholder="Target document ID"
+                                        value={newRelTarget}
+                                        onChange={(e) => setNewRelTarget(e.target.value)}
+                                        aria-label="Target document ID"
+                                      />
+                                      <input
+                                        type="text"
+                                        className="document-detail-info-input"
+                                        placeholder="Note (optional)"
+                                        value={newRelNote}
+                                        onChange={(e) => setNewRelNote(e.target.value)}
+                                        aria-label="Note"
+                                      />
+                                      <button
+                                        type="button"
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => void handleAddRelationship()}
+                                        disabled={relSaving}
+                                      >
+                                        {relSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                        Add
+                                      </button>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>

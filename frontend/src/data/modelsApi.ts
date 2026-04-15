@@ -1,6 +1,6 @@
 /** API for model / API provider registry (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface ModelCategory {
   id: string;
@@ -47,7 +47,7 @@ export interface ApiModelUpdate {
 
 export async function fetchModelCategories(): Promise<ModelCategory[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/models/categories`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/categories`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -67,7 +67,7 @@ export async function fetchModels(params?: {
   if (params?.provider_id) query.set('provider_id', params.provider_id);
   if (params?.search) query.set('search', params.search);
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/models${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -77,7 +77,7 @@ export async function fetchModels(params?: {
 
 export async function fetchModelById(id: string): Promise<ApiModelResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/models/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -87,7 +87,7 @@ export async function fetchModelById(id: string): Promise<ApiModelResponse> {
 
 export async function createModel(data: ApiModelCreate): Promise<ApiModelResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/models`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -102,7 +102,7 @@ export async function createModel(data: ApiModelCreate): Promise<ApiModelRespons
 
 export async function updateModel(id: string, data: ApiModelUpdate): Promise<ApiModelResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/models/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -117,7 +117,7 @@ export async function updateModel(id: string, data: ApiModelUpdate): Promise<Api
 
 export async function deleteModel(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/models/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -144,7 +144,7 @@ export interface ModelTestResponse {
 
 export async function testModel(id: string, data: ModelTestRequest): Promise<ModelTestResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/models/${id}/test`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}/test`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),

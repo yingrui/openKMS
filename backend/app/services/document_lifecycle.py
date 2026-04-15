@@ -1,4 +1,4 @@
-"""Document policy lifecycle: validity windows and RAG/index eligibility."""
+"""Document policy lifecycle: validity windows and default knowledge-base search/index eligibility."""
 from datetime import datetime, timezone
 
 from sqlalchemy import and_, or_
@@ -9,7 +9,7 @@ from app.models.document import Document
 
 
 def document_current_sql(at_expr: ColumnElement) -> ColumnElement:
-    """SQL predicate: document row is eligible for default RAG at ``at_expr`` (timestamptz)."""
+    """SQL predicate: document row is currently applicable for default KB search/index at ``at_expr`` (timestamptz)."""
     return or_(
         Document.lifecycle_status.is_(None),
         and_(
@@ -22,9 +22,9 @@ def document_current_sql(at_expr: ColumnElement) -> ColumnElement:
 
 def document_effective_for_rag(doc: Document, at: datetime | None = None) -> bool:
     """
-    Whether a document should be included in default KB indexing and semantic search.
+    Whether a document is currently applicable for default KB indexing and semantic search.
 
-    Legacy rows (lifecycle_status is None) are treated as current so existing deployments
+    Legacy rows (lifecycle_status is None) are treated as applicable so existing deployments
     behave unchanged. draft / superseded / withdrawn are excluded. in_force requires
     optional effective_from / effective_to bounds.
     """

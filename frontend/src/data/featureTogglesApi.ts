@@ -1,6 +1,6 @@
 /** API client for feature toggles (backend-persisted). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface FeatureToggles {
   articles: boolean;
@@ -13,7 +13,7 @@ export interface FeatureToggles {
 
 export async function fetchToggles(): Promise<FeatureToggles> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/feature-toggles`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/feature-toggles`, {
     headers,
     credentials: 'include',
   });
@@ -26,7 +26,7 @@ export async function fetchToggles(): Promise<FeatureToggles> {
 
 export async function updateToggles(toggles: Partial<FeatureToggles>): Promise<FeatureToggles> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/feature-toggles`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/feature-toggles`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(toggles),

@@ -1,6 +1,6 @@
 /** API for ontology (object types, link types, instances). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 // --- Object Type ---
 
@@ -36,7 +36,7 @@ export async function fetchObjectTypes(params?: { countFromNeo4j?: boolean; isMa
   if (params?.countFromNeo4j) searchParams.set('count_from_neo4j', 'true');
   if (params?.isMasterData !== undefined) searchParams.set('is_master_data', String(params.isMasterData));
   const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/object-types${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -50,7 +50,7 @@ export async function fetchObjectType(
 ): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
   const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
-  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -68,7 +68,7 @@ export async function createObjectType(data: {
   properties?: PropertyDef[];
 }): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -86,7 +86,7 @@ export async function updateObjectType(
   data: { name?: string; description?: string; dataset_id?: string; key_property?: string; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -104,7 +104,7 @@ export async function indexObjectTypesToNeo4j(neo4jDataSourceId: string): Promis
   nodes_created: number;
 }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types/index-to-neo4j`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/index-to-neo4j`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
@@ -119,7 +119,7 @@ export async function indexObjectTypesToNeo4j(neo4jDataSourceId: string): Promis
 
 export async function executeCypherQuery(cypher: string): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/ontology/explore`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/ontology/explore`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ cypher }),
@@ -137,7 +137,7 @@ export async function indexLinkTypesToNeo4j(neo4jDataSourceId: string): Promise<
   relationships_created: number;
 }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types/index-to-neo4j`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/index-to-neo4j`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
@@ -152,7 +152,7 @@ export async function indexLinkTypesToNeo4j(neo4jDataSourceId: string): Promise<
 
 export async function deleteObjectType(objectTypeId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -184,7 +184,7 @@ export async function fetchObjectInstances(
 ): Promise<ObjectInstanceListResponse> {
   const headers = await getAuthHeaders();
   const qs = params?.search ? `?search=${encodeURIComponent(params.search)}` : '';
-  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -197,7 +197,7 @@ export async function createObjectInstance(
   data: Record<string, unknown>
 ): Promise<ObjectInstanceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ data }),
@@ -216,7 +216,7 @@ export async function updateObjectInstance(
   data: Record<string, unknown>
 ): Promise<ObjectInstanceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/object-types/${objectTypeId}/objects/${objectId}`,
     {
       method: 'PUT',
@@ -237,7 +237,7 @@ export async function deleteObjectInstance(
   objectId: string
 ): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/object-types/${objectTypeId}/objects/${objectId}`,
     {
       method: 'DELETE',
@@ -285,7 +285,7 @@ export interface LinkTypeListResponse {
 export async function fetchLinkTypes(params?: { countFromNeo4j?: boolean }): Promise<LinkTypeListResponse> {
   const headers = await getAuthHeaders();
   const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
-  const res = await fetch(`${config.apiUrl}/api/link-types${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -299,7 +299,7 @@ export async function fetchLinkType(
 ): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
   const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
-  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -320,7 +320,7 @@ export async function createLinkType(data: {
   target_dataset_column?: string;
 }): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -349,7 +349,7 @@ export async function updateLinkType(
   }
 ): Promise<LinkTypeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -364,7 +364,7 @@ export async function updateLinkType(
 
 export async function deleteLinkType(linkTypeId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -397,7 +397,7 @@ export interface LinkInstanceListResponse {
 
 export async function fetchLinkInstances(linkTypeId: string): Promise<LinkInstanceListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -410,7 +410,7 @@ export async function createLinkInstance(
   data: { source_object_id: string; target_object_id: string }
 ): Promise<LinkInstanceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -425,7 +425,7 @@ export async function createLinkInstance(
 
 export async function deleteLinkInstance(linkTypeId: string, linkId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/link-types/${linkTypeId}/links/${linkId}`,
     {
       method: 'DELETE',

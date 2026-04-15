@@ -11,6 +11,7 @@
 | Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
+| Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; **`401`** with invalid/expired JWT clears SPA session so **Authentication Required** is shown (avoids raw JSON like `{"detail":"Invalid or expired token"}` on e.g. document channel lists) |
 | Route code splitting | ✅ | React.lazy for heavy routes (ObjectExplorer, Models, Pipelines, etc.) |
 | Typecheck | ✅ | `npm run typecheck` (tsc --noEmit) |
 
@@ -25,7 +26,7 @@
 | Document upload | ✅ | Upload to channel via modal (choose files, drag-and-drop); POST `/api/documents/upload` with `channel_id`; stores file to S3 (no parsing at upload); status=uploaded |
 | Document processing | ✅ | Process button on document list/detail; creates a job via `POST /api/jobs`; auto-process if channel configured |
 | Document status | ✅ | Status badge (uploaded/pending/running/completed/failed) on document list and detail |
-| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; **Document Information**: 3-column stats (Type, Size, Uploaded | Status, Markdown, File hash | Version panel with Versions + conditional Save version when working copy changed since last snapshot); **Lineage & lifecycle** collapsed by default (button expands: series ID, validity window, lifecycle status, current-for-RAG badge, relationships); right panel: Markdown \| Page Index (refresh parses markdown to tree); explicit versions (`document_versions`) not created on routine save; scrollable layout (min-height 720px) |
+| Document detail | ✅ | View parsed Markdown at `/documents/view/:id`; **Document Information**: 3-column stats (Type, Size, Uploaded | Status, Markdown, File hash | Version panel with Versions + conditional Save version when working copy changed since last snapshot); **METADATA** section includes **Lineage & lifecycle** below Extract (collapsed by default; expands for series, relationships, lifecycle, dates, and read-only **Applicable**); right panel: Markdown \| Page Index (refresh parses markdown to tree); explicit versions (`document_versions`) not created on routine save; scrollable layout (min-height 720px) |
 | Document markdown edit | ✅ | Edit/View toggle, textarea for markdown, Save (`PUT /markdown`; rebuilds page index), Restore from S3 (`POST /restore-markdown`; rebuilds page index); `POST /rebuild-page-index` for manual rebuild from current markdown |
 | Document versions | ✅ | User-triggered checkpoints: `POST /documents/{id}/versions` snapshots current markdown and metadata (optional `tag` in API); list, preview, restore (`POST .../versions/{vid}/restore`); optional save-current before restore; Save as version modal (optional tag) |
 | Document metadata extraction | ✅ | Single METADATA section on detail page; Extract button uses channel's LLM; configurable schema per channel (key, label, type: text/date/enum/object_type/list[object_type], description); object_type_extraction_max_instances limits instance count for extraction |
@@ -438,13 +439,13 @@
 
 ### Document
 
-- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB: extracted + manual labels, unified), `series_id` (logical policy line; defaults to `id` on upload), `effective_from`, `effective_to` (optional validity window, timestamptz), `lifecycle_status` (optional: `draft`, `in_force`, `superseded`, `withdrawn`; unset/null treated as legacy “current” for RAG), `created_at`, `updated_at`
+- `id`, `name`, `file_type`, `size_bytes`, `channel_id`, `file_hash`, `status`, `markdown`, `parsing_result`, `metadata` (JSONB: extracted + manual labels, unified), `series_id` (logical policy line; defaults to `id` on upload), `effective_from`, `effective_to` (optional validity window, timestamptz), `lifecycle_status` (optional: `draft`, `in_force`, `superseded`, `withdrawn`; unset/null treated as legacy “included”), `is_current_for_rag` (computed on read: **currently applicable** for normal knowledge-base answers and re-indexing; follows lifecycle + effective dates below), `created_at`, `updated_at`
 - Status: `uploaded` → `pending` → `running` → `completed` / `failed`
 - `metadata`: extracted or manually edited (abstract, author, publish_date, tags, etc.)
 
 ### DocumentRelationship
 
-- `id`, `source_document_id`, `target_document_id`, `relation_type` (`supersedes`, `amends`, `repeals`, `implements`, `see_also`), `note`, `created_at`
+- `id`, `source_document_id`, `target_document_id`, `relation_type` (`supersedes`, `amends`, `implements`, `see_also`), `note`, `created_at`
 - Unique (`source_document_id`, `target_document_id`, `relation_type`); directed edge from source → target
 
 ### FeatureToggle
@@ -455,8 +456,8 @@
 
 ### KnowledgeBase
 
-- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap; optional **`lifecycle_index_mode`**: `current_only` (default) skips documents where `is_current_for_rag` is false during `kb-index`; `all` indexes every linked document regardless of lifecycle), `faq_prompt` (optional default for FAQ generation), `metadata_keys` (JSONB array: keys from document metadata to propagate to FAQs/chunks), `created_at`, `updated_at`
-- Groups documents, FAQs, and chunks for RAG Q&A; semantic search defaults to **current** documents only unless the client sets `include_historical_documents: true` on the search request
+- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap; optional **`lifecycle_index_mode`**: `current_only` (default) skips documents that are **not currently applicable** per lifecycle rules during `kb-index`; `all` indexes every linked document regardless of lifecycle), `faq_prompt` (optional default for FAQ generation), `metadata_keys` (JSONB array: keys from document metadata to propagate to FAQs/chunks), `created_at`, `updated_at`
+- Groups documents, FAQs, and chunks for RAG Q&A; semantic search defaults to documents that **are currently applicable** unless the client sets `include_historical_documents: true` on the search request
 
 ### KBDocument
 

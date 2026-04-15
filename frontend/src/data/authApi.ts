@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface AuthMeResponse {
   id: string;
@@ -12,7 +12,7 @@ export interface AuthMeResponse {
 
 export async function fetchAuthMe(): Promise<AuthMeResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/auth/me`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/auth/me`, {
     headers: { ...headers },
     credentials: 'include',
   });

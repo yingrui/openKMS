@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class DocumentBase(BaseModel):
@@ -29,7 +29,14 @@ class DocumentResponse(BaseModel):
     effective_from: datetime | None = None
     effective_to: datetime | None = None
     lifecycle_status: str | None = None
-    is_current_for_rag: bool = True
+    is_current_for_rag: bool = Field(
+        default=True,
+        description=(
+            "Computed from lifecycle status and effective dates: whether the document is currently applicable "
+            "for normal knowledge-base answers and re-indexing. False when superseded, withdrawn, draft, "
+            "or outside the effective window."
+        ),
+    )
     created_at: datetime
     updated_at: datetime
 

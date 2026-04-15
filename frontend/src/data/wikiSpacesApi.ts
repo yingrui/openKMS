@@ -1,6 +1,6 @@
 /** Wiki spaces and pages API. */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 async function parseError(res: Response): Promise<string> {
   let msg = res.statusText;
@@ -82,14 +82,14 @@ export interface WikiLinkGraphResponse {
 
 export async function fetchWikiSpaces(): Promise<WikiSpaceListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' });
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
 
 export async function createWikiSpace(data: { name: string; description?: string }): Promise<WikiSpaceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -104,7 +104,7 @@ export async function updateWikiSpace(
   data: { name?: string; description?: string | null }
 ): Promise<WikiSpaceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -116,7 +116,7 @@ export async function updateWikiSpace(
 
 export async function deleteWikiSpace(spaceId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -126,14 +126,14 @@ export async function deleteWikiSpace(spaceId: string): Promise<void> {
 
 export async function fetchWikiSpace(spaceId: string): Promise<WikiSpaceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, { headers, credentials: 'include' });
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, { headers, credentials: 'include' });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
 
 export async function fetchWikiSpaceGraph(spaceId: string): Promise<WikiLinkGraphResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/graph`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/graph`, {
     headers,
     credentials: 'include',
   });
@@ -152,7 +152,7 @@ export async function fetchWikiPages(
   if (opts?.limit != null) params.set('limit', String(opts.limit));
   if (opts?.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
   const q = params.toString();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages${q ? `?${q}` : ''}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages${q ? `?${q}` : ''}`, {
     headers,
     credentials: 'include',
   });
@@ -162,7 +162,7 @@ export async function fetchWikiPages(
 
 export async function fetchWikiPage(spaceId: string, pageId: string): Promise<WikiPageResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
     headers,
     credentials: 'include',
   });
@@ -175,7 +175,7 @@ export async function createWikiPage(
   data: { path: string; title: string; body?: string; metadata?: Record<string, unknown> | null }
 ): Promise<WikiPageResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -191,7 +191,7 @@ export async function updateWikiPage(
   data: { title?: string; body?: string; metadata?: Record<string, unknown> | null }
 ): Promise<WikiPageResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -203,7 +203,7 @@ export async function updateWikiPage(
 
 export async function deleteWikiPage(spaceId: string, pageId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -222,7 +222,7 @@ export async function upsertWikiPageByPath(
     .split('/')
     .map((s) => encodeURIComponent(s))
     .join('/');
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/by-path/${enc}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/by-path/${enc}`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -234,7 +234,7 @@ export async function upsertWikiPageByPath(
 
 export async function fetchWikiFiles(spaceId: string): Promise<WikiFileListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files`, { headers, credentials: 'include' });
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files`, { headers, credentials: 'include' });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
@@ -252,7 +252,7 @@ export async function uploadWikiFile(
   const fd = new FormData();
   fd.append('file', file);
   if (wikiPageId) fd.append('wiki_page_id', wikiPageId);
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -264,7 +264,7 @@ export async function uploadWikiFile(
 
 export async function deleteWikiFile(spaceId: string, fileId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files/${fileId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files/${fileId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -415,7 +415,7 @@ export async function importWikiVaultMarkdownFile(
   body: string
 ): Promise<{ wiki_path: string; warnings: string[] }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/import/vault/markdown-file`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/import/vault/markdown-file`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -531,7 +531,7 @@ export async function importWikiVaultZip(spaceId: string, zipFile: File): Promis
   const headers = await getAuthHeaders();
   const fd = new FormData();
   fd.append('archive', zipFile);
-  const res = await fetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/import/vault`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/import/vault`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',

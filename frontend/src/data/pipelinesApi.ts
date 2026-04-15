@@ -1,6 +1,6 @@
 /** API for pipeline configurations (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface PipelineResponse {
   id: string;
@@ -38,7 +38,7 @@ export interface PipelineUpdate {
 
 export async function fetchTemplateVariables(): Promise<Record<string, string>> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/pipelines/template-variables`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/template-variables`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -49,7 +49,7 @@ export async function fetchTemplateVariables(): Promise<Record<string, string>> 
 
 export async function fetchPipelines(): Promise<PipelineListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/pipelines`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -59,7 +59,7 @@ export async function fetchPipelines(): Promise<PipelineListResponse> {
 
 export async function fetchPipelineById(id: string): Promise<PipelineResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/pipelines/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -69,7 +69,7 @@ export async function fetchPipelineById(id: string): Promise<PipelineResponse> {
 
 export async function createPipeline(data: PipelineCreate): Promise<PipelineResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/pipelines`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -84,7 +84,7 @@ export async function createPipeline(data: PipelineCreate): Promise<PipelineResp
 
 export async function updatePipeline(id: string, data: PipelineUpdate): Promise<PipelineResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/pipelines/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export async function updatePipeline(id: string, data: PipelineUpdate): Promise<
 
 export async function deletePipeline(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/pipelines/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',

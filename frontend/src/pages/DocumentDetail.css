@@ -1525,11 +1525,153 @@
   margin-top: 8px;
 }
 
-.document-detail-lineage-subtitle {
-  font-size: 0.9rem;
+.document-detail-metadata-lineage-divider {
+  margin: 20px 0 12px 0;
+}
+
+.document-detail-lineage--in-metadata {
+  margin-top: 0;
+}
+
+.document-detail-lineage-intro {
+  margin: 0 0 14px 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  max-width: 52ch;
+}
+
+.document-detail-lineage-lifecycle-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  padding: 12px 14px 14px;
+  margin-bottom: 18px;
+}
+
+.document-detail-lineage-lifecycle-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.document-detail-lineage-lifecycle-toolbar-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.document-detail-lineage-lifecycle-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.document-detail-lineage-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+}
+
+.document-detail-lineage-field {
+  min-width: 0;
+}
+
+.document-detail-lineage-field--full {
+  grid-column: 1 / -1;
+}
+
+.document-detail-lineage-field-label {
+  display: block;
+  font-size: 0.72rem;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.document-detail-lineage-field-value {
+  font-size: 0.9rem;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.document-detail-lineage-pill {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+}
+
+.document-detail-lineage-pill--on {
+  background: color-mix(in srgb, var(--color-success, #22c55e) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-success, #22c55e) 35%, var(--color-border));
+  color: var(--color-text);
+}
+
+.document-detail-lineage-pill--off {
+  background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
   color: var(--color-text-secondary);
+}
+
+.document-detail-lineage-series-id {
+  display: block;
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg) 92%, var(--color-border));
+  border: 1px solid var(--color-border);
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+
+.document-detail-lineage-input {
+  width: 100%;
+  max-width: 100%;
+}
+
+.document-detail-lineage-rel-block {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  padding: 12px 14px 14px;
+}
+
+.document-detail-lineage-section-title {
+  margin: 0 0 12px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.document-detail-lineage-empty {
+  margin: 0;
+  padding: 12px 10px;
+  font-size: 0.85rem;
+  text-align: center;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+}
+
+@media (max-width: 560px) {
+  .document-detail-lineage-field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .document-detail-lineage-field--full {
+    grid-column: 1;
+  }
 }
 
 .document-detail-lineage-tables {

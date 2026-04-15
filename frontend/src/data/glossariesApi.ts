@@ -1,6 +1,6 @@
 /** API for glossary management (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 // --- Types ---
 
@@ -52,7 +52,7 @@ export interface GlossaryExportPayload {
 
 export async function fetchGlossaries(): Promise<GlossaryListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -62,7 +62,7 @@ export async function fetchGlossaries(): Promise<GlossaryListResponse> {
 
 export async function fetchGlossary(glossaryId: string): Promise<GlossaryResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -75,7 +75,7 @@ export async function createGlossary(data: {
   description?: string;
 }): Promise<GlossaryResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -93,7 +93,7 @@ export async function updateGlossary(
   data: { name?: string; description?: string }
 ): Promise<GlossaryResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -108,7 +108,7 @@ export async function updateGlossary(
 
 export async function deleteGlossary(glossaryId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -129,7 +129,7 @@ export async function fetchGlossaryTerms(
   const query = new URLSearchParams();
   if (params?.search) query.set('search', params.search);
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -150,7 +150,7 @@ export async function suggestGlossaryTerm(
   data: { primary_en?: string; primary_cn?: string }
 ): Promise<GlossaryTermSuggestResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/suggest`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/suggest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -174,7 +174,7 @@ export async function createGlossaryTerm(
   }
 ): Promise<GlossaryTermResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
@@ -205,7 +205,7 @@ export async function updateGlossaryTerm(
   }
 ): Promise<GlossaryTermResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/${termId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/${termId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -223,7 +223,7 @@ export async function deleteGlossaryTerm(
   termId: string
 ): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/${termId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/${termId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -238,7 +238,7 @@ export async function deleteGlossaryTerm(
 
 export async function exportGlossary(glossaryId: string): Promise<GlossaryExportPayload> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/export`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/export`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -253,7 +253,7 @@ export async function importGlossary(
   payload: { terms: GlossaryExportPayload['terms']; mode: 'append' | 'replace' }
 ): Promise<GlossaryTermListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/glossaries/${glossaryId}/import`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(payload),

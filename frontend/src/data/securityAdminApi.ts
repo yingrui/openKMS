@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export type PermissionCatalogEntry = {
   key: string;
@@ -65,7 +65,7 @@ export type PermissionReferenceResponse = {
 
 export async function fetchPermissionReference(): Promise<PermissionReferenceResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/permission-reference`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/permission-reference`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -92,7 +92,7 @@ export async function createSecurityPermission(body: {
   backend_api_patterns?: string[];
 }): Promise<SecurityPermissionRowOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-permissions`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -110,7 +110,7 @@ export async function createSecurityPermission(body: {
 
 export async function fetchSecurityPermissions(): Promise<SecurityPermissionRowOut[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-permissions`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -129,7 +129,7 @@ export async function patchSecurityPermission(
   }
 ): Promise<SecurityPermissionRowOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-permissions/${permissionId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions/${permissionId}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -141,7 +141,7 @@ export async function patchSecurityPermission(
 
 export async function deleteSecurityPermission(permissionId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-permissions/${permissionId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions/${permissionId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -151,7 +151,7 @@ export async function deleteSecurityPermission(permissionId: string): Promise<vo
 
 export async function fetchPermissionCatalog(): Promise<PermissionCatalogEntry[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/auth/permission-catalog`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/auth/permission-catalog`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -161,7 +161,7 @@ export async function fetchPermissionCatalog(): Promise<PermissionCatalogEntry[]
 
 export async function fetchSecurityRolesPage(): Promise<SecurityRolesPageResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-roles`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -174,7 +174,7 @@ export async function createSecurityRole(body: {
   description?: string | null;
 }): Promise<SecurityRoleOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-roles`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -186,7 +186,7 @@ export async function createSecurityRole(body: {
 
 export async function deleteSecurityRole(roleId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-roles/${roleId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles/${roleId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -196,7 +196,7 @@ export async function deleteSecurityRole(roleId: string): Promise<void> {
 
 export async function putRolePermissions(roleId: string, permissionKeys: string[]): Promise<SecurityRoleOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/security-roles/${roleId}/permissions`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles/${roleId}/permissions`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -210,7 +210,7 @@ export type AccessGroupOut = { id: string; name: string; description: string | n
 
 export async function fetchAccessGroups(): Promise<AccessGroupOut[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -223,7 +223,7 @@ export async function createAccessGroup(body: {
   description?: string | null;
 }): Promise<AccessGroupOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -238,7 +238,7 @@ export async function patchAccessGroup(
   body: { name?: string; description?: string | null }
 ): Promise<AccessGroupOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${id}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -250,7 +250,7 @@ export async function patchAccessGroup(
 
 export async function deleteAccessGroup(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -262,7 +262,7 @@ export type LocalUserBrief = { id: string; email: string; username: string };
 
 export async function fetchGroupMembers(groupId: string): Promise<{ users: LocalUserBrief[] }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -272,7 +272,7 @@ export async function fetchGroupMembers(groupId: string): Promise<{ users: Local
 
 export async function putGroupMembers(groupId: string, userIds: string[]) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -295,7 +295,7 @@ export type GroupScopesOut = {
 
 export async function fetchGroupScopes(groupId: string): Promise<GroupScopesOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups/${groupId}/scopes`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/scopes`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -315,7 +315,7 @@ export type DataResourceOut = {
 
 export async function fetchDataResources(): Promise<DataResourceOut[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/data-resources`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -325,7 +325,7 @@ export async function fetchDataResources(): Promise<DataResourceOut[]> {
 
 export async function fetchResourceKinds(): Promise<string[]> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/data-resources/kinds`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/kinds`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -342,7 +342,7 @@ export async function createDataResource(body: {
   anchor_knowledge_base_id?: string | null;
 }): Promise<DataResourceOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/data-resources`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -364,7 +364,7 @@ export async function patchDataResource(
   }
 ): Promise<DataResourceOut> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -376,7 +376,7 @@ export async function patchDataResource(
 
 export async function deleteDataResource(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -386,7 +386,7 @@ export async function deleteDataResource(id: string): Promise<void> {
 
 export async function putGroupScopes(groupId: string, body: Partial<GroupScopesOut>) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/groups/${groupId}/scopes`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/scopes`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',

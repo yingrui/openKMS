@@ -1,6 +1,6 @@
 /** API for processing jobs (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface JobEvent {
   type: string;
@@ -42,7 +42,7 @@ export async function fetchJobs(params?: {
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/jobs${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/jobs${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -52,7 +52,7 @@ export async function fetchJobs(params?: {
 
 export async function fetchJobById(jobId: number): Promise<JobResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/jobs/${jobId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -62,7 +62,7 @@ export async function fetchJobById(jobId: number): Promise<JobResponse> {
 
 export async function createJob(data: JobCreate): Promise<JobResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/jobs`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/jobs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -77,7 +77,7 @@ export async function createJob(data: JobCreate): Promise<JobResponse> {
 
 export async function retryJob(jobId: number): Promise<JobResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/jobs/${jobId}/retry`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}/retry`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -91,7 +91,7 @@ export async function retryJob(jobId: number): Promise<JobResponse> {
 
 export async function deleteJob(jobId: number): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/jobs/${jobId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',

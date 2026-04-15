@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { config } from '../../config';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONSOLE_GROUPS } from '../../config/permissions';
-import { getAuthHeaders } from '../../data/apiClient';
+import { authAwareFetch, getAuthHeaders } from '../../data/apiClient';
 import { fetchAdminUsersPage, type LocalUserRow } from '../../data/adminUsersApi';
 import {
   fetchDataResources,
@@ -60,13 +60,13 @@ export function ConsoleGroupDataAccess() {
         membershipLocal
           ? fetchAdminUsersPage().catch(() => ({ users: [] as LocalUserRow[] }))
           : Promise.resolve({ users: [] as LocalUserRow[] }),
-        fetch(`${config.apiUrl}/api/document-channels`, { headers, credentials: 'include' }),
-        fetch(`${config.apiUrl}/api/knowledge-bases`, { headers, credentials: 'include' }),
-        fetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' }),
-        fetch(`${config.apiUrl}/api/evaluation-datasets`, { headers, credentials: 'include' }),
-        fetch(`${config.apiUrl}/api/datasets`, { headers, credentials: 'include' }),
-        fetch(`${config.apiUrl}/api/object-types`, { headers, credentials: 'include' }),
-        fetch(`${config.apiUrl}/api/link-types`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/document-channels`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/knowledge-bases`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/evaluation-datasets`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/datasets`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/object-types`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/link-types`, { headers, credentials: 'include' }),
         fetchDataResources().catch(() => [] as DataResourceOut[]),
       ]);
       setScopes({

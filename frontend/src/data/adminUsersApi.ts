@@ -1,5 +1,5 @@
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface LocalUserRow {
   id: string;
@@ -18,7 +18,7 @@ export interface AdminUsersPage {
 
 export async function fetchAdminUsersPage(): Promise<AdminUsersPage> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/users`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -31,7 +31,7 @@ export async function fetchAdminUsersPage(): Promise<AdminUsersPage> {
 
 export async function patchLocalUser(userId: string, is_admin: boolean): Promise<LocalUserRow> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/users/${userId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users/${userId}`, {
     method: 'PATCH',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -52,7 +52,7 @@ export async function patchLocalUser(userId: string, is_admin: boolean): Promise
 
 export async function deleteLocalUser(userId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/users/${userId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users/${userId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -76,7 +76,7 @@ export async function createLocalUser(body: {
   is_admin: boolean;
 }): Promise<LocalUserRow> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/admin/users`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',

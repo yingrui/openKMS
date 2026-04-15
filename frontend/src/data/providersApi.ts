@@ -1,6 +1,6 @@
 /** API for service providers (OpenAI, Anthropic, etc.). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface ApiProviderResponse {
   id: string;
@@ -33,7 +33,7 @@ export interface ApiProviderUpdate {
 
 export async function fetchProviders(): Promise<ApiProviderListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/providers`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/providers`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -43,7 +43,7 @@ export async function fetchProviders(): Promise<ApiProviderListResponse> {
 
 export async function fetchProviderById(id: string): Promise<ApiProviderResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/providers/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/providers/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -53,7 +53,7 @@ export async function fetchProviderById(id: string): Promise<ApiProviderResponse
 
 export async function createProvider(data: ApiProviderCreate): Promise<ApiProviderResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/providers`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/providers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -68,7 +68,7 @@ export async function createProvider(data: ApiProviderCreate): Promise<ApiProvid
 
 export async function updateProvider(id: string, data: ApiProviderUpdate): Promise<ApiProviderResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/providers/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/providers/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -83,7 +83,7 @@ export async function updateProvider(id: string, data: ApiProviderUpdate): Promi
 
 export async function deleteProvider(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/providers/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/providers/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',

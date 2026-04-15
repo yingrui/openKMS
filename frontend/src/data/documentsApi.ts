@@ -1,6 +1,6 @@
 /** API for documents (backend). */
 import { config } from '../config';
-import { getAuthHeaders } from './apiClient';
+import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 export interface DocumentResponse {
   id: string;
@@ -17,6 +17,7 @@ export interface DocumentResponse {
   effective_from?: string | null;
   effective_to?: string | null;
   lifecycle_status?: string | null;
+  /** Computed from lifecycle + dates: currently applicable for normal KB answers/indexing. API name unchanged. */
   is_current_for_rag?: boolean;
   created_at: string;
   updated_at: string;
@@ -26,7 +27,6 @@ export interface DocumentResponse {
 export const DOCUMENT_RELATION_TYPES = [
   'supersedes',
   'amends',
-  'repeals',
   'implements',
   'see_also',
 ] as const;
@@ -69,7 +69,7 @@ export function isAcceptedFile(file: File): boolean {
 
 export async function fetchDocumentStats(): Promise<{ total: number }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/stats`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/stats`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -93,7 +93,7 @@ export async function fetchDocuments(params?: {
   if (params?.offset != null) query.set('offset', String(params.offset));
   if (params?.limit != null) query.set('limit', String(params.limit));
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await fetch(`${config.apiUrl}/api/documents${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -106,7 +106,7 @@ export async function fetchDocuments(params?: {
 
 export async function fetchDocumentsByChannel(channelId: string): Promise<DocumentListResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/documents?channel_id=${encodeURIComponent(channelId)}`,
     { headers: { ...headers }, credentials: 'include' }
   );
@@ -122,7 +122,7 @@ export async function fetchDocumentById(
   signal?: AbortSignal
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}`, {
     headers: { ...headers },
     signal,
     credentials: 'include',
@@ -156,7 +156,7 @@ export async function fetchParsingResult(
   page_count: number;
 }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/parsing`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/parsing`, {
     headers: { ...headers },
     signal,
     credentials: 'include',
@@ -177,7 +177,7 @@ export async function uploadDocument(
   formData.append('channel_id', channelId);
 
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/upload`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/upload`, {
     method: 'POST',
     headers: { ...headers },
     body: formData,
@@ -193,7 +193,7 @@ export async function uploadDocument(
 
 export async function deleteDocument(documentId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -206,7 +206,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
 
 export async function resetDocumentStatus(documentId: string): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/reset-status`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/reset-status`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -225,7 +225,7 @@ export interface ExtractMetadataResponse {
 
 export async function extractDocumentMetadata(documentId: string): Promise<ExtractMetadataResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/extract-metadata`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/extract-metadata`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -247,7 +247,7 @@ export async function patchDocumentLifecycle(
   }
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/lifecycle`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/lifecycle`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(params),
@@ -264,7 +264,7 @@ export async function fetchDocumentRelationships(
   documentId: string
 ): Promise<DocumentRelationshipsResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -280,7 +280,7 @@ export async function createDocumentRelationship(
   body: { target_document_id: string; relation_type: string; note?: string | null }
 ): Promise<DocumentRelationshipEdge> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
@@ -302,7 +302,7 @@ export async function deleteDocumentRelationship(
   relationshipId: string
 ): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/documents/${documentId}/relationships/${encodeURIComponent(relationshipId)}`,
     {
       method: 'DELETE',
@@ -324,7 +324,7 @@ export async function updateDocument(
   const body: Record<string, unknown> = {};
   if (params.name !== undefined) body.name = params.name;
   if (params.channel_id !== undefined) body.channel_id = params.channel_id;
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
@@ -342,7 +342,7 @@ export async function updateDocumentMetadata(
   metadata: Record<string, unknown>
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/metadata`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/metadata`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ metadata }),
@@ -360,7 +360,7 @@ export async function updateDocumentMarkdown(
   markdown: string
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/markdown`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/markdown`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ markdown }),
@@ -375,7 +375,7 @@ export async function updateDocumentMarkdown(
 
 export async function restoreDocumentMarkdown(documentId: string): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/restore-markdown`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/restore-markdown`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -406,7 +406,7 @@ export async function fetchPageIndex(
   signal?: AbortSignal
 ): Promise<PageIndexResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/page-index`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/page-index`, {
     headers: { ...headers },
     signal,
     credentials: 'include',
@@ -421,7 +421,7 @@ export async function fetchPageIndex(
 /** Rebuild page index from current markdown (md_to_tree) and persist to S3. */
 export async function rebuildPageIndex(documentId: string): Promise<PageIndexResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/rebuild-page-index`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/rebuild-page-index`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -454,7 +454,7 @@ export async function createDocumentVersion(
   body: { tag?: string | null; note?: string | null }
 ): Promise<DocumentVersionDetail> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ tag: body.tag ?? null, note: body.note ?? null }),
@@ -469,7 +469,7 @@ export async function createDocumentVersion(
 
 export async function listDocumentVersions(documentId: string): Promise<{ items: DocumentVersionListItem[] }> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -482,7 +482,7 @@ export async function listDocumentVersions(documentId: string): Promise<{ items:
 
 export async function getDocumentVersion(documentId: string, versionId: string): Promise<DocumentVersionDetail> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -499,7 +499,7 @@ export async function restoreDocumentVersion(
   body: { save_current_as_version?: boolean; tag?: string | null; note?: string | null }
 ): Promise<DocumentResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(
+  const res = await authAwareFetch(
     `${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}/restore`,
     {
       method: 'POST',

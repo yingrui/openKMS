@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
 import { getUserManager } from '../oidc/userManager';
-import { setAuthTokenProvider } from '../data/apiClient';
+import { authAwareFetch, setAuthTokenProvider, setSessionExpiredHandler } from '../data/apiClient';
 import {
   buildFrontendPatternUnion,
   isSpaPublicPath,
@@ -148,7 +148,7 @@ function useFrontendPermissionGate(
         if (token) {
           headers.Authorization = `Bearer ${token}`;
         }
-        const res = await fetch(`${config.apiUrl}/api/auth/permission-catalog`, {
+        const res = await authAwareFetch(`${config.apiUrl}/api/auth/permission-catalog`, {
           credentials: 'include',
           headers,
         });
@@ -207,7 +207,7 @@ function useFrontendPermissionGate(
 
 async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | null> {
   try {
-    const res = await fetch(`${config.apiUrl}/api/auth/me`, {
+    const res = await authAwareFetch(`${config.apiUrl}/api/auth/me`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       credentials: 'include',
     });
@@ -227,7 +227,7 @@ async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | nu
 
 async function syncTokenToBackend(token: string) {
   try {
-    await fetch(`${config.apiUrl}/sync-session`, {
+    await authAwareFetch(`${config.apiUrl}/sync-session`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
@@ -355,7 +355,7 @@ function LocalAuthProvider({
 
   const loadSession = useCallback(async () => {
     try {
-      const res = await fetch(`${config.apiUrl}/api/auth/me`, { credentials: 'include' });
+      const res = await authAwareFetch(`${config.apiUrl}/api/auth/me`, { credentials: 'include' });
       if (!res.ok) {
         setIsAuthenticated(false);
         setUser(null);
@@ -377,7 +377,7 @@ function LocalAuthProvider({
   const completeLocalSession = useCallback(
     async (accessToken: string) => {
       await syncTokenToBackend(accessToken);
-      const res = await fetch(`${config.apiUrl}/api/auth/me`, {
+      const res = await authAwareFetch(`${config.apiUrl}/api/auth/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       });
@@ -425,6 +425,24 @@ function LocalAuthProvider({
   useEffect(() => {
     setAuthTokenProvider(getToken);
   }, [getToken]);
+
+  const onApiSessionInvalid = useCallback(() => {
+    setAuthError(null);
+    void (async () => {
+      try {
+        await fetch(`${config.apiUrl}/clear-session`, { method: 'POST', credentials: 'include' });
+      } catch {
+        /* ignore */
+      }
+      setUser(null);
+      setIsAuthenticated(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(onApiSessionInvalid);
+    return () => setSessionExpiredHandler(null);
+  }, [onApiSessionInvalid]);
 
   const isAdmin = hasAdminRole(user);
   const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
@@ -620,6 +638,32 @@ function OidcAuthProvider({
   useEffect(() => {
     setAuthTokenProvider(getToken);
   }, [getToken]);
+
+  const onApiSessionInvalid = useCallback(() => {
+    setAuthError(null);
+    void (async () => {
+      try {
+        await fetch(`${config.apiUrl}/clear-session`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        /* ignore */
+      }
+      try {
+        await getUserManager().removeUser();
+      } catch {
+        /* ignore */
+      }
+      setUser(null);
+      setIsAuthenticated(false);
+    })();
+  }, []);
+
+  useEffect(() => {
+    setSessionExpiredHandler(onApiSessionInvalid);
+    return () => setSessionExpiredHandler(null);
+  }, [onApiSessionInvalid]);
 
   const isAdmin = hasAdminRole(user);
   const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
