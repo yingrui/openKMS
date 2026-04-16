@@ -97,7 +97,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     ),
     PERM_CONSOLE_SETTINGS: (
         ["/console", "/console/settings"],
-        [],
+        ["GET /api/system/settings", "PUT /api/system/settings"],
     ),
     PERM_CONSOLE_GROUPS: (
         [

@@ -2,6 +2,26 @@
   width: 100%;
 }
 
+.console-settings--loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 200px;
+}
+
+.console-settings-loader {
+  animation: spin 0.8s linear infinite;
+  color: var(--color-accent);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .console-settings-card {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
@@ -55,4 +75,20 @@
 .console-settings-select:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+
+.console-settings-hint {
+  margin: 8px 0 0 0;
+  max-width: 520px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.console-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
 }

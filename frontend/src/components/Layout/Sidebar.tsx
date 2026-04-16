@@ -27,9 +27,11 @@ import {
   Library,
   Tags,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import logo from '../../assets/logo.svg';
+import { DEFAULT_SYSTEM_DISPLAY_NAME, effectiveSystemDisplayName, fetchSystemPublic } from '../../data/systemApi';
+import { SYSTEM_SETTINGS_UPDATED_EVENT } from '../../utils/systemSettingsStorage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
@@ -120,6 +122,28 @@ export function Sidebar() {
 
   const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
   const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
+  /** Empty until public system name is fetched (avoids flashing a default before the API responds). */
+  const [sidebarBrandName, setSidebarBrandName] = useState('');
+
+  const loadSidebarBrand = useCallback(async () => {
+    try {
+      const { system_name } = await fetchSystemPublic();
+      setSidebarBrandName(effectiveSystemDisplayName(system_name));
+    } catch {
+      setSidebarBrandName(DEFAULT_SYSTEM_DISPLAY_NAME);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSidebarBrand();
+  }, [loadSidebarBrand]);
+
+  useEffect(() => {
+    const onUpdated = () => void loadSidebarBrand();
+    window.addEventListener(SYSTEM_SETTINGS_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(SYSTEM_SETTINGS_UPDATED_EVENT, onUpdated);
+  }, [loadSidebarBrand]);
+
   useEffect(() => {
     if (onDocuments && channels.length > 0) {
       const expandableIds = getAllExpandableChannelIds(channels);
@@ -178,7 +202,9 @@ export function Sidebar() {
       <div className="sidebar-header">
         <div className="sidebar-logo">
           <img src={logo} alt="" className="sidebar-logo-icon" />
-          <span className="sidebar-title">openKMS</span>
+          <span className="sidebar-title" title={sidebarBrandName || undefined}>
+            {sidebarBrandName}
+          </span>
         </div>
       </div>
       <nav className={`sidebar-nav ${onConsole && canAccessConsole ? 'sidebar-nav--console' : ''}`}>

@@ -18,10 +18,11 @@ from app.services.permission_pattern_cache import get_compiled_pattern_rules
 from app.services.permission_pattern_engine import resolve_required_permission_keys
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
-# No authentication required
+# No authentication required. Prefer /api/public/<resource> for non-auth data reads (not /api/auth/*).
 _UNAUTH_EXACT: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/api/auth/public-config"),
+        ("GET", "/api/public/system"),
         ("POST", "/api/auth/register"),
         ("POST", "/api/auth/login"),
     }

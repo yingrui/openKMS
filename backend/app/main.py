@@ -30,6 +30,8 @@ from app.api.admin.groups import router as admin_groups_router
 from app.api.admin.security_roles import router as admin_security_roles_router
 from app.api.admin.security_permissions import router as admin_security_permissions_router
 from app.api.admin.permission_reference import router as admin_permission_reference_router
+from app.api.system_settings import public_router as system_public_router
+from app.api.system_settings import router as system_settings_router
 from app.config import settings
 from app.database import init_db
 from app.middleware.strict_permission_patterns import StrictPermissionPatternMiddleware
@@ -94,6 +96,8 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(api_auth_router)
+app.include_router(system_public_router, prefix="/api")
+app.include_router(system_settings_router, prefix="/api")
 app.include_router(channels_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(feature_toggles_router, prefix="/api")
