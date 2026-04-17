@@ -141,12 +141,6 @@
   margin: 0;
 }
 
-.wiki-space-detail-documents-note {
-  font-size: 0.8125rem;
-  margin: 0 0 1rem;
-  line-height: 1.45;
-}
-
 .wiki-space-detail-code {
   font-family: ui-monospace, monospace;
   font-size: 0.8em;

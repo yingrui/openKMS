@@ -471,10 +471,6 @@ export function WikiSpaceDetail() {
                     Add documents…
                   </button>
                 </div>
-                <p className="wiki-space-detail-muted wiki-space-detail-documents-note">
-                  Prototype: links are stored in this browser only (sessionStorage). Backend persistence will replace this
-                  after <code className="wiki-space-detail-code">wiki_space_documents</code> is implemented.
-                </p>
                 {linkedDocs.length === 0 ? (
                   <p className="wiki-space-detail-muted">No channel documents linked yet. Use Add documents to pick from your library.</p>
                 ) : (
