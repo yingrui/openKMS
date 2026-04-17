@@ -1,7 +1,11 @@
-import { useEffect, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { WikiSpaceAgentPanel } from '../components/wiki/WikiSpaceAgentPanel';
+import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
+import type { ChannelNode } from '../data/channelsApi';
+import { fetchDocuments } from '../data/documentsApi';
 import {
   createWikiPage,
   deleteWikiPage,
@@ -19,6 +23,43 @@ import {
   type WikiVaultImportResponse,
 } from '../data/wikiSpacesApi';
 import './WikiSpaceDetail.css';
+
+const LINKED_DOCS_STORAGE_PREFIX = 'openkms_wiki_space_linked_docs_';
+
+export type WikiLinkedDoc = { id: string; name: string; channel_id: string };
+
+function loadLinkedDocsFromStorage(spaceId: string): WikiLinkedDoc[] {
+  if (typeof sessionStorage === 'undefined') return [];
+  try {
+    const raw = sessionStorage.getItem(LINKED_DOCS_STORAGE_PREFIX + spaceId);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (x): x is WikiLinkedDoc =>
+        !!x &&
+        typeof x === 'object' &&
+        typeof (x as WikiLinkedDoc).id === 'string' &&
+        typeof (x as WikiLinkedDoc).name === 'string' &&
+        typeof (x as WikiLinkedDoc).channel_id === 'string'
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveLinkedDocsToStorage(spaceId: string, items: WikiLinkedDoc[]) {
+  sessionStorage.setItem(LINKED_DOCS_STORAGE_PREFIX + spaceId, JSON.stringify(items));
+}
+
+function flattenChannelOptions(nodes: ChannelNode[], depth = 0): { id: string; label: string }[] {
+  const rows: { id: string; label: string }[] = [];
+  for (const n of nodes) {
+    rows.push({ id: n.id, label: `${depth ? `${'— '.repeat(depth)}` : ''}${n.name}` });
+    if (n.children?.length) rows.push(...flattenChannelOptions(n.children, depth + 1));
+  }
+  return rows;
+}
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -42,6 +83,63 @@ export function WikiSpaceDetail() {
   /** Modal: skip options + folder picker; import runs as soon as the browser exposes files (after its upload confirmation). */
   const [vaultFolderModalOpen, setVaultFolderModalOpen] = useState(false);
   const [vaultSkipOpts, setVaultSkipOpts] = useState<VaultImportSkipOptions>(() => defaultVaultImportSkipOptions());
+
+  const { channels } = useDocumentChannels();
+  const channelOptions = useMemo(() => flattenChannelOptions(channels), [channels]);
+
+  const [mainTab, setMainTab] = useState<'pages' | 'documents'>('pages');
+  const [linkedDocs, setLinkedDocs] = useState<WikiLinkedDoc[]>([]);
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
+  const [docSearch, setDocSearch] = useState('');
+  const [docChannelFilter, setDocChannelFilter] = useState('');
+  const [docPickerLoading, setDocPickerLoading] = useState(false);
+  const [docPickerItems, setDocPickerItems] = useState<Array<{ id: string; name: string; channel_id: string }>>([]);
+
+  const persistLinkedDocs = useCallback(
+    (space: string, items: WikiLinkedDoc[]) => {
+      setLinkedDocs(items);
+      saveLinkedDocsToStorage(space, items);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!spaceId) return;
+    setLinkedDocs(loadLinkedDocsFromStorage(spaceId));
+  }, [spaceId]);
+
+  useEffect(() => {
+    if (!docPickerOpen || !spaceId) return;
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      void (async () => {
+        setDocPickerLoading(true);
+        try {
+          const r = await fetchDocuments({
+            channel_id: docChannelFilter || undefined,
+            search: docSearch.trim() || undefined,
+            limit: 60,
+            offset: 0,
+          });
+          if (cancelled) return;
+          setDocPickerItems(
+            r.items.map((d) => ({ id: d.id, name: d.name, channel_id: d.channel_id }))
+          );
+        } catch (e) {
+          if (!cancelled) {
+            toast.error(e instanceof Error ? e.message : 'Failed to load documents');
+            setDocPickerItems([]);
+          }
+        } finally {
+          if (!cancelled) setDocPickerLoading(false);
+        }
+      })();
+    }, 280);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [docPickerOpen, spaceId, docSearch, docChannelFilter]);
 
   useEffect(() => {
     if (!spaceId) return;
@@ -214,117 +312,293 @@ export function WikiSpaceDetail() {
       : 0;
 
   const pageCount = Math.max(1, Math.ceil(pagesTotal / WIKI_PAGES_LIST_PAGE_SIZE));
-  const showingFrom = pagesTotal === 0 ? 0 : pageIndex * WIKI_PAGES_LIST_PAGE_SIZE + 1;
-  const showingTo = pagesTotal === 0 ? 0 : Math.min(pagesTotal, pageIndex * WIKI_PAGES_LIST_PAGE_SIZE + pages.length);
 
   return (
-    <div className="wiki-space-detail">
-      <div className="wiki-space-detail-toolbar">
-        <Link to="/wikis" className="wiki-space-detail-back">
-          <ArrowLeft size={18} />
-          Wiki spaces
-        </Link>
-      </div>
+    <div className={`wiki-space-detail${!loading && space ? ' wiki-space-detail--split' : ''}`}>
+      <div className="wiki-space-detail-body">
+        <div className="wiki-space-detail-toolbar-span">
+          <Link to="/wikis" className="wiki-space-detail-back">
+            <ArrowLeft size={18} />
+            Wiki spaces
+          </Link>
+        </div>
+        {loading && (
+          <p className="wiki-space-detail-body-loading wiki-space-detail-muted">Loading…</p>
+        )}
+        {!loading && !space && (
+          <p className="wiki-space-detail-body-loading wiki-space-detail-muted" role="alert">
+            Could not load this wiki space.
+          </p>
+        )}
+        {!loading && space && (
+          <div className="wiki-space-detail-content-row">
+          <div className="wiki-space-detail-main">
+            <header className="wiki-space-detail-header">
+              <div>
+                <h1>{space.name}</h1>
+                {space.description && <p className="wiki-space-detail-desc">{space.description}</p>}
+              </div>
+              <div className="wiki-space-detail-actions">
+                <Link to={`/wikis/${spaceId}/graph`} className="btn btn-secondary">
+                  <Network size={18} />
+                  Graph View
+                </Link>
+                <button
+                  type="button"
+                  className="btn btn-secondary wiki-space-detail-import-folder-btn"
+                  title="Upload an Obsidian vault folder (.md + attachments). Skips .obsidian and .trash."
+                  disabled={vaultImporting || vaultFolderModalOpen}
+                  onClick={openVaultFolderModal}
+                >
+                  <FolderUp size={18} />
+                  Import folder
+                </button>
+                <label
+                  className="btn btn-secondary wiki-space-detail-import-label"
+                  title="Upload a zip of your vault (same layout as folder import)."
+                >
+                  <input
+                    type="file"
+                    className="wiki-space-detail-file-input-overlay"
+                    accept=".zip,application/zip"
+                    disabled={vaultImporting}
+                    onChange={(ev) => void handleVaultZipChange(ev)}
+                  />
+                  <Upload size={18} />
+                  Import zip
+                </label>
+                <button type="button" className="btn btn-primary" onClick={() => setShowNewPage(true)}>
+                  <Plus size={18} />
+                  New page
+                </button>
+              </div>
+            </header>
 
-      {loading && <p className="wiki-space-detail-muted">Loading…</p>}
-
-      {!loading && space && (
-        <>
-          <header className="wiki-space-detail-header">
-            <div>
-              <h1>{space.name}</h1>
-              {space.description && <p className="wiki-space-detail-desc">{space.description}</p>}
-            </div>
-            <div className="wiki-space-detail-actions">
-              <Link to={`/wikis/${spaceId}/graph`} className="btn btn-secondary">
-                <Network size={18} />
-                Graph View
-              </Link>
+            <div className="wiki-space-detail-tabs" role="tablist" aria-label="Wiki space sections">
               <button
                 type="button"
-                className="btn btn-secondary wiki-space-detail-import-folder-btn"
-                title="Upload an Obsidian vault folder (.md + attachments). Skips .obsidian and .trash."
-                disabled={vaultImporting || vaultFolderModalOpen}
-                onClick={openVaultFolderModal}
+                role="tab"
+                aria-selected={mainTab === 'pages'}
+                className={`wiki-space-detail-tab${mainTab === 'pages' ? ' wiki-space-detail-tab--active' : ''}`}
+                onClick={() => setMainTab('pages')}
               >
-                <FolderUp size={18} />
-                Import folder
+                <FileText size={16} aria-hidden />
+                Pages
               </button>
-              <label
-                className="btn btn-secondary wiki-space-detail-import-label"
-                title="Upload a zip of your vault (same layout as folder import)."
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mainTab === 'documents'}
+                className={`wiki-space-detail-tab${mainTab === 'documents' ? ' wiki-space-detail-tab--active' : ''}`}
+                onClick={() => setMainTab('documents')}
               >
-                <input
-                  type="file"
-                  className="wiki-space-detail-file-input-overlay"
-                  accept=".zip,application/zip"
-                  disabled={vaultImporting}
-                  onChange={(ev) => void handleVaultZipChange(ev)}
-                />
-                <Upload size={18} />
-                Import zip
-              </label>
-              <button type="button" className="btn btn-primary" onClick={() => setShowNewPage(true)}>
-                <Plus size={18} />
-                New page
+                <FileStack size={16} aria-hidden />
+                Documents
               </button>
             </div>
-          </header>
 
-          <section className="wiki-space-detail-section">
-            <h2>Pages</h2>
-            {pagesTotal === 0 ? (
-              <p className="wiki-space-detail-muted">No pages yet.</p>
-            ) : (
-              <>
-                <p className="wiki-space-detail-pages-summary" aria-live="polite">
-                  Showing {showingFrom}–{showingTo} of {pagesTotal}
-                </p>
-                <ul className="wiki-space-detail-pages">
-                  {pages.map((p) => (
-                    <li key={p.id} className="wiki-space-detail-page-row">
-                      <Link to={`/wikis/${spaceId}/pages/${p.id}`} className="wiki-space-detail-page-link">
-                        <FileText size={18} />
-                        <span className="wiki-space-detail-page-path">{p.path}</span>
-                      </Link>
-                      <button
-                        type="button"
-                        className="wiki-space-detail-icon-btn"
-                        aria-label="Delete page"
-                        onClick={() => void handleDeletePage(p)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                {pageCount > 1 && (
-                  <nav className="wiki-space-detail-pagination" aria-label="Pages pagination">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      disabled={pageIndex <= 0}
-                      onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
-                    >
-                      Previous
-                    </button>
-                    <span className="wiki-space-detail-pagination-status">
-                      Page {pageIndex + 1} of {pageCount}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      disabled={pageIndex >= pageCount - 1}
-                      onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
-                    >
-                      Next
-                    </button>
-                  </nav>
+            {mainTab === 'pages' && (
+              <section
+                className={`wiki-space-detail-section${pagesTotal > 0 ? ' wiki-space-detail-section--tight' : ''}`}
+                aria-label="Wiki pages in this space"
+              >
+                {pagesTotal === 0 ? (
+                  <p className="wiki-space-detail-muted">No pages yet.</p>
+                ) : (
+                  <>
+                    <ul className="wiki-space-detail-pages">
+                      {pages.map((p) => (
+                        <li key={p.id} className="wiki-space-detail-page-row">
+                          <Link to={`/wikis/${spaceId}/pages/${p.id}`} className="wiki-space-detail-page-link">
+                            <FileText size={18} strokeWidth={1.5} className="wiki-space-detail-page-icon" aria-hidden />
+                            <span className="wiki-space-detail-page-path">{p.path}</span>
+                          </Link>
+                          <button
+                            type="button"
+                            className="wiki-space-detail-icon-btn"
+                            aria-label="Delete page"
+                            onClick={() => void handleDeletePage(p)}
+                          >
+                            <Trash2 size={18} strokeWidth={1.5} />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    {pageCount > 1 && (
+                      <nav className="wiki-space-detail-pagination" aria-label="Pages pagination">
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          disabled={pageIndex <= 0}
+                          onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+                        >
+                          Previous
+                        </button>
+                        <span className="wiki-space-detail-pagination-status">
+                          Page {pageIndex + 1} of {pageCount} · {pagesTotal} page{pagesTotal === 1 ? '' : 's'} (
+                          {WIKI_PAGES_LIST_PAGE_SIZE} per page)
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          disabled={pageIndex >= pageCount - 1}
+                          onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+                        >
+                          Next
+                        </button>
+                      </nav>
+                    )}
+                  </>
                 )}
-              </>
+              </section>
             )}
-          </section>
-        </>
+
+            {mainTab === 'documents' && (
+              <section className="wiki-space-detail-section" aria-labelledby="wiki-tab-docs-heading">
+                <div className="wiki-space-detail-documents-head">
+                  <h2 id="wiki-tab-docs-heading" className="wiki-space-detail-section-title">
+                    Linked documents
+                  </h2>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setDocSearch('');
+                      setDocChannelFilter('');
+                      setDocPickerOpen(true);
+                    }}
+                  >
+                    Add documents…
+                  </button>
+                </div>
+                <p className="wiki-space-detail-muted wiki-space-detail-documents-note">
+                  Prototype: links are stored in this browser only (sessionStorage). Backend persistence will replace this
+                  after <code className="wiki-space-detail-code">wiki_space_documents</code> is implemented.
+                </p>
+                {linkedDocs.length === 0 ? (
+                  <p className="wiki-space-detail-muted">No channel documents linked yet. Use Add documents to pick from your library.</p>
+                ) : (
+                  <ul className="wiki-space-detail-pages">
+                    {linkedDocs.map((d) => (
+                      <li key={d.id} className="wiki-space-detail-page-row">
+                        <Link to={`/documents/view/${d.id}`} className="wiki-space-detail-page-link">
+                          <FileStack size={18} strokeWidth={1.5} className="wiki-space-detail-page-icon" aria-hidden />
+                          <span className="wiki-space-detail-page-path">{d.name}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          className="wiki-space-detail-icon-btn"
+                          aria-label="Remove link"
+                          onClick={() => {
+                            if (!spaceId) return;
+                            persistLinkedDocs(
+                              spaceId,
+                              linkedDocs.filter((x) => x.id !== d.id)
+                            );
+                          }}
+                        >
+                          <Trash2 size={18} strokeWidth={1.5} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+          </div>
+          <div className="wiki-space-detail-agent-rail">
+            <WikiSpaceAgentPanel spaceId={spaceId} spaceName={space.name} />
+          </div>
+          </div>
+        )}
+      </div>
+
+      {docPickerOpen && spaceId && (
+        <div
+          className="wiki-space-detail-modal-overlay"
+          role="presentation"
+          onClick={() => setDocPickerOpen(false)}
+        >
+          <div
+            className="wiki-space-detail-modal wiki-space-detail-doc-picker"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="wiki-doc-picker-title"
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <h3 id="wiki-doc-picker-title">Add documents to this space</h3>
+            <p className="wiki-space-detail-muted wiki-space-detail-doc-picker-hint">
+              Choose documents you already have in openKMS. Search and optional channel filter use{' '}
+              <code className="wiki-space-detail-code">GET /api/documents</code>.
+            </p>
+            <div className="wiki-space-detail-doc-picker-filters">
+              <label className="wiki-space-detail-doc-picker-label">
+                Channel
+                <select
+                  className="wiki-space-detail-doc-picker-select"
+                  value={docChannelFilter}
+                  onChange={(e) => setDocChannelFilter(e.target.value)}
+                >
+                  <option value="">All (scoped list)</option>
+                  {channelOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="wiki-space-detail-doc-picker-label wiki-space-detail-doc-picker-label--grow">
+                Search by name
+                <input
+                  type="search"
+                  className="wiki-space-detail-doc-picker-input"
+                  value={docSearch}
+                  onChange={(e) => setDocSearch(e.target.value)}
+                  placeholder="Filter…"
+                />
+              </label>
+            </div>
+            <div className="wiki-space-detail-doc-picker-list" role="listbox" aria-label="Document results">
+              {docPickerLoading ? (
+                <p className="wiki-space-detail-muted">Loading…</p>
+              ) : docPickerItems.length === 0 ? (
+                <p className="wiki-space-detail-muted">No documents match.</p>
+              ) : (
+                <ul className="wiki-space-detail-doc-picker-ul">
+                  {docPickerItems.map((d) => {
+                    const already = linkedDocs.some((l) => l.id === d.id);
+                    return (
+                      <li key={d.id} className="wiki-space-detail-doc-picker-row">
+                        <span className="wiki-space-detail-doc-picker-name" title={d.name}>
+                          {d.name}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          disabled={already}
+                          onClick={() => {
+                            if (already || !spaceId) return;
+                            persistLinkedDocs(spaceId, [
+                              ...linkedDocs,
+                              { id: d.id, name: d.name, channel_id: d.channel_id },
+                            ]);
+                          }}
+                        >
+                          {already ? 'Linked' : 'Link'}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="wiki-space-detail-modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setDocPickerOpen(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {vaultFolderModalOpen && (

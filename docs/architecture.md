@@ -56,6 +56,7 @@ flowchart TB
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
 | **QA Agent** | Separate FastAPI + LangGraph service; retrieves via backend search API (no DB access), generates answers via LLM; configurable per knowledge base |
+| **Wiki embedded agent (planned)** | In-process LangGraph + optional Langfuse in the **main** FastAPI app (`/api/agent/...`); wiki-scoped tools (pages, linked documents); **distinct** from qa-agent. UI shell on wiki space detail today; full spec and build backlog: [wiki_agent_prototype.md](./wiki_agent_prototype.md) |
 
 ## Frontend Structure
 
