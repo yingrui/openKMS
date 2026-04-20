@@ -27,6 +27,11 @@ const features = [
     name: 'Evaluation',
     description: 'Evaluation datasets for KB QA performance (experimental). Query + expected answer pairs to measure RAG quality.',
   },
+  {
+    id: 'taxonomy' as const,
+    name: 'Taxonomy',
+    description: 'Controlled vocabulary hierarchy (KOS) and links from channels and wiki spaces for discovery.',
+  },
 ];
 
 export function ConsoleFeatureToggles() {
@@ -50,7 +55,7 @@ export function ConsoleFeatureToggles() {
             <label className="console-feature-toggle-switch">
               <input
                 type="checkbox"
-                checked={toggles[f.id]}
+                checked={f.id === 'taxonomy' ? toggles.taxonomy !== false : Boolean(toggles[f.id])}
                 onChange={(e) => setToggle(f.id, e.target.checked)}
                 aria-label={`Enable ${f.name}`}
               />

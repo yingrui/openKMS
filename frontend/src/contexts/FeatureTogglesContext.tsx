@@ -11,6 +11,7 @@ const defaults: FeatureToggles = {
   wikiSpaces: true,
   objectsAndLinks: true,
   evaluationDatasets: false,
+  taxonomy: true,
   hasNeo4jDataSource: false,
 };
 

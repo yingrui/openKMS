@@ -1,0 +1,170 @@
+.home-taxonomy-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  flex: 1;
+}
+
+.home-taxonomy-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.home-taxonomy-preview-stats {
+  font-size: 0.8125rem;
+}
+
+.home-taxonomy-preview-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.home-taxonomy-tool-btn {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.home-taxonomy-tool-btn:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.home-taxonomy-preview-error {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* Scroll region: cap height so a deep taxonomy does not push the hub layout */
+.home-taxonomy-tree-scroll {
+  max-height: min(52vh, 440px);
+  min-height: 120px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  padding: 8px 6px 10px 4px;
+  scrollbar-gutter: stable;
+}
+
+.home-taxonomy-tree-placeholder {
+  margin: 0;
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.home-taxonomy-tree-root,
+.home-taxonomy-tree-children {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.home-taxonomy-tree-children {
+  padding-left: 0;
+}
+
+.home-taxonomy-tree-item {
+  margin: 0;
+}
+
+.home-taxonomy-tree-row {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-height: 34px;
+  border-radius: var(--radius-sm);
+  padding-left: calc(var(--home-tax-depth, 0) * 10px);
+}
+
+.home-taxonomy-tree-row:hover {
+  background: var(--color-bg-elevated);
+}
+
+.home-taxonomy-tree-toggle {
+  flex-shrink: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.home-taxonomy-tree-toggle:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+.home-taxonomy-tree-toggle--spacer {
+  cursor: default;
+  pointer-events: none;
+}
+
+.home-taxonomy-chevron {
+  transition: transform 0.15s ease;
+}
+
+.home-taxonomy-chevron--open {
+  transform: rotate(90deg);
+}
+
+.home-taxonomy-tree-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 2px;
+  text-decoration: none;
+  color: var(--color-text);
+  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+}
+
+.home-taxonomy-tree-link:hover {
+  color: var(--color-accent);
+}
+
+.home-taxonomy-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-taxonomy-tree-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 640px) {
+  .home-taxonomy-tree-scroll {
+    max-height: min(48vh, 360px);
+  }
+}

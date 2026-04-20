@@ -1,149 +1,193 @@
-import { FileStack, FileText, Database, Search, Layers, Zap, Shield, Network } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { FileStack, FolderTree, Inbox, Share2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
+import { HomeStaticLanding } from '../components/HomeStaticLanding';
+import { HomeTaxonomyPreview } from '../components/HomeTaxonomyPreview';
+import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
+import { fetchTaxonomyTree, type TaxonomyNode } from '../data/taxonomyApi';
 import './Home.css';
 
-const painPoints = [
-  {
-    icon: Search,
-    title: 'Knowledge scattered everywhere',
-    text: 'Documents, PDFs, and notes live in silos—email, shared drives, wikis—making it hard to find what you need.',
-  },
-  {
-    icon: Layers,
-    title: 'No structure for unstructured content',
-    text: 'PDFs and images stay as blobs. No way to search, extract, or link content across your organization.',
-  },
-  {
-    icon: Zap,
-    title: 'Manual work that should be automated',
-    text: 'Repetitive document parsing, layout extraction, and indexing drain time and introduce errors.',
-  },
-];
-
-const benefits = [
-  {
-    icon: FileStack,
-    title: 'Centralized document hub',
-    text: 'Organize everything in channel trees (like Google Drive). Upload PDF, images, HTML—AI parses and converts to searchable Markdown.',
-  },
-  {
-    icon: Database,
-    title: 'RAG-ready knowledge bases',
-    text: 'Build knowledge bases from your documents. Ask questions and get answers grounded in your own content.',
-  },
-  {
-    icon: Shield,
-    title: 'Enterprise-ready security',
-    text: 'OIDC SSO or local accounts, fine-grained roles, and a console for permissions, data security, and platform settings.',
-  },
-];
-
-const functionalities = [
-  {
-    icon: FileStack,
-    title: 'Document management',
-    items: ['Channel-based organization (tree structure)', 'Upload PDF, PNG, JPG, WEBP', 'AI parsing to Markdown (PaddleOCR-VL)', 'Layout and block detection', 'S3/MinIO storage'],
-  },
-  {
-    icon: FileText,
-    title: 'Articles & content',
-    items: ['CMS-style articles', 'Channel tree organization', 'Feature toggles per deployment'],
-  },
-  {
-    icon: Database,
-    title: 'Knowledge bases',
-    items: [
-      'RAG Q&A over your documents',
-      'Semantic search over chunks and FAQs (pgvector when configured)',
-      'Ask questions in natural language',
-    ],
-  },
-  {
-    icon: Network,
-    title: 'Ontology & graph',
-    items: [
-      'Datasets mapped from PostgreSQL data sources',
-      'Object types and link types for your domain model',
-      'Optional Neo4j indexing and graph exploration',
-    ],
-  },
-  {
-    icon: Layers,
-    title: 'Pipelines & automation',
-    items: [
-      'Configurable document pipelines and command templates',
-      'Async parsing jobs; per-channel pipeline and auto-process',
-      'Models linked to pipelines for OCR / VL / extraction',
-    ],
-  },
-];
-
 export function Home() {
+  const { isAuthenticated, login, hasPermission } = useAuth();
+  const { toggles } = useFeatureToggles();
+  const [hub, setHub] = useState<HomeHubResponse | null>(null);
+  const [hubError, setHubError] = useState<string | null>(null);
+  const [hubLoading, setHubLoading] = useState(false);
+  const [taxonomyTree, setTaxonomyTree] = useState<TaxonomyNode[] | null>(null);
+  const [taxonomyTreeLoading, setTaxonomyTreeLoading] = useState(false);
+  const [taxonomyTreeError, setTaxonomyTreeError] = useState<string | null>(null);
+  const loadHub = useCallback(async () => {
+    setHubLoading(true);
+    setHubError(null);
+    try {
+      const data = await fetchHomeHub();
+      setHub(data);
+    } catch (e) {
+      setHub(null);
+      setHubError(e instanceof Error ? e.message : 'Could not load home data');
+    } finally {
+      setHubLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) void loadHub();
+    else {
+      setHub(null);
+      setHubError(null);
+    }
+  }, [isAuthenticated, loadHub]);
+
+  const showTaxonomy =
+    toggles.taxonomy !== false && (hasPermission('taxonomy:read') || hasPermission('all'));
+
+  useEffect(() => {
+    if (!isAuthenticated || !showTaxonomy) {
+      setTaxonomyTree(null);
+      setTaxonomyTreeError(null);
+      setTaxonomyTreeLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setTaxonomyTreeLoading(true);
+    setTaxonomyTreeError(null);
+    void (async () => {
+      try {
+        const t = await fetchTaxonomyTree();
+        if (!cancelled) setTaxonomyTree(t);
+      } catch (e) {
+        if (!cancelled) {
+          setTaxonomyTree(null);
+          setTaxonomyTreeError(e instanceof Error ? e.message : 'Could not load taxonomy tree');
+        }
+      } finally {
+        if (!cancelled) setTaxonomyTreeLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, showTaxonomy]);
+
+  if (!isAuthenticated) {
+    /* Unauthenticated users always see the static marketing home (`/` is not gated). */
+    return <HomeStaticLanding onSignIn={login} />;
+  }
+
+  const showTaxonomyWrite = hasPermission('taxonomy:write') || hasPermission('all');
+  const showDocsWork = hasPermission('documents:read') || hasPermission('all');
   return (
-    <div className="home-landing">
-      <section className="home-hero">
-        <h1 className="home-hero-title">Open Knowledge Management System</h1>
-        <p className="home-hero-subtitle">
-          Organize documents in channel trees, parse with AI, and build RAG-ready knowledge bases. 
-          One platform for your team&apos;s knowledge.
+    <div className="home home--hub">
+      <div className="page-header home-header">
+        <div>
+          <h1>Home</h1>
+          <p className="page-subtitle">Knowledge operations: taxonomy, links, and document lifecycle signals.</p>
+        </div>
+      </div>
+
+      {hubLoading && <p className="home-muted">Loading…</p>}
+      {hubError && (
+        <p className="home-error" role="alert">
+          {hubError}
         </p>
-      </section>
+      )}
 
-      <section className="home-section">
-        <h2 className="home-section-title">Common Pain Points</h2>
-        <p className="home-section-desc">We built openKMS because teams struggle with:</p>
-        <div className="home-cards">
-          {painPoints.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="home-card home-card-pain">
-              <div className="home-card-icon">
-                <Icon size={24} strokeWidth={1.75} />
+      <div className={`home-hub-split${showTaxonomy ? ' home-hub-split--with-taxonomy' : ''}`}>
+        {showTaxonomy && (
+          <aside className="home-hub-split__left" aria-label="Taxonomy overview">
+            <section className="home-hub-card home-hub-card--taxonomy">
+              <h2 className="home-hub-card-title">
+                <FolderTree size={20} aria-hidden />
+                Taxonomy
+              </h2>
+              <p className="home-muted home-hub-card-intro home-taxonomy-intro">
+                Browse the controlled vocabulary hierarchy. Terms with a number have refer-tos to channels or wiki spaces.
+              </p>
+              <HomeTaxonomyPreview
+                tree={taxonomyTree}
+                treeLoading={taxonomyTreeLoading}
+                summaryLoading={hubLoading}
+                error={taxonomyTreeError}
+                nodeCount={hub?.taxonomy?.node_count ?? null}
+                linkCount={hub?.taxonomy?.link_count ?? null}
+              />
+              <div className="home-hub-card-actions">
+                <Link to="/taxonomy" className="btn btn-secondary">
+                  Open taxonomy
+                </Link>
+                {showTaxonomyWrite && (
+                  <span className="home-muted home-hub-hint">You can edit terms and refer-tos on that page.</span>
+                )}
               </div>
-              <h3 className="home-card-title">{title}</h3>
-              <p className="home-card-text">{text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+            </section>
+          </aside>
+        )}
 
-      <section className="home-section">
-        <h2 className="home-section-title">What You Get</h2>
-        <p className="home-section-desc">openKMS delivers:</p>
-        <div className="home-cards">
-          {benefits.map(({ icon: Icon, title, text }) => (
-            <div key={title} className="home-card home-card-benefit">
-              <div className="home-card-icon">
-                <Icon size={24} strokeWidth={1.75} />
-              </div>
-              <h3 className="home-card-title">{title}</h3>
-              <p className="home-card-text">{text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+        <div className="home-hub-split__right">
+          {showDocsWork && (
+            <section className="home-hub-card">
+              <h2 className="home-hub-card-title">
+                <Inbox size={20} aria-hidden />
+                Work items
+              </h2>
+              <p className="home-muted home-hub-card-intro">
+                Recent document relationships (supersedes, amends, implements, see also). Open a document to resolve or
+                update lifecycle.
+              </p>
+              {!hub?.work_items?.length ? (
+                <p className="home-muted">No items in the recent queue.</p>
+              ) : (
+                <ul className="home-work-list">
+                  {hub.work_items.map((w) => (
+                    <li key={w.id} className="home-work-item">
+                      <span className="home-work-type">{w.relation_type}</span>
+                      <Link to={`/documents/view/${w.source_document_id}`} className="home-work-link">
+                        {w.source_title}
+                      </Link>
+                      <span className="home-work-arrow" aria-hidden>
+                        →
+                      </span>
+                      <Link to={`/documents/view/${w.target_document_id}`} className="home-work-link">
+                        {w.target_title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
-      <section className="home-section">
-        <h2 className="home-section-title">Functionalities</h2>
-        <p className="home-section-desc">Key features of the platform:</p>
-        <div className="home-func-grid">
-          {functionalities.map(({ icon: Icon, title, items }) => (
-            <div key={title} className="home-func-card">
-              <div className="home-func-header">
-                <Icon size={22} strokeWidth={1.75} />
-                <h3 className="home-func-title">{title}</h3>
-              </div>
-              <ul className="home-func-list">
-                {items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
+          <div className="home-hub-split__right-row">
+            <section className="home-hub-card home-hub-card--compact">
+              <h2 className="home-hub-card-title">
+                <Share2 size={20} aria-hidden />
+                Share requests
+              </h2>
+              <p className="home-muted">Nothing here yet. Future versions will surface access and collaboration requests.</p>
+            </section>
+
+            <section className="home-hub-card home-hub-card--compact">
+              <h2 className="home-hub-card-title">
+                <FileStack size={20} aria-hidden />
+                Browse content
+              </h2>
+              <ul className="home-quick-links">
+                <li>
+                  <Link to="/documents">Documents</Link>
+                </li>
+                <li>
+                  <Link to="/articles">Articles</Link>
+                </li>
+                <li>
+                  <Link to="/wikis">Wiki spaces</Link>
+                </li>
               </ul>
-            </div>
-          ))}
+            </section>
+          </div>
         </div>
-      </section>
-
-      <section className="home-cta">
-        <p>Ready to organize your knowledge?</p>
-        <p className="home-cta-hint">Sign in above to get started.</p>
-      </section>
+      </div>
     </div>
   );
 }

@@ -186,3 +186,198 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Knowledge operations hub (signed-in) */
+.home-static-landing-signin {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.home-header {
+  margin-bottom: 8px;
+}
+
+.home-muted {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.home-error {
+  color: var(--color-error, #b91c1c);
+  font-size: 0.9rem;
+}
+
+/* Signed-in hub: taxonomy left, activity & shortcuts right (stacks on narrow viewports) */
+.home-hub-split {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 16px;
+  align-items: stretch;
+}
+
+.home-hub-split__right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  flex: 1;
+}
+
+.home-hub-split:not(.home-hub-split--with-taxonomy) .home-hub-split__right {
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+
+.home-hub-split__right-row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 720px) {
+  .home-hub-split__right-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+@media (min-width: 960px) {
+  .home-hub-split--with-taxonomy {
+    display: grid;
+    /* Taxonomy (left) uses at least half the hub width; remainder for work items & shortcuts */
+    grid-template-columns: minmax(50%, 1fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+
+  .home-hub-split--with-taxonomy .home-hub-split__left {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .home-hub-split--with-taxonomy .home-taxonomy-tree-scroll {
+    max-height: min(calc(100vh - 220px), 560px);
+  }
+}
+
+.home-hub-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.home-hub-card--compact {
+  min-width: 0;
+}
+
+.home-hub-card--taxonomy {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+}
+
+.home-taxonomy-intro {
+  margin-top: 0;
+}
+
+.home-hub-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.home-hub-card-body {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.home-hub-card-intro {
+  margin: 0 0 12px;
+}
+
+.home-hub-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-hub-hint {
+  flex: 1;
+  min-width: 180px;
+}
+
+.home-work-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.home-work-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.9rem;
+}
+
+.home-work-item:last-child {
+  border-bottom: none;
+}
+
+.home-work-type {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  min-width: 6rem;
+}
+
+.home-work-link {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.home-work-link:hover {
+  text-decoration: underline;
+}
+
+.home-work-arrow {
+  color: var(--color-text-muted);
+}
+
+.home-quick-links {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--color-text-secondary);
+}
+
+.home-quick-links a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.home-quick-links a:hover {
+  text-decoration: underline;
+}

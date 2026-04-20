@@ -43,6 +43,7 @@ async def init_db() -> None:
     from app.models import user  # noqa: F401
     from app.models import security_role, security_permission, access_group  # noqa: F401
     from app.models import system_settings  # noqa: F401
+    from app.models import taxonomy  # noqa: F401
     from app.models import wiki_models  # noqa: F401
     async with engine.begin() as conn:
         try:

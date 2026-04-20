@@ -56,7 +56,7 @@ const WikiPageEditor = lazy(() => import('./pages/WikiPageEditor').then((m) => (
 const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })));
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
-
+const Taxonomy = lazy(() => import('./pages/Taxonomy').then((m) => ({ default: m.Taxonomy })));
 function EvaluationDatasetDetailPage() {
   const { id } = useParams();
   return <EvaluationDatasetDetail key={id ?? ''} />;
@@ -83,6 +83,7 @@ function App() {
         <Route path="/auth/silent-renew" element={<OidcSilentRenew />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
+          <Route path="taxonomy" element={<FeatureGate feature="taxonomy"><Taxonomy /></FeatureGate>} />
           <Route path="documents" element={<Outlet />}>
             <Route index element={<DocumentsIndex />} />
             <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />

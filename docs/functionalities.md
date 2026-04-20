@@ -120,6 +120,15 @@
 | Export | ✅ | `GET /api/glossaries/{id}/export` returns JSON with glossary_id, name, terms array |
 | Import | ✅ | `POST /api/glossaries/{id}/import` with `{ terms, mode: "append" \| "replace" }`; JSON file picker in UI |
 
+### 4e. Taxonomy & Home (Knowledge operations)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Taxonomy (KOS) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*`; **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns |
+| Taxonomy UI | ✅ | `/taxonomy` (lazy); sidebar **Taxonomy** above **Glossaries** when feature toggle + path allowed; copy treats taxonomy as a **controlled vocabulary** (terms, not “topics”); **Terms** tree + **Term details** panel (selected term: path, description, **Refer to** list scoped to that node); **New term** modal (preferred label, description, broader/parent); reorder/move/edit/delete; upsert/delete refer-tos from details only |
+| Home hub | ✅ | Signed-in `/` loads `GET /api/home/hub` (requires **taxonomy:read** or **documents:read**): taxonomy counts, scoped work items from recent `document_relationships`, placeholder **share_requests** |
+| Static home (guests) | ✅ | **`/`** always shows **`HomeStaticLanding`** for unauthenticated users (marketing hero, pain points, benefits, functionalities, Sign in CTA); no system setting—**`MainLayout`** only gates non-home routes |
+| Feature toggle | ✅ | `taxonomy` (default on); Console → Feature Toggles |
 ### 5. Objects & Links (Feature Toggle)
 
 | Feature | Status | Description |
@@ -179,7 +188,7 @@
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
 - **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles**, and resolved **permissions** (local users: DB keys such as `all` or granular `console:*`; OIDC IdP admins receive the full catalog); data from `GET /api/auth/me`. Linked from the header user menu.
-- Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
+- Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users on **`/`** see the static marketing home; on any other path they see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
 
 ### 6c. Home (Landing Page)
 
