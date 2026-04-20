@@ -143,7 +143,7 @@
 - [x] procrastinate (PostgreSQL-based job queue) integration
 - [x] Upload decoupled from parsing: stores file only, `status=uploaded`
 - [x] Document status field: uploaded → pending → running → completed/failed
-- [x] run_pipeline task: spawns `openkms-cli pipeline run` as subprocess; when channel has extraction config (model_name from ApiModel), renders extraction args into template and runs metadata extraction in CLI
+- [x] run_pipeline task: spawns `openkms-cli pipeline run` as subprocess; wait capped by **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default 1800); when channel has extraction config (model_name from ApiModel), renders extraction args into template and runs metadata extraction in CLI
 - [x] Jobs API: list, detail, create, retry, delete (`/api/jobs`)
 - [x] Jobs.tsx: real API, status filter, create job, retry, delete
 - [x] JobDetail.tsx: full job detail page with timing, document link, pipeline info, rendered command, event log

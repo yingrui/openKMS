@@ -206,7 +206,7 @@
 | Jobs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry` |
 | Jobs UI | ✅ | Jobs.tsx with real API, status filter, create job, retry failed, delete |
 | Job detail | ✅ | JobDetail.tsx at `/jobs/:jobId` – timing, document link, pipeline info, rendered command, event log |
-| run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; updates document status |
+| run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default **1800**) caps wait time; updates document status |
 | Worker | ✅ | `backend/worker.py` entry point for procrastinate worker |
 | Document status | ✅ | uploaded → pending → running → completed/failed; shown in list and detail |
 | Process button | ✅ | Visible for uploaded/failed documents in list and detail views |

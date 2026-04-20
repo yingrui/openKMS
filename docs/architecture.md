@@ -415,7 +415,7 @@ flowchart LR
 
 | Layer | Config |
 |-------|--------|
-| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id, OPENKMS_BACKEND_URL (for CLI metadata extraction) |
+| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id, OPENKMS_BACKEND_URL (for CLI metadata extraction), **OPENKMS_PIPELINE_TIMEOUT_SECONDS** (default 1800) for **`run_pipeline`** subprocess |
 | Backend | `OPENKMS_AUTH_MODE` – `oidc` (default) or `local`; `OPENKMS_ALLOW_SIGNUP`, `OPENKMS_INITIAL_ADMIN_USER`, `OPENKMS_CLI_BASIC_*`, `OPENKMS_LOCAL_JWT_EXP_HOURS` |
 | Backend | `OPENKMS_OIDC_*`, `OPENKMS_FRONTEND_URL` – issuer, confidential client, SPA origin, post-logout client id, service client id (`azp`) for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
