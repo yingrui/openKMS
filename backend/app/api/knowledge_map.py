@@ -1,4 +1,4 @@
-"""Hierarchical taxonomy (KOS) and links to channels / wiki spaces."""
+"""Knowledge Map API: hierarchical nodes and links to channels / wiki spaces."""
 
 from __future__ import annotations
 
@@ -13,11 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_permission
 from app.database import get_db
 from app.models.document_channel import DocumentChannel
-from app.models.taxonomy import TaxonomyNode, TaxonomyResourceLink
+from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
 from app.models.wiki_models import WikiSpace
-from app.services.permission_catalog import PERM_TAXONOMY_READ, PERM_TAXONOMY_WRITE
+from app.services.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
 
-router = APIRouter(prefix="/taxonomy", tags=["taxonomy"])
+router = APIRouter(prefix="/taxonomy", tags=["knowledge-map"])
 
 RESOURCE_TYPES: frozenset[str] = frozenset({"document_channel", "article_channel", "wiki_space"})
 
@@ -26,24 +26,24 @@ def _nid() -> str:
     return uuid.uuid4().hex[:32]
 
 
-class TaxonomyNodeOut(BaseModel):
+class KnowledgeMapNodeOut(BaseModel):
     id: str
     parent_id: str | None
     name: str
     description: str | None = None
     sort_order: int
     link_count: int = 0
-    children: list["TaxonomyNodeOut"] = Field(default_factory=list)
+    children: list["KnowledgeMapNodeOut"] = Field(default_factory=list)
 
 
-class TaxonomyNodeCreate(BaseModel):
+class KnowledgeMapNodeCreate(BaseModel):
     parent_id: str | None = None
     name: str = Field(..., min_length=1, max_length=256)
     description: str | None = Field(None, max_length=8192)
     sort_order: int = 0
 
 
-class TaxonomyNodeUpdate(BaseModel):
+class KnowledgeMapNodeUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=256)
     description: str | None = Field(None, max_length=8192)
     sort_order: int | None = None
@@ -80,16 +80,16 @@ async def _validate_resource(db: AsyncSession, resource_type: str, resource_id: 
 
 
 def _build_tree(
-    nodes: list[TaxonomyNode],
+    nodes: list[KnowledgeMapNode],
     link_counts: dict[str, int],
     parent_id: str | None,
-) -> list[TaxonomyNodeOut]:
+) -> list[KnowledgeMapNodeOut]:
     children = [n for n in nodes if n.parent_id == parent_id]
     children.sort(key=lambda n: (n.sort_order, n.name))
-    out: list[TaxonomyNodeOut] = []
+    out: list[KnowledgeMapNodeOut] = []
     for n in children:
         out.append(
-            TaxonomyNodeOut(
+            KnowledgeMapNodeOut(
                 id=n.id,
                 parent_id=n.parent_id,
                 name=n.name,
@@ -104,17 +104,17 @@ def _build_tree(
 
 @router.get(
     "/nodes/tree",
-    response_model=list[TaxonomyNodeOut],
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_READ))],
+    response_model=list[KnowledgeMapNodeOut],
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
 )
-async def get_taxonomy_tree(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(TaxonomyNode))
+async def get_knowledge_map_tree(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(KnowledgeMapNode))
     nodes = list(result.scalars().all())
     link_counts: dict[str, int] = {}
     if nodes:
         ids = [n.id for n in nodes]
         lc_result = await db.execute(
-            select(TaxonomyResourceLink.taxonomy_node_id).where(TaxonomyResourceLink.taxonomy_node_id.in_(ids))
+            select(KnowledgeMapResourceLink.taxonomy_node_id).where(KnowledgeMapResourceLink.taxonomy_node_id.in_(ids))
         )
         for (nid,) in lc_result.all():
             link_counts[nid] = link_counts.get(nid, 0) + 1
@@ -123,15 +123,15 @@ async def get_taxonomy_tree(db: AsyncSession = Depends(get_db)):
 
 @router.post(
     "/nodes",
-    response_model=TaxonomyNodeOut,
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_WRITE))],
+    response_model=KnowledgeMapNodeOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
 )
-async def create_taxonomy_node(body: TaxonomyNodeCreate, db: AsyncSession = Depends(get_db)):
+async def create_knowledge_map_node(body: KnowledgeMapNodeCreate, db: AsyncSession = Depends(get_db)):
     if body.parent_id:
-        parent = await db.get(TaxonomyNode, body.parent_id)
+        parent = await db.get(KnowledgeMapNode, body.parent_id)
         if not parent:
             raise HTTPException(status_code=400, detail="parent_id not found")
-    node = TaxonomyNode(
+    node = KnowledgeMapNode(
         id=_nid(),
         parent_id=body.parent_id,
         name=body.name.strip(),
@@ -140,7 +140,7 @@ async def create_taxonomy_node(body: TaxonomyNodeCreate, db: AsyncSession = Depe
     )
     db.add(node)
     await db.flush()
-    return TaxonomyNodeOut(
+    return KnowledgeMapNodeOut(
         id=node.id,
         parent_id=node.parent_id,
         name=node.name,
@@ -153,15 +153,15 @@ async def create_taxonomy_node(body: TaxonomyNodeCreate, db: AsyncSession = Depe
 
 @router.patch(
     "/nodes/{node_id}",
-    response_model=TaxonomyNodeOut,
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_WRITE))],
+    response_model=KnowledgeMapNodeOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
 )
-async def update_taxonomy_node(
+async def update_knowledge_map_node(
     node_id: str,
-    body: TaxonomyNodeUpdate,
+    body: KnowledgeMapNodeUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    node = await db.get(TaxonomyNode, node_id)
+    node = await db.get(KnowledgeMapNode, node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     patch = body.model_dump(exclude_unset=True)
@@ -170,14 +170,14 @@ async def update_taxonomy_node(
         if new_parent == node_id:
             raise HTTPException(status_code=400, detail="Cannot set parent to self")
         if new_parent:
-            parent = await db.get(TaxonomyNode, new_parent)
+            parent = await db.get(KnowledgeMapNode, new_parent)
             if not parent:
                 raise HTTPException(status_code=400, detail="parent_id not found")
             cid: str | None = new_parent
             while cid:
                 if cid == node_id:
                     raise HTTPException(status_code=400, detail="Cycle detected")
-                anc = await db.get(TaxonomyNode, cid)
+                anc = await db.get(KnowledgeMapNode, cid)
                 cid = anc.parent_id if anc else None
         node.parent_id = new_parent
     if "name" in patch and patch["name"] is not None:
@@ -189,9 +189,11 @@ async def update_taxonomy_node(
         node.sort_order = int(patch["sort_order"])
     await db.flush()
     cnt2 = await db.scalar(
-        select(sa_func.count()).select_from(TaxonomyResourceLink).where(TaxonomyResourceLink.taxonomy_node_id == node_id)
+        select(sa_func.count())
+        .select_from(KnowledgeMapResourceLink)
+        .where(KnowledgeMapResourceLink.taxonomy_node_id == node_id)
     )
-    return TaxonomyNodeOut(
+    return KnowledgeMapNodeOut(
         id=node.id,
         parent_id=node.parent_id,
         name=node.name,
@@ -205,10 +207,10 @@ async def update_taxonomy_node(
 @router.delete(
     "/nodes/{node_id}",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_WRITE))],
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
 )
-async def delete_taxonomy_node(node_id: str, db: AsyncSession = Depends(get_db)):
-    node = await db.get(TaxonomyNode, node_id)
+async def delete_knowledge_map_node(node_id: str, db: AsyncSession = Depends(get_db)):
+    node = await db.get(KnowledgeMapNode, node_id)
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     await db.delete(node)
@@ -217,10 +219,10 @@ async def delete_taxonomy_node(node_id: str, db: AsyncSession = Depends(get_db))
 @router.get(
     "/resource-links",
     response_model=list[ResourceLinkOut],
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_READ))],
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
 )
 async def list_resource_links(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(TaxonomyResourceLink).order_by(TaxonomyResourceLink.created_at))
+    result = await db.execute(select(KnowledgeMapResourceLink).order_by(KnowledgeMapResourceLink.created_at))
     rows = result.scalars().all()
     return [
         ResourceLinkOut(
@@ -236,24 +238,24 @@ async def list_resource_links(db: AsyncSession = Depends(get_db)):
 @router.put(
     "/resource-links",
     response_model=ResourceLinkOut,
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_WRITE))],
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
 )
 async def upsert_resource_link(body: ResourceLinkUpsert, db: AsyncSession = Depends(get_db)):
-    node = await db.get(TaxonomyNode, body.taxonomy_node_id)
+    node = await db.get(KnowledgeMapNode, body.taxonomy_node_id)
     if not node:
         raise HTTPException(status_code=400, detail="taxonomy_node_id not found")
     await _validate_resource(db, body.resource_type, body.resource_id)
     existing = await db.execute(
-        select(TaxonomyResourceLink).where(
-            TaxonomyResourceLink.resource_type == body.resource_type,
-            TaxonomyResourceLink.resource_id == body.resource_id,
+        select(KnowledgeMapResourceLink).where(
+            KnowledgeMapResourceLink.resource_type == body.resource_type,
+            KnowledgeMapResourceLink.resource_id == body.resource_id,
         )
     )
     row = existing.scalar_one_or_none()
     if row:
         row.taxonomy_node_id = body.taxonomy_node_id
     else:
-        row = TaxonomyResourceLink(
+        row = KnowledgeMapResourceLink(
             id=_nid(),
             taxonomy_node_id=body.taxonomy_node_id,
             resource_type=body.resource_type,
@@ -272,7 +274,7 @@ async def upsert_resource_link(body: ResourceLinkUpsert, db: AsyncSession = Depe
 @router.delete(
     "/resource-links",
     status_code=204,
-    dependencies=[Depends(require_permission(PERM_TAXONOMY_WRITE))],
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
 )
 async def delete_resource_link(
     resource_type: str = Query(..., min_length=1),
@@ -280,9 +282,9 @@ async def delete_resource_link(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(TaxonomyResourceLink).where(
-            TaxonomyResourceLink.resource_type == resource_type,
-            TaxonomyResourceLink.resource_id == resource_id,
+        select(KnowledgeMapResourceLink).where(
+            KnowledgeMapResourceLink.resource_type == resource_type,
+            KnowledgeMapResourceLink.resource_id == resource_id,
         )
     )
     row = result.scalar_one_or_none()

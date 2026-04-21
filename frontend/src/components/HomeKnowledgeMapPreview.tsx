@@ -1,13 +1,13 @@
 import { useCallback, useLayoutEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Link2 } from 'lucide-react';
-import type { TaxonomyNode } from '../data/taxonomyApi';
-import './HomeTaxonomyPreview.css';
+import type { KnowledgeMapNode } from '../data/knowledgeMapApi';
+import './HomeKnowledgeMapPreview.css';
 
 /** Every node id that has children — used for “expand all” and as the default on load. */
-function collectExpandableNodeIds(nodes: TaxonomyNode[]): Set<string> {
+function collectExpandableNodeIds(nodes: KnowledgeMapNode[]): Set<string> {
   const ids = new Set<string>();
-  const walk = (ns: TaxonomyNode[]) => {
+  const walk = (ns: KnowledgeMapNode[]) => {
     for (const n of ns) {
       if (n.children?.length) {
         ids.add(n.id);
@@ -19,13 +19,13 @@ function collectExpandableNodeIds(nodes: TaxonomyNode[]): Set<string> {
   return ids;
 }
 
-function TaxonomyPreviewRow({
+function KnowledgeMapPreviewRow({
   node,
   depth,
   expanded,
   onToggle,
 }: {
-  node: TaxonomyNode;
+  node: KnowledgeMapNode;
   depth: number;
   expanded: Set<string>;
   onToggle: (id: string) => void;
@@ -34,15 +34,15 @@ function TaxonomyPreviewRow({
   const isOpen = expanded.has(node.id);
 
   return (
-    <li className="home-taxonomy-tree-item" role="treeitem" aria-expanded={hasChildren ? isOpen : undefined}>
+    <li className="home-knowledge-map-tree-item" role="treeitem" aria-expanded={hasChildren ? isOpen : undefined}>
       <div
-        className="home-taxonomy-tree-row"
-        style={{ ['--home-tax-depth' as string]: String(depth) }}
+        className="home-knowledge-map-tree-row"
+        style={{ ['--home-knowledge-map-depth' as string]: String(depth) }}
       >
         {hasChildren ? (
           <button
             type="button"
-            className="home-taxonomy-tree-toggle"
+            className="home-knowledge-map-tree-toggle"
             aria-label={isOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
             onClick={(e) => {
               e.preventDefault();
@@ -50,15 +50,15 @@ function TaxonomyPreviewRow({
               onToggle(node.id);
             }}
           >
-            <ChevronRight size={16} className={isOpen ? 'home-taxonomy-chevron home-taxonomy-chevron--open' : 'home-taxonomy-chevron'} aria-hidden />
+            <ChevronRight size={16} className={isOpen ? 'home-knowledge-map-chevron home-knowledge-map-chevron--open' : 'home-knowledge-map-chevron'} aria-hidden />
           </button>
         ) : (
-          <span className="home-taxonomy-tree-toggle home-taxonomy-tree-toggle--spacer" aria-hidden />
+          <span className="home-knowledge-map-tree-toggle home-knowledge-map-tree-toggle--spacer" aria-hidden />
         )}
-        <Link to={`/knowledge-map?node=${encodeURIComponent(node.id)}`} className="home-taxonomy-tree-link">
-          <span className="home-taxonomy-tree-name">{node.name}</span>
+        <Link to={`/knowledge-map?node=${encodeURIComponent(node.id)}`} className="home-knowledge-map-tree-link">
+          <span className="home-knowledge-map-tree-name">{node.name}</span>
           {node.link_count > 0 && (
-            <span className="home-taxonomy-tree-badge" title="Refer-tos to channels or wiki spaces">
+            <span className="home-knowledge-map-tree-badge" title="Refer-tos to channels or wiki spaces">
               <Link2 size={12} aria-hidden />
               {node.link_count}
             </span>
@@ -66,9 +66,9 @@ function TaxonomyPreviewRow({
         </Link>
       </div>
       {hasChildren && isOpen && (
-        <ul className="home-taxonomy-tree-children" role="group">
+        <ul className="home-knowledge-map-tree-children" role="group">
           {node.children!.map((ch) => (
-            <TaxonomyPreviewRow key={ch.id} node={ch} depth={depth + 1} expanded={expanded} onToggle={onToggle} />
+            <KnowledgeMapPreviewRow key={ch.id} node={ch} depth={depth + 1} expanded={expanded} onToggle={onToggle} />
           ))}
         </ul>
       )}
@@ -76,7 +76,7 @@ function TaxonomyPreviewRow({
   );
 }
 
-export function HomeTaxonomyPreview({
+export function HomeKnowledgeMapPreview({
   tree,
   treeLoading,
   summaryLoading,
@@ -84,7 +84,7 @@ export function HomeTaxonomyPreview({
   nodeCount,
   linkCount,
 }: {
-  tree: TaxonomyNode[] | null;
+  tree: KnowledgeMapNode[] | null;
   treeLoading: boolean;
   summaryLoading: boolean;
   error: string | null;
@@ -118,9 +118,9 @@ export function HomeTaxonomyPreview({
   const collapseAll = useCallback(() => setExpanded(new Set()), []);
 
   return (
-    <div className="home-taxonomy-preview">
-      <div className="home-taxonomy-preview-toolbar">
-        <div className="home-taxonomy-preview-stats">
+    <div className="home-knowledge-map-preview">
+      <div className="home-knowledge-map-preview-toolbar">
+        <div className="home-knowledge-map-preview-stats">
           {nodeCount != null && linkCount != null ? (
             <span className="home-muted">
               {nodeCount} term{nodeCount === 1 ? '' : 's'} · {linkCount} refer-to{linkCount === 1 ? '' : 's'}
@@ -132,11 +132,11 @@ export function HomeTaxonomyPreview({
           )}
         </div>
         {tree && tree.length > 0 && (
-          <div className="home-taxonomy-preview-toolbar-actions">
-            <button type="button" className="home-taxonomy-tool-btn" onClick={expandAll}>
+          <div className="home-knowledge-map-preview-toolbar-actions">
+            <button type="button" className="home-knowledge-map-tool-btn" onClick={expandAll}>
               Expand all
             </button>
-            <button type="button" className="home-taxonomy-tool-btn" onClick={collapseAll}>
+            <button type="button" className="home-knowledge-map-tool-btn" onClick={collapseAll}>
               Collapse all
             </button>
           </div>
@@ -144,22 +144,22 @@ export function HomeTaxonomyPreview({
       </div>
 
       {error && (
-        <p className="home-error home-taxonomy-preview-error" role="alert">
+        <p className="home-error home-knowledge-map-preview-error" role="alert">
           {error}
         </p>
       )}
 
-      <div className="home-taxonomy-tree-scroll" aria-label="Knowledge Map preview">
+      <div className="home-knowledge-map-tree-scroll" aria-label="Knowledge Map preview">
         {treeLoading && !tree?.length ? (
-          <p className="home-muted home-taxonomy-tree-placeholder">Loading tree…</p>
+          <p className="home-muted home-knowledge-map-tree-placeholder">Loading tree…</p>
         ) : !tree?.length ? (
-          <p className="home-muted home-taxonomy-tree-placeholder">
+          <p className="home-muted home-knowledge-map-tree-placeholder">
             No terms yet. Add them on the Knowledge Map page.
           </p>
         ) : (
-          <ul className="home-taxonomy-tree-root" role="tree">
+          <ul className="home-knowledge-map-tree-root" role="tree">
             {tree.map((n) => (
-              <TaxonomyPreviewRow key={n.id} node={n} depth={0} expanded={expanded} onToggle={toggle} />
+              <KnowledgeMapPreviewRow key={n.id} node={n} depth={0} expanded={expanded} onToggle={toggle} />
             ))}
           </ul>
         )}

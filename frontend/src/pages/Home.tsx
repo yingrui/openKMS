@@ -4,9 +4,9 @@ import { FileStack, FolderTree, Inbox, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
-import { HomeTaxonomyPreview } from '../components/HomeTaxonomyPreview';
+import { HomeKnowledgeMapPreview } from '../components/HomeKnowledgeMapPreview';
 import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
-import { fetchTaxonomyTree, type TaxonomyNode } from '../data/taxonomyApi';
+import { fetchKnowledgeMapTree, type KnowledgeMapNode } from '../data/knowledgeMapApi';
 import './Home.css';
 
 export function Home() {
@@ -15,9 +15,9 @@ export function Home() {
   const [hub, setHub] = useState<HomeHubResponse | null>(null);
   const [hubError, setHubError] = useState<string | null>(null);
   const [hubLoading, setHubLoading] = useState(false);
-  const [taxonomyTree, setTaxonomyTree] = useState<TaxonomyNode[] | null>(null);
-  const [taxonomyTreeLoading, setTaxonomyTreeLoading] = useState(false);
-  const [taxonomyTreeError, setTaxonomyTreeError] = useState<string | null>(null);
+  const [knowledgeMapTree, setKnowledgeMapTree] = useState<KnowledgeMapNode[] | null>(null);
+  const [knowledgeMapTreeLoading, setKnowledgeMapTreeLoading] = useState(false);
+  const [knowledgeMapTreeError, setKnowledgeMapTreeError] = useState<string | null>(null);
   const loadHub = useCallback(async () => {
     setHubLoading(true);
     setHubError(null);
@@ -40,43 +40,43 @@ export function Home() {
     }
   }, [isAuthenticated, loadHub]);
 
-  const showTaxonomy =
+  const showKnowledgeMapHub =
     toggles.taxonomy !== false && (hasPermission('taxonomy:read') || hasPermission('all'));
 
   useEffect(() => {
-    if (!isAuthenticated || !showTaxonomy) {
-      setTaxonomyTree(null);
-      setTaxonomyTreeError(null);
-      setTaxonomyTreeLoading(false);
+    if (!isAuthenticated || !showKnowledgeMapHub) {
+      setKnowledgeMapTree(null);
+      setKnowledgeMapTreeError(null);
+      setKnowledgeMapTreeLoading(false);
       return;
     }
     let cancelled = false;
-    setTaxonomyTreeLoading(true);
-    setTaxonomyTreeError(null);
+    setKnowledgeMapTreeLoading(true);
+    setKnowledgeMapTreeError(null);
     void (async () => {
       try {
-        const t = await fetchTaxonomyTree();
-        if (!cancelled) setTaxonomyTree(t);
+        const t = await fetchKnowledgeMapTree();
+        if (!cancelled) setKnowledgeMapTree(t);
       } catch (e) {
         if (!cancelled) {
-          setTaxonomyTree(null);
-          setTaxonomyTreeError(e instanceof Error ? e.message : 'Could not load Knowledge Map');
+          setKnowledgeMapTree(null);
+          setKnowledgeMapTreeError(e instanceof Error ? e.message : 'Could not load Knowledge Map');
         }
       } finally {
-        if (!cancelled) setTaxonomyTreeLoading(false);
+        if (!cancelled) setKnowledgeMapTreeLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, showTaxonomy]);
+  }, [isAuthenticated, showKnowledgeMapHub]);
 
   if (!isAuthenticated) {
     /* Unauthenticated users always see the static marketing home (`/` is not gated). */
     return <HomeStaticLanding onSignIn={login} />;
   }
 
-  const showTaxonomyWrite = hasPermission('taxonomy:write') || hasPermission('all');
+  const showKnowledgeMapWrite = hasPermission('taxonomy:write') || hasPermission('all');
   const showDocsWork = hasPermission('documents:read') || hasPermission('all');
   return (
     <div className="home home--hub">
@@ -96,22 +96,22 @@ export function Home() {
         </p>
       )}
 
-      <div className={`home-hub-split${showTaxonomy ? ' home-hub-split--with-taxonomy' : ''}`}>
-        {showTaxonomy && (
+      <div className={`home-hub-split${showKnowledgeMapHub ? ' home-hub-split--with-knowledge-map' : ''}`}>
+        {showKnowledgeMapHub && (
           <aside className="home-hub-split__left" aria-label="Knowledge Map overview">
-            <section className="home-hub-card home-hub-card--taxonomy">
+            <section className="home-hub-card home-hub-card--knowledge-map">
               <h2 className="home-hub-card-title">
                 <FolderTree size={20} aria-hidden />
                 Knowledge Map
               </h2>
-              <p className="home-muted home-hub-card-intro home-taxonomy-intro">
+              <p className="home-muted home-hub-card-intro home-knowledge-map-intro">
                 A sitemap-style view of how content is organized. Terms with a number link to channels or wiki spaces.
               </p>
-              <HomeTaxonomyPreview
-                tree={taxonomyTree}
-                treeLoading={taxonomyTreeLoading}
+              <HomeKnowledgeMapPreview
+                tree={knowledgeMapTree}
+                treeLoading={knowledgeMapTreeLoading}
                 summaryLoading={hubLoading}
-                error={taxonomyTreeError}
+                error={knowledgeMapTreeError}
                 nodeCount={hub?.taxonomy?.node_count ?? null}
                 linkCount={hub?.taxonomy?.link_count ?? null}
               />
@@ -119,7 +119,7 @@ export function Home() {
                 <Link to="/knowledge-map" className="btn btn-secondary">
                   Open Knowledge Map
                 </Link>
-                {showTaxonomyWrite && (
+                {showKnowledgeMapWrite && (
                   <span className="home-muted home-hub-hint">You can edit terms and refer-tos on that page.</span>
                 )}
               </div>

@@ -1,14 +1,14 @@
 import { config } from '../config';
 import { authAwareFetch, getAuthHeaders } from './apiClient';
 
-export type TaxonomyNode = {
+export type KnowledgeMapNode = {
   id: string;
   parent_id: string | null;
   name: string;
   description: string | null;
   sort_order: number;
   link_count: number;
-  children: TaxonomyNode[];
+  children: KnowledgeMapNode[];
 };
 
 export type ResourceLink = {
@@ -18,7 +18,7 @@ export type ResourceLink = {
   resource_id: string;
 };
 
-export async function fetchTaxonomyTree(): Promise<TaxonomyNode[]> {
+export async function fetchKnowledgeMapTree(): Promise<KnowledgeMapNode[]> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes/tree`, {
     headers,
@@ -29,15 +29,15 @@ export async function fetchTaxonomyTree(): Promise<TaxonomyNode[]> {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || `Knowledge Map failed (${res.status})`);
   }
-  return res.json() as Promise<TaxonomyNode[]>;
+  return res.json() as Promise<KnowledgeMapNode[]>;
 }
 
-export async function createTaxonomyNode(body: {
+export async function createKnowledgeMapNode(body: {
   parent_id?: string | null;
   name: string;
   description?: string | null;
   sort_order?: number;
-}): Promise<TaxonomyNode> {
+}): Promise<KnowledgeMapNode> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes`, {
     method: 'POST',
@@ -49,10 +49,10 @@ export async function createTaxonomyNode(body: {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || `Create node failed (${res.status})`);
   }
-  return res.json() as Promise<TaxonomyNode>;
+  return res.json() as Promise<KnowledgeMapNode>;
 }
 
-export async function deleteTaxonomyNode(nodeId: string): Promise<void> {
+export async function deleteKnowledgeMapNode(nodeId: string): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes/${encodeURIComponent(nodeId)}`, {
     method: 'DELETE',
@@ -65,7 +65,7 @@ export async function deleteTaxonomyNode(nodeId: string): Promise<void> {
   }
 }
 
-export async function updateTaxonomyNode(
+export async function updateKnowledgeMapNode(
   nodeId: string,
   body: {
     name?: string;
@@ -73,7 +73,7 @@ export async function updateTaxonomyNode(
     sort_order?: number;
     parent_id?: string | null;
   },
-): Promise<TaxonomyNode> {
+): Promise<KnowledgeMapNode> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes/${encodeURIComponent(nodeId)}`, {
     method: 'PATCH',
@@ -85,7 +85,7 @@ export async function updateTaxonomyNode(
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || `Update node failed (${res.status})`);
   }
-  return res.json() as Promise<TaxonomyNode>;
+  return res.json() as Promise<KnowledgeMapNode>;
 }
 
 export async function fetchResourceLinks(): Promise<ResourceLink[]> {

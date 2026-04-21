@@ -1,9 +1,9 @@
-.taxonomy-page {
+.knowledge-map-page {
   width: 100%;
   max-width: 1280px;
 }
 
-.taxonomy-back-row {
+.knowledge-map-back-row {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -14,15 +14,15 @@
   text-decoration: none;
 }
 
-.taxonomy-back-row:hover {
+.knowledge-map-back-row:hover {
   color: var(--color-accent);
 }
 
-.taxonomy-header {
+.knowledge-map-header {
   margin-bottom: 8px;
 }
 
-.taxonomy-error-banner {
+.knowledge-map-error-banner {
   padding: 12px 16px;
   background: var(--color-error);
   color: white;
@@ -30,7 +30,7 @@
   margin-bottom: 24px;
 }
 
-.taxonomy-loading {
+.knowledge-map-loading {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -38,18 +38,18 @@
   padding: 24px 0;
 }
 
-.taxonomy-spinner {
-  animation: taxonomy-spin 0.8s linear infinite;
+.knowledge-map-spinner {
+  animation: knowledge-map-spin 0.8s linear infinite;
 }
 
-@keyframes taxonomy-spin {
+@keyframes knowledge-map-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 /* Terms + details: each column at least half the content width for readability */
-.taxonomy-master-detail {
+.knowledge-map-master-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
@@ -57,19 +57,19 @@
   margin-bottom: 32px;
 }
 
-.taxonomy-master-detail > .taxonomy-tree-panel,
-.taxonomy-master-detail > .taxonomy-detail-card {
+.knowledge-map-master-detail > .knowledge-map-tree-panel,
+.knowledge-map-master-detail > .knowledge-map-detail-card {
   min-width: 0;
 }
 
 @media (max-width: 900px) {
-  .taxonomy-master-detail {
+  .knowledge-map-master-detail {
     grid-template-columns: 1fr;
   }
 }
 
-.taxonomy-tree-panel,
-.taxonomy-detail-card {
+.knowledge-map-tree-panel,
+.knowledge-map-detail-card {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -77,11 +77,11 @@
   min-width: 0;
 }
 
-.taxonomy-master-detail .taxonomy-tree-panel {
+.knowledge-map-master-detail .knowledge-map-tree-panel {
   margin-bottom: 0;
 }
 
-.taxonomy-tree-panel-header {
+.knowledge-map-tree-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -90,7 +90,7 @@
   margin-bottom: 20px;
 }
 
-.taxonomy-tree-panel-header h2 {
+.knowledge-map-tree-panel-header h2 {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -100,14 +100,14 @@
   color: var(--color-text);
 }
 
-.taxonomy-new-term-btn {
+.knowledge-map-new-term-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.taxonomy-dialog-overlay {
+.knowledge-map-dialog-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
@@ -118,7 +118,7 @@
   padding: 24px;
 }
 
-.taxonomy-dialog {
+.knowledge-map-dialog {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -128,21 +128,21 @@
   padding: 24px;
 }
 
-.taxonomy-dialog-header {
+.knowledge-map-dialog-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.taxonomy-dialog-header h2 {
+.knowledge-map-dialog-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
-.taxonomy-dialog-close {
+.knowledge-map-dialog-close {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -155,24 +155,24 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.taxonomy-dialog-close:hover:not(:disabled) {
+.knowledge-map-dialog-close:hover:not(:disabled) {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
 
-.taxonomy-dialog-close:disabled {
+.knowledge-map-dialog-close:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.taxonomy-dialog-body {
+.knowledge-map-dialog-body {
   padding: 16px 0;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.taxonomy-dialog-error {
+.knowledge-map-dialog-error {
   padding: 10px 12px;
   font-size: 0.875rem;
   color: var(--color-error-contrast, #fff);
@@ -180,7 +180,7 @@
   border-radius: var(--radius-md);
 }
 
-.taxonomy-dialog-body label {
+.knowledge-map-dialog-body label {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -189,9 +189,9 @@
   color: var(--color-text-secondary);
 }
 
-.taxonomy-dialog-body input,
-.taxonomy-dialog-body textarea,
-.taxonomy-dialog-body select {
+.knowledge-map-dialog-body input,
+.knowledge-map-dialog-body textarea,
+.knowledge-map-dialog-body select {
   padding: 10px 14px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -200,19 +200,19 @@
   font-size: 0.9375rem;
 }
 
-.taxonomy-dialog-body textarea {
+.knowledge-map-dialog-body textarea {
   resize: vertical;
   min-height: 56px;
 }
 
-.taxonomy-dialog-body input:focus,
-.taxonomy-dialog-body textarea:focus,
-.taxonomy-dialog-body select:focus {
+.knowledge-map-dialog-body input:focus,
+.knowledge-map-dialog-body textarea:focus,
+.knowledge-map-dialog-body select:focus {
   outline: none;
   border-color: var(--color-accent);
 }
 
-.taxonomy-dialog-footer {
+.knowledge-map-dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -221,18 +221,18 @@
   border-top: 1px solid var(--color-border);
 }
 
-.taxonomy-empty {
+.knowledge-map-empty {
   text-align: center;
   padding: 32px 16px;
   color: var(--color-text-muted);
 }
 
-.taxonomy-empty svg {
+.knowledge-map-empty svg {
   opacity: 0.5;
   margin-bottom: 12px;
 }
 
-.taxonomy-empty-hint {
+.knowledge-map-empty-hint {
   font-size: 0.875rem;
   margin-top: 8px;
   max-width: 280px;
@@ -240,17 +240,17 @@
   margin-right: auto;
 }
 
-.taxonomy-tree-list {
+.knowledge-map-tree-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.taxonomy-tree-li {
+.knowledge-map-tree-li {
   list-style: none;
 }
 
-.taxonomy-tree-row {
+.knowledge-map-tree-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -261,12 +261,12 @@
   width: 100%;
 }
 
-.taxonomy-tree-row--selected {
+.knowledge-map-tree-row--selected {
   background: var(--color-bg-muted);
   box-shadow: inset 3px 0 0 var(--color-accent);
 }
 
-.taxonomy-tree-select {
+.knowledge-map-tree-select {
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
@@ -285,21 +285,21 @@
   transition: background 0.12s;
 }
 
-.taxonomy-tree-select:hover {
+.knowledge-map-tree-select:hover {
   background: var(--color-bg-muted);
 }
 
-.taxonomy-tree-row--selected .taxonomy-tree-select:hover {
+.knowledge-map-tree-row--selected .knowledge-map-tree-select:hover {
   background: transparent;
 }
 
-.taxonomy-tree-select-icon {
+.knowledge-map-tree-select-icon {
   color: var(--color-accent);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
-.taxonomy-tree-name-wrap {
+.knowledge-map-tree-name-wrap {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -308,14 +308,14 @@
   overflow: hidden;
 }
 
-.taxonomy-tree-name {
+.knowledge-map-tree-name {
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.taxonomy-tree-desc {
+.knowledge-map-tree-desc {
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -324,7 +324,7 @@
   max-width: 100%;
 }
 
-.taxonomy-tree-badge {
+.knowledge-map-tree-badge {
   font-size: 0.75rem;
   background: var(--color-bg-muted);
   border-radius: 999px;
@@ -333,7 +333,7 @@
   flex-shrink: 0;
 }
 
-.taxonomy-tree-actions {
+.knowledge-map-tree-actions {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -341,7 +341,7 @@
   flex-shrink: 0;
 }
 
-.taxonomy-tree-action {
+.knowledge-map-tree-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -354,21 +354,21 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.taxonomy-tree-action:hover {
+.knowledge-map-tree-action:hover {
   color: var(--color-accent);
   background: var(--color-bg-muted);
 }
 
-.taxonomy-tree-action:disabled {
+.knowledge-map-tree-action:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.taxonomy-tree-action-delete:hover {
+.knowledge-map-tree-action-delete:hover {
   color: var(--color-error, #dc3545);
 }
 
-.taxonomy-confirm-bar {
+.knowledge-map-confirm-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -379,12 +379,12 @@
   color: var(--color-text-secondary);
 }
 
-.taxonomy-confirm-bar span {
+.knowledge-map-confirm-bar span {
   flex: 1;
   min-width: 160px;
 }
 
-.taxonomy-move-bar {
+.knowledge-map-move-bar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -393,7 +393,7 @@
   margin-left: 24px;
 }
 
-.taxonomy-move-select {
+.knowledge-map-move-select {
   flex: 1;
   min-width: 0;
   max-width: 280px;
@@ -405,7 +405,7 @@
   color: var(--color-text);
 }
 
-.taxonomy-edit-bar {
+.knowledge-map-edit-bar {
   margin: 8px 0 8px 24px;
   padding: 12px;
   background: var(--color-bg-muted);
@@ -414,14 +414,14 @@
   max-width: 420px;
 }
 
-.taxonomy-edit-fields {
+.knowledge-map-edit-fields {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 12px;
 }
 
-.taxonomy-edit-label {
+.knowledge-map-edit-label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -430,8 +430,8 @@
   color: var(--color-text-secondary);
 }
 
-.taxonomy-edit-input,
-.taxonomy-edit-textarea {
+.knowledge-map-edit-input,
+.knowledge-map-edit-textarea {
   padding: 8px 12px;
   font-size: 0.9375rem;
   background: var(--color-bg-elevated);
@@ -440,67 +440,67 @@
   color: var(--color-text);
 }
 
-.taxonomy-edit-textarea {
+.knowledge-map-edit-textarea {
   resize: vertical;
   min-height: 48px;
 }
 
-.taxonomy-edit-actions {
+.knowledge-map-edit-actions {
   display: flex;
   gap: 8px;
 }
 
-.taxonomy-detail-placeholder {
+.knowledge-map-detail-placeholder {
   padding: 16px 0;
 }
 
-.taxonomy-detail-placeholder-title {
+.knowledge-map-detail-placeholder-title {
   margin: 0 0 8px;
   font-size: 1rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
-.taxonomy-detail-header {
+.knowledge-map-detail-header {
   margin-bottom: 24px;
   padding-bottom: 20px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.taxonomy-detail-path {
+.knowledge-map-detail-path {
   margin: 0 0 6px;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
 }
 
-.taxonomy-detail-title {
+.knowledge-map-detail-title {
   margin: 0 0 10px;
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
-.taxonomy-detail-description {
+.knowledge-map-detail-description {
   margin: 0 0 12px;
   font-size: 0.9375rem;
   line-height: 1.45;
   color: var(--color-text-secondary);
 }
 
-.taxonomy-detail-id {
+.knowledge-map-detail-id {
   margin: 0;
   font-size: 0.8125rem;
 }
 
-.taxonomy-detail-id code {
+.knowledge-map-detail-id code {
   font-size: 0.75rem;
 }
 
-.taxonomy-detail-refer {
+.knowledge-map-detail-refer {
   min-width: 0;
 }
 
-.taxonomy-detail-subheading {
+.knowledge-map-detail-subheading {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -510,21 +510,21 @@
   color: var(--color-text);
 }
 
-.taxonomy-detail-refer-intro {
+.knowledge-map-detail-refer-intro {
   margin-bottom: 14px;
 }
 
-.taxonomy-inline-icon {
+.knowledge-map-inline-icon {
   flex-shrink: 0;
 }
 
-.taxonomy-muted {
+.knowledge-map-muted {
   color: var(--color-text-muted);
   font-size: 0.9rem;
   margin: 0 0 12px;
 }
 
-.taxonomy-link-form {
+.knowledge-map-link-form {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -532,8 +532,8 @@
   margin-bottom: 16px;
 }
 
-.taxonomy-input,
-.taxonomy-select {
+.knowledge-map-input,
+.knowledge-map-select {
   padding: 8px 12px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
@@ -543,35 +543,35 @@
   min-width: 160px;
 }
 
-.taxonomy-table-wrap {
+.knowledge-map-table-wrap {
   overflow-x: auto;
 }
 
-.taxonomy-table {
+.knowledge-map-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
 }
 
-.taxonomy-table th,
-.taxonomy-table td {
+.knowledge-map-table th,
+.knowledge-map-table td {
   text-align: left;
   padding: 8px 10px;
   border-bottom: 1px solid var(--color-border);
   vertical-align: top;
 }
 
-.taxonomy-table th {
+.knowledge-map-table th {
   color: var(--color-text-muted);
   font-weight: 500;
 }
 
-.taxonomy-resource-label {
+.knowledge-map-resource-label {
   display: block;
   font-weight: 500;
 }
 
-.taxonomy-resource-id {
+.knowledge-map-resource-id {
   display: block;
   font-size: 0.75rem;
   color: var(--color-text-muted);

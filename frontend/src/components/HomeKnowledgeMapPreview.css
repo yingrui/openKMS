@@ -1,4 +1,4 @@
-.home-taxonomy-preview {
+.home-knowledge-map-preview {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -6,7 +6,7 @@
   flex: 1;
 }
 
-.home-taxonomy-preview-toolbar {
+.home-knowledge-map-preview-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -14,17 +14,17 @@
   gap: 8px 12px;
 }
 
-.home-taxonomy-preview-stats {
+.home-knowledge-map-preview-stats {
   font-size: 0.8125rem;
 }
 
-.home-taxonomy-preview-toolbar-actions {
+.home-knowledge-map-preview-toolbar-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.home-taxonomy-tool-btn {
+.home-knowledge-map-tool-btn {
   font-size: 0.75rem;
   font-weight: 500;
   padding: 4px 10px;
@@ -36,19 +36,19 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.home-taxonomy-tool-btn:hover {
+.home-knowledge-map-tool-btn:hover {
   background: var(--color-bg-elevated);
   color: var(--color-text);
   border-color: var(--color-text-muted);
 }
 
-.home-taxonomy-preview-error {
+.home-knowledge-map-preview-error {
   margin: 0;
   font-size: 0.85rem;
 }
 
-/* Scroll region: cap height so a deep taxonomy does not push the hub layout */
-.home-taxonomy-tree-scroll {
+/* Scroll region: cap height so a deep Knowledge Map does not push the hub layout */
+.home-knowledge-map-tree-scroll {
   max-height: min(52vh, 440px);
   min-height: 120px;
   overflow: auto;
@@ -60,41 +60,41 @@
   scrollbar-gutter: stable;
 }
 
-.home-taxonomy-tree-placeholder {
+.home-knowledge-map-tree-placeholder {
   margin: 0;
   padding: 16px 12px;
   text-align: center;
 }
 
-.home-taxonomy-tree-root,
-.home-taxonomy-tree-children {
+.home-knowledge-map-tree-root,
+.home-knowledge-map-tree-children {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.home-taxonomy-tree-children {
+.home-knowledge-map-tree-children {
   padding-left: 0;
 }
 
-.home-taxonomy-tree-item {
+.home-knowledge-map-tree-item {
   margin: 0;
 }
 
-.home-taxonomy-tree-row {
+.home-knowledge-map-tree-row {
   display: flex;
   align-items: stretch;
   gap: 2px;
   min-height: 34px;
   border-radius: var(--radius-sm);
-  padding-left: calc(var(--home-tax-depth, 0) * 10px);
+  padding-left: calc(var(--home-knowledge-map-depth, 0) * 10px);
 }
 
-.home-taxonomy-tree-row:hover {
+.home-knowledge-map-tree-row:hover {
   background: var(--color-bg-elevated);
 }
 
-.home-taxonomy-tree-toggle {
+.home-knowledge-map-tree-toggle {
   flex-shrink: 0;
   width: 28px;
   display: flex;
@@ -108,25 +108,25 @@
   border-radius: var(--radius-sm);
 }
 
-.home-taxonomy-tree-toggle:hover {
+.home-knowledge-map-tree-toggle:hover {
   color: var(--color-accent);
   background: var(--color-accent-subtle);
 }
 
-.home-taxonomy-tree-toggle--spacer {
+.home-knowledge-map-tree-toggle--spacer {
   cursor: default;
   pointer-events: none;
 }
 
-.home-taxonomy-chevron {
+.home-knowledge-map-chevron {
   transition: transform 0.15s ease;
 }
 
-.home-taxonomy-chevron--open {
+.home-knowledge-map-chevron--open {
   transform: rotate(90deg);
 }
 
-.home-taxonomy-tree-link {
+.home-knowledge-map-tree-link {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -139,17 +139,17 @@
   border-radius: var(--radius-sm);
 }
 
-.home-taxonomy-tree-link:hover {
+.home-knowledge-map-tree-link:hover {
   color: var(--color-accent);
 }
 
-.home-taxonomy-tree-name {
+.home-knowledge-map-tree-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.home-taxonomy-tree-badge {
+.home-knowledge-map-tree-badge {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -164,7 +164,7 @@
 }
 
 @media (max-width: 640px) {
-  .home-taxonomy-tree-scroll {
+  .home-knowledge-map-tree-scroll {
     max-height: min(48vh, 360px);
   }
 }

@@ -1,7 +1,7 @@
 import { config } from '../config';
 import { authAwareFetch, getAuthHeaders } from './apiClient';
 
-export type HomeHubTaxonomy = {
+export type HomeHubKnowledgeMapCounts = {
   node_count: number;
   link_count: number;
 };
@@ -17,7 +17,7 @@ export type HomeHubWorkItem = {
 };
 
 export type HomeHubResponse = {
-  taxonomy: HomeHubTaxonomy | null;
+  taxonomy: HomeHubKnowledgeMapCounts | null;
   work_items: HomeHubWorkItem[];
   share_requests: unknown[];
 };

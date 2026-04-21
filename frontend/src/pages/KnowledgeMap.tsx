@@ -18,18 +18,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../data/channelUtils';
 import {
-  createTaxonomyNode,
+  createKnowledgeMapNode,
   deleteResourceLink,
-  deleteTaxonomyNode,
+  deleteKnowledgeMapNode,
   fetchResourceLinks,
-  fetchTaxonomyTree,
-  updateTaxonomyNode,
+  fetchKnowledgeMapTree,
+  updateKnowledgeMapNode,
   upsertResourceLink,
   type ResourceLink,
-  type TaxonomyNode,
-} from '../data/taxonomyApi';
+  type KnowledgeMapNode,
+} from '../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../data/wikiSpacesApi';
-import './Taxonomy.css';
+import './KnowledgeMap.css';
 
 const RESOURCE_TYPE_LABELS: Record<string, string> = {
   document_channel: 'Document channel',
@@ -37,22 +37,22 @@ const RESOURCE_TYPE_LABELS: Record<string, string> = {
   wiki_space: 'Wiki space',
 };
 
-function flattenTaxonomyOptions(nodes: TaxonomyNode[], prefix = ''): { id: string; label: string }[] {
+function flattenKnowledgeMapOptions(nodes: KnowledgeMapNode[], prefix = ''): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];
   for (const n of nodes) {
     out.push({ id: n.id, label: `${prefix}${n.name}` });
     if (n.children?.length) {
-      out.push(...flattenTaxonomyOptions(n.children, `${prefix}${n.name} / `));
+      out.push(...flattenKnowledgeMapOptions(n.children, `${prefix}${n.name} / `));
     }
   }
   return out;
 }
 
-function flattenTaxonomyForParent(nodes: TaxonomyNode[], depth = 0): { id: string; name: string; depth: number }[] {
+function flattenKnowledgeMapForParent(nodes: KnowledgeMapNode[], depth = 0): { id: string; name: string; depth: number }[] {
   const out: { id: string; name: string; depth: number }[] = [];
   for (const n of nodes) {
     out.push({ id: n.id, name: n.name, depth });
-    if (n.children?.length) out.push(...flattenTaxonomyForParent(n.children, depth + 1));
+    if (n.children?.length) out.push(...flattenKnowledgeMapForParent(n.children, depth + 1));
   }
   return out;
 }
@@ -68,20 +68,20 @@ function flattenDocChannels(nodes: ChannelNode[], prefix = ''): { id: string; la
   return out;
 }
 
-function findTaxonomyNode(nodes: TaxonomyNode[], id: string): TaxonomyNode | null {
+function findKnowledgeMapNode(nodes: KnowledgeMapNode[], id: string): KnowledgeMapNode | null {
   for (const n of nodes) {
     if (n.id === id) return n;
     if (n.children?.length) {
-      const f = findTaxonomyNode(n.children, id);
+      const f = findKnowledgeMapNode(n.children, id);
       if (f) return f;
     }
   }
   return null;
 }
 
-function collectTaxonomyIds(nodes: TaxonomyNode[]): Set<string> {
+function collectKnowledgeMapIds(nodes: KnowledgeMapNode[]): Set<string> {
   const out = new Set<string>();
-  function walk(n: TaxonomyNode) {
+  function walk(n: KnowledgeMapNode) {
     out.add(n.id);
     for (const c of n.children ?? []) walk(c);
   }
@@ -89,21 +89,21 @@ function collectTaxonomyIds(nodes: TaxonomyNode[]): Set<string> {
   return out;
 }
 
-function getTaxonomyDescendantIds(nodes: TaxonomyNode[], nodeId: string): Set<string> {
+function getKnowledgeMapDescendantIds(nodes: KnowledgeMapNode[], nodeId: string): Set<string> {
   const out = new Set<string>();
-  function addWithChildren(n: TaxonomyNode) {
+  function addWithChildren(n: KnowledgeMapNode) {
     out.add(n.id);
     for (const c of n.children ?? []) addWithChildren(c);
   }
-  const found = findTaxonomyNode(nodes, nodeId);
+  const found = findKnowledgeMapNode(nodes, nodeId);
   if (found) addWithChildren(found);
   return out;
 }
 
 function findSiblingContext(
-  nodes: TaxonomyNode[],
+  nodes: KnowledgeMapNode[],
   targetId: string,
-): { siblings: TaxonomyNode[]; index: number } | null {
+): { siblings: KnowledgeMapNode[]; index: number } | null {
   for (let i = 0; i < nodes.length; i++) {
     if (nodes[i].id === targetId) return { siblings: nodes, index: i };
     const ch = nodes[i].children;
@@ -115,7 +115,7 @@ function findSiblingContext(
   return null;
 }
 
-function TaxonomyTermItem({
+function KnowledgeMapTreeItem({
   node,
   depth,
   siblingIndex,
@@ -127,11 +127,11 @@ function TaxonomyTermItem({
   onReload,
   getMoveParentOptions,
 }: {
-  node: TaxonomyNode;
+  node: KnowledgeMapNode;
   depth: number;
   siblingIndex: number;
   siblingsCount: number;
-  tree: TaxonomyNode[];
+  tree: KnowledgeMapNode[];
   canWrite: boolean;
   selectedNodeId: string | null;
   onSelectNode: (id: string) => void;
@@ -161,8 +161,8 @@ function TaxonomyTermItem({
     const a = siblings[index];
     const b = siblings[j];
     try {
-      await updateTaxonomyNode(a.id, { sort_order: b.sort_order });
-      await updateTaxonomyNode(b.id, { sort_order: a.sort_order });
+      await updateKnowledgeMapNode(a.id, { sort_order: b.sort_order });
+      await updateKnowledgeMapNode(b.id, { sort_order: a.sort_order });
       await onReload();
       toast.success(`Moved "${node.name}" ${direction}`);
     } catch (e) {
@@ -177,7 +177,7 @@ function TaxonomyTermItem({
     if (newParent === node.id) return;
     setMoveLoading(true);
     try {
-      await updateTaxonomyNode(node.id, { parent_id: newParent });
+      await updateKnowledgeMapNode(node.id, { parent_id: newParent });
       await onReload();
       toast.success(`Moved "${node.name}"`);
       setMoving(false);
@@ -208,7 +208,7 @@ function TaxonomyTermItem({
     }
     setEditLoading(true);
     try {
-      await updateTaxonomyNode(node.id, {
+      await updateKnowledgeMapNode(node.id, {
         name,
         description: editDescription.trim() || null,
       });
@@ -231,7 +231,7 @@ function TaxonomyTermItem({
   const handleDeleteConfirm = async () => {
     setDeleteLoading(true);
     try {
-      await deleteTaxonomyNode(node.id);
+      await deleteKnowledgeMapNode(node.id);
       await onReload();
       toast.success(`Deleted "${node.name}"`);
       setDeleteConfirming(false);
@@ -243,35 +243,35 @@ function TaxonomyTermItem({
   };
 
   return (
-    <li style={{ paddingLeft: depth * 20 }} className="taxonomy-tree-li">
-      <div className={`taxonomy-tree-row${isSelected ? ' taxonomy-tree-row--selected' : ''}`}>
+    <li style={{ paddingLeft: depth * 20 }} className="knowledge-map-tree-li">
+      <div className={`knowledge-map-tree-row${isSelected ? ' knowledge-map-tree-row--selected' : ''}`}>
         <button
           type="button"
-          className="taxonomy-tree-select"
+          className="knowledge-map-tree-select"
           onClick={() => onSelectNode(node.id)}
           aria-current={isSelected ? 'true' : undefined}
           title={`${node.name} — id ${node.id}`}
         >
-          <FolderTree size={16} className="taxonomy-tree-select-icon" aria-hidden />
-          <span className="taxonomy-tree-name-wrap">
-            <span className="taxonomy-tree-name">{node.name}</span>
+          <FolderTree size={16} className="knowledge-map-tree-select-icon" aria-hidden />
+          <span className="knowledge-map-tree-name-wrap">
+            <span className="knowledge-map-tree-name">{node.name}</span>
             {node.description ? (
-              <span className="taxonomy-tree-desc" title={node.description}>
+              <span className="knowledge-map-tree-desc" title={node.description}>
                 {node.description}
               </span>
             ) : null}
           </span>
           {node.link_count > 0 && (
-            <span className="taxonomy-tree-badge" title="Resources this term refers to">
+            <span className="knowledge-map-tree-badge" title="Resources this term refers to">
               {node.link_count}
             </span>
           )}
         </button>
         {canWrite && (
-          <span className="taxonomy-tree-actions">
+          <span className="knowledge-map-tree-actions">
             <button
               type="button"
-              className="taxonomy-tree-action"
+              className="knowledge-map-tree-action"
               title="Move up"
               aria-label="Move term up"
               onClick={() => void handleReorder('up')}
@@ -281,7 +281,7 @@ function TaxonomyTermItem({
             </button>
             <button
               type="button"
-              className="taxonomy-tree-action"
+              className="knowledge-map-tree-action"
               title="Move down"
               aria-label="Move term down"
               onClick={() => void handleReorder('down')}
@@ -289,15 +289,15 @@ function TaxonomyTermItem({
             >
               <ChevronDown size={14} />
             </button>
-            <button type="button" className="taxonomy-tree-action" title="Edit" onClick={handleEditOpen}>
+            <button type="button" className="knowledge-map-tree-action" title="Edit" onClick={handleEditOpen}>
               <Pencil size={14} />
             </button>
-            <button type="button" className="taxonomy-tree-action" title="Move under…" onClick={() => setMoving(true)}>
+            <button type="button" className="knowledge-map-tree-action" title="Move under…" onClick={() => setMoving(true)}>
               <ArrowRightLeft size={14} />
             </button>
             <button
               type="button"
-              className="taxonomy-tree-action taxonomy-tree-action-delete"
+              className="knowledge-map-tree-action knowledge-map-tree-action-delete"
               title="Delete"
               onClick={handleDeleteClick}
             >
@@ -307,7 +307,7 @@ function TaxonomyTermItem({
         )}
       </div>
       {deleteConfirming && (
-        <div className="taxonomy-confirm-bar">
+        <div className="knowledge-map-confirm-bar">
           <span>
             Delete &quot;{node.name}&quot; and nested terms? Refer-to mappings are removed. This cannot be undone.
           </span>
@@ -325,24 +325,24 @@ function TaxonomyTermItem({
         </div>
       )}
       {editing && (
-        <div className="taxonomy-edit-bar">
-          <div className="taxonomy-edit-fields">
-            <label className="taxonomy-edit-label">
+        <div className="knowledge-map-edit-bar">
+          <div className="knowledge-map-edit-fields">
+            <label className="knowledge-map-edit-label">
               <span>Name</span>
-              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="taxonomy-edit-input" />
+              <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="knowledge-map-edit-input" />
             </label>
-            <label className="taxonomy-edit-label">
+            <label className="knowledge-map-edit-label">
               <span>Description</span>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 rows={2}
-                className="taxonomy-edit-textarea"
+                className="knowledge-map-edit-textarea"
                 placeholder="Optional"
               />
             </label>
           </div>
-          <div className="taxonomy-edit-actions">
+          <div className="knowledge-map-edit-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => void handleEditSave()} disabled={editLoading}>
               {editLoading ? 'Saving…' : 'Save'}
             </button>
@@ -353,11 +353,11 @@ function TaxonomyTermItem({
         </div>
       )}
       {moving && (
-        <div className="taxonomy-move-bar">
+        <div className="knowledge-map-move-bar">
           <select
             value={moveParentId}
             onChange={(e) => setMoveParentId(e.target.value)}
-            className="taxonomy-move-select"
+            className="knowledge-map-move-select"
             aria-label="Parent term"
           >
             {moveOptions.map((p) => (
@@ -380,9 +380,9 @@ function TaxonomyTermItem({
         </div>
       )}
       {node.children?.length ? (
-        <ul className="taxonomy-tree-list">
+        <ul className="knowledge-map-tree-list">
           {node.children.map((ch, index) => (
-            <TaxonomyTermItem
+            <KnowledgeMapTreeItem
               key={ch.id}
               node={ch}
               depth={depth + 1}
@@ -402,7 +402,7 @@ function TaxonomyTermItem({
   );
 }
 
-export function Taxonomy() {
+export function KnowledgeMap() {
   const { hasPermission } = useAuth();
   const { channels } = useDocumentChannels();
   const [searchParams] = useSearchParams();
@@ -410,7 +410,7 @@ export function Taxonomy() {
   const canRead = hasPermission('taxonomy:read') || hasPermission('all');
   const canWrite = hasPermission('taxonomy:write') || hasPermission('all');
 
-  const [tree, setTree] = useState<TaxonomyNode[]>([]);
+  const [tree, setTree] = useState<KnowledgeMapNode[]>([]);
   const [links, setLinks] = useState<ResourceLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -441,7 +441,7 @@ export function Taxonomy() {
         setLoadError(null);
       }
       try {
-        const [t, l] = await Promise.all([fetchTaxonomyTree(), fetchResourceLinks()]);
+        const [t, l] = await Promise.all([fetchKnowledgeMapTree(), fetchResourceLinks()]);
         setTree(t);
         setLinks(l);
         setLoadError(null);
@@ -478,8 +478,8 @@ export function Taxonomy() {
     };
   }, []);
 
-  const nodeOptions = useMemo(() => flattenTaxonomyOptions(tree), [tree]);
-  const parentOptions = useMemo(() => flattenTaxonomyForParent(tree), [tree]);
+  const nodeOptions = useMemo(() => flattenKnowledgeMapOptions(tree), [tree]);
+  const parentOptions = useMemo(() => flattenKnowledgeMapForParent(tree), [tree]);
   const docChannelOptions = useMemo(() => flattenDocChannels(channels), [channels]);
 
   const termLabelById = useMemo(() => new Map(nodeOptions.map((o) => [o.id, o.label])), [nodeOptions]);
@@ -487,7 +487,7 @@ export function Taxonomy() {
   const wikiLabelById = useMemo(() => new Map(wikiOptions.map((o) => [o.id, o.label])), [wikiOptions]);
 
   const selectedNode = useMemo(
-    () => (selectedNodeId ? findTaxonomyNode(tree, selectedNodeId) : null),
+    () => (selectedNodeId ? findKnowledgeMapNode(tree, selectedNodeId) : null),
     [tree, selectedNodeId],
   );
 
@@ -498,7 +498,7 @@ export function Taxonomy() {
 
   useEffect(() => {
     if (!selectedNodeId) return;
-    const ids = collectTaxonomyIds(tree);
+    const ids = collectKnowledgeMapIds(tree);
     if (!ids.has(selectedNodeId)) setSelectedNodeId(null);
   }, [tree, selectedNodeId]);
 
@@ -509,7 +509,7 @@ export function Taxonomy() {
       return;
     }
     if (lastAppliedNodeParam.current === nodeFromUrl) return;
-    const ids = collectTaxonomyIds(tree);
+    const ids = collectKnowledgeMapIds(tree);
     if (ids.has(nodeFromUrl)) {
       setSelectedNodeId(nodeFromUrl);
       lastAppliedNodeParam.current = nodeFromUrl;
@@ -518,7 +518,7 @@ export function Taxonomy() {
 
   const getMoveParentOptions = useCallback(
     (excludeTermId: string) => {
-      const exclude = getTaxonomyDescendantIds(tree, excludeTermId);
+      const exclude = getKnowledgeMapDescendantIds(tree, excludeTermId);
       return [{ id: '', name: 'None (top-level)', depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
     },
     [tree, parentOptions],
@@ -553,7 +553,7 @@ export function Taxonomy() {
     setCreating(true);
     setCreateError(null);
     try {
-      const created = await createTaxonomyNode({
+      const created = await createKnowledgeMapNode({
         name,
         description: createDescription.trim() || null,
         parent_id: createParentId || null,
@@ -610,7 +610,7 @@ export function Taxonomy() {
 
   if (!canRead) {
     return (
-      <div className="taxonomy-page">
+      <div className="knowledge-map-page">
         <div className="page-header">
           <h1>Knowledge Map</h1>
           <p className="page-subtitle">You need the taxonomy:read permission to view the Knowledge Map.</p>
@@ -620,13 +620,13 @@ export function Taxonomy() {
   }
 
   return (
-    <div className="taxonomy-page">
-      <Link to="/" className="taxonomy-back-row">
+    <div className="knowledge-map-page">
+      <Link to="/" className="knowledge-map-back-row">
         <ArrowLeft size={18} />
         <span>Back to Home</span>
       </Link>
 
-      <div className="page-header taxonomy-header">
+      <div className="page-header knowledge-map-header">
         <h1>Knowledge Map</h1>
         <p className="page-subtitle">
           Like a <strong>sitemap</strong> for your knowledge base: a tree of terms that shows how topics nest. Terms
@@ -636,46 +636,46 @@ export function Taxonomy() {
       </div>
 
       {loadError && (
-        <div className="taxonomy-error-banner" role="alert">
+        <div className="knowledge-map-error-banner" role="alert">
           {loadError}
         </div>
       )}
 
       {loading ? (
-        <div className="taxonomy-loading">
-          <Loader2 className="taxonomy-spinner" size={28} aria-hidden />
+        <div className="knowledge-map-loading">
+          <Loader2 className="knowledge-map-spinner" size={28} aria-hidden />
           <span>Loading…</span>
         </div>
       ) : (
         <>
-          <div className="taxonomy-master-detail">
-            <section className="taxonomy-tree-panel" aria-label="Knowledge Map tree">
-              <div className="taxonomy-tree-panel-header">
+          <div className="knowledge-map-master-detail">
+            <section className="knowledge-map-tree-panel" aria-label="Knowledge Map tree">
+              <div className="knowledge-map-tree-panel-header">
                 <h2>
                   <FolderTree size={20} />
                   Tree
                 </h2>
                 {canWrite && (
-                  <button type="button" className="btn btn-primary taxonomy-new-term-btn" onClick={openNewTermModal}>
+                  <button type="button" className="btn btn-primary knowledge-map-new-term-btn" onClick={openNewTermModal}>
                     <Plus size={18} />
                     <span>New term</span>
                   </button>
                 )}
               </div>
               {!tree.length ? (
-                <div className="taxonomy-empty">
+                <div className="knowledge-map-empty">
                   <FolderTree size={40} />
                   <p>No terms yet</p>
-                  <p className="taxonomy-empty-hint">
+                  <p className="knowledge-map-empty-hint">
                     {canWrite
                       ? 'Use New term to add a root or narrower term. Choose “None (top-level)” for a root entry.'
                       : 'An editor with taxonomy:write can add terms to the map here.'}
                   </p>
                 </div>
               ) : (
-                <ul className="taxonomy-tree-list">
+                <ul className="knowledge-map-tree-list">
                   {tree.map((n, index) => (
-                    <TaxonomyTermItem
+                    <KnowledgeMapTreeItem
                       key={n.id}
                       node={n}
                       depth={0}
@@ -693,47 +693,49 @@ export function Taxonomy() {
               )}
             </section>
 
-            <section className="taxonomy-detail-card" aria-label="Node details">
+            <section className="knowledge-map-detail-card" aria-label="Node details">
               {!tree.length ? (
-                <p className="taxonomy-muted taxonomy-detail-placeholder">
+                <p className="knowledge-map-muted knowledge-map-detail-placeholder">
                   Add terms to the map to select one and manage refer-tos.
                 </p>
               ) : !selectedNodeId || !selectedNode ? (
-                <div className="taxonomy-detail-placeholder">
-                  <p className="taxonomy-detail-placeholder-title">Node details</p>
-                  <p className="taxonomy-muted">
+                <div className="knowledge-map-detail-placeholder">
+                  <p className="knowledge-map-detail-placeholder-title">Node details</p>
+                  <p className="knowledge-map-muted">
                     Select a term in the map to see its path, notes, and which channels or wiki spaces refer to it.
                   </p>
                 </div>
               ) : (
                 <>
-                  <header className="taxonomy-detail-header">
-                    <p className="taxonomy-detail-path">{termLabelById.get(selectedNode.id) ?? selectedNode.name}</p>
-                    <h2 className="taxonomy-detail-title">{selectedNode.name}</h2>
+                  <header className="knowledge-map-detail-header">
+                    <p className="knowledge-map-detail-path">{termLabelById.get(selectedNode.id) ?? selectedNode.name}</p>
+                    <h2 className="knowledge-map-detail-title">{selectedNode.name}</h2>
                     {selectedNode.description ? (
-                      <p className="taxonomy-detail-description">{selectedNode.description}</p>
+                      <p className="knowledge-map-detail-description">{selectedNode.description}</p>
                     ) : (
-                      <p className="taxonomy-detail-description taxonomy-muted">No description.</p>
+                      <p className="knowledge-map-detail-description knowledge-map-muted">No description.</p>
                     )}
-                    <p className="taxonomy-detail-id">
-                      <span className="taxonomy-muted">Id</span> <code>{selectedNode.id}</code>
+                    <p className="knowledge-map-detail-id">
+                      <span className="knowledge-map-muted">Id</span> <code>{selectedNode.id}</code>
                     </p>
                   </header>
 
-                  <div className="taxonomy-detail-refer">
-                    <h3 className="taxonomy-detail-subheading">
-                      <Link2 size={16} className="taxonomy-inline-icon" aria-hidden />
+                  <div className="knowledge-map-detail-refer">
+                    <h3 className="knowledge-map-detail-subheading">
+                      <Link2 size={16} className="knowledge-map-inline-icon" aria-hidden />
                       Refer to
                     </h3>
-                    <p className="taxonomy-muted taxonomy-detail-refer-intro">
-                      Each channel or wiki space can map to at most one term (one refer-to per resource). Article
-                      channel IDs match the sidebar (mock data until a backend exists).
+                    <p className="knowledge-map-muted knowledge-map-detail-refer-intro">
+                      This node can refer to many document channels, article channels, and wiki spaces—add each one
+                      below and it appears in the table. The same channel or wiki space can only be linked to one node
+                      at a time; saving here moves that link from another node if needed. Article channel IDs match the
+                      sidebar (mock data until a backend exists).
                     </p>
                     {canWrite && (
-                      <div className="taxonomy-link-form">
+                      <div className="knowledge-map-link-form">
                         <select
                           aria-label="Resource type"
-                          className="taxonomy-select"
+                          className="knowledge-map-select"
                           value={linkType}
                           onChange={(e) => {
                             setLinkType(e.target.value);
@@ -747,7 +749,7 @@ export function Taxonomy() {
                         {linkType === 'document_channel' && (
                           <select
                             aria-label="Document channel"
-                            className="taxonomy-select"
+                            className="knowledge-map-select"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           >
@@ -762,7 +764,7 @@ export function Taxonomy() {
                         {linkType === 'wiki_space' && (
                           <select
                             aria-label="Wiki space"
-                            className="taxonomy-select"
+                            className="knowledge-map-select"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           >
@@ -777,22 +779,22 @@ export function Taxonomy() {
                         {linkType === 'article_channel' && (
                           <input
                             type="text"
-                            className="taxonomy-input"
+                            className="knowledge-map-input"
                             placeholder="Article channel id (e.g. ac1a)"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           />
                         )}
                         <button type="button" className="btn btn-secondary" onClick={() => void onAddLink()}>
-                          Save refer-to
+                          Save
                         </button>
                       </div>
                     )}
                     {!linksForSelected.length ? (
-                      <p className="taxonomy-muted">This term has no refer-tos yet.</p>
+                      <p className="knowledge-map-muted">This term has no refer-tos yet.</p>
                     ) : (
-                      <div className="taxonomy-table-wrap">
-                        <table className="taxonomy-table">
+                      <div className="knowledge-map-table-wrap">
+                        <table className="knowledge-map-table">
                           <thead>
                             <tr>
                               <th>Type</th>
@@ -805,10 +807,10 @@ export function Taxonomy() {
                               <tr key={r.id}>
                                 <td>{RESOURCE_TYPE_LABELS[r.resource_type] ?? r.resource_type}</td>
                                 <td>
-                                  <span className="taxonomy-resource-label">
+                                  <span className="knowledge-map-resource-label">
                                     {resolveResourceLabel(r.resource_type, r.resource_id)}
                                   </span>
-                                  <code className="taxonomy-resource-id">{r.resource_id}</code>
+                                  <code className="knowledge-map-resource-id">{r.resource_id}</code>
                                 </td>
                                 {canWrite && (
                                   <td>
@@ -835,19 +837,19 @@ export function Taxonomy() {
           </div>
 
           {showNewTermModal && (
-            <div className="taxonomy-dialog-overlay" role="presentation" onClick={closeNewTermModal}>
+            <div className="knowledge-map-dialog-overlay" role="presentation" onClick={closeNewTermModal}>
               <div
-                className="taxonomy-dialog"
+                className="knowledge-map-dialog"
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="taxonomy-new-term-title"
+                aria-labelledby="knowledge-map-new-term-title"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="taxonomy-dialog-header">
-                  <h2 id="taxonomy-new-term-title">New term</h2>
+                <div className="knowledge-map-dialog-header">
+                  <h2 id="knowledge-map-new-term-title">New term</h2>
                   <button
                     type="button"
-                    className="taxonomy-dialog-close"
+                    className="knowledge-map-dialog-close"
                     aria-label="Close"
                     onClick={closeNewTermModal}
                     disabled={creating}
@@ -855,9 +857,9 @@ export function Taxonomy() {
                     <X size={20} />
                   </button>
                 </div>
-                <div className="taxonomy-dialog-body">
+                <div className="knowledge-map-dialog-body">
                   {createError && (
-                    <div className="taxonomy-dialog-error" role="alert">
+                    <div className="knowledge-map-dialog-error" role="alert">
                       {createError}
                     </div>
                   )}
@@ -892,7 +894,7 @@ export function Taxonomy() {
                     </select>
                   </label>
                 </div>
-                <div className="taxonomy-dialog-footer">
+                <div className="knowledge-map-dialog-footer">
                   <button type="button" className="btn btn-secondary" onClick={closeNewTermModal} disabled={creating}>
                     Cancel
                   </button>

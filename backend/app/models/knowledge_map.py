@@ -1,4 +1,4 @@
-"""Hierarchical taxonomy (KOS) and links to document channels, article channels, wiki spaces."""
+"""Knowledge Map: hierarchical nodes and links to document channels, article channels, wiki spaces."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def _id() -> str:
     return str(uuid4()).replace("-", "")[:32]
 
 
-class TaxonomyNode(Base):
+class KnowledgeMapNode(Base):
     __tablename__ = "taxonomy_nodes"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
@@ -30,23 +30,23 @@ class TaxonomyNode(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    children: Mapped[list["TaxonomyNode"]] = relationship(
-        "TaxonomyNode",
+    children: Mapped[list["KnowledgeMapNode"]] = relationship(
+        "KnowledgeMapNode",
         back_populates="parent",
         cascade="all, delete-orphan",
     )
-    parent: Mapped["TaxonomyNode | None"] = relationship(
-        "TaxonomyNode",
+    parent: Mapped["KnowledgeMapNode | None"] = relationship(
+        "KnowledgeMapNode",
         remote_side=[id],
         back_populates="children",
     )
-    resource_links: Mapped[list["TaxonomyResourceLink"]] = relationship(
-        "TaxonomyResourceLink", back_populates="node", cascade="all, delete-orphan"
+    resource_links: Mapped[list["KnowledgeMapResourceLink"]] = relationship(
+        "KnowledgeMapResourceLink", back_populates="node", cascade="all, delete-orphan"
     )
 
 
-class TaxonomyResourceLink(Base):
-    """Maps one content surface (channel or wiki space) to exactly one taxonomy node."""
+class KnowledgeMapResourceLink(Base):
+    """Maps one content surface (channel or wiki space) to exactly one Knowledge Map node."""
 
     __tablename__ = "taxonomy_resource_links"
     __table_args__ = (UniqueConstraint("resource_type", "resource_id", name="uq_taxonomy_resource_links_type_id"),)
@@ -59,4 +59,4 @@ class TaxonomyResourceLink(Base):
     resource_id: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    node: Mapped["TaxonomyNode"] = relationship("TaxonomyNode", back_populates="resource_links")
+    node: Mapped["KnowledgeMapNode"] = relationship("KnowledgeMapNode", back_populates="resource_links")

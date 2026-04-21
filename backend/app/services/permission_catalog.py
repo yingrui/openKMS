@@ -34,8 +34,8 @@ PERM_EVAL_READ = "evaluation:read"
 PERM_EVAL_WRITE = "evaluation:write"
 PERM_ONTOLOGY_READ = "ontology:read"
 PERM_ONTOLOGY_WRITE = "ontology:write"
-PERM_TAXONOMY_READ = "taxonomy:read"
-PERM_TAXONOMY_WRITE = "taxonomy:write"
+PERM_KNOWLEDGE_MAP_READ = "taxonomy:read"
+PERM_KNOWLEDGE_MAP_WRITE = "taxonomy:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -194,13 +194,13 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         "ontology",
     ),
     OperationKeyHint(
-        PERM_TAXONOMY_READ,
+        PERM_KNOWLEDGE_MAP_READ,
         "View Knowledge Map",
         "Knowledge Map tree, resource links, and home hub read APIs.",
         "content",
     ),
     OperationKeyHint(
-        PERM_TAXONOMY_WRITE,
+        PERM_KNOWLEDGE_MAP_WRITE,
         "Manage Knowledge Map",
         "Create, update, delete map terms (nodes) and attach channels or wiki spaces.",
         "content",

@@ -29,8 +29,8 @@ from app.services.permission_catalog import (
     PERM_WIKIS_WRITE,
     PERM_ONTOLOGY_READ,
     PERM_ONTOLOGY_WRITE,
-    PERM_TAXONOMY_READ,
-    PERM_TAXONOMY_WRITE,
+    PERM_KNOWLEDGE_MAP_READ,
+    PERM_KNOWLEDGE_MAP_WRITE,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -256,7 +256,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "DELETE /api/link-types/*/links/*",
         ],
     ),
-    PERM_TAXONOMY_READ: (
+    PERM_KNOWLEDGE_MAP_READ: (
         ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
         [
             "GET /api/taxonomy/*",
@@ -265,7 +265,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "HEAD /api/home/hub",
         ],
     ),
-    PERM_TAXONOMY_WRITE: (
+    PERM_KNOWLEDGE_MAP_WRITE: (
         ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
         [
             "POST /api/taxonomy/*",

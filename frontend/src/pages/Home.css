@@ -209,7 +209,7 @@
   font-size: 0.9rem;
 }
 
-/* Signed-in hub: taxonomy left, activity & shortcuts right (stacks on narrow viewports) */
+/* Signed-in hub: Knowledge Map left, activity & shortcuts right (stacks on narrow viewports) */
 .home-hub-split {
   display: flex;
   flex-direction: column;
@@ -226,7 +226,7 @@
   flex: 1;
 }
 
-.home-hub-split:not(.home-hub-split--with-taxonomy) .home-hub-split__right {
+.home-hub-split:not(.home-hub-split--with-knowledge-map) .home-hub-split__right {
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
@@ -248,15 +248,15 @@
 }
 
 @media (min-width: 960px) {
-  .home-hub-split--with-taxonomy {
+  .home-hub-split--with-knowledge-map {
     display: grid;
-    /* Taxonomy (left) uses at least half the hub width; remainder for work items & shortcuts */
+    /* Knowledge Map (left) uses at least half the hub width; remainder for work items & shortcuts */
     grid-template-columns: minmax(50%, 1fr) minmax(0, 1fr);
     gap: 24px;
     align-items: start;
   }
 
-  .home-hub-split--with-taxonomy .home-hub-split__left {
+  .home-hub-split--with-knowledge-map .home-hub-split__left {
     position: sticky;
     top: 12px;
     max-height: calc(100vh - 24px);
@@ -266,7 +266,7 @@
     overflow: hidden;
   }
 
-  .home-hub-split--with-taxonomy .home-taxonomy-tree-scroll {
+  .home-hub-split--with-knowledge-map .home-knowledge-map-tree-scroll {
     max-height: min(calc(100vh - 220px), 560px);
   }
 }
@@ -282,7 +282,7 @@
   min-width: 0;
 }
 
-.home-hub-card--taxonomy {
+.home-hub-card--knowledge-map {
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -291,7 +291,7 @@
   height: 100%;
 }
 
-.home-taxonomy-intro {
+.home-knowledge-map-intro {
   margin-top: 0;
 }
 

@@ -15,15 +15,15 @@ from app.config import settings
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_relationship import DocumentRelationship
-from app.models.taxonomy import TaxonomyNode, TaxonomyResourceLink
+from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
 from app.services.data_resource_policy import document_passes_scoped_predicate
-from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_TAXONOMY_READ
+from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_KNOWLEDGE_MAP_READ
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
 router = APIRouter(prefix="/home", tags=["home"])
 
 
-class TaxonomySummary(BaseModel):
+class KnowledgeMapSummary(BaseModel):
     node_count: int
     link_count: int
 
@@ -39,7 +39,7 @@ class WorkItem(BaseModel):
 
 
 class HomeHubResponse(BaseModel):
-    taxonomy: TaxonomySummary | None = None
+    taxonomy: KnowledgeMapSummary | None = None
     work_items: list[WorkItem] = Field(default_factory=list)
     share_requests: list[dict] = Field(default_factory=list)
 
@@ -47,7 +47,7 @@ class HomeHubResponse(BaseModel):
 @router.get(
     "/hub",
     response_model=HomeHubResponse,
-    dependencies=[Depends(require_any_permission(PERM_TAXONOMY_READ, PERM_DOCUMENTS_READ))],
+    dependencies=[Depends(require_any_permission(PERM_KNOWLEDGE_MAP_READ, PERM_DOCUMENTS_READ))],
 )
 async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
     payload = request.state.openkms_jwt_payload
@@ -60,14 +60,14 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
     else:
         perms = await resolve_oidc_permission_keys(db, payload)
 
-    has_tax = PERM_ALL in perms or PERM_TAXONOMY_READ in perms
+    has_tax = PERM_ALL in perms or PERM_KNOWLEDGE_MAP_READ in perms
     has_docs = PERM_ALL in perms or PERM_DOCUMENTS_READ in perms
 
-    taxonomy_summary: TaxonomySummary | None = None
+    taxonomy_summary: KnowledgeMapSummary | None = None
     if has_tax:
-        node_count = await db.scalar(select(sa_func.count()).select_from(TaxonomyNode)) or 0
-        link_count = await db.scalar(select(sa_func.count()).select_from(TaxonomyResourceLink)) or 0
-        taxonomy_summary = TaxonomySummary(node_count=int(node_count), link_count=int(link_count))
+        node_count = await db.scalar(select(sa_func.count()).select_from(KnowledgeMapNode)) or 0
+        link_count = await db.scalar(select(sa_func.count()).select_from(KnowledgeMapResourceLink)) or 0
+        taxonomy_summary = KnowledgeMapSummary(node_count=int(node_count), link_count=int(link_count))
 
     work_items: list[WorkItem] = []
     if has_docs and sub:

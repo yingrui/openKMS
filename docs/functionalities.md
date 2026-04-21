@@ -124,7 +124,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Knowledge Map (data model) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*`; **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns (SPA primary path **`/knowledge-map`**, legacy **`/taxonomy`** redirects) |
+| Knowledge Map (data model) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*` (FastAPI **`app.api.knowledge_map`**); **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns (SPA primary path **`/knowledge-map`**, legacy **`/taxonomy`** redirects) |
 | Knowledge Map UI | ✅ | **`/knowledge-map`** (lazy; **`/taxonomy`** redirects); sidebar **Knowledge Map** above **Glossaries** when feature toggle + path allowed; sitemap-style copy; **Tree** column + **Node details** panel (selected node: path, description, **Refer to** list scoped to that node); **New term** modal (preferred label, description, broader/parent); reorder/move/edit/delete; upsert/delete refer-tos from details only |
 | Home hub | ✅ | Signed-in `/` loads `GET /api/home/hub` (requires **taxonomy:read** or **documents:read**): Knowledge Map counts (`taxonomy` field in JSON), scoped work items from recent `document_relationships`, placeholder **share_requests** |
 | Static home (guests) | ✅ | **`/`** always shows **`HomeStaticLanding`** for unauthenticated users (marketing hero, pain points, benefits, functionalities, Sign in CTA); no system setting—**`MainLayout`** only gates non-home routes |
