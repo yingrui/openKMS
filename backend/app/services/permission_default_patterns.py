@@ -257,7 +257,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_TAXONOMY_READ: (
-        ["/taxonomy", "/taxonomy/*"],
+        ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
         [
             "GET /api/taxonomy/*",
             "HEAD /api/taxonomy/*",
@@ -266,7 +266,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_TAXONOMY_WRITE: (
-        ["/taxonomy", "/taxonomy/*"],
+        ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
         [
             "POST /api/taxonomy/*",
             "PUT /api/taxonomy/*",

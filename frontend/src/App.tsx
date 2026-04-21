@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
@@ -67,6 +67,12 @@ function LegacyConsoleDatasetRedirect() {
   return <Navigate to={`/ontology/datasets/${id ?? ''}`} replace />;
 }
 
+function LegacyTaxonomyPathRedirect() {
+  const location = useLocation();
+  const tail = `${location.search ?? ''}${location.hash ?? ''}`;
+  return <Navigate to={`/knowledge-map${tail}`} replace />;
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -83,7 +89,8 @@ function App() {
         <Route path="/auth/silent-renew" element={<OidcSilentRenew />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
-          <Route path="taxonomy" element={<FeatureGate feature="taxonomy"><Taxonomy /></FeatureGate>} />
+          <Route path="knowledge-map" element={<FeatureGate feature="taxonomy"><Taxonomy /></FeatureGate>} />
+          <Route path="taxonomy" element={<FeatureGate feature="taxonomy"><LegacyTaxonomyPathRedirect /></FeatureGate>} />
           <Route path="documents" element={<Outlet />}>
             <Route index element={<DocumentsIndex />} />
             <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />

@@ -27,7 +27,7 @@ export async function fetchTaxonomyTree(): Promise<TaxonomyNode[]> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || `Taxonomy tree failed (${res.status})`);
+    throw new Error((err as { detail?: string }).detail || `Knowledge Map failed (${res.status})`);
   }
   return res.json() as Promise<TaxonomyNode[]>;
 }

@@ -195,14 +195,14 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
     ),
     OperationKeyHint(
         PERM_TAXONOMY_READ,
-        "View taxonomy",
-        "Taxonomy tree, resource links, and home hub read APIs.",
+        "View Knowledge Map",
+        "Knowledge Map tree, resource links, and home hub read APIs.",
         "content",
     ),
     OperationKeyHint(
         PERM_TAXONOMY_WRITE,
-        "Manage taxonomy",
-        "Create, update, delete taxonomy nodes and attach channels or wiki spaces.",
+        "Manage Knowledge Map",
+        "Create, update, delete map terms (nodes) and attach channels or wiki spaces.",
         "content",
     ),
 )

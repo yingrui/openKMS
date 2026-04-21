@@ -9,8 +9,30 @@ from fastapi import FastAPI
 # Mirrors frontend/src/App.tsx — use path patterns suitable for permission matrix / Details UI.
 FRONTEND_FEATURES: list[dict[str, Any]] = [
     {"path_pattern": "/", "label": "Home", "section": "Main", "note": "Knowledge operations hub when signed in"},
-    {"path_pattern": "/taxonomy", "label": "Taxonomy", "section": "Main", "note": "Feature toggle: taxonomy; permission taxonomy:read/write"},
-    {"path_pattern": "/taxonomy/*", "label": "Taxonomy subtree", "section": "Main", "note": "Feature toggle: taxonomy"},
+    {
+        "path_pattern": "/knowledge-map",
+        "label": "Knowledge Map",
+        "section": "Main",
+        "note": "Feature toggle: taxonomy; permission taxonomy:read/write",
+    },
+    {
+        "path_pattern": "/knowledge-map/*",
+        "label": "Knowledge Map subtree",
+        "section": "Main",
+        "note": "Feature toggle: taxonomy",
+    },
+    {
+        "path_pattern": "/taxonomy",
+        "label": "Knowledge Map (legacy URL)",
+        "section": "Main",
+        "note": "Redirects to /knowledge-map; same toggle and taxonomy:read/write",
+    },
+    {
+        "path_pattern": "/taxonomy/*",
+        "label": "Knowledge Map legacy subtree",
+        "section": "Main",
+        "note": "Redirects to /knowledge-map; feature toggle: taxonomy",
+    },
     {"path_pattern": "/profile", "label": "User profile", "section": "Main", "note": None},
     {"path_pattern": "/documents", "label": "Documents index", "section": "Documents", "note": None},
     {"path_pattern": "/documents/*", "label": "Documents subtree (channels, view)", "section": "Documents", "note": "Covers channels, channel settings, document view"},

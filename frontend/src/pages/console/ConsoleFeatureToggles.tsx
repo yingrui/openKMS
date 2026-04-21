@@ -29,8 +29,9 @@ const features = [
   },
   {
     id: 'taxonomy' as const,
-    name: 'Taxonomy',
-    description: 'Controlled vocabulary hierarchy (KOS) and links from channels and wiki spaces for discovery.',
+    name: 'Knowledge Map',
+    description:
+      'Sitemap-style hierarchy of terms and links from channels and wiki spaces so people can browse how content is organized.',
   },
 ];
 

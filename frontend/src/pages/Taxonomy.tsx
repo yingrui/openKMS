@@ -446,7 +446,7 @@ export function Taxonomy() {
         setLinks(l);
         setLoadError(null);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to load taxonomy';
+        const msg = e instanceof Error ? e.message : 'Failed to load Knowledge Map';
         toast.error(msg);
         setLoadError(msg);
         setTree([]);
@@ -612,8 +612,8 @@ export function Taxonomy() {
     return (
       <div className="taxonomy-page">
         <div className="page-header">
-          <h1>Taxonomy</h1>
-          <p className="page-subtitle">You need the taxonomy:read permission to view this page.</p>
+          <h1>Knowledge Map</h1>
+          <p className="page-subtitle">You need the taxonomy:read permission to view the Knowledge Map.</p>
         </div>
       </div>
     );
@@ -627,11 +627,11 @@ export function Taxonomy() {
       </Link>
 
       <div className="page-header taxonomy-header">
-        <h1>Taxonomy</h1>
+        <h1>Knowledge Map</h1>
         <p className="page-subtitle">
-          A taxonomy is a <strong>controlled vocabulary</strong> (KOS): preferred labels in a hierarchy, not a loose
-          topic list. Terms can <strong>refer to</strong> document channels, article channels, or wiki spaces so
-          others can discover content by vocabulary entry.
+          Like a <strong>sitemap</strong> for your knowledge base: a tree of terms that shows how topics nest. Terms
+          can <strong>refer to</strong> document channels, article channels, or wiki spaces so people can jump from a
+          term to real content.
         </p>
       </div>
 
@@ -649,11 +649,11 @@ export function Taxonomy() {
       ) : (
         <>
           <div className="taxonomy-master-detail">
-            <section className="taxonomy-tree-panel" aria-label="Taxonomy terms">
+            <section className="taxonomy-tree-panel" aria-label="Knowledge Map tree">
               <div className="taxonomy-tree-panel-header">
                 <h2>
                   <FolderTree size={20} />
-                  Terms
+                  Tree
                 </h2>
                 {canWrite && (
                   <button type="button" className="btn btn-primary taxonomy-new-term-btn" onClick={openNewTermModal}>
@@ -669,7 +669,7 @@ export function Taxonomy() {
                   <p className="taxonomy-empty-hint">
                     {canWrite
                       ? 'Use New term to add a root or narrower term. Choose “None (top-level)” for a root entry.'
-                      : 'An editor with taxonomy:write can add terms here.'}
+                      : 'An editor with taxonomy:write can add terms to the map here.'}
                   </p>
                 </div>
               ) : (
@@ -693,15 +693,16 @@ export function Taxonomy() {
               )}
             </section>
 
-            <section className="taxonomy-detail-card" aria-label="Term details">
+            <section className="taxonomy-detail-card" aria-label="Node details">
               {!tree.length ? (
-                <p className="taxonomy-muted taxonomy-detail-placeholder">Add terms to the tree to select one and manage refer-tos.</p>
+                <p className="taxonomy-muted taxonomy-detail-placeholder">
+                  Add terms to the map to select one and manage refer-tos.
+                </p>
               ) : !selectedNodeId || !selectedNode ? (
                 <div className="taxonomy-detail-placeholder">
-                  <p className="taxonomy-detail-placeholder-title">Term details</p>
+                  <p className="taxonomy-detail-placeholder-title">Node details</p>
                   <p className="taxonomy-muted">
-                    Select a term in the tree to see its label path, notes, and which channels or wiki spaces refer to
-                    it.
+                    Select a term in the map to see its path, notes, and which channels or wiki spaces refer to it.
                   </p>
                 </div>
               ) : (

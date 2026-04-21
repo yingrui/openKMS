@@ -120,13 +120,13 @@
 | Export | ✅ | `GET /api/glossaries/{id}/export` returns JSON with glossary_id, name, terms array |
 | Import | ✅ | `POST /api/glossaries/{id}/import` with `{ terms, mode: "append" \| "replace" }`; JSON file picker in UI |
 
-### 4e. Taxonomy & Home (Knowledge operations)
+### 4e. Knowledge Map & Home (Knowledge operations)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Taxonomy (KOS) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*`; **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns |
-| Taxonomy UI | ✅ | `/taxonomy` (lazy); sidebar **Taxonomy** above **Glossaries** when feature toggle + path allowed; copy treats taxonomy as a **controlled vocabulary** (terms, not “topics”); **Terms** tree + **Term details** panel (selected term: path, description, **Refer to** list scoped to that node); **New term** modal (preferred label, description, broader/parent); reorder/move/edit/delete; upsert/delete refer-tos from details only |
-| Home hub | ✅ | Signed-in `/` loads `GET /api/home/hub` (requires **taxonomy:read** or **documents:read**): taxonomy counts, scoped work items from recent `document_relationships`, placeholder **share_requests** |
+| Knowledge Map (data model) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*`; **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns (SPA primary path **`/knowledge-map`**, legacy **`/taxonomy`** redirects) |
+| Knowledge Map UI | ✅ | **`/knowledge-map`** (lazy; **`/taxonomy`** redirects); sidebar **Knowledge Map** above **Glossaries** when feature toggle + path allowed; sitemap-style copy; **Tree** column + **Node details** panel (selected node: path, description, **Refer to** list scoped to that node); **New term** modal (preferred label, description, broader/parent); reorder/move/edit/delete; upsert/delete refer-tos from details only |
+| Home hub | ✅ | Signed-in `/` loads `GET /api/home/hub` (requires **taxonomy:read** or **documents:read**): Knowledge Map counts (`taxonomy` field in JSON), scoped work items from recent `document_relationships`, placeholder **share_requests** |
 | Static home (guests) | ✅ | **`/`** always shows **`HomeStaticLanding`** for unauthenticated users (marketing hero, pain points, benefits, functionalities, Sign in CTA); no system setting—**`MainLayout`** only gates non-home routes |
 | Feature toggle | ✅ | `taxonomy` (default on); Console → Feature Toggles |
 ### 5. Objects & Links (Feature Toggle)
@@ -141,7 +141,7 @@
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
 | Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; checkbox selection for object/link types, directional arrows; layout modes (force, left-to-right, top-to-bottom, radial); zoom in/out/fit, fullscreen; style panel overlays canvas with Object/Link type color pickers |
 | Ontology overview | ✅ | Single page at `/ontology` showing all object types and link types with links to detail pages |
-| Ontology sidebar | ✅ | "Ontology" links to `/ontology`; subnav Datasets, Object types, Link types, Objects, Links, Object Explorer when on ontology pages; shown when Neo4j exists or objectsAndLinks toggle |
+| Ontology sidebar | ✅ | **Ontology** is a top-level item **next to Glossaries** (same menu group); links to `/ontology`; indented subnav for Datasets, Object types, Link types, Objects, Links, Object Explorer when on those routes; shown when Neo4j exists or objectsAndLinks toggle |
 | Search | ✅ | Optional search filter on object instances |
 | Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
 | Schema admin counts | ✅ | Ontology Object types / Link types pages: instance_count and link_count from datasets (PostgreSQL) |

@@ -55,7 +55,7 @@ function TaxonomyPreviewRow({
         ) : (
           <span className="home-taxonomy-tree-toggle home-taxonomy-tree-toggle--spacer" aria-hidden />
         )}
-        <Link to={`/taxonomy?node=${encodeURIComponent(node.id)}`} className="home-taxonomy-tree-link">
+        <Link to={`/knowledge-map?node=${encodeURIComponent(node.id)}`} className="home-taxonomy-tree-link">
           <span className="home-taxonomy-tree-name">{node.name}</span>
           {node.link_count > 0 && (
             <span className="home-taxonomy-tree-badge" title="Refer-tos to channels or wiki spaces">
@@ -149,11 +149,13 @@ export function HomeTaxonomyPreview({
         </p>
       )}
 
-      <div className="home-taxonomy-tree-scroll" aria-label="Taxonomy terms preview">
+      <div className="home-taxonomy-tree-scroll" aria-label="Knowledge Map preview">
         {treeLoading && !tree?.length ? (
           <p className="home-muted home-taxonomy-tree-placeholder">Loading tree…</p>
         ) : !tree?.length ? (
-          <p className="home-muted home-taxonomy-tree-placeholder">No taxonomy terms yet. Add terms on the taxonomy page.</p>
+          <p className="home-muted home-taxonomy-tree-placeholder">
+            No terms yet. Add them on the Knowledge Map page.
+          </p>
         ) : (
           <ul className="home-taxonomy-tree-root" role="tree">
             {tree.map((n) => (

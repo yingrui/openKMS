@@ -430,15 +430,23 @@ export function Sidebar() {
             <span>Wiki Spaces</span>
           </NavLink>
         )}
-        {toggles.taxonomy !== false && canAccessPath('/taxonomy') && (
+        {toggles.taxonomy !== false &&
+          (canAccessPath('/knowledge-map') || canAccessPath('/taxonomy')) && (
           <NavLink
-            to="/taxonomy"
+            to="/knowledge-map"
             className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+              `sidebar-link ${
+                isActive ||
+                location.pathname === '/taxonomy' ||
+                location.pathname.startsWith('/taxonomy/') ||
+                location.pathname.startsWith('/knowledge-map/')
+                  ? 'sidebar-link-active'
+                  : ''
+              }`
             }
           >
             <FolderTree size={18} strokeWidth={1.75} />
-            <span>Taxonomy</span>
+            <span>Knowledge Map</span>
           </NavLink>
         )}
         {(canAccessPath('/glossaries') || showOntologySection) && (
@@ -454,46 +462,26 @@ export function Sidebar() {
                 <span>Glossaries</span>
               </NavLink>
             )}
-            {showOntologySection &&
-              (canAccessPath('/glossaries') ? (
-                <div className="sidebar-subnav">
-                  {canAccessPath('/ontology') && (
-                    <NavLink
-                      to="/ontology"
-                      className={({ isActive }) =>
-                        `sidebar-link sidebar-sublink ${isActive || onOntology ? 'sidebar-link-active' : ''}`
-                      }
-                    >
-                      <Network size={18} strokeWidth={1.75} />
-                      <span>Ontology</span>
-                    </NavLink>
-                  )}
-                  {onOntology && (
-                    <div className="sidebar-subnav">
-                      <OntologyChildNavLinks canAccessPath={canAccessPath} />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {canAccessPath('/ontology') && (
-                    <NavLink
-                      to="/ontology"
-                      className={({ isActive }) =>
-                        `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
-                      }
-                    >
-                      <Network size={18} strokeWidth={1.75} />
-                      <span>Ontology</span>
-                    </NavLink>
-                  )}
-                  {onOntology && (
-                    <div className="sidebar-subnav">
-                      <OntologyChildNavLinks canAccessPath={canAccessPath} />
-                    </div>
-                  )}
-                </>
-              ))}
+            {showOntologySection && (
+              <>
+                {canAccessPath('/ontology') && (
+                  <NavLink
+                    to="/ontology"
+                    className={({ isActive }) =>
+                      `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
+                    }
+                  >
+                    <Network size={18} strokeWidth={1.75} />
+                    <span>Ontology</span>
+                  </NavLink>
+                )}
+                {onOntology && (
+                  <div className="sidebar-subnav">
+                    <OntologyChildNavLinks canAccessPath={canAccessPath} />
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
         {toggles.knowledgeBases && canAccessPath('/knowledge-bases') && (

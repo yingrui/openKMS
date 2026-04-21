@@ -60,7 +60,7 @@ export function Home() {
       } catch (e) {
         if (!cancelled) {
           setTaxonomyTree(null);
-          setTaxonomyTreeError(e instanceof Error ? e.message : 'Could not load taxonomy tree');
+          setTaxonomyTreeError(e instanceof Error ? e.message : 'Could not load Knowledge Map');
         }
       } finally {
         if (!cancelled) setTaxonomyTreeLoading(false);
@@ -83,7 +83,9 @@ export function Home() {
       <div className="page-header home-header">
         <div>
           <h1>Home</h1>
-          <p className="page-subtitle">Knowledge operations: taxonomy, links, and document lifecycle signals.</p>
+          <p className="page-subtitle">
+            Knowledge operations: the Knowledge Map, links, and document lifecycle signals.
+          </p>
         </div>
       </div>
 
@@ -96,14 +98,14 @@ export function Home() {
 
       <div className={`home-hub-split${showTaxonomy ? ' home-hub-split--with-taxonomy' : ''}`}>
         {showTaxonomy && (
-          <aside className="home-hub-split__left" aria-label="Taxonomy overview">
+          <aside className="home-hub-split__left" aria-label="Knowledge Map overview">
             <section className="home-hub-card home-hub-card--taxonomy">
               <h2 className="home-hub-card-title">
                 <FolderTree size={20} aria-hidden />
-                Taxonomy
+                Knowledge Map
               </h2>
               <p className="home-muted home-hub-card-intro home-taxonomy-intro">
-                Browse the controlled vocabulary hierarchy. Terms with a number have refer-tos to channels or wiki spaces.
+                A sitemap-style view of how content is organized. Terms with a number link to channels or wiki spaces.
               </p>
               <HomeTaxonomyPreview
                 tree={taxonomyTree}
@@ -114,8 +116,8 @@ export function Home() {
                 linkCount={hub?.taxonomy?.link_count ?? null}
               />
               <div className="home-hub-card-actions">
-                <Link to="/taxonomy" className="btn btn-secondary">
-                  Open taxonomy
+                <Link to="/knowledge-map" className="btn btn-secondary">
+                  Open Knowledge Map
                 </Link>
                 {showTaxonomyWrite && (
                   <span className="home-muted home-hub-hint">You can edit terms and refer-tos on that page.</span>
