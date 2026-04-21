@@ -1,45 +1,156 @@
 .home-knowledge-map-preview {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   min-height: 0;
   flex: 1;
 }
 
-.home-knowledge-map-preview-toolbar {
+/* Top “hero” strip: stats + search + tools */
+.home-km-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 14px 16px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-elevated)) 0%,
+    var(--color-bg-muted) 48%,
+    var(--color-bg-elevated) 100%
+  );
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-bg-elevated) 80%, transparent);
+}
+
+.home-km-stats {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
+  gap: 10px 14px;
 }
 
-.home-knowledge-map-preview-stats {
-  font-size: 0.8125rem;
-}
-
-.home-knowledge-map-preview-toolbar-actions {
-  display: flex;
-  flex-wrap: wrap;
+.home-km-stat {
+  display: inline-flex;
+  align-items: baseline;
   gap: 6px;
 }
 
-.home-knowledge-map-tool-btn {
-  font-size: 0.75rem;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-muted);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+.home-km-stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+  line-height: 1;
 }
 
-.home-knowledge-map-tool-btn:hover {
+.home-km-stat-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.home-km-stat-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--color-border);
+  opacity: 0.85;
+}
+
+.home-km-stats-muted {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.home-km-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  min-height: 42px;
+  border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--color-text) 4%, transparent);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-km-search:focus-within {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--color-text) 4%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.home-km-search-icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.home-km-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 0.9375rem;
   color: var(--color-text);
-  border-color: var(--color-text-muted);
+  outline: none;
+}
+
+.home-km-search-input::placeholder {
+  color: var(--color-text-muted);
+}
+
+.home-km-search-clear {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.home-km-search-clear:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.home-km-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-km-tool-btn {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.1s ease;
+}
+
+.home-km-tool-btn:hover {
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-elevated));
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+}
+
+.home-km-tool-btn:active {
+  transform: scale(0.98);
 }
 
 .home-knowledge-map-preview-error {
@@ -47,23 +158,85 @@
   font-size: 0.85rem;
 }
 
-/* Scroll region: cap height so a deep Knowledge Map does not push the hub layout */
+/* Tree panel */
 .home-knowledge-map-tree-scroll {
   max-height: min(52vh, 440px);
-  min-height: 120px;
+  min-height: 140px;
   overflow: auto;
   overscroll-behavior: contain;
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-muted);
-  padding: 8px 6px 10px 4px;
+  padding: 10px 8px 12px 6px;
   scrollbar-gutter: stable;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-bg-muted) 60%, transparent);
 }
 
-.home-knowledge-map-tree-placeholder {
-  margin: 0;
-  padding: 16px 12px;
+.home-km-placeholder {
+  padding: 20px 16px 24px;
+}
+
+.home-km-placeholder--empty {
   text-align: center;
+  max-width: 22rem;
+  margin: 0 auto;
+}
+
+.home-km-placeholder-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.home-km-linkish {
+  margin-top: 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.home-km-linkish:hover {
+  color: var(--color-text);
+}
+
+.home-km-skeleton {
+  height: 12px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-muted) 0%,
+    color-mix(in srgb, var(--color-bg-elevated) 70%, var(--color-bg-muted)) 50%,
+    var(--color-bg-muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: home-km-shimmer 1.2s ease-in-out infinite;
+}
+
+.home-km-skeleton--title {
+  height: 16px;
+  width: 55%;
+  margin-bottom: 14px;
+}
+
+.home-km-skeleton--short {
+  width: 70%;
+}
+
+@keyframes home-km-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
 }
 
 .home-knowledge-map-tree-root,
@@ -74,7 +247,9 @@
 }
 
 .home-knowledge-map-tree-children {
-  padding-left: 0;
+  margin-left: 4px;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in srgb, var(--color-border) 85%, var(--color-accent));
 }
 
 .home-knowledge-map-tree-item {
@@ -84,19 +259,20 @@
 .home-knowledge-map-tree-row {
   display: flex;
   align-items: stretch;
-  gap: 2px;
-  min-height: 34px;
-  border-radius: var(--radius-sm);
-  padding-left: calc(var(--home-knowledge-map-depth, 0) * 10px);
+  gap: 4px;
+  min-height: 36px;
+  border-radius: var(--radius-md);
+  padding: 2px 4px 2px calc(4px + var(--home-knowledge-map-depth, 0) * 2px);
+  transition: background 0.12s ease;
 }
 
 .home-knowledge-map-tree-row:hover {
-  background: var(--color-bg-elevated);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg-muted));
 }
 
 .home-knowledge-map-tree-toggle {
   flex-shrink: 0;
-  width: 28px;
+  width: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +286,7 @@
 
 .home-knowledge-map-tree-toggle:hover {
   color: var(--color-accent);
-  background: var(--color-accent-subtle);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
 .home-knowledge-map-tree-toggle--spacer {
@@ -119,7 +295,7 @@
 }
 
 .home-knowledge-map-chevron {
-  transition: transform 0.15s ease;
+  transition: transform 0.18s ease;
 }
 
 .home-knowledge-map-chevron--open {
@@ -132,15 +308,23 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 8px 6px 2px;
+  padding: 8px 10px 8px 4px;
   text-decoration: none;
   color: var(--color-text);
   font-size: 0.875rem;
-  border-radius: var(--radius-sm);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: color 0.12s ease, background 0.12s ease;
 }
 
 .home-knowledge-map-tree-link:hover {
   color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.home-knowledge-map-tree-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .home-knowledge-map-tree-name {
@@ -149,22 +333,35 @@
   white-space: nowrap;
 }
 
+.home-km-search-hit {
+  margin: 0;
+  padding: 0 1px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-accent) 28%, transparent);
+  color: inherit;
+  font-weight: 700;
+}
+
 .home-knowledge-map-tree-badge {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--color-accent) 85%, var(--color-text-muted));
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-muted));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
 }
 
 @media (max-width: 640px) {
   .home-knowledge-map-tree-scroll {
     max-height: min(48vh, 360px);
+  }
+
+  .home-km-stat-value {
+    font-size: 1.2rem;
   }
 }

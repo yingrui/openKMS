@@ -1,0 +1,148 @@
+/* Mind map: teal / stone palette aligned with app theme (index.css) */
+
+.km-mindmap-scroll {
+  width: 100%;
+  min-height: 420px;
+  max-height: min(72vh, 720px);
+  overflow: auto;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
+
+.km-mindmap-inner {
+  position: relative;
+  margin: 0 auto;
+}
+
+.km-mindmap-svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.km-mindmap-edge {
+  stroke-width: 1.5;
+  opacity: 0.85;
+}
+
+.km-mindmap-edge--c0 {
+  stroke: color-mix(in srgb, var(--color-accent) 88%, var(--color-text) 12%);
+}
+
+.km-mindmap-edge--c1 {
+  stroke: color-mix(in srgb, var(--color-success) 75%, var(--color-text) 25%);
+}
+
+.km-mindmap-edge--c2 {
+  stroke: color-mix(in srgb, var(--color-warning) 70%, var(--color-text) 30%);
+}
+
+.km-mindmap-edge--c3 {
+  stroke: color-mix(in srgb, var(--color-accent-hover) 55%, var(--color-text-muted) 45%);
+}
+
+[data-theme='dark'] .km-mindmap-edge {
+  opacity: 0.9;
+}
+
+.km-mindmap-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 8px 12px 10px;
+  text-align: left;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  box-shadow: var(--shadow-sm);
+  z-index: 1;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+}
+
+.km-mindmap-node--center {
+  font-weight: 600;
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-elevated));
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border-strong));
+}
+
+.km-mindmap-node--node.km-mindmap-node--c0 {
+  border-color: color-mix(in srgb, var(--color-accent) 28%, var(--color-border));
+}
+
+.km-mindmap-node--node.km-mindmap-node--c1 {
+  border-color: color-mix(in srgb, var(--color-success) 32%, var(--color-border));
+}
+
+.km-mindmap-node--node.km-mindmap-node--c2 {
+  border-color: color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+}
+
+.km-mindmap-node--node.km-mindmap-node--c3 {
+  border-color: color-mix(in srgb, var(--color-accent-hover) 30%, var(--color-border));
+}
+
+button.km-mindmap-node:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+}
+
+button.km-mindmap-node:active {
+  transform: scale(0.99);
+}
+
+.km-mindmap-node--selected {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+.km-mindmap-node-title {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.km-mindmap-res-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 2px 0 0;
+  max-width: 100%;
+}
+
+.km-mindmap-res {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 8px;
+  align-items: baseline;
+  font-size: 0.6875rem;
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.km-mindmap-res-type {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 0.625rem;
+}
+
+.km-mindmap-res-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.km-mindmap-res--more {
+  grid-template-columns: 1fr;
+  font-style: italic;
+  color: var(--color-text-muted);
+}

@@ -209,7 +209,7 @@
   font-size: 0.9rem;
 }
 
-/* Signed-in hub: Knowledge Map left, activity & shortcuts right (stacks on narrow viewports) */
+/* Signed-in hub without taxonomy: work items + shortcuts centered */
 .home-hub-split {
   display: flex;
   flex-direction: column;
@@ -226,7 +226,7 @@
   flex: 1;
 }
 
-.home-hub-split:not(.home-hub-split--with-knowledge-map) .home-hub-split__right {
+.home-hub-split__right--solo {
   max-width: 800px;
   margin-left: auto;
   margin-right: auto;
@@ -247,27 +247,186 @@
   }
 }
 
-@media (min-width: 960px) {
-  .home-hub-split--with-knowledge-map {
+/* Signed-in hub with taxonomy: Knowledge Map mind map is the visual center */
+.home--hub-map-center {
+  max-width: 1480px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.home-map-hero-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.home-map-hero-header-text h1 {
+  margin: 0 0 6px;
+}
+
+.home-map-hero-subtitle {
+  margin: 0;
+  max-width: 52rem;
+}
+
+.home-map-hero-header-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  justify-content: flex-end;
+}
+
+.home-map-hero-banner {
+  margin: 0;
+}
+
+.home-map-hero-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+}
+
+.home-map-hero-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.home-map-hero-stat-value {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-map-hero-stat-label {
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+.home-map-hero-stat-divider {
+  width: 1px;
+  height: 1.25rem;
+  background: var(--color-border-strong);
+}
+
+.home-map-hero-stats-muted {
+  font-size: 0.875rem;
+}
+
+.home-map-manage-btn {
+  flex-shrink: 0;
+}
+
+.home-map-stage {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px 10px;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 10%, transparent),
+    0 16px 48px -24px color-mix(in srgb, var(--color-text) 22%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.home-map-stage-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+  padding: 0 2px 4px;
+}
+
+.home-map-stage .km-mindmap-scroll--home-center {
+  width: 100%;
+  min-height: min(68vh, 760px);
+  max-height: min(78vh, 860px);
+  border: none;
+  background: var(--color-bg-muted);
+}
+
+.home-map-stage-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  padding-bottom: 4px;
+}
+
+.home-map-stage-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: min(48vh, 400px);
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+}
+
+.home-map-stage-spinner {
+  animation: knowledge-map-spin 0.8s linear infinite;
+  color: var(--color-accent);
+}
+
+.home-map-stage-error {
+  margin: 0;
+  padding: 24px 16px;
+}
+
+.home-map-stage-empty {
+  text-align: center;
+  padding: 40px 20px 48px;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.home-map-stage-empty-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0 0 8px;
+  color: var(--color-text);
+}
+
+.home-map-stage-empty-cta {
+  margin-top: 20px;
+}
+
+.home-under-map {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.home-under-map-row {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .home-under-map-row {
     display: grid;
-    /* Knowledge Map (left) uses at least half the hub width; remainder for work items & shortcuts */
-    grid-template-columns: minmax(50%, 1fr) minmax(0, 1fr);
-    gap: 24px;
+    grid-template-columns: 1fr 1fr;
     align-items: start;
-  }
-
-  .home-hub-split--with-knowledge-map .home-hub-split__left {
-    position: sticky;
-    top: 12px;
-    max-height: calc(100vh - 24px);
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .home-hub-split--with-knowledge-map .home-knowledge-map-tree-scroll {
-    max-height: min(calc(100vh - 220px), 560px);
   }
 }
 
@@ -285,14 +444,21 @@
 .home-hub-card--knowledge-map {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 14px;
   min-height: 0;
   flex: 1;
   height: 100%;
+  position: relative;
+  overflow: visible;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 12%, transparent),
+    0 12px 40px -18px color-mix(in srgb, var(--color-text) 25%, transparent);
 }
 
 .home-knowledge-map-intro {
   margin-top: 0;
+  line-height: 1.55;
+  max-width: 40rem;
 }
 
 .home-hub-card-title {

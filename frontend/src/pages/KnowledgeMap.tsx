@@ -656,9 +656,9 @@ export function KnowledgeMap() {
                   Tree
                 </h2>
                 {canWrite && (
-                  <button type="button" className="btn btn-primary knowledge-map-new-term-btn" onClick={openNewTermModal}>
+                  <button type="button" className="btn btn-primary knowledge-map-new-node-btn" onClick={openNewTermModal}>
                     <Plus size={18} />
-                    <span>New term</span>
+                    <span>New node</span>
                   </button>
                 )}
               </div>
@@ -668,7 +668,7 @@ export function KnowledgeMap() {
                   <p>No terms yet</p>
                   <p className="knowledge-map-empty-hint">
                     {canWrite
-                      ? 'Use New term to add a root or narrower term. Choose “None (top-level)” for a root entry.'
+                      ? 'Use New node to add a root or narrower node. Choose “None (top-level)” for a root entry.'
                       : 'An editor with taxonomy:write can add terms to the map here.'}
                   </p>
                 </div>
@@ -842,11 +842,11 @@ export function KnowledgeMap() {
                 className="knowledge-map-dialog"
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="knowledge-map-new-term-title"
+                aria-labelledby="knowledge-map-new-node-title"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="knowledge-map-dialog-header">
-                  <h2 id="knowledge-map-new-term-title">New term</h2>
+                  <h2 id="knowledge-map-new-node-title">New node</h2>
                   <button
                     type="button"
                     className="knowledge-map-dialog-close"

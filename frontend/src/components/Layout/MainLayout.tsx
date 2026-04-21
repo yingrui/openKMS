@@ -78,7 +78,9 @@ export function MainLayout() {
           </div>
         )}
         {!showAuthRequired && !showPathDenied && (
-          <div className={`app-content ${isDetailPage ? 'app-content--compact' : ''}`}>
+          <div
+            className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}`}
+          >
             <Outlet />
           </div>
         )}
