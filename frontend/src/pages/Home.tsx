@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
-import { KnowledgeMapMindMap } from '../components/KnowledgeMapMindMap';
+import { KnowledgeMapForceGraph } from '../components/KnowledgeMapForceGraph';
 import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
 import {
   fetchKnowledgeMapTree,
@@ -129,6 +129,13 @@ export function Home() {
     [channelLabelById, wikiLabelById],
   );
 
+  const openTermOnMap = useCallback(
+    (id: string) => {
+      void navigate(`/knowledge-map?node=${encodeURIComponent(id)}`);
+    },
+    [navigate],
+  );
+
   if (!isAuthenticated) {
     return <HomeStaticLanding onSignIn={login} />;
   }
@@ -140,13 +147,6 @@ export function Home() {
   const nodeCount = hub?.taxonomy?.node_count ?? null;
   const linkCount = hub?.taxonomy?.link_count ?? null;
 
-  const openTermOnMap = useCallback(
-    (id: string) => {
-      void navigate(`/knowledge-map?node=${encodeURIComponent(id)}`);
-    },
-    [navigate],
-  );
-
   return (
     <div className={`home home--hub${showKnowledgeMapHub ? ' home--hub-map-center' : ''}`}>
       {showKnowledgeMapHub ? (
@@ -155,8 +155,7 @@ export function Home() {
             <div className="home-map-hero-header-text">
               <h1>Home</h1>
               <p className="page-subtitle home-map-hero-subtitle">
-                Your Knowledge Map is the hub: topics, channels, and wiki spaces at a glance. Click a term to manage
-                refer-tos on the full map.
+                The live Knowledge Map, work items, and quick links.
               </p>
             </div>
             <div className="home-map-hero-header-aside">
@@ -164,7 +163,7 @@ export function Home() {
                 <div className="home-map-hero-stats" aria-live="polite">
                   <span className="home-map-hero-stat">
                     <span className="home-map-hero-stat-value">{nodeCount}</span>
-                    <span className="home-map-hero-stat-label">terms</span>
+                    <span className="home-map-hero-stat-label">nodes</span>
                   </span>
                   <span className="home-map-hero-stat-divider" aria-hidden />
                   <span className="home-map-hero-stat">
@@ -187,7 +186,7 @@ export function Home() {
             </p>
           )}
 
-          <section className="home-map-stage" aria-label="Knowledge Map mind map">
+          <section className="home-map-stage" aria-label="Knowledge Map graph">
             <div className="home-map-stage-title">
               <Waypoints size={22} aria-hidden />
               <span>Knowledge Map</span>
@@ -195,7 +194,7 @@ export function Home() {
             {knowledgeMapTreeLoading && !mapLoaded ? (
               <div className="home-map-stage-loading">
                 <Loader2 className="home-map-stage-spinner" size={32} aria-hidden />
-                <span>Loading map…</span>
+                <span>Loading graph…</span>
               </div>
             ) : knowledgeMapTreeError ? (
               <p className="home-error home-map-stage-error" role="alert">
@@ -203,11 +202,11 @@ export function Home() {
               </p>
             ) : !mapHasTerms ? (
               <div className="home-map-stage-empty">
-                <p className="home-map-stage-empty-title">No terms yet</p>
+                <p className="home-map-stage-empty-title">No nodes yet</p>
                 <p className="home-muted">
                   {showKnowledgeMapWrite
-                    ? 'Add terms on the Knowledge Map page to see them here with links to channels and wiki spaces.'
-                    : 'An editor with taxonomy:write can add terms to the map.'}
+                    ? 'Add nodes on the Knowledge Map page to see them here with links to channels and wiki spaces.'
+                    : 'An editor with taxonomy:write can add nodes to the map.'}
                 </p>
                 {showKnowledgeMapWrite ? (
                   <Link to="/knowledge-map" className="btn btn-primary home-map-stage-empty-cta">
@@ -216,17 +215,19 @@ export function Home() {
                 ) : null}
               </div>
             ) : knowledgeMapTree ? (
-              <KnowledgeMapMindMap
+              <KnowledgeMapForceGraph
                 tree={knowledgeMapTree}
                 links={resourceLinks}
                 selectedNodeId={null}
                 onSelectNode={openTermOnMap}
                 resolveResourceLabel={resolveResourceLabel}
-                className="km-mindmap-scroll--home-center"
+                className="km-map-graph--home"
               />
             ) : null}
             {mapHasTerms ? (
-              <p className="home-muted home-map-stage-hint">Click any term to open it on the Knowledge Map page.</p>
+              <p className="home-muted home-map-stage-hint">
+                Navigate the Knowledge Map, click node to visit channel or wiki space.
+              </p>
             ) : null}
           </section>
 
