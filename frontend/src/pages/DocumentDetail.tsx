@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { AuthImage } from '../components/AuthImage';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import remarkMath from 'remark-math';
@@ -446,14 +447,10 @@ export function DocumentDetail() {
   /** Memoized to avoid remounting img elements on every re-render (which cancels in-flight requests). */
   const markdownComponents = useMemo(
     () => ({
-      img: ({ src, ...props }: { src?: string }) => (
-        <img
-          src={src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`}
-          loading="lazy"
-          crossOrigin={markdownBaseUrl.startsWith('http') ? 'use-credentials' : undefined}
-          {...props}
-        />
-      ),
+      img: ({ src, ...props }: { src?: string }) => {
+        const resolved = src?.startsWith('/') ? src : `${markdownBaseUrl}/${src}`;
+        return <AuthImage src={resolved ?? ''} loading="lazy" {...props} />;
+      },
     }),
     [markdownBaseUrl]
   );
@@ -1794,13 +1791,12 @@ export function DocumentDetail() {
                           onMouseMove={(e) => handlePageMouseMove(e, pageIndex)}
                           onMouseLeave={() => setHoveredBlockKey(null)}
                         >
-                          <img
-                            onLoad={(e) => onPageImageLoad(pageIndex, e.currentTarget)}
+                          <AuthImage
+                            onLoad={(e) => onPageImageLoad(pageIndex, e.currentTarget as HTMLImageElement)}
                             src={folderId ? `/examples/${item.input_img}` : (item.input_img ? getImageUrl(item.input_img) : '')}
                             alt={`Page ${pageIndex + 1}`}
                             className="document-detail-layout-img"
                             loading="lazy"
-                            crossOrigin={!folderId ? 'use-credentials' : undefined}
                           />
                           {dims && blocks.map((block, bi) => {
                             const [x1, y1, x2, y2] = block.coordinate;
@@ -1950,12 +1946,11 @@ export function DocumentDetail() {
                     <span className="document-detail-block-label">{selectedBlock.label}</span>
                   </div>
                   {selectedBlock.parsingItem.image_path ? (
-                    <img
+                    <AuthImage
                       src={folderId ? `/examples/${selectedBlock.parsingItem.image_path}` : getImageUrl(selectedBlock.parsingItem.image_path)}
                       alt={selectedBlock.parsingItem.label || 'Block'}
                       className="document-detail-block-img"
                       loading="lazy"
-                      crossOrigin={!folderId ? 'use-credentials' : undefined}
                     />
                   ) : selectedBlock.parsingItem.content ? (
                     <div className="document-detail-block-content">

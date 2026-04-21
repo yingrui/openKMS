@@ -151,6 +151,32 @@
   margin-bottom: 20px;
 }
 
+.documents-bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.documents-bulk-bar > span {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-right: 4px;
+}
+
+.documents-table-check {
+  width: 36px;
+  text-align: center;
+}
+
+.documents-table-check input[type="checkbox"] {
+  cursor: pointer;
+}
+
 .documents-search {
   flex: 1;
   max-width: 360px;

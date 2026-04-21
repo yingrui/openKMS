@@ -161,6 +161,7 @@ export function KnowledgeBaseDetail() {
   const [pickerPageSize] = useState(20);
   const [pickerTotal, setPickerTotal] = useState(0);
   const [pickerAdding, setPickerAdding] = useState(false);
+  const [pickerAllLoading, setPickerAllLoading] = useState(false);
   const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // FAQs
@@ -315,6 +316,7 @@ export function KnowledgeBaseDetail() {
     setPickerResults([]);
     setPickerTotal(0);
     setPickerLoading(false);
+    setPickerAllLoading(false);
     setPickerChannelExpanded(
       channels.reduce<Record<string, boolean>>((acc, ch) => {
         if (ch.children?.length) acc[ch.id] = true;
@@ -381,6 +383,26 @@ export function KnowledgeBaseDetail() {
       else next.add(docId);
       return next;
     });
+  };
+
+  const handleSelectAllFiltered = async () => {
+    if (!pickerSelectedChannel || pickerTotal === 0) return;
+    setPickerAllLoading(true);
+    try {
+      const res = await fetchDocuments({
+        channel_id: pickerSelectedChannel,
+        search: pickerSearchDebounced || undefined,
+        offset: 0,
+        limit: pickerTotal,
+      });
+      const ids = res.items.filter((d) => !alreadyAddedIds.has(d.id)).map((d) => d.id);
+      setPickerSelected(new Set(ids));
+    } catch { /* noop */ }
+    finally { setPickerAllLoading(false); }
+  };
+
+  const handleClearPickerSelection = () => {
+    setPickerSelected(new Set());
   };
 
   const handleAddSelectedDocuments = async () => {
@@ -1659,6 +1681,22 @@ export function KnowledgeBaseDetail() {
                     autoFocus
                   />
                 </div>
+                {pickerSelectedChannel && pickerTotal > 0 && (
+                  <div className="kb-doc-picker-toolbar">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={pickerSelected.size > 0 ? handleClearPickerSelection : handleSelectAllFiltered}
+                      disabled={pickerLoading || pickerAllLoading || pickerAdding}
+                    >
+                      {pickerAllLoading
+                        ? 'Loading...'
+                        : pickerSelected.size > 0
+                          ? `Clear selection (${pickerSelected.size})`
+                          : `Select all (${pickerTotal})`}
+                    </button>
+                  </div>
+                )}
                 <div className="kb-doc-picker-list">
                   {!pickerSelectedChannel ? (
                     <div className="kb-doc-picker-empty">

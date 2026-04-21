@@ -1249,6 +1249,12 @@
   padding: 0;
 }
 
+.kb-doc-picker-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 10px;
+}
+
 .kb-doc-picker-list {
   flex: 1;
   overflow-y: auto;

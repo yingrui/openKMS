@@ -16,6 +16,7 @@ import {
   X,
   Loader2,
   Play,
+  Sparkles,
 } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
@@ -28,6 +29,7 @@ import {
   uploadDocument,
   deleteDocument,
   updateDocument,
+  extractDocumentMetadata,
   isAcceptedFile,
   type DocumentResponse,
 } from '../data/documentsApi';
@@ -80,6 +82,9 @@ export function DocumentChannel() {
   const [moveDoc, setMoveDoc] = useState<DocumentResponse | null>(null);
   const [moveTargetChannelId, setMoveTargetChannelId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'not_completed' | 'uploaded' | 'failed' | 'running' | 'pending'>('all');
+  const [bulkRunning, setBulkRunning] = useState<null | 'process' | 'extract' | 'delete'>(null);
 
   const channelName = getDocumentChannelName(channels, channelId);
   const channelOptions = flattenChannels(channels);
@@ -188,6 +193,58 @@ export function DocumentChannel() {
     setMoveTargetChannelId(doc.channel_id);
   };
 
+  const filteredDocs = documents.filter((d) => {
+    const s = d.status || 'completed';
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'not_completed') return s !== 'completed';
+    return s === statusFilter;
+  });
+
+  const filteredIds = filteredDocs.map((d) => d.id);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
+  const someFilteredSelected = !allFilteredSelected && filteredIds.some((id) => selectedIds.has(id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filteredIds.forEach((id) => next.delete(id));
+      else filteredIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const runBulk = async (
+    kind: 'process' | 'extract' | 'delete',
+    op: (id: string) => Promise<unknown>,
+  ) => {
+    if (selectedIds.size === 0 || bulkRunning) return;
+    if (kind === 'delete' && !window.confirm(`Delete ${selectedIds.size} document(s)? This cannot be undone.`)) return;
+    setBulkRunning(kind);
+    let ok = 0, fail = 0;
+    for (const id of selectedIds) {
+      try { await op(id); ok++; } catch { fail++; }
+    }
+    setBulkRunning(null);
+    clearSelection();
+    toast[fail === 0 ? 'success' : 'info'](`${kind}: ${ok} succeeded${fail ? `, ${fail} failed` : ''}`);
+    await loadDocuments();
+  };
+
+  const handleBulkProcess = () => runBulk('process', (id) => createJob({ document_id: id }));
+  const handleBulkExtract = () => runBulk('extract', (id) => extractDocumentMetadata(id));
+  const handleBulkDelete = () => runBulk('delete', (id) => deleteDocument(id));
+
   const closeMoveModal = () => {
     if (!moveLoading) {
       setMoveDoc(null);
@@ -293,7 +350,41 @@ export function DocumentChannel() {
             <option>ZIP</option>
             <option>Image</option>
           </select>
+          <select
+            aria-label="Filter by status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          >
+            <option value="all">All statuses</option>
+            <option value="not_completed">Not completed</option>
+            <option value="uploaded">Uploaded</option>
+            <option value="pending">Pending</option>
+            <option value="running">Running</option>
+            <option value="failed">Failed</option>
+            <option value="completed">Completed</option>
+          </select>
         </div>
+        {selectedIds.size > 0 && (
+          <div className="documents-bulk-bar">
+            <span>{selectedIds.size} selected</span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleBulkProcess} disabled={bulkRunning !== null}>
+              {bulkRunning === 'process' ? <Loader2 size={14} className="documents-loading-spinner" /> : <Play size={14} />}
+              <span>Process</span>
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleBulkExtract} disabled={bulkRunning !== null}>
+              {bulkRunning === 'extract' ? <Loader2 size={14} className="documents-loading-spinner" /> : <Sparkles size={14} />}
+              <span>Extract metadata</span>
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleBulkDelete} disabled={bulkRunning !== null}>
+              {bulkRunning === 'delete' ? <Loader2 size={14} className="documents-loading-spinner" /> : <Trash2 size={14} />}
+              <span>Delete</span>
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={clearSelection} disabled={bulkRunning !== null}>
+              <X size={14} />
+              <span>Clear</span>
+            </button>
+          </div>
+        )}
         <div className="documents-table-wrap">
           {docsLoading ? (
             <div className="documents-loading">
@@ -304,10 +395,19 @@ export function DocumentChannel() {
             <div className="documents-error">
               <p>{docsError}</p>
             </div>
-          ) : documents.length > 0 ? (
+          ) : filteredDocs.length > 0 ? (
             <table className="documents-table">
               <thead>
                 <tr>
+                  <th className="documents-table-check">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all"
+                      checked={allFilteredSelected}
+                      ref={(el) => { if (el) el.indeterminate = someFilteredSelected; }}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th>Name</th>
                   <th>Type</th>
                   <th>Size</th>
@@ -317,7 +417,7 @@ export function DocumentChannel() {
                 </tr>
               </thead>
               <tbody>
-                {documents.map((doc) => {
+                {filteredDocs.map((doc) => {
                   const Icon = fileTypeIcons[doc.file_type] || FileText;
                   return (
                     <tr
@@ -328,6 +428,14 @@ export function DocumentChannel() {
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && navigate(`/documents/view/${doc.id}`)}
                     >
+                      <td className="documents-table-check" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${doc.name}`}
+                          checked={selectedIds.has(doc.id)}
+                          onChange={() => toggleSelectOne(doc.id)}
+                        />
+                      </td>
                       <td>
                         <div className="documents-table-name">
                           <Icon size={18} strokeWidth={1.5} />

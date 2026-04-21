@@ -38,7 +38,7 @@ function mapPgTypeToPropType(dataType: string): string {
   return 'string';
 }
 
-type FormProperty = PropertyDef & { enabled?: boolean };
+type FormProperty = PropertyDef & { enabled?: boolean; isNew?: boolean };
 
 function PropertyRow({
   prop,
@@ -240,7 +240,7 @@ export function ConsoleObjectTypes() {
   };
 
   const addProperty = () => {
-    setFormProperties((prev) => [...prev, { name: '', type: 'string', required: false, enabled: true }]);
+    setFormProperties((prev) => [...prev, { name: '', type: 'string', required: false, enabled: true, isNew: true }]);
   };
 
   const updateProperty = (idx: number, p: FormProperty) => {
@@ -267,7 +267,7 @@ export function ConsoleObjectTypes() {
     if (!formName.trim()) return;
     const props = formProperties
       .filter((p) => p.name.trim() && p.enabled !== false)
-      .map(({ enabled: _e, ...rest }) => rest) as PropertyDef[];
+      .map(({ enabled: _e, isNew: _n, ...rest }) => rest) as PropertyDef[];
     setSubmitting(true);
     try {
       if (editType) {
@@ -525,7 +525,7 @@ export function ConsoleObjectTypes() {
                         key={formDatasetId ? p.name : i}
                         prop={p}
                         fromDataset={!!formDatasetId}
-                        nameTypeReadOnly={!!editType}
+                        nameTypeReadOnly={!!editType && !p.isNew}
                         isPrimaryKey={formKeyProperty === p.name}
                         onPrimaryKeyChange={() => setFormKeyProperty(p.name)}
                         onChange={(np) => updateProperty(i, np)}
