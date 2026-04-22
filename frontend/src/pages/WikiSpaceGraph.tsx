@@ -163,26 +163,35 @@ function forceHubPull(baseStrength: number) {
   return force;
 }
 
+/**
+ * Frame the dense part of the graph (spatial core), same as opening from the space page.
+ * `focusPageId` only extends the fit set so that node stays in view — it must never be the
+ * sole zoom target or `zoomToFit` uses a tiny bbox and the canvas blows up to one dot + giant arrows.
+ */
 function zoomToFitMainCluster(
   g: GraphControlRef,
   durationMs: number,
   paddingPx: number,
-  filterFocusId?: string
+  focusPageId?: string
 ): void {
   if (typeof g.zoomToFit !== 'function') return;
-  if (filterFocusId) {
-    g.zoomToFit(durationMs, paddingPx, (n: object) => (n as GNode).id === filterFocusId);
-    return;
-  }
   const raw = g.graphData?.();
   const nodes = raw?.nodes;
   if (!nodes?.length) {
     g.zoomToFit(durationMs, paddingPx);
     return;
   }
+
+  const focusInGraph = Boolean(focusPageId && nodes.some((n) => n.id === focusPageId));
   const core = coreNodeIdsForSpatialZoom(nodes);
+
   if (core && core.size >= 3) {
-    g.zoomToFit(durationMs, paddingPx, (n: object) => core.has((n as GNode).id));
+    g.zoomToFit(durationMs, paddingPx, (n: object) => {
+      const id = (n as GNode).id;
+      if (core.has(id)) return true;
+      if (focusInGraph && id === focusPageId) return true;
+      return false;
+    });
   } else {
     g.zoomToFit(durationMs, paddingPx);
   }

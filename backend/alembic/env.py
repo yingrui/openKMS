@@ -38,6 +38,7 @@ import app.models.access_group  # noqa: F401 - register models with Base.metadat
 import app.models.data_resource  # noqa: F401 - register models with Base.metadata
 import app.models.wiki_models  # noqa: F401 - register models with Base.metadata
 import app.models.system_settings  # noqa: F401 - register models with Base.metadata
+import app.models.knowledge_map  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

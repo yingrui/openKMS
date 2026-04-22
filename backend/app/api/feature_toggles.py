@@ -16,6 +16,7 @@ DEFAULTS = {
     "wikiSpaces": True,
     "objectsAndLinks": True,
     "evaluationDatasets": False,
+    "taxonomy": True,
 }
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
@@ -27,6 +28,7 @@ class FeatureTogglesResponse(BaseModel):
     wikiSpaces: bool = True
     objectsAndLinks: bool = True
     evaluationDatasets: bool = False
+    taxonomy: bool = True
     hasNeo4jDataSource: bool = False
 
 
@@ -36,6 +38,7 @@ class FeatureTogglesUpdate(BaseModel):
     wikiSpaces: bool | None = None
     objectsAndLinks: bool | None = None
     evaluationDatasets: bool | None = None
+    taxonomy: bool | None = None
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:

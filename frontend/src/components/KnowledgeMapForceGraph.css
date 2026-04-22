@@ -1,0 +1,106 @@
+/* Home Knowledge Map graph — layout aligned with wiki Graph View patterns */
+
+.km-map-graph-scroll {
+  width: 100%;
+  min-height: 420px;
+  max-height: min(72vh, 720px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
+
+/* Fills the Home map stage column (flex parent) */
+.km-map-graph-scroll.km-map-graph--home {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.km-map-graph-hint {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
+.km-map-graph-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.km-map-graph-controls {
+  position: absolute;
+  z-index: 2;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-bg-elevated) 88%, transparent);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+}
+
+.km-map-graph-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.km-map-graph-icon-btn:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.km-map-graph-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 280px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.km-map-graph-footer {
+  margin: 0;
+  padding: 0 4px 2px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.km-map-graph-canvas-wrap .km-map-graph-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.km-map-graph-spin {
+  animation: km-map-graph-spin 0.8s linear infinite;
+}
+
+@keyframes km-map-graph-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

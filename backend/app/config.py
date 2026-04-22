@@ -47,6 +47,14 @@ class Settings(BaseSettings):
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 
+    # --- Worker: document pipeline subprocess (openkms-cli pipeline run) ---
+    pipeline_timeout_seconds: int = Field(
+        default=1800,
+        ge=1,
+        validation_alias="OPENKMS_PIPELINE_TIMEOUT_SECONDS",
+        description="Max seconds to wait for run_pipeline subprocess (VLM parse + optional metadata extraction).",
+    )
+
     # --- App ---
     app_title: str = Field(default="openKMS Backend", validation_alias="OPENKMS_APP_TITLE")
     app_version: str = Field(default="0.1.0", validation_alias="OPENKMS_APP_VERSION")

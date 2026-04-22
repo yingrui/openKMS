@@ -172,7 +172,13 @@ async def run_pipeline(
         await session.commit()
     cmd = shlex.split(rendered)
 
-    logger.info("Running pipeline for document %s: %s", document_id, rendered)
+    pipeline_timeout = float(settings.pipeline_timeout_seconds)
+    logger.info(
+        "Running pipeline for document %s (timeout %ss): %s",
+        document_id,
+        settings.pipeline_timeout_seconds,
+        rendered,
+    )
 
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -182,17 +188,24 @@ async def run_pipeline(
             env=subprocess_env,
         )
         try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=600)
+            stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=pipeline_timeout)
         except asyncio.TimeoutError:
             proc.kill()
             await proc.wait()
-            logger.error("Pipeline timed out for document %s", document_id)
+            logger.error(
+                "Pipeline timed out for document %s after %ss",
+                document_id,
+                settings.pipeline_timeout_seconds,
+            )
             async with async_session_maker() as session:
                 await session.execute(
                     update(Document).where(Document.id == document_id).values(status=DocumentStatus.FAILED)
                 )
                 await session.commit()
-            raise RuntimeError("Pipeline timed out after 600s") from None
+            raise RuntimeError(
+                f"Pipeline timed out after {settings.pipeline_timeout_seconds}s "
+                f"(OPENKMS_PIPELINE_TIMEOUT_SECONDS)"
+            ) from None
 
         stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
 

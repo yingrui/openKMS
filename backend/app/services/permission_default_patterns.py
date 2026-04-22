@@ -29,6 +29,8 @@ from app.services.permission_catalog import (
     PERM_WIKIS_WRITE,
     PERM_ONTOLOGY_READ,
     PERM_ONTOLOGY_WRITE,
+    PERM_KNOWLEDGE_MAP_READ,
+    PERM_KNOWLEDGE_MAP_WRITE,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -119,7 +121,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     ),
     PERM_DOCUMENTS_READ: (
         ["/documents", "/documents/*"],
-        ["GET /api/documents/*", "HEAD /api/documents/*"],
+        ["GET /api/documents/*", "HEAD /api/documents/*", "GET /api/home/hub"],
     ),
     PERM_DOCUMENTS_WRITE: (
         ["/documents", "/documents/*"],
@@ -252,6 +254,24 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "POST /api/link-types/index-to-neo4j",
             "POST /api/link-types/*/links",
             "DELETE /api/link-types/*/links/*",
+        ],
+    ),
+    PERM_KNOWLEDGE_MAP_READ: (
+        ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
+        [
+            "GET /api/taxonomy/*",
+            "HEAD /api/taxonomy/*",
+            "GET /api/home/hub",
+            "HEAD /api/home/hub",
+        ],
+    ),
+    PERM_KNOWLEDGE_MAP_WRITE: (
+        ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
+        [
+            "POST /api/taxonomy/*",
+            "PUT /api/taxonomy/*",
+            "PATCH /api/taxonomy/*",
+            "DELETE /api/taxonomy/*",
         ],
     ),
 }

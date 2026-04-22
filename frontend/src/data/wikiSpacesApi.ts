@@ -46,7 +46,7 @@ export interface WikiPageListResponse {
 }
 
 /** Default page size for wiki space detail list (server allows up to 500). */
-export const WIKI_PAGES_LIST_PAGE_SIZE = 25;
+export const WIKI_PAGES_LIST_PAGE_SIZE = 15;
 
 export interface WikiFileResponse {
   id: string;

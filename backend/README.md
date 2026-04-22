@@ -29,6 +29,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
 | `OPENKMS_VLM_URL` | http://localhost:8101 | vlm-server URL |
+| `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | 1800 | Max wait for **`run_pipeline`** (`openkms-cli pipeline run`, seconds) |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
 | `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local` |
 | `OPENKMS_INITIAL_ADMIN_USER` | (empty) | Local mode: grant `is_admin` when signup username matches (case-insensitive) |

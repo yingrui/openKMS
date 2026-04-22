@@ -266,7 +266,7 @@ flowchart TB
 | `backend/app/main.py` | Session cookie `max_age=86400 * 7` |
 | `backend/app/services/storage.py` | Presigned URL `expires_in=3600` |
 | `backend/app/services/model_testing.py` | HTTP timeout `timeout=120.0` |
-| `backend/app/jobs/tasks.py` | Subprocess `timeout=600` |
+| `backend/app/jobs/tasks.py` | Document pipeline timeout configurable via **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default 1800s); KB index still fixed 1800s |
 | `backend/app/config.py` | Both `vlm_url` and `paddleocr_vl_server_url` default to `http://localhost:8101` (duplicate config – consolidate VLM config) |
 | `backend/app/config.py` | `paddleocr_vl_max_concurrency` is defined but never used (remove or use) |
 

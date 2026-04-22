@@ -85,10 +85,10 @@
 | Wiki space CRUD | ✅ | `/api/wiki-spaces`; list/create/update/delete; optional **group data scopes** via `access_group_wiki_spaces` (local mode, same pattern as knowledge bases) |
 | Wiki pages | ✅ | Path-per-space (e.g. `guides/onboarding`); `GET/POST/PATCH/DELETE` by id; **PUT upsert** `.../pages/by-path/{path}` for CLI; markdown `body`; cached **page_index** JSONB; `GET .../pages/{id}/page-index`; **`GET .../pages`** optional `limit` (1–500) + `offset` + `path_prefix` — `total` is full match count; omit `limit` to return all (e.g. editor tree) |
 | Wiki files | ✅ | `POST .../files` (multipart), `GET .../files/{id}/content` (presigned redirect), `DELETE .../files/{id}`; S3/MinIO uses **`wiki/{space_id}/vault/{relative-path}`** when the multipart filename is a valid vault-relative path (folder import + CLI), else `wiki/{space_id}/files/{file_id}/…`; **same vault path re-upload** updates existing `wiki_files` row and overwrites the object (no duplicate `storage_key`) |
-| Graph View | ✅ | `GET .../graph` — directed **page graph** from `[[wikilinks]]` and relative markdown links (excluding fenced code blocks); response `{ nodes, links, source_max_updated_at? }`; when S3 is enabled, JSON cache at **`wiki/{space_id}/link-graph.json`** — used if object `LastModified` ≥ `max(wiki_pages.updated_at)` for the space, else recomputed and uploaded |
+| Graph View | ✅ | `GET .../graph` — directed **page graph** from `[[wikilinks]]` and relative markdown links (excluding fenced code blocks); response `{ nodes, links, source_max_updated_at? }`; when S3 is enabled, JSON cache at **`wiki/{space_id}/link-graph.json`** — used if object `LastModified` ≥ `max(wiki_pages.updated_at)` for the space, else recomputed and uploaded; SPA **`?focus=`** (from the page editor) **highlights** that node and includes it in the same **main-cluster** `zoomToFit` set as the default view — it does **not** zoom the camera to that node alone |
 | Vault import | ✅ | **Zip:** `POST .../import/vault` with `archive`. **Folder (UI):** **Import folder** opens an in-app dialog (skip `.pdf` / Office extensions), then **Choose vault folder…**; the browser’s mandatory upload confirmation appears, then import starts immediately (no extra in-app confirm); paths omit the picked OS folder name (first segment of `webkitRelativePath` stripped so wiki paths start at vault contents); sequential uploads with progress; same skip rules, limits (~2000 files, 80 MB total, 25 MB/file), and image rewrites as bulk import; binaries require storage; **markdown mirrored** to `wiki/{space_id}/vault/…/*.md` (rewritten body) when storage is enabled; **NUL bytes** stripped from markdown/title/path text before insert (PostgreSQL UTF-8) |
 | Permissions | ✅ | `wikis:read` / `wikis:write` with default SPA/API patterns; strict pattern middleware coverage via seeded `security_permissions` |
-| UI | ✅ | `/wikis`, `/wikis/:id`, **`/wikis/:id/graph`** (force-directed Graph View; click node to open page; **`?focus=`** page id from editor), `/wikis/:id/pages/:pageId`; wiki space detail: **Graph View** button, paginated **Pages** list (25 per page), **Import folder** / **Import zip**; sidebar **Wiki Spaces** when toggle + path allowed; preview uses `react-markdown` with `/api/...` image URL resolution |
+| UI | ✅ | `/wikis`, `/wikis/:id`, **`/wikis/:id/graph`** (force-directed Graph View; click node to open page; **`?focus=`** from editor), `/wikis/:id/pages/:pageId`; wiki space detail: **Graph View** button, **Pages \| Documents** tabs (Documents: link channel documents via `GET /api/documents` + **sessionStorage** prototype until `wiki_space_documents` API exists), **Wiki assistant** **fixed** right rail on wide viewports (`min-width: 961px`): full-height panel under the app header, main column reserves width via `padding-right`, list scrolls independently; **composer** footer (hint + **Send**, disabled when empty); local-only chat prototype (no `/api/agent` yet); paginated **Pages** list (**15** per page; row chrome aligned with channel **document table**: elevated wrap, **12×16px** row padding, hover); **Import folder** / **Import zip**; sidebar **Wiki Spaces** when toggle + path allowed; preview uses `react-markdown` with `/api/...` image URL resolution |
 | openkms-cli | ✅ | `openkms-cli wiki put`, `wiki sync`, `wiki upload-file` (auth: OIDC or local Basic) |
 
 - Toggle: `wikiSpaces` (default on); Console → Feature Toggles
@@ -120,6 +120,15 @@
 | Export | ✅ | `GET /api/glossaries/{id}/export` returns JSON with glossary_id, name, terms array |
 | Import | ✅ | `POST /api/glossaries/{id}/import` with `{ terms, mode: "append" \| "replace" }`; JSON file picker in UI |
 
+### 4e. Knowledge Map & Home (Knowledge operations)
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Knowledge Map (data model) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*` (FastAPI **`app.api.knowledge_map`**); **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns (SPA primary path **`/knowledge-map`**, legacy **`/taxonomy`** redirects) |
+| Knowledge Map UI | ✅ | **`/knowledge-map`** (lazy; **`/taxonomy`** redirects); sidebar **Knowledge Map** above **Glossaries** when feature toggle + path allowed; sitemap-style copy; **Tree** column + **Node details** panel (selected node: path, description, **Refer to** list scoped to that node); **New node** modal (preferred label, description, broader/parent); reorder/move/edit/delete; upsert/delete refer-tos from details only |
+| Home hub | ✅ | Signed-in `/` loads `GET /api/home/hub` when **taxonomy:read** or **documents:read** (hub JSON: taxonomy counts, work items, placeholder **share_requests**). With **taxonomy:read** (and `taxonomy` toggle): **Knowledge Map graph** (wiki-style **`react-force-graph-2d`**, `KnowledgeMapForceGraph`) is the page center: `GET /api/taxonomy/nodes/tree` + `GET /api/taxonomy/resource-links`; taxonomy nodes (circles) vs resource nodes (distinct shapes: document channel pill, wiki hexagon, articles pill); tree vs refer-to link styling; term click → **`/knowledge-map?node=`**, resource click → open channel/wiki/articles; work items and browse shortcuts sit below. Without taxonomy read: work items + shortcuts only (centered column) |
+| Static home (guests) | ✅ | **`/`** always shows **`HomeStaticLanding`** for unauthenticated users (marketing hero, pain points, benefits, functionalities, Sign in CTA); no system setting—**`MainLayout`** only gates non-home routes |
+| Feature toggle | ✅ | `taxonomy` (default on); Console → Feature Toggles |
 ### 5. Objects & Links (Feature Toggle)
 
 | Feature | Status | Description |
@@ -132,7 +141,7 @@
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
 | Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; checkbox selection for object/link types, directional arrows; layout modes (force, left-to-right, top-to-bottom, radial); zoom in/out/fit, fullscreen; style panel overlays canvas with Object/Link type color pickers |
 | Ontology overview | ✅ | Single page at `/ontology` showing all object types and link types with links to detail pages |
-| Ontology sidebar | ✅ | "Ontology" links to `/ontology`; subnav Datasets, Object types, Link types, Objects, Links, Object Explorer when on ontology pages; shown when Neo4j exists or objectsAndLinks toggle |
+| Ontology sidebar | ✅ | **Ontology** is a top-level item **next to Glossaries** (same menu group); links to `/ontology`; indented subnav for Datasets, Object types, Link types, Objects, Links, Object Explorer when on those routes; shown when Neo4j exists or objectsAndLinks toggle |
 | Search | ✅ | Optional search filter on object instances |
 | Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
 | Schema admin counts | ✅ | Ontology Object types / Link types pages: instance_count and link_count from datasets (PostgreSQL) |
@@ -179,7 +188,7 @@
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
 - **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles**, and resolved **permissions** (local users: DB keys such as `all` or granular `console:*`; OIDC IdP admins receive the full catalog); data from `GET /api/auth/me`. Linked from the header user menu.
-- Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
+- Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users on **`/`** see the static marketing home; on any other path they see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
 
 ### 6c. Home (Landing Page)
 
@@ -206,7 +215,7 @@
 | Jobs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry` |
 | Jobs UI | ✅ | Jobs.tsx with real API, status filter, create job, retry failed, delete |
 | Job detail | ✅ | JobDetail.tsx at `/jobs/:jobId` – timing, document link, pipeline info, rendered command, event log |
-| run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; updates document status |
+| run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default **1800**) caps wait time; updates document status |
 | Worker | ✅ | `backend/worker.py` entry point for procrastinate worker |
 | Document status | ✅ | uploaded → pending → running → completed/failed; shown in list and detail |
 | Process button | ✅ | Visible for uploaded/failed documents in list and detail views |

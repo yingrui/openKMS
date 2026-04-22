@@ -26,6 +26,7 @@ import {
   KeyRound,
   Library,
   Tags,
+  FolderTree,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -100,6 +101,79 @@ function SidebarChannelTree({
         </li>
       ))}
     </ul>
+  );
+}
+
+function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string) => boolean }) {
+  return (
+    <>
+      {canAccessPath('/ontology/datasets') && (
+        <NavLink
+          to="/ontology/datasets"
+          className={({ isActive }) =>
+            `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Table size={18} strokeWidth={1.75} />
+          <span>Datasets</span>
+        </NavLink>
+      )}
+      {canAccessPath('/ontology/object-types') && (
+        <NavLink
+          to="/ontology/object-types"
+          className={({ isActive }) =>
+            `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Box size={18} strokeWidth={1.75} />
+          <span>Object types</span>
+        </NavLink>
+      )}
+      {canAccessPath('/ontology/link-types') && (
+        <NavLink
+          to="/ontology/link-types"
+          className={({ isActive }) =>
+            `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Link2 size={18} strokeWidth={1.75} />
+          <span>Link types</span>
+        </NavLink>
+      )}
+      {canAccessPath('/objects') && (
+        <NavLink
+          to="/objects"
+          className={({ isActive }) =>
+            `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Box size={18} strokeWidth={1.75} />
+          <span>Objects</span>
+        </NavLink>
+      )}
+      {canAccessPath('/links') && (
+        <NavLink
+          to="/links"
+          className={({ isActive }) =>
+            `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Link2 size={18} strokeWidth={1.75} />
+          <span>Links</span>
+        </NavLink>
+      )}
+      {canAccessPath('/object-explorer') && (
+        <NavLink
+          to="/object-explorer"
+          className={({ isActive }) =>
+            `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+          }
+        >
+          <Compass size={18} strokeWidth={1.75} />
+          <span>Object Explorer</span>
+        </NavLink>
+      )}
+    </>
   );
 }
 
@@ -356,101 +430,59 @@ export function Sidebar() {
             <span>Wiki Spaces</span>
           </NavLink>
         )}
-        {showOntologySection && (
+        {toggles.taxonomy !== false &&
+          (canAccessPath('/knowledge-map') || canAccessPath('/taxonomy')) && (
+          <NavLink
+            to="/knowledge-map"
+            className={({ isActive }) =>
+              `sidebar-link ${
+                isActive ||
+                location.pathname === '/taxonomy' ||
+                location.pathname.startsWith('/taxonomy/') ||
+                location.pathname.startsWith('/knowledge-map/')
+                  ? 'sidebar-link-active'
+                  : ''
+              }`
+            }
+          >
+            <FolderTree size={18} strokeWidth={1.75} />
+            <span>Knowledge Map</span>
+          </NavLink>
+        )}
+        {(canAccessPath('/glossaries') || showOntologySection) && (
           <div className="sidebar-menu-group">
-            {canAccessPath('/ontology') && (
-            <NavLink
-              to="/ontology"
-              className={({ isActive }) =>
-                `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
-              }
-            >
-              <Network size={18} strokeWidth={1.75} />
-              <span>Ontology</span>
-            </NavLink>
+            {canAccessPath('/glossaries') && (
+              <NavLink
+                to="/glossaries"
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+                }
+              >
+                <BookOpen size={18} strokeWidth={1.75} />
+                <span>Glossaries</span>
+              </NavLink>
             )}
-            {onOntology && (
-              <div className="sidebar-subnav">
-                {canAccessPath('/ontology/datasets') && (
+            {showOntologySection && (
+              <>
+                {canAccessPath('/ontology') && (
                   <NavLink
-                    to="/ontology/datasets"
+                    to="/ontology"
                     className={({ isActive }) =>
-                      `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
+                      `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
                     }
                   >
-                    <Table size={18} strokeWidth={1.75} />
-                    <span>Datasets</span>
+                    <Network size={18} strokeWidth={1.75} />
+                    <span>Ontology</span>
                   </NavLink>
                 )}
-                {canAccessPath('/ontology/object-types') && (
-                  <NavLink
-                    to="/ontology/object-types"
-                    className={({ isActive }) =>
-                      `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
-                    }
-                  >
-                    <Box size={18} strokeWidth={1.75} />
-                    <span>Object types</span>
-                  </NavLink>
+                {onOntology && (
+                  <div className="sidebar-subnav">
+                    <OntologyChildNavLinks canAccessPath={canAccessPath} />
+                  </div>
                 )}
-                {canAccessPath('/ontology/link-types') && (
-                  <NavLink
-                    to="/ontology/link-types"
-                    className={({ isActive }) =>
-                      `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
-                    }
-                  >
-                    <Link2 size={18} strokeWidth={1.75} />
-                    <span>Link types</span>
-                  </NavLink>
-                )}
-                {canAccessPath('/objects') && (
-                <NavLink
-                  to="/objects"
-                  className={({ isActive }) =>
-                    `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
-                  }
-                >
-                  <Box size={18} strokeWidth={1.75} />
-                  <span>Objects</span>
-                </NavLink>
-                )}
-                {canAccessPath('/links') && (
-              <NavLink
-                to="/links"
-                className={({ isActive }) =>
-                  `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
-                }
-              >
-                <Link2 size={18} strokeWidth={1.75} />
-                <span>Links</span>
-              </NavLink>
-                )}
-                {canAccessPath('/object-explorer') && (
-              <NavLink
-                to="/object-explorer"
-                className={({ isActive }) =>
-                  `sidebar-link sidebar-sublink ${isActive ? 'sidebar-link-active' : ''}`
-                }
-              >
-                <Compass size={18} strokeWidth={1.75} />
-                <span>Object Explorer</span>
-              </NavLink>
-                )}
-              </div>
+              </>
             )}
           </div>
-        )}
-        {canAccessPath('/glossaries') && (
-        <NavLink
-          to="/glossaries"
-          className={({ isActive }) =>
-            `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-          }
-        >
-          <BookOpen size={18} strokeWidth={1.75} />
-          <span>Glossaries</span>
-        </NavLink>
         )}
         {toggles.knowledgeBases && canAccessPath('/knowledge-bases') && (
           <NavLink

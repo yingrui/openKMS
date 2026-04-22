@@ -19,14 +19,15 @@ export function MainLayout() {
     permissionPatternsReady,
   } = useAuth();
   const isHome = location.pathname === '/';
+  const showAuthRequired = !isLoading && !isAuthenticated && !isHome;
+  const showPathDenied =
+    !isLoading && isAuthenticated && permissionPatternsReady && !canAccessPath(location.pathname);
+
   const isDetailPage =
     location.pathname.startsWith('/documents/view') ||
     location.pathname.startsWith('/articles/view') ||
     location.pathname.startsWith('/knowledge-bases/') ||
     location.pathname.startsWith('/wikis/');
-  const showAuthRequired = !isLoading && !isAuthenticated && !isHome;
-  const showPathDenied =
-    !isLoading && isAuthenticated && permissionPatternsReady && !canAccessPath(location.pathname);
 
   return (
     <div className="app-layout">
@@ -49,11 +50,7 @@ export function MainLayout() {
           <div className="auth-error-banner" role="alert">
             <span>{authError}</span>
             <div className="auth-error-banner-actions">
-              <button
-                type="button"
-                onClick={retryAuth}
-                className="auth-error-banner-retry"
-              >
+              <button type="button" onClick={retryAuth} className="auth-error-banner-retry">
                 Retry
               </button>
               <button
@@ -81,7 +78,9 @@ export function MainLayout() {
           </div>
         )}
         {!showAuthRequired && !showPathDenied && (
-          <div className={`app-content ${isDetailPage ? 'app-content--compact' : ''}`}>
+          <div
+            className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}`}
+          >
             <Outlet />
           </div>
         )}

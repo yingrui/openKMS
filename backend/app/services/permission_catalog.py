@@ -34,6 +34,8 @@ PERM_EVAL_READ = "evaluation:read"
 PERM_EVAL_WRITE = "evaluation:write"
 PERM_ONTOLOGY_READ = "ontology:read"
 PERM_ONTOLOGY_WRITE = "ontology:write"
+PERM_KNOWLEDGE_MAP_READ = "taxonomy:read"
+PERM_KNOWLEDGE_MAP_WRITE = "taxonomy:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -190,6 +192,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         "Manage ontology instances",
         "Create/update object instances and relationships where applicable.",
         "ontology",
+    ),
+    OperationKeyHint(
+        PERM_KNOWLEDGE_MAP_READ,
+        "View Knowledge Map",
+        "Knowledge Map tree, resource links, and home hub read APIs.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_KNOWLEDGE_MAP_WRITE,
+        "Manage Knowledge Map",
+        "Create, update, delete map terms (nodes) and attach channels or wiki spaces.",
+        "content",
     ),
 )
 

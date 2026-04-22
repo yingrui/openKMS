@@ -1,7 +1,13 @@
 import { Navigate } from 'react-router-dom';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 
-type FeatureId = 'articles' | 'knowledgeBases' | 'wikiSpaces' | 'objectsAndLinks' | 'evaluationDatasets';
+type FeatureId =
+  | 'articles'
+  | 'knowledgeBases'
+  | 'wikiSpaces'
+  | 'objectsAndLinks'
+  | 'evaluationDatasets'
+  | 'taxonomy';
 
 export function FeatureGate({
   feature,
@@ -14,7 +20,9 @@ export function FeatureGate({
   const enabled =
     feature === 'objectsAndLinks'
       ? toggles.objectsAndLinks || !!toggles.hasNeo4jDataSource
-      : (toggles[feature] ?? false);
+      : feature === 'taxonomy'
+        ? toggles.taxonomy !== false
+        : (toggles[feature] ?? false);
 
   if (!enabled) {
     return <Navigate to="/" replace />;
