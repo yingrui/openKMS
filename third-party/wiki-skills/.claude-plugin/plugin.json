@@ -1,0 +1,13 @@
+{
+  "name": "wiki-skills",
+  "version": "1.0.0",
+  "description": "LLM-maintained personal wiki skills for Claude Code. Implements Karpathy's LLM Wiki pattern — persistent, compounding knowledge base for research, codebase documentation, or any long-term knowledge accumulation.",
+  "author": {
+    "name": "kfchou",
+    "url": "https://github.com/kfchou"
+  },
+  "homepage": "https://github.com/kfchou/wiki-skills",
+  "repository": "https://github.com/kfchou/wiki-skills",
+  "license": "MIT",
+  "keywords": ["wiki", "knowledge-base", "research", "documentation", "notes", "zettelkasten", "pkm"]
+}
