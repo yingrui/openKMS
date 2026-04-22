@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Bot, ChevronsLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { WikiSpaceAgentPanel } from '../components/wiki/WikiSpaceAgentPanel';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
@@ -12,8 +12,11 @@ import {
   defaultVaultImportSkipOptions,
   fetchWikiPages,
   fetchWikiSpace,
+  fetchWikiSpaceLinkedDocuments,
   importWikiVaultFolder,
   importWikiVaultZip,
+  linkDocumentToWikiSpace,
+  unlinkDocumentFromWikiSpace,
   type VaultImportSkipOptions,
   type VaultImportProgress,
   vaultSkipExtensionSet,
@@ -24,33 +27,7 @@ import {
 } from '../data/wikiSpacesApi';
 import './WikiSpaceDetail.css';
 
-const LINKED_DOCS_STORAGE_PREFIX = 'openkms_wiki_space_linked_docs_';
-
 export type WikiLinkedDoc = { id: string; name: string; channel_id: string };
-
-function loadLinkedDocsFromStorage(spaceId: string): WikiLinkedDoc[] {
-  if (typeof sessionStorage === 'undefined') return [];
-  try {
-    const raw = sessionStorage.getItem(LINKED_DOCS_STORAGE_PREFIX + spaceId);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (x): x is WikiLinkedDoc =>
-        !!x &&
-        typeof x === 'object' &&
-        typeof (x as WikiLinkedDoc).id === 'string' &&
-        typeof (x as WikiLinkedDoc).name === 'string' &&
-        typeof (x as WikiLinkedDoc).channel_id === 'string'
-    );
-  } catch {
-    return [];
-  }
-}
-
-function saveLinkedDocsToStorage(spaceId: string, items: WikiLinkedDoc[]) {
-  sessionStorage.setItem(LINKED_DOCS_STORAGE_PREFIX + spaceId, JSON.stringify(items));
-}
 
 function flattenChannelOptions(nodes: ChannelNode[], depth = 0): { id: string; label: string }[] {
   const rows: { id: string; label: string }[] = [];
@@ -95,18 +72,40 @@ export function WikiSpaceDetail() {
   const [docPickerLoading, setDocPickerLoading] = useState(false);
   const [docPickerItems, setDocPickerItems] = useState<Array<{ id: string; name: string; channel_id: string }>>([]);
 
-  const persistLinkedDocs = useCallback(
-    (space: string, items: WikiLinkedDoc[]) => {
-      setLinkedDocs(items);
-      saveLinkedDocsToStorage(space, items);
-    },
-    []
-  );
+  const wikiRailStorageKey = spaceId ? `openkms_wiki_rail_collapsed_v1_${spaceId}` : null;
+  const [wikiAssistantCollapsed, setWikiAssistantCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!spaceId) return;
-    setLinkedDocs(loadLinkedDocsFromStorage(spaceId));
-  }, [spaceId]);
+    if (!wikiRailStorageKey) {
+      setWikiAssistantCollapsed(false);
+      return;
+    }
+    try {
+      setWikiAssistantCollapsed(sessionStorage.getItem(wikiRailStorageKey) === '1');
+    } catch {
+      setWikiAssistantCollapsed(false);
+    }
+  }, [wikiRailStorageKey]);
+
+  const collapseWikiAssistant = useCallback(() => {
+    if (!wikiRailStorageKey) return;
+    setWikiAssistantCollapsed(true);
+    try {
+      sessionStorage.setItem(wikiRailStorageKey, '1');
+    } catch {
+      /* ignore */
+    }
+  }, [wikiRailStorageKey]);
+
+  const expandWikiAssistant = useCallback(() => {
+    if (!wikiRailStorageKey) return;
+    setWikiAssistantCollapsed(false);
+    try {
+      sessionStorage.removeItem(wikiRailStorageKey);
+    } catch {
+      /* ignore */
+    }
+  }, [wikiRailStorageKey]);
 
   useEffect(() => {
     if (!docPickerOpen || !spaceId) return;
@@ -148,15 +147,23 @@ export function WikiSpaceDetail() {
       setLoading(true);
       try {
         const offset = pageIndex * WIKI_PAGES_LIST_PAGE_SIZE;
-        const [sp, pg] = await Promise.all([
+        const [sp, pg, linked] = await Promise.all([
           fetchWikiSpace(spaceId),
           fetchWikiPages(spaceId, undefined, {
             limit: WIKI_PAGES_LIST_PAGE_SIZE,
             offset,
           }),
+          fetchWikiSpaceLinkedDocuments(spaceId).catch(() => ({ items: [], total: 0 })),
         ]);
         if (cancelled) return;
         setSpace(sp);
+        setLinkedDocs(
+          linked.items.map((x) => ({
+            id: x.document_id,
+            name: x.name,
+            channel_id: x.channel_id,
+          }))
+        );
         const total = pg.total;
         setPagesTotal(total);
         const maxPage = Math.max(0, Math.ceil(total / WIKI_PAGES_LIST_PAGE_SIZE) - 1);
@@ -171,6 +178,7 @@ export function WikiSpaceDetail() {
           setSpace(null);
           setPages([]);
           setPagesTotal(0);
+          setLinkedDocs([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -314,7 +322,13 @@ export function WikiSpaceDetail() {
   const pageCount = Math.max(1, Math.ceil(pagesTotal / WIKI_PAGES_LIST_PAGE_SIZE));
 
   return (
-    <div className={`wiki-space-detail${!loading && space ? ' wiki-space-detail--split' : ''}`}>
+    <div
+      className={`wiki-space-detail${
+        !loading && space
+          ? ` wiki-space-detail--split${wikiAssistantCollapsed ? ' wiki-space-detail--agent-collapsed' : ''}`
+          : ''
+      }`}
+    >
       <div className="wiki-space-detail-body">
         <div className="wiki-space-detail-toolbar-span">
           <Link to="/wikis" className="wiki-space-detail-back">
@@ -487,10 +501,15 @@ export function WikiSpaceDetail() {
                           aria-label="Remove link"
                           onClick={() => {
                             if (!spaceId) return;
-                            persistLinkedDocs(
-                              spaceId,
-                              linkedDocs.filter((x) => x.id !== d.id)
-                            );
+                            void (async () => {
+                              try {
+                                await unlinkDocumentFromWikiSpace(spaceId, d.id);
+                                setLinkedDocs((prev) => prev.filter((x) => x.id !== d.id));
+                                toast.success('Link removed');
+                              } catch (e: unknown) {
+                                toast.error(e instanceof Error ? e.message : 'Failed to remove link');
+                              }
+                            })();
                           }}
                         >
                           <Trash2 size={18} strokeWidth={1.5} />
@@ -502,9 +521,29 @@ export function WikiSpaceDetail() {
               </section>
             )}
           </div>
-          <div className="wiki-space-detail-agent-rail">
-            <WikiSpaceAgentPanel spaceId={spaceId} spaceName={space.name} />
-          </div>
+          {wikiAssistantCollapsed ? (
+            <button
+              type="button"
+              className="wiki-space-detail-agent-expand"
+              onClick={expandWikiAssistant}
+              title="Show wiki assistant"
+              aria-expanded="false"
+            >
+              <span className="wiki-space-detail-agent-expand__icon" aria-hidden>
+                <Bot size={20} strokeWidth={2} />
+                <ChevronsLeft size={18} strokeWidth={2} />
+              </span>
+              <span className="wiki-space-detail-agent-expand__label">Wiki assistant</span>
+            </button>
+          ) : (
+            <div className="wiki-space-detail-agent-rail">
+              <WikiSpaceAgentPanel
+                spaceId={spaceId}
+                spaceName={space.name}
+                onRequestCollapse={collapseWikiAssistant}
+              />
+            </div>
+          )}
           </div>
         )}
       </div>
@@ -574,10 +613,22 @@ export function WikiSpaceDetail() {
                           disabled={already}
                           onClick={() => {
                             if (already || !spaceId) return;
-                            persistLinkedDocs(spaceId, [
-                              ...linkedDocs,
-                              { id: d.id, name: d.name, channel_id: d.channel_id },
-                            ]);
+                            void (async () => {
+                              try {
+                                const row = await linkDocumentToWikiSpace(spaceId, d.id);
+                                setLinkedDocs((prev) => [
+                                  ...prev,
+                                  {
+                                    id: row.document_id,
+                                    name: row.name,
+                                    channel_id: row.channel_id,
+                                  },
+                                ]);
+                                toast.success('Document linked');
+                              } catch (e: unknown) {
+                                toast.error(e instanceof Error ? e.message : 'Failed to link document');
+                              }
+                            })();
                           }}
                         >
                           {already ? 'Linked' : 'Link'}

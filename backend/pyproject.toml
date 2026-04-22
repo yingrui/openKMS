@@ -28,6 +28,9 @@ dependencies = [
     "cryptography>=44.0.0",
     "neo4j>=5.0.0",
     "bcrypt>=4.0.0",
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+    "langchain-openai>=0.2.0",
 ]
 
 [project.optional-dependencies]

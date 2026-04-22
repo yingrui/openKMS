@@ -1,26 +1,27 @@
 # Wiki space: linked documents and embedded agent (prototype design)
 
-This document is the **single spec** for wiki–document associations, the wiki-space **Documents** tab + **Wiki assistant** UI, and the future **in-process LangGraph agent** in the openKMS backend. It complements [architecture.md](./architecture.md).
+This document is the **single spec** for wiki–document associations, the wiki-space **Documents** tab + **Wiki assistant** UI, and the **in-process LangGraph agent** in the openKMS backend. It complements [architecture.md](./architecture.md).
 
-**Shipped UI (prototype, no backend links/agent yet)**
+**Shipped (MVP v1)**
 
-- [WikiSpaceDetail](../frontend/src/pages/WikiSpaceDetail.tsx): **grid** with toolbar row spanning both columns (assistant top-aligns with main); main + **wide** sticky right rail (`~640px` / `44vw` cap); **Pages | Documents** tabs; **dense** page rows (15 per page via `WIKI_PAGES_LIST_PAGE_SIZE` in `wikiSpacesApi.ts`); **Linked documents** + **Add documents** modal (`GET /api/documents`). Linked rows: **`sessionStorage`** (`openkms_wiki_space_linked_docs_{spaceId}`).
-- [WikiSpaceAgentPanel](../frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): local-only chat shell; **no** `/api/agent` calls.
+- [WikiSpaceDetail](../frontend/src/pages/WikiSpaceDetail.tsx): main + right rail; **Pages | Documents** tabs; **15** per page; **Documents** list uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
+- [WikiSpaceAgentPanel](../frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](../frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
+- **Backend** [app/api/agent.py](../backend/app/api/agent.py) + [app/services/agent/](../backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](../backend/app/services/agent/wiki_runner.py). LLM from [api_models](../backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**).
 
 ## Two services (do not conflate)
 
 | Piece | Role |
 |-------|------|
 | **qa-agent** | Separate deployable: KB RAG over HTTP to openKMS; LangGraph + optional Langfuse. Unchanged by wiki assistant work. |
-| **Backend embedded agent** | Same FastAPI process as openKMS: `/api/agent/...`, LangGraph + tools with DB/session + JWT; optional Langfuse `CallbackHandler`. Not split to its own container in the first build phase. |
+| **Backend embedded agent** | Same FastAPI process as openKMS: `/api/agent/...`, LangGraph + tools with `AsyncSession` + JWT. Optional Langfuse **not** wired yet. |
 
 ## Goals
 
-1. **Wiki space**: Tabs **Pages** | **Documents**; documents are channel **Document** rows **linked** to the space (reference-only). Users add/remove links only for documents they can already read (enforced server-side when API exists).
-2. **Wiki assistant** (right rail): Chat aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools—not bundled Claude SKILL files.
-3. **Multi-surface**: Same agent **shell** pattern can mount on other routes later with different `surface` and skill packs.
+1. **Wiki space**: **Pages** | **Documents**; documents are **linked** to the space (DB `wiki_space_documents`). Add/remove with **document in user scope** (enforced in API).
+2. **Wiki assistant** (right rail): Aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools.
+3. **Multi-surface**: `agent_conversations.surface` (v1: `wiki_space`); other surfaces (evaluation, FAQ) later.
 
-## Request path (target)
+## Request path (implemented, v1)
 
 ```mermaid
 sequenceDiagram
@@ -29,71 +30,86 @@ sequenceDiagram
   participant API as FastAPI_backend
   participant G as LangGraph_wiki
   participant DB as PostgreSQL
-  participant LF as Langfuse_optional
-
   U->>FE: Send message
-  FE->>API: POST /api/agent/conversations/id/messages
-  API->>DB: Load conversation + messages
-  API->>G: graph.invoke(config with JWT + db)
-  G->>DB: Tools list/get/update wiki pages, read linked doc markdown
-  G-->>LF: CallbackHandler traces
-  API->>DB: Persist assistant + tool messages
-  API->>FE: JSON reply
+  FE->>API: POST /api/agent/conversations/cid/messages
+  API->>DB: Store user + load history
+  API->>G: create_react_agent.ainvoke
+  G->>DB: Read tools query wiki
+  API->>DB: Persist assistant message
+  API->>FE: user + assistant JSON
 ```
 
-## Data model (build phase)
+## Data model (implemented)
 
 | Table | Purpose |
 |-------|---------|
-| **wiki_space_documents** | `wiki_space_id`, `document_id`, `created_at`; unique `(wiki_space_id, document_id)`; FKs to `wiki_spaces`, `documents`; cascade row on space delete; on document delete remove link or CASCADE. |
-| **agent_conversations** | `id`, `user_id` (sub), `surface`, `context` JSONB (`wiki_space_id`, …), optional `title`, timestamps. |
-| **agent_messages** | `id`, `conversation_id`, `role`, `content`, optional `tool_calls` JSONB, `created_at`. |
+| **wiki_space_documents** | `id`, `wiki_space_id`, `document_id`, `created_at`; unique pair; `ON DELETE CASCADE` on space or document. |
+| **agent_conversations** | `user_sub` (OIDC/ local JWT `sub`), `surface`, `context` JSONB (`wiki_space_id`), `title?`, timestamps. |
+| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content`, `tool_calls?` JSONB. (Tool rounds not persisted in v1.) |
 
-## REST API (build phase)
+## REST API (implemented, v1)
 
 **Wiki–document links**
 
 | Method | Path | Body / notes |
-|--------|------|----------------|
-| GET | `/api/wiki-spaces/{id}/documents` | List linked document summaries. |
-| POST | `/api/wiki-spaces/{id}/documents` | `{ "document_id" }`; wiki write + document in scope. |
+|--------|------|-------------|
+| GET | `/api/wiki-spaces/{id}/documents` | `WikiSpaceDocumentListResponse`. |
+| POST | `/api/wiki-spaces/{id}/documents` | `{ "document_id" }` |
 | DELETE | `/api/wiki-spaces/{id}/documents/{document_id}` | Unlink. |
 
 **Agent**
 
 | Method | Path | Notes |
 |--------|------|--------|
-| POST | `/api/agent/conversations` | `{ "surface": "wiki_space", "context": { "wiki_space_id" } }` |
-| GET | `/api/agent/conversations/{id}` | Metadata. |
-| GET | `/api/agent/conversations/{id}/messages` | Paginated history. |
-| POST | `/api/agent/conversations/{id}/messages` | User text; run LangGraph loop; non-streaming JSON in v1. |
+| POST | `/api/agent/conversations` | `surface: "wiki_space"`, `context: { "wiki_space_id" }` |
+| GET | `/api/agent/conversations?wiki_space_id=…&surface=wiki_space&limit=50` | Current user’s conversations for that space, **`updated_at` desc** (1–100). |
+| GET | `/api/agent/conversations/{id}` | |
+| PATCH | `/api/agent/conversations/{id}` | `{"title": "…"}` (optional; UI may not expose yet). |
+| DELETE | `/api/agent/conversations/{id}` | **204**; ownership + scope. |
+| GET | `/api/agent/conversations/{id}/messages` | Full list (v1, no offset—OK for small chats). |
+| POST | `/api/agent/conversations/{id}/messages` | `{ "content", "stream"?: false }` → JSON `{ message, assistant }`. With `{ "content", "stream": true }` → **`application/x-ndjson`**: one `user` row, then `delta` rows (`t` = text chunk), then `done` (or `error` with the persisted assistant error). |
 
-## Permissions (target)
+**Configuration**
+
+- `OPENKMS_AGENT_MODEL_ID` — optional; otherwise the default **`llm`** [api_model](../backend/app/models/api_model.py) (`is_default_in_category` for that category: set on the **Models** page, not under Console).
+
+## Permissions (implemented, v1)
 
 | Action | Requirement |
 |--------|-------------|
-| Link / unlink document | `wikis:write` + wiki in scope; document must pass same scope rules as `GET /api/documents`. |
-| Open assistant / read | `wikis:read` + space in scope. |
-| Tools that mutate wiki pages | `wikis:write`. |
-| Tool: read linked `Document.markdown` | Document read scope. |
+| Link / unlink | `wikis:write` + space in scope; document must pass [document scope rules](../backend/app/api/wiki_spaces.py) (same as document list). |
+| Agent chat, read tools | `wikis:read` + space in scope. |
+| (Future) Write tools for pages / markdown | `wikis:write`. |
+| (Future) Read `Document.markdown` in tools | `documents:read` scope. |
 
-## LangGraph + Langfuse (build phase)
+## wiki-skills → openKMS (v1 tools)
 
-- **Graph**: `StateGraph` with `messages` (`add_messages`), `generate` node (`ChatOpenAI` + wiki tools), `ToolNode`, conditional **tools → generate** until no tool calls (pattern aligned with [qa-agent/qa_agent/agent.py](../qa-agent/qa_agent/agent.py)).
-- **Tools**: Request context via `config["configurable"]` (`AsyncSession`, JWT, `wiki_space_id`); never trust model for auth.
-- **Langfuse**: Optional `LANGFUSE_SECRET_KEY`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_BASE_URL`; `langfuse.langchain.CallbackHandler` on `invoke`, `flush()` after run; trace metadata: `surface`, `wiki_space_id`, `conversation_id`, user `sub`.
+| wiki-skills | openKMS (this build) |
+|-------------|----------------------|
+| wiki-init | *Prompt* only; no scaffold tool yet. |
+| wiki-ingest | User uses UI import / pages; *no ingest tool* in v1. |
+| wiki-query | `list_wiki_pages`, `get_wiki_page` |
+| wiki-lint | *Not implemented*; can add graph/wikilink checks later. |
+| wiki-update | *Read-only*; page editing remains UI / CLI. |
 
-## Build-phase backlog (ordered)
+## LangGraph + Langfuse (status)
 
-1. Alembic: `wiki_space_documents`, `agent_conversations`, `agent_messages`; register models in `alembic/env.py`.
-2. Wiki-space document link API + permission checks; replace **sessionStorage** in [WikiSpaceDetail](../frontend/src/pages/WikiSpaceDetail.tsx) with `fetch` to new endpoints.
-3. Backend: `langgraph`, `langchain-openai`, `langfuse` in [backend/pyproject.toml](../backend/pyproject.toml); `app/services/agent/` (surfaces, wiki graph, wiki tools); `app/api/agent.py`; `config.py` Langfuse settings.
-4. Frontend: `agentApi.ts`; wire **WikiSpaceAgentPanel** to create conversation + POST messages; remove prototype-only copy when live.
-5. Docs: env examples; expand **functionalities** / **architecture** for shipped agent.
+- **v1** uses [langgraph.prebuilt.create_react_agent](https://github.com/langchain-ai/langgraph) with `langchain_openai.ChatOpenAI`.
+- **Langfuse**: not integrated yet; optional `CallbackHandler` as in backlog.
+- **Streaming**: `POST .../messages` with `stream: true` returns **NDJSON**; assistant completion bumps **`updated_at`** for conversation ordering.
+
+## Build backlog (next)
+
+- [x] Alembic + `wiki_space_documents`, `agent_conversations`, `agent_messages`
+- [x] Wiki link API; FE
+- [x] Agent router + `create_react_agent` + read tools; FE [agentApi.ts](../frontend/src/data/agentApi.ts) + panel
+- [ ] Optional: Langfuse env in [config](../backend/app/config.py) + `invoke` hook
+- [ ] Write tools: create/update page (gated by `wikis:write`); read linked doc markdown body
+- [ ] (Later) `evaluation_dataset` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)
+- [ ] Server-side pagination for `GET .../agent/.../messages` if needed
 
 ## Out of scope (later)
 
-- Extracting embedded agent to a separate microservice.
-- SSE streaming (optional follow-up).
-- Global floating agent in `MainLayout`.
-- Merging qa-agent into the monolith.
+- Standalone microservice (same as embedded agent in-process).
+- SSE (optional follow-up).
+- Merging **qa-agent** into the monolith (still discouraged).

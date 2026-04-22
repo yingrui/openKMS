@@ -15,7 +15,7 @@ cd backend
 uv sync   # creates .venv and installs dependencies from pyproject.toml + uv.lock
 ```
 
-Or with pip: `pip install -e .` (requires Python 3.10+).
+Or with pip: `pip install -e .` (requires Python 3.10+). Re-run this after pulling when `pyproject.toml` gains new packages (e.g. **langchain** for the embedded wiki agent); otherwise `./dev.sh` will install the agent stack if `import langchain_core` fails: it prefers `uv pip` when the `uv` tool is on your PATH, otherwise `python -m ensurepip` when the venv has no `pip`, then `python -m pip install`. With **Conda** active, use the same `python` for all installs; `./dev.sh` uses `python -m uvicorn` so the reload worker matches the venv.
 
 ## Configuration
 
@@ -30,6 +30,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
 | `OPENKMS_VLM_URL` | http://localhost:8101 | vlm-server URL |
 | `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | 1800 | Max wait for **`run_pipeline`** (`openkms-cli pipeline run`, seconds) |
+| `OPENKMS_AGENT_MODEL_ID` | (empty) | `api_models.id` for the **embedded** wiki agent (`/api/agent/...`); if empty, the **default LLM** in **Models** (category `llm`, set **Set as default** in the UI) is used. |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
 | `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local` |
 | `OPENKMS_INITIAL_ADMIN_USER` | (empty) | Local mode: grant `is_admin` when signup username matches (case-insensitive) |

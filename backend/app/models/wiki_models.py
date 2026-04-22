@@ -33,6 +33,9 @@ class WikiSpace(Base):
     files: Mapped[list["WikiFile"]] = relationship(
         "WikiFile", back_populates="space", cascade="all, delete-orphan"
     )
+    linked_documents: Mapped[list["WikiSpaceDocument"]] = relationship(
+        "WikiSpaceDocument", back_populates="space", cascade="all, delete-orphan"
+    )
 
 
 class WikiPage(Base):
@@ -55,6 +58,25 @@ class WikiPage(Base):
 
     space: Mapped["WikiSpace"] = relationship("WikiSpace", back_populates="pages")
     files: Mapped[list["WikiFile"]] = relationship("WikiFile", back_populates="page")
+
+
+class WikiSpaceDocument(Base):
+    """Link a channel Document to a wiki space (reference only)."""
+
+    __tablename__ = "wiki_space_documents"
+    __table_args__ = (UniqueConstraint("wiki_space_id", "document_id", name="uq_wiki_space_documents_space_doc"),)
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
+    wiki_space_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("wiki_spaces.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    space: Mapped["WikiSpace"] = relationship("WikiSpace", back_populates="linked_documents")
+    # document: use lazy query via id to avoid circular import; Document in app.models.document
 
 
 class WikiFile(Base):

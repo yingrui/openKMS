@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     # --- Metadata extraction (LLM for document metadata) ---
     extraction_model_id: str | None = Field(default=None, validation_alias="OPENKMS_EXTRACTION_MODEL_ID")
 
+    # --- Embedded agent (LangGraph; wiki / future surfaces) ---
+    agent_model_id: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_AGENT_MODEL_ID",
+        description="api_models.id for the LLM used by POST /api/agent/.../messages. If unset, the first available LLM model is used.",
+    )
+
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 
