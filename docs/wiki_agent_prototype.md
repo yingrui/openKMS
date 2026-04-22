@@ -6,7 +6,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 
 - [WikiSpaceDetail](../frontend/src/pages/WikiSpaceDetail.tsx): main + right rail; **Pages | Documents** tabs; **15** per page; **Documents** list uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
 - [WikiSpaceAgentPanel](../frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](../frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
-- **Backend** [app/api/agent.py](../backend/app/api/agent.py) + [app/services/agent/](../backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](../backend/app/services/agent/wiki_runner.py). LLM from [api_models](../backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**).
+- **Backend** [app/api/agent.py](../backend/app/api/agent.py) + [app/services/agent/](../backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](../backend/app/services/agent/wiki_runner.py). LLM from [api_models](../backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](../third-party/wiki-skills/) (`git subtree`); [vendored_wiki_skills.py](../backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](../backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
 
 ## Two services (do not conflate)
 
@@ -86,11 +86,15 @@ sequenceDiagram
 
 | wiki-skills | openKMS (this build) |
 |-------------|----------------------|
-| wiki-init | *Prompt* only; no scaffold tool yet. |
-| wiki-ingest | User uses UI import / pages; *no ingest tool* in v1. |
-| wiki-query | `list_wiki_pages`, `get_wiki_page` |
-| wiki-lint | *Not implemented*; can add graph/wikilink checks later. |
-| wiki-update | *Read-only*; page editing remains UI / CLI. |
+| wiki-init | *Prompt* (vendored SKILL + mapping); *no* on-disk bootstrap tool. |
+| wiki-ingest | Vendored playbook; actual ingest = UI / CLI, not a server tool. |
+| wiki-query | Vendored playbook + `list_wiki_pages`, `get_wiki_page` (DB is source of truth) |
+| wiki-lint | Vendored playbook; automated report files not written by agent (read tools only). |
+| wiki-update | Vendored playbook; *read-only* tools; edits via UI / CLI. |
+
+**Updating the vendored tree** (from repo root, after adding the subtree once):
+
+`git subtree pull --prefix=third-party/wiki-skills https://github.com/kfchou/wiki-skills.git main --squash`
 
 ## LangGraph + Langfuse (status)
 

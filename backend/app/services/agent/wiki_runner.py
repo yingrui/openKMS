@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.agent.prompts import WIKI_SPACE_SYSTEM
+from app.services.agent.prompts import build_wiki_space_system_prompt
 from app.services.agent.wiki_tools import make_wiki_tools
 
 
@@ -83,7 +83,7 @@ async def _load_wiki_run_context(
     agent = create_react_agent(
         llm,
         tools,
-        prompt=WIKI_SPACE_SYSTEM,
+        prompt=build_wiki_space_system_prompt(),
     )
     messages: list[BaseMessage] = _lc_messages_from_db(history_rows)
     return _WikiRunCtx(None, agent, messages)

@@ -30,7 +30,7 @@
 
 ### Wiki assistant & linked documents (build on [wiki_agent_prototype.md](./wiki_agent_prototype.md))
 
-- [x] **Pages \| Documents**; linked-docs picker; **Wiki assistant** wired to **`/api/agent`** (persisted conversations; read tools; **list/delete** conversations, **markdown** + **auto-scroll** in panel)
+- [x] **Pages \| Documents**; linked-docs picker; **Wiki assistant** wired to **`/api/agent`** (persisted conversations; read tools; **list/delete** conversations, **markdown** + **auto-scroll** in panel); **wiki-skills** vendored via `git subtree` at `third-party/wiki-skills`, `SKILL.md` content in LangGraph system prompt
 - [x] `wiki_space_documents` + `agent_*` tables; link/unlink/list; SPA uses API (not sessionStorage) for links
 - [x] Backend embedded agent (v1): LangGraph `create_react_agent` + `agent_conversations` / `agent_messages`
 - [ ] optional: Langfuse tracing; **write** tools for pages
