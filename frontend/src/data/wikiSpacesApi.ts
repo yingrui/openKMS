@@ -138,6 +138,8 @@ export interface WikiSpaceDocumentLinkResponse {
   file_type: string;
   channel_id: string;
   linked_at: string;
+  /** From `documents.updated_at` (document last changed, not the wiki link). */
+  updated_at: string;
 }
 
 export interface WikiSpaceDocumentListResponse {

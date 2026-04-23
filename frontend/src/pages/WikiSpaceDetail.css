@@ -451,6 +451,17 @@
   white-space: nowrap;
 }
 
+.wiki-space-detail-page-updated {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-text-muted, #64748b);
+  white-space: nowrap;
+  max-width: 12.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .wiki-space-detail-icon-btn {
   display: flex;
   align-items: center;
