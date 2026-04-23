@@ -82,6 +82,11 @@ for res in output:
 
 Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate jobs), which uses PaddleOCRVL with mlx-vlm-server as the VLM backend. Pipeline configurations can link to API models for VLM URL and model name. The backend itself does not run PaddleOCR directly.
 
+### VLM URL and embedding configuration
+
+- **`OPENKMS_VLM_URL`** (backend **`.env`**) must point at the **mlx-vlm** HTTP server (default **`http://localhost:8101`**), i.e. document vision parsing — **not** an OpenAI-compatible **`/api/v1`** base URL used for chat/embeddings.
+- **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the FastAPI app. Put **`OPENKMS_VLM_API_KEY`** in **`openkms-cli/.env`** if your VLM endpoint requires a key. Put optional **`OPENKMS_EMBEDDING_MODEL_*`** there only to override CLI defaults; **knowledge base search and `kb-index`** normally use the KB’s **`embedding_model_id`** (**Console → Models** and **KB settings**).
+
 **Full stack setup:**
 
 1. Start vlm-server (mlx-vlm) for VLM inference:

@@ -33,11 +33,20 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
 
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8102"]
 
+# Worker: install openkms-cli[parse] for PaddleOCR-VL. Paddle wheels are linux/amd64 (not linux/arm64).
+# Build this target with platform linux/amd64 (see docker-compose worker `platform:`), e.g. `docker compose build worker`.
 FROM base AS worker
+
+# opencv-contrib-python (paddlex) needs libGL at import time even for headless parse.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libgomp1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY openkms-cli /openkms-cli
 
-RUN cd /openkms-cli && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb]"
+RUN cd /openkms-cli && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb,parse]"
 
 WORKDIR /app
 

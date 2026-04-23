@@ -1,6 +1,6 @@
 # openKMS Architecture
 
-**`docker/docker-compose.yml`** can run the full stack (Postgres with pgvector, MinIO, backend API, procrastinate worker with `openkms-cli`, frontend via nginx). For host dev, start only **`postgres`** and **`minio`** with `docker compose -f docker/docker-compose.yml up -d postgres minio`. Images are built from **`docker/Dockerfile`** (targets `backend`, `worker`) and **`docker/Dockerfile.frontend`**. **`docker/Makefile`** wraps **`docker compose build`**, **`up -d --build`**, and **`down`** (`make -C docker build|up|down`). Details: **`docker/README.md`**.
+**`docker/docker-compose.yml`** can run the full stack (Postgres with pgvector, MinIO, backend API, procrastinate worker with `openkms-cli` including **parse** / PaddleOCR-VL, frontend via nginx on **http://localhost:8082**). The **worker** uses **`platform: linux/amd64`** because PaddlePaddle PyPI wheels are not published for **linux/arm64** (Apple Silicon hosts run this worker under emulation); the worker image installs **`libgl1`** so OpenCV (pulled in by PaddleX) can resolve **`libGL.so.1`**. **MinIO** (and Postgres) are not published on the host by default; in-cluster services use `minio:9000` / `postgres:5432`, and the SPA reaches objects via nginx `/buckets/...`. For host dev, start only **`postgres`** and **`minio`** with `docker compose -f docker/docker-compose.yml up -d postgres minio` (add `ports` in an override if the host needs direct DB/S3 access). Images are built from **`docker/Dockerfile`** (targets `backend`, `worker`) and **`docker/Dockerfile.frontend`**. **`docker/Makefile`** wraps **`docker compose build`**, **`up -d --build`**, and **`down`** (`make -C docker build|up|down`). Details: **`docker/README.md`**.
 
 ## High-Level Diagram
 
@@ -260,7 +260,7 @@ openkms-cli/
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
-- **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, generates embeddings via OpenAI-compatible API, writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
+- **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, generates embeddings via the KB’s configured **`api_models`** row (`embedding_model_id`), with optional CLI env overrides (`OPENKMS_EMBEDDING_MODEL_*` in **`openkms-cli/.env`**); writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
 
 ## QA Agent Service
@@ -374,7 +374,7 @@ sequenceDiagram
 
 ## Authentication (`OPENKMS_AUTH_MODE`)
 
-Two modes (default **`oidc`**). Deployments should keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for `auth_mode` and `allow_signup`, and may call **`GET /api/public/system`** (no auth) for **`system_name`** (trimmed from DB, possibly empty; the sidebar stays blank until the response, then shows **`openKMS`** when empty). The app chooses **OIDC (Authorization Code + PKCE via `oidc-client-ts`)** vs local forms from the API, and shows a banner if `VITE_AUTH_MODE` is set and disagrees. `VITE_AUTH_MODE` is only a fallback when that request fails.
+Two modes (default **`oidc`**). Deployments should keep **backend** `OPENKMS_AUTH_MODE` and **frontend** behavior in sync: the SPA calls **`GET /api/auth/public-config`** (no auth) for `auth_mode`, `allow_signup`, and **`document_parse_vlm_url` / `document_parse_vlm_model`** (defaults for **openkms-cli** document parse when `OPENKMS_VLM_*` env vars are unset: default **`vl`** / **`ocr`** **Models** row, else server **`OPENKMS_PADDLEOCR_VL_*` / `OPENKMS_VLM_*`**; no API keys on this response). **openkms-cli** may call **`GET /api/models/document-parse-defaults`** (requires auth) for the same defaults **plus** the provider **`api_key`** when **`OPENKMS_VLM_API_KEY`** is unset. The SPA may call **`GET /api/public/system`** (no auth) for **`system_name`** (trimmed from DB, possibly empty; the sidebar stays blank until the response, then shows **`openKMS`** when empty). The app chooses **OIDC (Authorization Code + PKCE via `oidc-client-ts`)** vs local forms from the API, and shows a banner if `VITE_AUTH_MODE` is set and disagrees. `VITE_AUTH_MODE` is only a fallback when that request fails.
 
 ### OIDC mode (standards-compliant OpenID Connect IdP)
 
@@ -422,7 +422,7 @@ flowchart LR
 
 | Layer | Config |
 |-------|--------|
-| Backend | `.env` / `OPENKMS_*` – database, VLM, PaddleOCR, extraction_model_id, OPENKMS_BACKEND_URL (for CLI metadata extraction), **OPENKMS_PIPELINE_TIMEOUT_SECONDS** (default 1800) for **`run_pipeline`** subprocess |
+| Backend | `.env` / `OPENKMS_*` – database, **`OPENKMS_VLM_URL`** (mlx-vlm base URL; not embedding/OpenAI gateway), PaddleOCR defaults, `OPENKMS_EXTRACTION_MODEL_ID`, `OPENKMS_BACKEND_URL` (for CLI metadata extraction), **OPENKMS_PIPELINE_TIMEOUT_SECONDS** (default 1800) for **`run_pipeline`** subprocess. **Not used:** `OPENKMS_VLM_API_KEY`, `OPENKMS_EMBEDDING_MODEL_*` (CLI / KB models only) |
 | Backend | `OPENKMS_AUTH_MODE` – `oidc` (default) or `local`; `OPENKMS_ALLOW_SIGNUP`, `OPENKMS_INITIAL_ADMIN_USER`, `OPENKMS_CLI_BASIC_*`, `OPENKMS_LOCAL_JWT_EXP_HOURS` |
 | Backend | `OPENKMS_OIDC_*`, `OPENKMS_FRONTEND_URL` – issuer, confidential client, SPA origin, post-logout client id, service client id (`azp`) for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |

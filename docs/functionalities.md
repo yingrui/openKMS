@@ -6,7 +6,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, worker, nginx frontend); `make -C docker up` / `down`; infra-only: `docker compose up -d postgres minio` in `docker/` |
+| Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, **worker** `linux/amd64` + `openkms-cli[parse]` for Paddle doc-parse on Apple Silicon, nginx frontend on **http://localhost:8082**); MinIO (and Postgres) have **no** host port mappings by default—S3 from the browser uses nginx `/buckets/...`; `make -C docker up` / `down`; infra-only: `docker compose up -d postgres minio` in `docker/` |
 | Makefile | ✅ | `docker/Makefile`: `build`, `up`, `down` only (wrappers for `docker compose`) |
 | Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
@@ -45,7 +45,7 @@
 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
 - **Configuration**: `openkms_cli/settings.py` (`CliSettings`, pydantic-settings) lists every supported env var via `validation_alias`; parse/pipeline/auth read through `get_cli_settings()`; Typer no longer duplicates env via `envvar=`
-- **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`
+- **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`; VLM URL/model/key can follow **`GET /api/auth/public-config`** + **`GET /api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set and `OPENKMS_VLM_*` env vars are omitted (requires CLI auth for the key)
 - **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
 - **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`
 - Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`; PageIndex tree built-in (md_to_tree uses # headings)
@@ -71,7 +71,7 @@
 | Semantic search | ✅ | `POST /api/knowledge-bases/{id}/search` using pgvector cosine distance over chunks and FAQs; search_type (all/chunks/faqs) to choose scope; supports metadata_filters for hybrid search; **`include_historical_documents`** (default false) includes chunks/FAQs tied to superseded or out-of-window documents; Search tab has All/Chunks/FAQs tabs and collapsible Filters when KB has metadata_keys configured; comma-separated for multiple values; returns 503 with install instructions if pgvector missing |
 | QA proxy | ✅ | `POST /api/knowledge-bases/{id}/ask` proxies to configurable agent service URL |
 | KB settings | ✅ | Agent URL, embedding model selection, chunk strategy/size/overlap, FAQ generation prompt, metadata_keys (keys to propagate from documents to FAQs/chunks) |
-| KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index` – chunk documents, generate embeddings, bulk insert to pgvector |
+| KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index` – chunk documents, generate embeddings (from KB **`embedding_model_id`** / `api_models`; optional `OPENKMS_EMBEDDING_MODEL_*` in **`openkms-cli/.env`** only), bulk insert to pgvector |
 | KB indexing (job) | ✅ | `run_kb_index` procrastinate task for background indexing |
 | QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG via backend search API; LangGraph skills: ontology (get schema, run Cypher), page_index (read TOC, select section, extract content, determine sufficient, generate answer) |
 | Q&A tab | ✅ | Chat-like interface in KB detail page for asking questions; hidden when agent URL is not configured |
@@ -249,7 +249,8 @@
 | GET | `/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
 | GET | `/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
 | GET | `/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
-| GET | `/api/auth/public-config` | No auth: `{ auth_mode, allow_signup }` for SPA / CLI alignment with local vs OIDC IdP |
+| GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup`, `document_parse_vlm_url`, `document_parse_vlm_model` (no secrets; openkms-cli when `OPENKMS_VLM_*` unset) |
+| GET | `/api/models/document-parse-defaults` | Authenticated (same as `/api/models`): default vl/ocr model `base_url`, `model_name`, `api_key` for openkms-cli |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/system/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |

@@ -10,6 +10,7 @@ from app.api.auth import require_auth, require_service_client
 from app.database import get_db
 from app.models.api_model import ApiModel, MODEL_CATEGORIES
 from app.models.api_provider import ApiProvider
+from app.services.document_parse_defaults import get_document_parse_vlm_defaults
 from app.schemas.api_model import (
     ApiModelCreate,
     ApiModelListResponse,
@@ -92,6 +93,20 @@ async def create_model(body: ApiModelCreate, db: AsyncSession = Depends(get_db))
     await db.refresh(model)
     await db.refresh(model, ["provider_rel"])
     return ApiModelResponse.model_validate(model)
+
+
+@router.get("/document-parse-defaults")
+async def get_document_parse_defaults(db: AsyncSession = Depends(get_db)):
+    """VLM base URL, model id, and provider API key for openkms-cli (same defaults as public-config + secret).
+
+    Requires the same auth as other /api/models routes (Bearer, session, or local HTTP Basic).
+    """
+    d = await get_document_parse_vlm_defaults(db)
+    return {
+        "base_url": d.base_url or "",
+        "model_name": d.model_name or "",
+        "api_key": d.api_key or "",
+    }
 
 
 @router.get("/config-by-name")

@@ -181,7 +181,7 @@ Several UI buttons have no `onClick` handlers:
 
 - ~~No `docker-compose.yml`~~ — `docker/docker-compose.yml` (Postgres, MinIO); Keycloak/VLM still manual if needed
 - ~~No `Makefile`~~ — `docker/Makefile` for install, migrate, run, test
-- No root `.env.example`; `vlm-server/` also missing `.env.example`
+- ~~No root `.env.example`~~ — root `.env.example` points contributors to `backend/.env.example`; **`vlm-server/.env.example`** documents optional `PORT`
 
 ---
 

@@ -326,13 +326,13 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         if (getStoredWikiAgentConversationId(spaceId) === deletedId) {
           clearStoredWikiAgentConversationId(spaceId);
         }
-        const n = next[0] ?? null;
-        setActiveConvId(n);
-        if (n) {
-          setStoredWikiAgentConversationId(spaceId, n.id);
+        const nextConv = next[0] ?? null;
+        setActiveConvId(nextConv?.id ?? null);
+        if (nextConv) {
+          setStoredWikiAgentConversationId(spaceId, nextConv.id);
           setConvReady(false);
           try {
-            await loadMessages(n.id);
+            await loadMessages(nextConv.id);
           } catch {
             setLines([INTRO]);
           } finally {

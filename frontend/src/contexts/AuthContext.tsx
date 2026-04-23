@@ -237,7 +237,12 @@ async function syncTokenToBackend(token: string) {
   }
 }
 
-type PublicAuthConfigJson = { auth_mode: string; allow_signup?: boolean };
+type PublicAuthConfigJson = {
+  auth_mode: string;
+  allow_signup?: boolean;
+  document_parse_vlm_url?: string | null;
+  document_parse_vlm_model?: string | null;
+};
 
 async function fetchPublicAuthConfig(): Promise<PublicAuthConfigJson> {
   const res = await fetch(`${config.apiUrl}/api/auth/public-config`);
