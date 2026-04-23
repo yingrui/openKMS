@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_permission
@@ -27,7 +27,7 @@ from app.schemas.agent import (
 )
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.permission_catalog import PERM_WIKIS_READ
-from app.services.agent.wiki_runner import iter_wiki_conversation_deltas, new_id, run_wiki_conversation_turn
+from app.services.agent.wiki_runner import iter_wiki_conversation_stream_parts, new_id, run_wiki_conversation_turn
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -255,6 +255,44 @@ async def list_conversation_messages(
     return [_msg_to_out(m) for m in rows]
 
 
+@router.delete(
+    "/conversations/{conversation_id}/messages/from/{message_id}",
+    dependencies=[Depends(require_permission(PERM_WIKIS_READ))],
+)
+async def delete_conversation_messages_from(
+    request: Request,
+    conversation_id: str,
+    message_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """
+    Remove this message and all messages after it in chronological order.
+    The user can then re-send (text is pre-filled in the client from the removed user line).
+    """
+    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    w_id = (c.context or {}).get("wiki_space_id")
+    if isinstance(w_id, str) and w_id:
+        await _ensure_wiki_in_context(request, db, w_id)
+    r = await db.execute(
+        select(AgentMessage.id)
+        .where(AgentMessage.conversation_id == conversation_id)
+        .order_by(AgentMessage.created_at, AgentMessage.id)
+    )
+    ordered_ids = [row[0] for row in r.all()]
+    if message_id not in ordered_ids:
+        raise HTTPException(status_code=404, detail="Message not found in this conversation")
+    from_idx = ordered_ids.index(message_id)
+    to_delete = ordered_ids[from_idx:]
+    if not to_delete:
+        return {"deleted": 0}
+    res = await db.execute(delete(AgentMessage).where(AgentMessage.id.in_(to_delete)))
+    n = int(res.rowcount or 0)
+    if n:
+        _bump_conversation_timestamp(c)
+    await db.flush()
+    return {"deleted": n}
+
+
 def _ndjson_line(payload: Any) -> bytes:
     return (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
 
@@ -270,14 +308,15 @@ async def _ndjson_wiki_message_response(
     acc: list[str] = []
     asst_m: AgentMessage
     try:
-        async for delta in iter_wiki_conversation_deltas(db, c, jwt_payload):
-            if delta.startswith("__FATAL__"):
-                err = delta[len("__FATAL__") :]
+        async for part in iter_wiki_conversation_stream_parts(db, c, jwt_payload):
+            ptype = part.get("type") if isinstance(part, dict) else None
+            if ptype == "fatal":
+                err = (part.get("message") or "Error") if isinstance(part, dict) else "Error"
                 asst_m = AgentMessage(
                     id=new_id(),
                     conversation_id=c.id,
                     role="assistant",
-                    content=err,
+                    content=str(err),
                 )
                 db.add(asst_m)
                 _bump_conversation_timestamp(c)
@@ -286,14 +325,47 @@ async def _ndjson_wiki_message_response(
                 yield _ndjson_line(
                     {
                         "type": "error",
-                        "detail": err,
+                        "detail": str(err),
                         "message": _msg_to_out(asst_m).model_dump(mode="json"),
                     }
                 )
                 return
-            if delta:
-                acc.append(delta)
-                yield _ndjson_line({"type": "delta", "t": delta})
+            if ptype == "delta":
+                t = part.get("t") if isinstance(part, dict) else None
+                if t:
+                    acc.append(str(t))
+                    yield _ndjson_line({"type": "delta", "t": str(t)})
+                continue
+            if ptype == "tool_start" and isinstance(part, dict):
+                yield _ndjson_line(
+                    {
+                        "type": "tool_start",
+                        "run_id": str(part.get("run_id") or ""),
+                        "name": str(part.get("name") or "tool"),
+                        "input": str(part.get("input") or ""),
+                    }
+                )
+                continue
+            if ptype == "tool_end" and isinstance(part, dict):
+                yield _ndjson_line(
+                    {
+                        "type": "tool_end",
+                        "run_id": str(part.get("run_id") or ""),
+                        "name": str(part.get("name") or "tool"),
+                        "output": str(part.get("output") or ""),
+                    }
+                )
+                continue
+            if ptype == "tool_error" and isinstance(part, dict):
+                yield _ndjson_line(
+                    {
+                        "type": "tool_error",
+                        "run_id": str(part.get("run_id") or ""),
+                        "name": str(part.get("name") or "tool"),
+                        "error": str(part.get("error") or "Tool error"),
+                    }
+                )
+                continue
         text = "".join(acc)
         asst_m = AgentMessage(
             id=new_id(),

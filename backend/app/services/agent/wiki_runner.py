@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Literal, TypedDict
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage
 from langchain_openai import ChatOpenAI
+from langgraph.errors import GraphRecursionError
 from langgraph.prebuilt import create_react_agent
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.prompts import build_wiki_space_system_prompt
@@ -33,6 +36,19 @@ def _normalize_openai_base_url(url: str) -> str:
     if b.endswith("/v1"):
         return b
     return f"{b}/v1"
+
+
+def _agent_runnable_config() -> dict[str, Any]:
+    """LangGraph stops after `recursion_limit` supersteps (default was 25; too low for bulk tool use)."""
+    return {"recursion_limit": settings.agent_recursion_limit}
+
+
+def _recursion_limit_exceeded_message() -> str:
+    return (
+        f"Error: the agent hit the maximum number of tool/model steps ({settings.agent_recursion_limit}, "
+        f"set **OPENKMS_AGENT_RECURSION_LIMIT** to raise it). For large batches, process **3–5 pages per message** "
+        "or ask the user to say “continue” after each batch."
+    )
 
 
 @dataclass
@@ -72,18 +88,19 @@ async def _load_wiki_run_context(
     if history_rows[-1].role != "user":
         return _WikiRunCtx("Error: the latest message is not a user message.", None, [])
 
-    tools = make_wiki_tools(db, wiki_space_id.strip(), jwt_payload)
+    tools, can_write = await make_wiki_tools(db, wiki_space_id.strip(), jwt_payload)
     llm = ChatOpenAI(
         base_url=_normalize_openai_base_url(llm_cfg["base_url"]),
         api_key=llm_cfg["api_key"],
         model=llm_cfg["model_name"],
         temperature=0.2,
+        max_tokens=settings.agent_max_output_tokens,
         streaming=use_streaming,
     )
     agent = create_react_agent(
         llm,
         tools,
-        prompt=build_wiki_space_system_prompt(),
+        prompt=build_wiki_space_system_prompt(has_write_tools=can_write),
     )
     messages: list[BaseMessage] = _lc_messages_from_db(history_rows)
     return _WikiRunCtx(None, agent, messages)
@@ -107,9 +124,119 @@ def _extract_text_from_aimessage_content(content: str | list[str | dict] | None)
 
 def _message_to_stream_text_raw(m: Any) -> str:
     """Text deltas (may be partial). Do not strip, to preserve inter-token spaces."""
-    if not isinstance(m, (AIMessage, AIMessageChunk)):
+    if m is None:
         return ""
-    return _extract_text_from_aimessage_content(m.content)
+    if not isinstance(m, (AIMessage, AIMessageChunk)) and not hasattr(m, "content"):
+        return ""
+    try:
+        return _extract_text_from_aimessage_content(m.content)  # type: ignore[arg-type]
+    except Exception:
+        return ""
+
+
+def _tool_io_preview(x: Any, max_len: int) -> str:
+    """JSON-serializable string for tool args/results (NDJSON to browser)."""
+    if x is None:
+        return ""
+    try:
+        s = x if isinstance(x, str) else json.dumps(x, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        s = str(x)
+    if len(s) > max_len:
+        return s[: max_len - 18] + "…[truncated]"
+    return s
+
+
+class WikiStreamPart(TypedDict, total=False):
+    type: Literal["delta", "tool_start", "tool_end", "tool_error", "fatal"]
+    t: str
+    run_id: str
+    name: str
+    input: str
+    output: str
+    error: str
+    message: str
+
+
+async def iter_wiki_conversation_stream_parts(
+    db: AsyncSession,
+    conversation: AgentConversation,
+    jwt_payload: dict[str, Any],
+) -> AsyncIterator[WikiStreamPart]:
+    """
+    Stream model tokens (delta) and tool lifecycle events (via LangChain astream_events v2),
+    for Cursor-style tool UI in the wiki assistant.
+    """
+    ctx = await _load_wiki_run_context(db, conversation, jwt_payload, use_streaming=True)
+    if ctx.err or not ctx.agent:
+        yield {
+            "type": "fatal",
+            "message": ctx.err or "Error: agent failed to initialize.",
+        }
+        return
+
+    any_text = False
+    try:
+        async for ev in ctx.agent.astream_events(  # type: ignore[union-attr]
+            {"messages": ctx.messages},
+            _agent_runnable_config(),
+            version="v2",
+        ):
+            ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
+            if ename == "on_chat_model_stream":
+                ch = (ev.get("data") or {}).get("chunk")
+                t = _message_to_stream_text_raw(ch)
+                if t:
+                    any_text = True
+                    yield {"type": "delta", "t": t}
+            elif ename == "on_tool_start":
+                name = (ev.get("name") or "tool").split("/")[-1]
+                data = ev.get("data") or {}
+                inp = data.get("input")
+                run_id = str(ev.get("run_id") or "")
+                yield {
+                    "type": "tool_start",
+                    "run_id": run_id,
+                    "name": name,
+                    "input": _tool_io_preview(inp, 6_000),
+                }
+            elif ename == "on_tool_end":
+                data = ev.get("data") or {}
+                out = data.get("output")
+                run_id = str(ev.get("run_id") or "")
+                name = (ev.get("name") or "tool").split("/")[-1]
+                yield {
+                    "type": "tool_end",
+                    "run_id": run_id,
+                    "name": name,
+                    "output": _tool_io_preview(out, 10_000),
+                }
+            elif ename == "on_tool_error":
+                data = ev.get("data") or {}
+                err = data.get("error")
+                err_s = str(err) if err is not None else "Tool error"
+                run_id = str(ev.get("run_id") or "")
+                name = (ev.get("name") or "tool").split("/")[-1]
+                yield {
+                    "type": "tool_error",
+                    "run_id": run_id,
+                    "name": name,
+                    "error": _tool_io_preview(err_s, 2_000),
+                }
+    except GraphRecursionError as e:
+        yield {"type": "fatal", "message": f"{_recursion_limit_exceeded_message()} ({e!s})"}
+        return
+    if not any_text:
+        try:
+            out = await ctx.agent.ainvoke({"messages": ctx.messages}, _agent_runnable_config())
+        except GraphRecursionError as e:
+            yield {"type": "fatal", "message": f"{_recursion_limit_exceeded_message()} ({e!s})"}
+            return
+        final = _extract_assistant_text_from_ainvoke_out(out)
+        if not final or final.startswith("Error:"):
+            yield {"type": "fatal", "message": final or "Error: no response"}
+        else:
+            yield {"type": "delta", "t": final}
 
 
 async def run_wiki_conversation_turn(
@@ -122,7 +249,10 @@ async def run_wiki_conversation_turn(
     if ctx.err or not ctx.agent:
         return ctx.err or "Error: agent failed to initialize."
 
-    out = await ctx.agent.ainvoke({"messages": ctx.messages})
+    try:
+        out = await ctx.agent.ainvoke({"messages": ctx.messages}, _agent_runnable_config())
+    except GraphRecursionError as e:
+        return _recursion_limit_exceeded_message() + f" ({e!s})"
     return _extract_assistant_text_from_ainvoke_out(out)
 
 
@@ -143,45 +273,6 @@ def _extract_assistant_text_from_ainvoke_out(out: dict[str, Any]) -> str:
                     parts.append(str(b["text"]))
             return "\n".join(parts) if parts else "Error: could not read assistant message."
     return "Error: could not read assistant message."
-
-
-async def iter_wiki_conversation_deltas(
-    db: AsyncSession,
-    conversation: AgentConversation,
-    jwt_payload: dict[str, Any],
-) -> AsyncIterator[str]:
-    """Stream assistant text as token/segment deltas (LangGraph + streaming ChatOpenAI). Yields a leading ``__FATAL__``+msg segment on configuration errors; otherwise only model text deltas (and possibly one fallback string)."""
-    ctx = await _load_wiki_run_context(db, conversation, jwt_payload, use_streaming=True)
-    if ctx.err or not ctx.agent:
-        if ctx.err:
-            yield f"__FATAL__{ctx.err}"
-        else:
-            yield "__FATAL__Error: agent failed to initialize."
-        return
-
-    any_delta = False
-    async for item in ctx.agent.astream(
-        {"messages": ctx.messages},
-        stream_mode="messages",
-    ):
-        token_msg: Any
-        if isinstance(item, (tuple, list)) and len(item) >= 2:
-            token_msg, _ = item[0], item[1]
-        else:
-            token_msg = item
-        t = _message_to_stream_text_raw(token_msg)
-        if t:
-            any_delta = True
-            yield t
-    if not any_delta:
-        # If the model did not emit message-mode chunks, fall back to a non-streaming invoke
-        # (rare: may run the graph a second time on the same state).
-        out = await ctx.agent.ainvoke({"messages": ctx.messages})
-        final = _extract_assistant_text_from_ainvoke_out(out)
-        if not final or final.startswith("Error:"):
-            yield f"__FATAL__{final or 'Error: no response'}"
-        else:
-            yield final
 
 
 def new_id() -> str:

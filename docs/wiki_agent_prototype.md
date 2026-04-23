@@ -1,6 +1,6 @@
 # Wiki space: linked documents and embedded agent (prototype design)
 
-This document is the **single spec** for wiki–document associations, the wiki-space **Documents** tab + **Wiki assistant** UI, and the **in-process LangGraph agent** in the openKMS backend. It complements [architecture.md](./architecture.md).
+This document is the **single spec** for wiki–document associations, the wiki-space **Documents** tab + **Wiki Copilot** UI, and the **in-process LangGraph agent** in the openKMS backend. It complements [architecture.md](./architecture.md).
 
 **Shipped (MVP v1)**
 
@@ -12,13 +12,13 @@ This document is the **single spec** for wiki–document associations, the wiki-
 
 | Piece | Role |
 |-------|------|
-| **qa-agent** | Separate deployable: KB RAG over HTTP to openKMS; LangGraph + optional Langfuse. Unchanged by wiki assistant work. |
+| **qa-agent** | Separate deployable: KB RAG over HTTP to openKMS; LangGraph + optional Langfuse. Unchanged by Wiki Copilot work. |
 | **Backend embedded agent** | Same FastAPI process as openKMS: `/api/agent/...`, LangGraph + tools with `AsyncSession` + JWT. Optional Langfuse **not** wired yet. |
 
 ## Goals
 
 1. **Wiki space**: **Pages** | **Documents**; documents are **linked** to the space (DB `wiki_space_documents`). Add/remove with **document in user scope** (enforced in API).
-2. **Wiki assistant** (right rail): Aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools.
+2. **Wiki Copilot** (right rail): Aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools.
 3. **Multi-surface**: `agent_conversations.surface` (v1: `wiki_space`); other surfaces (evaluation, FAQ) later.
 
 ## Request path (implemented, v1)
@@ -67,11 +67,14 @@ sequenceDiagram
 | PATCH | `/api/agent/conversations/{id}` | `{"title": "…"}` (optional; UI may not expose yet). |
 | DELETE | `/api/agent/conversations/{id}` | **204**; ownership + scope. |
 | GET | `/api/agent/conversations/{id}/messages` | Full list (v1, no offset—OK for small chats). |
+| DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this **message and all that follow** (order: `created_at`, `id`). Use to **restart from** a user turn; SPA puts the user text back in the composer. |
 | POST | `/api/agent/conversations/{id}/messages` | `{ "content", "stream"?: false }` → JSON `{ message, assistant }`. With `{ "content", "stream": true }` → **`application/x-ndjson`**: one `user` row, then `delta` rows (`t` = text chunk), then `done` (or `error` with the persisted assistant error). |
 
 **Configuration**
 
 - `OPENKMS_AGENT_MODEL_ID` — optional; otherwise the default **`llm`** [api_model](../backend/app/models/api_model.py) (`is_default_in_category` for that category: set on the **Models** page, not under Console).
+- `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` — default `128000`; cap on **output** (completion) tokens per model call (`max_tokens`); each ReAct step is a separate call. Upstream may still cap below this. If billing/latency matters, set lower; if replies truncate, set higher or check the provider’s actual limit.
+- `OPENKMS_AGENT_RECURSION_LIMIT` — default `200` (was effectively ~25 in LangGraph if unset in code). The ReAct agent **stops** after this many graph supersteps. Bulk work (e.g. 14× get + 14× upsert) needs a **high** limit or **smaller batches** (3–5 pages per user message) so the UI is not “stuck” with no streamed tokens for a long time while tools run.
 
 ## Permissions (implemented, v1)
 
@@ -79,8 +82,8 @@ sequenceDiagram
 |--------|-------------|
 | Link / unlink | `wikis:write` + space in scope; document must pass [document scope rules](../backend/app/api/wiki_spaces.py) (same as document list). |
 | Agent chat, read tools | `wikis:read` + space in scope. |
-| (Future) Write tools for pages / markdown | `wikis:write`. |
-| (Future) Read `Document.markdown` in tools | `documents:read` scope. |
+| Agent **upsert** (`upsert_wiki_page` tool) | `wikis:write` + space in scope; same transaction as the chat request (commit at end of `POST .../messages`). |
+| Read `Document.markdown` in tools | (Future) `documents:read` scope. |
 
 ## wiki-skills → openKMS (v1 tools)
 
@@ -89,8 +92,8 @@ sequenceDiagram
 | wiki-init | *Prompt* (vendored SKILL + mapping); *no* on-disk bootstrap tool. |
 | wiki-ingest | Vendored playbook; actual ingest = UI / CLI, not a server tool. |
 | wiki-query | Vendored playbook + `list_wiki_pages`, `get_wiki_page` (DB is source of truth) |
-| wiki-lint | Vendored playbook; automated report files not written by agent (read tools only). |
-| wiki-update | Vendored playbook; *read-only* tools; edits via UI / CLI. |
+| wiki-lint | Vendored playbook + read tools; with **wikis:write**, can **save** a report or fixed page via `upsert_wiki_page` (openKMS path, not a local `wiki/` tree). |
+| wiki-update | `upsert_wiki_page` replaces full page body; or UI / CLI. |
 
 **Updating the vendored tree** (from repo root, after adding the subtree once):
 
@@ -108,7 +111,8 @@ sequenceDiagram
 - [x] Wiki link API; FE
 - [x] Agent router + `create_react_agent` + read tools; FE [agentApi.ts](../frontend/src/data/agentApi.ts) + panel
 - [ ] Optional: Langfuse env in [config](../backend/app/config.py) + `invoke` hook
-- [ ] Write tools: create/update page (gated by `wikis:write`); read linked doc markdown body
+- [x] Write tool: `upsert_wiki_page` (gated by `wikis:write`)
+- [ ] Read `Document.markdown` in tools (linked channel documents)
 - [ ] (Later) `evaluation_dataset` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)
 - [ ] Server-side pagination for `GET .../agent/.../messages` if needed
 

@@ -102,6 +102,22 @@ export async function listAgentMessages(conversationId: string): Promise<AgentMe
   return res.json();
 }
 
+/** Remove this message and all later messages; user can resend from the input. */
+export async function truncateAgentMessagesFromMessage(
+  conversationId: string,
+  messageId: string
+): Promise<{ deleted: number }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(
+      conversationId
+    )}/messages/from/${encodeURIComponent(messageId)}`,
+    { method: 'DELETE', headers, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json() as Promise<{ deleted: number }>;
+}
+
 export async function postAgentMessage(conversationId: string, content: string): Promise<AgentMessagePostResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
@@ -121,6 +137,14 @@ export async function postAgentMessage(conversationId: string, content: string):
 export type AgentMessageStreamEvent =
   | { type: 'user'; message: AgentMessageItem }
   | { type: 'delta'; t: string }
+  | {
+      type: 'tool_start';
+      run_id: string;
+      name: string;
+      input: string;
+    }
+  | { type: 'tool_end'; run_id: string; name: string; output: string }
+  | { type: 'tool_error'; run_id: string; name: string; error: string }
   | { type: 'done'; user: AgentMessageItem; message: AgentMessageItem }
   | { type: 'error'; detail: string; message: AgentMessageItem };
 

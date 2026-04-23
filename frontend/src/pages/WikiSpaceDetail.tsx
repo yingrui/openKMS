@@ -526,14 +526,14 @@ export function WikiSpaceDetail() {
               type="button"
               className="wiki-space-detail-agent-expand"
               onClick={expandWikiAssistant}
-              title="Show wiki assistant"
+              title="Show Wiki Copilot"
               aria-expanded="false"
             >
               <span className="wiki-space-detail-agent-expand__icon" aria-hidden>
                 <Bot size={20} strokeWidth={2} />
                 <ChevronsLeft size={18} strokeWidth={2} />
               </span>
-              <span className="wiki-space-detail-agent-expand__label">Wiki assistant</span>
+              <span className="wiki-space-detail-agent-expand__label">Wiki Copilot</span>
             </button>
           ) : (
             <div className="wiki-space-detail-agent-rail">

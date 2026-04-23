@@ -28,11 +28,12 @@
 
 ## Short-Term (Next Steps)
 
-### Wiki assistant & linked documents (build on [wiki_agent_prototype.md](./wiki_agent_prototype.md))
+### Wiki Copilot and linked documents (build on [wiki_agent_prototype.md](./wiki_agent_prototype.md))
 
-- [x] **Pages \| Documents**; linked-docs picker; **Wiki assistant** wired to **`/api/agent`** (persisted conversations; read tools; **list/delete** conversations, **markdown** + **auto-scroll** in panel); **wiki-skills** vendored via `git subtree` at `third-party/wiki-skills`, `SKILL.md` content in LangGraph system prompt
+- [x] **Pages \| Documents**; linked-docs picker; **Wiki Copilot** wired to **`/api/agent`** (persisted conversations; read tools; **list/delete** conversations, **markdown** + **auto-scroll** in panel); **wiki-skills** vendored via `git subtree` at `third-party/wiki-skills`, `SKILL.md` content in LangGraph system prompt
 - [x] `wiki_space_documents` + `agent_*` tables; link/unlink/list; SPA uses API (not sessionStorage) for links
 - [x] Backend embedded agent (v1): LangGraph `create_react_agent` + `agent_conversations` / `agent_messages`
+- [x] **Tool visibility** while streaming: `astream_events` (v2) → NDJSON `tool_start` / `tool_end` / `tool_error` (paired by `run_id`); wiki panel shows compact terminal-style rows **interleaved with streamed text** (not all tools then all text) and expandable I/O
 - [ ] optional: Langfuse tracing; **write** tools for pages
 
 ### 0. openkms-cli (document parsing CLI)

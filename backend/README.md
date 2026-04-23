@@ -31,6 +31,8 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_VLM_URL` | http://localhost:8101 | vlm-server URL |
 | `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | 1800 | Max wait for **`run_pipeline`** (`openkms-cli pipeline run`, seconds) |
 | `OPENKMS_AGENT_MODEL_ID` | (empty) | `api_models.id` for the **embedded** wiki agent (`/api/agent/...`); if empty, the **default LLM** in **Models** (category `llm`, set **Set as default** in the UI) is used. |
+| `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `128000` | **Max completion (output) tokens** per model step for the wiki agent (`max_tokens` on the API). Default matches common large **context** models; the provider may cap lower. Lower this to reduce cost. |
+| `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | **Max LangGraph steps** (model+tool loop) per chat turn. The default was too low for bulk get/upsert; raise (e.g. 400) only if you need very large single-turn batches, or use smaller batches per message. |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
 | `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local` |
 | `OPENKMS_INITIAL_ADMIN_USER` | (empty) | Local mode: grant `is_admin` when signup username matches (case-insensitive) |
