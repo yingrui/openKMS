@@ -19,6 +19,33 @@
   background: var(--color-bg-muted, #f8fafc);
 }
 
+.wiki-space-agent-panel__head-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.wiki-space-agent-panel__collapse {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0 0 0 0.25rem;
+  padding: 0;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-surface, #fff);
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.wiki-space-agent-panel__collapse:hover {
+  color: var(--color-accent, #0d9488);
+  background: var(--color-bg-subtle, #f1f5f9);
+}
+
 .wiki-space-agent-panel__head-icon {
   flex-shrink: 0;
   color: var(--color-accent, #0d9488);
@@ -37,15 +64,70 @@
   color: var(--color-text-muted, #64748b);
 }
 
-.wiki-space-agent-panel__banner {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--color-text-muted, #64748b);
-  background: rgba(13, 148, 136, 0.06);
+/* Conversation list + new/delete */
+.wiki-space-agent-panel__chats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  padding: 0.4rem 1rem 0.5rem;
   border-bottom: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-surface, #fff);
+}
+
+.wiki-space-agent-panel__chats-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted, #64748b);
+  flex: 0 0 auto;
+}
+
+.wiki-space-agent-panel__chats-select {
+  flex: 1 1 6rem;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-text);
+}
+
+.wiki-space-agent-panel__chats-icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--color-bg-elevated, #fff);
+  color: var(--color-accent, #0d9488);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.wiki-space-agent-panel__chats-icon-btn:hover:not(:disabled) {
+  background: var(--color-bg-subtle, #f1f5f9);
+}
+
+.wiki-space-agent-panel__chats-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wiki-space-agent-panel__chats-icon-btn--danger {
+  color: #b91c1c;
+}
+
+.wiki-space-agent-panel__chats-icon-btn--danger:hover:not(:disabled) {
+  color: #991b1b;
+  border-color: #fecaca;
+  background: #fff1f2;
 }
 
 .wiki-space-agent-panel__thread {
@@ -70,10 +152,143 @@
   align-self: stretch;
 }
 
+/* Interleaved text + tool cards (stream order) */
+.wiki-space-agent-panel__assistant-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  align-self: stretch;
+}
+
+/* Cursor-style compact tool / terminal rows */
+.wiki-space-agent-panel__tool-pill {
+  align-self: stretch;
+  max-width: 100%;
+  border-radius: 10px;
+  padding: 0.4rem 0.55rem;
+  background: color-mix(in srgb, var(--color-text) 6%, var(--color-bg-elevated, #fff));
+  border: 1px solid var(--color-border, #e2e8f0);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.wiki-space-agent-panel__tool-pill-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.wiki-space-agent-panel__tool-pill-ico {
+  flex-shrink: 0;
+  color: var(--color-text-muted, #64748b);
+}
+
+.wiki-space-agent-panel__tool-pill-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary, #404040);
+}
+
+.wiki-space-agent-panel__tool-pill-badge {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  color: var(--color-text-muted, #64748b);
+}
+
+.wiki-space-agent-panel__tool-pill-badge--ok {
+  color: #0f766e;
+  background: color-mix(in srgb, #0d9488 14%, transparent);
+}
+
+.wiki-space-agent-panel__tool-pill-badge--err {
+  color: #b91c1c;
+  background: #fff1f2;
+}
+
+.wiki-space-agent-panel__tool-details {
+  margin-top: 0.35rem;
+}
+
+.wiki-space-agent-panel__tool-details > summary {
+  cursor: pointer;
+  font-size: 0.65rem;
+  color: var(--color-text-muted, #64748b);
+  user-select: none;
+  list-style: none;
+}
+
+.wiki-space-agent-panel__tool-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.wiki-space-agent-panel__tool-pre {
+  margin: 0.3rem 0 0;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.65rem;
+  line-height: 1.35;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface, #fff));
+  border: 1px solid var(--color-border, #e2e8f0);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.wiki-space-agent-panel__tool-pre--err {
+  color: #991b1b;
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
 .wiki-space-agent-panel__msg--user {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   background: rgba(37, 99, 235, 0.08);
   align-self: flex-end;
   max-width: 95%;
+}
+
+.wiki-space-agent-panel__user-restart {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.wiki-space-agent-panel__restart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.35rem;
+  border: none;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-surface, #fff) 55%, transparent);
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.wiki-space-agent-panel__restart:hover:not(:disabled) {
+  color: var(--color-accent, #0d9488);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+
+.wiki-space-agent-panel__restart:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .wiki-space-agent-panel__msg-label {
@@ -92,6 +307,135 @@
   word-break: break-word;
 }
 
+.wiki-space-agent-panel__msg-text--plain {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* Scroll anchor (auto-scroll) */
+.wiki-space-agent-panel__thread-end {
+  height: 1px;
+  flex-shrink: 0;
+}
+
+/* Markdown in bubbles */
+.wiki-agent-md {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.wiki-agent-md p:first-child,
+.wiki-agent-md p.wiki-agent-md__p:first-child {
+  margin-top: 0;
+}
+
+.wiki-agent-md p:last-child,
+.wiki-agent-md p.wiki-agent-md__p:last-child {
+  margin-bottom: 0;
+}
+
+.wiki-agent-md__p,
+.wiki-agent-md p {
+  margin: 0.4em 0;
+}
+
+.wiki-agent-md--user .wiki-agent-md__p:first-child,
+.wiki-agent-md--user p:first-child {
+  margin-top: 0;
+}
+
+.wiki-agent-md__a {
+  color: var(--color-accent, #0d9488);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wiki-agent-md__pre {
+  margin: 0.45rem 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  overflow: auto;
+  max-width: 100%;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.wiki-agent-md__code--inline {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.wiki-agent-md__code--block {
+  display: block;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.78em;
+  white-space: pre;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.wiki-agent-md__ul,
+.wiki-agent-md__ol {
+  margin: 0.4em 0;
+  padding-left: 1.2rem;
+}
+
+.wiki-agent-md__li {
+  margin: 0.15em 0;
+}
+
+.wiki-agent-md__h1,
+.wiki-agent-md__h2,
+.wiki-agent-md__h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+  line-height: 1.25;
+}
+
+.wiki-agent-md__h1 {
+  font-size: 0.95rem;
+}
+
+.wiki-agent-md__quote {
+  margin: 0.45rem 0;
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid var(--color-accent, #0d9488);
+  color: var(--color-text-secondary, #404040);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.wiki-agent-md__table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0.4rem 0;
+}
+
+.wiki-agent-md__table {
+  width: 100%;
+  font-size: 0.75rem;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wiki-agent-md__th,
+.wiki-agent-md__td {
+  border: 1px solid var(--color-border, #e2e8f0);
+  padding: 0.3rem 0.45rem;
+  text-align: left;
+  vertical-align: top;
+}
+
 .wiki-space-agent-panel__composer {
   flex-shrink: 0;
   padding: 0.75rem 1rem 1rem;
@@ -100,6 +444,68 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.wiki-space-agent-panel__input-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Slash command menu (wiki-skills names) */
+.wiki-space-agent-panel__slash-menu {
+  position: absolute;
+  z-index: 4;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin: 0 0 0.35rem 0;
+  padding: 0.35rem 0;
+  list-style: none;
+  max-height: min(40vh, 200px);
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  background: var(--color-bg-elevated, #fff);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.wiki-space-agent-panel__slash-menu li {
+  margin: 0;
+}
+
+.wiki-space-agent-panel__slash-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.wiki-space-agent-panel__slash-item:hover,
+.wiki-space-agent-panel__slash-item--active {
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.wiki-space-agent-panel__slash-id {
+  font-weight: 600;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  color: var(--color-accent, #0d9488);
+}
+
+.wiki-space-agent-panel__slash-desc {
+  font-size: 0.7rem;
+  color: var(--color-text-muted, #64748b);
 }
 
 .wiki-space-agent-panel__input {

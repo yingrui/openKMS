@@ -131,6 +131,54 @@ export async function fetchWikiSpace(spaceId: string): Promise<WikiSpaceResponse
   return res.json();
 }
 
+export interface WikiSpaceDocumentLinkResponse {
+  id: string;
+  document_id: string;
+  name: string;
+  file_type: string;
+  channel_id: string;
+  linked_at: string;
+}
+
+export interface WikiSpaceDocumentListResponse {
+  items: WikiSpaceDocumentLinkResponse[];
+  total: number;
+}
+
+export async function fetchWikiSpaceLinkedDocuments(spaceId: string): Promise<WikiSpaceDocumentListResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/documents`, {
+    headers,
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function linkDocumentToWikiSpace(
+  spaceId: string,
+  documentId: string
+): Promise<WikiSpaceDocumentLinkResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/documents`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ document_id: documentId }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function unlinkDocumentFromWikiSpace(spaceId: string, documentId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/wiki-spaces/${spaceId}/documents/${encodeURIComponent(documentId)}`,
+    { method: 'DELETE', headers: { ...headers }, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+}
+
 export async function fetchWikiSpaceGraph(spaceId: string): Promise<WikiLinkGraphResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/graph`, {

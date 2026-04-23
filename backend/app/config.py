@@ -44,6 +44,27 @@ class Settings(BaseSettings):
     # --- Metadata extraction (LLM for document metadata) ---
     extraction_model_id: str | None = Field(default=None, validation_alias="OPENKMS_EXTRACTION_MODEL_ID")
 
+    # --- Embedded agent (LangGraph; wiki / future surfaces) ---
+    agent_model_id: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_AGENT_MODEL_ID",
+        description="api_models.id for the LLM used by POST /api/agent/.../messages. If unset, the first available LLM model is used.",
+    )
+    agent_max_output_tokens: int = Field(
+        default=128_000,
+        ge=1,
+        le=200_000,
+        validation_alias="OPENKMS_AGENT_MAX_OUTPUT_TOKENS",
+        description="Max **completion** (output) tokens per model generation for the embedded wiki agent; passed as `max_tokens` to the OpenAPI-compatible API. Actual cap depends on the provider/model.",
+    )
+    agent_recursion_limit: int = Field(
+        default=200,
+        ge=20,
+        le=10_000,
+        validation_alias="OPENKMS_AGENT_RECURSION_LIMIT",
+        description="Max LangGraph supersteps for the wiki ReAct agent (each tool+model cycle uses steps; bulk get/upsert needs a high value).",
+    )
+
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 

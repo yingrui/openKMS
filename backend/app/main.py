@@ -16,6 +16,7 @@ from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.knowledge_bases import router as knowledge_bases_router
 from app.api.wiki_spaces import router as wiki_spaces_router
+from app.api.agent import router as agent_router
 from app.api.glossaries import router as glossaries_router
 from app.api.object_types import router as object_types_router
 from app.api.link_types import router as link_types_router
@@ -111,6 +112,7 @@ app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")
 app.include_router(wiki_spaces_router, prefix="/api")
+app.include_router(agent_router, prefix="/api")
 app.include_router(glossaries_router, prefix="/api")
 app.include_router(object_types_router, prefix="/api")
 app.include_router(link_types_router, prefix="/api")

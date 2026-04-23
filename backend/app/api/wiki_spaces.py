@@ -17,7 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_permission
 from app.config import settings
 from app.database import get_db
-from app.models.wiki_models import WikiFile, WikiPage, WikiSpace
+from app.models.document import Document
+from app.models.wiki_models import WikiFile, WikiPage, WikiSpace, WikiSpaceDocument
 from app.schemas.wiki import (
     WikiFileListResponse,
     WikiFileResponse,
@@ -27,6 +28,9 @@ from app.schemas.wiki import (
     WikiPageUpdate,
     WikiPageUpsertBody,
     WikiSpaceCreate,
+    WikiSpaceDocumentLinkCreate,
+    WikiSpaceDocumentLinkResponse,
+    WikiSpaceDocumentListResponse,
     WikiSpaceListResponse,
     WikiSpaceResponse,
     WikiSpaceUpdate,
@@ -37,6 +41,7 @@ from app.schemas.wiki import (
     WikiVaultMarkdownFileBody,
     WikiVaultMarkdownImportResponse,
 )
+from app.services.data_resource_policy import document_passes_scoped_predicate
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
@@ -237,6 +242,103 @@ async def delete_wiki_space(
     await db.flush()
     if settings.storage_enabled:
         delete_objects_by_prefix(prefix)
+
+
+def _linked_doc_to_response(link: WikiSpaceDocument, doc: Document) -> WikiSpaceDocumentLinkResponse:
+    return WikiSpaceDocumentLinkResponse(
+        id=link.id,
+        document_id=doc.id,
+        name=doc.name,
+        file_type=doc.file_type,
+        channel_id=doc.channel_id,
+        linked_at=link.created_at,
+    )
+
+
+@router.get(
+    "/{space_id}/documents",
+    response_model=WikiSpaceDocumentListResponse,
+    dependencies=[Depends(require_permission(PERM_WIKIS_READ))],
+)
+async def list_wiki_space_linked_documents(
+    request: Request,
+    space: WikiSpace = Depends(get_wiki_space_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    result = await db.execute(
+        select(WikiSpaceDocument, Document)
+        .join(Document, WikiSpaceDocument.document_id == Document.id)
+        .where(WikiSpaceDocument.wiki_space_id == space.id)
+        .order_by(Document.name)
+    )
+    rows = list(result.all())
+    items: list[WikiSpaceDocumentLinkResponse] = []
+    for link, doc in rows:
+        if isinstance(sub, str) and await document_passes_scoped_predicate(db, p, sub, doc):
+            items.append(_linked_doc_to_response(link, doc))
+    return WikiSpaceDocumentListResponse(items=items, total=len(items))
+
+
+@router.post(
+    "/{space_id}/documents",
+    response_model=WikiSpaceDocumentLinkResponse,
+    status_code=201,
+    dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
+)
+async def link_document_to_wiki_space(
+    request: Request,
+    body: WikiSpaceDocumentLinkCreate,
+    space: WikiSpace = Depends(get_wiki_space_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    doc = await db.get(Document, body.document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not isinstance(sub, str) or not await document_passes_scoped_predicate(db, p, sub, doc):
+        raise HTTPException(status_code=404, detail="Document not found")
+    link = WikiSpaceDocument(
+        id=str(uuid.uuid4()),
+        wiki_space_id=space.id,
+        document_id=doc.id,
+    )
+    dup = await db.execute(
+        select(WikiSpaceDocument).where(
+            WikiSpaceDocument.wiki_space_id == space.id,
+            WikiSpaceDocument.document_id == doc.id,
+        )
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Document is already linked to this wiki space")
+    db.add(link)
+    await db.flush()
+    await db.refresh(link)
+    return _linked_doc_to_response(link, doc)
+
+
+@router.delete(
+    "/{space_id}/documents/{document_id}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
+)
+async def unlink_document_from_wiki_space(
+    document_id: str,
+    space: WikiSpace = Depends(get_wiki_space_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(WikiSpaceDocument).where(
+            WikiSpaceDocument.wiki_space_id == space.id,
+            WikiSpaceDocument.document_id == document_id,
+        )
+    )
+    link = result.scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    await db.delete(link)
 
 
 @router.get(

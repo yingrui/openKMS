@@ -86,6 +86,26 @@ class WikiFileListResponse(BaseModel):
     total: int
 
 
+class WikiSpaceDocumentLinkResponse(BaseModel):
+    """A channel document linked to this wiki space."""
+
+    id: str
+    document_id: str
+    name: str
+    file_type: str
+    channel_id: str
+    linked_at: datetime
+
+
+class WikiSpaceDocumentListResponse(BaseModel):
+    items: list[WikiSpaceDocumentLinkResponse]
+    total: int
+
+
+class WikiSpaceDocumentLinkCreate(BaseModel):
+    document_id: str = Field(min_length=1, max_length=64)
+
+
 class WikiVaultImportResponse(BaseModel):
     pages_upserted: int
     files_uploaded: int
