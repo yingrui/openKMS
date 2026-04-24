@@ -6,8 +6,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, **worker** `linux/amd64` + `openkms-cli[parse]` for Paddle doc-parse on Apple Silicon, nginx frontend on **http://localhost:8082**); MinIO (and Postgres) have **no** host port mappings by default—S3 from the browser uses nginx `/buckets/...`; `make -C docker up` / `down`; infra-only: `docker compose up -d postgres minio` in `docker/` |
-| Makefile | ✅ | `docker/Makefile`: `build`, `up`, `down` only (wrappers for `docker compose`) |
+| Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, **worker** `linux/amd64` + `openkms-cli[parse]` for Paddle doc-parse on Apple Silicon, nginx frontend on **http://localhost:8082**); MinIO (and Postgres) have **no** host port mappings by default—S3 from the browser uses nginx `/buckets/...`; run **`docker compose -f docker/docker-compose.yml up -d --build`** / **`down`** from repo root (see **`docker/README.md`**); infra-only: `docker compose -f docker/docker-compose.yml up -d postgres minio` |
 | Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |

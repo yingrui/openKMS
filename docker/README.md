@@ -6,13 +6,15 @@ Builds images for **backend**, **worker** (includes `openkms-cli` with **pipelin
 
 The **worker** service sets **`platform: linux/amd64`**: PaddlePaddle wheels exist for **linux/amd64** (and macOS arm64), not **linux/arm64**. On Apple Silicon, the worker image builds and runs as amd64 (typically under QEMU); native arm64 Linux would need an alternate parse setup. The worker stage also installs **`libgl1`** (OpenCV / PaddleX import needs `libGL.so.1` in slim images).
 
-From the **repository root**:
+From the **repository root** (use **`docker compose`**; the compose file path is explicit so you do not need to `cd docker`):
 
 ```bash
 cp backend/.env.example backend/.env   # edit secrets and any overrides
-make -C docker build                  # optional; `up` builds as needed
-make -C docker up                     # build (if needed) + start all services
+docker compose -f docker/docker-compose.yml build              # optional; up --build builds as needed
+docker compose -f docker/docker-compose.yml up -d --build      # start all services
 ```
+
+From **`docker/`** you can shorten flags: `cd docker && docker compose -f docker-compose.yml up -d --build`.
 
 - **UI:** http://localhost:8082 (nginx proxies `/api`, `/login`, session routes, and `/buckets/openkms/` to the stack)
 - **API (direct):** http://localhost:8102  
@@ -27,7 +29,7 @@ In **`OPENKMS_AUTH_MODE=local`**, channels with **metadata extraction** require 
 Stop everything:
 
 ```bash
-make -C docker down
+docker compose -f docker/docker-compose.yml down
 ```
 
 ## Infra only (Postgres + MinIO)
@@ -56,6 +58,5 @@ cd frontend && npm install && npm run dev               # terminal 2
 | `Dockerfile.frontend` | Vite production build + nginx |
 | `nginx-frontend.conf` | Proxies API and MinIO bucket path like Vite dev |
 | `docker-compose.yml` | All services |
-| `Makefile` | `build`, `up`, `down` only (wrappers around `docker compose`) |
 
 Repository root **`.dockerignore`** keeps context small for builds.

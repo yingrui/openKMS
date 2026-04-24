@@ -1,9 +1,9 @@
 # Full stack: Postgres (pgvector), MinIO, backend API, worker (+ openkms-cli), frontend (nginx).
 #
-# From repo root:
-#   make -C docker build    # build images
-#   make -C docker up       # up -d --build (rebuilds images; picks up backend/alembic changes)
-#   make -C docker down     # stop and remove containers
+# From repo root (examples):
+#   docker compose -f docker/docker-compose.yml build
+#   docker compose -f docker/docker-compose.yml up -d --build
+#   docker compose -f docker/docker-compose.yml down
 # Plain `docker compose up` without --build reuses cached images and can miss new migrations.
 #
 # Requires ../backend/.env (copy from backend/.env.example). Compose overrides DB host,

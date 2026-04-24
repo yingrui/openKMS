@@ -175,7 +175,7 @@
 - [x] Frontend typecheck script (`npm run typecheck`)
 - [x] Cypher injection hardening (ontology_explore: block CALL, apoc., dbms.; require RETURN)
 - [x] Docker Compose (Postgres, MinIO)
-- [x] Makefile in `docker/`: `build`, `up`, `down` only (`docker compose` wrappers)
+- [x] Docker workflow documented in `docker/README.md` using `docker compose -f docker/docker-compose.yml` from repo root (`build`, `up -d --build`, `down`)
 - [x] .env.example (root, vlm-server)
 - [x] Production secret key check (reject startup with default)
 - [x] Pipeline command validation (max_length=4096)
