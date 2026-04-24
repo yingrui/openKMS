@@ -9,7 +9,7 @@
 # Requires ../backend/.env (copy from backend/.env.example). Compose overrides DB host,
 # MinIO URL, frontend URL for Docker networking.
 #
-# UI: http://localhost:8082  |  API (direct): http://localhost:8102
+# UI (and /api, /internal-api via nginx): http://localhost:8082 — backend is not published on the host.
 # Document parsing in the worker calls VLM on the host: set OPENKMS_VLM_URL or use defaults below.
 
 x-backend-env: &backend_env
@@ -68,8 +68,6 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
       target: backend
-    ports:
-      - "8102:8102"
     env_file:
       - ../backend/.env
     environment:

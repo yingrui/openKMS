@@ -44,7 +44,7 @@
 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
 - **Configuration**: `openkms_cli/settings.py` (`CliSettings`, pydantic-settings) lists every supported env var via `validation_alias`; parse/pipeline/auth read through `get_cli_settings()`; Typer no longer duplicates env via `envvar=`
-- **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`; VLM URL/model/key can follow **`GET /api/auth/public-config`** + **`GET /api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set and `OPENKMS_VLM_*` env vars are omitted (requires CLI auth for the key)
+- **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`; VLM URL/model/key can follow **`GET /internal-api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set, needed `OPENKMS_VLM_*` values are missing, and CLI auth succeeds; when **`OPENKMS_VLM_MODEL`** is set in the environment, the CLI sends **`?model_name=...`** so the backend returns that **`vl`**/**`ocr`** row’s URL and key, or the default row if there is no match
 - **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
 - **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`
 - Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`; PageIndex tree built-in (md_to_tree uses # headings)
@@ -248,8 +248,8 @@
 | GET | `/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
 | GET | `/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
 | GET | `/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
-| GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup`, `document_parse_vlm_url`, `document_parse_vlm_model` (no secrets; openkms-cli when `OPENKMS_VLM_*` unset) |
-| GET | `/api/models/document-parse-defaults` | Authenticated (same as `/api/models`): default vl/ocr model `base_url`, `model_name`, `api_key` for openkms-cli |
+| GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup` only |
+| GET | `/internal-api/models/document-parse-defaults` | Authenticated (`require_auth`); query `model_name` optional — named **`vl`**/**`ocr`** model or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/system/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |

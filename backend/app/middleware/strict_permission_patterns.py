@@ -1,4 +1,8 @@
-"""Optional strict enforcement: /api requests must match a catalog backend_api_pattern."""
+"""Optional strict enforcement: /api requests must match a catalog backend_api_pattern.
+
+Paths outside ``/api`` (e.g. ``/internal-api/...``) are not evaluated here, so they can
+use separate ingress or future middleware without sharing the same pattern catalog.
+"""
 
 from __future__ import annotations
 

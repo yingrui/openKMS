@@ -20,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.services.document_parse_defaults import get_document_parse_vlm_defaults
 from app.services.permission_catalog import PERM_ALL
 from app.services.security_permission_service import list_permissions_sorted, sorted_permission_keys
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
@@ -430,28 +429,13 @@ class PublicAuthConfig(BaseModel):
 
     auth_mode: Literal["oidc", "local"]
     allow_signup: bool
-    document_parse_vlm_url: str | None = Field(
-        default=None,
-        description="Default VLM base URL for openkms-cli document parse (no API key; from default vl/ocr model or server env).",
-    )
-    document_parse_vlm_model: str | None = Field(
-        default=None,
-        description="Default VLM model id for PaddleOCR-VL / mlx-vlm-server (from default vl/ocr model or server env).",
-    )
 
 
 @api_auth_router.get("/public-config", response_model=PublicAuthConfig)
-async def public_auth_config(db: AsyncSession = Depends(get_db)) -> PublicAuthConfig:
+async def public_auth_config() -> PublicAuthConfig:
     mode: Literal["oidc", "local"] = "local" if settings.auth_mode == "local" else "oidc"
     allow = bool(mode == "local" and settings.allow_signup)
-    d = await get_document_parse_vlm_defaults(db)
-    vlm_url, vlm_model = d.base_url, d.model_name
-    return PublicAuthConfig(
-        auth_mode=mode,
-        allow_signup=allow,
-        document_parse_vlm_url=vlm_url,
-        document_parse_vlm_model=vlm_model,
-    )
+    return PublicAuthConfig(auth_mode=mode, allow_signup=allow)
 
 
 def _hash_password(password: str) -> str:
