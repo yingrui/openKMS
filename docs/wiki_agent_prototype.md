@@ -73,7 +73,7 @@ sequenceDiagram
 **Configuration**
 
 - `OPENKMS_AGENT_MODEL_ID` — optional; otherwise the default **`llm`** [api_model](../backend/app/models/api_model.py) (`is_default_in_category` for that category: set on the **Models** page, not under Console).
-- `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` — default `128000`; cap on **output** (completion) tokens per model call (`max_tokens`); each ReAct step is a separate call. Upstream may still cap below this. If billing/latency matters, set lower; if replies truncate, set higher or check the provider’s actual limit.
+- `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` — default `65537`; cap on **output** (completion) per model call, sent as `max_tokens` (OpenAI-style; token count, not character length). Kept **moderate by default** so providers/models that reject very large `max_tokens` do not error; raise in `.env` if your model’s output limit is higher. Each ReAct step is a separate call. If replies truncate, set higher (within the model’s true limit) or check the provider.
 - `OPENKMS_AGENT_RECURSION_LIMIT` — default `200` (was effectively ~25 in LangGraph if unset in code). The ReAct agent **stops** after this many graph supersteps. Bulk work (e.g. 14× get + 14× upsert) needs a **high** limit or **smaller batches** (3–5 pages per user message) so the UI is not “stuck” with no streamed tokens for a long time while tools run.
 
 ## Permissions (implemented, v1)
