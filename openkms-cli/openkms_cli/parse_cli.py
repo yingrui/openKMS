@@ -8,6 +8,7 @@ import typer
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn
 
+from .backend_defaults import resolve_vlm_for_cli
 from .settings import get_cli_settings
 
 console = Console()
@@ -78,10 +79,11 @@ def parse_run(
       {file_hash}/markdown_out/*.md, imgs/*.jpg
     """
     s = get_cli_settings()
+    merged_vlm_url, merged_vlm_model, merged_vlm_key = resolve_vlm_for_cli(s)
     if vlm_url is None:
-        vlm_url = s.vlm_url
+        vlm_url = merged_vlm_url
     if model is None:
-        model = s.vlm_model
+        model = merged_vlm_model
     if max_concurrency is None:
         max_concurrency = s.vlm_max_concurrency
 
@@ -130,6 +132,7 @@ def parse_run(
                     input_path=fp,
                     output_dir=out_base,
                     vlm_url=vlm_url,
+                    vlm_api_key=merged_vlm_key,
                     model=model,
                     max_concurrency=max_concurrency,
                 )

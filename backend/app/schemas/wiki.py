@@ -95,6 +95,9 @@ class WikiSpaceDocumentLinkResponse(BaseModel):
     file_type: str
     channel_id: str
     linked_at: datetime
+    updated_at: datetime = Field(
+        description="Last update time of the linked `documents` row (metadata/content).",
+    )
 
 
 class WikiSpaceDocumentListResponse(BaseModel):

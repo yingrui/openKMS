@@ -1,55 +1,40 @@
-# Docker
+# Install with Docker Compose
 
 ## Full stack (`docker-compose.yml`)
 
-Builds images for **backend**, **worker** (includes `openkms-cli` with pipeline, metadata, kb extras — not Paddle parse), and **frontend** (static build + nginx). Pulls **Postgres (pgvector)** and **MinIO**.
+Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), frontend (nginx), Postgres (pgvector), MinIO.
 
-From the **repository root**:
+**Worker** is `platform: linux/amd64` so Paddle wheels install on Apple Silicon (QEMU). Needs **`libgl1`** in the image for OpenCV/PaddleX.
+
+From **repo root**:
 
 ```bash
-cp backend/.env.example backend/.env   # edit secrets and any overrides
-make -C docker build                  # optional; `up` builds as needed
-make -C docker up                     # build (if needed) + start all services
+cp backend/.env.example backend/.env   # edit as needed
+docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-- **UI:** http://localhost:8080 (nginx proxies `/api`, `/login`, session routes, and `/buckets/openkms/` to the stack)
-- **API (direct):** http://localhost:8102  
-- **Postgres:** localhost:5432 · **MinIO:** localhost:9000 (console 9001)
+Or from **`docker/`**: `docker compose -f docker-compose.yml up -d --build`.
 
-Compose sets `OPENKMS_DATABASE_HOST=postgres`, `AWS_ENDPOINT_URL=http://minio:9000`, `OPENKMS_FRONTEND_URL=http://localhost:8080`, and `OPENKMS_DEBUG=true`. Other values come from `backend/.env` (merged; compose wins on overlapping keys).
+- **UI:** http://localhost:8082 — nginx → `/api`, `/internal-api`, `/login`, sessions, MinIO bucket path. Backend is **not** on the host; use this origin for API calls.
+- **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
 
-The **worker** uses `OPENKMS_BACKEND_URL=http://backend:8102` and `OPENKMS_VLM_URL=http://host.docker.internal:8101` so `openkms-cli` can reach the API and (on Docker Desktop / Linux with `host-gateway`) a VLM on the host. Parsing jobs need a reachable VLM; the image does **not** include PaddleOCR.
+Compose sets DB host, MinIO URL, `OPENKMS_FRONTEND_URL=http://localhost:8082`, `OPENKMS_DEBUG=true`, `OPENKMS_BACKEND_URL=http://backend:8102`. Rest from `backend/.env`. Match **`OPENKMS_AUTH_MODE=local`** in `.env` to the frontend build (`VITE_AUTH_MODE=local`) to avoid a mode banner.
 
-Stop everything:
+**VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. The worker usually uses **`OPENKMS_VLM_URL=http://host.docker.internal:8101`** (compose `extra_hosts: host-gateway`); override in `backend/.env` if your VLM runs elsewhere.
 
-```bash
-make -C docker down
-```
-
-## Infra only (Postgres + MinIO)
-
-If you run the backend and frontend on the host, start only those services:
+Local auth + metadata extraction: set **`OPENKMS_CLI_BASIC_*`** in `backend/.env` for worker → `openkms-cli` API calls.
 
 ```bash
-cd docker && docker compose -f docker-compose.yml up -d postgres minio
-```
-
-Then install and run the app yourself, for example:
-
-```bash
-cd backend && uv sync && alembic upgrade head
-cd backend && uvicorn app.main:app --reload --port 8102   # terminal 1
-cd frontend && npm install && npm run dev               # terminal 2
+docker compose -f docker/docker-compose.yml down
 ```
 
 ## Files
 
 | File | Role |
 |------|------|
-| `Dockerfile` | Targets `backend` and `worker` (Python + uv) |
-| `Dockerfile.frontend` | Vite production build + nginx |
-| `nginx-frontend.conf` | Proxies API and MinIO bucket path like Vite dev |
-| `docker-compose.yml` | All services |
-| `Makefile` | `build`, `up`, `down` only (wrappers around `docker compose`) |
+| `Dockerfile` | `backend` + `worker` targets |
+| `Dockerfile.frontend` | Vite build + nginx |
+| `nginx-frontend.conf` | Reverse proxy |
+| `docker-compose.yml` | Stack |
 
-Repository root **`.dockerignore`** keeps context small for builds.
+Repo **`.dockerignore`** shrinks build context.

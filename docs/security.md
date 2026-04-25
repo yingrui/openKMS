@@ -6,7 +6,7 @@ Security considerations for the openKMS project.
 
 - **`OPENKMS_AUTH_MODE=oidc` (default)**: External OpenID Connect IdP – OAuth2 Authorization Code + PKCE in the SPA (`oidc-client-ts`). Backend trusts JWTs via issuer discovery (`jwks_uri`, `issuer` claim).
 - **`OPENKMS_AUTH_MODE=local`**: Users and bcrypt password hashes in PostgreSQL; backend-issued HS256 JWTs (`OPENKMS_SECRET_KEY`); optional HTTP Basic for `openkms-cli` (`OPENKMS_CLI_BASIC_*`). Use TLS in production; Basic over plain HTTP is only for trusted dev networks.
-- **`GET /api/auth/public-config`** (unauthenticated): Returns `auth_mode` and `allow_signup` only—no secrets—so clients pick the correct login flow and match the deployed mode (local authenticator vs central IdP).
+- **`GET /api/auth/public-config`** (unauthenticated): Returns `auth_mode` and `allow_signup` only—no secrets and no VLM or other infrastructure hints—so clients pick the correct login flow and match the deployed mode (local authenticator vs central IdP).
 - Backend accepts:
   - `Authorization: Bearer <JWT>` for API requests
   - Session cookie (from `POST /sync-session` after browser login)

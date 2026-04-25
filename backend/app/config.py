@@ -51,11 +51,15 @@ class Settings(BaseSettings):
         description="api_models.id for the LLM used by POST /api/agent/.../messages. If unset, the first available LLM model is used.",
     )
     agent_max_output_tokens: int = Field(
-        default=128_000,
+        default=65_537,
         ge=1,
         le=200_000,
         validation_alias="OPENKMS_AGENT_MAX_OUTPUT_TOKENS",
-        description="Max **completion** (output) tokens per model generation for the embedded wiki agent; passed as `max_tokens` to the OpenAPI-compatible API. Actual cap depends on the provider/model.",
+        description=(
+            "Upper bound on **completion length** for the embedded wiki agent: passed as `max_tokens` to OpenAPI-compatible "
+            "chat APIs (token-based). Default is conservative so smaller or stricter models do not error; raise via "
+            "**OPENKMS_AGENT_MAX_OUTPUT_TOKENS** if your model supports a higher output cap. Effective limit may be lower on the provider."
+        ),
     )
     agent_recursion_limit: int = Field(
         default=200,

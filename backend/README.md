@@ -28,10 +28,10 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_USER` | postgres | Database user |
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
-| `OPENKMS_VLM_URL` | http://localhost:8101 | vlm-server URL |
+| `OPENKMS_VLM_URL` | http://localhost:8101 | **mlx-vlm** (PaddleOCR-VL) base URL — not an OpenAI-compatible `/api/v1` server; see [vlm-server](../vlm-server) |
 | `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | 1800 | Max wait for **`run_pipeline`** (`openkms-cli pipeline run`, seconds) |
 | `OPENKMS_AGENT_MODEL_ID` | (empty) | `api_models.id` for the **embedded** wiki agent (`/api/agent/...`); if empty, the **default LLM** in **Models** (category `llm`, set **Set as default** in the UI) is used. |
-| `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `128000` | **Max completion (output) tokens** per model step for the wiki agent (`max_tokens` on the API). Default matches common large **context** models; the provider may cap lower. Lower this to reduce cost. |
+| `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | **Max completion (output) cap** for the wiki agent: sent as `max_tokens` to the chat API. Default avoids invalid requests on models with low output limits; **raise** if your model allows more, **lower** for cost. |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | **Max LangGraph steps** (model+tool loop) per chat turn. The default was too low for bulk get/upsert; raise (e.g. 400) only if you need very large single-turn batches, or use smaller batches per message. |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
 | `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local` |
@@ -47,6 +47,11 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_FRONTEND_URL` | http://localhost:5173 | SPA origin (CORS + redirects) |
 | `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | openkms-frontend | Browser client id for RP-initiated logout |
 | `OPENKMS_OIDC_SERVICE_CLIENT_ID` | openkms-cli | `azp` for service-only API (CLI client credentials) |
+
+**VLM vs embeddings (avoid dead `backend/.env` keys):**
+
+- **`OPENKMS_VLM_URL`** is the only VLM-related variable the **backend** reads (defaults to mlx-vlm on port **8101**). Pipelines can still override the parse URL from a **linked API model** on the pipeline (`model_id`).
+- **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the backend (`app/config.py` uses `extra: "ignore"`). **`OPENKMS_VLM_API_KEY`** belongs in **`openkms-cli/.env`** when the VLM HTTP API requires a key. **KB embeddings** for search and **`kb-index`** come from the knowledge base’s **`embedding_model_id`** (Console → **Models** / KB settings), not from backend environment variables.
 
 **Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** no longer reads `AUTH_URL` / `AUTH_*`; use `OPENKMS_OIDC_AUTH_SERVER_BASE_URL`, `OPENKMS_OIDC_REALM`, `OPENKMS_OIDC_SERVICE_CLIENT_ID`, and `OPENKMS_OIDC_SERVICE_CLIENT_SECRET` (or `OPENKMS_OIDC_TOKEN_URL` for a full token endpoint URL).
 

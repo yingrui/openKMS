@@ -8,7 +8,7 @@ Open Knowledge Management System — document channels, parsing, knowledge bases
 - **`frontend/`** — React + Vite (default port **5173**)
 - **`openkms-cli/`** — Parse and pipeline CLI (used by the background worker)
 - **`vlm-server/`** — **mlx-vlm** HTTP server for **PaddleOCR-VL** document parsing (run this separately)
-- **`docker/`** — Dockerfiles, **`docker-compose.yml`**, **`Makefile`** (`build`, `up`, `down` only)
+- **`docker/`** — Dockerfiles and **`docker-compose.yml`** (run via **`docker compose -f docker/docker-compose.yml …`** from repo root; see **`docker/README.md`**)
 - **`docs/`** — Architecture, features, and developer setup
 
 ## Quick start
@@ -17,8 +17,8 @@ Open Knowledge Management System — document channels, parsing, knowledge bases
 
 1. **Recommended:** start **mlx-vlm** separately (see above and **`vlm-server/README.md`**).
 2. `cp backend/.env.example backend/.env` and edit (secrets, auth, optional LLM URLs).
-3. `make -C docker up` — builds images and starts Postgres (pgvector), MinIO, backend, worker, and frontend (nginx).
-4. Open **http://localhost:8080**.
+3. `docker compose -f docker/docker-compose.yml up -d --build` — builds images and starts Postgres (pgvector), MinIO, backend, worker, and frontend (nginx).
+4. Open **http://localhost:8082**.
 
 See **`docker/README.md`** for ports, env overrides, and how the worker reaches a host VLM.
 

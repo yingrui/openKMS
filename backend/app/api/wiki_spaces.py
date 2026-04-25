@@ -252,6 +252,7 @@ def _linked_doc_to_response(link: WikiSpaceDocument, doc: Document) -> WikiSpace
         file_type=doc.file_type,
         channel_id=doc.channel_id,
         linked_at=link.created_at,
+        updated_at=doc.updated_at,
     )
 
 

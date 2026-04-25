@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import shlex
+import subprocess
 
 from app.config import settings
 from app.constants import DocumentStatus
@@ -136,11 +137,10 @@ async def run_pipeline(
                         else:
                             schema_json = json.dumps(schema_data or [], ensure_ascii=False)
                         extraction_schema_val = shlex.quote(schema_json)
-                        api_url_val = settings.openkms_backend_url.rstrip("/")
                         extraction_model_name = model_name
+                        # Command template already includes `--api-url {api_url}`; do not duplicate.
                         extraction_args = (
-                            f" --extract-metadata --api-url {api_url_val}"
-                            f" --extraction-model-name {model_name}"
+                            f" --extract-metadata --extraction-model-name {model_name}"
                             f" --extraction-schema {extraction_schema_val}"
                         )
                         logger.info("Including metadata extraction in pipeline for document %s", document_id)
@@ -163,7 +163,19 @@ async def run_pipeline(
         "AWS_ACCESS_KEY_ID": settings.aws_access_key_id,
         "AWS_SECRET_ACCESS_KEY": settings.aws_secret_access_key,
         "OPENKMS_API_URL": settings.openkms_backend_url.rstrip("/"),
+        # openkms-cli reads these for try_api_request_auth() (local: HTTP Basic; OIDC: still from os.environ).
+        "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
+        "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,
+        "OPENKMS_CLI_BASIC_PASSWORD": settings.cli_basic_password,
     }
+
+    if "--extract-metadata" in rendered and settings.auth_mode.strip().lower() == "local":
+        if not (settings.cli_basic_user.strip() and settings.cli_basic_password):
+            logger.warning(
+                "Pipeline runs with --extract-metadata in local mode but OPENKMS_CLI_BASIC_USER / "
+                "OPENKMS_CLI_BASIC_PASSWORD are empty in backend settings. Set them in backend/.env "
+                "(same credentials the API accepts for HTTP Basic); see backend/.env.example."
+            )
 
     async with async_session_maker() as session:
         await session.execute(
@@ -208,15 +220,24 @@ async def run_pipeline(
             ) from None
 
         stderr = stderr_bytes.decode("utf-8", errors="replace") if stderr_bytes else ""
+        stdout = stdout_bytes.decode("utf-8", errors="replace") if stdout_bytes else ""
 
         if proc.returncode != 0:
-            logger.error("Pipeline failed (exit %d): %s", proc.returncode, stderr)
+            # openkms-cli uses Rich on stderr for errors, but imports may warn on stderr only;
+            # always log both streams so auth / Typer failures are visible.
+            logger.error(
+                "Pipeline failed (exit %d)\n--- stderr ---\n%s\n--- stdout ---\n%s",
+                proc.returncode,
+                stderr.strip() or "(empty)",
+                stdout.strip() or "(empty)",
+            )
             async with async_session_maker() as session:
                 await session.execute(
                     update(Document).where(Document.id == document_id).values(status=DocumentStatus.FAILED)
                 )
                 await session.commit()
-            raise RuntimeError(f"Pipeline exited with code {proc.returncode}: {stderr[:500]}")
+            tail = f"{stderr}\n{stdout}".strip()
+            raise RuntimeError(f"Pipeline exited with code {proc.returncode}: {tail[:1200]}")
 
         logger.info("Pipeline completed for document %s", document_id)
 
@@ -281,6 +302,9 @@ async def run_kb_index(
     subprocess_env = {
         **os.environ,
         "OPENKMS_API_URL": base_api_url,
+        "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
+        "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,
+        "OPENKMS_CLI_BASIC_PASSWORD": settings.cli_basic_password,
     }
 
     cmd = shlex.split(cmd_str)

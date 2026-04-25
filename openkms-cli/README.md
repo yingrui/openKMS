@@ -8,6 +8,10 @@ Set variables in **`.env`** (this package’s `.env`, then the current directory
 
 Copy **`openkms-cli/.env.example`** and adjust. For auth against the API, match **`OPENKMS_AUTH_MODE`** with the backend (`oidc` vs `local`).
 
+**Embeddings:** Knowledge base indexing reads the KB’s **embedding model** from the backend (**Models** + KB **`embedding_model_id`**). Optional **`OPENKMS_EMBEDDING_MODEL_*`** in this `.env` override the CLI when you need a different endpoint without changing the KB record.
+
+**VLM (document parse / paddleocr pipeline):** When **`OPENKMS_VLM_URL`**, **`OPENKMS_VLM_MODEL`**, or **`OPENKMS_VLM_API_KEY`** are unset (and no key in settings), the CLI calls **`GET {OPENKMS_API_URL}/internal-api/models/document-parse-defaults`** with the same auth as other CLI API calls (**HTTP Basic** in local mode, **client credentials** in OIDC). If **`OPENKMS_VLM_MODEL`** is set in the environment, the request includes **`?model_name=...`** so the backend returns that **`vl`** / **`ocr`** model’s URL and key when it exists, otherwise the default **`vl`** / **`ocr`** row (same as omitting the query). Merge **`base_url`**, **`model_name`**, and **`api_key`** from the JSON response. Override any value with **`OPENKMS_VLM_*`** in `.env` when needed.
+
 ## Install
 
 ```bash

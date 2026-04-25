@@ -15,9 +15,11 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
+from .backend_defaults import resolve_vlm_for_cli
 from .settings import get_cli_settings
 
-console = Console()
+# stderr: subprocess workers only log stderr on failure; auth/errors must not land on stdout alone.
+console = Console(stderr=True)
 
 # Built-in pipelines the CLI can run. Key: --pipeline-name value, value: (display name, description)
 SUPPORTED_PIPELINES: dict[str, tuple[str, str]] = {
@@ -258,10 +260,6 @@ def pipeline_run(
         raise typer.Exit(1)
 
     cfg = get_cli_settings()
-    if vlm_url is None:
-        vlm_url = cfg.vlm_url
-    if vlm_api_key is None:
-        vlm_api_key = cfg.vlm_api_key or None
     if bucket is None:
         bucket = cfg.aws_bucket_name
     if endpoint_url is None:
@@ -343,6 +341,12 @@ def pipeline_run(
         return
 
     # --- doc-parse pipelines (e.g. paddleocr-doc-parse) ---
+    merged_vlm_url, merged_vlm_model, merged_vlm_key = resolve_vlm_for_cli(cfg)
+    if vlm_url is None:
+        vlm_url = merged_vlm_url
+    if vlm_api_key is None:
+        vlm_api_key = merged_vlm_key if merged_vlm_key is not None else (cfg.vlm_api_key or None)
+
     if not input_uri:
         console.print("[red]Document parse pipelines require --input (S3 URI or local file)[/red]")
         raise typer.Exit(1)
@@ -438,6 +442,7 @@ def pipeline_run(
             output_dir=out_base,
             vlm_url=vlm_url,
             vlm_api_key=vlm_api_key,
+            model=merged_vlm_model,
         )
         file_hash = result["file_hash"]
         hash_dir = out_base / file_hash

@@ -237,7 +237,10 @@ async function syncTokenToBackend(token: string) {
   }
 }
 
-type PublicAuthConfigJson = { auth_mode: string; allow_signup?: boolean };
+type PublicAuthConfigJson = {
+  auth_mode: string;
+  allow_signup?: boolean;
+};
 
 async function fetchPublicAuthConfig(): Promise<PublicAuthConfigJson> {
   const res = await fetch(`${config.apiUrl}/api/auth/public-config`);

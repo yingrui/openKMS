@@ -10,7 +10,7 @@ The following items were addressed:
 - §2 Document model default → migration p1q2r3s4t5u6, model uses DocumentStatus
 - §3 No error boundary → ErrorBoundary in App.tsx
 - §4 Cypher injection → allowlist: block CALL, apoc., dbms.; require RETURN
-- §6 Missing infra → `docker/docker-compose.yml`, `docker/Makefile`, `.env.example`
+- §6 Missing infra → `docker/docker-compose.yml`, `.env.example`
 - §11 No typecheck script → added to package.json
 - §13 Security → reject default secret in production; PipelineCreate max_length
 - §15 Pipeline command validation → done
@@ -180,8 +180,8 @@ Several UI buttons have no `onClick` handlers:
 ### 6. Missing infrastructure
 
 - ~~No `docker-compose.yml`~~ — `docker/docker-compose.yml` (Postgres, MinIO); Keycloak/VLM still manual if needed
-- ~~No `Makefile`~~ — `docker/Makefile` for install, migrate, run, test
-- No root `.env.example`; `vlm-server/` also missing `.env.example`
+- ~~No `Makefile`~~ — use `docker compose -f docker/docker-compose.yml` from repo root (see `docker/README.md`)
+- ~~No root `.env.example`~~ — root `.env.example` points contributors to `backend/.env.example`; **`vlm-server/.env.example`** documents optional `PORT`
 
 ---
 

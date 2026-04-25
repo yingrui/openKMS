@@ -27,7 +27,7 @@ import {
 } from '../data/wikiSpacesApi';
 import './WikiSpaceDetail.css';
 
-export type WikiLinkedDoc = { id: string; name: string; channel_id: string };
+export type WikiLinkedDoc = { id: string; name: string; channel_id: string; updated_at: string };
 
 function flattenChannelOptions(nodes: ChannelNode[], depth = 0): { id: string; label: string }[] {
   const rows: { id: string; label: string }[] = [];
@@ -42,6 +42,12 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatRowUpdatedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export function WikiSpaceDetail() {
@@ -162,6 +168,7 @@ export function WikiSpaceDetail() {
             id: x.document_id,
             name: x.name,
             channel_id: x.channel_id,
+            updated_at: x.updated_at,
           }))
         );
         const total = pg.total;
@@ -427,6 +434,13 @@ export function WikiSpaceDetail() {
                             <FileText size={18} strokeWidth={1.5} className="wiki-space-detail-page-icon" aria-hidden />
                             <span className="wiki-space-detail-page-path">{p.path}</span>
                           </Link>
+                          <time
+                            className="wiki-space-detail-page-updated"
+                            dateTime={p.updated_at}
+                            title={p.updated_at}
+                          >
+                            {formatRowUpdatedAt(p.updated_at)}
+                          </time>
                           <button
                             type="button"
                             className="wiki-space-detail-icon-btn"
@@ -495,6 +509,13 @@ export function WikiSpaceDetail() {
                           <FileStack size={18} strokeWidth={1.5} className="wiki-space-detail-page-icon" aria-hidden />
                           <span className="wiki-space-detail-page-path">{d.name}</span>
                         </Link>
+                        <time
+                          className="wiki-space-detail-page-updated"
+                          dateTime={d.updated_at}
+                          title={d.updated_at}
+                        >
+                          {formatRowUpdatedAt(d.updated_at)}
+                        </time>
                         <button
                           type="button"
                           className="wiki-space-detail-icon-btn"
@@ -622,6 +643,7 @@ export function WikiSpaceDetail() {
                                     id: row.document_id,
                                     name: row.name,
                                     channel_id: row.channel_id,
+                                    updated_at: row.updated_at,
                                   },
                                 ]);
                                 toast.success('Document linked');

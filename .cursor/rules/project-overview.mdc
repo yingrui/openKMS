@@ -11,7 +11,7 @@ alwaysApply: true
 
 - **Backend**: `backend/app/` (FastAPI)
 - **Frontend**: `frontend/src/` (React/Vite)
-- **Docker / Make**: `docker/` (`docker-compose.yml`, `Makefile` — `make -C docker build|up|down` only)
+- **Docker**: `docker/` (`docker-compose.yml` — e.g. `docker compose -f docker/docker-compose.yml build|up|down` from repo root; see `docker/README.md`)
 - **Docs**: `docs/` (README, functionalities, architecture, development_plan)
 - **VLM**: `vlm-server/` (mlx-vlm for document parsing)
 - **Planned**: `document_parsing/` (Typer CLI for pipeline/async jobs)
@@ -21,4 +21,4 @@ alwaysApply: true
 - Backend: Python, FastAPI, SQLAlchemy async, Pydantic
 - Frontend: TypeScript, React 19, React Router
 - Config: Backend `OPENKMS_*` in `.env`; Frontend `config/index.ts`
-- Ports: Backend 8102, Frontend 5173, VLM 8101
+- Ports: Backend 8102, Frontend (Vite) 5173, Docker nginx UI 8082, VLM 8101
