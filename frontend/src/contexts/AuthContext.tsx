@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
@@ -133,14 +133,26 @@ function useFrontendPermissionGate(
   const [catalog, setCatalog] = useState<PermissionCatalogEntry[] | null>(null);
   const [ready, setReady] = useState(false);
 
+  /** Stable key so we do not re-fetch when `user` is a new object reference with the same identity/permissions. */
+  const catalogFetchKey = useMemo(() => {
+    if (!isAuthenticated || !user) return '';
+    const roles = [...user.roles].sort().join(',');
+    const perms = [...user.permissions].sort().join(',');
+    return `${user.username}\x1e${roles}\x1e${perms}`;
+  }, [isAuthenticated, user]);
+
   useEffect(() => {
     if (!isAuthenticated || !user) {
-      setCatalog(null);
-      setReady(true);
+      startTransition(() => {
+        setCatalog(null);
+        setReady(true);
+      });
       return;
     }
     let cancelled = false;
-    setReady(false);
+    startTransition(() => {
+      setReady(false);
+    });
     void (async () => {
       try {
         const headers: Record<string, string> = {};
@@ -174,7 +186,8 @@ function useFrontendPermissionGate(
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user?.username, user?.email, getToken]);
+    // `user` omitted from deps: encoded in `catalogFetchKey` (avoids ref-churn); `getToken` must stay side-effect-free (see OIDC provider).
+  }, [isAuthenticated, catalogFetchKey, getToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canAccessPath = useCallback(
     (pathname: string) => {
@@ -374,7 +387,17 @@ function LocalAuthProvider({
   }, []);
 
   useEffect(() => {
-    void loadSession().finally(() => setIsLoading(false));
+    let active = true;
+    void (async () => {
+      try {
+        await loadSession();
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [loadSession]);
 
   const completeLocalSession = useCallback(
@@ -496,7 +519,8 @@ function OidcAuthProvider({
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const noopComplete = useCallback(async (_accessToken: string) => {
+  const noopComplete = useCallback(async (accessToken: string) => {
+    void accessToken;
     /* OIDC mode: not used */
   }, []);
 
@@ -618,6 +642,7 @@ function OidcAuthProvider({
     }
   }, [navigate]);
 
+  /** Return access token only. Do not `setUser` or sync session here — `tokenProvider` runs on every `getAuthHeaders()` call and would loop with `useFrontendPermissionGate` (which calls `getToken`). Session + `/me` run in `runOidcInit` and `UserManager.events` handlers. */
   const getToken = useCallback(async () => {
     const mgr = getUserManager();
     try {
@@ -626,11 +651,6 @@ function OidcAuthProvider({
       if (u.expired) {
         u = await mgr.signinSilent();
         if (!u) return undefined;
-      }
-      if (u.access_token) {
-        await syncTokenToBackend(u.access_token);
-        const me = await fetchAuthMeWithBearer(u.access_token);
-        setUser(me ?? parseUserFromOidc(u) ?? null);
       }
       return u.access_token;
     } catch {

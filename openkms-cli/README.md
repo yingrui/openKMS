@@ -25,6 +25,16 @@ pip install -e ".[kb]"              # + knowledge-base indexing
 
 Python **≥ 3.10**.
 
+## Tests
+
+```bash
+cd openkms-cli
+pip install -e ".[dev]"
+pytest tests/
+```
+
+Covers **`backend_defaults`** merge / fetch behavior (mocked HTTP) and **`parser`** restructuring plus small layout helpers (no Paddle install required).
+
 ## Usage
 
 **Parse** (local files → `parsed/{file_hash}/…`):

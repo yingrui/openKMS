@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useState, startTransition } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Link2, Search, X } from 'lucide-react';
 import type { KnowledgeMapNode } from '../data/knowledgeMapApi';
@@ -147,11 +147,13 @@ export function HomeKnowledgeMapPreview({
   );
 
   useLayoutEffect(() => {
-    if (!tree?.length) {
-      setExpanded(new Set());
-      return;
-    }
-    setExpanded(collectExpandableNodeIds(displayTree.length ? displayTree : tree));
+    startTransition(() => {
+      if (!tree?.length) {
+        setExpanded(new Set());
+        return;
+      }
+      setExpanded(collectExpandableNodeIds(displayTree.length ? displayTree : tree));
+    });
   }, [tree, displayTree]);
 
   const toggle = useCallback((id: string) => {

@@ -7,7 +7,8 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, **worker** `linux/amd64` + `openkms-cli[parse]` for Paddle doc-parse on Apple Silicon, nginx frontend on **http://localhost:8082**); MinIO (and Postgres) have **no** host port mappings by default—S3 from the browser uses nginx `/buckets/...`; run **`docker compose -f docker/docker-compose.yml up -d --build`** / **`down`** from repo root (see **`docker/README.md`**); infra-only: `docker compose -f docker/docker-compose.yml up -d postgres minio` |
-| Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
+| Backend tests | ✅ | pytest (pytest-asyncio still a test dep where used); API smoke uses a **session-scoped** `TestClient` (health, openapi) to avoid duplicate async DB loops |
+| Dev / observability | ✅ | SQLAlchemy **`echo`** only when **`OPENKMS_SQL_ECHO=true`** (not tied to **`OPENKMS_DEBUG`**) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
 | Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; **`401`** with invalid/expired JWT clears SPA session so **Authentication Required** is shown (avoids raw JSON like `{"detail":"Invalid or expired token"}` on e.g. document channel lists) |
@@ -43,6 +44,7 @@
 ### 2b. openkms-cli (CLI for document parsing)
 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
+- **Tests:** `openkms-cli/tests/` — `pip install -e ".[dev]" && pytest tests/` (VLM defaults merge / fetch wiring with mocks; parser restructure and bbox/layout helpers; no Paddle install required)
 - **Configuration**: `openkms_cli/settings.py` (`CliSettings`, pydantic-settings) lists every supported env var via `validation_alias`; parse/pipeline/auth read through `get_cli_settings()`; Typer no longer duplicates env via `envvar=`
 - **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`; VLM URL/model/key can follow **`GET /internal-api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set, needed `OPENKMS_VLM_*` values are missing, and CLI auth succeeds; when **`OPENKMS_VLM_MODEL`** is set in the environment, the CLI sends **`?model_name=...`** so the backend returns that **`vl`**/**`ocr`** row’s URL and key, or the default row if there is no match
 - **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
@@ -189,6 +191,7 @@
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
 - **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles**, and resolved **permissions** (local users: DB keys such as `all` or granular `console:*`; OIDC IdP admins receive the full catalog); data from `GET /api/auth/me`. Linked from the header user menu.
+- **OIDC + API traffic:** the token provider used by `getAuthHeaders()` returns the access token only (no `setUser` / no `POST /sync-session` + `GET /api/auth/me` on every token read). Session sync and profile refresh run from OIDC init and **`UserManager`** user events. The SPA permission-catalog effect depends on a stable **username / roles / permissions** key so equivalent `user` objects do not refetch in a loop.
 - Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users on **`/`** see the static marketing home; on any other path they see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
 
 ### 6c. Home (Landing Page)
@@ -256,7 +259,7 @@
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
 | GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic; includes `permissions` (resolved keys) |
-| GET | `/api/auth/permission-catalog` | Authenticated: list of permission entries (`key`, `label`, `description`, `frontend_route_patterns`, `backend_api_patterns`) for the Console matrix, SPA route gate, and optional strict API enforcement |
+| GET | `/api/auth/permission-catalog` | Authenticated: list of permission entries (`key`, `label`, `description`, `frontend_route_patterns`, `backend_api_patterns`) for the Console matrix, SPA route gate, and optional strict API enforcement; optional in-process TTL cache (**`OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS`**, default 5; `0` disables), cleared when admins mutate **`security_permissions`** |
 | GET | `/api/admin/security-roles` | `console:permissions`: roles and permission keys (includes `all`); `is_system_role` true only for **admin** (cannot delete) |
 | POST | `/api/admin/security-roles` | `console:permissions`: create role; reserved names `admin` / `member` rejected |
 | DELETE | `/api/admin/security-roles/{role_id}` | `console:permissions`: delete role (**admin** role rejected) |

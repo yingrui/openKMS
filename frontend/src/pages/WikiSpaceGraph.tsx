@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import { forceCollide } from 'd3-force';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
@@ -157,7 +157,7 @@ function forceHubPull(baseStrength: number) {
       n.vy = (n.vy ?? 0) + dy * k;
     }
   };
-  force.initialize = (init: SimNode[], _random?: () => number) => {
+  force.initialize = (init: SimNode[]) => {
     nodes = init;
   };
   return force;
@@ -255,7 +255,7 @@ export function WikiSpaceGraph() {
   useEffect(() => {
     if (!spaceId) return;
     let cancelled = false;
-    setLoading(true);
+    startTransition(() => setLoading(true));
     zoomedRef.current = false;
     Promise.all([fetchWikiSpace(spaceId), fetchWikiSpaceGraph(spaceId)])
       .then(([sp, g]) => {

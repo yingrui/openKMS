@@ -241,13 +241,15 @@ Standalone CLI for document parsing, designed for backend integration. Developer
 
 ```
 openkms-cli/
-├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline], [metadata], [kb]
+├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline], [metadata], [kb], [dev] (pytest)
+├── tests/                   # pytest: backend_defaults merge/fetch mocks; parser restructure + bbox/layout helpers
 ├── openkms_cli/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m openkms_cli
 │   ├── app.py               # Typer app, registers subcommands
 │   ├── settings.py          # CliSettings: explicit env var names (validation_alias); pydantic-settings
 │   ├── auth.py              # OIDC client credentials or local HTTP Basic (try_api_request_auth)
+│   ├── backend_defaults.py  # VLM URL/model/key merge from internal-api (optional model_name)
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
 │   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
@@ -257,6 +259,7 @@ openkms-cli/
 ```
 
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
+- **Tests**: `pip install -e ".[dev]" && pytest tests/` from **`openkms-cli/`** (no Paddle required for the current suite)
 - **Configuration**: `openkms_cli/settings.py` maps each environment variable explicitly (no hidden prefix); loads `openkms-cli/.env` then cwd `.env`; CLI flags override when passed
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
 - **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
@@ -424,6 +427,7 @@ flowchart LR
 | Layer | Config |
 |-------|--------|
 | Backend | `.env` / `OPENKMS_*` – database, **`OPENKMS_VLM_URL`** (mlx-vlm base URL; not embedding/OpenAI gateway), PaddleOCR defaults, `OPENKMS_EXTRACTION_MODEL_ID`, `OPENKMS_BACKEND_URL` (for CLI metadata extraction), **OPENKMS_PIPELINE_TIMEOUT_SECONDS** (default 1800) for **`run_pipeline`** subprocess. **Not used:** `OPENKMS_VLM_API_KEY`, `OPENKMS_EMBEDDING_MODEL_*` (CLI / KB models only) |
+| Backend | `OPENKMS_DEBUG` (e.g. dev secret check in `main`), **`OPENKMS_SQL_ECHO`** (SQLAlchemy `echo`; default off so debug compose is not flooded with `SELECT` lines), **`OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS`** (TTL for `GET /api/auth/permission-catalog`; default 5; `0` disables; cleared on admin security-permission writes) |
 | Backend | `OPENKMS_AUTH_MODE` – `oidc` (default) or `local`; `OPENKMS_ALLOW_SIGNUP`, `OPENKMS_INITIAL_ADMIN_USER`, `OPENKMS_CLI_BASIC_*`, `OPENKMS_LOCAL_JWT_EXP_HOURS` |
 | Backend | `OPENKMS_OIDC_*`, `OPENKMS_FRONTEND_URL` – issuer, confidential client, SPA origin, post-logout client id, service client id (`azp`) for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |

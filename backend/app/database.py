@@ -19,7 +19,7 @@ class Base(DeclarativeBase):
 
 engine = create_async_engine(
     settings.database_url,
-    echo=settings.debug,
+    echo=settings.sql_echo,
     pool_pre_ping=True,   # Test connections before use; discard closed ones
     pool_recycle=300,     # Recycle connections before PostgreSQL idle timeout
     pool_size=10,         # Base pool size

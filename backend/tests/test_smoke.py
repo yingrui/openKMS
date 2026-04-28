@@ -1,19 +1,18 @@
 """Smoke tests for backend API."""
-import pytest
+
+from fastapi.testclient import TestClient
 
 
-@pytest.mark.asyncio
-async def test_health(client):
+def test_health(client: TestClient) -> None:
     """Health endpoint returns 200."""
-    response = await client.get("/health")
+    response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-@pytest.mark.asyncio
-async def test_openapi_docs_available(client):
+def test_openapi_docs_available(client: TestClient) -> None:
     """OpenAPI docs are reachable."""
-    response = await client.get("/openapi.json")
+    response = client.get("/openapi.json")
     assert response.status_code == 200
     data = response.json()
     assert "openapi" in data

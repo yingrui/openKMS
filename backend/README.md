@@ -117,7 +117,8 @@ Tables are created automatically on startup via `init_db()`.
 # Start vlm-server first (in another terminal)
 cd ../vlm-server && ./start.sh
 
-# Start backend (recommended: uses dev.sh for pgvector, migrations, OPENKMS_DEBUG=true)
+# Start backend (recommended: uses dev.sh for pgvector, migrations, OPENKMS_DEBUG=true).
+# SQL statement logging is opt-in: set OPENKMS_SQL_ECHO=true (OPENKMS_DEBUG alone does not enable it).
 ./dev.sh
 
 # Or run uvicorn directly (requires OPENKMS_DEBUG=true or non-default OPENKMS_SECRET_KEY for local dev)

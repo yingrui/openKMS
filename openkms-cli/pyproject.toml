@@ -35,6 +35,9 @@ kb = [
     "pgvector>=0.3.0",
     "openai>=1.0.0",
 ]
+dev = [
+    "pytest>=8.0",
+]
 
 [project.scripts]
 openkms-cli = "openkms_cli.__main__:run"
@@ -46,3 +49,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["openkms_cli*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

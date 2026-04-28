@@ -84,6 +84,17 @@ class Settings(BaseSettings):
     app_title: str = Field(default="openKMS Backend", validation_alias="OPENKMS_APP_TITLE")
     app_version: str = Field(default="0.1.0", validation_alias="OPENKMS_APP_VERSION")
     debug: bool = Field(default=False, validation_alias="OPENKMS_DEBUG")
+    sql_echo: bool = Field(
+        default=False,
+        validation_alias="OPENKMS_SQL_ECHO",
+        description="When true, SQLAlchemy logs every statement (verbose). Independent of OPENKMS_DEBUG.",
+    )
+    permission_catalog_cache_seconds: float = Field(
+        default=5.0,
+        ge=0,
+        validation_alias="OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS",
+        description="In-process TTL for GET /api/auth/permission-catalog; 0 disables. Coalesces parallel identical reads.",
+    )
 
     # --- Authentication: oidc | local ---
     auth_mode: str = Field(default="oidc", validation_alias="OPENKMS_AUTH_MODE")

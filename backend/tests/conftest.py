@@ -2,18 +2,17 @@
 import os
 
 import pytest
-from httpx import ASGITransport, AsyncClient
+from fastapi.testclient import TestClient
 
 # Ensure production checks don't block tests
 os.environ.setdefault("OPENKMS_DEBUG", "true")
 os.environ.setdefault("OPENKMS_SECRET_KEY", "test-secret-key-for-pytest")
 
 
-@pytest.fixture
-async def client():
-    """Async HTTP client for testing FastAPI app."""
+@pytest.fixture(scope="session")
+def client():
+    """One TestClient for the session — avoids a second asyncpg/SQLAlchemy loop on lifespan (smoke tests)."""
     from app.main import app
 
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+    with TestClient(app) as c:
+        yield c

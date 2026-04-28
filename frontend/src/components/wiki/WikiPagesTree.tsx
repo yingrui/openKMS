@@ -1,47 +1,9 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, startTransition, type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { ChevronDown, ChevronRight, FileText, Folder, Search } from 'lucide-react';
 import type { WikiPageResponse } from '../../data/wikiSpacesApi';
+import { buildWikiTree, type WikiTreeNode } from './wikiTreeUtils';
 import './WikiPagesTree.css';
-
-export interface WikiTreeNode {
-  segment: string;
-  pathPrefix: string;
-  page: WikiPageResponse | undefined;
-  children: Map<string, WikiTreeNode>;
-}
-
-export function buildWikiTree(pages: WikiPageResponse[]): WikiTreeNode {
-  const root: WikiTreeNode = {
-    segment: '',
-    pathPrefix: '',
-    page: undefined,
-    children: new Map(),
-  };
-  for (const p of pages) {
-    const parts = p.path.split('/').filter(Boolean);
-    if (parts.length === 0) continue;
-    let cur = root;
-    let prefix = '';
-    for (let i = 0; i < parts.length; i++) {
-      const seg = parts[i];
-      prefix = prefix ? `${prefix}/${seg}` : seg;
-      if (!cur.children.has(seg)) {
-        cur.children.set(seg, {
-          segment: seg,
-          pathPrefix: prefix,
-          page: undefined,
-          children: new Map(),
-        });
-      }
-      cur = cur.children.get(seg)!;
-      if (i === parts.length - 1) {
-        cur.page = p;
-      }
-    }
-  }
-  return root;
-}
 
 function sortedChildEntries(node: WikiTreeNode): [string, WikiTreeNode][] {
   return [...node.children.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
@@ -75,7 +37,9 @@ export function WikiPagesTree({ spaceId, pages, currentPageId, loading }: WikiPa
 
   useEffect(() => {
     const cur = pages.find((p) => p.id === currentPageId);
-    if (cur) expandAncestorsOf(cur.path);
+    if (cur) {
+      startTransition(() => expandAncestorsOf(cur.path));
+    }
   }, [currentPageId, pages, expandAncestorsOf]);
 
   const togglePrefix = (prefix: string) => {

@@ -185,7 +185,7 @@ function PageIndexTree({
   const [contentPopover, setContentPopover] = useState<{ content: string; title: string } | null>(null);
   const lineRangeMap = useMemo(
     () => (pageIndex?.structure?.length ? buildNodeLineRanges(pageIndex.structure) : new Map()),
-    [pageIndex?.structure]
+    [pageIndex]
   );
   const handleContentClick = useCallback((content: string, node: PageIndexNode) => {
     setContentPopover({ content, title: node.title });
@@ -513,19 +513,34 @@ export function DocumentDetail() {
   const labelConfig = (channel?.label_config ?? []).filter(
     (l: { key?: string; object_type_id?: string }) => l.key && l.object_type_id
   );
-  const meta = document?.metadata ?? {};
-  const extractionKeys = extractionSchemaFields.map((f) => f.key);
+  const meta = useMemo(() => document?.metadata ?? {}, [document?.metadata]);
   const labelKeys = labelConfig.map((l: { key: string }) => l.key);
-  const metaKeys = extractionKeys.length > 0 || labelKeys.length > 0
-    ? [...extractionKeys, ...labelKeys.filter((k) => !extractionKeys.includes(k))]
-    : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
+  const metaKeys = useMemo(() => {
+    const ek = extractionSchemaFields.map((f) => f.key);
+    const lk = labelConfig.map((l: { key: string }) => l.key);
+    return ek.length > 0 || lk.length > 0
+      ? [...ek, ...lk.filter((k) => !ek.includes(k))]
+      : Object.keys(meta).filter((k) => !['extracted_at', 'extraction_model_id'].includes(k));
+  }, [extractionSchemaFields, labelConfig, meta]);
   const showMetadataSection = !docConfig && document?.channel_id;
   const labelKeysSet = new Set(labelKeys);
 
-  const extractionObjectTypeIds = extractionSchemaFields
-    .filter((f) => (f.type === 'object_type' || f.type === 'list[object_type]') && (f as { object_type_id?: string }).object_type_id)
-    .map((f) => (f as { object_type_id: string }).object_type_id);
-  const allObjectTypeIds = [...new Set([...labelConfig.map((l: { object_type_id: string }) => l.object_type_id), ...extractionObjectTypeIds])];
+  const extractionObjectTypeIds = useMemo(
+    () =>
+      extractionSchemaFields
+        .filter(
+          (f) =>
+            (f.type === 'object_type' || f.type === 'list[object_type]') &&
+            (f as { object_type_id?: string }).object_type_id
+        )
+        .map((f) => (f as { object_type_id: string }).object_type_id),
+    [extractionSchemaFields]
+  );
+  const allObjectTypeIds = useMemo(
+    () => [...new Set([...labelConfig.map((l: { object_type_id: string }) => l.object_type_id), ...extractionObjectTypeIds])],
+    [labelConfig, extractionObjectTypeIds]
+  );
+  const allObjectTypeIdsKey = useMemo(() => allObjectTypeIds.join(','), [allObjectTypeIds]);
 
   useEffect(() => {
     if (allObjectTypeIds.length === 0) return;
@@ -558,7 +573,7 @@ export function DocumentDetail() {
     };
     load();
     return () => { cancelled = true; };
-  }, [channel?.id, JSON.stringify(allObjectTypeIds)]);
+  }, [channel?.id, allObjectTypeIdsKey, allObjectTypeIds]);
 
   const getInstanceDisplay = (otid: string, instance: { id: string; data: Record<string, unknown> }) => {
     const ot = labelObjectTypes[otid];

@@ -28,7 +28,7 @@ import {
   Tags,
   FolderTree,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, startTransition } from 'react';
 
 import logo from '../../assets/logo.svg';
 import { DEFAULT_SYSTEM_DISPLAY_NAME, effectiveSystemDisplayName, fetchSystemPublic } from '../../data/systemApi';
@@ -209,7 +209,9 @@ export function Sidebar() {
   }, []);
 
   useEffect(() => {
-    void loadSidebarBrand();
+    queueMicrotask(() => {
+      void loadSidebarBrand();
+    });
   }, [loadSidebarBrand]);
 
   useEffect(() => {
@@ -221,12 +223,14 @@ export function Sidebar() {
   useEffect(() => {
     if (onDocuments && channels.length > 0) {
       const expandableIds = getAllExpandableChannelIds(channels);
-      setDocExpanded((prev) => {
-        const next = { ...prev };
-        for (const id of expandableIds) {
-          next[id] = true;
-        }
-        return next;
+      startTransition(() => {
+        setDocExpanded((prev) => {
+          const next = { ...prev };
+          for (const id of expandableIds) {
+            next[id] = true;
+          }
+          return next;
+        });
       });
     }
   }, [onDocuments, channels]);
