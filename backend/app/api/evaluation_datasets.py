@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth
 from app.database import get_db
 from app.services.data_resource_policy import evaluation_dataset_visible
+from app.models.api_model import ApiModel
 from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
@@ -526,6 +527,19 @@ async def list_evaluation_runs(
         .limit(limit)
     )
     runs = result.scalars().all()
+
+    # Resolve judge model display name from ApiModel for any judge_model_id seen in config_snapshot
+    judge_ids = {
+        (r.config_snapshot or {}).get("judge_model_id")
+        for r in runs
+        if (r.config_snapshot or {}).get("judge_model_id")
+    }
+    judge_names: dict[str, str] = {}
+    if judge_ids:
+        rows = await db.execute(select(ApiModel).where(ApiModel.id.in_(judge_ids)))
+        for m in rows.scalars().all():
+            judge_names[m.id] = m.name or m.model_name or m.id
+
     items = [
         EvaluationRunListItem(
             id=r.id,
@@ -535,6 +549,8 @@ async def list_evaluation_runs(
             pass_count=r.pass_count,
             avg_score=r.avg_score,
             created_at=r.created_at,
+            judge_model_id=(r.config_snapshot or {}).get("judge_model_id"),
+            judge_model_name=judge_names.get((r.config_snapshot or {}).get("judge_model_id")),
         )
         for r in runs
     ]

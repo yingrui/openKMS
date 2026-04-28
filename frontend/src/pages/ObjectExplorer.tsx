@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Box, ChevronLeft, ChevronRight, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
@@ -17,10 +17,91 @@ function neo4jLabel(name: string): string {
   return s || 'Node';
 }
 
-/** Convert link type name to Neo4j relationship type (UPPER_SNAKE) */
+/** Convert link type name to Neo4j relationship type. Preserves case — link_type names are stored in lower_snake_case (e.g. governed_by, covers) and indexed verbatim in Neo4j. */
 function neo4jRelType(name: string): string {
-  const s = name.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
-  return s || 'RELATES_TO';
+  const s = name.replace(/[^a-zA-Z0-9_]/g, '_');
+  return s || 'relates_to';
+}
+
+/**
+ * Demo-only mock for text-to-Cypher. Match user question against keyword bag,
+ * return the matching Cypher and a final natural-language answer.
+ * No LLM is called — this is purely to demo the UX shape.
+ */
+type DemoQA = {
+  label: string;
+  question: string;
+  cypher: string;
+  answer: string;
+};
+
+const DEMO_QUESTIONS: DemoQA[] = [
+  {
+    label: '✅ 50岁 + 汇丰汇佑康宁D款 + 严重肺泡蛋白沉积症',
+    question: '我是50岁的客户，买了汇丰汇佑康宁D款（MIL）重疾险，现在确诊了严重肺泡蛋白沉积症，能理赔吗？',
+    cypher:
+      'MATCH (a:AgeSegment {name:"中老年 50-65 周岁"})\n' +
+      '       <-[:targets]- (p:InsuranceProduct {product_code:"MIL"})\n' +
+      '       -[:provides]-> (c:Coverage)\n' +
+      '       -[:covers_disease]-> (d:Disease)\n' +
+      'WHERE d.disease_name CONTAINS "肺泡蛋白沉积"\n' +
+      'RETURN a, p, c, d\n' +
+      'LIMIT 1;',
+    answer:
+      '✅ 可以理赔。\n\n' +
+      '产品「汇丰汇佑康宁D款重大疾病保险（MIL）」§10.1+ 罕见重疾扩展条款覆盖严重肺泡蛋白沉积症 ' +
+      '（《重疾定义》第54条）。客户年龄段「中老年 50-65 周岁」属于该产品 targets 范围，' +
+      '按重症档 100% 给付基本保险金。\n\n' +
+      '• 等待期 90 天（已过）\n' +
+      '• 所需材料：病理报告原件 + 诊断证明\n' +
+      '• 理赔流程：报案(10d) → 资料(5d) → 核定(30d) → 给付(10d)\n' +
+      '• 监管依据：内合规字[2025]018号',
+  },
+  {
+    label: '❌ 50岁 + 任意重疾险 + 罕见遗传病（范可尼/肌营养不良/脑白质营养不良）',
+    question: '我是50岁的客户，买了你们的某款重疾险，确诊了范可尼综合征（或肌营养不良/肾上腺脑白质营养不良）这类罕见病，能理赔吗？',
+    cypher:
+      'MATCH (a:AgeSegment {name:"中老年 50-65 周岁"})\n' +
+      '       <-[:targets]- (p:InsuranceProduct)\n' +
+      '       -[:excludes]-> (e:Exclusion)\n' +
+      '       -[:excludes_disease]-> (d:Disease)\n' +
+      'WHERE d.disease_name CONTAINS "范可尼"\n' +
+      '   OR d.disease_name CONTAINS "肌营养不良"\n' +
+      '   OR d.disease_name CONTAINS "脑白质"\n' +
+      'RETURN a, p, e, d;',
+    answer:
+      '❌ 不能理赔。\n\n' +
+      '无论是 MIL（汇丰汇佑康宁D款）还是 WPE（汇丰附加豁免保险费2023重大疾病保险），' +
+      '均通过 [excludes] 边连到 Exclusion 节点「WPE §11.17 遗传性疾病免责」，' +
+      '该 Exclusion 节点又通过 [excludes_disease] 边明确指向所有「遗传性 / 染色体异常 / 代谢性遗传」类罕见病。\n\n' +
+      '条款原文：「因遗传性疾病、染色体异常或代谢性遗传病所导致的重大疾病，本公司不承担给付责任。」\n\n' +
+      '• 命中条款：WPE §11.17\n' +
+      '• 监管依据：内合规字[2025]018号\n' +
+      '• 这是图谱"明文除外"，不是 LLM 推断 — 答案 100% 可审计。',
+  },
+  {
+    label: '🔍 50岁客户能买的所有重疾险',
+    question: '我是50岁的客户，你们有哪些重疾险适合我？',
+    cypher:
+      'MATCH (a:AgeSegment {name:"中老年 50-65 周岁"})\n' +
+      '       <-[:targets]- (p:InsuranceProduct)\n' +
+      'WHERE p.name CONTAINS "重大疾病"\n' +
+      'RETURN a, p\n' +
+      'LIMIT 12;',
+    answer:
+      '🔍 找到 50 岁年龄段（中老年 50-65 周岁）适用的重疾产品，' +
+      '通过 InsuranceProduct -[targets]-> AgeSegment 边筛选，名称含"重大疾病"的产品。\n\n' +
+      '具体产品名见图谱（每条线 = 一个 targets 关系）。点 List View 看完整产品代码。',
+  },
+];
+
+function matchDemoQuestion(text: string): DemoQA | null {
+  const t = text.toLowerCase();
+  // Match by simple keyword bag (mock text-to-cypher logic)
+  if (/范可尼|肌营养不良|脑白质|遗传/.test(text)) return DEMO_QUESTIONS[1];
+  if (/肺泡蛋白沉积|肺孢子菌|罕见/.test(text) && /(mil|康宁|重疾)/i.test(text)) return DEMO_QUESTIONS[0];
+  if (/适合|有哪些|推荐|哪些产品/.test(text) && /50/.test(text)) return DEMO_QUESTIONS[2];
+  return null;
 }
 
 function buildCypher(
@@ -85,6 +166,7 @@ function getNodeLabel(obj: Record<string, unknown>): string {
 }
 
 function getNodeId(obj: Record<string, unknown>, fallback: string): string {
+  if (obj._id != null) return `n-${String(obj._id)}`;
   if (obj.id != null) return `n-${String(obj.id)}`;
   return fallback;
 }
@@ -166,6 +248,11 @@ export function ObjectExplorer() {
   const [selectedObjectTypeIds, setSelectedObjectTypeIds] = useState<Set<string>>(new Set());
   const [selectedLinkTypeIds, setSelectedLinkTypeIds] = useState<Set<string>>(new Set());
   const [cypherInput, setCypherInput] = useState('');
+  const [userQuestion, setUserQuestion] = useState('');
+  const [mockedAnswer, setMockedAnswer] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [answerExpanded, setAnswerExpanded] = useState(false);
+  const [userQOpen, setUserQOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null);
@@ -269,6 +356,19 @@ export function ObjectExplorer() {
     }
   }, [graphData, resultView, dagLayoutMode]);
 
+  // ESC closes any expanded overlay (answer card or graph fullscreen)
+  useEffect(() => {
+    if (!answerExpanded && !canvasFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (answerExpanded) setAnswerExpanded(false);
+        if (canvasFullscreen) setCanvasFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [answerExpanded, canvasFullscreen]);
+
   const handleExecute = async () => {
     const query = cypherInput.trim();
     if (!query) {
@@ -285,6 +385,44 @@ export function ObjectExplorer() {
       toast.error(e instanceof Error ? e.message : 'Query failed');
     } finally {
       setExecuting(false);
+    }
+  };
+
+  /**
+   * Mock text-to-Cypher: match the question against DEMO_QUESTIONS,
+   * generate the matching Cypher, set it into the editor, run it, and
+   * surface the prepared natural-language answer.
+   * Has a fake 600ms "thinking" delay to make the demo feel real.
+   */
+  const handleAskQuestion = async () => {
+    const q = userQuestion.trim();
+    if (!q) {
+      toast.error('Type a question or pick one from the dropdown');
+      return;
+    }
+    const matched = matchDemoQuestion(q);
+    if (!matched) {
+      toast.error('Demo 模式仅识别预设问题。请从下拉菜单选一个或输入含相关关键词的问题。');
+      return;
+    }
+    setGenerating(true);
+    setMockedAnswer(null);
+    setResult(null);
+    setCypherInput(matched.cypher);
+    // Fake "LLM thinking" pause so the demo feels real
+    await new Promise((r) => setTimeout(r, 600));
+    setExecuting(true);
+    try {
+      const data = await executeCypherQuery(matched.cypher);
+      setResult(data);
+      setResultView('graph');
+      setMockedAnswer(matched.answer);
+      toast.success(`Generated Cypher → ${data.rows.length} rows`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Query failed');
+    } finally {
+      setExecuting(false);
+      setGenerating(false);
     }
   };
 
@@ -339,6 +477,79 @@ export function ObjectExplorer() {
         </aside>
         <main className="object-explorer-main">
           <div className="object-explorer-search-bar">
+            <div className={`object-explorer-userq-wrap${userQOpen ? '' : ' object-explorer-userq-collapsed'}`}>
+              <button
+                type="button"
+                className="object-explorer-userq-header"
+                onClick={() => setUserQOpen((v) => !v)}
+                aria-expanded={userQOpen}
+                aria-controls="object-explorer-userq-body"
+              >
+                <Sparkles size={14} aria-hidden />
+                <span className="object-explorer-userq-title">Ask in plain language</span>
+                <span className="object-explorer-userq-badge">demo · text-to-cypher (mock)</span>
+                {!userQOpen && userQuestion.trim() && (
+                  <span className="object-explorer-userq-preview" title={userQuestion}>
+                    {userQuestion.length > 60 ? userQuestion.slice(0, 60) + '…' : userQuestion}
+                  </span>
+                )}
+                <span className="object-explorer-userq-chevron" aria-hidden>
+                  {userQOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </span>
+              </button>
+              {userQOpen && (
+                <div id="object-explorer-userq-body" className="object-explorer-userq-body">
+                  <div className="object-explorer-userq-row">
+                    <select
+                      className="object-explorer-userq-preset"
+                      value=""
+                      onChange={(e) => {
+                        const idx = parseInt(e.target.value, 10);
+                        if (!Number.isNaN(idx) && DEMO_QUESTIONS[idx]) {
+                          setUserQuestion(DEMO_QUESTIONS[idx].question);
+                        }
+                      }}
+                    >
+                      <option value="">— Pick a sample question —</option>
+                      {DEMO_QUESTIONS.map((q, i) => (
+                        <option key={i} value={i}>
+                          {q.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <textarea
+                    id="object-explorer-userq"
+                    className="object-explorer-userq-input"
+                    value={userQuestion}
+                    onChange={(e) => setUserQuestion(e.target.value)}
+                    placeholder="例如: 我是50岁的客户，买了汇丰汇佑康宁D款重疾险，确诊了严重肺泡蛋白沉积症，能理赔吗？"
+                    rows={2}
+                  />
+                  <div className="object-explorer-userq-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleAskQuestion}
+                      disabled={generating || executing || !userQuestion.trim()}
+                      title="Demo: maps the question to a pre-defined Cypher, runs it, and shows a final answer"
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 size={16} className="object-explorer-spinner" />
+                          Generating Cypher...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} />
+                          Generate Cypher & Run
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="object-explorer-cypher-wrap">
               <label htmlFor="object-explorer-cypher" className="object-explorer-cypher-label">
                 Cypher query
@@ -374,6 +585,28 @@ export function ObjectExplorer() {
             </div>
           </div>
           <div className="object-explorer-results">
+            {mockedAnswer && (
+              <div
+                className={`object-explorer-answer-card${answerExpanded ? ' object-explorer-answer-card-fullscreen' : ''}`}
+                role={answerExpanded ? 'dialog' : undefined}
+                aria-modal={answerExpanded || undefined}
+              >
+                <div className="object-explorer-answer-header">
+                  <Sparkles size={16} aria-hidden />
+                  <span>Final Answer (grounded in graph)</span>
+                  <button
+                    type="button"
+                    className="object-explorer-answer-maximize"
+                    onClick={() => setAnswerExpanded((v) => !v)}
+                    title={answerExpanded ? 'Restore (Esc)' : 'Maximize'}
+                    aria-label={answerExpanded ? 'Restore' : 'Maximize'}
+                  >
+                    {answerExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
+                <div className="object-explorer-answer-body">{mockedAnswer}</div>
+              </div>
+            )}
             {result === null ? (
               <p className="object-explorer-results-placeholder">
                 Select object types or link types to compose a Cypher MATCH query, then click Execute to see results.
@@ -401,6 +634,17 @@ export function ObjectExplorer() {
                     <Network size={16} />
                     <span>Graph View</span>
                   </button>
+                  {resultView === 'graph' && (
+                    <button
+                      type="button"
+                      className="object-explorer-view-btn object-explorer-view-btn-icon"
+                      onClick={() => setCanvasFullscreen((v) => !v)}
+                      title={canvasFullscreen ? 'Exit fullscreen (Esc)' : 'Maximize graph'}
+                      aria-label={canvasFullscreen ? 'Exit fullscreen' : 'Maximize graph'}
+                    >
+                      {canvasFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                    </button>
+                  )}
                 </div>
                 {resultView === 'list' ? (
               <div className="object-explorer-table-wrap">

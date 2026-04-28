@@ -70,6 +70,8 @@ export interface EvaluationRunListItem {
   pass_count: number;
   avg_score: number | null;
   created_at: string;
+  judge_model_id?: string | null;
+  judge_model_name?: string | null;
 }
 
 export interface EvaluationRunListResponse {

@@ -121,6 +121,8 @@ class EvaluationRunListItem(BaseModel):
     pass_count: int
     avg_score: float | None
     created_at: datetime
+    judge_model_id: str | None = None
+    judge_model_name: str | None = None
 
     model_config = {"from_attributes": True}
 

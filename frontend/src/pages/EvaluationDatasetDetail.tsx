@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -67,6 +67,17 @@ export function EvaluationDatasetDetail() {
   const [compareData, setCompareData] = useState<EvaluationCompareResponse | null>(null);
   const [compareLoading, setCompareLoading] = useState(false);
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
+
+  const runById = useMemo(() => {
+    const m = new Map<string, EvaluationRunListItem>();
+    for (const r of runs) m.set(r.id, r);
+    return m;
+  }, [runs]);
+  const judgeLabel = (runId: string): string | null => {
+    const r = runById.get(runId);
+    if (!r) return null;
+    return r.judge_model_name || r.judge_model_id || null;
+  };
 
   const loadDataset = useCallback(async () => {
     if (!datasetId) return;
@@ -563,12 +574,21 @@ export function EvaluationDatasetDetail() {
               className="eval-compare-select"
             >
               <option value="">—</option>
-              {runs.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {new Date(r.created_at).toLocaleString()} · {r.evaluation_type}
-                </option>
-              ))}
+              {runs.map((r) => {
+                const model = r.judge_model_name || r.judge_model_id;
+                return (
+                  <option key={r.id} value={r.id}>
+                    {new Date(r.created_at).toLocaleString()} · {r.evaluation_type}
+                    {model ? ` · ${model}` : ''}
+                  </option>
+                );
+              })}
             </select>
+            {compareRunA && (
+              <span className="eval-compare-model">
+                Judge model: {judgeLabel(compareRunA) ?? '—'}
+              </span>
+            )}
           </label>
           <label>
             <span>Run B</span>
@@ -578,12 +598,21 @@ export function EvaluationDatasetDetail() {
               className="eval-compare-select"
             >
               <option value="">—</option>
-              {runs.map((r) => (
-                <option key={`b-${r.id}`} value={r.id}>
-                  {new Date(r.created_at).toLocaleString()} · {r.evaluation_type}
-                </option>
-              ))}
+              {runs.map((r) => {
+                const model = r.judge_model_name || r.judge_model_id;
+                return (
+                  <option key={`b-${r.id}`} value={r.id}>
+                    {new Date(r.created_at).toLocaleString()} · {r.evaluation_type}
+                    {model ? ` · ${model}` : ''}
+                  </option>
+                );
+              })}
             </select>
+            {compareRunB && (
+              <span className="eval-compare-model">
+                Judge model: {judgeLabel(compareRunB) ?? '—'}
+              </span>
+            )}
           </label>
           <button
             type="button"
