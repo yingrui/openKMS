@@ -33,7 +33,7 @@ flowchart TB
     LLM["OpenAI compatible Service Provider"]
   end
 
-  Frontend -->|HTTP :8102| Backend
+  Frontend -->|"HTTP via proxy (Vite :5173→8102; Docker UI :8082 nginx→backend)"| Backend
   Backend --> PG
   Backend --> S3
   Backend --> Worker
@@ -432,6 +432,6 @@ flowchart LR
 | Backend | `OPENKMS_OIDC_*`, `OPENKMS_FRONTEND_URL` – issuer, confidential client, SPA origin, post-logout client id, service client id (`azp`) for CLI JWT |
 | Backend | `AWS_*` – S3/MinIO for file storage (optional) |
 | Frontend | `config/index.ts` – `apiUrl`, `authMode` (fallback), `oidc` (`VITE_OIDC_*`). Runtime mode from `GET /api/auth/public-config`. Optional `VITE_AUTH_MODE` fallback if the API is unreachable |
-| Vite dev | Proxy `/api`, `/sync-session`, `/clear-session` → backend; `/buckets/openkms` → MinIO |
+| Vite dev | Proxy **`/api`**, **`/internal-api`**, **`/sync-session`**, **`/clear-session`** → backend (**8102**); **`/buckets/openkms`** → MinIO (**9000** when MinIO is published on the host) |
 | Alembic | `alembic.ini` – uses `settings.database_url_sync` |
 | Cursor | `.cursor/rules/` – project rules (e.g. docs-before-commit, alembic-migrations) |
