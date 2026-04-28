@@ -54,6 +54,12 @@ import { fetchChannelById, type ChannelNode } from '../data/channelsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../data/modelsApi';
+import {
+  filterQaAgentSkills,
+  getActiveSlash as getActiveQaSlash,
+  type QaAgentSkill,
+} from '../data/qaAgentSkills';
+import { WikiAgentMessageBody } from '../components/wiki/WikiAgentMessageBody';
 import './KnowledgeBaseDetail.css';
 
 type TabId = 'documents' | 'faqs' | 'chunks' | 'search' | 'qa' | 'settings';
@@ -215,6 +221,80 @@ export function KnowledgeBaseDetail() {
   const [qaInput, setQaInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [qaLoading, setQaLoading] = useState(false);
+  const [qaChatLoadedFor, setQaChatLoadedFor] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!kbId) return;
+    setQaChatLoadedFor(null);
+    try {
+      const stored = sessionStorage.getItem(`openkms_kb_qa_chat_v1_${kbId}`);
+      setChatMessages(stored ? (JSON.parse(stored) as ChatMessage[]) : []);
+    } catch {
+      setChatMessages([]);
+    }
+    setQaChatLoadedFor(kbId);
+  }, [kbId]);
+
+  useEffect(() => {
+    if (!kbId || qaChatLoadedFor !== kbId) return;
+    const key = `openkms_kb_qa_chat_v1_${kbId}`;
+    if (chatMessages.length === 0) sessionStorage.removeItem(key);
+    else sessionStorage.setItem(key, JSON.stringify(chatMessages));
+  }, [kbId, chatMessages, qaChatLoadedFor]);
+  // QA slash skill picker
+  const [qaSlashList, setQaSlashList] = useState<QaAgentSkill[]>([]);
+  const [qaSlashHighlight, setQaSlashHighlight] = useState(0);
+  const [qaSlashDismissKey, setQaSlashDismissKey] = useState<string | null>(null);
+  const qaInputRef = useRef<HTMLInputElement | null>(null);
+  const lastQaSlashKeyRef = useRef('');
+
+  const syncQaSlashMenu = useCallback(
+    (el: HTMLInputElement) => {
+      const v = el.value;
+      const cur = el.selectionStart ?? v.length;
+      const st = getActiveQaSlash(v, cur);
+      if (!st) {
+        lastQaSlashKeyRef.current = '';
+        setQaSlashList([]);
+        if (qaSlashDismissKey !== null) setQaSlashDismissKey(null);
+        return;
+      }
+      const sk = `${st.slashIndex}:${st.filter}`;
+      const list = filterQaAgentSkills(st.filter);
+      if (sk !== lastQaSlashKeyRef.current) {
+        lastQaSlashKeyRef.current = sk;
+        setQaSlashHighlight(0);
+      } else {
+        setQaSlashHighlight((h) => (list.length ? Math.min(h, list.length - 1) : 0));
+      }
+      if (qaSlashDismissKey === sk) return;
+      setQaSlashList(list);
+    },
+    [qaSlashDismissKey]
+  );
+
+  const applyQaSlashSkill = useCallback((skill: QaAgentSkill) => {
+    const el = qaInputRef.current;
+    if (!el) return;
+    const v = el.value;
+    const cur = el.selectionStart ?? v.length;
+    const st = getActiveQaSlash(v, cur);
+    if (!st) return;
+    const before = v.slice(0, st.slashIndex);
+    const after = v.slice(cur);
+    const ins = `/${skill.id} `;
+    setQaInput(`${before}${ins}${after}`);
+    setQaSlashList([]);
+    setQaSlashDismissKey(null);
+    setQaSlashHighlight(0);
+    lastQaSlashKeyRef.current = '';
+    requestAnimationFrame(() => {
+      if (!qaInputRef.current) return;
+      const p = before.length + ins.length;
+      qaInputRef.current.focus();
+      qaInputRef.current.setSelectionRange(p, p);
+    });
+  }, []);
 
   // Settings
   const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
@@ -1260,7 +1340,20 @@ export function KnowledgeBaseDetail() {
         {/* ===== QA TAB ===== */}
         {activeTab === 'qa' && (
           <section className="kb-section kb-qa-section">
-            <h2>Q&A</h2>
+            <div className="kb-qa-header">
+              <h2>Q&A</h2>
+              {chatMessages.length > 0 && (
+                <button
+                  type="button"
+                  className="kb-qa-clear-btn"
+                  onClick={() => setChatMessages([])}
+                  title="Clear conversation"
+                  aria-label="Clear conversation"
+                >
+                  <Trash2 size={14} strokeWidth={2} aria-hidden /> Clear
+                </button>
+              )}
+            </div>
             <p className="kb-section-desc">
               Ask questions against this knowledge base. Requires an agent service to be configured in Settings.
             </p>
@@ -1280,7 +1373,13 @@ export function KnowledgeBaseDetail() {
                 )}
                 {chatMessages.map((msg, i) => (
                   <div key={i} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
-                    <div className="kb-qa-msg-content">{msg.content}</div>
+                    <div className="kb-qa-msg-content">
+                      {msg.role === 'assistant' ? (
+                        <WikiAgentMessageBody text={msg.content} variant="assistant" />
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="kb-qa-sources">
                         <span className="kb-qa-sources-label">Sources:</span>
@@ -1300,13 +1399,83 @@ export function KnowledgeBaseDetail() {
                 )}
               </div>
               <form className="kb-qa-input-form" onSubmit={handleAsk}>
-                <input
-                  type="text"
-                  placeholder="Ask a question..."
-                  value={qaInput}
-                  onChange={(e) => setQaInput(e.target.value)}
-                  disabled={qaLoading || !kb.agent_url}
-                />
+                <div className="kb-qa-input-wrap">
+                  {qaSlashList.length > 0 && (
+                    <ul
+                      className="kb-qa-slash-menu"
+                      role="listbox"
+                      aria-label="qa-agent skills"
+                      id="kb-qa-slash-list"
+                    >
+                      {qaSlashList.map((s, i) => (
+                        <li key={s.id} role="option" aria-selected={i === qaSlashHighlight}>
+                          <button
+                            type="button"
+                            className={
+                              i === qaSlashHighlight
+                                ? 'kb-qa-slash-item kb-qa-slash-item--active'
+                                : 'kb-qa-slash-item'
+                            }
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => applyQaSlashSkill(s)}
+                            id={`kb-qa-skill-${s.id}`}
+                          >
+                            <span className="kb-qa-slash-id">/{s.id}</span>
+                            <span className="kb-qa-slash-desc">{s.description}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <input
+                    ref={qaInputRef}
+                    type="text"
+                    placeholder="Ask a question…  Type / for skills"
+                    value={qaInput}
+                    disabled={qaLoading || !kb.agent_url}
+                    aria-autocomplete="list"
+                    aria-controls={qaSlashList.length > 0 ? 'kb-qa-slash-list' : undefined}
+                    aria-expanded={qaSlashList.length > 0}
+                    aria-activedescendant={
+                      qaSlashList[qaSlashHighlight] ? `kb-qa-skill-${qaSlashList[qaSlashHighlight]!.id}` : undefined
+                    }
+                    onChange={(e) => {
+                      setQaInput(e.target.value);
+                      syncQaSlashMenu(e.target);
+                    }}
+                    onSelect={(e) => syncQaSlashMenu(e.currentTarget)}
+                    onKeyUp={(e) => syncQaSlashMenu(e.currentTarget)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        const el = e.currentTarget;
+                        const st = getActiveQaSlash(el.value, el.selectionStart ?? 0);
+                        if (st) {
+                          e.preventDefault();
+                          setQaSlashDismissKey(`${st.slashIndex}:${st.filter}`);
+                          setQaSlashList([]);
+                        }
+                        return;
+                      }
+                      if (qaSlashList.length > 0) {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setQaSlashHighlight((h) => (h + 1) % qaSlashList.length);
+                          return;
+                        }
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setQaSlashHighlight((h) => (h - 1 + qaSlashList.length) % qaSlashList.length);
+                          return;
+                        }
+                        if (e.key === 'Enter' || e.key === 'Tab') {
+                          e.preventDefault();
+                          applyQaSlashSkill(qaSlashList[qaSlashHighlight]!);
+                          return;
+                        }
+                      }
+                    }}
+                  />
+                </div>
                 <button type="submit" disabled={qaLoading || !qaInput.trim() || !kb.agent_url}>
                   <Send size={18} />
                 </button>

@@ -1,0 +1,132 @@
+/* Markdown styles for assistant/user chat bubbles. */
+.wiki-agent-md {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.wiki-agent-md p:first-child,
+.wiki-agent-md p.wiki-agent-md__p:first-child {
+  margin-top: 0;
+}
+
+.wiki-agent-md p:last-child,
+.wiki-agent-md p.wiki-agent-md__p:last-child {
+  margin-bottom: 0;
+}
+
+.wiki-agent-md__p,
+.wiki-agent-md p {
+  margin: 0.4em 0;
+}
+
+.wiki-agent-md--user .wiki-agent-md__p:first-child,
+.wiki-agent-md--user p:first-child {
+  margin-top: 0;
+}
+
+.wiki-agent-md__a {
+  color: var(--color-accent, #0d9488);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wiki-agent-md__pre {
+  margin: 0.45rem 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  overflow: auto;
+  max-width: 100%;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+.wiki-agent-md__code--inline {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.wiki-agent-md__code--block {
+  display: block;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.78em;
+  white-space: pre;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.wiki-agent-md__ul,
+.wiki-agent-md__ol {
+  margin: 0.4em 0;
+  padding-left: 1.4rem;
+}
+
+.wiki-agent-md__li {
+  margin: 0.2em 0;
+}
+
+.wiki-agent-md__h1,
+.wiki-agent-md__h2,
+.wiki-agent-md__h3 {
+  font-weight: 600;
+  margin: 0.7em 0 0.35em;
+  line-height: 1.3;
+}
+
+.wiki-agent-md__h1 {
+  font-size: 1.05rem;
+}
+
+.wiki-agent-md__h2 {
+  font-size: 1rem;
+}
+
+.wiki-agent-md__h3 {
+  font-size: 0.95rem;
+}
+
+.wiki-agent-md__strong {
+  font-weight: 600;
+}
+
+.wiki-agent-md__quote {
+  margin: 0.45rem 0;
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid var(--color-accent, #0d9488);
+  color: var(--color-text-secondary, #404040);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.wiki-agent-md__table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0.4rem 0;
+}
+
+.wiki-agent-md__table {
+  width: 100%;
+  font-size: 0.8125rem;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.wiki-agent-md__th,
+.wiki-agent-md__td {
+  border: 1px solid var(--color-border, #e2e8f0);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.wiki-agent-md__th {
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+  font-weight: 600;
+}

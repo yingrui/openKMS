@@ -18,6 +18,7 @@ import {
   extractDocumentMetadata,
   fetchDocumentById,
   fetchDocumentRelationships,
+  fetchDocumentsByChannel,
   fetchPageIndex,
   getDocumentFileUrl,
   getDocumentFilesBaseUrl,
@@ -340,6 +341,7 @@ export function DocumentDetail() {
   const [newRelNote, setNewRelNote] = useState('');
   const [relSaving, setRelSaving] = useState(false);
   const [lineageSectionOpen, setLineageSectionOpen] = useState(false);
+  const [lineageSiblings, setLineageSiblings] = useState<DocumentResponse[]>([]);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -772,6 +774,24 @@ export function DocumentDetail() {
     void refreshLineage();
   }, [lineageSectionOpen, id, docConfig, refreshLineage]);
 
+  // Fetch sibling documents (same channel) so the edge target field can be picked by filename.
+  useEffect(() => {
+    if (!lineageSectionOpen || !document?.channel_id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { items } = await fetchDocumentsByChannel(document.channel_id);
+        if (cancelled) return;
+        setLineageSiblings(items.filter((d) => d.id !== document.id));
+      } catch {
+        if (!cancelled) setLineageSiblings([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lineageSectionOpen, document?.channel_id, document?.id]);
+
   useEffect(() => {
     if (!lifecycleEdit || !document) return;
     setEditSeriesId(document.series_id ?? document.id);
@@ -812,10 +832,22 @@ export function DocumentDetail() {
       toast.error('Target document ID required');
       return;
     }
+    const raw = newRelTarget.trim();
+    // Accept either a UUID directly, or a filename that matches a sibling document.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let resolvedTargetId = raw;
+    if (!UUID_RE.test(raw)) {
+      const match = lineageSiblings.find((d) => d.name === raw);
+      if (!match) {
+        toast.error('Target not recognized — pick a filename from the list or paste a UUID');
+        return;
+      }
+      resolvedTargetId = match.id;
+    }
     setRelSaving(true);
     try {
       await createDocumentRelationship(id, {
-        target_document_id: newRelTarget.trim(),
+        target_document_id: resolvedTargetId,
         relation_type: newRelType,
         note: newRelNote.trim() || null,
       });
@@ -828,7 +860,7 @@ export function DocumentDetail() {
     } finally {
       setRelSaving(false);
     }
-  }, [id, newRelTarget, newRelType, newRelNote, refreshLineage]);
+  }, [id, newRelTarget, newRelType, newRelNote, lineageSiblings, refreshLineage]);
 
   const handleDeleteRelationship = useCallback(
     async (relationshipId: string) => {
@@ -1716,11 +1748,17 @@ export function DocumentDetail() {
                                       <input
                                         type="text"
                                         className="document-detail-info-input"
-                                        placeholder="Target document ID"
+                                        placeholder="Filename or UUID"
                                         value={newRelTarget}
                                         onChange={(e) => setNewRelTarget(e.target.value)}
-                                        aria-label="Target document ID"
+                                        list="document-lineage-sibling-list"
+                                        aria-label="Target document (filename or UUID)"
                                       />
+                                      <datalist id="document-lineage-sibling-list">
+                                        {lineageSiblings.map((d) => (
+                                          <option key={d.id} value={d.name} label={d.name} />
+                                        ))}
+                                      </datalist>
                                       <input
                                         type="text"
                                         className="document-detail-info-input"

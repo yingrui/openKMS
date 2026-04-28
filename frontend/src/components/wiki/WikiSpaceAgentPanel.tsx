@@ -378,6 +378,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           setConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
         }
         await postAgentMessageStream(convId, t, (e) => {
+          console.log('[WikiCopilot stream]', e.type, e);
           if (e.type === 'user') {
             setLines((prev) =>
               prev.map((p) => (p.id === tempUserId ? { ...p, id: e.message.id } : p))

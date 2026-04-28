@@ -378,9 +378,9 @@ def _neo4j_safe_label(name: str) -> str:
 
 
 def _neo4j_safe_rel_type(name: str) -> str:
-    """Convert link type name to Neo4j relationship type (UPPER_SNAKE)."""
-    s = re.sub(r"[^a-zA-Z0-9_]", "_", name.strip()).upper()
-    return s or "RELATES_TO"
+    """Sanitize a link type name for use as a Neo4j relationship type. Preserves case — link_type names are stored in lower_snake_case in Postgres and indexed verbatim in Neo4j (e.g. governed_by, covers)."""
+    s = re.sub(r"[^a-zA-Z0-9_]", "_", name.strip())
+    return s or "relates_to"
 
 
 @router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE))])

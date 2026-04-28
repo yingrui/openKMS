@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     llm_api_key: str = Field(default="no-key", validation_alias="OPENKMS_LLM_MODEL_API_KEY")
     llm_model_name: str = Field(default="qwen2.5", validation_alias="OPENKMS_LLM_MODEL_NAME")
 
+    rerank_enabled: bool = Field(default=True, validation_alias="OPENKMS_RERANK_ENABLED")
+    rerank_model_name: str = Field(default="BAAI/bge-reranker-v2-m3", validation_alias="OPENKMS_RERANK_MODEL_NAME")
+    rerank_recall_top_k: int = Field(default=25, validation_alias="OPENKMS_RERANK_RECALL_TOP_K")
+
     host: str = "0.0.0.0"
     port: int = 8103
 

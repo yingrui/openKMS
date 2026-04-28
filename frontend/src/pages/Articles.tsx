@@ -10,42 +10,9 @@ import {
   Folder,
 } from 'lucide-react';
 import { defaultArticleChannel, getArticleLeafChannelIds } from '../data/channels';
+import { mockArticlesByChannel } from '../data/articles';
+import type { ArticleItem } from '../data/articles';
 import './Articles.css';
-
-interface ArticleItem {
-  id: string;
-  title: string;
-  slug: string;
-  author: string;
-  status: string;
-  updated: string;
-  fields: Record<string, string>;
-}
-
-const mockArticlesByChannel: Record<string, ArticleItem[]> = {
-  ac1a: [
-    { id: '1', title: 'Life vs Term: Key Product Differences', slug: 'life-vs-term', author: 'Sales Lead', status: 'Published', updated: '2 hours ago', fields: { category: 'Sales', tags: 'product, life' } },
-  ],
-  ac1b: [
-    { id: '2', title: 'Handling Premium Objections', slug: 'premium-objections', author: 'Sales Lead', status: 'Published', updated: '1 day ago', fields: { category: 'Sales', tags: 'objection, pricing' } },
-  ],
-  ac2a: [
-    { id: '3', title: 'Risk Scoring Criteria', slug: 'risk-scoring', author: 'UW Manager', status: 'Published', updated: '3 days ago', fields: { category: 'Underwriting', tags: 'risk' } },
-  ],
-  ac2b: [
-    { id: '4', title: 'Approval Authority Matrix', slug: 'approval-matrix', author: 'UW Manager', status: 'Published', updated: '1 week ago', fields: { category: 'Underwriting', tags: 'approval' } },
-  ],
-  ac3a: [
-    { id: '5', title: 'Claims Intake Checklist', slug: 'claims-intake', author: 'Ops Lead', status: 'Published', updated: '5 days ago', fields: { category: 'Operation', tags: 'claims' } },
-  ],
-  ac3b: [
-    { id: '6', title: 'Renewal Notice Timeline', slug: 'renewal-timeline', author: 'Ops Lead', status: 'Published', updated: '2 days ago', fields: { category: 'Operation', tags: 'renewal' } },
-  ],
-  root: [],
-  ac1: [],
-  ac2: [],
-  ac3: [],
-};
 
 export function Articles() {
   const navigate = useNavigate();

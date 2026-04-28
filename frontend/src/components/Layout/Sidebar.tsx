@@ -40,8 +40,7 @@ import type { ChannelNode } from '../../data/channelUtils';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './Sidebar.css';
 
-/** Article channels: placeholder (no backend yet) */
-const articleChannels: ChannelNode[] = [];
+import { articleChannels } from '../../data/channels';
 
 function SidebarChannelTree({
   channels,

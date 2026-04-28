@@ -3,6 +3,7 @@ import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Link } from 'react-router-dom';
+import './WikiAgentMessageBody.css';
 
 type WikiAgentMessageBodyProps = {
   text: string;
