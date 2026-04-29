@@ -109,7 +109,7 @@ If vector search fails with a 503, the API message is: *Vector search requires t
 
 4. **Not a vector error** — Note the **full** API error or backend traceback. Missing embeddings, wrong KB config, or auth issues produce different messages than the 503 pgvector text.
 
-Tables are created automatically on startup via `init_db()`.
+**Schema and pgvector are not applied by the web process.** Use **`./dev.sh`** from `backend/`: it runs **`scripts/ensure_pgvector.py`** (`CREATE EXTENSION IF NOT EXISTS vector` plus local Docker hints), then **`alembic upgrade head`**, then uvicorn. Docker backend **`CMD`** runs **`alembic upgrade head`** (bootstrap migrations include the same extension) then uvicorn.
 
 ## Run
 

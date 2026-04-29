@@ -1,4 +1,4 @@
-/** Re-exports and legacy stubs. Document channels come from API via DocumentChannelsContext. */
+/** Re-exports and channel tree helpers. Document channels: DocumentChannelsContext + channelsApi. */
 
 export type { ChannelNode } from './channelUtils';
 export {
@@ -7,11 +7,11 @@ export {
   getFirstLeafChannelId,
 } from './channelUtils';
 
-/** Article channels: placeholder (no backend yet). */
-export const articleChannels: { id: string; name: string; children?: unknown[] }[] = [];
+import type { ChannelNode } from './channelUtils';
+import { getDocumentLeafChannelIds } from './channelUtils';
 
-export const defaultArticleChannel = '';
-
-export function getArticleLeafChannelIds(channelId: string): string[] {
-  return channelId ? [channelId] : [];
+/** Leaf article channel IDs under the selected channel (same tree rules as documents). */
+export function getArticleLeafChannelIds(channels: ChannelNode[], channelId: string): string[] {
+  if (!channelId) return [];
+  return getDocumentLeafChannelIds(channels, channelId);
 }

@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.auth import api_auth_router, router as auth_router
+from app.api.article_channels import router as article_channels_router
+from app.api.articles import router as articles_router
 from app.api.channels import router as channels_router
 from app.api.documents import router as documents_router
 from app.api.feature_toggles import router as feature_toggles_router
@@ -37,7 +39,6 @@ from app.api.system_settings import public_router as system_public_router
 from app.api.system_settings import router as system_settings_router
 from app.api.knowledge_map import router as knowledge_map_router
 from app.config import settings
-from app.database import init_db
 from app.middleware.strict_permission_patterns import StrictPermissionPatternMiddleware
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,6 @@ async def lifespan(app: FastAPI):
 
     from app.services.storage import ensure_bucket
 
-    await init_db()
     ensure_bucket()
 
     try:
@@ -106,6 +106,8 @@ app.include_router(knowledge_map_router, prefix="/api")
 app.include_router(home_hub_router, prefix="/api")
 app.include_router(channels_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
+app.include_router(article_channels_router, prefix="/api")
+app.include_router(articles_router, prefix="/api")
 app.include_router(feature_toggles_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(models_router, prefix="/api")

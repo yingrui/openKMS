@@ -56,9 +56,21 @@
 
 ### 3. Articles (Feature Toggle)
 
-- CMS-style articles with channel tree
-- List, detail, search, filter by status
-- Toggle via Console → Feature Toggles
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Article channels | ✅ | Tree CRUD **`GET/POST/PUT/DELETE /api/article-channels`** (merge, reorder); no document-style parsing pipeline on channels |
+| Articles CRUD | ✅ | **`GET/POST/PATCH/DELETE /api/articles`**; list by `channel_id` includes subtree channels; `GET /api/articles/stats`; hybrid markdown: DB column + **`articles/{id}/content.md`** in MinIO when storage is enabled |
+| Lifecycle | ✅ | **`PATCH /api/articles/{id}/lifecycle`** — `series_id`, `effective_from` / `effective_to`, `lifecycle_status`; API exposes **`is_current_for_rag`** (same rules as documents) |
+| Origin sync fields | ✅ | **`origin_article_id`**, **`last_synced_at`** on `articles` for external sync workflows (ingestion jobs not included in core) |
+| Files & images | ✅ | **`GET /api/articles/{id}/files/{path}`** — allowlisted paths (`images/`, `attachments/`, root `content.md`, `origin.html`); presigned redirect |
+| Attachments | ✅ | **`GET/POST/DELETE /api/articles/{id}/attachments`** — registry + objects under `articles/{id}/attachments/` |
+| Versions | ✅ | **`POST/GET /api/articles/{id}/versions`** and **`POST .../versions/{vid}/restore`** (snapshots of markdown + metadata) |
+| Knowledge Map | ✅ | **`article_channel`** resource links validated against **`article_channels`** |
+| Group scopes | ✅ | **`access_group_article_channels`**; Console group scopes include **Article channels** |
+| Permissions | ✅ | Catalog keys **`articles:read`** / **`articles:write`** (strict route/API patterns when enforced) |
+| SPA | ✅ | **`ArticleChannelsContext`** + sidebar tree; hub **`/articles`**; **`/articles/channels`** manage tree; **`/articles/channels/:id`** list (**New article** modal: title required, optional slug/body); **`/articles/channels/:id/settings`**; **`ArticleDetail`** edit title/slug/Markdown (**Save** = **`PATCH /api/articles/:id`** + **`PUT …/markdown`**), **Delete**, Write/Preview; legacy **`/articles?channel=`** → channel route |
+
+Toggle via Console → Feature Toggles
 
 ### 4. Knowledge Bases (Feature Toggle)
 
@@ -454,6 +466,22 @@
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
 - Metadata extraction: pydantic-ai Agent + StructuredDict; `extraction_model_id` designates LLM; `extraction_schema` stored as PostgreSQL `json` (not jsonb) to preserve key order; JSON Schema dict (type, properties, required)
+
+### Article Channel
+
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `created_at`
+- Tree structure like document channels; **no** `pipeline_id`, `auto_process`, or extraction fields (articles are not processed by the document VLM pipeline)
+
+### Article
+
+- `id`, `channel_id` (FK → article_channels), `name`, `slug` (optional), `markdown` (TEXT, working copy), `metadata` (JSONB), `series_id` (defaults to `id` on create), `effective_from`, `effective_to`, `lifecycle_status`, `origin_article_id` (optional, for sync from an external catalog), `last_synced_at`, `created_at`, `updated_at`
+- `is_current_for_rag` is computed on read (same lifecycle/date rules as documents)
+- MinIO bundle (when storage enabled): `articles/{id}/content.md`, `images/`, `attachments/`, optional `origin.html`
+
+### ArticleVersion / ArticleAttachment
+
+- **ArticleVersion**: `id`, `article_id`, `version_number`, `tag`, `note`, `markdown`, `metadata` (JSONB snapshot), `created_at`, `created_by_sub`, `created_by_name`
+- **ArticleAttachment**: `id`, `article_id`, `storage_path` (relative under article prefix), `original_filename`, `size_bytes`, `content_type`, `created_at`
 
 ### Document
 

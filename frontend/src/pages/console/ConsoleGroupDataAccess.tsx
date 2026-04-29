@@ -39,6 +39,7 @@ export function ConsoleGroupDataAccess() {
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [allUsers, setAllUsers] = useState<LocalUserRow[]>([]);
   const [channels, setChannels] = useState<{ id: string; label: string }[]>([]);
+  const [articleChannels, setArticleChannels] = useState<{ id: string; label: string }[]>([]);
   const [kbs, setKbs] = useState<Opt[]>([]);
   const [wikis, setWikis] = useState<Opt[]>([]);
   const [evals, setEvals] = useState<Opt[]>([]);
@@ -54,13 +55,14 @@ export function ConsoleGroupDataAccess() {
     setLoading(true);
     try {
       const headers = await getAuthHeaders();
-      const [sc, mem, usersPage, chRes, kbRes, wikiRes, evRes, dsRes, otRes, ltRes, drList] = await Promise.all([
+      const [sc, mem, usersPage, chRes, achRes, kbRes, wikiRes, evRes, dsRes, otRes, ltRes, drList] = await Promise.all([
         fetchGroupScopes(groupId),
         membershipLocal ? fetchGroupMembers(groupId) : Promise.resolve({ users: [] as { id: string }[] }),
         membershipLocal
           ? fetchAdminUsersPage().catch(() => ({ users: [] as LocalUserRow[] }))
           : Promise.resolve({ users: [] as LocalUserRow[] }),
         authAwareFetch(`${config.apiUrl}/api/document-channels`, { headers, credentials: 'include' }),
+        authAwareFetch(`${config.apiUrl}/api/article-channels`, { headers, credentials: 'include' }),
         authAwareFetch(`${config.apiUrl}/api/knowledge-bases`, { headers, credentials: 'include' }),
         authAwareFetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' }),
         authAwareFetch(`${config.apiUrl}/api/evaluation-datasets`, { headers, credentials: 'include' }),
@@ -71,6 +73,7 @@ export function ConsoleGroupDataAccess() {
       ]);
       setScopes({
         ...sc,
+        article_channel_ids: sc.article_channel_ids ?? [],
         data_resource_ids: sc.data_resource_ids ?? [],
       });
       setMemberIds(mem.users.map((u) => u.id));
@@ -79,6 +82,10 @@ export function ConsoleGroupDataAccess() {
       if (chRes.ok) {
         const tree = (await chRes.json()) as ChannelNode[];
         setChannels(flattenChannels(Array.isArray(tree) ? tree : []));
+      }
+      if (achRes.ok) {
+        const tree = (await achRes.json()) as ChannelNode[];
+        setArticleChannels(flattenChannels(Array.isArray(tree) ? tree : []));
       }
       if (kbRes.ok) {
         const j = await kbRes.json();
@@ -172,6 +179,7 @@ export function ConsoleGroupDataAccess() {
     if (!scopes) return null;
     const sections: { key: keyof GroupScopesOut; title: string; options: { id: string; label: string }[] }[] = [
       { key: 'channel_ids', title: 'Document channels', options: channels },
+      { key: 'article_channel_ids', title: 'Article channels', options: articleChannels },
       { key: 'knowledge_base_ids', title: 'Knowledge bases', options: kbs.map((x) => ({ id: x.id, label: x.name })) },
       { key: 'wiki_space_ids', title: 'Wiki spaces', options: wikis.map((x) => ({ id: x.id, label: x.name })) },
       { key: 'evaluation_dataset_ids', title: 'Evaluation datasets', options: evals.map((x) => ({ id: x.id, label: x.name })) },
@@ -188,7 +196,7 @@ export function ConsoleGroupDataAccess() {
       },
     ];
     return sections;
-  }, [scopes, channels, kbs, wikis, evals, datasets, objectTypes, linkTypes, dataResources]);
+  }, [scopes, channels, articleChannels, kbs, wikis, evals, datasets, objectTypes, linkTypes, dataResources]);
 
   if (!hasPermission(PERM_CONSOLE_GROUPS)) {
     return <Navigate to="/console" replace />;

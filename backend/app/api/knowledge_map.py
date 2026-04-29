@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_permission
 from app.database import get_db
+from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
 from app.models.wiki_models import WikiSpace
@@ -75,8 +76,9 @@ async def _validate_resource(db: AsyncSession, resource_type: str, resource_id: 
         if not ws:
             raise HTTPException(status_code=400, detail="wiki_space not found")
     else:
-        if not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", resource_id):
-            raise HTTPException(status_code=400, detail="Invalid article_channel id")
+        ch = await db.get(ArticleChannel, resource_id)
+        if not ch:
+            raise HTTPException(status_code=400, detail="article_channel not found")
 
 
 def _build_tree(

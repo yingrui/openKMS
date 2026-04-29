@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.access_group import (
+    AccessGroupArticleChannel,
     AccessGroupChannel,
     AccessGroupDataset,
     AccessGroupEvaluationDataset,
@@ -16,6 +17,7 @@ from app.models.access_group import (
     AccessGroupUser,
     AccessGroupWikiSpace,
 )
+from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
 
 
@@ -141,3 +143,58 @@ async def effective_object_type_ids(db: AsyncSession, user_id: str) -> set[str] 
 async def effective_link_type_ids(db: AsyncSession, user_id: str) -> set[str] | None:
     gids = await user_group_ids(db, user_id)
     return await _union_resource_ids(db, gids, AccessGroupLinkType, "link_type_id")
+
+
+def _expand_article_channel_ids(all_channels: list[ArticleChannel], roots: set[str]) -> set[str]:
+    by_parent: dict[str | None, list[ArticleChannel]] = {}
+    for c in all_channels:
+        by_parent.setdefault(c.parent_id, []).append(c)
+
+    out: set[str] = set()
+
+    def walk(cid: str) -> None:
+        if cid in out:
+            return
+        out.add(cid)
+        for ch in by_parent.get(cid, []):
+            walk(ch.id)
+
+    all_ids = {c.id for c in all_channels}
+    for r in roots:
+        if r in all_ids:
+            walk(r)
+    return out
+
+
+async def expanded_article_channel_ids_for_roots(db: AsyncSession, roots: set[str]) -> set[str]:
+    """Article channel IDs at or under roots, plus ancestors up to tree root (for tree UX)."""
+    if not roots:
+        return set()
+    ch_result = await db.execute(select(ArticleChannel))
+    all_ch = list(ch_result.scalars().all())
+    down = _expand_article_channel_ids(all_ch, roots)
+    by_id = {c.id: c for c in all_ch}
+    full = set(down)
+    for cid in list(down):
+        cur = by_id.get(cid)
+        while cur and cur.parent_id:
+            pid = cur.parent_id
+            if pid in full:
+                break
+            full.add(pid)
+            cur = by_id.get(pid)
+    return full
+
+
+async def effective_article_channel_ids(db: AsyncSession, user_id: str) -> set[str] | None:
+    """None = unrestricted. Empty set = no article channels. Non-empty = allowed IDs including descendants."""
+    gids = await user_group_ids(db, user_id)
+    if not gids:
+        return None
+    result = await db.execute(
+        select(AccessGroupArticleChannel.article_channel_id).where(AccessGroupArticleChannel.group_id.in_(gids))
+    )
+    roots = {str(row[0]) for row in result.all()}
+    if not roots:
+        return set()
+    return await expanded_article_channel_ids_for_roots(db, roots)

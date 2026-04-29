@@ -147,8 +147,6 @@ flowchart LR
     C3[ConsoleSettings]
     K1[KnowledgeBaseList]
     K2[KnowledgeBaseDetail]
-    A[Articles]
-    DA[data/articles.ts]
     DC[data/documents.ts - mockDocumentsByChannel]
   end
 
@@ -162,16 +160,15 @@ flowchart LR
 | `pages/DocumentsIndex.tsx` | Uses `fetchDocumentStats()` (real); document count is from API |
 | `pages/KnowledgeBaseList.tsx` | Mock KB list |
 | `pages/KnowledgeBaseDetail.tsx` | All tabs use mocks; all actions are no-ops |
-| `pages/Articles.tsx` | Mock articles; action buttons do nothing |
+| `pages/ArticleChannel.tsx` | Channel article list wired to API; table rows open detail only (no per-row move/duplicate from list) |
 | `data/documents.ts` | `mockDocumentsByChannel` is empty `{}` (unused) |
-| `data/articles.ts` | Mock article data |
 
 ### 5. Non-functional buttons
 
 Several UI buttons have no `onClick` handlers:
 
 - `DocumentChannel.tsx` – Edit, Move, Download actions on documents
-- `Articles.tsx` – New Article, Edit, Move, Duplicate, Delete
+- `ArticleChannel.tsx` – Per-row move/duplicate/delete from the list (edit/delete live on **`ArticleDetail`**)
 - `KnowledgeBaseDetail.tsx` – Add document/article, Generate FAQ, View, Remove
 - `KnowledgeBaseList.tsx` – New Knowledge Base
 - `ConsoleUsers.tsx` – Add User

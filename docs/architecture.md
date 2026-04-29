@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/taxonomy), home, channels, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/taxonomy), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -51,8 +51,8 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **taxonomy_nodes** (self-referential tree of terms for the Knowledge Map) and **taxonomy_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
-| **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; **Graph View** cache JSON `wiki/{space_id}/link-graph.json` (invalidated when `max(wiki_pages.updated_at)` is newer than the object’s `LastModified`); ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
+| **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_article_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **taxonomy_nodes** (self-referential tree of terms for the Knowledge Map) and **taxonomy_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; **article bundles** `articles/{article_id}/content.md`, `articles/{article_id}/images/…`, `articles/{article_id}/attachments/…`, optional `origin.html` (served via authenticated `GET /api/articles/{id}/files/{path}` → presigned redirect); wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; **Graph View** cache JSON `wiki/{space_id}/link-graph.json` (invalidated when `max(wiki_pages.updated_at)` is newer than the object’s `LastModified`); ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
 | **QA Agent** | Separate FastAPI + LangGraph service; retrieves via backend search API (no DB access), generates answers via LLM; configurable per knowledge base |
@@ -66,15 +66,17 @@ flowchart TB
     Auth[AuthContext + permission-catalog union / canAccessPath]
     FT[FeatureTogglesContext]
     DC[DocumentChannelsContext]
+    AC[ArticleChannelsContext]
     Auth --> FT
     FT --> DC
+    FT --> AC
   end
 
   subgraph Pages["Routes"]
     Home[Home]
     KnowledgeMapPage[Knowledge Map]
     Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
-    Articles[Articles, ArticleDetail]
+    Articles[ArticlesIndex, ArticleChannel, ArticleChannels, ArticleChannelSettings, ArticleDetail]
     KB[KnowledgeBaseList, KnowledgeBaseDetail]
     Wiki[WikiSpaceList, WikiSpaceDetail, WikiSpaceGraph, WikiPageEditor]
     Eval[EvaluationDatasetList, EvaluationDatasetDetail]
@@ -92,15 +94,15 @@ flowchart TB
 ```
 frontend/src/
 ├── main.tsx                 # Entry
-├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels), ErrorBoundary, Suspense + lazy routes
+├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels → ArticleChannels), ErrorBoundary, Suspense + lazy routes
 ├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
 ├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
 ├── components/Layout/       # MainLayout (route gate; **`app-content--home`** padding on `/`), Sidebar (nav gated by canAccessPath + toggles; **Glossaries** and **Ontology** are sibling top-level links, ontology sub-routes indented under Ontology when active), Header
 ├── components/KnowledgeMapForceGraph.tsx (+ `.css`)  # Home hub: **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from taxonomy tree + resource links; taxonomy nodes as teal circles; resource nodes differentiated in canvas (channel pill + accent bar, wiki hexagon, articles tall pill); term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
-├── contexts/                # DocumentChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, knowledgeMapApi (`/api/taxonomy/*`), …, featureTogglesApi, securityAdminApi, channelUtils
+├── contexts/                # DocumentChannelsContext, ArticleChannelsContext, FeatureTogglesContext, AuthContext
+├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/taxonomy/*`), …, featureTogglesApi, securityAdminApi, channelUtils
 └── pages/
     ├── Home.tsx
     ├── DocumentsIndex.tsx   # /documents – overview
@@ -108,7 +110,11 @@ frontend/src/
     ├── DocumentChannels.tsx # /documents/channels – manage
     ├── DocumentChannelSettings.tsx
     ├── DocumentDetail.tsx
-    ├── Articles.tsx, ArticleDetail.tsx
+    ├── ArticlesIndex.tsx     # /articles – overview (like DocumentsIndex)
+    ├── ArticleChannel.tsx   # /articles/channels/:channelId – list in channel
+    ├── ArticleChannels.tsx  # /articles/channels – manage tree
+    ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
+    ├── ArticleDetail.tsx
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
     ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** GFM; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`), WikiPageEditor.tsx
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
@@ -129,7 +135,7 @@ backend/
 │   ├── config.py                # Settings (env: OPENKMS_*); vlm_url primary for VLM
 │   ├── oidc_discovery.py        # Cached GET {issuer}/.well-known/openid-configuration (JWKS + OAuth endpoints)
 │   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
-│   ├── database.py              # Async engine, get_db, init_db
+│   ├── database.py              # Async engine, get_db (no DDL at startup; pgvector via dev.sh / Alembic)
 │   ├── api/
 │   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me + permission-catalog with route/API patterns), sync-session
 │   │   ├── admin/

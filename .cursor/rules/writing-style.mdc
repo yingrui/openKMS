@@ -1,0 +1,24 @@
+---
+description: Wording, UI copy, and how to write replies/commits in this repo
+alwaysApply: true
+---
+
+# Writing style (openKMS)
+
+## SPA (`frontend/src/`)
+
+User-visible text: **what** the feature does, not **how** it is stored or called. Avoid file paths, bucket names, `s3://`, MinIO/presigned jargon, raw `/api/…` URLs, env vars—unless the screen is for admins/operators. Console technical pages may be denser.
+
+## Assistant replies (Cursor)
+
+- Match answer length to the task; no filler or “say the word” closings.
+- Use **markdown links** for web URLs; use **path links** or code citation blocks for repo code (per project citation rules).
+- Prefer plain words over buzzwords; spell out uncommon acronyms once if needed.
+
+## Commits and PRs
+
+Short **imperative** subject (`Add article channels API`). Body only when the reason or risk is not obvious.
+
+## Docs in `docs/`
+
+Technical detail is fine there; keep tables and headings consistent with surrounding files.

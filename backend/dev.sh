@@ -45,14 +45,19 @@ if ! python -c "import langchain_core" 2>/dev/null; then
   }
 fi
 
-# Ensure pgvector extension (check/install, then CREATE EXTENSION)
-if [[ -f scripts/ensure_pgvector.py ]]; then
-  python scripts/ensure_pgvector.py || exit 1
+# pgvector: sole dev entrypoint for CREATE EXTENSION IF NOT EXISTS vector (app does not run DDL)
+if [[ ! -f scripts/ensure_pgvector.py ]]; then
+  echo "openKMS: missing scripts/ensure_pgvector.py" >&2
+  exit 1
 fi
+python scripts/ensure_pgvector.py
 
-# Run migrations
+# Schema: Alembic only (app does not create tables on startup)
 if command -v alembic &>/dev/null; then
-  alembic upgrade head 2>/dev/null || true
+  alembic upgrade head
+else
+  echo "openKMS: alembic not on PATH; run: cd backend && alembic upgrade head" >&2
+  exit 1
 fi
 
 exec python -m uvicorn app.main:app --reload --port 8102
