@@ -6,6 +6,8 @@ import {
   fetchObjectTypes,
   fetchLinkTypes,
   executeCypherQuery,
+  generateCypherFromQuestion,
+  summarizeAnswer,
   type ObjectTypeResponse,
   type LinkTypeResponse,
 } from '../data/ontologyApi';
@@ -23,11 +25,6 @@ function neo4jRelType(name: string): string {
   return s || 'relates_to';
 }
 
-/**
- * Demo-only mock for text-to-Cypher. Match user question against keyword bag,
- * return the matching Cypher and a final natural-language answer.
- * No LLM is called — this is purely to demo the UX shape.
- */
 type DemoQA = {
   label: string;
   question: string;
@@ -94,15 +91,6 @@ const DEMO_QUESTIONS: DemoQA[] = [
       '具体产品名见图谱（每条线 = 一个 targets 关系）。点 List View 看完整产品代码。',
   },
 ];
-
-function matchDemoQuestion(text: string): DemoQA | null {
-  const t = text.toLowerCase();
-  // Match by simple keyword bag (mock text-to-cypher logic)
-  if (/范可尼|肌营养不良|脑白质|遗传/.test(text)) return DEMO_QUESTIONS[1];
-  if (/肺泡蛋白沉积|肺孢子菌|罕见/.test(text) && /(mil|康宁|重疾)/i.test(text)) return DEMO_QUESTIONS[0];
-  if (/适合|有哪些|推荐|哪些产品/.test(text) && /50/.test(text)) return DEMO_QUESTIONS[2];
-  return null;
-}
 
 function buildCypher(
   selectedObjectTypes: ObjectTypeResponse[],
@@ -389,10 +377,11 @@ export function ObjectExplorer() {
   };
 
   /**
-   * Mock text-to-Cypher: match the question against DEMO_QUESTIONS,
-   * generate the matching Cypher, set it into the editor, run it, and
-   * surface the prepared natural-language answer.
-   * Has a fake 600ms "thinking" delay to make the demo feel real.
+   * Real text-to-Cypher pipeline:
+   *   1. POST /api/ontology/text-to-cypher  -> LLM generates Cypher from the user question + ontology schema.
+   *   2. POST /api/ontology/explore         -> run the Cypher against Neo4j.
+   *   3. POST /api/ontology/answer          -> LLM summarises the rows into a final NL answer.
+   * Fails are surfaced as toasts; partial successes still show whatever's available.
    */
   const handleAskQuestion = async () => {
     const q = userQuestion.trim();
@@ -400,29 +389,55 @@ export function ObjectExplorer() {
       toast.error('Type a question or pick one from the dropdown');
       return;
     }
-    const matched = matchDemoQuestion(q);
-    if (!matched) {
-      toast.error('Demo 模式仅识别预设问题。请从下拉菜单选一个或输入含相关关键词的问题。');
-      return;
-    }
     setGenerating(true);
     setMockedAnswer(null);
     setResult(null);
-    setCypherInput(matched.cypher);
-    // Fake "LLM thinking" pause so the demo feels real
-    await new Promise((r) => setTimeout(r, 600));
-    setExecuting(true);
+    setCypherInput('');
+
+    let cypher = '';
     try {
-      const data = await executeCypherQuery(matched.cypher);
+      const gen = await generateCypherFromQuestion(q);
+      cypher = (gen.cypher || '').trim();
+      if (!cypher) {
+        toast.error(gen.explanation || 'Could not generate Cypher for this question');
+        return;
+      }
+      setCypherInput(cypher);
+    } catch (e) {
+      toast.error(e instanceof Error ? `Cypher gen failed: ${e.message}` : 'Cypher gen failed');
+      return;
+    } finally {
+      setGenerating(false);
+    }
+
+    setExecuting(true);
+    let data: { columns: string[]; rows: Record<string, unknown>[] } | null = null;
+    try {
+      data = await executeCypherQuery(cypher);
       setResult(data);
       setResultView('graph');
-      setMockedAnswer(matched.answer);
       toast.success(`Generated Cypher → ${data.rows.length} rows`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Query failed');
+      return;
     } finally {
       setExecuting(false);
-      setGenerating(false);
+    }
+
+    // Summarise answer (best-effort — graph + cypher already shown)
+    try {
+      const ans = await summarizeAnswer({
+        question: q,
+        cypher,
+        columns: data.columns,
+        rows: data.rows,
+      });
+      setMockedAnswer(ans.answer || '(LLM returned an empty answer.)');
+    } catch (e) {
+      setMockedAnswer(
+        `(Answer summarisation failed: ${e instanceof Error ? e.message : 'unknown'}. ` +
+          `Look at the graph / list view above.)`
+      );
     }
   };
 
@@ -487,7 +502,7 @@ export function ObjectExplorer() {
               >
                 <Sparkles size={14} aria-hidden />
                 <span className="object-explorer-userq-title">Ask in plain language</span>
-                <span className="object-explorer-userq-badge">demo · text-to-cypher (mock)</span>
+                <span className="object-explorer-userq-badge">text-to-cypher</span>
                 {!userQOpen && userQuestion.trim() && (
                   <span className="object-explorer-userq-preview" title={userQuestion}>
                     {userQuestion.length > 60 ? userQuestion.slice(0, 60) + '…' : userQuestion}
