@@ -1,5 +1,6 @@
 """Authentication: OIDC (external IdP) or local PostgreSQL users."""
 
+import asyncio
 import base64
 import binascii
 import secrets
@@ -539,11 +540,19 @@ class PermissionCatalogEntry(BaseModel):
     backend_api_patterns: list[str] = Field(default_factory=list)
 
 
-@api_auth_router.get("/permission-catalog", response_model=list[PermissionCatalogEntry])
-async def permission_catalog(
-    _: str = Depends(require_auth),
-    db: AsyncSession = Depends(get_db),
-) -> list[PermissionCatalogEntry]:
+_permission_catalog_lock = asyncio.Lock()
+_permission_catalog_cached_at: float = -1e9
+_permission_catalog_cached: list[PermissionCatalogEntry] | None = None
+
+
+def invalidate_permission_catalog_cache() -> None:
+    """Clear in-process ``GET /api/auth/permission-catalog`` cache (e.g. after admin edits)."""
+    global _permission_catalog_cached_at, _permission_catalog_cached
+    _permission_catalog_cached = None
+    _permission_catalog_cached_at = -1e9
+
+
+async def _permission_catalog_from_db(db: AsyncSession) -> list[PermissionCatalogEntry]:
     rows = await list_permissions_sorted(db)
     out: list[PermissionCatalogEntry] = []
     for r in rows:
@@ -559,6 +568,25 @@ async def permission_catalog(
             )
         )
     return out
+
+
+@api_auth_router.get("/permission-catalog", response_model=list[PermissionCatalogEntry])
+async def permission_catalog(
+    _: str = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+) -> list[PermissionCatalogEntry]:
+    ttl = settings.permission_catalog_cache_seconds
+    if ttl <= 0:
+        return await _permission_catalog_from_db(db)
+    global _permission_catalog_cached_at, _permission_catalog_cached
+    async with _permission_catalog_lock:
+        now = time.monotonic()
+        if _permission_catalog_cached is not None and (now - _permission_catalog_cached_at) < ttl:
+            return list(_permission_catalog_cached)
+        out = await _permission_catalog_from_db(db)
+        _permission_catalog_cached = out
+        _permission_catalog_cached_at = now
+        return list(out)
 
 
 @api_auth_router.get("/me", response_model=AuthUserOut)

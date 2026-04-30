@@ -189,6 +189,20 @@ def _extract_markdown_from_pages(pages_res: list, output_dir: Path) -> tuple[str
     return "\n".join(fallback_parts).strip(), {}
 
 
+def _restructure_pages_after_predict(pages_res: list, pipeline: Any, suffix: str) -> list:
+    """Call PaddleOCRVL.restructure_pages with the same kwargs fallbacks as run_parser."""
+    if len(pages_res) > 1 and suffix == ".pdf":
+        try:
+            return list(
+                pipeline.restructure_pages(
+                    pages_res, merge_tables=True, relevel_titles=True, concatenate_pages=True
+                )
+            )
+        except TypeError:
+            return list(pipeline.restructure_pages(pages_res))
+    return list(pipeline.restructure_pages(pages_res))
+
+
 def run_parser(
     input_path: Path,
     output_dir: Path,
@@ -225,17 +239,7 @@ def run_parser(
             [],
         )
 
-    if len(pages_res) > 1 and suffix == ".pdf":
-        try:
-            pages_res = list(
-                pipeline.restructure_pages(
-                    pages_res, merge_tables=True, relevel_titles=True, concatenate_pages=True
-                )
-            )
-        except TypeError:
-            pages_res = list(pipeline.restructure_pages(pages_res))
-    else:
-        pages_res = list(pipeline.restructure_pages(pages_res))
+    pages_res = _restructure_pages_after_predict(pages_res, pipeline, suffix)
 
     out_dir = output_dir / file_hash
     out_dir.mkdir(parents=True, exist_ok=True)

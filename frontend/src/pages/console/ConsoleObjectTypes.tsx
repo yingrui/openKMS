@@ -267,7 +267,12 @@ export function ConsoleObjectTypes() {
     if (!formName.trim()) return;
     const props = formProperties
       .filter((p) => p.name.trim() && p.enabled !== false)
-      .map(({ enabled: _e, isNew: _n, ...rest }) => rest) as PropertyDef[];
+      .map((p) => {
+        const { enabled, isNew, ...rest } = p;
+        void enabled;
+        void isNew;
+        return rest as PropertyDef;
+      });
     setSubmitting(true);
     try {
       if (editType) {

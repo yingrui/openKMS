@@ -288,6 +288,8 @@ export function ObjectExplorer() {
   useEffect(() => {
     const generated = buildCypher(selectedObjects, selectedLinks);
     setCypherInput(generated);
+    // selectedObjects/selectedLinks are new arrays each render; IDs + catalogs are the stable inputs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- adding derived arrays would retrigger every render
   }, [selectedObjectTypeIds, selectedLinkTypeIds, objectTypes, linkTypes]);
 
   const toggleObjectType = (id: string) => {

@@ -1,24 +1,20 @@
 ---
-description: openKMS project context and conventions
+description: openKMS layout and stack
 alwaysApply: true
 ---
 
-# openKMS Project
+# openKMS
 
-**Open Knowledge Management System** – Document management, channel-based organization, PaddleOCR-VL parsing, articles, and RAG-ready knowledge bases.
+Knowledge system: documents (PaddleOCR-VL), channels, articles, KBs/RAG, wiki.
 
-## Key Paths
+| Area | Path |
+|------|------|
+| Backend | `backend/app/` (FastAPI, async SQLAlchemy) |
+| Frontend | `frontend/src/` (React 19, Vite) |
+| Docker | `docker/` — see `docker/README.md` |
+| Docs | `docs/` |
+| VLM | `vlm-server/` |
 
-- **Backend**: `backend/app/` (FastAPI)
-- **Frontend**: `frontend/src/` (React/Vite)
-- **Docker**: `docker/` (`docker-compose.yml` — e.g. `docker compose -f docker/docker-compose.yml build|up|down` from repo root; see `docker/README.md`)
-- **Docs**: `docs/` (README, functionalities, architecture, development_plan)
-- **VLM**: `vlm-server/` (mlx-vlm for document parsing)
-- **Planned**: `document_parsing/` (Typer CLI for pipeline/async jobs)
+**Ports:** backend 8102, Vite 5173, Docker UI 8082 (nginx), VLM 8101. **Config:** `OPENKMS_*` in `backend/.env`; frontend `config/index.ts`.
 
-## Conventions
-
-- Backend: Python, FastAPI, SQLAlchemy async, Pydantic
-- Frontend: TypeScript, React 19, React Router
-- Config: Backend `OPENKMS_*` in `.env`; Frontend `config/index.ts`
-- Ports: Backend 8102, Frontend (Vite) 5173, Docker nginx UI 8082, VLM 8101
+**Wording / UI copy:** see `writing-style.mdc`.

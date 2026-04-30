@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home as HomeIcon,
   FileStack,
@@ -28,19 +28,18 @@ import {
   Tags,
   FolderTree,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, startTransition } from 'react';
 
 import logo from '../../assets/logo.svg';
 import { DEFAULT_SYSTEM_DISPLAY_NAME, effectiveSystemDisplayName, fetchSystemPublic } from '../../data/systemApi';
 import { SYSTEM_SETTINGS_UPDATED_EVENT } from '../../utils/systemSettingsStorage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './Sidebar.css';
-
-import { articleChannels } from '../../data/channels';
 
 function SidebarChannelTree({
   channels,
@@ -179,8 +178,8 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
 export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { channels } = useDocumentChannels();
+  const { channels: articleChannels } = useArticleChannels();
   const onDocuments = location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onArticles = location.pathname === '/articles' || location.pathname.startsWith('/articles/');
 
@@ -189,9 +188,9 @@ export function Sidebar() {
   const docChannel = onDocuments
     ? (docChannelMatch?.[1] ?? defaultDocChannel)
     : null;
-  const artChannel = onArticles
-    ? searchParams.get('channel') || ''
-    : null;
+  const defaultArtChannel = getFirstLeafChannelId(articleChannels);
+  const artChannelMatch = location.pathname.match(/^\/articles\/channels\/([^/]+)/);
+  const artChannel = onArticles ? (artChannelMatch?.[1] ?? defaultArtChannel) : null;
 
   const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
   const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
@@ -208,7 +207,9 @@ export function Sidebar() {
   }, []);
 
   useEffect(() => {
-    void loadSidebarBrand();
+    queueMicrotask(() => {
+      void loadSidebarBrand();
+    });
   }, [loadSidebarBrand]);
 
   useEffect(() => {
@@ -220,15 +221,32 @@ export function Sidebar() {
   useEffect(() => {
     if (onDocuments && channels.length > 0) {
       const expandableIds = getAllExpandableChannelIds(channels);
-      setDocExpanded((prev) => {
-        const next = { ...prev };
-        for (const id of expandableIds) {
-          next[id] = true;
-        }
-        return next;
+      startTransition(() => {
+        setDocExpanded((prev) => {
+          const next = { ...prev };
+          for (const id of expandableIds) {
+            next[id] = true;
+          }
+          return next;
+        });
       });
     }
   }, [onDocuments, channels]);
+
+  useEffect(() => {
+    if (onArticles && articleChannels.length > 0) {
+      const expandableIds = getAllExpandableChannelIds(articleChannels);
+      startTransition(() => {
+        setArtExpanded((prev) => {
+          const next = { ...prev };
+          for (const id of expandableIds) {
+            next[id] = true;
+          }
+          return next;
+        });
+      });
+    }
+  }, [onArticles, articleChannels]);
 
   const setDocumentChannel = (id: string) => {
     if (location.pathname.startsWith('/documents')) {
@@ -238,11 +256,7 @@ export function Sidebar() {
     }
   };
   const setArticleChannel = (id: string) => {
-    if (location.pathname.startsWith('/articles')) {
-      navigate(`/articles?channel=${id}`);
-    } else {
-      setSearchParams({ channel: id });
-    }
+    navigate(`/articles/channels/${id}`);
   };
 
   const onOntology =

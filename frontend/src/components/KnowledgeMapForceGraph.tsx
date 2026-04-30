@@ -458,6 +458,8 @@ export function KnowledgeMapForceGraph({
           void navigate(`/documents/channels/${encodeURIComponent(node.resourceId)}`);
         } else if (node.resourceType === 'wiki_space') {
           void navigate(`/wikis/${encodeURIComponent(node.resourceId)}`);
+        } else if (node.resourceType === 'article_channel') {
+          void navigate(`/articles/channels/${encodeURIComponent(node.resourceId)}`);
         } else {
           void navigate('/articles');
         }

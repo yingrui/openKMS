@@ -179,9 +179,9 @@ export function KnowledgeBaseDetail() {
   const [editFaq, setEditFaq] = useState<FAQResponse | null>(null);
   const [faqQuestion, setFaqQuestion] = useState('');
   const [faqAnswer, setFaqAnswer] = useState('');
-  const [_faqLabelsValues, setFaqLabelsValues] = useState<Record<string, string>>({});
+  const [, setFaqLabelsValues] = useState<Record<string, string>>({});
   const [faqDocMetadataValues, setFaqDocMetadataValues] = useState<Record<string, string>>({});
-  const [_faqLabelAllowMultiple, setFaqLabelAllowMultiple] = useState<Record<string, boolean>>({});
+  const [, setFaqLabelAllowMultiple] = useState<Record<string, boolean>>({});
   const [faqMetadataIsArray, setFaqMetadataIsArray] = useState<Record<string, boolean>>({});
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [genSelectedDocs, setGenSelectedDocs] = useState<Set<string>>(new Set());
@@ -201,9 +201,9 @@ export function KnowledgeBaseDetail() {
   const [editChunk, setEditChunk] = useState<ChunkResponse | null>(null);
   const [showChunkDialog, setShowChunkDialog] = useState(false);
   const [chunkContent, setChunkContent] = useState('');
-  const [_chunkLabelsValues, setChunkLabelsValues] = useState<Record<string, string>>({});
+  const [, setChunkLabelsValues] = useState<Record<string, string>>({});
   const [chunkDocMetadataValues, setChunkDocMetadataValues] = useState<Record<string, string>>({});
-  const [_chunkLabelAllowMultiple, setChunkLabelAllowMultiple] = useState<Record<string, boolean>>({});
+  const [, setChunkLabelAllowMultiple] = useState<Record<string, boolean>>({});
   const [chunkMetadataIsArray, setChunkMetadataIsArray] = useState<Record<string, boolean>>({});
   const [chunkSaving, setChunkSaving] = useState(false);
 
@@ -214,7 +214,7 @@ export function KnowledgeBaseDetail() {
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchFiltersExpanded, setSearchFiltersExpanded] = useState(false);
-  const [searchLabelFilters, _setSearchLabelFilters] = useState<Record<string, string>>({});
+  const [searchLabelFilters] = useState<Record<string, string>>({});
   const [searchMetadataFilters, setSearchMetadataFilters] = useState<Record<string, string>>({});
 
   // QA

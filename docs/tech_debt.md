@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-03-17
+Last updated: 2026-04-23
 
 ## Recent Mitigations (2026-03-17)
 
@@ -147,8 +147,6 @@ flowchart LR
     C3[ConsoleSettings]
     K1[KnowledgeBaseList]
     K2[KnowledgeBaseDetail]
-    A[Articles]
-    DA[data/articles.ts]
     DC[data/documents.ts - mockDocumentsByChannel]
   end
 
@@ -162,16 +160,15 @@ flowchart LR
 | `pages/DocumentsIndex.tsx` | Uses `fetchDocumentStats()` (real); document count is from API |
 | `pages/KnowledgeBaseList.tsx` | Mock KB list |
 | `pages/KnowledgeBaseDetail.tsx` | All tabs use mocks; all actions are no-ops |
-| `pages/Articles.tsx` | Mock articles; action buttons do nothing |
+| `pages/ArticleChannel.tsx` | Channel article list wired to API; table rows open detail only (no per-row move/duplicate from list) |
 | `data/documents.ts` | `mockDocumentsByChannel` is empty `{}` (unused) |
-| `data/articles.ts` | Mock article data |
 
 ### 5. Non-functional buttons
 
 Several UI buttons have no `onClick` handlers:
 
 - `DocumentChannel.tsx` – Edit, Move, Download actions on documents
-- `Articles.tsx` – New Article, Edit, Move, Duplicate, Delete
+- `ArticleChannel.tsx` – Per-row move/duplicate/delete from the list (edit/delete live on **`ArticleDetail`**)
 - `KnowledgeBaseDetail.tsx` – Add document/article, Generate FAQ, View, Remove
 - `KnowledgeBaseList.tsx` – New Knowledge Base
 - `ConsoleUsers.tsx` – Add User
@@ -342,3 +339,50 @@ Metadata extraction logic exists in both:
 - `openkms-cli/openkms_cli/extract.py` – sync wrapper around async, used during pipeline run
 
 Schema building and pydantic-ai setup are duplicated. Consider a shared library or backend API for extraction that the CLI calls.
+
+---
+
+## Long methods and structural smells (2026-04-23 audit)
+
+Automated pass: AST line span **≥55** for `backend/app/**/*.py` and `openkms-cli/openkms_cli/**/*.py` (excluding Alembic). Large spans usually mean nested branching, mixed concerns (HTTP + DB + side effects), or copy-pasted blocks—good candidates for **extract function**, **service layer**, or **smaller modules**.
+
+**Doc drift:** The [Overview](#overview) mindmap still lists “No tests”; the tree now includes `backend/tests/` and frontend Vitest setup. Refresh that diagram when reprioritizing.
+
+### Longest Python functions (representative)
+
+| ~Lines | File | Function |
+|--------|------|----------|
+| 430 | `openkms-cli/openkms_cli/pipeline_cli.py` | `pipeline_run` |
+| 251 | `openkms-cli/openkms_cli/kb_indexer.py` | `run_indexer` |
+| 208 | `openkms-cli/openkms_cli/parser.py` | `run_parser` |
+| 184 | `backend/app/jobs/tasks.py` | `run_pipeline` |
+| 159 | `backend/app/api/link_types.py` | `list_link_instances` |
+| 138 | `backend/app/api/link_types.py` | `index_links_to_neo4j` |
+| 127 | `backend/app/services/agent/wiki_tools.py` | `make_wiki_tools` |
+| 126 | `openkms-cli/openkms_cli/parse_cli.py` | `parse_run` |
+| 125 | `backend/app/services/kb_search.py` | `search_knowledge_base` |
+| 116 | `backend/app/services/wiki_vault_import.py` | `import_vault_entries` |
+| 107 | `backend/app/services/metadata_extraction.py` | `resolve_extraction_schema_for_llm` |
+| 106 | `backend/app/services/evaluation/execute.py` | `run_qa_answer_evaluation` |
+| 106 | `backend/app/api/agent.py` | `_ndjson_wiki_message_response` |
+| 100 | `backend/app/services/glossary_term_suggestion.py` | `suggest_glossary_term` |
+| 98 | `backend/app/api/object_types.py` | `list_object_instances` |
+
+**Other ≥55-line hits (same audit):** `channels.py` (`merge_document_channels`, `reorder_document_channel`, `update_document_channel`), `documents.py` (`upload_document`, `extract_document_metadata`), `evaluation_datasets.py` (`run_evaluation`, `compare_evaluation_runs`), `home_hub.py` (`get_home_hub`), `jobs.py` (`create_job`, `retry_job`), `ontology_explore.py` (`execute_cypher`), `strict_permission_patterns.py` (`dispatch`), `wiki_vault_import.py` (`rewrite_markdown_assets`, `import_markdown_vault_file`), `extract.py` (`extract_metadata_sync`), `search_judge.py`, `faq_generation.py`, `wiki_runner.py` (`iter_wiki_conversation_stream_parts`), `object_types.py` (`index_objects_to_neo4j`, `_query_neo4j_nodes`), `link_types.py` (`_query_neo4j_relationships`), `metadata_extraction.py` (`extract_metadata`), `tasks.py` (`run_kb_index`).
+
+### Smell summary (what to improve)
+
+- **openkms-cli:** `pipeline_run` / `run_parser` / `run_indexer` / `parse_run` mix CLI parsing, env, subprocess, S3, and HTTP; split into small steps (upload phase, parse phase, reporting) and shared error handling.
+- **Neo4j-heavy APIs:** `link_types.py` and `object_types.py` combine large Cypher strings, pagination, and HTTP in one block—move query builders and row mapping into `services/` (and add targeted tests).
+- **Jobs worker:** `run_pipeline` and `run_kb_index` remain orchestration-heavy; keep subprocess/async policy consistent with §16 mitigations elsewhere.
+- **Agent / streaming:** `_ndjson_wiki_message_response` and `iter_wiki_conversation_stream_parts` are long streams—extract event serialization and tool-dispatch helpers.
+- **Frontend monoliths (file size, not AST):** `DocumentDetail.tsx` (~2.3k lines), `KnowledgeBaseDetail.tsx` (~1.9k), `ConsolePermissionManagement.tsx` (~1.4k), `KnowledgeMap.tsx` (~900+), `WikiSpaceDetail.tsx`, `EvaluationDatasetDetail.tsx`, `ObjectExplorer.tsx`—split into hooks (`useDocument…`), subcomponents, and typed API modules; reduces merge conflicts and improves testability.
+- **Duplication already tracked:** metadata extraction in backend vs CLI (§17); consider extending that item when refactoring parsers/pipelines.
+
+**Re-run hint:** adjust threshold in a small script (AST `end_lineno - lineno`) or add CI guardrails (e.g. optional `radon` / `ruff` rules) only after agreeing team-wide limits to avoid noise.
+
+### Partial mitigation (2026-04-23 follow-up)
+
+- **`openkms_cli/backend_defaults`:** `_merge_document_parse_defaults_payload` extracted for a pure merge step; **`openkms-cli/tests/test_backend_defaults.py`** covers merge rules, fetch skip when all `OPENKMS_VLM_*` env vars are set, merge after mock fetch, and `model_name` query wiring.
+- **`openkms_cli/parser`:** `_restructure_pages_after_predict` extracted from **`run_parser`**; **`openkms-cli/tests/test_parser_restructure.py`** covers PDF multi-page kwargs vs `TypeError` fallback vs non-PDF; **`test_parser_helpers.py`** covers **`_bbox_iou`**, **`_find_best_matching_block`**, **`_iter_layout_boxes`**, **`_annotate_layout_boxes`**, **`_get_block_field`**.
+- **Run tests:** from **`openkms-cli/`**: `pip install -e ".[dev]"` then **`pytest tests/`**. Remaining large functions (e.g. **`pipeline_run`**, **`run_parser`** body, backend Neo4j handlers) still need incremental refactors.

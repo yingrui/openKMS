@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Ensure pgvector extension is available. Run before backend start."""
+"""Ensure pgvector extension is available (`CREATE EXTENSION IF NOT EXISTS vector`).
+
+Invoked by **`backend/dev.sh`** before `alembic upgrade head`. The FastAPI app does not
+create extensions or tables on startup.
+"""
 import asyncio
 import os
 import subprocess

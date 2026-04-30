@@ -13,6 +13,10 @@ import app.models.document  # noqa: F401 - register models with Base.metadata
 import app.models.document_relationship  # noqa: F401 - register models with Base.metadata
 import app.models.document_version  # noqa: F401 - register models with Base.metadata
 import app.models.document_channel  # noqa: F401 - register models with Base.metadata
+import app.models.article_channel  # noqa: F401 - register models with Base.metadata
+import app.models.article  # noqa: F401 - register models with Base.metadata
+import app.models.article_version  # noqa: F401 - register models with Base.metadata
+import app.models.article_attachment  # noqa: F401 - register models with Base.metadata
 import app.models.pipeline  # noqa: F401 - register models with Base.metadata
 import app.models.api_model  # noqa: F401 - register models with Base.metadata
 import app.models.api_provider  # noqa: F401 - register models with Base.metadata

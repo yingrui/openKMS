@@ -184,3 +184,45 @@
 [data-theme="dark"] .article-status-published { background: #14532d; color: #86efac; }
 [data-theme="dark"] .article-status-draft { background: #422006; color: #fcd34d; }
 
+.articles-new-modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.articles-new-modal-field label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.articles-new-modal-field input,
+.articles-new-modal-field textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.articles-new-modal-field textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.articles-new-modal-field input:focus,
+.articles-new-modal-field textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+

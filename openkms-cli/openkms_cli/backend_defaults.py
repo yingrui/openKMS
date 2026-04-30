@@ -12,6 +12,33 @@ from .settings import CliSettings
 _INTERNAL_DOCUMENT_PARSE_DEFAULTS = "/internal-api/models/document-parse-defaults"
 
 
+def _merge_document_parse_defaults_payload(
+    url: str,
+    model: str,
+    api_key: str | None,
+    *,
+    need_url: bool,
+    need_model: bool,
+    need_key: bool,
+    model_name_param: str | None,
+    data: dict[str, Any],
+) -> tuple[str, str, str | None]:
+    """Apply JSON from document-parse-defaults into current url/model/api_key (testable pure merge)."""
+    if need_url:
+        u = (data.get("base_url") or "").strip()
+        if u:
+            url = u
+    if need_key:
+        k = (data.get("api_key") or "").strip()
+        if k:
+            api_key = k
+    resolved_m = (data.get("model_name") or "").strip()
+    if need_model or model_name_param is not None:
+        if resolved_m:
+            model = resolved_m
+    return url, model, api_key
+
+
 def _fetch_document_parse_defaults(
     cfg: CliSettings, model_name_query: str | None
 ) -> dict[str, Any] | None:
@@ -76,17 +103,13 @@ def resolve_vlm_for_cli(cfg: CliSettings) -> tuple[str, str, str | None]:
     if not data:
         return url, model, api_key
 
-    if need_url:
-        u = (data.get("base_url") or "").strip()
-        if u:
-            url = u
-    if need_key:
-        k = (data.get("api_key") or "").strip()
-        if k:
-            api_key = k
-    resolved_m = (data.get("model_name") or "").strip()
-    if need_model or model_name_param is not None:
-        if resolved_m:
-            model = resolved_m
-
-    return url, model, api_key
+    return _merge_document_parse_defaults_payload(
+        url,
+        model,
+        api_key,
+        need_url=need_url,
+        need_model=need_model,
+        need_key=need_key,
+        model_name_param=model_name_param,
+        data=data,
+    )

@@ -24,6 +24,8 @@ PERM_CONSOLE_PERMISSIONS = "console:permissions"
 
 PERM_DOCUMENTS_READ = "documents:read"
 PERM_DOCUMENTS_WRITE = "documents:write"
+PERM_ARTICLES_READ = "articles:read"
+PERM_ARTICLES_WRITE = "articles:write"
 PERM_CHANNELS_READ = "channels:read"
 PERM_CHANNELS_WRITE = "channels:write"
 PERM_KB_READ = "knowledge_bases:read"
@@ -131,6 +133,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_DOCUMENTS_WRITE,
         "Create and edit documents",
         "Uploads, edits, parsing; data scopes may apply.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_ARTICLES_READ,
+        "View articles",
+        "Article channels, article list and detail, file redirects; data scopes may apply.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_ARTICLES_WRITE,
+        "Create and edit articles",
+        "Article CRUD, markdown, attachments, versions; data scopes may apply.",
         "content",
     ),
     OperationKeyHint(

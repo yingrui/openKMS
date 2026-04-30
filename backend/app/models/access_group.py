@@ -29,6 +29,9 @@ class AccessGroup(Base):
     channel_links: Mapped[list["AccessGroupChannel"]] = relationship(
         "AccessGroupChannel", back_populates="group", cascade="all, delete-orphan"
     )
+    article_channel_links: Mapped[list["AccessGroupArticleChannel"]] = relationship(
+        "AccessGroupArticleChannel", back_populates="group", cascade="all, delete-orphan"
+    )
     kb_links: Mapped[list["AccessGroupKnowledgeBase"]] = relationship(
         "AccessGroupKnowledgeBase", back_populates="group", cascade="all, delete-orphan"
     )
@@ -76,6 +79,19 @@ class AccessGroupChannel(Base):
     )
 
     group: Mapped["AccessGroup"] = relationship("AccessGroup", back_populates="channel_links")
+
+
+class AccessGroupArticleChannel(Base):
+    __tablename__ = "access_group_article_channels"
+
+    group_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("access_groups.id", ondelete="CASCADE"), primary_key=True
+    )
+    article_channel_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("article_channels.id", ondelete="CASCADE"), primary_key=True
+    )
+
+    group: Mapped["AccessGroup"] = relationship("AccessGroup", back_populates="article_channel_links")
 
 
 class AccessGroupKnowledgeBase(Base):

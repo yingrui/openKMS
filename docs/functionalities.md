@@ -7,7 +7,8 @@
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Docker Compose | ✅ | `docker/docker-compose.yml`: full stack (Postgres pgvector, MinIO, backend, **worker** `linux/amd64` + `openkms-cli[parse]` for Paddle doc-parse on Apple Silicon, nginx frontend on **http://localhost:8082**); MinIO (and Postgres) have **no** host port mappings by default—S3 from the browser uses nginx `/buckets/...`; run **`docker compose -f docker/docker-compose.yml up -d --build`** / **`down`** from repo root (see **`docker/README.md`**); infra-only: `docker compose -f docker/docker-compose.yml up -d postgres minio` |
-| Backend tests | ✅ | pytest, pytest-asyncio; smoke tests (health, openapi) |
+| Backend tests | ✅ | pytest (pytest-asyncio still a test dep where used); API smoke uses a **session-scoped** `TestClient` (health, openapi) to avoid duplicate async DB loops |
+| Dev / observability | ✅ | SQLAlchemy **`echo`** only when **`OPENKMS_SQL_ECHO=true`** (not tied to **`OPENKMS_DEBUG`**) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
 | Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; **`401`** with invalid/expired JWT clears SPA session so **Authentication Required** is shown (avoids raw JSON like `{"detail":"Invalid or expired token"}` on e.g. document channel lists) |
@@ -43,6 +44,7 @@
 ### 2b. openkms-cli (CLI for document parsing)
 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
+- **Tests:** `openkms-cli/tests/` — `pip install -e ".[dev]" && pytest tests/` (VLM defaults merge / fetch wiring with mocks; parser restructure and bbox/layout helpers; no Paddle install required)
 - **Configuration**: `openkms_cli/settings.py` (`CliSettings`, pydantic-settings) lists every supported env var via `validation_alias`; parse/pipeline/auth read through `get_cli_settings()`; Typer no longer duplicates env via `envvar=`
 - **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`; VLM URL/model/key can follow **`GET /internal-api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set, needed `OPENKMS_VLM_*` values are missing, and CLI auth succeeds; when **`OPENKMS_VLM_MODEL`** is set in the environment, the CLI sends **`?model_name=...`** so the backend returns that **`vl`**/**`ocr`** row’s URL and key, or the default row if there is no match
 - **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.pdf` – S3 or local input; optional --s3-prefix (defaults to file hash), --skip-upload
@@ -54,9 +56,21 @@
 
 ### 3. Articles (Feature Toggle)
 
-- CMS-style articles with channel tree
-- List, detail, search, filter by status
-- Toggle via Console → Feature Toggles
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Article channels | ✅ | Tree CRUD **`GET/POST/PUT/DELETE /api/article-channels`** (merge, reorder); no document-style parsing pipeline on channels |
+| Articles CRUD | ✅ | **`GET/POST/PATCH/DELETE /api/articles`**; list by `channel_id` includes subtree channels; `GET /api/articles/stats`; hybrid markdown: DB column + **`articles/{id}/content.md`** in MinIO when storage is enabled |
+| Lifecycle | ✅ | **`PATCH /api/articles/{id}/lifecycle`** — `series_id`, `effective_from` / `effective_to`, `lifecycle_status`; API exposes **`is_current_for_rag`** (same rules as documents) |
+| Origin sync fields | ✅ | **`origin_article_id`**, **`last_synced_at`** on `articles` for external sync workflows (ingestion jobs not included in core) |
+| Files & images | ✅ | **`GET /api/articles/{id}/files/{path}`** — allowlisted paths (`images/`, `attachments/`, root `content.md`, `origin.html`); presigned redirect |
+| Attachments | ✅ | **`GET/POST/DELETE /api/articles/{id}/attachments`** — registry + objects under `articles/{id}/attachments/` |
+| Versions | ✅ | **`POST/GET /api/articles/{id}/versions`** and **`POST .../versions/{vid}/restore`** (snapshots of markdown + metadata) |
+| Knowledge Map | ✅ | **`article_channel`** resource links validated against **`article_channels`** |
+| Group scopes | ✅ | **`access_group_article_channels`**; Console group scopes include **Article channels** |
+| Permissions | ✅ | Catalog keys **`articles:read`** / **`articles:write`** (strict route/API patterns when enforced) |
+| SPA | ✅ | **`ArticleChannelsContext`** + sidebar tree; hub **`/articles`**; **`/articles/channels`** manage tree; **`/articles/channels/:id`** list (**New article** modal: title required, optional slug/body); **`/articles/channels/:id/settings`**; **`ArticleDetail`** edit title/slug/Markdown (**Save** = **`PATCH /api/articles/:id`** + **`PUT …/markdown`**), **Delete**, Write/Preview; legacy **`/articles?channel=`** → channel route |
+
+Toggle via Console → Feature Toggles
 
 ### 4. Knowledge Bases (Feature Toggle)
 
@@ -189,6 +203,7 @@
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (first signup or `OPENKMS_INITIAL_ADMIN_USER` match gets admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
 - **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles**, and resolved **permissions** (local users: DB keys such as `all` or granular `console:*`; OIDC IdP admins receive the full catalog); data from `GET /api/auth/me`. Linked from the header user menu.
+- **OIDC + API traffic:** the token provider used by `getAuthHeaders()` returns the access token only (no `setUser` / no `POST /sync-session` + `GET /api/auth/me` on every token read). Session sync and profile refresh run from OIDC init and **`UserManager`** user events. The SPA permission-catalog effect depends on a stable **username / roles / permissions** key so equivalent `user` objects do not refetch in a loop.
 - Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users on **`/`** see the static marketing home; on any other path they see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
 
 ### 6c. Home (Landing Page)
@@ -256,7 +271,7 @@
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
 | GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic; includes `permissions` (resolved keys) |
-| GET | `/api/auth/permission-catalog` | Authenticated: list of permission entries (`key`, `label`, `description`, `frontend_route_patterns`, `backend_api_patterns`) for the Console matrix, SPA route gate, and optional strict API enforcement |
+| GET | `/api/auth/permission-catalog` | Authenticated: list of permission entries (`key`, `label`, `description`, `frontend_route_patterns`, `backend_api_patterns`) for the Console matrix, SPA route gate, and optional strict API enforcement; optional in-process TTL cache (**`OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS`**, default 5; `0` disables), cleared when admins mutate **`security_permissions`** |
 | GET | `/api/admin/security-roles` | `console:permissions`: roles and permission keys (includes `all`); `is_system_role` true only for **admin** (cannot delete) |
 | POST | `/api/admin/security-roles` | `console:permissions`: create role; reserved names `admin` / `member` rejected |
 | DELETE | `/api/admin/security-roles/{role_id}` | `console:permissions`: delete role (**admin** role rejected) |
@@ -451,6 +466,22 @@
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
 - Metadata extraction: pydantic-ai Agent + StructuredDict; `extraction_model_id` designates LLM; `extraction_schema` stored as PostgreSQL `json` (not jsonb) to preserve key order; JSON Schema dict (type, properties, required)
+
+### Article Channel
+
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `created_at`
+- Tree structure like document channels; **no** `pipeline_id`, `auto_process`, or extraction fields (articles are not processed by the document VLM pipeline)
+
+### Article
+
+- `id`, `channel_id` (FK → article_channels), `name`, `slug` (optional), `markdown` (TEXT, working copy), `metadata` (JSONB), `series_id` (defaults to `id` on create), `effective_from`, `effective_to`, `lifecycle_status`, `origin_article_id` (optional, for sync from an external catalog), `last_synced_at`, `created_at`, `updated_at`
+- `is_current_for_rag` is computed on read (same lifecycle/date rules as documents)
+- MinIO bundle (when storage enabled): `articles/{id}/content.md`, `images/`, `attachments/`, optional `origin.html`
+
+### ArticleVersion / ArticleAttachment
+
+- **ArticleVersion**: `id`, `article_id`, `version_number`, `tag`, `note`, `markdown`, `metadata` (JSONB snapshot), `created_at`, `created_by_sub`, `created_by_name`
+- **ArticleAttachment**: `id`, `article_id`, `storage_path` (relative under article prefix), `original_filename`, `size_bytes`, `content_type`, `created_at`
 
 ### Document
 

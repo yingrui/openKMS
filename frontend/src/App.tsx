@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
+import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
 import { Profile } from './pages/Profile';
@@ -13,7 +14,9 @@ import { OidcSilentRenew } from './pages/OidcSilentRenew';
 import { Signup } from './pages/Signup';
 import { DocumentChannel } from './pages/DocumentChannel';
 import { DocumentsIndex } from './pages/DocumentsIndex';
-import { Articles } from './pages/Articles';
+import { ArticlesIndex } from './pages/ArticlesIndex';
+import { ArticleChannel } from './pages/ArticleChannel';
+import { ArticleChannels } from './pages/ArticleChannels';
 import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
 import { WikiSpaceList } from './pages/WikiSpaceList';
 import { GlossaryList } from './pages/GlossaryList';
@@ -55,6 +58,9 @@ const WikiSpaceGraph = lazy(() => import('./pages/WikiSpaceGraph').then((m) => (
 const WikiPageEditor = lazy(() => import('./pages/WikiPageEditor').then((m) => ({ default: m.WikiPageEditor })));
 const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })));
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
+const ArticleChannelSettings = lazy(() =>
+  import('./pages/ArticleChannelSettings').then((m) => ({ default: m.ArticleChannelSettings })),
+);
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
 const KnowledgeMap = lazy(() => import('./pages/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 function EvaluationDatasetDetailPage() {
@@ -80,6 +86,7 @@ function App() {
       <AuthProvider>
       <FeatureTogglesProvider>
       <DocumentChannelsProvider>
+      <ArticleChannelsProvider>
       <ErrorBoundary>
       <Suspense fallback={<div className="app-loading" aria-live="polite">Loading...</div>}>
       <Routes>
@@ -98,8 +105,13 @@ function App() {
             <Route path="channels" element={<DocumentChannels />} />
             <Route path="view/:id" element={<DocumentDetail />} />
           </Route>
-          <Route path="articles" element={<FeatureGate feature="articles"><Articles /></FeatureGate>} />
-          <Route path="articles/view/:id" element={<FeatureGate feature="articles"><ArticleDetail /></FeatureGate>} />
+          <Route path="articles" element={<FeatureGate feature="articles"><Outlet /></FeatureGate>}>
+            <Route index element={<ArticlesIndex />} />
+            <Route path="channels/:channelId/settings" element={<ArticleChannelSettings />} />
+            <Route path="channels/:channelId" element={<ArticleChannel />} />
+            <Route path="channels" element={<ArticleChannels />} />
+            <Route path="view/:id" element={<ArticleDetail />} />
+          </Route>
           <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
           <Route path="wikis" element={<FeatureGate feature="wikiSpaces"><WikiSpaceList /></FeatureGate>} />
@@ -147,6 +159,7 @@ function App() {
       </Routes>
       </Suspense>
       </ErrorBoundary>
+      </ArticleChannelsProvider>
       </DocumentChannelsProvider>
       </FeatureTogglesProvider>
       </AuthProvider>

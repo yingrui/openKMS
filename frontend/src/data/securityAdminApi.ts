@@ -284,6 +284,7 @@ export async function putGroupMembers(groupId: string, userIds: string[]) {
 
 export type GroupScopesOut = {
   channel_ids: string[];
+  article_channel_ids: string[];
   knowledge_base_ids: string[];
   wiki_space_ids: string[];
   evaluation_dataset_ids: string[];

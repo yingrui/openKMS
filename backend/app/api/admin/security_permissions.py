@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_permission
+from app.api.auth import invalidate_permission_catalog_cache, require_permission
 from app.database import get_db
 from app.models.security_permission import SecurityPermission
 from app.services.permission_catalog import PERM_CONSOLE_PERMISSIONS, PERM_ALL
@@ -130,6 +130,7 @@ async def create_security_permission(
     except IntegrityError:
         raise HTTPException(status_code=409, detail="A permission with this key already exists") from None
     invalidate_permission_pattern_cache()
+    invalidate_permission_catalog_cache()
     return _to_out(row)
 
 
@@ -162,6 +163,7 @@ async def patch_security_permission(
         row.sort_order = body.sort_order
     await db.flush()
     invalidate_permission_pattern_cache()
+    invalidate_permission_catalog_cache()
     return _to_out(row)
 
 
@@ -183,3 +185,4 @@ async def delete_security_permission(
         )
     await db.delete(row)
     invalidate_permission_pattern_cache()
+    invalidate_permission_catalog_cache()

@@ -11,6 +11,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.access_group import (
     AccessGroup,
+    AccessGroupArticleChannel,
     AccessGroupChannel,
     AccessGroupDataset,
     AccessGroupEvaluationDataset,
@@ -21,6 +22,7 @@ from app.models.access_group import (
     AccessGroupWikiSpace,
 )
 from app.models.data_resource import AccessGroupDataResource, DataResource
+from app.models.article_channel import ArticleChannel
 from app.models.user import User
 from app.services.permission_catalog import PERM_CONSOLE_GROUPS
 
@@ -49,6 +51,7 @@ class GroupMembersBody(BaseModel):
 
 class GroupScopesOut(BaseModel):
     channel_ids: list[str]
+    article_channel_ids: list[str]
     knowledge_base_ids: list[str]
     wiki_space_ids: list[str]
     evaluation_dataset_ids: list[str]
@@ -60,6 +63,7 @@ class GroupScopesOut(BaseModel):
 
 class GroupScopesPut(BaseModel):
     channel_ids: list[str] | None = None
+    article_channel_ids: list[str] | None = None
     knowledge_base_ids: list[str] | None = None
     wiki_space_ids: list[str] | None = None
     evaluation_dataset_ids: list[str] | None = None
@@ -103,6 +107,7 @@ async def _scopes_payload(db: AsyncSession, group_id: str) -> GroupScopesOut:
 
     return GroupScopesOut(
         channel_ids=await col(AccessGroupChannel, "channel_id"),
+        article_channel_ids=await col(AccessGroupArticleChannel, "article_channel_id"),
         knowledge_base_ids=await col(AccessGroupKnowledgeBase, "knowledge_base_id"),
         wiki_space_ids=await col(AccessGroupWikiSpace, "wiki_space_id"),
         evaluation_dataset_ids=await col(AccessGroupEvaluationDataset, "evaluation_dataset_id"),
@@ -260,6 +265,11 @@ async def put_group_scopes(
             db.add(model(group_id=group_id, **{fk_attr: x}))
 
     await replace(AccessGroupChannel, body.channel_ids, "channel_id")
+    if body.article_channel_ids is not None:
+        for cid in body.article_channel_ids:
+            if not await db.get(ArticleChannel, cid):
+                raise HTTPException(status_code=400, detail=f"Article channel not found: {cid}")
+    await replace(AccessGroupArticleChannel, body.article_channel_ids, "article_channel_id")
     await replace(AccessGroupKnowledgeBase, body.knowledge_base_ids, "knowledge_base_id")
     await replace(AccessGroupWikiSpace, body.wiki_space_ids, "wiki_space_id")
     await replace(AccessGroupEvaluationDataset, body.evaluation_dataset_ids, "evaluation_dataset_id")
