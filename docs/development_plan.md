@@ -182,6 +182,7 @@
 - [x] Production secret key check (reject startup with default)
 - [x] Pipeline command validation (max_length=4096)
 - [x] Backend pytest + smoke tests
+- [x] Article management key tests (`backend/tests/test_articles_management.py`: channel subtree collection, import `rewrite_markdown_links`, `is_allowed_article_file_path` / safe filenames / S3 key validation)
 - [x] Frontend Vitest + smoke tests
 - [x] DocumentStatus enum; async subprocess (run_pipeline); document list query optimization; VLM config consolidation
 - [x] Route-level code splitting (React.lazy); ErrorBanner; ConsoleSettings a11y (id/htmlFor)
