@@ -78,8 +78,10 @@ export function ArticleDetail() {
   const [editSourceRef, setEditSourceRef] = useState('');
   const [editMarkdown, setEditMarkdown] = useState('');
   const [titleEditMode, setTitleEditMode] = useState(false);
+  const [sourceEditMode, setSourceEditMode] = useState(false);
   const [markdownEditMode, setMarkdownEditMode] = useState(false);
   const [savingTitle, setSavingTitle] = useState(false);
+  const [savingSource, setSavingSource] = useState(false);
   const [savingMarkdown, setSavingMarkdown] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [relSectionOpen, setRelSectionOpen] = useState(false);
@@ -89,6 +91,7 @@ export function ArticleDetail() {
   const [newRelType, setNewRelType] = useState<string>('supersedes');
   const [newRelNote, setNewRelNote] = useState('');
   const [relSaving, setRelSaving] = useState(false);
+  const [attachmentsSectionOpen, setAttachmentsSectionOpen] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -119,13 +122,21 @@ export function ArticleDetail() {
     setEditSourceRef(article.origin_article_id ?? '');
     setEditMarkdown(article.markdown ?? '');
     setTitleEditMode(false);
+    setSourceEditMode(false);
     setMarkdownEditMode(false);
   }, [article]);
 
   useEffect(() => {
     setRelSectionOpen(false);
+    setAttachmentsSectionOpen(false);
     setLineageRels(null);
   }, [id]);
+
+  useEffect(() => {
+    if (attachments.length > 0) {
+      setAttachmentsSectionOpen(true);
+    }
+  }, [attachments.length]);
 
   const refreshRelationships = useCallback(async () => {
     if (!id) return;
@@ -176,10 +187,7 @@ export function ArticleDetail() {
     }
     setSavingTitle(true);
     try {
-      await patchArticle(id, {
-        name,
-        origin_article_id: editSourceRef.trim() || null,
-      });
+      await patchArticle(id, { name });
       await load();
       toast.success('Title saved');
       setTitleEditMode(false);
@@ -193,8 +201,28 @@ export function ArticleDetail() {
   const handleCancelTitleEdit = () => {
     if (!article) return;
     setEditName(article.name);
-    setEditSourceRef(article.origin_article_id ?? '');
     setTitleEditMode(false);
+  };
+
+  const handleSaveSource = async () => {
+    if (!id) return;
+    setSavingSource(true);
+    try {
+      await patchArticle(id, { origin_article_id: editSourceRef.trim() || null });
+      await load();
+      toast.success('Source saved');
+      setSourceEditMode(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSavingSource(false);
+    }
+  };
+
+  const handleCancelSourceEdit = () => {
+    if (!article) return;
+    setEditSourceRef(article.origin_article_id ?? '');
+    setSourceEditMode(false);
   };
 
   const handleAddRelationship = async () => {
@@ -464,24 +492,21 @@ export function ArticleDetail() {
                     <dt>Title</dt>
                     <dd>
                       {titleEditMode ? (
-                        <div className="document-detail-info-edit-row">
+                        <div className="article-detail-inline-edit">
                           <input
                             type="text"
-                            className="document-detail-info-input"
+                            className="document-detail-info-input article-detail-inline-edit-input"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             aria-label="Article title"
                             placeholder="Title"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && editName.trim()) void handleSaveTitle();
+                              if (e.key === 'Escape') handleCancelTitleEdit();
+                            }}
                           />
-                          <input
-                            type="text"
-                            className="document-detail-info-input"
-                            value={editSourceRef}
-                            onChange={(e) => setEditSourceRef(e.target.value)}
-                            aria-label="Source ID or URL"
-                            placeholder="Source (external ID or URL, optional)"
-                          />
-                          <div className="document-detail-info-edit-actions">
+                          <div className="article-detail-inline-edit-actions">
                             <button
                               type="button"
                               className="btn btn-primary btn-sm"
@@ -508,7 +533,7 @@ export function ArticleDetail() {
                             type="button"
                             className="document-detail-info-edit-btn"
                             onClick={() => setTitleEditMode(true)}
-                            title="Edit title and source"
+                            title="Edit title"
                             aria-label="Edit title"
                           >
                             <Edit3 size={12} />
@@ -529,16 +554,64 @@ export function ArticleDetail() {
                       <div className="document-detail-info-item document-detail-info-item--compact">
                         <dt>Source</dt>
                         <dd className="article-detail-source-dd">
-                          {article.origin_article_id?.trim() ? (
-                            /^https?:\/\//i.test(article.origin_article_id.trim()) ? (
-                              <a href={article.origin_article_id.trim()} target="_blank" rel="noopener noreferrer">
-                                {article.origin_article_id.trim()}
-                              </a>
-                            ) : (
-                              <span title={article.origin_article_id}>{article.origin_article_id}</span>
-                            )
+                          {sourceEditMode ? (
+                            <div className="article-detail-inline-edit">
+                              <input
+                                type="text"
+                                className="document-detail-info-input article-detail-inline-edit-input"
+                                value={editSourceRef}
+                                onChange={(e) => setEditSourceRef(e.target.value)}
+                                aria-label="Source ID or URL"
+                                placeholder="External ID or URL"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') void handleSaveSource();
+                                  if (e.key === 'Escape') handleCancelSourceEdit();
+                                }}
+                              />
+                              <div className="article-detail-inline-edit-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => void handleSaveSource()}
+                                  disabled={savingSource}
+                                >
+                                  {savingSource ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                                  <span>{savingSource ? 'Saving…' : 'Save'}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="document-detail-info-cancel-btn"
+                                  onClick={handleCancelSourceEdit}
+                                  disabled={savingSource}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
                           ) : (
-                            '—'
+                            <span className="document-detail-info-value">
+                              {article.origin_article_id?.trim() ? (
+                                /^https?:\/\//i.test(article.origin_article_id.trim()) ? (
+                                  <a href={article.origin_article_id.trim()} target="_blank" rel="noopener noreferrer">
+                                    {article.origin_article_id.trim()}
+                                  </a>
+                                ) : (
+                                  <span title={article.origin_article_id}>{article.origin_article_id}</span>
+                                )
+                              ) : (
+                                <span className="document-detail-muted">—</span>
+                              )}
+                              <button
+                                type="button"
+                                className="document-detail-info-edit-btn"
+                                onClick={() => setSourceEditMode(true)}
+                                title="Edit source"
+                                aria-label="Edit source"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                            </span>
                           )}
                         </dd>
                       </div>
@@ -708,6 +781,79 @@ export function ArticleDetail() {
                   )}
                 </div>
 
+                {attachments.length > 0 && (
+                  <div className="document-detail-lineage document-detail-lineage--article">
+                    <button
+                      type="button"
+                      className="document-detail-lineage-header"
+                      onClick={() => setAttachmentsSectionOpen((o) => !o)}
+                      aria-expanded={attachmentsSectionOpen}
+                      aria-controls="article-attachments-panel"
+                      id="article-attachments-heading"
+                    >
+                      <Paperclip size={16} aria-hidden />
+                      <span className="article-detail-attachments-label">
+                        Attachments
+                        <span
+                          className="document-detail-lineage-count"
+                          aria-label={`${attachments.length} file${attachments.length === 1 ? '' : 's'}`}
+                        >
+                          {attachments.length}
+                        </span>
+                      </span>
+                      {attachmentsSectionOpen ? (
+                        <ChevronUp size={18} aria-hidden />
+                      ) : (
+                        <ChevronDown size={18} aria-hidden />
+                      )}
+                    </button>
+                    {attachmentsSectionOpen && (
+                      <div
+                        id="article-attachments-panel"
+                        className="document-detail-lineage-panel"
+                        role="region"
+                        aria-labelledby="article-attachments-heading"
+                      >
+                        <ul className="article-detail-attachments-list">
+                          {attachments.map((att) => (
+                            <li key={att.id}>
+                              <a
+                                href={articleFileUrl(article.id, att.storage_path)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {att.original_filename}
+                              </a>
+                              <span className="document-detail-muted"> ({att.size_bytes} bytes)</span>
+                              {markdownEditMode && (
+                                <span className="article-detail-attachment-actions">
+                                  <button
+                                    type="button"
+                                    className="article-detail-attachment-btn"
+                                    onClick={() => insertAttachmentRef(att.storage_path, att.original_filename)}
+                                    title="Insert link in markdown"
+                                  >
+                                    Insert link
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="article-detail-attachment-btn article-detail-attachment-btn--danger"
+                                    onClick={() => void handleDeleteAttachment(att)}
+                                    title="Remove attachment"
+                                    aria-label="Remove attachment"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="document-detail-metadata-actions article-detail-danger-zone">
                   <button
                     type="button"
@@ -722,69 +868,6 @@ export function ArticleDetail() {
               </div>
             )}
           </section>
-
-          {(attachments.length > 0 || markdownEditMode) && (
-            <section className="document-detail-info article-detail-attachments-block">
-              <h2 className="document-detail-info-title article-detail-attachments-header">
-                <Paperclip size={18} />
-                <span>Attachments</span>
-                <span className="article-detail-panel-header-spacer" />
-                {markdownEditMode && (
-                  <button
-                    type="button"
-                    className="document-detail-edit-toggle"
-                    onClick={() => attachmentInputRef.current?.click()}
-                    disabled={uploadingMedia}
-                    title="Add attachment"
-                  >
-                    <Upload size={14} />
-                    <span>Add file</span>
-                  </button>
-                )}
-              </h2>
-              {attachments.length > 0 ? (
-                <ul className="article-detail-attachments-list">
-                  {attachments.map((att) => (
-                    <li key={att.id}>
-                      <a
-                        href={articleFileUrl(article.id, att.storage_path)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {att.original_filename}
-                      </a>
-                      <span className="document-detail-muted"> ({att.size_bytes} bytes)</span>
-                      {markdownEditMode && (
-                        <span className="article-detail-attachment-actions">
-                          <button
-                            type="button"
-                            className="article-detail-attachment-btn"
-                            onClick={() => insertAttachmentRef(att.storage_path, att.original_filename)}
-                            title="Insert link in markdown"
-                          >
-                            Insert link
-                          </button>
-                          <button
-                            type="button"
-                            className="article-detail-attachment-btn article-detail-attachment-btn--danger"
-                            onClick={() => void handleDeleteAttachment(att)}
-                            title="Remove attachment"
-                            aria-label="Remove attachment"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="document-detail-muted article-detail-attachments-empty">
-                  No attachments yet. Use “Add file” or drag a file into the editor below.
-                </p>
-              )}
-            </section>
-          )}
 
           <div className="document-detail-split article-detail-markdown-split">
             <section className="document-detail-panel document-detail-markdown">

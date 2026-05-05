@@ -9,6 +9,34 @@
 .article-detail-source-dd {
   word-break: break-word;
   max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.article-detail-inline-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.article-detail-inline-edit-input {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.article-detail-inline-edit-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.document-detail-info-item--name dd {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .article-detail-page.document-detail {
@@ -28,20 +56,11 @@
   min-width: 8px;
 }
 
-.article-detail-attachments-block .document-detail-info-title {
-  margin-bottom: 0;
-}
-
-.article-detail-attachments-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .article-detail-attachments-list {
   margin: 0;
-  padding: 8px 20px 16px 36px;
+  padding: 4px 0 4px 1.25rem;
   list-style: disc;
+  font-size: 0.9rem;
 }
 
 .article-detail-attachments-list li {
@@ -56,9 +75,26 @@
   color: var(--color-accent);
 }
 
-.article-detail-attachments-empty {
-  margin: 8px 20px 16px 20px;
-  font-size: 0.875rem;
+.article-detail-attachments-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.document-detail-lineage-header .document-detail-lineage-count {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+  line-height: 1;
+  font-weight: 600;
+  border-radius: 9px;
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
 }
 
 .article-detail-attachment-actions {
