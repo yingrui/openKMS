@@ -26,6 +26,26 @@ class CypherQueryResponse(BaseModel):
     rows: list[dict]
 
 
+def validate_ontology_explore_cypher(cypher: str) -> tuple[bool, str | None]:
+    """Return ``(True, None)`` if the string may be sent to Neo4j as read-only exploration.
+
+    Otherwise ``(False, detail)`` matches the ``HTTPException`` messages used by
+    :func:`execute_cypher`. Kept pure for unit tests (see ``tests/test_ontology_explore_cypher.py``).
+    """
+    if not cypher or not cypher.strip():
+        return False, "Cypher query is required"
+    text = cypher.strip()
+    if re.search(r"\b(CREATE|MERGE|DELETE|SET|REMOVE|DETACH|DROP)\b", text, re.IGNORECASE):
+        return False, "Only read queries allowed (MATCH, RETURN, WHERE, etc.). Write operations are forbidden."
+    if re.search(r"\bCALL\b", text, re.IGNORECASE):
+        return False, "Procedure calls (CALL) are not allowed."
+    if re.search(r"(apoc\.|dbms\.)", text, re.IGNORECASE):
+        return False, "apoc and dbms procedures are not allowed."
+    if "RETURN" not in text.upper():
+        return False, "Query must include RETURN (read-only queries only)."
+    return True, None
+
+
 def _serialize_val(v):
     if v is None:
         return None
@@ -46,32 +66,10 @@ async def execute_cypher(
     db: AsyncSession = Depends(get_db),
 ):
     """Execute a read-only Cypher query against the first Neo4j data source. Returns columns and rows."""
-    if not body.cypher or not body.cypher.strip():
-        raise HTTPException(status_code=400, detail="Cypher query is required")
+    ok, err = validate_ontology_explore_cypher(body.cypher or "")
+    if not ok:
+        raise HTTPException(status_code=400, detail=err or "Invalid query")
     cypher = body.cypher.strip()
-    # Block write operations (whole words)
-    if re.search(r"\b(CREATE|MERGE|DELETE|SET|REMOVE|DETACH|DROP)\b", cypher, re.IGNORECASE):
-        raise HTTPException(
-            status_code=400,
-            detail="Only read queries allowed (MATCH, RETURN, WHERE, etc.). Write operations are forbidden.",
-        )
-    # Block procedure/admin calls (CALL, apoc., dbms., etc.)
-    if re.search(r"\bCALL\b", cypher, re.IGNORECASE):
-        raise HTTPException(
-            status_code=400,
-            detail="Procedure calls (CALL) are not allowed.",
-        )
-    if re.search(r"(apoc\.|dbms\.)", cypher, re.IGNORECASE):
-        raise HTTPException(
-            status_code=400,
-            detail="apoc and dbms procedures are not allowed.",
-        )
-    # Require RETURN (read queries must return results)
-    if "RETURN" not in cypher.upper():
-        raise HTTPException(
-            status_code=400,
-            detail="Query must include RETURN (read-only queries only).",
-        )
     result = await db.execute(select(DataSource).where(DataSource.kind == "neo4j").limit(1))
     neo4j_ds = result.scalar_one_or_none()
     if not neo4j_ds:
