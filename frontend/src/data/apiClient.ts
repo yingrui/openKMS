@@ -7,6 +7,9 @@ let sessionExpiredHandler: (() => void) | null = null;
 
 let sessionExpiredNotifyLock = false;
 
+/** Replaces backend `Invalid or expired token` in the `Response` so UI layers (toasts, banners) show copy meant for humans. */
+export const SESSION_EXPIRED_API_DETAIL = 'Your session has expired. Please sign in again.';
+
 export function setAuthTokenProvider(provider: () => Promise<string | undefined>): void {
   tokenProvider = provider;
 }
@@ -54,6 +57,12 @@ export async function authAwareFetch(input: RequestInfo | URL, init?: RequestIni
     const text = await res.clone().text();
     if (isRejectedJwtResponse(401, text)) {
       notifySessionExpired();
+      // Still return 401 so callers branch on !res.ok, but avoid surfacing FastAPI's internal phrase in toasts.
+      return new Response(JSON.stringify({ detail: SESSION_EXPIRED_API_DETAIL }), {
+        status: 401,
+        statusText: res.statusText,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
   }
   return res;

@@ -9,6 +9,6 @@ Cross-cutting plumbing: container stack, tests, error boundaries, code splitting
 | Dev / observability | ✅ | SQLAlchemy **`echo`** only when **`OPENKMS_SQL_ECHO=true`** (not tied to **`OPENKMS_DEBUG`**) |
 | Frontend tests | ✅ | Vitest, @testing-library/react; smoke test (App) |
 | Error boundary | ✅ | React ErrorBoundary around routes; fallback with retry |
-| Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; **`401`** with invalid/expired JWT clears SPA session so **Authentication Required** is shown (avoids raw JSON like `{"detail":"Invalid or expired token"}` on e.g. document channel lists) |
+| Session vs API JWT mismatch | ✅ | `authAwareFetch` wraps authenticated API calls; **`401`** from an invalid/expired JWT runs the session-expired handler, replaces the response body with a short **“session expired, sign in again”** message (so Sonner and other UI do not show FastAPI’s internal phrase), and **`toast.dismiss()`** clears stale toasts when auth state is cleared |
 | Route code splitting | ✅ | React.lazy for heavy routes (ObjectExplorer, Models, Pipelines, etc.) |
 | Typecheck | ✅ | `npm run typecheck` (tsc --noEmit) |

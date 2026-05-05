@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
 import { getUserManager } from '../oidc/userManager';
@@ -428,6 +429,7 @@ function LocalAuthProvider({
   }, [loadSession]);
 
   const login = useCallback(() => {
+    toast.dismiss();
     setAuthError(null);
     navigate('/login');
   }, [navigate]);
@@ -453,6 +455,7 @@ function LocalAuthProvider({
   }, [getToken]);
 
   const onApiSessionInvalid = useCallback(() => {
+    toast.dismiss();
     setAuthError(null);
     void (async () => {
       try {
@@ -618,6 +621,7 @@ function OidcAuthProvider({
   }, [runOidcInit]);
 
   const login = useCallback(() => {
+    toast.dismiss();
     setAuthError(null);
     void getUserManager().signinRedirect();
   }, []);
@@ -663,6 +667,7 @@ function OidcAuthProvider({
   }, [getToken]);
 
   const onApiSessionInvalid = useCallback(() => {
+    toast.dismiss();
     setAuthError(null);
     void (async () => {
       try {
