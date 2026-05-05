@@ -58,7 +58,7 @@ mindmap
 | Diagram | Section | Purpose |
 |---------|---------|---------|
 | [Tech debt categories](#overview) | Overview | Mind map of debt by priority |
-| [Document status flow](#12-document-status--raw-sql) | §12 (Architecture) | Document lifecycle state machine |
+| [Document status flow](#12-document-status-raw-sql) | §12 (Architecture) | Document lifecycle state machine |
 | [Jobs API coupling](#13-jobs-api-raw-sql-coupling) | §13 (Architecture) | Procrastinate internal schema coupling |
 | [Error handling inconsistency](#3-inconsistent-error-handling-in-frontend) | §3 | Frontend error UX patterns |
 | [Frontend mock data map](#4-frontend-mock-data-not-replaced-with-real-apis) | §4 | Files with mocks vs real API |

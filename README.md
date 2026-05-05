@@ -31,7 +31,7 @@ See **`docker/README.md`** for ports, env overrides, and how the worker reaches 
 5. Run **`uvicorn app.main:app --reload --port 8102`** in `backend/` and **`npm install && npm run dev`** in `frontend/` (two terminals).
 6. Open **http://localhost:5173** (Vite proxies `/api` to the backend).
 
-For a full walkthrough, auth modes, and optional services (QA agent, etc.), see **`docs/for developer/dev_environment_setup.md`** and **`docs/README.md`**.
+For a full walkthrough, auth modes, and optional services (QA agent, etc.), see **`docs/developer/setup.md`** and **[the docs site](https://yingrui.github.io/openKMS/)**.
 
 ## PaddleOCR-VL / mlx-vlm (run separately)
 

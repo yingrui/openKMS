@@ -1,0 +1,103 @@
+site_name: openKMS
+site_description: Open Knowledge Management System — documents, articles, knowledge bases, wiki, and Q&A.
+site_url: https://yingrui.github.io/openKMS/
+repo_url: https://github.com/yingrui/openKMS
+repo_name: yingrui/openKMS
+edit_uri: edit/main/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.highlight
+    - search.share
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+    - content.action.view
+    - content.tabs.link
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.caret
+  - pymdownx.keys
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yingrui/openKMS
+  generator: false
+
+exclude_docs: |
+  README.md
+
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Quickstart: quickstart.md
+  - Architecture: architecture.md
+  - Functionalities: functionalities.md
+  - Security: security.md
+  - Operations:
+      - Docker: operations/docker.md
+  - Developer:
+      - Setup: developer/setup.md
+      - Doc conventions for AI agents: agents.md
+  - Roadmap:
+      - Development plan: development_plan.md
+      - Tech debt: tech_debt.md
+      - Wiki agent prototype: wiki_agent_prototype.md
