@@ -11,6 +11,10 @@ If the user asks for a commit (or you are committing), review staged changes and
 |------|------|
 | `docs/architecture.md` | New modules, flows, layout, config |
 | `docs/development_plan.md` | Tasks done/added, plan shifts |
-| `docs/functionalities.md` | Features, APIs, data models |
+| `docs/features/<area>.md` | Features and UI surfaces for that area |
+| `docs/features/api-reference.md` | New / changed HTTP endpoints |
+| `docs/features/data-models.md` | New tables / columns |
+
+`docs/functionalities.md` is the routing index — only edit it when adding or removing a feature page.
 
 Stage doc updates with the code commit.

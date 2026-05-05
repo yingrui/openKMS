@@ -4,31 +4,36 @@ This page tells humans **and AI coding agents** how the openKMS docs are organis
 
 ## Mental model
 
-The docs split into two layers:
+The docs split into three layers:
 
-1. **Canonical reference files** at the top of `docs/` — long, dense, kept in sync with the code on every commit:
+1. **Canonical reference files** at the top of `docs/` — kept in sync with code on every commit:
     - [`architecture.md`](architecture.md) — modules, flows, layout, config.
-    - [`functionalities.md`](functionalities.md) — features, APIs, data models.
+    - [`functionalities.md`](functionalities.md) — **router only**; the per-feature content lives one level down.
     - [`development_plan.md`](development_plan.md) — current state and next-up tasks.
     - [`security.md`](security.md), [`tech_debt.md`](tech_debt.md), [`wiki_agent_prototype.md`](wiki_agent_prototype.md).
-2. **Reader-friendly entry pages** added on top of those references, optimised for scanning:
+2. **Per-feature pages** under [`features/`](functionalities.md) — one short page per product area, plus three cross-cutting pages (`api-reference.md`, `data-models.md`, `configuration.md`). This is where **most product-code changes** land.
+3. **Reader-friendly entry pages** added on top, optimised for scanning:
     - [`index.md`](index.md), [`overview.md`](overview.md), [`quickstart.md`](quickstart.md), [`operations/docker.md`](operations/docker.md), [`developer/setup.md`](developer/setup.md), this page.
 
-When in doubt, **edit a canonical file first** and add or tighten a wrapper page only if a human would have trouble finding the change.
+When in doubt, **edit the most specific feature page first**, then update the cross-cutting `api-reference.md` / `data-models.md` if the change adds a route or column.
 
 ## Where to put a change
 
 | What changed in code | Update |
 |---|---|
 | New module, flow, layout change, config knob | [`architecture.md`](architecture.md) |
-| New feature, API endpoint, request/response, UI surface | [`functionalities.md`](functionalities.md) |
+| New feature, UI surface, request/response (per-area) | The matching page under [`features/`](functionalities.md) |
+| New HTTP endpoint | The feature page **and** [`features/api-reference.md`](features/api-reference.md) |
+| New table or column | The feature page **and** [`features/data-models.md`](features/data-models.md) |
 | Task you just finished, or a plan shift | [`development_plan.md`](development_plan.md) |
-| Auth / permission / scope behaviour | [`security.md`](security.md) |
+| Auth / permission / scope behaviour | [`security.md`](security.md) and [`features/console-and-auth.md`](features/console-and-auth.md) |
 | Known shortcut, hack, or risk | [`tech_debt.md`](tech_debt.md) |
 | Quickstart steps or ports | [`quickstart.md`](quickstart.md) and root `README.md` |
 | Docker / Compose runtime | [`operations/docker.md`](operations/docker.md) and `docker/README.md` |
 | Local dev environment (DB, pgvector, OIDC) | [`developer/setup.md`](developer/setup.md) |
 | Site nav, theme, or build | `mkdocs.yml` and `.github/workflows/docs.yml` |
+
+A new product area that doesn't fit any existing feature page → add a new file under `docs/features/`, link it from [`functionalities.md`](functionalities.md), and add a `nav:` entry in `mkdocs.yml`.
 
 If a commit touches several layers, **stage the doc updates with the code commit** — that is the contract enforced by `.cursor/rules/docs-before-commit.mdc`.
 
@@ -42,7 +47,8 @@ If a commit touches several layers, **stage the doc updates with the code commit
 ## Things to keep stable
 
 - **Heading shape** of canonical files. Many cross-links in the SPA, READMEs, and other rules point at sections like `## High-Level Diagram`, `## Frontend Structure`, `## Backend Structure`. Renaming them silently breaks links.
-- **Table format** in `functionalities.md`. The file is one big table per feature area; new rows go in the same table, not a new sub-section.
+- **Table format** in feature pages. Each feature page uses one big `Feature | Status | Description` table — new rows go in the same table rather than a new sub-section, so the page stays scannable.
+- **`functionalities.md` is a router**, not the content. Don't add feature rows there; link to the right `features/*.md` instead.
 - **Mermaid blocks**. The site renders them via `pymdownx.superfences`; do not switch fences to `~~~` or add language hints other than `mermaid`.
 - **Edit links**. The Material theme's "edit on GitHub" pencil works only while the file path matches `docs/<file>.md` against `main`. Don't move files without updating any external links you can find.
 
