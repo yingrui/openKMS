@@ -44,6 +44,36 @@ Security considerations for the openKMS project.
 
 Keep `.env` out of version control (use `.env.example` as a template).
 
+## Obtaining an API token
+
+Examples in the docs use `Authorization: Bearer $TOKEN`. The backend accepts a **Bearer** JWT on every `/api/*` route when `Authorization` is present; otherwise it falls back to the **session** cookie (see below). How `$TOKEN` is obtained depends on `OPENKMS_AUTH_MODE`:
+
+- **Local mode** — `POST /api/auth/login` with JSON `{ "login", "password" }` returns `access_token` (HS256, signed with `OPENKMS_SECRET_KEY`) plus `user`. That token is the same shape the SPA stores after login.
+
+  Prefer **not** embedding the password in the shell command (it can appear in shell history and, on shared hosts, process listings). Read credentials from the environment and build JSON with `jq`, or use a secrets manager / CI secret store:
+
+```bash
+TOKEN=$(curl -sS -X POST "${API%/}/api/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d "$(jq -n --arg login "$OPENKMS_LOGIN" --arg password "$OPENKMS_LOGIN_PASSWORD" \
+        '{login:$login,password:$password}')" \
+  | jq -er '.access_token // empty')
+```
+
+  If `TOKEN` is empty, inspect the response body for `detail` (wrong password, wrong mode, etc.). Default lifetime is `OPENKMS_LOCAL_JWT_EXP_HOURS` hours (168 by default) — long-lived tokens are convenient for dev scripts but increase blast radius if leaked.
+
+- **OIDC mode** — the SPA obtains an **access token** from the IdP (Authorization Code + PKCE), then `POST /api/auth/sync-session` with `Authorization: Bearer <IdP access token>` stores that same token in the **session cookie** so credentialed browser requests work without repeating the Bearer header.
+
+  For **scripts and curl**, pass the IdP access token as `Authorization: Bearer …`. The backend verifies it with the IdP **JWKS** (`_verify_oidc_jwt` in `auth.py`). Operation permissions for non-admin users come from **`realm_access.roles`** on the JWT matched against **`security_roles.name`** in PostgreSQL — so the token must be one that carries those roles (typically a **user** access token), not merely “any” client-credentials token unless your IdP is configured to attach the same role claims.
+
+  `OPENKMS_OIDC_SERVICE_CLIENT_ID` is used for **service-only** API paths (for example some internal model defaults); it is **not** a general substitute for a human user token on arbitrary `/api/...` routes unless you deliberately mirror roles onto that client in the IdP.
+
+- **CLI / scripts in local mode** — set `OPENKMS_CLI_BASIC_USER` and `OPENKMS_CLI_BASIC_PASSWORD` and send `Authorization: Basic …`. The backend mints an internal **`local-cli`** service JWT (`sub=local-cli`). Use only on trusted networks; Basic over plain HTTP is dev-only.
+
+In all cases, `GET /api/auth/me` confirms the token (or session) is accepted and lists resolved permission keys.
+
+**Hardening backlog:** token lifetime, script ergonomics, and machine-auth patterns are tracked in [Technical debt: API tokens and machine authentication](tech_debt.md#19-api-tokens-and-machine-authentication-backlog).
+
 ## Storage
 
 - **S3/MinIO**: Document files are stored under `{file_hash}/` with presigned URLs for access.

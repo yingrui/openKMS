@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-04-23
+Last updated: 2026-05-05
 
 ## Recent Mitigations (2026-03-17)
 
@@ -310,6 +310,26 @@ TypeScript compilation (`tsc -b`) is only invoked via `build`; there is no stand
 | CORS single origin | `backend/app/main.py` – only `OPENKMS_FRONTEND_URL` (`settings.frontend_url`) is allowed |
 | Legacy logout | `GET /logout` endpoint is marked as legacy; consider removing |
 | Migration seed data | Alembic migrations seed `http://localhost:8101/` and fixed IDs – not environment-aware |
+
+### 19. API tokens and machine authentication (backlog)
+
+**Context:** Operators and docs use `POST /api/auth/login` (local) or a Bearer IdP JWT for `curl` and automation. [Obtaining an API token](security.md#obtaining-an-api-token) documents the current behavior.
+
+**Risks**
+
+- Passwords or long-lived JWTs in shell history, logs, or CI output.
+- Default **168 h** local JWT lifetime (`OPENKMS_LOCAL_JWT_EXP_HOURS`) — convenient for dev, wide window if a token leaks.
+- **HTTP Basic** for `openkms-cli` over non-TLS networks exposes credentials on the wire.
+- **OIDC** permission resolution uses **`realm_access.roles`**; client-credentials tokens often omit those claims, so scripts that mint only a service token may get **no catalog permissions** unless the IdP is explicitly configured (operators sometimes assume `OPENKMS_OIDC_SERVICE_CLIENT_ID` alone authorizes all APIs — it does not).
+
+**Planned mitigations (TODO)**
+
+1. **Shorter-lived local tokens** for API use, or separate **refresh** / rotation story (optional refresh endpoint, sliding session for browser only).
+2. **First-class machine auth** — scoped **personal access tokens** (PAT) or OAuth2 **device code** / **client credentials** with explicit role mapping documented in Console, instead of reusing end-user passwords in scripts.
+3. **Rate limiting and lockout** on `POST /api/auth/login` (and optionally Basic) to reduce brute-force risk.
+4. **Audit trail** for login and PAT issuance (who, when, IP, client id).
+5. **Stricter production defaults** — reject default `OPENKMS_SECRET_KEY`, warn if `LOCAL_JWT_EXP_HOURS` exceeds a threshold when not `OPENKMS_DEBUG`.
+6. **Documented IdP recipe** for “automation user” — realm role names aligned with `security_roles`, and whether client credentials should carry the same claims.
 
 ### 18. API documentation
 

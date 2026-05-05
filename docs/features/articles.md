@@ -37,6 +37,8 @@ When `rewrite_links=true`, markdown references whose basename matches an uploade
 
 When `upsert=true` and `payload.origin_article_id` matches an existing row, that article is updated in place (no duplicate). Any newly uploaded files are still registered.
 
+`$API` is your backend base URL (e.g. `http://localhost:8102`); for `$TOKEN` see [Obtaining an API token](../security.md#obtaining-an-api-token).
+
 ```bash
 curl -X POST "$API/api/articles/import" \
   -H "Authorization: Bearer $TOKEN" \
