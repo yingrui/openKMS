@@ -32,3 +32,6 @@ npm-debug.log*
 **/tmp
 **/output
 _site/
+
+# MkDocs build output
+/site/

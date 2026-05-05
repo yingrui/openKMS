@@ -8,15 +8,14 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/health` | Health check |
-| GET | `/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
-| GET | `/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
-| GET | `/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
+| GET | `/api/auth/login` | OIDC mode: redirect to IdP. Local mode: redirect to frontend `/login` |
+| GET | `/api/auth/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
+| GET | `/api/auth/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
 | GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup` only |
 | GET | `/internal-api/models/document-parse-defaults` | Authenticated (`require_auth`); query `model_name` optional — named **`vl`**/**`ocr`** model or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
-| GET | `/api/system/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
-| PUT | `/api/system/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
+| GET | `/api/public/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
+| PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
 | GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic; includes `permissions` (resolved keys) |
@@ -38,9 +37,12 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 | GET | `/api/admin/data-resources/kinds` | `console:groups`: allowed `resource_kind` strings |
 | GET/PATCH/DELETE | `/api/admin/data-resources/{id}` | `console:groups`: get/update/delete data resource |
 | POST | `/api/auth/logout` | Clear server session |
-| POST | `/sync-session` | Sync frontend JWT to backend session (Bearer required) |
-| POST | `/clear-session` | Clear backend session (called before logout) |
-| GET | `/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
+| POST | `/api/auth/sync-session` | Sync frontend JWT to backend session (Bearer required) |
+| POST | `/api/auth/clear-session` | Clear backend session (called before logout) |
+| GET | `/api/auth/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
+| GET | `/api/home/hub` | Authenticated landing-screen payload: per-section quick links the user is permitted to see |
+| GET | `/api/providers/{id}/models` | Authenticated: list models registered under this provider |
+| GET | `/api/models/{id}/config` | Authenticated: full LLM config (base_url, model_name, api_key, defaults) for the openkms-cli |
 | GET | `/api/admin/users` | `console:users`: auth mode, IdP notice, `users` (local only) |
 | POST | `/api/admin/users` | `console:users`, **local** only: create user (`email`, `username`, `password`, `is_admin`) |
 | PATCH | `/api/admin/users/{id}` | `console:users`, **local** only: set `is_admin` (syncs security roles) |
@@ -222,3 +224,92 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 |--------|------|-------------|
 | GET | `/api/feature-toggles` | Get feature toggle state (includes hasNeo4jDataSource; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
+
+## Articles
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/article-channels` | List article channels (tree) |
+| GET | `/api/article-channels/{id}` | Get channel by ID |
+| POST | `/api/article-channels` | Create channel |
+| PUT | `/api/article-channels/{id}` | Update channel (name, description, parent_id) |
+| POST | `/api/article-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction }`) |
+| POST | `/api/article-channels/merge` | Merge source channel into target (move articles, delete source; optional include_descendants) |
+| DELETE | `/api/article-channels/{id}` | Delete channel (fails if has articles or sub-channels) |
+| GET | `/api/articles?channel_id=&search=&offset=&limit=` | List articles; channel_id optional; search filters by name |
+| GET | `/api/articles/stats` | Article counts for index page |
+| GET | `/api/articles/{id}` | Get article with markdown |
+| POST | `/api/articles` | Create article (`channel_id`, `name`, `markdown`, optional `metadata`, `origin_article_id`) |
+| POST | `/api/articles/import` | Bulk import articles (multipart or JSON; preserves `origin_article_id` for provenance) |
+| PATCH | `/api/articles/{id}` | Update article info (name, channel_id, metadata, origin_article_id) |
+| PUT | `/api/articles/{id}/markdown` | Update article markdown (rewrites relative asset links to current bundle paths) |
+| DELETE | `/api/articles/{id}` | Delete article and its MinIO bundle |
+| PATCH | `/api/articles/{id}/lifecycle` | Update lifecycle fields (`series_id`, `effective_from`, `effective_to`, `lifecycle_status`) |
+| GET | `/api/articles/{id}/relationships` | List outgoing and incoming article relationships |
+| POST | `/api/articles/{id}/relationships` | Create outgoing edge (`target_article_id`, `relation_type`, optional `note`) |
+| DELETE | `/api/articles/{id}/relationships/{relationship_id}` | Delete an outgoing relationship |
+| GET | `/api/articles/{id}/attachments` | List attachments for an article |
+| POST | `/api/articles/{id}/attachments` | Upload attachment (multipart) |
+| DELETE | `/api/articles/{id}/attachments/{attachment_id}` | Delete attachment from MinIO + DB |
+| POST | `/api/articles/{id}/images` | Upload an image into the article bundle (used by paste / drag-and-drop in the editor) |
+| GET | `/api/articles/{id}/files/{path}` | Stream an image or attachment from the article's MinIO bundle |
+| GET | `/api/articles/{id}/versions` | List versions (metadata only) |
+| POST | `/api/articles/{id}/versions` | Create explicit version (snapshot of current markdown + metadata) |
+| GET | `/api/articles/{id}/versions/{version_id}` | Full version snapshot |
+| POST | `/api/articles/{id}/versions/{version_id}/restore` | Restore working copy from version |
+
+## Wiki spaces
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/wiki-spaces` | List wiki spaces |
+| POST | `/api/wiki-spaces` | Create wiki space |
+| GET | `/api/wiki-spaces/{id}` | Get wiki space |
+| PATCH | `/api/wiki-spaces/{id}` | Update wiki space (name, description) |
+| DELETE | `/api/wiki-spaces/{id}` | Delete wiki space (cascades pages, files, document links) |
+| GET | `/api/wiki-spaces/{id}/graph` | Wiki page graph (nodes + edges) for the navigator |
+| GET | `/api/wiki-spaces/{id}/pages` | List pages (paginated) |
+| POST | `/api/wiki-spaces/{id}/pages` | Create page (`path`, `title`, optional `body`, `metadata`) |
+| GET | `/api/wiki-spaces/{id}/pages/{page_id}` | Get page (with body and metadata) |
+| PATCH | `/api/wiki-spaces/{id}/pages/{page_id}` | Update page (title, body, metadata) |
+| DELETE | `/api/wiki-spaces/{id}/pages/{page_id}` | Delete page |
+| GET | `/api/wiki-spaces/{id}/pages/by-path/{page_path:path}` | Resolve page by Obsidian-style path |
+| PUT | `/api/wiki-spaces/{id}/pages/by-path/{page_path:path}` | Upsert page by path (create or update) |
+| DELETE | `/api/wiki-spaces/{id}/pages/by-path/{page_path:path}` | Delete page by path |
+| GET | `/api/wiki-spaces/{id}/pages/{page_id}/page-index` | PageIndex tree for in-page navigation |
+| GET | `/api/wiki-spaces/{id}/files` | List uploaded files in this space |
+| POST | `/api/wiki-spaces/{id}/files` | Upload file (multipart) — used by Obsidian assets and embedded images |
+| GET | `/api/wiki-spaces/{id}/files/{file_id}/content` | Stream file content from MinIO |
+| DELETE | `/api/wiki-spaces/{id}/files/{file_id}` | Delete file (storage + DB) |
+| GET | `/api/wiki-spaces/{id}/documents` | List documents linked to this wiki space |
+| POST | `/api/wiki-spaces/{id}/documents` | Link an existing document into this space |
+| DELETE | `/api/wiki-spaces/{id}/documents/{document_id}` | Unlink a document (does not delete the document) |
+| POST | `/api/wiki-spaces/{id}/import/vault` | Bulk import an Obsidian vault (zip / multi-file upload) |
+| POST | `/api/wiki-spaces/{id}/import/vault/markdown-file` | Append a single markdown file from a vault upload |
+
+## Agent (embedded LangGraph assistant)
+
+Used by the Wiki agent surface (and any other in-app assistant). Uses `OPENKMS_AGENT_MODEL_ID` if set, else falls back to the first available LLM model.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent/conversations?surface=&context=` | List the user's conversations on a surface |
+| POST | `/api/agent/conversations` | Create conversation (`surface`, optional `context`, `title`) |
+| GET | `/api/agent/conversations/{id}` | Get conversation header |
+| PATCH | `/api/agent/conversations/{id}` | Update conversation (title, context) |
+| DELETE | `/api/agent/conversations/{id}` | Delete conversation (cascades messages) |
+| GET | `/api/agent/conversations/{id}/messages` | List messages |
+| POST | `/api/agent/conversations/{id}/messages` | Send a user message and stream back the agent reply (`text/event-stream`) |
+| DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this message and everything after it (used by "regenerate") |
+
+## Knowledge map (taxonomy)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/taxonomy/nodes/tree` | Full Knowledge Map tree for the navigator |
+| POST | `/api/taxonomy/nodes` | Create node (`name`, optional `parent_id`, `description`, `sort_order`) |
+| PATCH | `/api/taxonomy/nodes/{id}` | Update node (rename, move, reorder) |
+| DELETE | `/api/taxonomy/nodes/{id}` | Delete node and its subtree |
+| GET | `/api/taxonomy/resource-links?node_id=` | List resources mapped to a node |
+| PUT | `/api/taxonomy/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `taxonomy_node_id`) |
+| DELETE | `/api/taxonomy/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |

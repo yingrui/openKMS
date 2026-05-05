@@ -153,9 +153,125 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users; seeded with `articles`, `knowledgeBases`, `objectsAndLinks` (enabled by default), `evaluationDatasets` (disabled by default, experimental)
+- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `taxonomy` (all enabled); `evaluationDatasets` (disabled by default, experimental)
 - Read by all authenticated users; write restricted to admins
+
+### SystemSettings
+
+- `id` (PK, integer; singleton row `id=1`), `system_name` (display name shown in the SPA header), `default_timezone` (default `UTC`), `api_base_url_note` (free-text operator note; SPA API URL is build-time), `updated_at`
+- Loaded by the Console settings page and the public `system_name` lookup
 
 ### Jobs (procrastinate_jobs)
 
 - Managed by procrastinate; stores task_name, args (document_id, pipeline_id, knowledge_base_id, etc.), status, attempts, timestamps
+
+## Auth and permissions
+
+### User (local auth only)
+
+- `id` (UUID), `email` (unique), `username` (unique), `password_hash`, `is_admin`, `created_at`, `updated_at`
+- Only present in `OPENKMS_AUTH_MODE=local`. In OIDC mode users are not stored here; identity comes from the JWT.
+
+### SecurityRole
+
+- `id` (UUID), `name` (unique; e.g. `admin`, `member`), `description`, `created_at`
+- `admin` is seeded with key `all` and cannot be deleted; `member` is created on first non-admin local sign-in
+
+### SecurityRolePermission
+
+- `id`, `role_id` (FK → security_roles, CASCADE), `permission_key` (free-form key from the permission catalog); unique `(role_id, permission_key)`
+
+### UserSecurityRole
+
+- `user_id` (FK → users, CASCADE; PK), `role_id` (FK → security_roles, CASCADE; PK)
+- Local mode only; `is_admin=true` keeps a row for the admin role in sync
+
+### SecurityPermission (permission catalog)
+
+- `id`, `key` (unique; e.g. `articles:write`, `console:groups`), `label`, `description`, `frontend_route_patterns` (JSONB array of route globs for the SPA route gate / console sidebar), `backend_api_patterns` (JSONB array of `METHOD path-glob` rules used by strict middleware enforcement), `sort_order`, `created_at`
+- Editable from `/console/permission-management`. The built-in `all` row is rejected for edit/delete.
+
+## Data security (access groups, data resources)
+
+### AccessGroup
+
+- `id` (UUID), `name` (unique), `description`, `created_at`
+- A bag of users plus per-resource scope tables. Membership is editable in local mode only; OIDC clusters manage membership at the IdP.
+
+### AccessGroupUser
+
+- `user_id` (FK → users, CASCADE), `group_id` (FK → access_groups, CASCADE); composite PK
+
+### DataResource
+
+- `id`, `name` (unique), `description`, `resource_kind` (`document`, `knowledge_base`, `evaluation_dataset`, `dataset`, `object_type`, `link_type`), `attributes` (JSONB; whitelisted keys per kind, interpreted as scope predicates), `anchor_channel_id` (FK → document_channels), `anchor_knowledge_base_id` (FK → knowledge_bases), `created_at`, `updated_at`
+- Admin-defined access predicates. Used together with the legacy ID allow-lists when `OPENKMS_ENFORCE_GROUP_DATA_SCOPES=true`.
+
+### Access-group ↔ resource junctions
+
+- `access_group_channels` — `(group_id, channel_id)` PK; FK → access_groups, document_channels
+- `access_group_article_channels` — `(group_id, article_channel_id)`
+- `access_group_knowledge_bases` — `(group_id, knowledge_base_id)`
+- `access_group_wiki_spaces` — `(group_id, wiki_space_id)`
+- `access_group_evaluation_datasets` — `(group_id, evaluation_dataset_id)`
+- `access_group_datasets` — `(group_id, dataset_id)`
+- `access_group_object_types` — `(group_id, object_type_id)`
+- `access_group_link_types` — `(group_id, link_type_id)`
+- `access_group_data_resources` — `(group_id, data_resource_id)`
+
+All junctions cascade on either side; no extra columns.
+
+## Wiki
+
+### WikiSpace
+
+- `id`, `name`, `description`, `created_at`, `updated_at`
+
+### WikiPage
+
+- `id`, `wiki_space_id` (FK → wiki_spaces, CASCADE), `path` (Obsidian-style; unique per space), `title`, `body` (markdown), `metadata` (JSONB), `page_index` (JSONB; PageIndex tree for in-page navigation), `created_at`, `updated_at`
+- Unique `(wiki_space_id, path)`
+
+### WikiFile
+
+- `id`, `wiki_space_id` (FK → wiki_spaces, CASCADE), `wiki_page_id` (FK → wiki_pages, SET NULL), `storage_key` (unique MinIO key), `filename`, `content_type`, `size_bytes`, `created_at`
+- Embedded images and file attachments inside a wiki space; `wiki_page_id` lets a file be associated with a specific page (or unattached).
+
+### WikiSpaceDocument
+
+- `id`, `wiki_space_id`, `document_id`; unique `(wiki_space_id, document_id)`
+- Links a Document into a wiki space as a referenced source (no copy).
+
+## Agent (embedded LangGraph assistant)
+
+### AgentConversation
+
+- `id`, `user_sub` (owner; OIDC sub or local user id), `surface` (e.g. `wiki`), `context` (JSONB; e.g. wiki space id), `title`, `created_at`, `updated_at`
+
+### AgentMessage
+
+- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content`, `tool_calls` (JSONB), `created_at`
+
+## Knowledge map (taxonomy)
+
+### KnowledgeMapNode (`taxonomy_nodes`)
+
+- `id`, `parent_id` (FK → taxonomy_nodes, CASCADE), `name`, `description`, `sort_order`, `created_at`, `updated_at`
+- Hierarchical knowledge map shown in the navigator; many nodes per workspace.
+
+### KnowledgeMapResourceLink (`taxonomy_resource_links`)
+
+- `id`, `taxonomy_node_id` (FK → taxonomy_nodes, CASCADE), `resource_type` (`document_channel`, `article_channel`, `wiki_space`, …), `resource_id`; unique `(resource_type, resource_id)`
+- Maps each content surface to **at most one** Knowledge Map node.
+
+## Provider details
+
+### ApiProvider
+
+- `id`, `name`, `base_url`, `api_key` (masked in API responses; raw value used by the worker), `config` (JSONB), `created_at`, `updated_at`
+- Parent of `ApiModel`; one provider can host many models.
+
+### DocumentVersion
+
+- `id`, `document_id` (FK → documents, CASCADE), `version_number` (sequential per document), `tag`, `note`, `markdown`, `metadata` (JSONB snapshot), `created_at`, `created_by_sub`, `created_by_name`
+- User-triggered checkpoint of `documents.markdown` + `documents.metadata`; restored via `POST /api/documents/{id}/versions/{vid}/restore`.

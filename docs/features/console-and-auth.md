@@ -10,10 +10,27 @@ Operator surface (`/console/*`), permission catalog and roles, data security (gr
 - **Data security** (`/console/data-security/groups`, `/console/data-security/groups/:id/access`, `/console/data-security/data-resources`): requires `console:groups`. **Access groups**, **data resources**, and per-group **resource scopes** (channels, KBs, wiki spaces, evaluation datasets, datasets, object types, link types, **data resource** attachments) are editable in **both** local and OIDC modes. **Assigning local users to access groups** is available only when `OPENKMS_AUTH_MODE=local` (OIDC: membership is outside this app; Console shows scopes only on the group data access page). **Data resources** CRUD via `/api/admin/data-resources`; kinds: `document`, `knowledge_base`, `evaluation_dataset`, `dataset`, `object_type`, `link_type`. Enforcement: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` (default `false`); when `true`, **local** non-admin users with group membership see the **union** of legacy ID allow lists **or** rows matching any granted data resource for that entity family (documents: channel subtree + `metadata.*` / `channel_id` JSONB filters; KBs: anchor or `kb_id`/`name`; others: id keys in attributes). Users with **no** group rows are not filtered (legacy). **OIDC**: scope enforcement skipped in this phase.
 - **Data Sources** (`/console/data-sources`): `console:data_sources` (or admin). **Datasets and schema** (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`): `console:datasets` / `console:object_types` / `console:link_types` **or** `ontology:read` / `ontology:write` as applicable (API uses `require_any_permission`); System Settings, Users & Roles, Feature Toggles remain `console:*` (or admin).
 - **Users & Roles** (`/console/users`): requires `console:users`. **Local auth**: list users, toggle `is_admin` (syncs security role links), delete/add users. **OIDC auth**: read-only notice.
-- **System settings** (`/console/settings`): `console:settings` (or admin). **`GET /api/system/settings`** / **`PUT /api/system/settings`** load and persist **`system_settings`** (Postgres singleton row): `system_name`, `default_timezone`, `api_base_url_note` (optional note only; SPA API URL remains build-time). A **`PUT`** whose trimmed `system_name` would be empty is stored as **`openKMS`**. **`GET /api/public/system`** returns `{ "system_name" }` **without authentication** (strict middleware allowlist); the value is the trimmed DB field and may be **`""`**. The **sidebar** title stays **blank** until that response arrives, then shows **`openKMS`** when the name is empty or whitespace (otherwise the returned name); on fetch failure it shows **`openKMS`**. After saves, **`notifySystemSettingsUpdated`** triggers the same fetch (custom event). Migration seeds row `id=1` and attaches `GET`/`PUT` patterns to **`console:settings`** for strict API enforcement.
-- Feature toggles: `articles`, `knowledgeBases`, `objectsAndLinks` – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
+- **System settings** (`/console/settings`): `console:settings` (or admin). **`GET /api/public/settings`** / **`PUT /api/public/settings`** load and persist **`system_settings`** (Postgres singleton row): `system_name`, `default_timezone`, `api_base_url_note` (optional note only; SPA API URL remains build-time). A **`PUT`** whose trimmed `system_name` would be empty is stored as **`openKMS`**. **`GET /api/public/system`** returns `{ "system_name" }` **without authentication** (strict middleware allowlist); the value is the trimmed DB field and may be **`""`**. The **sidebar** title stays **blank** until that response arrives, then shows **`openKMS`** when the name is empty or whitespace (otherwise the returned name); on fetch failure it shows **`openKMS`**. After saves, **`notifySystemSettingsUpdated`** triggers the same fetch (custom event). Migration seeds row `id=1` and attaches `GET`/`PUT` patterns to **`console:settings`** for strict API enforcement.
+- Feature toggles: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `taxonomy` (default-enabled) and `evaluationDatasets` (default-disabled, experimental) – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
 - `PUT /api/feature-toggles` requires `console:feature_toggles` (or JWT admin)
+
+## Permission catalog (canonical keys)
+
+Defined in [`backend/app/services/permission_catalog.py`](https://github.com/yingrui/openKMS/blob/main/backend/app/services/permission_catalog.py); seeded into `security_permissions` by migration. Roles may only assign keys that exist in the catalog.
+
+| Family | Keys |
+|---|---|
+| Console | `console:access`, `console:users`, `console:groups`, `console:permissions`, `console:settings`, `console:feature_toggles`, `console:data_sources`, `console:datasets`, `console:object_types`, `console:link_types` |
+| Documents | `documents:read`, `documents:write` |
+| Document channels | `channels:read`, `channels:write` |
+| Articles | `articles:read`, `articles:write` |
+| Knowledge bases | `knowledge_bases:read`, `knowledge_bases:write` |
+| Evaluation | `evaluation:read`, `evaluation:write` |
+| Wiki | `wikis:read`, `wikis:write` |
+| Ontology | `ontology:read`, `ontology:write` |
+| Knowledge map | `taxonomy:read`, `taxonomy:write` |
+| Catch-all | `all` (built-in admin key; cannot be edited or deleted) |
 
 ## Authentication
 
