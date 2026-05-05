@@ -1,8 +1,9 @@
-"""Articles API: markdown, MinIO bundle, attachments, versions."""
+"""Articles API: markdown, MinIO bundle, attachments, versions, import."""
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from pydantic import ValidationError
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +21,9 @@ from app.models.article_version import ArticleVersion
 from app.schemas.article import (
     ArticleAttachmentOut,
     ArticleCreate,
+    ArticleImportImageResult,
+    ArticleImportPayload,
+    ArticleImportResponse,
     ArticleLifecycleUpdateBody,
     ArticleListResponse,
     ArticleMarkdownBody,
@@ -39,25 +43,25 @@ from app.services.article_scope import (
     article_passes_scoped_predicate,
     scoped_article_predicate,
 )
-from app.services.article_storage import (
-    article_object_key,
-    is_allowed_article_file_path,
-    safe_attachment_filename,
-    safe_image_filename,
-    sync_content_md_to_storage,
+from app.services.article_service import (
+    ArticleData,
+    ImportAttachment,
+    ImportImage,
+    collect_channel_and_descendants,
+    create_article,
+    delete_article_assets,
+    import_article,
+    persist_markdown_to_storage,
+    store_article_attachment,
+    store_article_image,
+    update_article,
 )
+from app.services.article_storage import article_object_key, is_allowed_article_file_path
 from app.services.data_scope import scope_applies
-from app.services.storage import delete_object, delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
+from app.services.storage import delete_object, get_redirect_url, object_exists
 from app.config import settings
 
 router = APIRouter(prefix="/articles", tags=["articles"], dependencies=[Depends(require_auth)])
-
-
-def _collect_article_channel_and_descendants(channels: list[ArticleChannel], channel_id: str, out: set[str]) -> None:
-    out.add(channel_id)
-    for c in channels:
-        if c.parent_id == channel_id:
-            _collect_article_channel_and_descendants(channels, c.id, out)
 
 
 async def _require_article_in_scope(request: Request, db: AsyncSession, row: Article) -> None:
@@ -114,7 +118,7 @@ async def list_articles(
         if not target:
             raise HTTPException(status_code=404, detail="Channel not found")
         ids_to_include: set[str] = set()
-        _collect_article_channel_and_descendants(all_channels, channel_id, ids_to_include)
+        collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
         if not ids_to_include:
             return ArticleListResponse(items=[], total=0)
         if scope_pred is not None:
@@ -137,42 +141,162 @@ async def list_articles(
     return ArticleListResponse(items=[ArticleResponse.model_validate(r) for r in rows], total=total)
 
 
+async def _ensure_channel_writable(db: AsyncSession, request: Request, channel_id: str) -> None:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        if not await article_channel_allowed_for_create(db, sub, channel_id):
+            raise HTTPException(status_code=404, detail="Channel not found")
+    ch = await db.get(ArticleChannel, channel_id)
+    if not ch:
+        raise HTTPException(status_code=404, detail="Channel not found")
+
+
 @router.post("", response_model=ArticleResponse)
-async def create_article(
+async def create_article_endpoint(
     body: ArticleCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        if not await article_channel_allowed_for_create(db, sub, body.channel_id):
-            raise HTTPException(status_code=404, detail="Channel not found")
-
-    ch = await db.get(ArticleChannel, body.channel_id)
-    if not ch:
-        raise HTTPException(status_code=404, detail="Channel not found")
-
-    new_id = str(uuid4())
-    series = body.series_id or new_id
-    row = Article(
-        id=new_id,
+    await _ensure_channel_writable(db, request, body.channel_id)
+    row = await create_article(
+        db,
         channel_id=body.channel_id,
         name=body.name,
-        slug=body.slug,
-        markdown=body.markdown,
-        article_metadata=body.metadata,
-        series_id=series,
-        effective_from=body.effective_from,
-        effective_to=body.effective_to,
-        lifecycle_status=body.lifecycle_status,
-        origin_article_id=body.origin_article_id,
+        data=ArticleData(
+            slug=body.slug,
+            markdown=body.markdown,
+            metadata=body.metadata,
+            series_id=body.series_id,
+            effective_from=body.effective_from,
+            effective_to=body.effective_to,
+            lifecycle_status=body.lifecycle_status,
+            origin_article_id=body.origin_article_id,
+        ),
     )
-    db.add(row)
     await db.commit()
     await db.refresh(row)
-    sync_content_md_to_storage(row.id, row.markdown)
+    persist_markdown_to_storage(row)
     return ArticleResponse.model_validate(row)
+
+
+@router.post("/import", response_model=ArticleImportResponse)
+async def import_article_endpoint(
+    request: Request,
+    payload: str = Form(..., description="JSON-encoded ArticleImportPayload"),
+    images: list[UploadFile] = File(default=[]),
+    attachments: list[UploadFile] = File(default=[]),
+    db: AsyncSession = Depends(get_db),
+):
+    """Single multipart endpoint to create or upsert an article with its images and attachments.
+
+    The `payload` form field carries the article metadata as a JSON string (so files
+    can be attached in the same request). When `payload.upsert=true` and
+    `payload.origin_article_id` matches an existing article, that article is updated
+    instead of a new one being created. When `payload.rewrite_links=true` (default),
+    bare-filename references in the markdown (e.g. `![logo](logo.png)`) are rewritten
+    to the stored relative paths after upload.
+    """
+    try:
+        decoded = ArticleImportPayload.model_validate_json(payload)
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors()) from exc
+
+    await _ensure_channel_writable(db, request, decoded.channel_id)
+
+    image_inputs: list[ImportImage] = []
+    for f in images or []:
+        content = await f.read()
+        if not content:
+            continue
+        image_inputs.append(
+            ImportImage(content=content, filename=f.filename, content_type=f.content_type)
+        )
+
+    if decoded.image_urls:
+        fetched = await _fetch_remote_images(decoded.image_urls)
+        image_inputs.extend(fetched)
+
+    attachment_inputs: list[ImportAttachment] = []
+    for f in attachments or []:
+        content = await f.read()
+        if not content:
+            continue
+        attachment_inputs.append(
+            ImportAttachment(content=content, filename=f.filename, content_type=f.content_type)
+        )
+
+    data = ArticleData(
+        slug=decoded.slug,
+        markdown=decoded.markdown,
+        metadata=decoded.metadata,
+        series_id=decoded.series_id,
+        effective_from=decoded.effective_from,
+        effective_to=decoded.effective_to,
+        lifecycle_status=decoded.lifecycle_status,
+        origin_article_id=decoded.origin_article_id,
+        last_synced_at=decoded.last_synced_at,
+    )
+
+    try:
+        result = await import_article(
+            db,
+            channel_id=decoded.channel_id,
+            name=decoded.name,
+            data=data,
+            images=image_inputs,
+            attachments=attachment_inputs,
+            upsert=decoded.upsert,
+            rewrite_links=decoded.rewrite_links,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.commit()
+    await db.refresh(result.article)
+
+    return ArticleImportResponse(
+        article=ArticleResponse.model_validate(result.article),
+        created=result.created,
+        images=[
+            ArticleImportImageResult(
+                path=i.path,
+                filename=i.filename,
+                size_bytes=i.size_bytes,
+                content_type=i.content_type,
+            )
+            for i in result.images
+        ],
+        attachments=[ArticleAttachmentOut.model_validate(a.record) for a in result.attachments],
+    )
+
+
+async def _fetch_remote_images(urls: list[str]) -> list[ImportImage]:
+    """Best-effort fetch for `image_urls` in the import payload. Failures are skipped silently."""
+    import asyncio
+
+    import httpx
+
+    results: list[ImportImage] = []
+
+    async def _one(client: httpx.AsyncClient, url: str) -> ImportImage | None:
+        try:
+            resp = await client.get(url, follow_redirects=True, timeout=15.0)
+            if resp.status_code != 200 or not resp.content:
+                return None
+            ct = resp.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+            if not ct.startswith("image/"):
+                return None
+            name = url.rsplit("/", 1)[-1].split("?", 1)[0] or None
+            return ImportImage(content=resp.content, filename=name, content_type=ct)
+        except Exception:
+            return None
+
+    async with httpx.AsyncClient() as client:
+        gathered = await asyncio.gather(*[_one(client, u) for u in urls if u])
+    for item in gathered:
+        if item is not None:
+            results.append(item)
+    return results
 
 
 @router.get("/{article_id}", response_model=ArticleResponse)
@@ -191,24 +315,14 @@ async def patch_article(
     row: Article = Depends(get_scoped_article),
     db: AsyncSession = Depends(get_db),
 ):
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
     if body.channel_id is not None:
-        if isinstance(sub, str) and scope_applies(p, sub):
-            if not await article_channel_allowed_for_create(db, sub, body.channel_id):
-                raise HTTPException(status_code=404, detail="Channel not found")
-        ch = await db.get(ArticleChannel, body.channel_id)
-        if not ch:
-            raise HTTPException(status_code=404, detail="Channel not found")
+        await _ensure_channel_writable(db, request, body.channel_id)
 
-    data = body.model_dump(exclude_unset=True)
-    if "metadata" in data:
-        row.article_metadata = data.pop("metadata")
-    for k, v in data.items():
-        setattr(row, k, v)
+    fields = body.model_dump(exclude_unset=True)
+    await update_article(db, row, fields)
     await db.commit()
     await db.refresh(row)
-    sync_content_md_to_storage(row.id, row.markdown)
+    persist_markdown_to_storage(row)
     return ArticleResponse.model_validate(row)
 
 
@@ -219,10 +333,10 @@ async def put_article_markdown(
     row: Article = Depends(get_scoped_article),
     db: AsyncSession = Depends(get_db),
 ):
-    row.markdown = body.markdown
+    await update_article(db, row, {"markdown": body.markdown})
     await db.commit()
     await db.refresh(row)
-    sync_content_md_to_storage(row.id, row.markdown)
+    persist_markdown_to_storage(row)
     return ArticleResponse.model_validate(row)
 
 
@@ -359,8 +473,7 @@ async def delete_article(
     row: Article = Depends(get_scoped_article),
     db: AsyncSession = Depends(get_db),
 ):
-    if settings.storage_enabled:
-        delete_objects_by_prefix(f"articles/{row.id}/")
+    delete_article_assets(row.id)
     await db.delete(row)
     await db.commit()
 
@@ -393,6 +506,14 @@ async def list_article_attachments(
     return [ArticleAttachmentOut.model_validate(x) for x in r.scalars().all()]
 
 
+def _require_storage_enabled() -> None:
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3/MinIO.",
+        )
+
+
 @router.post("/{article_id}/attachments", response_model=ArticleAttachmentOut)
 async def upload_article_attachment(
     article_id: str,
@@ -400,64 +521,44 @@ async def upload_article_attachment(
     row: Article = Depends(get_scoped_article),
     db: AsyncSession = Depends(get_db),
 ):
-    if not settings.storage_enabled:
-        raise HTTPException(
-            status_code=503,
-            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3/MinIO.",
-        )
+    _require_storage_enabled()
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
-
-    fname = safe_attachment_filename(file.filename or "attachment")
-    rel = f"attachments/{fname}"
-    key = article_object_key(row.id, rel)
-    upload_object(key, content, content_type=file.content_type)
-
-    att = ArticleAttachment(
-        id=str(uuid4()),
-        article_id=row.id,
-        storage_path=rel,
-        original_filename=file.filename or fname,
-        size_bytes=len(content),
-        content_type=file.content_type,
-    )
-    db.add(att)
+    try:
+        stored = await store_article_attachment(
+            db, row.id, content, filename=file.filename, content_type=file.content_type
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     await db.commit()
-    await db.refresh(att)
-    return ArticleAttachmentOut.model_validate(att)
+    await db.refresh(stored.record)
+    return ArticleAttachmentOut.model_validate(stored.record)
 
 
-@router.post("/{article_id}/images")
+@router.post("/{article_id}/images", response_model=ArticleImportImageResult)
 async def upload_article_image(
     article_id: str,
     file: UploadFile = File(...),
     row: Article = Depends(get_scoped_article),
 ):
     """Upload an inline image under articles/{id}/images/. Returns markdown-friendly path."""
-    if not settings.storage_enabled:
-        raise HTTPException(
-            status_code=503,
-            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3/MinIO.",
-        )
-    content_type = (file.content_type or "").lower()
-    if not content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File is not an image")
+    _require_storage_enabled()
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Empty file")
-
-    fname = safe_image_filename(file.filename, content_type)
-    unique = f"{uuid4().hex[:8]}-{fname}"
-    rel = f"images/{unique}"
-    key = article_object_key(row.id, rel)
-    upload_object(key, content, content_type=content_type)
-    return {
-        "path": rel,
-        "filename": fname,
-        "size_bytes": len(content),
-        "content_type": content_type,
-    }
+    try:
+        stored = store_article_image(
+            row.id, content, filename=file.filename, content_type=file.content_type
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return ArticleImportImageResult(
+        path=stored.path,
+        filename=stored.filename,
+        size_bytes=stored.size_bytes,
+        content_type=stored.content_type,
+    )
 
 
 @router.delete("/{article_id}/attachments/{attachment_id}", status_code=204)
@@ -576,5 +677,5 @@ async def restore_article_version(
     row.article_metadata = dict(av.version_metadata) if av.version_metadata else None
     await db.commit()
     await db.refresh(row)
-    sync_content_md_to_storage(row.id, row.markdown)
+    persist_markdown_to_storage(row)
     return ArticleResponse.model_validate(row)

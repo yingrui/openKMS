@@ -60,6 +60,7 @@
 |---------|--------|-------------|
 | Article channels | ✅ | Tree CRUD **`GET/POST/PUT/DELETE /api/article-channels`** (merge, reorder); no document-style parsing pipeline on channels |
 | Articles CRUD | ✅ | **`GET/POST/PATCH/DELETE /api/articles`**; list by `channel_id` includes subtree channels; `GET /api/articles/stats`; hybrid markdown: DB column + **`articles/{id}/content.md`** in MinIO when storage is enabled |
+| Bulk import | ✅ | **`POST /api/articles/import`** (multipart): JSON `payload` field + zero-or-more `images` and `attachments` files; supports `image_urls` for remote fetches, `upsert=true` to match existing by `origin_article_id`, and `rewrite_links=true` (default) to rewrite bare-filename markdown references to stored relative paths in one request |
 | Article relationships | ✅ | **`GET/POST/DELETE /api/articles/{id}/relationships`** (same relation types as documents: `supersedes`, `amends`, `implements`, `see_also`); `article_relationships` table |
 | Lifecycle | ✅ | **`PATCH /api/articles/{id}/lifecycle`** — `series_id`, `effective_from` / `effective_to`, `lifecycle_status`; API exposes **`is_current_for_rag`** (same rules as documents); `series_id` remains internal/RAG grouping, not primary UX |
 | Source / origin | ✅ | **`origin_article_id`** on `articles` — arbitrary external **ID or URI** (UI label “Source”); **`last_synced_at`** for sync workflows |
@@ -477,6 +478,32 @@ Toggle via Console → Feature Toggles
 ### Article
 
 - `id`, `channel_id` (FK → article_channels), `name`, `slug` (optional, legacy / API only; SPA does not emphasize it), `markdown` (TEXT, working copy), `metadata` (JSONB), `series_id` (defaults to `id` on create; RAG grouping), `effective_from`, `effective_to`, `lifecycle_status`, `origin_article_id` (optional external **source ID or URI**), `last_synced_at`, `created_at`, `updated_at`
+
+#### `POST /api/articles/import` (multipart)
+
+Single round-trip create-or-upsert of an article with all of its assets. Form fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `payload` | string (JSON `ArticleImportPayload`) | required: `channel_id`, `name`; optional: `markdown`, `metadata`, `lifecycle_status`, `effective_from`, `effective_to`, `origin_article_id`, `series_id`, `last_synced_at`, `image_urls`, `upsert` (default `false`), `rewrite_links` (default `true`) |
+| `images` | file × N | stored under `articles/{id}/images/<unique>-<safe-name>` |
+| `attachments` | file × N | stored under `articles/{id}/attachments/<safe-name>` and registered as `ArticleAttachment` rows |
+
+When `rewrite_links=true`, markdown references whose basename matches an uploaded file (e.g. `![logo](logo.png)`) are rewritten to the stored relative path (`![logo](images/<unique>-logo.png)`). Absolute URLs and anchors are left untouched.
+
+When `upsert=true` and `payload.origin_article_id` matches an existing row, that article is updated in place (no duplicate). Any newly uploaded files are still registered.
+
+Example:
+
+```bash
+curl -X POST "$API/api/articles/import" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F 'payload={"channel_id":"ch_news","name":"Q1 Recap","markdown":"# Q1\n\n![chart](chart.png)\n\n[Full report](report.pdf)","origin_article_id":"https://example.com/q1","upsert":true};type=application/json' \
+  -F 'images=@./chart.png' \
+  -F 'attachments=@./report.pdf'
+```
+
+Response: `{ "article": ArticleResponse, "created": true|false, "images": [...], "attachments": [...] }`.
 
 ### ArticleRelationship
 

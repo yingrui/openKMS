@@ -127,6 +127,39 @@ class ArticleAttachmentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ArticleImportPayload(BaseModel):
+    """JSON payload for `POST /api/articles/import` (sent in the `payload` form field)."""
+
+    channel_id: str
+    name: str = Field(..., min_length=1, max_length=512)
+    markdown: str | None = None
+    metadata: dict[str, Any] | None = None
+    slug: str | None = Field(default=None, max_length=256)
+    series_id: str | None = None
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
+    lifecycle_status: str | None = None
+    origin_article_id: str | None = Field(default=None, max_length=512)
+    last_synced_at: datetime | None = None
+    image_urls: list[str] | None = None
+    upsert: bool = False
+    rewrite_links: bool = True
+
+
+class ArticleImportImageResult(BaseModel):
+    path: str
+    filename: str
+    size_bytes: int
+    content_type: str
+
+
+class ArticleImportResponse(BaseModel):
+    article: ArticleResponse
+    created: bool
+    images: list[ArticleImportImageResult] = []
+    attachments: list[ArticleAttachmentOut] = []
+
+
 class ArticleVersionCreateBody(BaseModel):
     tag: str | None = Field(default=None, max_length=512)
     note: str | None = None
