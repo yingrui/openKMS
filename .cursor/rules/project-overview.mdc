@@ -15,6 +15,6 @@ Knowledge system: documents (PaddleOCR-VL), channels, articles, KBs/RAG, wiki.
 | Docs | `docs/` |
 | VLM | `vlm-server/` |
 
-**Ports:** backend 8102, Vite 5173, Docker UI 8082 (nginx), VLM 8101. **Config:** `OPENKMS_*` in `backend/.env`; frontend `config/index.ts`.
+**Ports:** backend 8102, Vite 5173, Docker UI 8082 (nginx), VLM 8101, qa-agent 8103, docs (`mkdocs serve`) 8104. **Config:** `OPENKMS_*` in `backend/.env`; frontend `config/index.ts`.
 
 **Wording / UI copy:** see `writing-style.mdc`.

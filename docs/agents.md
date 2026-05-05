@@ -57,7 +57,7 @@ If a commit touches several layers, **stage the doc updates with the code commit
 
 ```bash
 pip install -r docs/requirements.txt
-mkdocs serve            # http://127.0.0.1:8000
+mkdocs serve            # http://127.0.0.1:8104
 mkdocs build --strict   # the same command CI runs; fails on broken links
 ```
 

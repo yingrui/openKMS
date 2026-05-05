@@ -5,6 +5,7 @@ repo_url: https://github.com/yingrui/openKMS
 repo_name: yingrui/openKMS
 edit_uri: edit/main/docs/
 docs_dir: docs
+dev_addr: 127.0.0.1:8104
 
 theme:
   name: material
