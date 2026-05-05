@@ -43,6 +43,28 @@ class ArticleLifecycleUpdateBody(BaseModel):
     lifecycle_status: str | None = None
 
 
+class ArticleRelationshipCreateBody(BaseModel):
+    """Body for POST /articles/{id}/relationships — edge source is path article."""
+
+    target_article_id: str
+    relation_type: str
+    note: str | None = None
+
+
+class ArticleRelationshipEdge(BaseModel):
+    id: str
+    relation_type: str
+    peer_article_id: str
+    peer_article_name: str | None = None
+    note: str | None = None
+    created_at: datetime
+
+
+class ArticleRelationshipsResponse(BaseModel):
+    outgoing: list[ArticleRelationshipEdge]
+    incoming: list[ArticleRelationshipEdge]
+
+
 class ArticleResponse(BaseModel):
     id: str
     channel_id: str

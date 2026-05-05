@@ -4,15 +4,18 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import RedirectResponse
 from urllib.parse import unquote
 
 from app.api.auth import get_jwt_payload, require_auth
 from app.database import get_db
+from app.constants import DocumentRelationType
 from app.models.article import Article
 from app.models.article_attachment import ArticleAttachment
 from app.models.article_channel import ArticleChannel
+from app.models.article_relationship import ArticleRelationship
 from app.models.article_version import ArticleVersion
 from app.schemas.article import (
     ArticleAttachmentOut,
@@ -20,6 +23,9 @@ from app.schemas.article import (
     ArticleLifecycleUpdateBody,
     ArticleListResponse,
     ArticleMarkdownBody,
+    ArticleRelationshipCreateBody,
+    ArticleRelationshipEdge,
+    ArticleRelationshipsResponse,
     ArticleResponse,
     ArticleUpdate,
     ArticleVersionCreateBody,
@@ -37,6 +43,7 @@ from app.services.article_storage import (
     article_object_key,
     is_allowed_article_file_path,
     safe_attachment_filename,
+    safe_image_filename,
     sync_content_md_to_storage,
 )
 from app.services.data_scope import scope_applies
@@ -234,6 +241,118 @@ async def patch_article_lifecycle(
     return ArticleResponse.model_validate(row)
 
 
+@router.get("/{article_id}/relationships", response_model=ArticleRelationshipsResponse)
+async def list_article_relationships(
+    article_id: str,
+    row: Article = Depends(get_scoped_article),
+    db: AsyncSession = Depends(get_db),
+):
+    """List edges where this article is source (outgoing) or target (incoming)."""
+    out_result = await db.execute(
+        select(ArticleRelationship, Article.name)
+        .join(Article, ArticleRelationship.target_article_id == Article.id)
+        .where(ArticleRelationship.source_article_id == article_id)
+        .order_by(ArticleRelationship.created_at.desc())
+    )
+    outgoing: list[ArticleRelationshipEdge] = []
+    for rel, peer_name in out_result.all():
+        outgoing.append(
+            ArticleRelationshipEdge(
+                id=rel.id,
+                relation_type=rel.relation_type,
+                peer_article_id=rel.target_article_id,
+                peer_article_name=peer_name,
+                note=rel.note,
+                created_at=rel.created_at,
+            )
+        )
+
+    inc_result = await db.execute(
+        select(ArticleRelationship, Article.name)
+        .join(Article, ArticleRelationship.source_article_id == Article.id)
+        .where(ArticleRelationship.target_article_id == article_id)
+        .order_by(ArticleRelationship.created_at.desc())
+    )
+    incoming: list[ArticleRelationshipEdge] = []
+    for rel, peer_name in inc_result.all():
+        incoming.append(
+            ArticleRelationshipEdge(
+                id=rel.id,
+                relation_type=rel.relation_type,
+                peer_article_id=rel.source_article_id,
+                peer_article_name=peer_name,
+                note=rel.note,
+                created_at=rel.created_at,
+            )
+        )
+
+    return ArticleRelationshipsResponse(outgoing=outgoing, incoming=incoming)
+
+
+@router.post("/{article_id}/relationships", response_model=ArticleRelationshipEdge)
+async def create_article_relationship(
+    article_id: str,
+    body: ArticleRelationshipCreateBody,
+    request: Request,
+    row: Article = Depends(get_scoped_article),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a directed edge from this article to the target (e.g. supersedes, amends)."""
+    if body.target_article_id == article_id:
+        raise HTTPException(status_code=400, detail="Cannot relate an article to itself")
+    try:
+        DocumentRelationType(body.relation_type)
+    except ValueError:
+        allowed = ", ".join(sorted(x.value for x in DocumentRelationType))
+        raise HTTPException(status_code=400, detail=f"relation_type must be one of: {allowed}")
+
+    peer = await db.get(Article, body.target_article_id)
+    if not peer:
+        raise HTTPException(status_code=404, detail="Target article not found")
+    await _require_article_in_scope(request, db, peer)
+
+    rel = ArticleRelationship(
+        id=str(uuid4()),
+        source_article_id=article_id,
+        target_article_id=body.target_article_id,
+        relation_type=body.relation_type,
+        note=body.note,
+    )
+    db.add(rel)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="A relationship of this type between these articles already exists",
+        ) from None
+    await db.refresh(rel)
+    return ArticleRelationshipEdge(
+        id=rel.id,
+        relation_type=rel.relation_type,
+        peer_article_id=rel.target_article_id,
+        peer_article_name=peer.name,
+        note=rel.note,
+        created_at=rel.created_at,
+    )
+
+
+@router.delete("/{article_id}/relationships/{relationship_id}", status_code=204)
+async def delete_article_relationship(
+    article_id: str,
+    relationship_id: str,
+    row: Article = Depends(get_scoped_article),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete an outgoing relationship (source must be this article)."""
+    rel = await db.get(ArticleRelationship, relationship_id)
+    if not rel or rel.source_article_id != article_id:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+    await db.delete(rel)
+    await db.commit()
+
+
 @router.delete("/{article_id}", status_code=204)
 async def delete_article(
     article_id: str,
@@ -307,6 +426,38 @@ async def upload_article_attachment(
     await db.commit()
     await db.refresh(att)
     return ArticleAttachmentOut.model_validate(att)
+
+
+@router.post("/{article_id}/images")
+async def upload_article_image(
+    article_id: str,
+    file: UploadFile = File(...),
+    row: Article = Depends(get_scoped_article),
+):
+    """Upload an inline image under articles/{id}/images/. Returns markdown-friendly path."""
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3/MinIO.",
+        )
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File is not an image")
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    fname = safe_image_filename(file.filename, content_type)
+    unique = f"{uuid4().hex[:8]}-{fname}"
+    rel = f"images/{unique}"
+    key = article_object_key(row.id, rel)
+    upload_object(key, content, content_type=content_type)
+    return {
+        "path": rel,
+        "filename": fname,
+        "size_bytes": len(content),
+        "content_type": content_type,
+    }
 
 
 @router.delete("/{article_id}/attachments/{attachment_id}", status_code=204)

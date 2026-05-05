@@ -60,15 +60,17 @@
 |---------|--------|-------------|
 | Article channels | ✅ | Tree CRUD **`GET/POST/PUT/DELETE /api/article-channels`** (merge, reorder); no document-style parsing pipeline on channels |
 | Articles CRUD | ✅ | **`GET/POST/PATCH/DELETE /api/articles`**; list by `channel_id` includes subtree channels; `GET /api/articles/stats`; hybrid markdown: DB column + **`articles/{id}/content.md`** in MinIO when storage is enabled |
-| Lifecycle | ✅ | **`PATCH /api/articles/{id}/lifecycle`** — `series_id`, `effective_from` / `effective_to`, `lifecycle_status`; API exposes **`is_current_for_rag`** (same rules as documents) |
-| Origin sync fields | ✅ | **`origin_article_id`**, **`last_synced_at`** on `articles` for external sync workflows (ingestion jobs not included in core) |
+| Article relationships | ✅ | **`GET/POST/DELETE /api/articles/{id}/relationships`** (same relation types as documents: `supersedes`, `amends`, `implements`, `see_also`); `article_relationships` table |
+| Lifecycle | ✅ | **`PATCH /api/articles/{id}/lifecycle`** — `series_id`, `effective_from` / `effective_to`, `lifecycle_status`; API exposes **`is_current_for_rag`** (same rules as documents); `series_id` remains internal/RAG grouping, not primary UX |
+| Source / origin | ✅ | **`origin_article_id`** on `articles` — arbitrary external **ID or URI** (UI label “Source”); **`last_synced_at`** for sync workflows |
 | Files & images | ✅ | **`GET /api/articles/{id}/files/{path}`** — allowlisted paths (`images/`, `attachments/`, root `content.md`, `origin.html`); presigned redirect |
-| Attachments | ✅ | **`GET/POST/DELETE /api/articles/{id}/attachments`** — registry + objects under `articles/{id}/attachments/` |
+| Inline images | ✅ | **`POST /api/articles/{id}/images`** — uploads under `articles/{id}/images/<uuid>-<name>` and returns markdown-friendly relative path; SPA editor supports clipboard paste, drag-drop, and a toolbar **Image** button (auto-inserts `![alt](images/…)`) |
+| Attachments | ✅ | **`GET/POST/DELETE /api/articles/{id}/attachments`** — registry + objects under `articles/{id}/attachments/`; SPA editor exposes **Add file**, **Insert link**, and **Remove**, plus drag-drop of non-image files |
 | Versions | ✅ | **`POST/GET /api/articles/{id}/versions`** and **`POST .../versions/{vid}/restore`** (snapshots of markdown + metadata) |
 | Knowledge Map | ✅ | **`article_channel`** resource links validated against **`article_channels`** |
 | Group scopes | ✅ | **`access_group_article_channels`**; Console group scopes include **Article channels** |
 | Permissions | ✅ | Catalog keys **`articles:read`** / **`articles:write`** (strict route/API patterns when enforced) |
-| SPA | ✅ | **`ArticleChannelsContext`** + sidebar tree; hub **`/articles`**; **`/articles/channels`** manage tree; **`/articles/channels/:id`** list (**New article** modal: title required, optional slug/body); **`/articles/channels/:id/settings`**; **`ArticleDetail`** edit title/slug/Markdown (**Save** = **`PATCH /api/articles/:id`** + **`PUT …/markdown`**), **Delete**, Write/Preview; legacy **`/articles?channel=`** → channel route |
+| SPA | ✅ | **`ArticleChannelsContext`** + sidebar tree; hub **`/articles`**; **`/articles/channels`** manage tree; **`/articles/channels/:id`** list (**New article** modal: title required, optional source ID/URL + body); **`/articles/channels/:id/settings`**; **`ArticleDetail`**: info card (channel, lifecycle, applicable, **Source**, updated), title + source **Edit** + Save/Cancel (**`PATCH /api/articles/:id`**), collapsible **Relationships** (outgoing/incoming + add edge), Markdown editor with **Image** / **Attachment** toolbar buttons, paste/drag-drop upload, inline **Attachments** list with insert-link and remove, Save (**`PUT …/markdown`**), **Delete article**; legacy **`/articles?channel=`** → channel route |
 
 Toggle via Console → Feature Toggles
 
@@ -474,7 +476,11 @@ Toggle via Console → Feature Toggles
 
 ### Article
 
-- `id`, `channel_id` (FK → article_channels), `name`, `slug` (optional), `markdown` (TEXT, working copy), `metadata` (JSONB), `series_id` (defaults to `id` on create), `effective_from`, `effective_to`, `lifecycle_status`, `origin_article_id` (optional, for sync from an external catalog), `last_synced_at`, `created_at`, `updated_at`
+- `id`, `channel_id` (FK → article_channels), `name`, `slug` (optional, legacy / API only; SPA does not emphasize it), `markdown` (TEXT, working copy), `metadata` (JSONB), `series_id` (defaults to `id` on create; RAG grouping), `effective_from`, `effective_to`, `lifecycle_status`, `origin_article_id` (optional external **source ID or URI**), `last_synced_at`, `created_at`, `updated_at`
+
+### ArticleRelationship
+
+- Same shape as **document_relationships**: `id`, `source_article_id`, `target_article_id`, `relation_type`, `note`, `created_at`; unique `(source, target, type)`
 - `is_current_for_rag` is computed on read (same lifecycle/date rules as documents)
 - MinIO bundle (when storage enabled): `articles/{id}/content.md`, `images/`, `attachments/`, optional `origin.html`
 

@@ -114,7 +114,7 @@ frontend/src/
     ├── ArticleChannel.tsx   # /articles/channels/:channelId – list in channel
     ├── ArticleChannels.tsx  # /articles/channels – manage tree
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
-    ├── ArticleDetail.tsx
+    ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
     ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** GFM; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`), WikiPageEditor.tsx
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx

@@ -51,6 +51,30 @@ def safe_attachment_filename(name: str) -> str:
     return base or "file"
 
 
+_IMAGE_EXT_BY_TYPE = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/svg+xml": "svg",
+    "image/bmp": "bmp",
+    "image/tiff": "tiff",
+    "image/avif": "avif",
+}
+
+
+def safe_image_filename(name: str | None, content_type: str | None) -> str:
+    """Build a filesystem-safe image filename, falling back to content type for extension."""
+    raw = (name or "").rsplit("/", 1)[-1].strip()
+    base = re.sub(r"[^\w.\-()+ ]", "_", raw)[:200] if raw else ""
+    if base and "." in base:
+        return base
+    ext = _IMAGE_EXT_BY_TYPE.get((content_type or "").lower(), "png")
+    stem = base or "image"
+    return f"{stem}.{ext}"
+
+
 def sync_content_md_to_storage(article_id: str, markdown: str | None) -> None:
     """Write working copy to MinIO when storage is enabled."""
     if not settings.storage_enabled:
