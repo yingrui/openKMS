@@ -101,6 +101,7 @@ nav:
       - Evaluation: features/evaluation.md
       - Glossaries: features/glossaries.md
       - Knowledge map & home: features/knowledge-map.md
+      - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
       - Pipelines, jobs & models: features/pipelines-and-jobs.md
       - Console & authentication: features/console-and-auth.md

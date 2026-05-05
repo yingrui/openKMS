@@ -188,6 +188,7 @@
 - [x] Ontology explore Cypher gate tests (`backend/tests/test_ontology_explore_cypher.py`: `validate_ontology_explore_cypher` in `ontology_explore.py`; read-only keywords, RETURN, CALL, apoc/dbms)
 - [x] Data scope channel expand tests (`backend/tests/test_data_scope_channel_expand.py`: `_expand_channel_ids`, `_expand_article_channel_ids`)
 - [x] Frontend permission pattern tests (`frontend/src/utils/permissionPatterns.test.ts`: pathname normalization, `/*` patterns, SPA public path union)
+- [x] Global search (`GET /api/search`, `/search` UI, `docs/features/global-search.md`, `tests/test_global_search.py`)
 - [x] DocumentStatus enum; async subprocess (run_pipeline); document list query optimization; VLM config consolidation
 - [x] Route-level code splitting (React.lazy); ErrorBanner; ConsoleSettings a11y (id/htmlFor)
 

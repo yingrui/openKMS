@@ -1,16 +1,39 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
 
 export function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const onConsole = location.pathname.startsWith('/console');
   const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [headerQuery, setHeaderQuery] = useState('');
+
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      const q = new URLSearchParams(location.search).get('q') ?? '';
+      setHeaderQuery(q);
+    } else {
+      setHeaderQuery('');
+    }
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   const toggleTheme = () => {
     const next = theme === 'light' ? 'dark' : 'light';
@@ -33,8 +56,17 @@ export function Header() {
       <div className="header-search">
         <Search size={18} className="header-search-icon" />
         <input
+          ref={searchInputRef}
           type="search"
-          placeholder="Search documents and articles..."
+          value={headerQuery}
+          onChange={(e) => setHeaderQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const q = headerQuery.trim();
+              navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
+            }
+          }}
+          placeholder="Search documents, articles, ..."
           className="header-search-input"
           aria-label="Search"
         />

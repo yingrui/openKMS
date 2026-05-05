@@ -34,6 +34,7 @@ from app.api.admin.groups import router as admin_groups_router
 from app.api.admin.security_roles import router as admin_security_roles_router
 from app.api.admin.security_permissions import router as admin_security_permissions_router
 from app.api.admin.permission_reference import router as admin_permission_reference_router
+from app.api.global_search import router as global_search_router
 from app.api.home_hub import router as home_hub_router
 from app.api.system_settings import public_router as system_public_router
 from app.api.system_settings import router as system_settings_router
@@ -104,6 +105,7 @@ app.include_router(system_public_router, prefix="/api")
 app.include_router(system_settings_router, prefix="/api")
 app.include_router(knowledge_map_router, prefix="/api")
 app.include_router(home_hub_router, prefix="/api")
+app.include_router(global_search_router, prefix="/api")
 app.include_router(channels_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(article_channels_router, prefix="/api")

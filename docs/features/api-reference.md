@@ -41,6 +41,8 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 | POST | `/api/auth/clear-session` | Clear backend session (called before logout) |
 | GET | `/api/auth/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
 | GET | `/api/home/hub` | Authenticated landing-screen payload: per-section quick links the user is permitted to see |
+| GET | `/api/search` | Authenticated unified metadata search: query `q`, `types` (`all` or comma-list: `documents`, `articles`, `wiki_spaces`, `knowledge_bases`), optional `document_channel_id`, `article_channel_id`, `updated_after` / `updated_before` (ISO 8601), `limit` (1–100, default 30). Returns sections with `items` (`id`, `name`, `title`, `kind`, `url_path`, `channel_id`, `channel_name`, `updated_at`) and `total` per type; types the user cannot read are empty; **403** if none of the requested types are allowed; **404** if a channel id is unknown. Scoped like list APIs (documents, articles, wiki spaces, KB visibility). |
+| HEAD | `/api/search` | Same auth / permission overlap check as GET; no JSON body |
 | GET | `/api/providers/{id}/models` | Authenticated: list models registered under this provider |
 | GET | `/api/models/{id}/config` | Authenticated: full LLM config (base_url, model_name, api_key, defaults) for the openkms-cli |
 | GET | `/api/admin/users` | `console:users`: auth mode, IdP notice, `users` (local only) |

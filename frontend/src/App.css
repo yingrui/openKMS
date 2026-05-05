@@ -118,6 +118,12 @@
   padding-right: 20px;
 }
 
+/* Global search: wider usable width for results */
+.app-content--search {
+  padding-left: clamp(16px, 2.5vw, 28px);
+  padding-right: clamp(16px, 2.5vw, 28px);
+}
+
 .app-content--compact {
   padding: 12px 16px;
 }

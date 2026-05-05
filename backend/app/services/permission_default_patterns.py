@@ -122,8 +122,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_DOCUMENTS_READ: (
-        ["/documents", "/documents/*"],
-        ["GET /api/documents/*", "HEAD /api/documents/*", "GET /api/home/hub"],
+        ["/documents", "/documents/*", "/search", "/search/*"],
+        ["GET /api/documents/*", "HEAD /api/documents/*", "GET /api/home/hub", "GET /api/search", "HEAD /api/search"],
     ),
     PERM_DOCUMENTS_WRITE: (
         ["/documents", "/documents/*"],
@@ -135,7 +135,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_ARTICLES_READ: (
-        ["/articles", "/articles/*"],
+        ["/articles", "/articles/*", "/search", "/search/*"],
         [
             "GET /api/articles/*",
             "HEAD /api/articles/*",
@@ -143,6 +143,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "HEAD /api/article-channels",
             "GET /api/article-channels/*",
             "HEAD /api/article-channels/*",
+            "GET /api/search",
+            "HEAD /api/search",
         ],
     ),
     PERM_ARTICLES_WRITE: (
@@ -175,8 +177,15 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_KB_READ: (
-        ["/knowledge-bases", "/knowledge-bases/*", "/glossaries", "/glossaries/*"],
-        ["GET /api/knowledge-bases/*", "HEAD /api/knowledge-bases/*", "GET /api/glossaries/*", "HEAD /api/glossaries/*"],
+        ["/knowledge-bases", "/knowledge-bases/*", "/glossaries", "/glossaries/*", "/search", "/search/*"],
+        [
+            "GET /api/knowledge-bases/*",
+            "HEAD /api/knowledge-bases/*",
+            "GET /api/glossaries/*",
+            "HEAD /api/glossaries/*",
+            "GET /api/search",
+            "HEAD /api/search",
+        ],
     ),
     PERM_KB_WRITE: (
         ["/knowledge-bases", "/knowledge-bases/*", "/glossaries", "/glossaries/*"],
@@ -192,12 +201,14 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_WIKIS_READ: (
-        ["/wikis", "/wikis/*"],
+        ["/wikis", "/wikis/*", "/search", "/search/*"],
         [
             "GET /api/wiki-spaces",
             "GET /api/wiki-spaces/*",
             "HEAD /api/wiki-spaces",
             "HEAD /api/wiki-spaces/*",
+            "GET /api/search",
+            "HEAD /api/search",
         ],
     ),
     PERM_WIKIS_WRITE: (
