@@ -41,7 +41,7 @@
 
 .article-detail-page.document-detail {
   padding: 0 4px;
-  --article-markdown-split-panel-height: min(88dvh, calc(100dvh - var(--header-height, 56px) - 5.5rem));
+  --article-markdown-split-panel-height: min(96dvh, calc(100dvh - var(--header-height, 56px) - 0.75rem));
 }
 
 /* Read mode: no inner scrollbar on the Markdown card — main column (`app-content`) scrolls */
@@ -80,7 +80,7 @@
 .article-detail-markdown-panel--editing {
   display: flex;
   flex-direction: column;
-  min-height: min(72vh, 780px);
+  min-height: min(80vh, 860px);
   max-height: none;
 }
 
@@ -261,41 +261,6 @@
   grid-column: 3;
   min-height: 0;
   overflow: hidden;
-}
-
-.article-detail-markdown-preview-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
-  flex-shrink: 0;
-}
-
-.article-detail-markdown-preview-close {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--color-text);
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.article-detail-markdown-preview-close:hover {
-  background: var(--color-bg);
-}
-
-.article-detail-markdown-preview-close-text {
-  font-size: 0.78rem;
 }
 
 .article-detail-markdown-preview-scroll {

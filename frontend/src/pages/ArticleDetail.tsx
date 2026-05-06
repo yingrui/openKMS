@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   Paperclip,
+  Save,
   Trash2,
   Upload,
   X as XIcon,
@@ -107,6 +108,7 @@ export function ArticleDetail() {
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const markdownSplitLayoutRef = useRef<HTMLDivElement | null>(null);
+  const markdownSectionRef = useRef<HTMLElement | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -149,6 +151,17 @@ export function ArticleDetail() {
       setAttachmentsSectionOpen(true);
     }
   }, [attachments.length]);
+
+  /** Preview + edit: hide article info bar and bring the Markdown card to the top of the view for more editor/preview space */
+  useEffect(() => {
+    if (!markdownPreviewOpen || !markdownEditMode) return;
+    setInfoVisible(false);
+    const el = markdownSectionRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [markdownPreviewOpen, markdownEditMode]);
 
   const refreshRelationships = useCallback(async () => {
     if (!id) return;
@@ -926,6 +939,7 @@ export function ArticleDetail() {
 
           <div className="document-detail-split article-detail-markdown-split">
             <section
+              ref={markdownSectionRef}
               className={`document-detail-panel document-detail-markdown${markdownEditMode ? ' article-detail-markdown-panel--editing' : ''}`}
             >
               <h2 className="document-detail-panel-header">
@@ -965,12 +979,16 @@ export function ArticleDetail() {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-primary document-detail-save-btn"
+                      className="document-detail-edit-toggle document-detail-save-btn"
                       onClick={() => void handleSaveMarkdown()}
                       disabled={savingMarkdown}
                       title="Save content"
                     >
-                      {savingMarkdown ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
+                      {savingMarkdown ? (
+                        <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
+                      ) : (
+                        <Save size={14} aria-hidden />
+                      )}
                       <span>{savingMarkdown ? 'Saving…' : 'Save'}</span>
                     </button>
                     <button
@@ -1067,18 +1085,6 @@ export function ArticleDetail() {
                           onPointerDown={handleMarkdownSplitPointerDown}
                         />
                         <aside className="article-detail-markdown-preview-pane" aria-label="Markdown preview">
-                          <div className="article-detail-markdown-preview-toolbar">
-                            <span>Preview</span>
-                            <button
-                              type="button"
-                              className="article-detail-markdown-preview-close"
-                              onClick={() => setMarkdownPreviewOpen(false)}
-                              title="Close preview"
-                            >
-                              <XIcon size={16} />
-                              <span className="article-detail-markdown-preview-close-text">Close</span>
-                            </button>
-                          </div>
                           <div className="article-detail-markdown-preview-scroll article-detail-markdown-read">
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm, remarkMath]}

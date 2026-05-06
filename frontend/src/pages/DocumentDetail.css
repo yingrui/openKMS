@@ -1156,17 +1156,27 @@
   flex-shrink: 0;
 }
 
-.document-detail-save-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  font-size: 0.875rem;
-  font-weight: 500;
+/* Markdown toolbar Save — same shell as .document-detail-edit-toggle, accent emphasis */
+.document-detail-edit-toggle.document-detail-save-btn {
+  font-weight: 600;
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 42%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 9%, var(--color-bg-elevated));
 }
 
-.document-detail-save-btn:disabled {
-  opacity: 0.6;
+.document-detail-edit-toggle.document-detail-save-btn:hover:not(:disabled) {
+  color: var(--color-accent-hover);
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-elevated));
+}
+
+.document-detail-edit-toggle.document-detail-save-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.document-detail-edit-toggle.document-detail-save-btn:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 

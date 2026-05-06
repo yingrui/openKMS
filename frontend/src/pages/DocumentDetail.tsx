@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -1964,12 +1964,16 @@ export function DocumentDetail() {
                   <>
                     <button
                       type="button"
-                      className="btn btn-primary document-detail-save-btn"
+                      className="document-detail-edit-toggle document-detail-save-btn"
                       onClick={handleSaveMarkdown}
                       disabled={saving}
                       title="Save markdown"
                     >
-                      {saving ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
+                      {saving ? (
+                        <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
+                      ) : (
+                        <Save size={14} aria-hidden />
+                      )}
                       <span>{saving ? 'Saving…' : 'Save'}</span>
                     </button>
                     <button
