@@ -5,6 +5,8 @@ import {
   ChevronDown,
   ChevronUp,
   Edit3,
+  Eye,
+  EyeOff,
   FileText,
   GitBranch,
   Image as ImageIcon,
@@ -66,6 +68,10 @@ function resolveMarkdownHref(articleId: string, href: string | undefined): strin
   return h;
 }
 
+const MARKDOWN_SPLIT_GUTTER_PX = 6;
+const MARKDOWN_SPLIT_EDITOR_FR_MIN = 18;
+const MARKDOWN_SPLIT_EDITOR_FR_MAX = 82;
+
 export function ArticleDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -80,6 +86,9 @@ export function ArticleDetail() {
   const [titleEditMode, setTitleEditMode] = useState(false);
   const [sourceEditMode, setSourceEditMode] = useState(false);
   const [markdownEditMode, setMarkdownEditMode] = useState(false);
+  const [markdownPreviewOpen, setMarkdownPreviewOpen] = useState(false);
+  /** Left pane weight when split (fr); right is `100 - this`. Clamped while dragging. */
+  const [markdownSplitEditorFr, setMarkdownSplitEditorFr] = useState(50);
   const [savingTitle, setSavingTitle] = useState(false);
   const [savingSource, setSavingSource] = useState(false);
   const [savingMarkdown, setSavingMarkdown] = useState(false);
@@ -97,6 +106,7 @@ export function ArticleDetail() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const markdownSplitLayoutRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -124,6 +134,8 @@ export function ArticleDetail() {
     setTitleEditMode(false);
     setSourceEditMode(false);
     setMarkdownEditMode(false);
+    setMarkdownPreviewOpen(false);
+    setMarkdownSplitEditorFr(50);
   }, [article]);
 
   useEffect(() => {
@@ -422,6 +434,8 @@ export function ArticleDetail() {
       await load();
       toast.success('Content saved');
       setMarkdownEditMode(false);
+      setMarkdownPreviewOpen(false);
+      setMarkdownSplitEditorFr(50);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Save failed');
     } finally {
@@ -433,7 +447,48 @@ export function ArticleDetail() {
     if (!article) return;
     setEditMarkdown(article.markdown ?? '');
     setMarkdownEditMode(false);
+    setMarkdownPreviewOpen(false);
+    setMarkdownSplitEditorFr(50);
   };
+
+  const handleMarkdownSplitPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    const layout = markdownSplitLayoutRef.current;
+    if (!layout) return;
+    handle.setPointerCapture(e.pointerId);
+
+    const updateFromClientX = (clientX: number) => {
+      const rect = layout.getBoundingClientRect();
+      const w = rect.width;
+      if (w <= MARKDOWN_SPLIT_GUTTER_PX) return;
+      const inner = w - MARKDOWN_SPLIT_GUTTER_PX;
+      const x = clientX - rect.left - MARKDOWN_SPLIT_GUTTER_PX / 2;
+      const pct = (x / inner) * 100;
+      const clamped = Math.round(
+        Math.min(MARKDOWN_SPLIT_EDITOR_FR_MAX, Math.max(MARKDOWN_SPLIT_EDITOR_FR_MIN, pct)),
+      );
+      setMarkdownSplitEditorFr(clamped);
+    };
+
+    updateFromClientX(e.clientX);
+
+    const onMove = (ev: PointerEvent) => {
+      updateFromClientX(ev.clientX);
+    };
+    const onUp = (ev: PointerEvent) => {
+      if (handle.hasPointerCapture(ev.pointerId)) {
+        handle.releasePointerCapture(ev.pointerId);
+      }
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+  }, []);
 
   const handleDelete = async () => {
     if (!id || !article) return;
@@ -870,13 +925,24 @@ export function ArticleDetail() {
           </section>
 
           <div className="document-detail-split article-detail-markdown-split">
-            <section className="document-detail-panel document-detail-markdown">
+            <section
+              className={`document-detail-panel document-detail-markdown${markdownEditMode ? ' article-detail-markdown-panel--editing' : ''}`}
+            >
               <h2 className="document-detail-panel-header">
                 <FileText size={16} />
                 <span>Markdown</span>
                 <span className="article-detail-panel-header-spacer" />
                 {markdownEditMode ? (
                   <>
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={() => setMarkdownPreviewOpen((v) => !v)}
+                      title={markdownPreviewOpen ? 'Hide preview' : 'Show preview on the right'}
+                    >
+                      {markdownPreviewOpen ? <EyeOff size={14} /> : <Eye size={14} />}
+                      <span>{markdownPreviewOpen ? 'Hide preview' : 'Preview'}</span>
+                    </button>
                     <button
                       type="button"
                       className="document-detail-edit-toggle"
@@ -931,52 +997,100 @@ export function ArticleDetail() {
                   </button>
                 )}
               </h2>
-              <div className="document-detail-markdown-body">
+              <div
+                className={`document-detail-markdown-body${markdownEditMode ? ' article-detail-markdown-body--edit' : ''}`}
+              >
                 {markdownEditMode ? (
                   <div
-                    className={`article-detail-editor-dropzone${dragActive ? ' article-detail-editor-dropzone--active' : ''}`}
-                    onDragOver={(e) => {
-                      if (e.dataTransfer?.types?.includes('Files')) {
-                        e.preventDefault();
-                        setDragActive(true);
-                      }
-                    }}
-                    onDragLeave={() => setDragActive(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      void handleEditorDrop(e as unknown as DragEvent<HTMLTextAreaElement>);
-                    }}
+                    ref={markdownSplitLayoutRef}
+                    className={`article-detail-markdown-edit-layout${markdownPreviewOpen && id ? ' article-detail-markdown-edit-layout--split' : ''}`}
+                    style={
+                      markdownPreviewOpen && id
+                        ? {
+                            gridTemplateColumns: `${markdownSplitEditorFr}fr ${MARKDOWN_SPLIT_GUTTER_PX}px ${100 - markdownSplitEditorFr}fr`,
+                          }
+                        : undefined
+                    }
                   >
-                    <textarea
-                      ref={textareaRef}
-                      className="article-detail-markdown-textarea"
-                      aria-label="Article body in Markdown"
-                      placeholder="Write Markdown here. Paste or drop an image to upload, or use the toolbar."
-                      value={editMarkdown}
-                      onChange={(e) => setEditMarkdown(e.target.value)}
-                      onPaste={(e) => void handleEditorPaste(e)}
-                    />
-                    {dragActive && (
-                      <div className="article-detail-editor-dropzone-overlay" aria-hidden>
-                        <Upload size={28} />
-                        <span>Drop to upload — images embed inline, others become attachments</span>
-                      </div>
-                    )}
-                    <input
-                      ref={imageInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      style={{ display: 'none' }}
-                      onChange={(e) => void handleImagePick(e)}
-                    />
-                    <input
-                      ref={attachmentInputRef}
-                      type="file"
-                      multiple
-                      style={{ display: 'none' }}
-                      onChange={(e) => void handleAttachmentPick(e)}
-                    />
+                    <div
+                      className={`article-detail-editor-dropzone article-detail-markdown-edit-editor${dragActive ? ' article-detail-editor-dropzone--active' : ''}`}
+                      onDragOver={(e) => {
+                        if (e.dataTransfer?.types?.includes('Files')) {
+                          e.preventDefault();
+                          setDragActive(true);
+                        }
+                      }}
+                      onDragLeave={() => setDragActive(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        void handleEditorDrop(e as unknown as DragEvent<HTMLTextAreaElement>);
+                      }}
+                    >
+                      <textarea
+                        ref={textareaRef}
+                        className="article-detail-markdown-textarea"
+                        aria-label="Article body in Markdown"
+                        placeholder="Write Markdown here. Paste or drop an image to upload, or use the toolbar."
+                        value={editMarkdown}
+                        onChange={(e) => setEditMarkdown(e.target.value)}
+                        onPaste={(e) => void handleEditorPaste(e)}
+                      />
+                      {dragActive && (
+                        <div className="article-detail-editor-dropzone-overlay" aria-hidden>
+                          <Upload size={28} />
+                          <span>Drop to upload — images embed inline, others become attachments</span>
+                        </div>
+                      )}
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={(e) => void handleImagePick(e)}
+                      />
+                      <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={(e) => void handleAttachmentPick(e)}
+                      />
+                    </div>
+                    {markdownPreviewOpen && id ? (
+                      <>
+                        <div
+                          className="article-detail-markdown-splitter"
+                          role="separator"
+                          aria-orientation="vertical"
+                          aria-label="Resize editor and preview"
+                          onPointerDown={handleMarkdownSplitPointerDown}
+                        />
+                        <aside className="article-detail-markdown-preview-pane" aria-label="Markdown preview">
+                          <div className="article-detail-markdown-preview-toolbar">
+                            <span>Preview</span>
+                            <button
+                              type="button"
+                              className="article-detail-markdown-preview-close"
+                              onClick={() => setMarkdownPreviewOpen(false)}
+                              title="Close preview"
+                            >
+                              <XIcon size={16} />
+                              <span className="article-detail-markdown-preview-close-text">Close</span>
+                            </button>
+                          </div>
+                          <div className="article-detail-markdown-preview-scroll article-detail-markdown-read">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                              components={mdComponents}
+                            >
+                              {editMarkdown.trim() ? editMarkdown : ' '}
+                            </ReactMarkdown>
+                          </div>
+                        </aside>
+                      </>
+                    ) : null}
                   </div>
                 ) : editMarkdown.trim() ? (
                   <div className="article-detail-markdown-read">
