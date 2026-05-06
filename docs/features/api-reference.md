@@ -18,7 +18,10 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
-| GET | `/api/auth/me` | Current user from Bearer, session, or (local) CLI Basic; includes `permissions` (resolved keys) |
+| GET | `/api/auth/me` | Current user from Bearer, session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys) |
+| POST | `/api/auth/api-keys` | Authenticated user: create personal API key; response includes plaintext `token` once |
+| GET | `/api/auth/api-keys` | List caller's keys (metadata only; query `include_revoked=true` optional) |
+| DELETE | `/api/auth/api-keys/{id}` | Revoke caller's key (soft) |
 | GET | `/api/auth/permission-catalog` | Authenticated: list of permission entries (`key`, `label`, `description`, `frontend_route_patterns`, `backend_api_patterns`) for the Console matrix, SPA route gate, and optional strict API enforcement; optional in-process TTL cache (**`OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS`**, default 5; `0` disables), cleared when admins mutate **`security_permissions`** |
 | GET | `/api/admin/security-roles` | `console:permissions`: roles and permission keys (includes `all`); `is_system_role` true only for **admin** (cannot delete) |
 | POST | `/api/admin/security-roles` | `console:permissions`: create role; reserved names `admin` / `member` rejected |

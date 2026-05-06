@@ -139,10 +139,14 @@ export function Header() {
                     <UserCircle size={18} />
                     <span>Profile</span>
                   </Link>
-                  <button type="button" className="header-user-dropdown-item">
+                  <Link
+                    to="/settings"
+                    className="header-user-dropdown-item"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
                     <Settings size={18} />
                     <span>Settings</span>
-                  </button>
+                  </Link>
                   <div className="header-user-dropdown-divider" />
                   <button
                     type="button"

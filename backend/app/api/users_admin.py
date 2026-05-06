@@ -101,7 +101,7 @@ async def patch_local_user(
     if settings.auth_mode != "local":
         raise HTTPException(status_code=403, detail="User management is only available in local auth mode")
 
-    payload = await get_jwt_payload(request)
+    payload = await get_jwt_payload(request, db)
     current_sub = payload.get("sub")
     if not isinstance(current_sub, str):
         current_sub = None
@@ -140,7 +140,7 @@ async def delete_local_user(
     if settings.auth_mode != "local":
         raise HTTPException(status_code=403, detail="User management is only available in local auth mode")
 
-    payload = await get_jwt_payload(request)
+    payload = await get_jwt_payload(request, db)
     current_sub = payload.get("sub")
     if not isinstance(current_sub, str):
         current_sub = None

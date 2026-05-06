@@ -5,8 +5,10 @@ import base64
 import binascii
 import secrets
 import time
+from datetime import datetime, timezone
 from typing import Literal
 from urllib.parse import urlencode
+from uuid import uuid4
 
 import bcrypt
 import jwt
@@ -21,9 +23,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.models.user_api_key import UserApiKey
 from app.services.permission_catalog import PERM_ALL
 from app.services.security_permission_service import list_permissions_sorted, sorted_permission_keys
-from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
+from app.services.permission_resolution import (
+    jwt_realm_role_names,
+    resolve_oidc_permission_keys,
+    resolve_user_permission_keys,
+)
 from app.oidc_discovery import get_oidc_provider_metadata
 
 _JWKS_CLIENT: PyJWKClient | None = None
@@ -147,16 +154,79 @@ def _set_auth_state(request: Request, payload: dict, token: str) -> None:
     request.state.openkms_auth_token = token
 
 
-async def require_auth(request: Request) -> str:
-    """Bearer JWT, session cookie token, or (local mode) HTTP Basic for CLI."""
+def _is_personal_api_key_token_format(token: str) -> bool:
+    parts = token.split(".", 2)
+    return len(parts) == 3 and parts[0] == "okms" and len(parts[1]) >= 32
+
+
+async def _authenticate_personal_api_key(request: Request, db: AsyncSession, token: str) -> str | None:
+    """If token is okms.{key_id}.{secret}, validate and set request auth state. Returns token or None."""
+    if not _is_personal_api_key_token_format(token):
+        return None
+    _prefix, key_id, secret = token.split(".", 2)
+    row = await db.get(UserApiKey, key_id)
+    if row is None or row.revoked_at is not None:
+        return None
+    if not _verify_api_key_secret(secret, row.secret_hash):
+        return None
+    row.last_used_at = datetime.now(timezone.utc)
+    await db.flush()
+
+    if row.auth_mode == "local":
+        user = await db.get(User, row.owner_sub)
+        if user is None:
+            return None
+        payload = {
+            **_user_claims(user),
+            "iss": LOCAL_JWT_ISS,
+            "iat": int(time.time()),
+            "exp": int(time.time()) + int(settings.local_jwt_exp_hours * 3600),
+            "openkms_auth_via": "api_key",
+            "openkms_api_key_id": row.id,
+        }
+    else:
+        roles = row.oidc_realm_roles if isinstance(row.oidc_realm_roles, list) else []
+        role_strs = [str(r) for r in roles if r is not None and str(r).strip()]
+        payload = {
+            "sub": row.owner_sub,
+            "preferred_username": row.display_username or "user",
+            "name": row.display_username or "user",
+            "email": row.display_email or None,
+            "realm_access": {"roles": role_strs},
+            "openkms_auth_via": "api_key",
+            "openkms_api_key_id": row.id,
+        }
+    _set_auth_state(request, payload, token)
+    return token
+
+
+def _hash_api_key_secret(secret: str) -> str:
+    return bcrypt.hashpw(secret.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_api_key_secret(secret: str, secret_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(secret.encode("utf-8"), secret_hash.encode("utf-8"))
+    except ValueError:
+        return False
+
+
+async def authenticate_request(request: Request, db: AsyncSession) -> str:
+    """Bearer JWT or personal API key, session cookie JWT, or (local mode) HTTP Basic for CLI."""
     auth_header = request.headers.get("Authorization")
 
     if auth_header and auth_header.lower().startswith("bearer "):
         token = auth_header[7:].strip()
         if token:
-            payload = _verify_token_for_mode(token)
-            _set_auth_state(request, payload, token)
-            return token
+            try:
+                payload = _verify_token_for_mode(token)
+                _set_auth_state(request, payload, token)
+                return token
+            except HTTPException:
+                api = await _authenticate_personal_api_key(request, db, token)
+                if api:
+                    return api
+                raise
 
     if settings.auth_mode == "local" and auth_header:
         basic = _parse_basic_auth(auth_header)
@@ -177,8 +247,12 @@ async def require_auth(request: Request) -> str:
     raise HTTPException(status_code=401, detail="Authentication required")
 
 
-async def get_jwt_payload(request: Request) -> dict:
-    await require_auth(request)
+async def require_auth(request: Request, db: AsyncSession = Depends(get_db)) -> str:
+    return await authenticate_request(request, db)
+
+
+async def get_jwt_payload(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
+    await authenticate_request(request, db)
     return request.state.openkms_jwt_payload
 
 
@@ -190,8 +264,8 @@ def jwt_payload_is_admin(payload: dict) -> bool:
     return "admin" in {str(r) for r in roles if r is not None}
 
 
-async def require_admin(request: Request) -> str:
-    token = await require_auth(request)
+async def require_admin(request: Request, db: AsyncSession = Depends(get_db)) -> str:
+    token = await authenticate_request(request, db)
     payload = request.state.openkms_jwt_payload
     if not jwt_payload_is_admin(payload):
         raise HTTPException(status_code=403, detail="Admin role required")
@@ -200,7 +274,7 @@ async def require_admin(request: Request) -> str:
 
 async def ensure_permission(request: Request, db: AsyncSession, permission: str) -> None:
     """Grant if JWT admin, local-cli service JWT, or DB-resolved permissions (local or OIDC role names)."""
-    await require_auth(request)
+    await authenticate_request(request, db)
     payload = request.state.openkms_jwt_payload
     if jwt_payload_is_admin(payload):
         return
@@ -230,7 +304,7 @@ async def ensure_any_permission(request: Request, db: AsyncSession, *permissions
     """Grant if admin, local-cli, all, or the user holds any of the given permission keys."""
     if not permissions:
         raise HTTPException(status_code=500, detail="No permissions provided")
-    await require_auth(request)
+    await authenticate_request(request, db)
     payload = request.state.openkms_jwt_payload
     if jwt_payload_is_admin(payload):
         return
@@ -258,8 +332,8 @@ def require_any_permission(*permissions: str):
     return _check
 
 
-async def require_service_client(request: Request) -> str:
-    token = await require_auth(request)
+async def require_service_client(request: Request, db: AsyncSession = Depends(get_db)) -> str:
+    token = await authenticate_request(request, db)
     payload = request.state.openkms_jwt_payload
     azp = payload.get("azp") or payload.get("client_id")
     if azp != settings.oidc_service_client_id:
@@ -589,9 +663,132 @@ async def permission_catalog(
         return list(out)
 
 
+class CreateApiKeyBody(BaseModel):
+    name: str = Field(default="", max_length=128)
+
+
+class ApiKeyCreatedResponse(BaseModel):
+    id: str
+    name: str
+    key_prefix: str
+    token: str = Field(description="Full secret; shown only once. Store securely.")
+    created_at: datetime | None = None
+
+
+class ApiKeyListItem(BaseModel):
+    id: str
+    name: str
+    key_prefix: str
+    created_at: datetime | None = None
+    last_used_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
+def _current_owner_sub(request: Request) -> str:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str) or sub == "local-cli":
+        raise HTTPException(status_code=403, detail="Cannot manage API keys for this principal")
+    return sub
+
+
+@api_auth_router.post("/api-keys", response_model=ApiKeyCreatedResponse)
+async def create_api_key(
+    request: Request,
+    body: CreateApiKeyBody,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_auth),
+):
+    sub = _current_owner_sub(request)
+    p = request.state.openkms_jwt_payload
+    key_id = str(uuid4())
+    secret = secrets.token_urlsafe(32)
+    full_token = f"okms.{key_id}.{secret}"
+    name = (body.name or "").strip() or "default"
+
+    if settings.auth_mode == "local":
+        u = await db.get(User, sub)
+        disp_u = u.username if u else ""
+        disp_e = u.email if u else ""
+        oidc_roles = None
+        mode = "local"
+    else:
+        disp_u = str(p.get("preferred_username") or p.get("name") or "user")
+        de = p.get("email")
+        disp_e = str(de) if isinstance(de, str) else ""
+        oidc_roles = sorted(jwt_realm_role_names(p))
+        mode = "oidc"
+
+    row = UserApiKey(
+        id=key_id,
+        owner_sub=sub,
+        auth_mode=mode,
+        name=name[:128],
+        key_prefix=f"okms.{key_id[:8]}",
+        secret_hash=_hash_api_key_secret(secret),
+        oidc_realm_roles=oidc_roles,
+        display_username=disp_u[:256],
+        display_email=disp_e[:320],
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return ApiKeyCreatedResponse(
+        id=row.id,
+        name=row.name,
+        key_prefix=row.key_prefix,
+        token=full_token,
+        created_at=row.created_at,
+    )
+
+
+@api_auth_router.get("/api-keys", response_model=list[ApiKeyListItem])
+async def list_api_keys(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_auth),
+    include_revoked: bool = False,
+):
+    sub = _current_owner_sub(request)
+    q = select(UserApiKey).where(UserApiKey.owner_sub == sub).order_by(UserApiKey.created_at.desc())
+    if not include_revoked:
+        q = q.where(UserApiKey.revoked_at.is_(None))
+    result = await db.execute(q)
+    rows = list(result.scalars().all())
+    return [
+        ApiKeyListItem(
+            id=r.id,
+            name=r.name,
+            key_prefix=r.key_prefix,
+            created_at=r.created_at,
+            last_used_at=r.last_used_at,
+            revoked_at=r.revoked_at,
+        )
+        for r in rows
+    ]
+
+
+@api_auth_router.delete("/api-keys/{key_id}", status_code=204)
+async def revoke_api_key(
+    key_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_auth),
+):
+    sub = _current_owner_sub(request)
+    row = await db.get(UserApiKey, key_id)
+    if row is None or row.owner_sub != sub:
+        raise HTTPException(status_code=404, detail="API key not found")
+    if row.revoked_at is not None:
+        return Response(status_code=204)
+    row.revoked_at = datetime.now(timezone.utc)
+    await db.commit()
+    return Response(status_code=204)
+
+
 @api_auth_router.get("/me", response_model=AuthUserOut)
 async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
-    await require_auth(request)
+    await authenticate_request(request, db)
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if not isinstance(sub, str):

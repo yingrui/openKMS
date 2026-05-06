@@ -51,9 +51,10 @@ describe('pathnameAllowedByPatterns', () => {
 });
 
 describe('isSpaPublicPath', () => {
-  it('allows home and profile', () => {
+  it('allows home, profile, and user settings', () => {
     expect(isSpaPublicPath('/')).toBe(true);
     expect(isSpaPublicPath('/profile')).toBe(true);
+    expect(isSpaPublicPath('/settings')).toBe(true);
     expect(isSpaPublicPath('/documents')).toBe(false);
   });
 });

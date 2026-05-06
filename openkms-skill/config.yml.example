@@ -1,0 +1,9 @@
+# Copy to config.yml and fill in (do not commit secrets).
+# Create keys in the app: header user menu → Settings → API keys section.
+
+api_base_url: "http://127.0.0.1:8102"
+api_key: ""
+
+# optional:
+# default_document_channel_id: ""
+# default_article_channel_id: ""

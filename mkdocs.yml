@@ -105,6 +105,7 @@ nav:
       - Ontology — objects, links, datasets: features/ontology.md
       - Pipelines, jobs & models: features/pipelines-and-jobs.md
       - Console & authentication: features/console-and-auth.md
+      - OpenCode skill (openkms): features/opencode-openkms-skill.md
       - API reference: features/api-reference.md
       - Data models: features/data-models.md
       - Configuration: features/configuration.md

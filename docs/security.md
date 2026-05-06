@@ -70,9 +70,11 @@ TOKEN=$(curl -sS -X POST "${API%/}/api/auth/login" \
 
 - **CLI / scripts in local mode** — set `OPENKMS_CLI_BASIC_USER` and `OPENKMS_CLI_BASIC_PASSWORD` and send `Authorization: Basic …`. The backend mints an internal **`local-cli`** service JWT (`sub=local-cli`). Use only on trusted networks; Basic over plain HTTP is dev-only.
 
+- **Personal API keys** — signed-in users can create keys under **Settings** (`/settings`, user menu → **Settings**) via `POST /api/auth/api-keys`. The plaintext value looks like `okms.{uuid}.{secret}` and is shown **once**. Send it as `Authorization: Bearer …` on `/api/*` routes; the backend resolves the same **owner** as your account and applies the usual permission checks. **Local mode:** permissions follow `user_security_roles` as for a login JWT. **OIDC mode:** the key stores a **snapshot** of your IdP realm roles from creation time; if your roles change later, create a new key to pick up the new mapping (or revoke and recreate). Keys can be listed and soft-revoked via `GET` / `DELETE /api/auth/api-keys`.
+
 In all cases, `GET /api/auth/me` confirms the token (or session) is accepted and lists resolved permission keys.
 
-**Hardening backlog:** token lifetime, script ergonomics, and machine-auth patterns are tracked in [Technical debt: API tokens and machine authentication](tech_debt.md#19-api-tokens-and-machine-authentication-backlog).
+**Hardening backlog:** token lifetime, script ergonomics, and machine-auth patterns are tracked in [Technical debt: API tokens and machine authentication](tech_debt.md#api-tokens-machine-auth).
 
 ## Storage
 

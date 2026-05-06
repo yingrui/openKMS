@@ -1,0 +1,203 @@
+.user-settings-page {
+  width: 100%;
+  max-width: 640px;
+}
+
+.user-settings-page .page-header {
+  margin-bottom: 24px;
+}
+
+.user-settings-page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+.user-settings-page .page-subtitle {
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.user-settings-inline-link {
+  color: var(--color-accent, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.user-settings-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+}
+
+.user-settings-api-keys-title {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.user-settings-api-keys-intro {
+  margin: 0 0 20px;
+}
+
+.user-settings-api-key-create {
+  margin-bottom: 20px;
+}
+
+.user-settings-api-key-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.user-settings-api-key-create-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.user-settings-api-key-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: 0.9375rem;
+  background: var(--color-bg-elevated);
+  color: inherit;
+}
+
+.user-settings-btn {
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+.user-settings-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.user-settings-btn--primary {
+  background: var(--color-accent, #3b82f6);
+  border-color: var(--color-accent, #3b82f6);
+  color: #fff;
+}
+
+.user-settings-btn--secondary {
+  background: var(--color-bg-muted, rgba(0, 0, 0, 0.06));
+}
+
+.user-settings-btn--danger {
+  background: transparent;
+  border-color: var(--color-error, #b91c1c);
+  color: var(--color-error, #b91c1c);
+}
+
+.user-settings-error {
+  color: var(--color-error);
+  margin: 0 0 16px;
+}
+
+.user-settings-api-key-reveal {
+  margin-bottom: 20px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted, rgba(0, 0, 0, 0.04));
+}
+
+.user-settings-api-key-reveal-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.user-settings-api-key-reveal-hint {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.user-settings-api-key-token-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.user-settings-api-key-token {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+  font-size: 0.8125rem;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+}
+
+.user-settings-api-key-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.user-settings-api-key-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.user-settings-api-key-item > div:first-child {
+  grid-column: 1;
+}
+
+.user-settings-api-key-meta {
+  grid-column: 1 / -1;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.user-settings-api-key-name {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.user-settings-api-key-prefix {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+@media (min-width: 520px) {
+  .user-settings-api-key-item {
+    grid-template-columns: 1fr 1fr auto;
+  }
+
+  .user-settings-api-key-meta {
+    grid-column: 2;
+  }
+}

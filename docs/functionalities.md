@@ -17,7 +17,8 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, Object Explorer, data sources, datasets |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry |
-| [Console & authentication](features/console-and-auth.md) | Permission catalog, data security, OIDC/local auth, system settings |
+| [Console & authentication](features/console-and-auth.md) | Permission catalog, data security, OIDC/local auth, system settings, user Settings (API keys) |
+| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | Agent skill + CLI against the REST API (`openkms-skill/`, install to `~/.config/opencode/skills/`) |
 
 ## Cross-cutting reference
 

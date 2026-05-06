@@ -1,374 +1,111 @@
 # Technical Debt
 
-Last updated: 2026-05-05
+Last updated: 2026-05-06
 
-## Recent Mitigations (2026-03-17)
-
-The following items were addressed:
-
-- §1 No tests → pytest + Vitest added
-- §2 Document model default → migration p1q2r3s4t5u6, model uses DocumentStatus
-- §3 No error boundary → ErrorBoundary in App.tsx
-- §4 Cypher injection → allowlist: block CALL, apoc., dbms.; require RETURN
-- §6 Missing infra → `docker/docker-compose.yml`, `.env.example`
-- §11 No typecheck script → added to package.json
-- §13 Security → reject default secret in production; PipelineCreate max_length
-- §15 Pipeline command validation → done
-- §16 Blocking subprocess → asyncio.create_subprocess_exec in run_pipeline
-- §14 Document channel N+1 → merged channel fetches into one query
-- §7 VLM config → consolidated; removed paddleocr_vl_max_concurrency
-- §12 DocumentStatus enum → constants.py
-- §10 Route code splitting → React.lazy for heavy routes
-- §9 Accessibility → ConsoleSettings id/htmlFor
-- §3 Error UX → ErrorBanner component; Pipelines uses it
+This file lists **remaining** debt. Items that are done stay in [Resolved (historical)](#resolved-historical) only so the body does not contradict the codebase.
 
 ---
 
-## Overview
+## Resolved (historical)
 
-```mermaid
-mindmap
-  root((Tech Debt))
-    High Priority
-      No tests
-      Document model default mismatch
-      No error boundary
-      Cypher injection risk
-    Medium Priority
-      Raw SQL coupling
-      Inconsistent error handling
-      Mock data & placeholders
-      Non-functional UI
-      Missing infra
-      Blocking subprocess in async
-      Document channel N+1
-    Low Priority
-      Hardcoded values
-      Missing type hints
-      Frontend patterns
-      Security notes
-      No route code splitting
-      No typecheck script
-```
+These were previously called out as problems; they are **addressed** in the current tree (verify in git history if needed):
+
+- **Tests:** `backend/tests/` (pytest), frontend `npm test` / Vitest, `openkms-cli/tests/`.
+- **Frontend tooling:** `frontend/package.json` includes `typecheck` (`tsc --noEmit`); heavy routes use `React.lazy` in `App.tsx`.
+- **Errors:** `ErrorBoundary` wraps main app content; some list pages use `ErrorBanner` / `setError` (pattern still mixed — see [Active](#active-medium-priority)).
+- **Document status:** `Document.status` uses aligned Python and DB defaults with `DocumentStatus` in `backend/app/constants.py`.
+- **Ontology Cypher:** `validate_ontology_explore_cypher` blocks writes, `CALL`, `apoc.` / `dbms.`, and requires `RETURN`; covered by `backend/tests/test_ontology_explore_cypher.py`.
+- **Infra docs:** `docker/docker-compose.yml`, root `.env.example`, `backend/.env.example`, `vlm-server/.env.example`.
+- **Pipeline command:** `PipelineCreate.command` has `max_length` and validation in schemas.
+- **Secrets:** non-debug startup refuses default `OPENKMS_SECRET_KEY` (`main.py`).
+- **Document pipeline subprocess:** `run_pipeline` uses `asyncio.create_subprocess_exec` (async path).
+- **Console users / settings:** wired to admin and system APIs; `ConsoleSettings` uses `id` / `htmlFor` on main fields.
+- **Knowledge bases (SPA):** list and detail use real KB APIs (no mock-only KB UI).
+- **Article channel list:** row opens detail; no separate mock row actions in the table.
+- **Document channel list:** channel tree + document list are batched queries (not per-document N+1); further SQL consolidation is optional polish.
 
 ---
 
-## Diagram Index
+## Active: medium priority
 
-| Diagram | Section | Purpose |
-|---------|---------|---------|
-| [Tech debt categories](#overview) | Overview | Mind map of debt by priority |
-| [Document status flow](#12-document-status-raw-sql) | §12 (Architecture) | Document lifecycle state machine |
-| [Jobs API coupling](#13-jobs-api-raw-sql-coupling) | §13 (Architecture) | Procrastinate internal schema coupling |
-| [Error handling inconsistency](#3-inconsistent-error-handling-in-frontend) | §3 | Frontend error UX patterns |
-| [Frontend mock data map](#4-frontend-mock-data-not-replaced-with-real-apis) | §4 | Files with mocks vs real API |
+### Inconsistent error handling in the frontend
 
----
+Some pages use `setError` + a visible banner (`Pipelines.tsx`, `Jobs.tsx`, `DocumentDetail.tsx`). Others rely on `toast.error` only (`Models.tsx`, `ModelDetail.tsx`, `JobDetail.tsx`). Consider a project convention (e.g. toast for transient failures, banner for blocking load errors).
 
-## High Priority
+### Dead frontend module
 
-### 1. No tests
+`frontend/src/data/documents.ts` defines mock maps and `getDocumentById` but **nothing imports this file** (all callers use `documentsApi`). Remove the file or replace with shared types only, after confirming no external imports.
 
-There is no test framework or test suite for either backend or frontend. No `tests/` directory, no pytest/unittest config, no Jest/Vitest config. The frontend `package.json` has no `test` or type-check scripts.
+### Non-functional or incomplete controls
 
-### 2. Document model default mismatch
-
-**File:** `backend/app/models/document.py`
-
-The `status` column has conflicting defaults:
-
-```python
-status: Mapped[str] = mapped_column(..., default="uploaded", server_default="completed")
-```
-
-- **Python default**: `"uploaded"` (used when creating new documents in code)
-- **DB server_default**: `"completed"` (used when DB applies default on insert)
-
-This can cause inconsistent behavior if raw inserts bypass the Python layer. Standardize on a single source of truth (e.g. use only `default="uploaded"` and ensure migrations align).
-
-### 3. No error boundary
-
-**File:** `frontend/src/App.tsx`
-
-There is no React ErrorBoundary wrapping the main routes. An uncaught error in any child component will unmount the entire app and show a blank screen.
-
-**Action:** Add an ErrorBoundary around main routes with a fallback UI (retry button, error message).
-
-### 4. Cypher injection risk
-
-**File:** `backend/app/api/ontology_explore.py`
-
-The ontology explore API executes user-supplied Cypher. Current regex blocks `CREATE`, `MERGE`, `DELETE`, etc., but Neo4j procedures (e.g. `CALL apoc.load.json`, `dbms.procedures()`) could still be exploitable.
-
-**Action:** Use an allowlist approach – only permit patterns like `MATCH ... RETURN`; block `CALL`, `PROCEDURE`, and other mutation/admin constructs.
+| Location | Issue |
+|----------|--------|
+| `frontend/src/pages/DocumentChannel.tsx` | **Edit** and **Download** icon buttons have no `onClick` (row still opens detail on click elsewhere). |
 
 ---
 
-## Medium Priority
+## Active: architecture and coupling
 
-### 3. Inconsistent error handling in frontend
+### Jobs API and Procrastinate internals
 
-- Some pages use `setError` + UI banner (`Pipelines.tsx`, `Jobs.tsx`, `DocumentDetail.tsx`)
-- Others use `toast.error` only (`Models.tsx`, `ModelDetail.tsx`, `JobDetail.tsx`)
+`backend/app/api/jobs.py` (and related paths) read/write `procrastinate_jobs` / `procrastinate_events` with raw SQL instead of only Procrastinate’s public APIs. Risk: schema drift on library upgrades. Mitigation options: use supported query helpers or isolate SQL in one module with integration tests.
 
-```mermaid
-flowchart TB
-  subgraph PagesWithBanner["Pages with error banner (setError)"]
-    P1[Pipelines.tsx]
-    J1[Jobs.tsx]
-    D1[DocumentDetail.tsx]
-  end
+### Optional query polish
 
-  subgraph PagesWithToastOnly["Pages with toast only"]
-    M1[Models.tsx]
-    M2[ModelDetail.tsx]
-    J2[JobDetail.tsx]
-  end
-
-  User[User action fails] --> PagesWithBanner
-  User --> PagesWithToastOnly
-  PagesWithBanner --> |"Banner + optional toast"| UX1[Inconsistent UX]
-  PagesWithToastOnly --> |"Toast only"| UX1
-  UX1 -.->|Recommend| Standard[Standardize: toast for transient, banner for blocking]
-```
-
-Consider standardizing on one pattern project-wide.
-
-### 4. Frontend mock data not replaced with real APIs
-
-```mermaid
-flowchart LR
-  subgraph RealAPI["Real API"]
-    D[DocumentsIndex - stats API]
-  end
-
-  subgraph Mocks["Still using mocks"]
-    C2[ConsoleUsers]
-    C3[ConsoleSettings]
-    K1[KnowledgeBaseList]
-    K2[KnowledgeBaseDetail]
-    DC[data/documents.ts - mockDocumentsByChannel]
-  end
-
-  Mocks --> |Replace| RealAPI
-```
-
-| File | Description |
-|------|-------------|
-| `pages/console/ConsoleUsers.tsx` | Mock users; Add User button is non-functional |
-| `pages/console/ConsoleSettings.tsx` | Form inputs are not wired to any API |
-| `pages/DocumentsIndex.tsx` | Uses `fetchDocumentStats()` (real); document count is from API |
-| `pages/KnowledgeBaseList.tsx` | Mock KB list |
-| `pages/KnowledgeBaseDetail.tsx` | All tabs use mocks; all actions are no-ops |
-| `pages/ArticleChannel.tsx` | Channel article list wired to API; table rows open detail only (no per-row move/duplicate from list) |
-| `data/documents.ts` | `mockDocumentsByChannel` is empty `{}` (unused) |
-
-### 5. Non-functional buttons
-
-Several UI buttons have no `onClick` handlers:
-
-- `DocumentChannel.tsx` – Edit, Move, Download actions on documents
-- `ArticleChannel.tsx` – Per-row move/duplicate/delete from the list (edit/delete live on **`ArticleDetail`**)
-- `KnowledgeBaseDetail.tsx` – Add document/article, Generate FAQ, View, Remove
-- `KnowledgeBaseList.tsx` – New Knowledge Base
-- `ConsoleUsers.tsx` – Add User
-- `Header.tsx` – Profile, Settings dropdown items
-
-### 6. Missing infrastructure
-
-- ~~No `docker-compose.yml`~~ — `docker/docker-compose.yml` (Postgres, MinIO); Keycloak/VLM still manual if needed
-- ~~No `Makefile`~~ — use `docker compose -f docker/docker-compose.yml` from repo root (see `docker/README.md`)
-- ~~No root `.env.example`~~ — root `.env.example` points contributors to `backend/.env.example`; **`vlm-server/.env.example`** documents optional `PORT`
+`list_documents` in `backend/app/api/documents.py` loads all channels to resolve subtree IDs when `channel_id` is set — correct but could be cached or expressed as a single recursive SQL pattern if this ever becomes hot.
 
 ---
 
-## Architecture & Coupling
+## Active: low priority
 
-### 12. Document status & raw SQL
+### Hardcoded or duplicated configuration
 
-Document status is represented as string literals across backend and frontend. No shared enum or constants.
+| Area | Notes |
+|------|--------|
+| Session cookie | `max_age` in `backend/app/main.py` |
+| Presigned URLs | `expires_in` in `backend/app/services/storage.py` |
+| Model testing HTTP | Timeouts in `backend/app/services/model_testing.py` |
+| KB index job | `run_kb_index` in `backend/app/jobs/tasks.py` still uses **`subprocess.run`** with a fixed **1800s** timeout (blocks the worker thread during the call); document pipeline path uses async subprocess. |
+| VLM URL | `vlm_url` is canonical; `paddleocr_vl_server_url` in `config.py` is deprecated alias — finish removing call sites and duplicate env docs when safe. |
 
-```mermaid
-stateDiagram-v2
-  [*] --> uploaded: Upload
-  uploaded --> pending: Create job
-  pending --> running: Worker picks up
-  running --> completed: Success
-  running --> failed: Error / timeout
-  failed --> uploaded: Reset (no active jobs)
-  failed --> pending: Retry
-  pending --> uploaded: Reset (no active jobs)
-```
+### Missing or partial type hints
 
-**Locations:** `documents.py`, `jobs.py`, `tasks.py`, `DocumentChannel.tsx`, `DocumentDetail.tsx`, `Jobs.tsx`, schemas. Consider adding `DocumentStatus` enum and centralizing values.
+Incremental typing backlog (examples): `get_categories` in `backend/app/api/models.py`, `get_template_variables` in `backend/app/api/pipelines.py`, `_row_to_response` in `backend/app/api/jobs.py`, helpers in `backend/app/services/storage.py`.
 
-### 13. Jobs API raw SQL coupling
+### Frontend patterns to consolidate
 
-The Jobs API reads/writes directly from `procrastinate_jobs` and `procrastinate_events` using raw SQL instead of procrastinate's public API.
+- CRUD list pages (`Models.tsx`, `Pipelines.tsx`, `Jobs.tsx`) repeat load / modal / table patterns — candidate for a small hook.
+- Repeated search inputs — optional shared component.
+- `KnowledgeBaseDetail.tsx` remains very large — split tabs into subcomponents or hooks over time.
 
-```mermaid
-flowchart TB
-  subgraph JobsAPI[Jobs API]
-    List[list_jobs]
-    Get[get_job]
-    Create[create_job]
-    Retry[retry_job]
-    Delete[delete_job]
-  end
+### Security and operations (ongoing)
 
-  subgraph RawSQL[Raw SQL]
-    S1["SELECT FROM procrastinate_jobs"]
-    S2["SELECT FROM procrastinate_events"]
-    S3["DELETE FROM procrastinate_jobs"]
-    S4["DELETE FROM procrastinate_events"]
-  end
+| Topic | Notes |
+|-------|--------|
+| CORS | Single allowed origin from `OPENKMS_FRONTEND_URL` — intentional; document for multi-origin deployments. |
+| Legacy `GET /logout` | Marked legacy in API; consider removal after clients migrate. |
+| Migrations | Seed URLs / fixed IDs in Alembic — not environment-parameterized. |
+| Production | Default secret rejection is implemented; keep documenting required env for prod. |
 
-  subgraph Procrastinate[Procrastinate internal]
-    PJ[procrastinate_jobs table]
-    PE[procrastinate_events table]
-  end
+### API tokens and machine authentication (backlog) {#api-tokens-machine-auth}
 
-  List --> S1
-  Get --> S1
-  Get --> S2
-  Delete --> S3
-  Delete --> S4
-  S1 --> PJ
-  S2 --> PE
-  S3 --> PJ
-  S4 --> PE
+Operators use `POST /api/auth/login` or Bearer JWTs per [Obtaining an API token](security.md#obtaining-an-api-token). Open themes: shorter-lived tokens or refresh, first-class PATs / device code / client-credentials with explicit role mapping, rate limiting on login, audit for issuance, IdP recipes for automation users, stricter warnings on long `OPENKMS_LOCAL_JWT_EXP_HOURS` in prod-like configs.
 
-  Create -.->|defer_async| Procrastinate
-  Retry -.->|defer_async| Procrastinate
-```
+### OpenAPI / Redoc
 
-**Risks:** Breaking changes when procrastinate schema changes; no ORM validation. Consider using procrastinate's `Job` model or its query helpers if available.
+FastAPI serves `/docs` and `/redoc`; optional export of `openapi.json` for external consumers.
 
-**Files:** `backend/app/api/jobs.py`, `backend/app/api/documents.py` (reset-status checks `procrastinate_jobs`).
+### Metadata extraction duplication
 
-### 14. Document channel N+1-style queries
-
-**File:** `backend/app/api/documents.py` (lines 61–67)
-
-`list_documents` fetches the target channel, all channels (for tree), then documents in multiple round-trips. Consider a recursive CTE or single query for channel subtree + documents.
+Logic overlaps between `backend/app/services/metadata_extraction.py` and `openkms-cli/openkms_cli/extract.py` (schema / pydantic-ai setup). Prefer a single implementation or a thin CLI that calls the backend when online.
 
 ---
 
-## Low Priority
+## Long methods and structural smells (audit snapshot)
 
-### 7. Hardcoded values that could be configurable
+Automated pass (AST span **≥55** lines) on `backend/app/**/*.py` and `openkms-cli/openkms_cli/**/*.py` (excluding Alembic) highlighted large functions — usual drivers: nested branching, HTTP + DB + side effects in one block, or duplicated CLI steps.
 
-| File | Value |
-|------|-------|
-| `backend/app/main.py` | Session cookie `max_age=86400 * 7` |
-| `backend/app/services/storage.py` | Presigned URL `expires_in=3600` |
-| `backend/app/services/model_testing.py` | HTTP timeout `timeout=120.0` |
-| `backend/app/jobs/tasks.py` | Document pipeline timeout configurable via **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default 1800s); KB index still fixed 1800s |
-| `backend/app/config.py` | Both `vlm_url` and `paddleocr_vl_server_url` default to `http://localhost:8101` (duplicate config – consolidate VLM config) |
-| `backend/app/config.py` | `paddleocr_vl_max_concurrency` is defined but never used (remove or use) |
-
-### 8. Missing type hints
-
-| File | Function |
-|------|----------|
-| `backend/app/api/models.py` | `get_categories()` |
-| `backend/app/api/pipelines.py` | `get_template_variables()` |
-| `backend/app/api/jobs.py` | `_row_to_response(row)` |
-| `backend/app/services/storage.py` | `_client()`, `get_object_stream()` |
-
-### 9. Frontend accessibility: ConsoleSettings form controls
-
-Form controls in `ConsoleSettings.tsx` lack proper `id`/`htmlFor` linkage for screen readers. Add consistent `id`/`htmlFor` on forms; ensure focus and labeling for modal flows.
-
-### 10. No route-level code splitting
-
-**File:** `frontend/src/App.tsx`
-
-All routes are eager-loaded; no `React.lazy()` or code splitting. Heavy routes (ObjectExplorer, KnowledgeBaseDetail, Models, etc.) increase initial bundle size and TTI.
-
-**Action:** Add `React.lazy()` for heavy routes.
-
-### 11. No frontend typecheck script
-
-**File:** `frontend/package.json`
-
-TypeScript compilation (`tsc -b`) is only invoked via `build`; there is no standalone `typecheck` script for development or CI.
-
-**Action:** Add `"typecheck": "tsc --noEmit"` and run in CI.
-
-### 12. Frontend patterns to consolidate
-
-- CRUD table pattern (`Models.tsx`, `Pipelines.tsx`, `Jobs.tsx`) shares load/fetch/modal/table/actions logic – could extract a `useCrudList<T>` hook
-- Search input pattern repeated across many pages – could be a shared `SearchInput` component
-- `KnowledgeBaseDetail.tsx` has four near-identical tab sections
-
-### 13. Security notes
-
-| Item | Details |
-|------|---------|
-| Default secret key | `backend/app/config.py` – `secret_key = "openkms-dev-secret-change-in-production"`. Require explicit `secret_key` in production; reject startup with default secret. |
-| CORS single origin | `backend/app/main.py` – only `OPENKMS_FRONTEND_URL` (`settings.frontend_url`) is allowed |
-| Legacy logout | `GET /logout` endpoint is marked as legacy; consider removing |
-| Migration seed data | Alembic migrations seed `http://localhost:8101/` and fixed IDs – not environment-aware |
-
-### 19. API tokens and machine authentication (backlog)
-
-**Context:** Operators and docs use `POST /api/auth/login` (local) or a Bearer IdP JWT for `curl` and automation. [Obtaining an API token](security.md#obtaining-an-api-token) documents the current behavior.
-
-**Risks**
-
-- Passwords or long-lived JWTs in shell history, logs, or CI output.
-- Default **168 h** local JWT lifetime (`OPENKMS_LOCAL_JWT_EXP_HOURS`) — convenient for dev, wide window if a token leaks.
-- **HTTP Basic** for `openkms-cli` over non-TLS networks exposes credentials on the wire.
-- **OIDC** permission resolution uses **`realm_access.roles`**; client-credentials tokens often omit those claims, so scripts that mint only a service token may get **no catalog permissions** unless the IdP is explicitly configured (operators sometimes assume `OPENKMS_OIDC_SERVICE_CLIENT_ID` alone authorizes all APIs — it does not).
-
-**Planned mitigations (TODO)**
-
-1. **Shorter-lived local tokens** for API use, or separate **refresh** / rotation story (optional refresh endpoint, sliding session for browser only).
-2. **First-class machine auth** — scoped **personal access tokens** (PAT) or OAuth2 **device code** / **client credentials** with explicit role mapping documented in Console, instead of reusing end-user passwords in scripts.
-3. **Rate limiting and lockout** on `POST /api/auth/login` (and optionally Basic) to reduce brute-force risk.
-4. **Audit trail** for login and PAT issuance (who, when, IP, client id).
-5. **Stricter production defaults** — reject default `OPENKMS_SECRET_KEY`, warn if `LOCAL_JWT_EXP_HOURS` exceeds a threshold when not `OPENKMS_DEBUG`.
-6. **Documented IdP recipe** for “automation user” — realm role names aligned with `security_roles`, and whether client credentials should carry the same claims.
-
-### 18. API documentation
-
-FastAPI exposes `/docs` and `/redoc`; README mentions `http://localhost:8102/docs`. Keep and document these; optionally add `openapi.json` export for external tooling.
-
----
-
-## Additional Items
-
-### 15. PipelineCreate.command has no validation
-
-**File:** `backend/app/schemas/pipeline.py`
-
-`PipelineCreate.command` accepts any string; long or malformed commands can be stored. Consider adding max length and basic format validation.
-
-### 16. Synchronous subprocess in async task
-
-**File:** `backend/app/jobs/tasks.py`
-
-`run_pipeline` uses `subprocess.run()` (blocking) inside an async function. For high throughput, consider `asyncio.create_subprocess_exec()` to avoid blocking the event loop.
-
-### 17. Metadata extraction code duplication
-
-Metadata extraction logic exists in both:
-
-- `backend/app/services/metadata_extraction.py` – async, used by `POST /extract-metadata`
-- `openkms-cli/openkms_cli/extract.py` – sync wrapper around async, used during pipeline run
-
-Schema building and pydantic-ai setup are duplicated. Consider a shared library or backend API for extraction that the CLI calls.
-
----
-
-## Long methods and structural smells (2026-04-23 audit)
-
-Automated pass: AST line span **≥55** for `backend/app/**/*.py` and `openkms-cli/openkms_cli/**/*.py` (excluding Alembic). Large spans usually mean nested branching, mixed concerns (HTTP + DB + side effects), or copy-pasted blocks—good candidates for **extract function**, **service layer**, or **smaller modules**.
-
-**Doc drift:** The [Overview](#overview) mindmap still lists “No tests”; the tree now includes `backend/tests/` and frontend Vitest setup. Refresh that diagram when reprioritizing.
-
-### Longest Python functions (representative)
+### Representative long Python functions
 
 | ~Lines | File | Function |
 |--------|------|----------|
@@ -388,21 +125,19 @@ Automated pass: AST line span **≥55** for `backend/app/**/*.py` and `openkms-c
 | 100 | `backend/app/services/glossary_term_suggestion.py` | `suggest_glossary_term` |
 | 98 | `backend/app/api/object_types.py` | `list_object_instances` |
 
-**Other ≥55-line hits (same audit):** `channels.py` (`merge_document_channels`, `reorder_document_channel`, `update_document_channel`), `documents.py` (`upload_document`, `extract_document_metadata`), `evaluation_datasets.py` (`run_evaluation`, `compare_evaluation_runs`), `home_hub.py` (`get_home_hub`), `jobs.py` (`create_job`, `retry_job`), `ontology_explore.py` (`execute_cypher`), `strict_permission_patterns.py` (`dispatch`), `wiki_vault_import.py` (`rewrite_markdown_assets`, `import_markdown_vault_file`), `extract.py` (`extract_metadata_sync`), `search_judge.py`, `faq_generation.py`, `wiki_runner.py` (`iter_wiki_conversation_stream_parts`), `object_types.py` (`index_objects_to_neo4j`, `_query_neo4j_nodes`), `link_types.py` (`_query_neo4j_relationships`), `metadata_extraction.py` (`extract_metadata`), `tasks.py` (`run_kb_index`).
+**Other ≥55-line hits:** `channels.py` (`merge_document_channels`, `reorder_document_channel`, `update_document_channel`), `documents.py` (`upload_document`, `extract_document_metadata`), `evaluation_datasets.py` (`run_evaluation`, `compare_evaluation_runs`), `home_hub.py` (`get_home_hub`), `jobs.py` (`create_job`, `retry_job`), `ontology_explore.py` (`execute_cypher`), `strict_permission_patterns.py` (`dispatch`), `wiki_vault_import.py` (`rewrite_markdown_assets`, `import_markdown_vault_file`), `extract.py` (`extract_metadata_sync`), `search_judge.py`, `faq_generation.py`, `wiki_runner.py` (`iter_wiki_conversation_stream_parts`), `object_types.py` (`index_objects_to_neo4j`, `_query_neo4j_nodes`), `link_types.py` (`_query_neo4j_relationships`), `metadata_extraction.py` (`extract_metadata`), `tasks.py` (`run_kb_index`).
 
-### Smell summary (what to improve)
+### Smell summary
 
-- **openkms-cli:** `pipeline_run` / `run_parser` / `run_indexer` / `parse_run` mix CLI parsing, env, subprocess, S3, and HTTP; split into small steps (upload phase, parse phase, reporting) and shared error handling.
-- **Neo4j-heavy APIs:** `link_types.py` and `object_types.py` combine large Cypher strings, pagination, and HTTP in one block—move query builders and row mapping into `services/` (and add targeted tests).
-- **Jobs worker:** `run_pipeline` and `run_kb_index` remain orchestration-heavy; keep subprocess/async policy consistent with §16 mitigations elsewhere.
-- **Agent / streaming:** `_ndjson_wiki_message_response` and `iter_wiki_conversation_stream_parts` are long streams—extract event serialization and tool-dispatch helpers.
-- **Frontend monoliths (file size, not AST):** `DocumentDetail.tsx` (~2.3k lines), `KnowledgeBaseDetail.tsx` (~1.9k), `ConsolePermissionManagement.tsx` (~1.4k), `KnowledgeMap.tsx` (~900+), `WikiSpaceDetail.tsx`, `EvaluationDatasetDetail.tsx`, `ObjectExplorer.tsx`—split into hooks (`useDocument…`), subcomponents, and typed API modules; reduces merge conflicts and improves testability.
-- **Duplication already tracked:** metadata extraction in backend vs CLI (§17); consider extending that item when refactoring parsers/pipelines.
+- **openkms-cli:** Large CLI commands mix parsing, env, subprocess, storage, and HTTP — extract phases and shared error reporting.
+- **Neo4j-heavy APIs:** Move Cypher builders and row mapping toward `services/` with targeted tests.
+- **Worker:** Align KB index subprocess policy with async/non-blocking goals where the runtime allows.
+- **Agent / streaming:** Extract serialization and tool-dispatch helpers from long NDJSON/stream loops.
+- **Frontend file size:** `DocumentDetail.tsx`, `KnowledgeBaseDetail.tsx`, `ConsolePermissionManagement.tsx`, `KnowledgeMap.tsx`, `WikiSpaceDetail.tsx`, `EvaluationDatasetDetail.tsx`, `ObjectExplorer.tsx` — split into hooks and presentational components when touching those areas.
 
-**Re-run hint:** adjust threshold in a small script (AST `end_lineno - lineno`) or add CI guardrails (e.g. optional `radon` / `ruff` rules) only after agreeing team-wide limits to avoid noise.
+### Partial mitigations (CLI)
 
-### Partial mitigation (2026-04-23 follow-up)
+- **`openkms_cli/backend_defaults`:** `_merge_document_parse_defaults_payload` extracted; tests in `openkms-cli/tests/test_backend_defaults.py`.
+- **`openkms_cli/parser`:** `_restructure_pages_after_predict` extracted; tests in `openkms-cli/tests/test_parser_restructure.py` and `test_parser_helpers.py`.
 
-- **`openkms_cli/backend_defaults`:** `_merge_document_parse_defaults_payload` extracted for a pure merge step; **`openkms-cli/tests/test_backend_defaults.py`** covers merge rules, fetch skip when all `OPENKMS_VLM_*` env vars are set, merge after mock fetch, and `model_name` query wiring.
-- **`openkms_cli/parser`:** `_restructure_pages_after_predict` extracted from **`run_parser`**; **`openkms-cli/tests/test_parser_restructure.py`** covers PDF multi-page kwargs vs `TypeError` fallback vs non-PDF; **`test_parser_helpers.py`** covers **`_bbox_iou`**, **`_find_best_matching_block`**, **`_iter_layout_boxes`**, **`_annotate_layout_boxes`**, **`_get_block_field`**.
-- **Run tests:** from **`openkms-cli/`**: `pip install -e ".[dev]"` then **`pytest tests/`**. Remaining large functions (e.g. **`pipeline_run`**, **`run_parser`** body, backend Neo4j handlers) still need incremental refactors.
+**Re-run:** small AST script or optional `radon` / Ruff rules — only after team agreement on thresholds to avoid noise.

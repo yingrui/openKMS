@@ -12,8 +12,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
 from app.api.auth import (
+    authenticate_request,
     jwt_payload_is_admin,
-    require_auth,
 )
 from app.config import settings
 from app.database import async_session_maker
@@ -80,7 +80,8 @@ class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         try:
-            await require_auth(request)
+            async with async_session_maker() as db:
+                await authenticate_request(request, db)
         except HTTPException as e:
             if e.status_code == 401:
                 return JSONResponse({"detail": e.detail}, status_code=401)
@@ -94,6 +95,9 @@ class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         if (method, path) in _AUTH_PATTERN_SKIP_EXACT:
+            return await call_next(request)
+
+        if path.startswith("/api/auth/api-keys"):
             return await call_next(request)
 
         if not isinstance(sub, str):
