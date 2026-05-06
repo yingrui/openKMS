@@ -125,35 +125,44 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    pipeline_id = body.pipeline_id
-    if not pipeline_id:
-        channel = await db.get(DocumentChannel, doc.channel_id)
-        if channel and channel.pipeline_id:
-            pipeline_id = channel.pipeline_id
-
-    if not pipeline_id:
-        raise HTTPException(
-            status_code=400,
-            detail="No pipeline specified and channel has no default pipeline",
-        )
-
-    pipeline = await db.get(Pipeline, pipeline_id)
-    if not pipeline:
-        raise HTTPException(status_code=404, detail="Pipeline not found")
-
     file_ext = doc.name.rsplit(".", 1)[-1].lower() if "." in doc.name else "pdf"
 
-    from app.jobs.tasks import run_pipeline
+    if file_ext == "xlsx":
+        from app.jobs.tasks import run_spreadsheet_preview
 
-    job_id = await run_pipeline.defer_async(
-        document_id=doc.id,
-        pipeline_id=pipeline.id,
-        file_hash=doc.file_hash or "",
-        file_ext=file_ext,
-        command=pipeline.command,
-        default_args=pipeline.default_args,
-        model_id=pipeline.model_id,
-    )
+        job_id = await run_spreadsheet_preview.defer_async(
+            document_id=doc.id,
+            file_hash=doc.file_hash or "",
+            file_ext=file_ext,
+        )
+    else:
+        pipeline_id = body.pipeline_id
+        if not pipeline_id:
+            channel = await db.get(DocumentChannel, doc.channel_id)
+            if channel and channel.pipeline_id:
+                pipeline_id = channel.pipeline_id
+
+        if not pipeline_id:
+            raise HTTPException(
+                status_code=400,
+                detail="No pipeline specified and channel has no default pipeline",
+            )
+
+        pipeline = await db.get(Pipeline, pipeline_id)
+        if not pipeline:
+            raise HTTPException(status_code=404, detail="Pipeline not found")
+
+        from app.jobs.tasks import run_pipeline
+
+        job_id = await run_pipeline.defer_async(
+            document_id=doc.id,
+            pipeline_id=pipeline.id,
+            file_hash=doc.file_hash or "",
+            file_ext=file_ext,
+            command=pipeline.command,
+            default_args=pipeline.default_args,
+            model_id=pipeline.model_id,
+        )
 
     from sqlalchemy import update
     await db.execute(
@@ -199,19 +208,29 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
     if not document_id:
         raise HTTPException(status_code=400, detail="Job has no document_id in args")
 
-    from app.jobs.tasks import run_pipeline
+    task_name = row.task_name or ""
+    if task_name == "run_spreadsheet_preview":
+        from app.jobs.tasks import run_spreadsheet_preview
 
-    cmd_template = args.get("command", "openkms-cli pipeline run")
+        new_job_id = await run_spreadsheet_preview.defer_async(
+            document_id=args.get("document_id", ""),
+            file_hash=args.get("file_hash", ""),
+            file_ext=args.get("file_ext", "xlsx"),
+        )
+    else:
+        from app.jobs.tasks import run_pipeline
 
-    new_job_id = await run_pipeline.defer_async(
-        document_id=args.get("document_id", ""),
-        pipeline_id=args.get("pipeline_id", ""),
-        file_hash=args.get("file_hash", ""),
-        file_ext=args.get("file_ext", "pdf"),
-        command=cmd_template,
-        default_args=args.get("default_args"),
-        model_id=args.get("model_id"),
-    )
+        cmd_template = args.get("command", "openkms-cli pipeline run")
+
+        new_job_id = await run_pipeline.defer_async(
+            document_id=args.get("document_id", ""),
+            pipeline_id=args.get("pipeline_id", ""),
+            file_hash=args.get("file_hash", ""),
+            file_ext=args.get("file_ext", "pdf"),
+            command=cmd_template,
+            default_args=args.get("default_args"),
+            model_id=args.get("model_id"),
+        )
 
     from sqlalchemy import update
     from app.models.document import Document

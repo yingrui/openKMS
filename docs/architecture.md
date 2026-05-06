@@ -1,6 +1,6 @@
 # openKMS Architecture
 
-**`docker/docker-compose.yml`** runs the full stack (Postgres/pgvector, MinIO, backend, procrastinate worker with `openkms-cli` parse, nginx frontend at **http://localhost:8082**). The **worker** image is **`platform: linux/amd64`** (Paddle wheels on Apple Silicon via emulation) and installs **`libgl1`** for OpenCV/PaddleX. **Postgres**, **MinIO**, and the **backend** are not published on the host; services use Docker DNS (`postgres`, `minio`, `backend:8102`), and the browser uses **8082** with nginx proxying **`/api`**, **`/internal-api`**, auth routes, and **`/buckets/...`**. Images: **`docker/Dockerfile`** (`backend`, `worker`), **`docker/Dockerfile.frontend`**. From repo root: **`docker compose -f docker/docker-compose.yml`** for **`build`**, **`up -d --build`**, **`down`** (**`docker/README.md`**).
+**`docker/docker-compose.yml`** runs the full stack (Postgres/pgvector, MinIO, backend, procrastinate worker with `openkms-cli` parse, nginx frontend at **http://localhost:8082**). The **worker** image is **`platform: linux/amd64`** (Paddle wheels on Apple Silicon via emulation) and installs **`libgl1`** for OpenCV/PaddleX plus **LibreOffice (writer + impress)** to convert **DOCX/PPTX** to PDF before parsing. **Postgres**, **MinIO**, and the **backend** are not published on the host; services use Docker DNS (`postgres`, `minio`, `backend:8102`), and the browser uses **8082** with nginx proxying **`/api`**, **`/internal-api`**, auth routes, and **`/buckets/...`**. Images: **`docker/Dockerfile`** (`backend`, `worker`), **`docker/Dockerfile.frontend`**. From repo root: **`docker compose -f docker/docker-compose.yml`** for **`build`**, **`up -d --build`**, **`down`** (**`docker/README.md`**).
 
 ## High-Level Diagram
 
@@ -206,7 +206,7 @@ backend/
 │   │   └── data_source.py     # DataSourceCreate/Response; dataset.py for Dataset schemas
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
-│   │   └── tasks.py            # run_pipeline task, run_kb_index task (subprocess openkms-cli)
+│   │   └── tasks.py            # run_pipeline, run_spreadsheet_preview (.xlsx preview), run_kb_index (subprocess openkms-cli where applicable)
 │   └── services/
 │       ├── credential_encryption.py # Fernet encrypt/decrypt for DataSource credentials
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
@@ -217,6 +217,7 @@ backend/
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
+│       ├── spreadsheet_preview.py      # openpyxl: XLSX grid preview + markdown for upload / spreadsheet job
 │       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, upsert wiki_files on same path, markdown mirrors, link rewrite; strip NUL for PostgreSQL
 │       ├── agent/                        # Embedded LangGraph (wiki): `llm.py`, `wiki_tools.py`, `wiki_runner.py`, `prompts.py`
 │       ├── wiki_link_graph.py            # Parse `[[wikilinks]]` + relative `[text](href)` (skip fenced code); build directed graph JSON; path resolution aligned with vault import / frontend preview
@@ -258,7 +259,8 @@ openkms-cli/
 │   ├── backend_defaults.py  # VLM URL/model/key merge from internal-api (optional model_name)
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
-│   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
+│   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse]); optional content_hash_source for converted Office inputs
+│   ├── office_convert.py    # LibreOffice headless: DOCX/PPTX → PDF for VLM parse
 │   ├── pipeline_cli.py      # pipeline list, pipeline run (doc-parse, kb-index); optional [pipeline], [kb]
 │   └── kb_indexer.py        # Chunking, embedding, pgvector bulk insert (optional [kb])
 └── README.md
@@ -268,7 +270,7 @@ openkms-cli/
 - **Tests**: `pip install -e ".[dev]" && pytest tests/` from **`openkms-cli/`** (no Paddle required for the current suite)
 - **Configuration**: `openkms_cli/settings.py` maps each environment variable explicitly (no hidden prefix); loads `openkms-cli/.env` then cwd `.env`; CLI flags override when passed
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
-- **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
+- **Pipeline run**: Download from S3 → (optional LibreOffice for DOCX/PPTX) → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend; extraction errors after a successful parse are logged and do not fail the job
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
 - **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, generates embeddings via the KB’s configured **`api_models`** row (`embedding_model_id`), with optional CLI env overrides (`OPENKMS_EMBEDDING_MODEL_*` in **`openkms-cli/.env`**); writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools

@@ -384,15 +384,17 @@ def pipeline_run(
     secret_key = cfg.aws_secret_access_key
 
     is_local = not _is_s3_uri(input_uri)
+    work = output_dir.resolve() / "_pipeline_work"
+    work.mkdir(parents=True, exist_ok=True)
 
     if is_local:
-        input_path = Path(input_uri)
-        if not input_path.is_file():
-            console.print(f"[red]Local file not found: {input_path}[/red]")
+        stored_path = Path(input_uri)
+        if not stored_path.is_file():
+            console.print(f"[red]Local file not found: {stored_path}[/red]")
             raise typer.Exit(1)
-        pdf_path = input_path.resolve()
-        content = pdf_path.read_bytes()
-        console.print(f"[dim]Input: {pdf_path}[/dim] (local, skip download)")
+        stored_path = stored_path.resolve()
+        content = stored_path.read_bytes()
+        console.print(f"[dim]Input: {stored_path}[/dim] (local, skip download)")
     else:
         if not access_key or not secret_key:
             console.print("[red]AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required for S3[/red]")
@@ -402,14 +404,25 @@ def pipeline_run(
         except typer.BadParameter as e:
             console.print(f"[red]{e}[/red]")
             raise typer.Exit(1)
-        work = output_dir.resolve()
-        work.mkdir(parents=True, exist_ok=True)
-        pdf_path = work / "input.pdf"
+        ext_part = Path(input_key).suffix.lower().lstrip(".") or "bin"
+        stored_path = work / f"input.{ext_part}"
         content = _get_s3_client(endpoint_url, access_key, secret_key, region).get_object(
             Bucket=input_bucket, Key=input_key
         )["Body"].read()
-        pdf_path.write_bytes(content)
+        stored_path.write_bytes(content)
         console.print(f"[dim]Input: s3://{input_bucket}/{input_key}[/dim]")
+
+    try:
+        from .office_convert import OfficeConvertError, prepare_for_vlm_parse
+    except ImportError:
+        console.print("[red]office_convert module missing[/red]")
+        raise typer.Exit(1)
+    try:
+        parse_path, hash_src = prepare_for_vlm_parse(stored_path, work / "office_stage")
+    except OfficeConvertError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+    ch_source = None if parse_path.resolve() == hash_src.resolve() else hash_src
 
     if not skip_upload and (not access_key or not secret_key):
         console.print("[red]AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required for upload[/red]")
@@ -438,11 +451,12 @@ def pipeline_run(
             raise typer.Exit(1)
 
         result, _, _ = run_parser(
-            input_path=pdf_path,
+            input_path=parse_path,
             output_dir=out_base,
             vlm_url=vlm_url,
             vlm_api_key=vlm_api_key,
             model=merged_vlm_model,
+            content_hash_source=ch_source,
         )
         file_hash = result["file_hash"]
         hash_dir = out_base / file_hash
@@ -450,7 +464,7 @@ def pipeline_run(
         # Use file hash as s3 prefix when not specified (S3 input) or for consistency
         prefix = (s3_prefix.rstrip("/") if s3_prefix else file_hash)
 
-        ext = pdf_path.suffix.lstrip(".") or "pdf"
+        ext = Path(hash_src).suffix.lower().lstrip(".") or "pdf"
         (hash_dir / f"original.{ext}").write_bytes(content)
         result_json = json.dumps(result, indent=2, ensure_ascii=False)
         (hash_dir / "result.json").write_text(result_json, encoding="utf-8")
@@ -541,22 +555,30 @@ def pipeline_run(
                     "api_key": cfg.extraction_model_api_key,
                     "model_name": extraction_model_name or "gpt-4",
                 }
+            extracted: dict | None = None
             try:
                 extracted = extract_metadata_sync(result["markdown"], model_config, schema_data)
             except ValueError as e:
-                console.print(f"[red]Metadata extraction failed: {e}[/red]")
-                raise typer.Exit(1)
+                # Do not fail the whole pipeline: parse + S3 + markdown already succeeded.
+                console.print(f"[yellow]Metadata extraction failed: {e}[/yellow]")
+                console.print(
+                    "[dim]Document parse finished; fix the extraction model (e.g. 502 from chat/completions) "
+                    "or use Extract on the document page when it is healthy.[/dim]"
+                )
 
-            base = api_url.rstrip("/")
-            put_url = f"{base}/api/documents/{document_id}/metadata"
-            headers = {**auth_headers, "Content-Type": "application/json"}
-            resp = requests.put(
-                put_url, json={"metadata": extracted}, headers=headers, auth=basic_auth, timeout=30
-            )
-            if not resp.ok:
-                console.print(f"[red]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/red]")
-                raise typer.Exit(1)
-            console.print("[green]Metadata updated via API[/green]")
+            if extracted is not None:
+                base = api_url.rstrip("/")
+                put_url = f"{base}/api/documents/{document_id}/metadata"
+                headers = {**auth_headers, "Content-Type": "application/json"}
+                resp = requests.put(
+                    put_url, json={"metadata": extracted}, headers=headers, auth=basic_auth, timeout=30
+                )
+                if not resp.ok:
+                    console.print(
+                        f"[yellow]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/yellow]"
+                    )
+                else:
+                    console.print("[green]Metadata updated via API[/green]")
 
         if (
             not skip_upload

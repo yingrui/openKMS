@@ -3,7 +3,7 @@
 ## Current State (as of latest commit)
 
 - Document channels: CRUD, tree, description
-- Document upload + parsing via PaddleOCR-VL; store in S3/MinIO under `{file_hash}/`
+- Document upload + parsing via PaddleOCR-VL; **DOCX/PPTX** converted with LibreOffice then parsed like PDF; **XLSX** preview (openpyxl) at upload + `run_spreadsheet_preview` job on re-process; store in S3/MinIO under `{file_hash}/`
 - Document detail view with Markdown, layout images, block images; loads files via backend proxy
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`

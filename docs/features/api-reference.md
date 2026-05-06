@@ -61,7 +61,7 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 | POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
-| POST | `/api/documents/upload` | Upload document (store only, no parsing); auto-process if channel configured |
+| POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: builds sheet preview + markdown in-process, sets `completed` or `failed` (no parse job). **Other types**: `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX) |
 | GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted); search filters by name; offset/limit for pagination |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
@@ -111,8 +111,8 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 | POST | `/api/models/{id}/test` | Test model (proxies to provider's base_url; supports chat/embedding/VL) |
 | GET | `/api/jobs` | List jobs (optional `?document_id=`) |
 | GET | `/api/jobs/{id}` | Get job detail |
-| POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`) |
-| POST | `/api/jobs/{id}/retry` | Retry a failed job |
+| POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id` required). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
+| POST | `/api/jobs/{id}/retry` | Retry a failed job (same task: `run_pipeline` vs `run_spreadsheet_preview` from original `task_name`) |
 | DELETE | `/api/jobs/{id}` | Delete a job (not running) |
 
 ## Knowledge bases

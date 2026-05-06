@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, Trash2, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -62,10 +62,20 @@ interface LayoutDetItem {
   boxes?: LayoutBox[];
 }
 
+interface SpreadsheetSheet {
+  name: string;
+  rows: string[][];
+  truncated_rows?: boolean;
+  truncated_cols?: boolean;
+}
+
 interface ParsingResult {
-  file_hash: string;
-  parsing_res_list: ParsingResultItem[];
+  file_hash?: string;
+  parsing_res_list?: ParsingResultItem[];
   layout_det_res?: LayoutDetItem[];
+  document_kind?: string;
+  sheets?: SpreadsheetSheet[];
+  error?: string;
 }
 
 interface PageBlock {
@@ -339,6 +349,7 @@ export function DocumentDetail() {
   const [newRelNote, setNewRelNote] = useState('');
   const [relSaving, setRelSaving] = useState(false);
   const [lineageSectionOpen, setLineageSectionOpen] = useState(false);
+  const [spreadsheetSheetIndex, setSpreadsheetSheetIndex] = useState(0);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -500,6 +511,29 @@ export function DocumentDetail() {
     }
     return list;
   })();
+
+  const isSpreadsheetLayout =
+    (document?.file_type ?? '').toUpperCase() === 'XLSX' || parsingResult?.document_kind === 'spreadsheet';
+
+  const spreadsheetSheets =
+    parsingResult?.document_kind === 'spreadsheet' && Array.isArray(parsingResult.sheets)
+      ? parsingResult.sheets
+      : null;
+
+  useEffect(() => {
+    setSpreadsheetSheetIndex(0);
+  }, [id, parsingResult?.document_kind, spreadsheetSheets?.length]);
+
+  useEffect(() => {
+    if (isSpreadsheetLayout && rightPanelView === 'pageIndex') {
+      setRightPanelView('markdown');
+    }
+  }, [isSpreadsheetLayout, rightPanelView]);
+
+  const activeSpreadsheetSheet =
+    spreadsheetSheets && spreadsheetSheets.length > 0
+      ? spreadsheetSheets[Math.min(spreadsheetSheetIndex, spreadsheetSheets.length - 1)]
+      : null;
 
   const onPageImageLoad = useCallback((pageIndex: number, img: HTMLImageElement) => {
     if (img?.naturalWidth && img?.naturalHeight) {
@@ -1782,8 +1816,8 @@ export function DocumentDetail() {
         >
           <section className="document-detail-panel document-detail-images">
             <h2 className="document-detail-panel-header">
-              <ImageIcon size={16} />
-              <span>Document Pages</span>
+              {isSpreadsheetLayout ? <Table size={16} /> : <ImageIcon size={16} />}
+              <span>{isSpreadsheetLayout ? 'Workbook' : 'Document Pages'}</span>
               <button
                 type="button"
                 className="document-detail-extend-btn"
@@ -1795,7 +1829,57 @@ export function DocumentDetail() {
               </button>
             </h2>
             <div className="document-detail-images-body">
-              {parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
+              {isSpreadsheetLayout ? (
+                <div className="document-detail-spreadsheet">
+                  {parsingResult?.error ? (
+                    <p className="document-detail-spreadsheet-error">{parsingResult.error}</p>
+                  ) : null}
+                  {spreadsheetSheets && spreadsheetSheets.length > 0 ? (
+                    <>
+                      <div className="document-detail-spreadsheet-tabs" role="tablist">
+                        {spreadsheetSheets.map((sh, i) => (
+                          <button
+                            key={sh.name + i}
+                            type="button"
+                            role="tab"
+                            aria-selected={i === spreadsheetSheetIndex}
+                            className={`document-detail-spreadsheet-tab ${i === spreadsheetSheetIndex ? 'document-detail-spreadsheet-tab--active' : ''}`}
+                            onClick={() => setSpreadsheetSheetIndex(i)}
+                          >
+                            {sh.name}
+                          </button>
+                        ))}
+                      </div>
+                      {activeSpreadsheetSheet ? (
+                        <>
+                          {(activeSpreadsheetSheet.truncated_rows || activeSpreadsheetSheet.truncated_cols) && (
+                            <p className="document-detail-spreadsheet-note">
+                              Showing a preview
+                              {activeSpreadsheetSheet.truncated_rows ? ' (rows truncated)' : ''}
+                              {activeSpreadsheetSheet.truncated_cols ? ' (columns truncated)' : ''}.
+                            </p>
+                          )}
+                          <div className="document-detail-spreadsheet-scroll">
+                            <table className="document-detail-spreadsheet-table">
+                              <tbody>
+                                {activeSpreadsheetSheet.rows.map((row, ri) => (
+                                  <tr key={ri}>
+                                    {row.map((cell, ci) => (
+                                      <td key={ci}>{cell}</td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      ) : null}
+                    </>
+                  ) : !parsingResult?.error ? (
+                    <p className="document-detail-muted">No sheet data yet.</p>
+                  ) : null}
+                </div>
+              ) : parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
                 parsingResult.layout_det_res
                   .filter((item) => item.input_img)
                   .map((item, pageIndex) => {
@@ -1863,15 +1947,17 @@ export function DocumentDetail() {
                   <FileText size={14} />
                   <span>Markdown</span>
                 </button>
-                <button
-                  type="button"
-                  className={`document-detail-panel-tab ${rightPanelView === 'pageIndex' ? 'document-detail-panel-tab--active' : ''}`}
-                  onClick={() => setRightPanelView('pageIndex')}
-                  aria-pressed={rightPanelView === 'pageIndex'}
-                >
-                  <ListTree size={14} />
-                  <span>Page Index</span>
-                </button>
+                {!isSpreadsheetLayout ? (
+                  <button
+                    type="button"
+                    className={`document-detail-panel-tab ${rightPanelView === 'pageIndex' ? 'document-detail-panel-tab--active' : ''}`}
+                    onClick={() => setRightPanelView('pageIndex')}
+                    aria-pressed={rightPanelView === 'pageIndex'}
+                  >
+                    <ListTree size={14} />
+                    <span>Page Index</span>
+                  </button>
+                ) : null}
               </div>
               {rightPanelView === 'markdown' && !docConfig && (
                 markdownEditMode ? (

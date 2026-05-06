@@ -1741,3 +1741,74 @@
   flex: 1 1 140px;
   min-width: 120px;
 }
+
+/* Spreadsheet (.xlsx) preview */
+.document-detail-spreadsheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 120px;
+}
+
+.document-detail-spreadsheet-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  color: var(--color-error);
+  font-size: 0.9rem;
+}
+
+.document-detail-spreadsheet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.document-detail-spreadsheet-tab {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.document-detail-spreadsheet-tab--active {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.document-detail-spreadsheet-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.document-detail-spreadsheet-scroll {
+  overflow: auto;
+  max-height: min(70vh, 640px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+.document-detail-spreadsheet-table {
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.document-detail-spreadsheet-table td {
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.document-detail-spreadsheet-table tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--color-bg-elevated) 55%, transparent);
+}

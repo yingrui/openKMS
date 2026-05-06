@@ -58,8 +58,20 @@ const ACCEPTED_TYPES = [
   'image/jpeg',
   'image/jpg',
   'image/webp',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 ];
-const ACCEPTED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+const ACCEPTED_EXTENSIONS = [
+  '.pdf',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.docx',
+  '.pptx',
+  '.xlsx',
+];
 
 export function isAcceptedFile(file: File): boolean {
   if (ACCEPTED_TYPES.includes(file.type)) return true;

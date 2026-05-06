@@ -43,6 +43,9 @@ const fileTypeIcons: Record<string, typeof FileText> = {
   JPG: Image,
   JPEG: Image,
   WEBP: Image,
+  DOCX: FileText,
+  PPTX: FileText,
+  XLSX: FileText,
 };
 
 function formatSize(bytes: number): string {
@@ -115,7 +118,7 @@ export function DocumentChannel() {
     const accepted = files.filter((f) => isAcceptedFile(f));
     if (accepted.length !== files.length) {
       setUploadError(
-        'Some files were skipped. Supported: PDF, PNG, JPG, JPEG, WEBP'
+        'Some files were skipped. Supported: PDF, PNG, JPG, JPEG, WEBP, DOCX, PPTX, XLSX'
       );
     }
     setSelectedFiles(accepted);
@@ -429,12 +432,12 @@ export function DocumentChannel() {
               </button>
             </div>
             <p className="documents-upload-modal-hint">
-              PDF, PNG, JPG, JPEG, WEBP supported.
+              PDF, Office (DOCX, PPTX, XLSX), and images (PNG, JPG, JPEG, WEBP) supported.
             </p>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx,.xlsx,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               multiple
               className="documents-upload-input"
               onChange={handleFileChange}

@@ -210,15 +210,20 @@ def run_parser(
     vlm_api_key: str | None = None,
     model: str = "PaddlePaddle/PaddleOCR-VL-1.5",
     max_concurrency: int = 3,
+    content_hash_source: Path | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, bytes]], list[tuple[str, bytes]]]:
     """
     Parse document. Returns (parsing_result, extra_files, markdown_out_files).
     Output format is compatible with openKMS DocumentDetail (result.json, markdown.md, layout_det_*, block_*, markdown_out/*).
+
+    ``content_hash_source`` when set is used for SHA-256 ``file_hash`` (uploaded original bytes),
+    while ``input_path`` is what PaddleOCR-VL reads (e.g. PDF converted from .docx).
     """
     from paddleocr import PaddleOCRVL
 
-    content = input_path.read_bytes()
-    file_hash = hashlib.sha256(content).hexdigest()
+    hash_path = content_hash_source or input_path
+    file_hash = hashlib.sha256(hash_path.read_bytes()).hexdigest()
+    input_bytes = input_path.read_bytes()
     suffix = input_path.suffix.lower()
 
     pipeline = PaddleOCRVL(
@@ -331,7 +336,7 @@ def run_parser(
         if layout_img not in extra_files_map and i < len(pages_res) and suffix == ".pdf":
             try:
                 import fitz
-                doc = fitz.open(stream=content, filetype="pdf")
+                doc = fitz.open(stream=input_bytes, filetype="pdf")
                 try:
                     if i < len(doc):
                         page = doc.load_page(i)
@@ -347,7 +352,7 @@ def run_parser(
             try:
                 from PIL import Image
 
-                img = Image.open(io.BytesIO(content))
+                img = Image.open(io.BytesIO(input_bytes))
                 png = _array_or_pil_to_png_bytes(img)
                 if png:
                     extra_files_map[layout_img] = png
