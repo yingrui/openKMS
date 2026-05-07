@@ -4,9 +4,9 @@ This document is the **single spec** for wiki–document associations, the wiki-
 
 **Shipped (MVP v1)**
 
-- [WikiSpaceDetail](../frontend/src/pages/WikiSpaceDetail.tsx): main + right rail; **Pages | Documents** tabs; **15** per page; **Documents** list uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
-- [WikiSpaceAgentPanel](../frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](../frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
-- **Backend** [app/api/agent.py](../backend/app/api/agent.py) + [app/services/agent/](../backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](../backend/app/services/agent/wiki_runner.py). LLM from [api_models](../backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](../third-party/wiki-skills/) (`git subtree`); [vendored_wiki_skills.py](../backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](../backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
+- [WikiSpaceDetail](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/WikiSpaceDetail.tsx): main + right rail; **Pages | Documents** tabs; **15** per page; **Documents** list uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
+- [WikiSpaceAgentPanel](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
+- **Backend** [app/api/agent.py](https://github.com/yingrui/openKMS/blob/main/backend/app/api/agent.py) + [app/services/agent/](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/wiki_runner.py). LLM from [api_models](https://github.com/yingrui/openKMS/blob/main/backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](https://github.com/yingrui/openKMS/tree/main/third-party/wiki-skills) (`git subtree`); [vendored_wiki_skills.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
 
 ## Two services (do not conflate)
 
@@ -72,7 +72,7 @@ sequenceDiagram
 
 **Configuration**
 
-- `OPENKMS_AGENT_MODEL_ID` — optional; otherwise the default **`llm`** [api_model](../backend/app/models/api_model.py) (`is_default_in_category` for that category: set on the **Models** page, not under Console).
+- `OPENKMS_AGENT_MODEL_ID` — optional; otherwise the default **`llm`** [api_model](https://github.com/yingrui/openKMS/blob/main/backend/app/models/api_model.py) (`is_default_in_category` for that category: set on the **Models** page, not under Console).
 - `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` — default `65537`; cap on **output** (completion) per model call, sent as `max_tokens` (OpenAI-style; token count, not character length). Kept **moderate by default** so providers/models that reject very large `max_tokens` do not error; raise in `.env` if your model’s output limit is higher. Each ReAct step is a separate call. If replies truncate, set higher (within the model’s true limit) or check the provider.
 - `OPENKMS_AGENT_RECURSION_LIMIT` — default `200` (was effectively ~25 in LangGraph if unset in code). The ReAct agent **stops** after this many graph supersteps. Bulk work (e.g. 14× get + 14× upsert) needs a **high** limit or **smaller batches** (3–5 pages per user message) so the UI is not “stuck” with no streamed tokens for a long time while tools run.
 
@@ -80,7 +80,7 @@ sequenceDiagram
 
 | Action | Requirement |
 |--------|-------------|
-| Link / unlink | `wikis:write` + space in scope; document must pass [document scope rules](../backend/app/api/wiki_spaces.py) (same as document list). |
+| Link / unlink | `wikis:write` + space in scope; document must pass [document scope rules](https://github.com/yingrui/openKMS/blob/main/backend/app/api/wiki_spaces.py) (same as document list). |
 | Agent chat, read tools | `wikis:read` + space in scope. |
 | Agent **upsert** (`upsert_wiki_page` tool) | `wikis:write` + space in scope; same transaction as the chat request (commit at end of `POST .../messages`). |
 | Read `Document.markdown` in tools | (Future) `documents:read` scope. |
@@ -109,8 +109,8 @@ sequenceDiagram
 
 - [x] Alembic + `wiki_space_documents`, `agent_conversations`, `agent_messages`
 - [x] Wiki link API; FE
-- [x] Agent router + `create_react_agent` + read tools; FE [agentApi.ts](../frontend/src/data/agentApi.ts) + panel
-- [ ] Optional: Langfuse env in [config](../backend/app/config.py) + `invoke` hook
+- [x] Agent router + `create_react_agent` + read tools; FE [agentApi.ts](https://github.com/yingrui/openKMS/blob/main/frontend/src/data/agentApi.ts) + panel
+- [ ] Optional: Langfuse env in [config](https://github.com/yingrui/openKMS/blob/main/backend/app/config.py) + `invoke` hook
 - [x] Write tool: `upsert_wiki_page` (gated by `wikis:write`)
 - [ ] Read `Document.markdown` in tools (linked channel documents)
 - [ ] (Later) `evaluation_dataset` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)

@@ -1,6 +1,6 @@
 # openKMS Architecture
 
-**`docker/docker-compose.yml`** runs the full stack (Postgres/pgvector, MinIO, backend, procrastinate worker with `openkms-cli` parse, nginx frontend at **http://localhost:8082**). The **worker** image is **`platform: linux/amd64`** (Paddle wheels on Apple Silicon via emulation) and installs **`libgl1`** for OpenCV/PaddleX. **Postgres**, **MinIO**, and the **backend** are not published on the host; services use Docker DNS (`postgres`, `minio`, `backend:8102`), and the browser uses **8082** with nginx proxying **`/api`**, **`/internal-api`**, auth routes, and **`/buckets/...`**. Images: **`docker/Dockerfile`** (`backend`, `worker`), **`docker/Dockerfile.frontend`**. From repo root: **`docker compose -f docker/docker-compose.yml`** for **`build`**, **`up -d --build`**, **`down`** (**`docker/README.md`**).
+**`docker/docker-compose.yml`** runs the full stack (Postgres/pgvector, MinIO, backend, procrastinate worker with `openkms-cli` parse, nginx frontend at **http://localhost:8082**). The **worker** image is **`platform: linux/amd64`** (Paddle wheels on Apple Silicon via emulation) and installs **`libgl1`** for OpenCV/PaddleX plus **LibreOffice (writer + impress)** to convert **DOCX/PPTX** to PDF before parsing. **Postgres**, **MinIO**, and the **backend** are not published on the host; services use Docker DNS (`postgres`, `minio`, `backend:8102`), and the browser uses **8082** with nginx proxying **`/api`**, **`/internal-api`**, auth routes, and **`/buckets/...`**. Images: **`docker/Dockerfile`** (`backend`, `worker`), **`docker/Dockerfile.frontend`**. From repo root: **`docker compose -f docker/docker-compose.yml`** for **`build`**, **`up -d --build`**, **`down`** (**`docker/README.md`**).
 
 ## High-Level Diagram
 
@@ -51,7 +51,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_article_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **taxonomy_nodes** (self-referential tree of terms for the Knowledge Map) and **taxonomy_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | users (local auth), **user_api_keys** (hashed personal API tokens; Bearer `okms.{id}.{secret}` authenticates as owner), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_article_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluation_datasets**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **taxonomy_nodes** (self-referential tree of terms for the Knowledge Map) and **taxonomy_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; **article bundles** `articles/{article_id}/content.md`, `articles/{article_id}/images/…`, `articles/{article_id}/attachments/…`, optional `origin.html` (served via authenticated `GET /api/articles/{id}/files/{path}` → presigned redirect); wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; **Graph View** cache JSON `wiki/{space_id}/link-graph.json` (invalidated when `max(wiki_pages.updated_at)` is newer than the object’s `LastModified`); ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -86,6 +86,7 @@ flowchart TB
     Models[Models, ModelDetail]
     Ontology[OntologyList; Datasets, DatasetDetail, ConsoleObjectTypes, ConsoleLinkTypes; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer]
     Console[Console: Overview, Permission management, Data security, DataSources, Settings, Users, FeatureToggles]
+    UserSettings[Profile, UserSettings /settings API keys]
   end
 
   Providers --> Pages
@@ -102,9 +103,11 @@ frontend/src/
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
 ├── contexts/                # DocumentChannelsContext, ArticleChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/taxonomy/*`), …, featureTogglesApi, securityAdminApi, channelUtils
+├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/taxonomy/*`), …, featureTogglesApi, securityAdminApi, channelUtils, **userApiKeysApi** (`/api/auth/api-keys`)
 └── pages/
     ├── Home.tsx
+    ├── Profile.tsx            # /profile — `GET /api/auth/me`
+    ├── UserSettings.tsx       # /settings — personal API keys
     ├── DocumentsIndex.tsx   # /documents – overview
     ├── DocumentChannel.tsx  # /documents/channels/:channelId
     ├── DocumentChannels.tsx # /documents/channels – manage
@@ -114,7 +117,7 @@ frontend/src/
     ├── ArticleChannel.tsx   # /articles/channels/:channelId – list in channel
     ├── ArticleChannels.tsx  # /articles/channels – manage tree
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
-    ├── ArticleDetail.tsx
+    ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
     ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** GFM; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`), WikiPageEditor.tsx
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
@@ -137,7 +140,7 @@ backend/
 │   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
 │   ├── database.py              # Async engine, get_db (no DDL at startup; pgvector via dev.sh / Alembic)
 │   ├── api/
-│   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me + permission-catalog with route/API patterns), sync-session
+│   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me, permission-catalog, **api-keys** CRUD, sync-session)
 │   │   ├── admin/
 │   │   │   ├── groups.py        # CRUD /api/admin/groups, scopes PUT (any auth); members PUT local-only (OIDC: GET empty, PUT 403)
 │   │   │   ├── security_roles.py  # GET /api/admin/security-roles, PUT …/permissions
@@ -174,6 +177,7 @@ backend/
 │   │   ├── api_model.py        # ApiModel (provider_id FK, name, category, model_name; inherits base_url/api_key from provider)
 │   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
 │   │   ├── user.py            # User (local auth: email, username, password_hash, is_admin)
+│   │   ├── user_api_key.py   # UserApiKey (user_id FK, name, key_prefix, key_hash bcrypt; Bearer `okms.{id}.{secret}` for HTTP)
 │   │   ├── security_role.py # SecurityRole, SecurityRolePermission, UserSecurityRole
 │   │   ├── security_permission.py # SecurityPermission (key, label, description, JSONB route/API patterns, sort_order)
 │   │   ├── access_group.py  # AccessGroup, AccessGroupUser, junctions for channels/KBs/wiki/eval/datasets/object_types/link_types/data_resources
@@ -206,7 +210,7 @@ backend/
 │   │   └── data_source.py     # DataSourceCreate/Response; dataset.py for Dataset schemas
 │   ├── jobs/
 │   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
-│   │   └── tasks.py            # run_pipeline task, run_kb_index task (subprocess openkms-cli)
+│   │   └── tasks.py            # run_pipeline, run_spreadsheet_preview (.xlsx preview), run_kb_index (subprocess openkms-cli where applicable)
 │   └── services/
 │       ├── credential_encryption.py # Fernet encrypt/decrypt for DataSource credentials
 │       ├── model_testing.py         # Model playground: build URL/headers/payload, parse response by category
@@ -217,6 +221,7 @@ backend/
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
+│       ├── spreadsheet_preview.py      # openpyxl: XLSX grid preview + markdown for upload / spreadsheet job
 │       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, upsert wiki_files on same path, markdown mirrors, link rewrite; strip NUL for PostgreSQL
 │       ├── agent/                        # Embedded LangGraph (wiki): `llm.py`, `wiki_tools.py`, `wiki_runner.py`, `prompts.py`
 │       ├── wiki_link_graph.py            # Parse `[[wikilinks]]` + relative `[text](href)` (skip fenced code); build directed graph JSON; path resolution aligned with vault import / frontend preview
@@ -258,7 +263,8 @@ openkms-cli/
 │   ├── backend_defaults.py  # VLM URL/model/key merge from internal-api (optional model_name)
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
-│   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse])
+│   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse]); optional content_hash_source for converted Office inputs
+│   ├── office_convert.py    # LibreOffice headless: DOCX/PPTX → PDF for VLM parse
 │   ├── pipeline_cli.py      # pipeline list, pipeline run (doc-parse, kb-index); optional [pipeline], [kb]
 │   └── kb_indexer.py        # Chunking, embedding, pgvector bulk insert (optional [kb])
 └── README.md
@@ -268,10 +274,16 @@ openkms-cli/
 - **Tests**: `pip install -e ".[dev]" && pytest tests/` from **`openkms-cli/`** (no Paddle required for the current suite)
 - **Configuration**: `openkms_cli/settings.py` maps each environment variable explicitly (no hidden prefix); loads `openkms-cli/.env` then cwd `.env`; CLI flags override when passed
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
-- **Pipeline run**: Download from S3 → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend
+- **Pipeline run**: Download from S3 → (optional LibreOffice for DOCX/PPTX) → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend; extraction errors after a successful parse are logged and do not fail the job
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
 - **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, generates embeddings via the KB’s configured **`api_models`** row (`embedding_model_id`), with optional CLI env overrides (`OPENKMS_EMBEDDING_MODEL_*` in **`openkms-cli/.env`**); writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
+
+## openkms-skill (OpenCode / external agents)
+
+Optional repo folder **`openkms-skill/`** (not part of the Docker stack) packages a small **Python CLI** plus **`SKILL.md`** for [OpenCode](https://opencode.ai/docs/skills)-style agents. It calls the **same public `/api/...` routes** as the SPA, using a **personal API key** created in the app (**Settings** → **API keys**, `/settings`). Install target: **`~/.config/opencode/skills/openkms/`** via **`openkms-skill/install.sh`** (preserves an existing **`config.yml`** on reinstall).
+
+Full how-to, `config.yml`, and command list: **[OpenCode skill (`openkms-skill`)](features/opencode-openkms-skill.md)**. Distinct from **`openkms-cli`** (worker subprocess, env-based auth to internal + public APIs).
 
 ## QA Agent Service
 
@@ -423,7 +435,7 @@ flowchart LR
 
 ### Shared
 
-- **Invalid JWT on API calls**: Authenticated SPA requests use **`authAwareFetch`** (`frontend/src/data/apiClient.ts`) for backend `fetch`es. A **`401`** whose body is FastAPI **`Invalid or expired token`** or **`Invalid token`** runs a session-expired handler from **`AuthContext`**: clears OIDC user / local session state and **`POST /clear-session`**, so **`MainLayout`** shows the same **Authentication Required** screen as for an unauthenticated visit (instead of surfacing raw JSON on channel or other pages).
+- **Invalid JWT on API calls**: Authenticated SPA requests use **`authAwareFetch`** (`frontend/src/data/apiClient.ts`) for backend `fetch`es. A **`401`** whose body is FastAPI **`Invalid or expired token`** or **`Invalid token`** runs a session-expired handler from **`AuthContext`**: clears OIDC user / local session state and **`POST /clear-session`**, and dismisses Sonner toasts. The fetch resolves to a **synthetic 401** JSON body with user-facing copy (`SESSION_EXPIRED_API_DETAIL`) so callers that surface `detail` in toasts or banners do not show the internal phrase. **`MainLayout`** then shows the same **Authentication Required** screen as for an unauthenticated visit.
 - **Route protection**: **`/`** (home) is public for guests (static marketing shell); all other **`MainLayout`** pages require auth (and `/login`, `/signup` in local mode live outside that shell). **`/profile`** shows the current user from `GET /api/auth/me` (administrator flag, role list, header user menu).
 - **Console**: `admin` in `realm_access.roles` (OIDC) grants full permissions (all keys from `security_permissions`). Other OIDC users: each JWT realm role whose **name equals** a `security_roles.name` row contributes that role’s permission keys (union). Local: `is_admin` or `user_security_roles`.
 - `POST /clear-session` – clears backend session cookie.

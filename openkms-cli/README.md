@@ -39,6 +39,8 @@ Covers **`backend_defaults`** merge / fetch behavior (mocked HTTP) and **`parser
 
 **Parse** (local files → `parsed/{file_hash}/…`):
 
+Supported inputs: **PDF**, **PNG/JPG/JPEG/WEBP**, **DOCX**, **PPTX** (DOCX/PPTX need **LibreOffice** `soffice` or `libreoffice` on `PATH` for conversion to PDF).
+
 ```bash
 openkms-cli parse run document.pdf -o ./parsed
 openkms-cli parse run ./inputs/ -o ./parsed
@@ -61,6 +63,8 @@ openkms-cli wiki upload-file --space-id <uuid> --file ./diagram.png
 ```
 
 Doc-parse pipelines need S3 credentials in `.env` unless you use **`--skip-upload`** with a local **`--input`** file.
+
+**Pipeline + channel metadata extraction:** If `--extract-metadata` runs and the extraction LLM returns an error (e.g. HTTP 502), the CLI prints a warning and **still exits successfully** after a successful parse so the worker can mark the document completed; use **Extract** in the UI when the model is available.
 
 **Module entry:**
 

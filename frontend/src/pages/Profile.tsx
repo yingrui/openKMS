@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { UserCircle } from 'lucide-react';
 import { fetchAuthMe, type AuthMeResponse } from '../data/authApi';
 import './Profile.css';
@@ -33,7 +34,13 @@ export function Profile() {
           <UserCircle size={28} strokeWidth={1.75} aria-hidden />
           Profile
         </h1>
-        <p className="page-subtitle">Your account details as recognized by openKMS.</p>
+        <p className="page-subtitle">
+          Your account details as recognized by openKMS. To create API keys for assistants and scripts, open{' '}
+          <Link to="/settings" className="profile-settings-link">
+            Settings
+          </Link>
+          .
+        </p>
       </div>
 
       {loading && (
@@ -83,11 +90,7 @@ export function Profile() {
                       .sort((a, b) => a.localeCompare(b))
                       .map((r) => (
                         <li key={r}>
-                          <span
-                            className={`profile-role ${r === 'admin' ? 'profile-role--admin' : ''}`}
-                          >
-                            {r}
-                          </span>
+                          <span className={`profile-role ${r === 'admin' ? 'profile-role--admin' : ''}`}>{r}</span>
                         </li>
                       ))}
                   </ul>

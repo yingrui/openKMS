@@ -256,6 +256,53 @@ async def run_pipeline(
         raise
 
 
+@job_app.task(name="run_spreadsheet_preview")
+async def run_spreadsheet_preview(document_id: str, file_hash: str, file_ext: str) -> None:
+    """Rebuild .xlsx grid preview from S3 (no VLM pipeline)."""
+    from sqlalchemy import update
+
+    from app.database import async_session_maker
+    from app.models.document import Document
+    from app.services.spreadsheet_preview import build_xlsx_preview
+    from app.services.storage import get_object
+
+    async with async_session_maker() as session:
+        await session.execute(
+            update(Document).where(Document.id == document_id).values(status=DocumentStatus.RUNNING)
+        )
+        await session.commit()
+
+    try:
+        raw = await asyncio.to_thread(get_object, f"{file_hash}/original.{file_ext}")
+        preview, md = await asyncio.to_thread(build_xlsx_preview, raw, file_hash=file_hash)
+    except Exception as exc:
+        logger.exception("Spreadsheet preview failed for document %s", document_id)
+        async with async_session_maker() as session:
+            await session.execute(
+                update(Document)
+                .where(Document.id == document_id)
+                .values(
+                    status=DocumentStatus.FAILED,
+                    parsing_result={
+                        "document_kind": "spreadsheet",
+                        "file_hash": file_hash,
+                        "error": str(exc)[:800],
+                    },
+                )
+            )
+            await session.commit()
+        raise
+
+    async with async_session_maker() as session:
+        await session.execute(
+            update(Document)
+            .where(Document.id == document_id)
+            .values(status=DocumentStatus.COMPLETED, parsing_result=preview, markdown=md)
+        )
+        await session.commit()
+    logger.info("Spreadsheet preview completed for document %s", document_id)
+
+
 @job_app.task(name="run_kb_index")
 async def run_kb_index(
     knowledge_base_id: str,

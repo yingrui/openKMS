@@ -108,3 +108,9 @@
 .profile-retry:hover {
   background: var(--color-bg-muted, rgba(0, 0, 0, 0.04));
 }
+
+.profile-settings-link {
+  color: var(--color-accent, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

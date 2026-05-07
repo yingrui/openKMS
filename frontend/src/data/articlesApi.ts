@@ -2,6 +2,23 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
+/** Same relation types as documents: supersedes, amends, implements, see_also. */
+export const ARTICLE_RELATION_TYPES = ['supersedes', 'amends', 'implements', 'see_also'] as const;
+
+export interface ArticleRelationshipEdge {
+  id: string;
+  relation_type: string;
+  peer_article_id: string;
+  peer_article_name?: string | null;
+  note?: string | null;
+  created_at: string;
+}
+
+export interface ArticleRelationshipsResponse {
+  outgoing: ArticleRelationshipEdge[];
+  incoming: ArticleRelationshipEdge[];
+}
+
 export interface ArticleOut {
   id: string;
   channel_id: string;
@@ -87,8 +104,8 @@ function parseApiError(body: unknown, fallback: string): string {
 export async function createArticle(body: {
   channel_id: string;
   name: string;
-  slug?: string | null;
   markdown?: string | null;
+  origin_article_id?: string | null;
 }): Promise<ArticleOut> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/articles`, {
@@ -106,7 +123,11 @@ export async function createArticle(body: {
 
 export async function patchArticle(
   articleId: string,
-  body: { name?: string; slug?: string | null; channel_id?: string | null },
+  body: {
+    name?: string;
+    channel_id?: string | null;
+    origin_article_id?: string | null;
+  },
 ): Promise<ArticleOut> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}`, {
@@ -137,6 +158,50 @@ export async function putArticleMarkdown(articleId: string, markdown: string | n
   return res.json();
 }
 
+export async function fetchArticleRelationships(articleId: string): Promise<ArticleRelationshipsResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/relationships`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch article relationships (${res.status})`);
+  return res.json();
+}
+
+export async function createArticleRelationship(
+  articleId: string,
+  body: { target_article_id: string; relation_type: string; note?: string | null },
+): Promise<ArticleRelationshipEdge> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/relationships`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Failed to create relationship (${res.status})`));
+  }
+  return res.json();
+}
+
+export async function deleteArticleRelationship(articleId: string, relationshipId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/articles/${articleId}/relationships/${relationshipId}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Failed to delete relationship (${res.status})`));
+  }
+}
+
 export async function deleteArticle(articleId: string): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}`, {
@@ -157,6 +222,73 @@ export async function fetchArticleAttachments(articleId: string): Promise<Articl
     credentials: 'include',
   });
   if (!res.ok) throw new Error(`Failed to fetch attachments (${res.status})`);
+  return res.json();
+}
+
+export async function uploadArticleAttachment(
+  articleId: string,
+  file: File | Blob,
+  filename?: string,
+): Promise<ArticleAttachmentOut> {
+  const headers = await getAuthHeaders();
+  const fd = new FormData();
+  const name = filename || (file instanceof File ? file.name : 'attachment');
+  fd.append('file', file, name);
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/attachments`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+    body: fd,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Failed to upload attachment (${res.status})`));
+  }
+  return res.json();
+}
+
+export async function deleteArticleAttachment(articleId: string, attachmentId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/articles/${articleId}/attachments/${attachmentId}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Failed to delete attachment (${res.status})`));
+  }
+}
+
+export interface ArticleImageUploadOut {
+  path: string;
+  filename: string;
+  size_bytes: number;
+  content_type: string;
+}
+
+export async function uploadArticleImage(
+  articleId: string,
+  file: File | Blob,
+  filename?: string,
+): Promise<ArticleImageUploadOut> {
+  const headers = await getAuthHeaders();
+  const fd = new FormData();
+  const name = filename || (file instanceof File ? file.name : 'image.png');
+  fd.append('file', file, name);
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/images`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+    body: fd,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Failed to upload image (${res.status})`));
+  }
   return res.json();
 }
 

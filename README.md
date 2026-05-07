@@ -7,6 +7,7 @@ Open Knowledge Management System — document channels, parsing, knowledge bases
 - **`backend/`** — FastAPI API (default port **8102**)
 - **`frontend/`** — React + Vite (default port **5173**)
 - **`openkms-cli/`** — Parse and pipeline CLI (used by the background worker)
+- **`openkms-skill/`** — Optional OpenCode-style **SKILL** + Python CLI for agents calling the public HTTP API (personal API keys in the app under **Settings**; see **`docs/features/opencode-openkms-skill.md`**)
 - **`vlm-server/`** — **mlx-vlm** HTTP server for **PaddleOCR-VL** document parsing (run this separately)
 - **`docker/`** — Dockerfiles and **`docker-compose.yml`** (run via **`docker compose -f docker/docker-compose.yml …`** from repo root; see **`docker/README.md`**)
 - **`docs/`** — Architecture, features, and developer setup
@@ -31,7 +32,7 @@ See **`docker/README.md`** for ports, env overrides, and how the worker reaches 
 5. Run **`uvicorn app.main:app --reload --port 8102`** in `backend/` and **`npm install && npm run dev`** in `frontend/` (two terminals).
 6. Open **http://localhost:5173** (Vite proxies `/api` to the backend).
 
-For a full walkthrough, auth modes, and optional services (QA agent, etc.), see **`docs/for developer/dev_environment_setup.md`** and **`docs/README.md`**.
+For a full walkthrough, auth modes, and optional services (QA agent, etc.), see **`docs/developer/setup.md`** and **[the docs site](https://yingrui.github.io/openKMS/)**.
 
 ## PaddleOCR-VL / mlx-vlm (run separately)
 

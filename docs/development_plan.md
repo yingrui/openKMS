@@ -3,7 +3,7 @@
 ## Current State (as of latest commit)
 
 - Document channels: CRUD, tree, description
-- Document upload + parsing via PaddleOCR-VL; store in S3/MinIO under `{file_hash}/`
+- Document upload + parsing via PaddleOCR-VL; **DOCX/PPTX** converted with LibreOffice then parsed like PDF; **XLSX** preview (openpyxl) at upload + `run_spreadsheet_preview` job on re-process; store in S3/MinIO under `{file_hash}/`
 - Document detail view with Markdown, layout images, block images; loads files via backend proxy
 - Document list by channel: `GET /api/documents?channel_id=`
 - Delete document: `DELETE /api/documents/{id}`
@@ -14,7 +14,7 @@
 - Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
 - Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
 - Authentication: `OPENKMS_AUTH_MODE=oidc` (default, OIDC via issuer discovery + JWKS) or `local` (PostgreSQL users, `/api/auth/*`, CLI HTTP Basic); backend verifies JWT Bearer or session; `GET /api/auth/public-config` (no auth) exposes `auth_mode` and `allow_signup` only; `GET /internal-api/models/document-parse-defaults` (auth; optional `model_name`) supplies VLM `base_url`, `model_name`, and provider `api_key` for **openkms-cli**; SPA OIDC uses `oidc-client-ts` (`VITE_OIDC_ISSUER`); frontend resolves local vs OIDC from the API with `VITE_AUTH_MODE` as fallback; Vite proxy for `/api` and `/internal-api` in dev
-- User profile: `/profile` shows current user from `GET /api/auth/me` (`is_admin`, `roles`, resolved `permissions`, header menu); Console → Users & Roles: `/api/admin/users` with `console:users`; Permission management (`/console/permission-management`): **All** under Roles edits the `security_permissions` catalog; a named role uses checkboxes + **Save role permissions** (draft, no per-click API); `GET /api/admin/permission-reference` includes `operation_key_hints`; overview nudge when catalog is only `all`; Data security (`/console/data-security/*`) remains local-user–centric; group data scopes behind `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`
+- User profile: `/profile` shows current user from `GET /api/auth/me` (`is_admin`, `roles`, resolved `permissions`, header menu). **User settings** `/settings`: personal **API keys** (`POST`/`GET`/`DELETE /api/auth/api-keys`). Console → Users & Roles: `/api/admin/users` with `console:users`; Permission management (`/console/permission-management`): **All** under Roles edits the `security_permissions` catalog; a named role uses checkboxes + **Save role permissions** (draft, no per-click API); `GET /api/admin/permission-reference` includes `operation_key_hints`; overview nudge when catalog is only `all`; Data security (`/console/data-security/*`) remains local-user–centric; group data scopes behind `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`
 - Route protection: **Home** (`/`) is always reachable without sign-in (static marketing content via **`HomeStaticLanding`**); all other **`MainLayout`** routes require authentication. **`401`** responses whose body indicates invalid/expired JWT clear SPA session via **`authAwareFetch`** / **`AuthContext`** so the same gate appears instead of raw API error JSON
 - **Knowledge Map & home hub**: SQLAlchemy **`app.models.knowledge_map`** (`KnowledgeMapNode`, `KnowledgeMapResourceLink` → `taxonomy_nodes` / `taxonomy_resource_links`); API **`app.api.knowledge_map`** at **`GET /api/taxonomy/nodes/tree`**, node PATCH (move/reorder/edit) + link CRUD; **`GET /api/home/hub`** (taxonomy summary field in JSON + scoped document relationship work items + placeholder share requests); SPA **`KnowledgeMap.tsx`** at **`/knowledge-map`** (legacy **`/taxonomy`** redirects; sidebar above Glossaries; **Tree** + **Node details** panels with scoped refer-tos; **New node** modal); signed-in **`Home.tsx`** with **taxonomy:read** centers **`KnowledgeMapForceGraph`** (`react-force-graph-2d`, wiki-style pan/zoom; tree + links APIs; term → **`/knowledge-map?node=`**, resource → channel/wiki/articles); **`MainLayout`** applies **`app-content--home`** on **`/`** for hub padding; permissions **`taxonomy:read`** / **`taxonomy:write`**; feature toggle key **`taxonomy`** (Console label: Knowledge Map)
 - **Articles**: Backend **`article_channels`**, **`articles`**, **`article_versions`**, **`article_attachments`**, **`access_group_article_channels`**; APIs **`/api/article-channels`**, **`/api/articles`** (list, CRUD, lifecycle, markdown, files redirect, attachments, versions); MinIO prefix **`articles/{article_id}/`**; Knowledge Map validates **`article_channel`** links; permissions **`articles:read`** / **`articles:write`**; SPA **`ArticleChannelsContext`**, **`/articles`**, **`/articles/channels`**, **`/articles/channels/:id`**, **`/articles/channels/:id/settings`**, detail + markdown asset URLs
@@ -26,6 +26,7 @@
 - Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start; backend README + dev setup doc: pgvector install, Docker/PGDG, `$libdir/vector` troubleshooting
 - Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /ontology (overview), /objects, /links; feature toggle objectsAndLinks
 - Data Sources: Console → Data Sources (PostgreSQL/Neo4j connections, encrypted creds). Datasets & object/link **schema** admin: Ontology sidebar (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`); `ontology:read`/`ontology:write` can use the same APIs as `console:datasets` / `console:object_types` / `console:link_types` where wired with `require_any_permission`.
+- Docs site: **`mkdocs.yml`** (Material theme) + **`.github/workflows/docs.yml`** publish **`docs/`** to **GitHub Pages** at <https://yingrui.github.io/openKMS/> on every push to `main` that touches `docs/**`, `mkdocs.yml`, or the workflow; reader-friendly entry pages (`index.md`, `overview.md`, `quickstart.md`, `operations/docker.md`, `developer/setup.md`) sit on top of the existing canonical references (`architecture.md`, `functionalities.md`, `development_plan.md`, `security.md`, `tech_debt.md`); **`docs/agents.md`** documents where each kind of doc edit goes, mirroring `.cursor/rules/*.mdc`. Folder rename `docs/for developer/` → `docs/developer/` to keep URLs space-free.
 
 ## Short-Term (Next Steps)
 
@@ -118,7 +119,7 @@
 - [x] Integrate OIDC IdP with frontend (`oidc-client-ts`, discovery + PKCE; login/logout) when API reports `oidc`
 - [x] Local auth mode: PostgreSQL `users`, `/api/auth/register|login|me`, frontend `/login` & `/signup`, CLI HTTP Basic
 - [x] `GET /api/auth/public-config` + SPA uses API-reported mode (compatibility with local vs central IdP); optional mismatch banner vs `VITE_AUTH_MODE`
-- [x] Profile page `/profile` and `fetchAuthMe`; user admin APIs `/api/admin/users` + Console Users (`console:users`, local only)
+- [x] Profile page `/profile` and `fetchAuthMe`; user **Settings** `/settings` for personal API keys; user admin APIs `/api/admin/users` + Console Users (`console:users`, local only)
 - [x] Protect backend routes with JWT Bearer or session (or local Basic for CLI)
 - [x] Operation permissions: `security_permissions` (catalog), `security_roles`, `security_role_permissions`, `user_security_roles`; `require_permission` + `GET /api/auth/permission-catalog` (from DB) + admin CRUD `/api/admin/security-permissions`; OIDC resolves permissions by matching JWT realm role names to `security_roles.name`; Console sidebar and APIs use granular `console:*` keys; JWT realm `admin` / `local-cli` bypass
 - [x] Pattern-based access control: optional `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` middleware; default `frontend_route_patterns` / `backend_api_patterns` per catalog key (Alembic); SPA `canAccessPath` from permission-catalog union; docs and `.env.example` updated
@@ -181,7 +182,13 @@
 - [x] Production secret key check (reject startup with default)
 - [x] Pipeline command validation (max_length=4096)
 - [x] Backend pytest + smoke tests
+- [x] Article management key tests (`backend/tests/test_articles_management.py`: channel subtree collection, import `rewrite_markdown_links`, `is_allowed_article_file_path` / safe filenames / S3 key validation)
+- [x] Document enum contract tests (`backend/tests/test_documents_constants.py`: `DocumentStatus`, `DocumentLifecycleStatus`, `DocumentRelationType` string values)
 - [x] Frontend Vitest + smoke tests
+- [x] Ontology explore Cypher gate tests (`backend/tests/test_ontology_explore_cypher.py`: `validate_ontology_explore_cypher` in `ontology_explore.py`; read-only keywords, RETURN, CALL, apoc/dbms)
+- [x] Data scope channel expand tests (`backend/tests/test_data_scope_channel_expand.py`: `_expand_channel_ids`, `_expand_article_channel_ids`)
+- [x] Frontend permission pattern tests (`frontend/src/utils/permissionPatterns.test.ts`: pathname normalization, `/*` patterns, SPA public path union)
+- [x] Global search (`GET /api/search`, `/search` UI, `docs/features/global-search.md`, `tests/test_global_search.py`)
 - [x] DocumentStatus enum; async subprocess (run_pipeline); document list query optimization; VLM config consolidation
 - [x] Route-level code splitting (React.lazy); ErrorBanner; ConsoleSettings a11y (id/htmlFor)
 

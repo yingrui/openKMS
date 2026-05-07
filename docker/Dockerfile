@@ -42,6 +42,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libgomp1 \
     libglib2.0-0 \
+    libreoffice-writer \
+    libreoffice-impress \
     && rm -rf /var/lib/apt/lists/*
 
 COPY openkms-cli /openkms-cli

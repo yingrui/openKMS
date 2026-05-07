@@ -13,7 +13,7 @@ from .settings import get_cli_settings
 
 console = Console()
 
-parse_app = typer.Typer(help="Parse documents (PDF, images) using PaddleOCR-VL")
+parse_app = typer.Typer(help="Parse documents (PDF, images, DOCX, PPTX) using PaddleOCR-VL")
 
 
 def _json_default(obj: Any) -> Any:
@@ -101,7 +101,7 @@ def parse_run(
         files = [input_path]
         out_base = output_dir or input_path.parent / "parsed"
     else:
-        exts = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
+        exts = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".docx", ".pptx"}
         files = [p for p in input_path.rglob("*") if p.is_file() and p.suffix.lower() in exts]
         if not files:
             console.print("[yellow]No supported files found[/yellow]")
@@ -128,20 +128,30 @@ def parse_run(
         for fp in files:
             progress.update(task, description=f"Parsing {fp.name}")
             try:
+                from .office_convert import OfficeConvertError, prepare_for_vlm_parse
+
+                work_sub = out_base / "_office_tmp"
+                try:
+                    parse_path, hash_src = prepare_for_vlm_parse(fp.resolve(), work_sub)
+                except OfficeConvertError as e:
+                    console.print(f"[red]{fp}: {e}[/red]")
+                    raise typer.Exit(1)
+                ch_source = None if parse_path.resolve() == hash_src.resolve() else hash_src
                 result, extra_files, markdown_out_files = run_parser(
-                    input_path=fp,
+                    input_path=parse_path,
                     output_dir=out_base,
                     vlm_url=vlm_url,
                     vlm_api_key=merged_vlm_key,
                     model=model,
                     max_concurrency=max_concurrency,
+                    content_hash_source=ch_source,
                 )
                 file_hash = result["file_hash"]
                 hash_dir = out_base / file_hash
 
                 # Copy original file
-                ext = fp.suffix.lower().lstrip(".") or "bin"
-                (hash_dir / f"original.{ext}").write_bytes(fp.read_bytes())
+                ext = Path(hash_src).suffix.lower().lstrip(".") or "bin"
+                (hash_dir / f"original.{ext}").write_bytes(Path(hash_src).read_bytes())
 
                 # result.json and markdown.md already written by parser
                 result_json = json.dumps(result, indent=2, ensure_ascii=False, default=_json_default)

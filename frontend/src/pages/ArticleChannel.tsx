@@ -32,7 +32,7 @@ export function ArticleChannel() {
   const [listLoading, setListLoading] = useState(true);
   const [newArticleOpen, setNewArticleOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newSlug, setNewSlug] = useState('');
+  const [newSourceRef, setNewSourceRef] = useState('');
   const [newMarkdown, setNewMarkdown] = useState('');
   const [newCreating, setNewCreating] = useState(false);
 
@@ -72,7 +72,7 @@ export function ArticleChannel() {
 
   const openNewArticleModal = () => {
     setNewTitle('');
-    setNewSlug('');
+    setNewSourceRef('');
     setNewMarkdown('');
     setNewArticleOpen(true);
   };
@@ -93,8 +93,8 @@ export function ArticleChannel() {
       const row = await createArticle({
         channel_id: channelId,
         name,
-        slug: newSlug.trim() || null,
         markdown: newMarkdown.trim() || null,
+        origin_article_id: newSourceRef.trim() || null,
       });
       toast.success('Article created');
       setNewArticleOpen(false);
@@ -202,7 +202,7 @@ export function ArticleChannel() {
               <thead>
                 <tr>
                   <th>Title</th>
-                  <th>Slug</th>
+                  <th>Source</th>
                   <th>Lifecycle</th>
                   <th>Applicable</th>
                   <th>Updated</th>
@@ -224,7 +224,30 @@ export function ArticleChannel() {
                         <span>{article.name}</span>
                       </div>
                     </td>
-                    <td>{article.slug ?? '—'}</td>
+                    <td className="articles-table-source">
+                      {article.origin_article_id?.trim() ? (
+                        /^https?:\/\//i.test(article.origin_article_id.trim()) ? (
+                          <a
+                            href={article.origin_article_id.trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {article.origin_article_id.trim().length > 40
+                              ? `${article.origin_article_id.trim().slice(0, 38)}…`
+                              : article.origin_article_id.trim()}
+                          </a>
+                        ) : (
+                          <span title={article.origin_article_id}>
+                            {article.origin_article_id.length > 40
+                              ? `${article.origin_article_id.slice(0, 38)}…`
+                              : article.origin_article_id}
+                          </span>
+                        )
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td>
                       <span
                         className={`article-status article-status-${(article.lifecycle_status ?? 'unset').toLowerCase()}`}
@@ -287,13 +310,13 @@ export function ArticleChannel() {
                 />
               </div>
               <div className="articles-new-modal-field">
-                <label htmlFor="article-new-slug">Slug (optional)</label>
+                <label htmlFor="article-new-source">Source (external ID or URL, optional)</label>
                 <input
-                  id="article-new-slug"
+                  id="article-new-source"
                   type="text"
-                  value={newSlug}
-                  onChange={(e) => setNewSlug(e.target.value)}
-                  placeholder="url-friendly-name"
+                  value={newSourceRef}
+                  onChange={(e) => setNewSourceRef(e.target.value)}
+                  placeholder="e.g. upstream doc id or https://…"
                   disabled={newCreating}
                 />
               </div>

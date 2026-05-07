@@ -7,7 +7,9 @@ import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { Home } from './pages/Home';
+import { GlobalSearch } from './pages/GlobalSearch';
 import { Profile } from './pages/Profile';
+import { UserSettings } from './pages/UserSettings';
 import { Login } from './pages/Login';
 import { OidcCallback } from './pages/OidcCallback';
 import { OidcSilentRenew } from './pages/OidcSilentRenew';
@@ -98,6 +100,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="knowledge-map" element={<FeatureGate feature="taxonomy"><KnowledgeMap /></FeatureGate>} />
           <Route path="taxonomy" element={<FeatureGate feature="taxonomy"><LegacyKnowledgeMapPathRedirect /></FeatureGate>} />
+          <Route path="search" element={<GlobalSearch />} />
           <Route path="documents" element={<Outlet />}>
             <Route index element={<DocumentsIndex />} />
             <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />
@@ -123,6 +126,7 @@ function App() {
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<UserSettings />} />
           <Route path="pipelines" element={<Pipelines />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:jobId" element={<JobDetail />} />

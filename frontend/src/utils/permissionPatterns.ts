@@ -50,7 +50,7 @@ export function pathnameAllowedByPatterns(pathname: string, patterns: string[]):
 /** Routes under MainLayout that any signed-in user may open (no catalog pattern needed). */
 export function isSpaPublicPath(pathname: string): boolean {
   const p = normalizePathname(pathname);
-  return p === '/' || p === '/profile';
+  return p === '/' || p === '/profile' || p === '/settings';
 }
 
 export function buildFrontendPatternUnion(

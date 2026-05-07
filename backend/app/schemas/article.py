@@ -43,6 +43,28 @@ class ArticleLifecycleUpdateBody(BaseModel):
     lifecycle_status: str | None = None
 
 
+class ArticleRelationshipCreateBody(BaseModel):
+    """Body for POST /articles/{id}/relationships — edge source is path article."""
+
+    target_article_id: str
+    relation_type: str
+    note: str | None = None
+
+
+class ArticleRelationshipEdge(BaseModel):
+    id: str
+    relation_type: str
+    peer_article_id: str
+    peer_article_name: str | None = None
+    note: str | None = None
+    created_at: datetime
+
+
+class ArticleRelationshipsResponse(BaseModel):
+    outgoing: list[ArticleRelationshipEdge]
+    incoming: list[ArticleRelationshipEdge]
+
+
 class ArticleResponse(BaseModel):
     id: str
     channel_id: str
@@ -103,6 +125,39 @@ class ArticleAttachmentOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ArticleImportPayload(BaseModel):
+    """JSON payload for `POST /api/articles/import` (sent in the `payload` form field)."""
+
+    channel_id: str
+    name: str = Field(..., min_length=1, max_length=512)
+    markdown: str | None = None
+    metadata: dict[str, Any] | None = None
+    slug: str | None = Field(default=None, max_length=256)
+    series_id: str | None = None
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
+    lifecycle_status: str | None = None
+    origin_article_id: str | None = Field(default=None, max_length=512)
+    last_synced_at: datetime | None = None
+    image_urls: list[str] | None = None
+    upsert: bool = False
+    rewrite_links: bool = True
+
+
+class ArticleImportImageResult(BaseModel):
+    path: str
+    filename: str
+    size_bytes: int
+    content_type: str
+
+
+class ArticleImportResponse(BaseModel):
+    article: ArticleResponse
+    created: bool
+    images: list[ArticleImportImageResult] = []
+    attachments: list[ArticleAttachmentOut] = []
 
 
 class ArticleVersionCreateBody(BaseModel):

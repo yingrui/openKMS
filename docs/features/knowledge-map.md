@@ -1,0 +1,11 @@
+# Knowledge map and home
+
+Hierarchical taxonomy of terms (`taxonomy_nodes`) and their links to channels / wiki spaces / article channels (`taxonomy_resource_links`). Rendered as a force graph on the signed-in home page. Toggle: `taxonomy` (default on).
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Knowledge Map (data model) | ✅ | Hierarchical `taxonomy_nodes` and `taxonomy_resource_links` (document channel, article channel id, wiki space); `GET/POST/PATCH/DELETE /api/taxonomy/*` (FastAPI **`app.api.knowledge_map`**); **taxonomy:read** / **taxonomy:write** permission keys with default route/API patterns (SPA primary path **`/knowledge-map`**, legacy **`/taxonomy`** redirects) |
+| Knowledge Map UI | ✅ | **`/knowledge-map`** (lazy; **`/taxonomy`** redirects); sidebar **Knowledge Map** above **Glossaries** when feature toggle + path allowed; sitemap-style copy; **Tree** column + **Node details** panel (selected node: path, description, **Refer to** list scoped to that node); **New node** modal (preferred label, description, broader/parent); reorder/move/edit/delete; upsert/delete refer-tos from details only |
+| Home hub | ✅ | Signed-in `/` loads `GET /api/home/hub` when **taxonomy:read** or **documents:read** (hub JSON: taxonomy counts, work items, placeholder **share_requests**). With **taxonomy:read** (and `taxonomy` toggle): **Knowledge Map graph** (wiki-style **`react-force-graph-2d`**, `KnowledgeMapForceGraph`) is the page center: `GET /api/taxonomy/nodes/tree` + `GET /api/taxonomy/resource-links`; taxonomy nodes (circles) vs resource nodes (distinct shapes: document channel pill, wiki hexagon, articles pill); tree vs refer-to link styling; term click → **`/knowledge-map?node=`**, resource click → open channel/wiki/articles; work items and browse shortcuts sit below. Without taxonomy read: work items + shortcuts only (centered column) |
+| Static home (guests) | ✅ | **`/`** always shows **`HomeStaticLanding`** for unauthenticated users (marketing hero, pain points, benefits, functionalities, Sign in CTA); no system setting—**`MainLayout`** only gates non-home routes |
+| Feature toggle | ✅ | `taxonomy` (default on); Console → Feature Toggles |

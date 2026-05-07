@@ -223,7 +223,26 @@ async def upload_document(
     db.add(doc)
     await db.flush()
 
-    if channel.auto_process and channel.pipeline_id:
+    ext_lower = ext.lower()
+    if ext_lower == "xlsx":
+        import asyncio
+
+        from app.services.spreadsheet_preview import build_xlsx_preview
+
+        try:
+            preview, md = await asyncio.to_thread(build_xlsx_preview, content, file_hash=file_hash)
+            doc.parsing_result = preview
+            doc.markdown = md
+            doc.status = DocumentStatus.COMPLETED
+            _maybe_upload_page_index_from_markdown(doc, md)
+        except Exception:
+            doc.parsing_result = {
+                "document_kind": "spreadsheet",
+                "file_hash": file_hash,
+                "error": "Could not read this workbook. The file may be corrupt or not a valid .xlsx.",
+            }
+            doc.status = DocumentStatus.FAILED
+    elif channel.auto_process and channel.pipeline_id:
         from app.models.pipeline import Pipeline
         pipeline = await db.get(Pipeline, channel.pipeline_id)
         if pipeline:
