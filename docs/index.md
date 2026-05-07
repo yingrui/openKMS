@@ -26,6 +26,7 @@ A unified **Knowledge Map** ties terms (taxonomy) to channels, wiki spaces, and 
 | Try it locally with Docker or on the host | [Quickstart](quickstart.md) |
 | Understand the system | [Overview](overview.md) → [Architecture](architecture.md) |
 | Find a specific feature or API | [Functionalities](functionalities.md) |
+| Use openKMS from OpenCode / an external agent | [OpenCode skill (`openkms-skill`)](features/opencode-openkms-skill.md) |
 | Set up a dev environment | [Developer setup](developer/setup.md) |
 | Deploy with Docker | [Operations · Docker](operations/docker.md) |
 | Review the auth and permission model | [Security](security.md) |
@@ -61,6 +62,7 @@ flowchart LR
 | `backend/` | FastAPI service, async SQLAlchemy, Alembic migrations |
 | `frontend/` | React 19 + Vite SPA |
 | `openkms-cli/` | Document parsing / pipeline CLI used by the worker |
+| `openkms-skill/` | Optional SKILL + CLI for agents (Bearer personal API key; not in Docker) |
 | `vlm-server/` | mlx-vlm HTTP server (PaddleOCR-VL backend) |
 | `docker/` | Dockerfiles and `docker-compose.yml` |
 | `docs/` | This site |

@@ -41,7 +41,7 @@ A short, high-level tour of openKMS. For the full system design see [Architectur
 
 ## Auth in one paragraph
 
-`OPENKMS_AUTH_MODE=oidc` (default) uses an external OpenID Connect IdP with PKCE in the SPA. `OPENKMS_AUTH_MODE=local` keeps users and bcrypt hashes in PostgreSQL and issues HS256 JWTs (plus optional HTTP Basic for `openkms-cli`). Either way the backend accepts `Authorization: Bearer` or a session cookie. Permissions are catalog-based (`security_permissions` rows with route/API patterns); roles map to permission keys; **group data scopes** can additionally narrow what a user sees per resource. See [Security](security.md).
+`OPENKMS_AUTH_MODE=oidc` (default) uses an external OpenID Connect IdP with PKCE in the SPA. `OPENKMS_AUTH_MODE=local` keeps users and bcrypt hashes in PostgreSQL and issues HS256 JWTs (plus optional HTTP Basic for `openkms-cli`). Either way the backend accepts `Authorization: Bearer` or a session cookie. **Personal API keys** (`okms.{id}.{secret}`, created under **Settings** → **API keys**) authenticate the same routes as a logged-in user and are intended for scripts and agent tools such as **`openkms-skill/`** (see [OpenCode skill](features/opencode-openkms-skill.md)). Permissions are catalog-based (`security_permissions` rows with route/API patterns); roles map to permission keys; **group data scopes** can additionally narrow what a user sees per resource. See [Security](security.md).
 
 ## Where things live (one-liners)
 

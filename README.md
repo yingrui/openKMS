@@ -7,6 +7,7 @@ Open Knowledge Management System — document channels, parsing, knowledge bases
 - **`backend/`** — FastAPI API (default port **8102**)
 - **`frontend/`** — React + Vite (default port **5173**)
 - **`openkms-cli/`** — Parse and pipeline CLI (used by the background worker)
+- **`openkms-skill/`** — Optional OpenCode-style **SKILL** + Python CLI for agents calling the public HTTP API (personal API keys in the app under **Settings**; see **`docs/features/opencode-openkms-skill.md`**)
 - **`vlm-server/`** — **mlx-vlm** HTTP server for **PaddleOCR-VL** document parsing (run this separately)
 - **`docker/`** — Dockerfiles and **`docker-compose.yml`** (run via **`docker compose -f docker/docker-compose.yml …`** from repo root; see **`docker/README.md`**)
 - **`docs/`** — Architecture, features, and developer setup

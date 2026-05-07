@@ -30,6 +30,7 @@ When in doubt, **edit the most specific feature page first**, then update the cr
 | Known shortcut, hack, or risk | [`tech_debt.md`](tech_debt.md) |
 | Quickstart steps or ports | [`quickstart.md`](quickstart.md) and root `README.md` |
 | Docker / Compose runtime | [`operations/docker.md`](operations/docker.md) and `docker/README.md` |
+| OpenCode skill / repo `openkms-skill/` (install, config, CLI) | [`features/opencode-openkms-skill.md`](features/opencode-openkms-skill.md) and [`architecture.md`](architecture.md) (**openkms-skill** section) |
 | Local dev environment (DB, pgvector, OIDC) | [`developer/setup.md`](developer/setup.md) |
 | Site nav, theme, or build | `mkdocs.yml` and `.github/workflows/docs.yml` |
 
