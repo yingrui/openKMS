@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     rerank_model_name: str = Field(default="BAAI/bge-reranker-v2-m3", validation_alias="OPENKMS_RERANK_MODEL_NAME")
     rerank_recall_top_k: int = Field(default=25, validation_alias="OPENKMS_RERANK_RECALL_TOP_K")
 
+    bm25_enabled: bool = Field(default=True, validation_alias="OPENKMS_BM25_ENABLED")
+    bm25_ttl_seconds: int = Field(default=300, validation_alias="OPENKMS_BM25_TTL_SECONDS")
+    rrf_k: int = Field(default=60, validation_alias="OPENKMS_RRF_K")
+    hybrid_recall_top_k: int = Field(default=50, validation_alias="OPENKMS_HYBRID_RECALL_TOP_K")
+
     host: str = "0.0.0.0"
     port: int = 8103
 

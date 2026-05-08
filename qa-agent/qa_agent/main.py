@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .schemas import AskRequest, AskResponse, SourceItem
+from .schemas import AskRequest, AskResponse, RetrieveRequest, RetrieveResponse, SourceItem
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,6 +58,20 @@ async def ask(request: AskRequest):
         answer=result.get("answer", ""),
         sources=sources,
     )
+
+
+@app.post("/retrieve", response_model=RetrieveResponse)
+async def retrieve_endpoint(request: RetrieveRequest):
+    """Hybrid retrieval (BM25 + dense + RRF + rerank) without answer generation."""
+    from .retriever import retrieve
+
+    items = retrieve(
+        knowledge_base_id=request.knowledge_base_id,
+        query=request.query,
+        access_token=request.access_token,
+        top_k=request.top_k,
+    )
+    return RetrieveResponse(results=items)
 
 
 def run():

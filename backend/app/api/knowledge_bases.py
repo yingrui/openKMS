@@ -632,11 +632,43 @@ async def create_chunks_batch(
 async def semantic_search(
     kb_id: str,
     body: SearchRequest,
+    token: str = Depends(require_auth),
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    """Search chunks and FAQs using vector similarity."""
+    """Hybrid search via qa-agent (BM25 + dense + RRF + rerank), with dense-only fallback.
+
+    Filtered requests (label/metadata/historical) skip qa-agent because the hybrid
+    pipeline does not honor those filters; they go straight to the dense-only service.
+    """
     from app.services.kb_search import search_knowledge_base
+
+    has_filters = bool(
+        body.label_filters
+        or body.metadata_filters
+        or body.include_historical_documents
+        or (body.search_type and body.search_type != "all")
+    )
+
+    if kb.agent_url and not has_filters and not body.force_dense:
+        agent_url = kb.agent_url.rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                resp = await client.post(
+                    f"{agent_url}/retrieve",
+                    json={
+                        "knowledge_base_id": kb_id,
+                        "query": body.query,
+                        "access_token": token,
+                        "top_k": body.top_k,
+                    },
+                )
+                resp.raise_for_status()
+                data = resp.json()
+            results = [SearchResult(**s) for s in data.get("results", [])]
+            return SearchResponse(results=results, query=body.query)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Hybrid /retrieve failed, falling back to dense-only: %s", e)
 
     return await search_knowledge_base(
         kb_id,
