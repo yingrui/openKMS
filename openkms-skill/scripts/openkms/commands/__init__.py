@@ -11,9 +11,7 @@ from . import (
     evaluation,
     kb,
     kb_faq,
-    links,
-    objects,
-    ontology,
+    ontology,  # also nests `objects` and `links` under itself
     ping,
     search,
     wiki,
@@ -33,7 +31,5 @@ def register(sub: _SubParsersAction) -> None:
     wiki.add_subparser(sub)
     kb.add_subparser(sub)
     kb_faq.add_subparser(sub)
-    ontology.add_subparser(sub)
-    objects.add_subparser(sub)
-    links.add_subparser(sub)
+    ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)

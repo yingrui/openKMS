@@ -22,12 +22,12 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
 | `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |
-| `objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j` |
-| `links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j` |
+| `ontology objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j` |
+| `ontology links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j` |
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 
-> **Mutation safety.** Every write subcommand under `objects` and `links` requires explicit confirmation: pass `--yes`/`-y` to skip the prompt, `--dry-run` to print the planned `[METHOD] path + body` and exit 0, or answer `y` at the interactive prompt. **Without `--yes` on a non-TTY stdin (e.g. pipes, agents), the command refuses and exits 2** — agents that drive these commands must opt in deliberately.
+> **Mutation safety.** Every write subcommand under `ontology objects` and `ontology links` requires explicit confirmation: pass `--yes`/`-y` to skip the prompt, `--dry-run` to print the planned `[METHOD] path + body` and exit 0, or answer `y` at the interactive prompt. **Without `--yes` on a non-TTY stdin (e.g. pipes, agents), the command refuses and exits 2** — agents that drive these commands must opt in deliberately.
 
 ## Quick examples
 

@@ -84,7 +84,7 @@ def cmd_ask(ns: argparse.Namespace) -> None:
 
 
 def add_subparser(sub) -> None:
-    p = sub.add_parser("ontology", help="Ontology graph queries (Cypher + NL)")
+    p = sub.add_parser("ontology", help="Ontology graph: Cypher + NL queries, plus object/link CRUD")
     sp = p.add_subparsers(dest="ont_cmd", required=True)
 
     cy = sp.add_parser("cypher", help="Run a read-only Cypher query (POST /api/ontology/explore)")
@@ -111,3 +111,10 @@ def add_subparser(sub) -> None:
     )
     ask.add_argument("--question", required=True)
     ask.set_defaults(fn=cmd_ask)
+
+    # Nest the PostgreSQL ontology layer (object types + link types CRUD) under
+    # the same `ontology` group, so users see one umbrella for everything
+    # graph-shaped: `ontology cypher`, `ontology objects`, `ontology links`.
+    from . import objects as _objects, links as _links
+    _objects.add_subparser(sp)
+    _links.add_subparser(sp)

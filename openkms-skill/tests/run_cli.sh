@@ -177,7 +177,7 @@ $CLI evaluation-datasets list \
 
 # ---- 22 objects list -----------------------------------------------------
 banner "22. objects list"
-OBJ_TYPES=$($CLI objects list)
+OBJ_TYPES=$($CLI ontology objects list)
 echo "$OBJ_TYPES" | jq '.items[:5] | map({id, name, is_master_data, instance_count})'
 OT_ID=$(echo "$OBJ_TYPES" | jq -r '.items[0].id // empty')
 echo "[chain] OT_ID=$OT_ID"
@@ -185,14 +185,14 @@ echo "[chain] OT_ID=$OT_ID"
 # ---- 23 objects get + instances list ------------------------------------
 if [ -n "${OT_ID:-}" ]; then
   banner "23. objects get + instances list (OT=$OT_ID)"
-  $CLI objects get --id "$OT_ID" | jq '{id, name, properties: (.properties | length), instance_count}'
-  $CLI objects instances list --type-id "$OT_ID" --limit 3 \
+  $CLI ontology objects get --id "$OT_ID" | jq '{id, name, properties: (.properties | length), instance_count}'
+  $CLI ontology objects instances list --type-id "$OT_ID" --limit 3 \
     | jq '{total, sample: (.items[:3] | map({id, data}))}'
 fi
 
 # ---- 24 links list -------------------------------------------------------
 banner "24. links list"
-LINK_TYPES=$($CLI links list)
+LINK_TYPES=$($CLI ontology links list)
 echo "$LINK_TYPES" | jq '.items[:5] | map({id, name, cardinality, link_count})'
 LT_ID=$(echo "$LINK_TYPES" | jq -r '.items[0].id // empty')
 echo "[chain] LT_ID=$LT_ID"
@@ -200,18 +200,75 @@ echo "[chain] LT_ID=$LT_ID"
 # ---- 25 links get + instances list --------------------------------------
 if [ -n "${LT_ID:-}" ]; then
   banner "25. links get + instances list (LT=$LT_ID)"
-  $CLI links get --id "$LT_ID" \
+  $CLI ontology links get --id "$LT_ID" \
     | jq '{id, name, cardinality, source_object_type_name, target_object_type_name}'
-  $CLI links instances list --type-id "$LT_ID" --limit 3 \
+  $CLI ontology links instances list --type-id "$LT_ID" --limit 3 \
     | jq '{total, sample: (.items[:3] | map({id, source_object_id, target_object_id}))}'
 fi
 
 # ---- 26 objects create-type --dry-run  (write smoke; no actual mutation) -
 banner "26. objects create-type --dry-run  (no mutation)"
-$CLI objects create-type \
+$CLI ontology objects create-type \
   --name "smoke_$(date +%s)" \
   --properties-json '[{"name":"id","type":"string","required":true}]' \
   --dry-run
+
+# ---- 27 objects update/delete/sync-neo4j  --dry-run ----------------------
+banner "27. objects update-type / delete-type / sync-neo4j  (--dry-run)"
+$CLI ontology objects update-type --id "${OT_ID:-bogus-id}" --description "smoke updated" --dry-run
+echo
+$CLI ontology objects delete-type --id "${OT_ID:-bogus-id}" --dry-run
+echo
+$CLI ontology objects sync-neo4j --neo4j-data-source-id bogus-ds --dry-run
+
+# ---- 28 objects instances get + create/update/delete --dry-run ----------
+OI_ID=""
+if [ -n "${OT_ID:-}" ]; then
+  OI_ID=$($CLI ontology objects instances list --type-id "$OT_ID" --limit 1 | jq -r '.items[0].id // empty')
+  echo "[chain] OI_ID=$OI_ID"
+fi
+if [ -n "${OT_ID:-}" ] && [ -n "${OI_ID:-}" ]; then
+  banner "28. objects instances get + create/update/delete (--dry-run)"
+  $CLI ontology objects instances get --type-id "$OT_ID" --id "$OI_ID" | jq '{id, data}'
+  echo
+  $CLI ontology objects instances create --type-id "$OT_ID" --data-json '{"smoke":"x"}' --dry-run
+  echo
+  $CLI ontology objects instances update --type-id "$OT_ID" --id "$OI_ID" --data-json '{"smoke":"y"}' --dry-run
+  echo
+  $CLI ontology objects instances delete --type-id "$OT_ID" --id "$OI_ID" --dry-run
+fi
+
+# ---- 29 links create/update/delete/sync-neo4j  --dry-run ----------------
+banner "29. links create-type / update-type / delete-type / sync-neo4j (--dry-run)"
+$CLI ontology links create-type --name smoke_link \
+  --source-type-id "${OT_ID:-bogus}" --target-type-id "${OT_ID:-bogus}" \
+  --cardinality one-to-many --dry-run
+echo
+$CLI ontology links update-type --id "${LT_ID:-bogus-id}" --description "smoke updated" --dry-run
+echo
+$CLI ontology links delete-type --id "${LT_ID:-bogus-id}" --dry-run
+echo
+$CLI ontology links sync-neo4j --neo4j-data-source-id bogus-ds --dry-run
+
+# ---- 30 links instances create/delete  --dry-run ------------------------
+if [ -n "${LT_ID:-}" ]; then
+  banner "30. links instances create / delete  (--dry-run)"
+  $CLI ontology links instances create --type-id "$LT_ID" \
+    --source-object-id oi-a --target-object-id oi-b --dry-run
+  echo
+  $CLI ontology links instances delete --type-id "$LT_ID" --id li-bogus --dry-run
+fi
+
+# ---- 31 confirm gating: non-TTY without --yes must abort (exit 2) -------
+# Pipes stdin so isatty() returns False; the CLI should refuse and not POST.
+banner "31. confirm gating: non-TTY without --yes  (expecting exit 2)"
+echo | $CLI ontology objects delete-type --id non-existent-bogus 2>&1
+rc=$?
+if [ "$rc" -eq 2 ]; then
+  echo "[OK] exit code = 2 (refused as expected)"
+else
+  echo "[WARN] expected exit code 2, got $rc"
+fi
 
 echo
 echo "============================================================"

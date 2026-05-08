@@ -55,8 +55,8 @@ Some practical guidance:
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is now **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches* with confidence scores. Lexical tokens like product codes (e.g. `WWY`, `MIL`) are heavily weighted via BM25, so `kb search --q "WWY 年化收益"` returns WWY-specific chunks even when the embedding alone wouldn't. First call per KB cold-starts the BM25 index (paginates all chunks/FAQs); subsequent calls are fast. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope. Don't try to bypass — surface the error.
-- **Write commands and confirm gating.** Old write groups (`documents upload`, `articles create`, `wiki put-page`, `kb-faq create`, `evaluation-datasets run`) execute immediately — confirm with the user before bulk loops. The newer `objects` / `links` groups gate every mutation: `--dry-run` prints the planned `[METHOD] path + body` without sending; `--yes`/`-y` skips the prompt; without either flag on a TTY the user is asked `Proceed? [y/N]`; **on a non-TTY stdin without `--yes` the command refuses and exits 2**, so an agent must pass `--yes` deliberately.
-- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use the `objects` and `links` groups (Postgres ontology layer) and then `objects sync-neo4j` / `links sync-neo4j` to MERGE the changes into Neo4j.
+- **Write commands and confirm gating.** Old write groups (`documents upload`, `articles create`, `wiki put-page`, `kb-faq create`, `evaluation-datasets run`) execute immediately — confirm with the user before bulk loops. The newer `ontology objects` / `ontology links` subgroups gate every mutation: `--dry-run` prints the planned `[METHOD] path + body` without sending; `--yes`/`-y` skips the prompt; without either flag on a TTY the user is asked `Proceed? [y/N]`; **on a non-TTY stdin without `--yes` the command refuses and exits 2**, so an agent must pass `--yes` deliberately.
+- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then `ontology objects sync-neo4j` / `ontology links sync-neo4j` to MERGE the changes into Neo4j.
 - **Output is verbose.** Each list response can include long arrays. If you're scanning many records, pipe through `jq` to project just the fields you need rather than dumping everything into context.
 
 ## Read / query tasks
@@ -79,13 +79,13 @@ Some practical guidance:
 | Run a Cypher query against the ontology graph | `python scripts/cli.py ontology cypher --query "MATCH (n:Customer) RETURN n LIMIT 10"` |
 | NL question → Cypher (just the translation) | `python scripts/cli.py ontology text-to-cypher --question "..."` |
 | NL question → Cypher → results → NL answer (3-call chain) | `python scripts/cli.py ontology ask --question "..."` |
-| List object types | `python scripts/cli.py objects list [--master-data-only] [--count-from-neo4j]` |
-| Get one object type | `python scripts/cli.py objects get --id OT_ID` |
-| List instances of a type | `python scripts/cli.py objects instances list --type-id OT_ID --limit 50` |
-| Get one instance | `python scripts/cli.py objects instances get --type-id OT_ID --id OI_ID` |
-| List link types | `python scripts/cli.py links list` |
-| Get one link type | `python scripts/cli.py links get --id LT_ID` |
-| List instances of a link type | `python scripts/cli.py links instances list --type-id LT_ID --limit 50` |
+| List object types | `python scripts/cli.py ontology objects list [--master-data-only] [--count-from-neo4j]` |
+| Get one object type | `python scripts/cli.py ontology objects get --id OT_ID` |
+| List instances of a type | `python scripts/cli.py ontology objects instances list --type-id OT_ID --limit 50` |
+| Get one instance | `python scripts/cli.py ontology objects instances get --type-id OT_ID --id OI_ID` |
+| List link types | `python scripts/cli.py ontology links list` |
+| Get one link type | `python scripts/cli.py ontology links get --id LT_ID` |
+| List instances of a link type | `python scripts/cli.py ontology links instances list --type-id LT_ID --limit 50` |
 | Get one evaluation dataset's metadata | `python scripts/cli.py evaluation-datasets get --id DS_ID` |
 | List items in a dataset | `python scripts/cli.py evaluation-datasets items --id DS_ID --limit 50` |
 | List runs for a dataset | `python scripts/cli.py evaluation-runs list --dataset-id DS_ID` |
@@ -117,21 +117,21 @@ Every command below requires `--yes`/`-y` (skip prompt) or `--dry-run` (preview 
 
 | Goal | Command |
 |------|---------|
-| Create object type | `python scripts/cli.py objects create-type --name "Disease" --properties-json '[{"name":"icd","type":"string","required":true}]' --yes` |
-| Update object type | `python scripts/cli.py objects update-type --id OT --display-property name --yes` |
-| Delete object type | `python scripts/cli.py objects delete-type --id OT --yes` |
-| Create object instance | `python scripts/cli.py objects instances create --type-id OT --data-json '{"icd":"C50"}' --yes` |
-| Update object instance | `python scripts/cli.py objects instances update --type-id OT --id OI --data-json '{"icd":"C50.1"}' --yes` |
-| Delete object instance | `python scripts/cli.py objects instances delete --type-id OT --id OI --yes` |
-| MERGE object instances into Neo4j | `python scripts/cli.py objects sync-neo4j --neo4j-data-source-id DS --yes` |
-| Create link type | `python scripts/cli.py links create-type --name covers --source-type-id OT_PROD --target-type-id OT_DIS --cardinality many-to-many --yes` |
-| Update link type | `python scripts/cli.py links update-type --id LT --description "..." --yes` |
-| Delete link type | `python scripts/cli.py links delete-type --id LT --yes` |
-| Create link instance | `python scripts/cli.py links instances create --type-id LT --source-object-id OI_A --target-object-id OI_B --yes` |
-| Delete link instance | `python scripts/cli.py links instances delete --type-id LT --id LI --yes` |
-| MERGE link instances into Neo4j | `python scripts/cli.py links sync-neo4j --neo4j-data-source-id DS --yes` |
+| Create object type | `python scripts/cli.py ontology objects create-type --name "Disease" --properties-json '[{"name":"icd","type":"string","required":true}]' --yes` |
+| Update object type | `python scripts/cli.py ontology objects update-type --id OT --display-property name --yes` |
+| Delete object type | `python scripts/cli.py ontology objects delete-type --id OT --yes` |
+| Create object instance | `python scripts/cli.py ontology objects instances create --type-id OT --data-json '{"icd":"C50"}' --yes` |
+| Update object instance | `python scripts/cli.py ontology objects instances update --type-id OT --id OI --data-json '{"icd":"C50.1"}' --yes` |
+| Delete object instance | `python scripts/cli.py ontology objects instances delete --type-id OT --id OI --yes` |
+| MERGE object instances into Neo4j | `python scripts/cli.py ontology objects sync-neo4j --neo4j-data-source-id DS --yes` |
+| Create link type | `python scripts/cli.py ontology links create-type --name covers --source-type-id OT_PROD --target-type-id OT_DIS --cardinality many-to-many --yes` |
+| Update link type | `python scripts/cli.py ontology links update-type --id LT --description "..." --yes` |
+| Delete link type | `python scripts/cli.py ontology links delete-type --id LT --yes` |
+| Create link instance | `python scripts/cli.py ontology links instances create --type-id LT --source-object-id OI_A --target-object-id OI_B --yes` |
+| Delete link instance | `python scripts/cli.py ontology links instances delete --type-id LT --id LI --yes` |
+| MERGE link instances into Neo4j | `python scripts/cli.py ontology links sync-neo4j --neo4j-data-source-id DS --yes` |
 
-When a link type is `many-to-many` and dataset-backed, the server is the source of truth via the junction table — `links instances create/delete` will return 4xx. Surface that error rather than trying to bypass.
+When a link type is `many-to-many` and dataset-backed, the server is the source of truth via the junction table — `ontology links instances create/delete` will return 4xx. Surface that error rather than trying to bypass.
 
 ## Workflow recipes
 
