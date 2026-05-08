@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Folder, Plus, ArrowRightLeft, Settings, Trash2, GitMerge, ChevronUp, ChevronDown } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
@@ -25,6 +26,7 @@ function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: 
 }
 
 export function DocumentChannels() {
+  const { t } = useTranslation('documents');
   const { channels, loading, error, refetch } = useDocumentChannels();
   const [createName, setCreateName] = useState('');
   const [createDescription, setCreateDescription] = useState('');
@@ -49,7 +51,7 @@ export function DocumentChannels() {
       setCreateParentId('');
       await refetch();
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : 'Failed to create channel');
+      setCreateError(e instanceof Error ? e.message : t('channels.createFailed'));
     } finally {
       setCreating(false);
     }
@@ -59,7 +61,7 @@ export function DocumentChannels() {
 
   const getMoveParentOptions = (excludeChannelId: string) => {
     const exclude = getDescendantIds(channels, excludeChannelId);
-    return [{ id: '', name: 'None (top-level)', depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
+    return [{ id: '', name: '__root__', depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
   };
 
   const getMergeTargetOptions = (sourceChannelId: string) => {
@@ -71,13 +73,13 @@ export function DocumentChannels() {
     <div className="document-channels">
       <Link to="/documents" className="document-channels-back">
         <ArrowLeft size={18} />
-        <span>Back to Documents</span>
+        <span>{t('common.backToDocuments')}</span>
       </Link>
 
       <div className="page-header">
-        <h1>Document Channels</h1>
+        <h1>{t('channels.pageTitle')}</h1>
         <p className="page-subtitle">
-          Create and manage document channels. Organize documents into top-level channels and sub-channels.
+          {t('channels.pageSubtitle')}
         </p>
       </div>
 
@@ -91,38 +93,38 @@ export function DocumentChannels() {
         <section className="document-channels-create">
           <h2>
             <Plus size={20} />
-            New channel
+            {t('channels.newChannel')}
           </h2>
           <form onSubmit={handleCreate} className="document-channels-form">
             <div className="document-channels-field">
-              <label htmlFor="channel-name">Name</label>
+              <label htmlFor="channel-name">{t('common.name')}</label>
               <input
                 id="channel-name"
                 type="text"
                 value={createName}
                 onChange={(e) => setCreateName(e.target.value)}
-                placeholder="e.g. Sales, Product Brochures"
+                placeholder={t('channels.namePlaceholder')}
                 required
               />
             </div>
             <div className="document-channels-field">
-              <label htmlFor="channel-description">Description</label>
+              <label htmlFor="channel-description">{t('common.description')}</label>
               <textarea
                 id="channel-description"
                 value={createDescription}
                 onChange={(e) => setCreateDescription(e.target.value)}
-                placeholder="Optional description"
+                placeholder={t('channels.descPlaceholder')}
                 rows={2}
               />
             </div>
             <div className="document-channels-field">
-              <label htmlFor="channel-parent">Parent</label>
+              <label htmlFor="channel-parent">{t('common.parent')}</label>
               <select
                 id="channel-parent"
                 value={createParentId}
                 onChange={(e) => setCreateParentId(e.target.value)}
               >
-                <option value="">None (top-level)</option>
+                <option value="">{t('channels.parentNone')}</option>
                 {parentOptions.map((p) => (
                   <option key={p.id} value={p.id}>
                     {'—'.repeat(p.depth)} {p.name}
@@ -131,7 +133,7 @@ export function DocumentChannels() {
               </select>
             </div>
             <button type="submit" className="btn btn-primary" disabled={creating || !createName.trim()}>
-              {creating ? 'Creating…' : 'Create'}
+              {creating ? t('channels.creating') : t('channels.create')}
             </button>
           </form>
         </section>
@@ -139,16 +141,16 @@ export function DocumentChannels() {
         <section className="document-channels-list">
           <h2>
             <Folder size={20} />
-            Channels
+            {t('channels.listHeading')}
           </h2>
           {loading ? (
-            <p className="document-channels-loading">Loading…</p>
+            <p className="document-channels-loading">{t('common.loading')}</p>
           ) : channels.length === 0 ? (
             <div className="document-channels-empty">
               <Folder size={40} />
-              <p>No channels yet</p>
+              <p>{t('channels.emptyTitle')}</p>
               <p className="document-channels-empty-hint">
-                Create your first channel using the form on the left. Use &quot;None&quot; for a top-level channel.
+                {t('channels.emptyHint')}
               </p>
             </div>
           ) : (
@@ -193,6 +195,7 @@ function ChannelItem({
   getMoveParentOptions: (excludeId: string) => { id: string; name: string; depth: number }[];
   getMergeTargetOptions: (sourceId: string) => { id: string; name: string; depth: number }[];
 }) {
+  const { t } = useTranslation('documents');
   const [moving, setMoving] = useState(false);
   const [moveParentId, setMoveParentId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
@@ -210,9 +213,13 @@ function ChannelItem({
     try {
       await reorderChannel(node.id, direction);
       await refetch();
-      toast.success(`Moved "${node.name}" ${direction}`);
+      toast.success(
+        direction === 'up'
+          ? t('channels.toastMovedUp', { name: node.name })
+          : t('channels.toastMovedDown', { name: node.name }),
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to reorder channel');
+      toast.error(e instanceof Error ? e.message : t('channels.toastReorderFail'));
     }
   };
 
@@ -226,11 +233,11 @@ function ChannelItem({
     try {
       await updateChannel(node.id, { parent_id: newParent });
       await refetch();
-      toast.success(`Moved "${node.name}"`);
+      toast.success(t('channels.toastMoved', { name: node.name }));
       setMoving(false);
       setMoveParentId('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to move channel');
+      toast.error(e instanceof Error ? e.message : t('channels.toastMoveFail'));
     } finally {
       setMoveLoading(false);
     }
@@ -248,10 +255,10 @@ function ChannelItem({
     try {
       await deleteChannel(node.id);
       await refetch();
-      toast.success(`Deleted "${node.name}"`);
+      toast.success(t('channels.toastDeleted', { name: node.name }));
       setDeleteConfirming(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete channel');
+      toast.error(e instanceof Error ? e.message : t('channels.toastDeleteFail'));
     } finally {
       setDeleteLoading(false);
     }
@@ -267,11 +274,11 @@ function ChannelItem({
         include_descendants: mergeIncludeDescendants,
       });
       await refetch();
-      toast.success(`Merged "${node.name}" into target channel`);
+      toast.success(t('channels.toastMerged', { name: node.name }));
       setMerging(false);
       setMergeTargetId('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to merge channels');
+      toast.error(e instanceof Error ? e.message : t('channels.toastMergeFail'));
     } finally {
       setMergeLoading(false);
     }
@@ -292,8 +299,8 @@ function ChannelItem({
           <button
             type="button"
             className="document-channels-tree-action"
-            title="Move up"
-            aria-label="Move channel up"
+            title={t('channels.ariaMoveUp')}
+            aria-label={t('channels.ariaMoveUp')}
             onClick={() => handleReorder('up')}
             disabled={!canMoveUp}
           >
@@ -302,8 +309,8 @@ function ChannelItem({
           <button
             type="button"
             className="document-channels-tree-action"
-            title="Move down"
-            aria-label="Move channel down"
+            title={t('channels.ariaMoveDown')}
+            aria-label={t('channels.ariaMoveDown')}
             onClick={() => handleReorder('down')}
             disabled={!canMoveDown}
           >
@@ -312,14 +319,14 @@ function ChannelItem({
           <Link
             to={`/documents/channels/${node.id}/settings`}
             className="document-channels-tree-action"
-            title="Settings"
+            title={t('common.settings')}
           >
             <Settings size={14} />
           </Link>
           <button
             type="button"
             className="document-channels-tree-action"
-            title="Move"
+            title={t('channels.ariaMoveChannel')}
             onClick={() => setMoving(true)}
           >
             <ArrowRightLeft size={14} />
@@ -327,7 +334,7 @@ function ChannelItem({
           <button
             type="button"
             className="document-channels-tree-action"
-            title="Merge into..."
+            title={t('channels.ariaMerge')}
             onClick={() => setMerging(true)}
             disabled={mergeTargetOptions.length === 0}
           >
@@ -336,7 +343,7 @@ function ChannelItem({
           <button
             type="button"
             className="document-channels-tree-action document-channels-tree-action-delete"
-            title="Delete"
+            title={t('common.delete')}
             onClick={handleDeleteClick}
           >
             <Trash2 size={14} />
@@ -345,17 +352,17 @@ function ChannelItem({
       </span>
       {deleteConfirming && (
         <div className="document-channels-confirm-bar">
-          <span>Delete &quot;{node.name}&quot;? This cannot be undone.</span>
+          <span>{t('channels.deleteConfirm', { name: node.name })}</span>
           <button
             type="button"
             className="btn btn-primary btn-sm"
             onClick={handleDeleteConfirm}
             disabled={deleteLoading}
           >
-            {deleteLoading ? 'Deleting…' : 'Delete'}
+            {deleteLoading ? t('common.deleting') : t('common.yesDelete')}
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleDeleteCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       )}
@@ -365,9 +372,9 @@ function ChannelItem({
             value={mergeTargetId}
             onChange={(e) => setMergeTargetId(e.target.value)}
             className="document-channels-move-select"
-            aria-label="Target channel"
+            aria-label={t('channels.mergeAriaTarget')}
           >
-            <option value="">Select target channel</option>
+            <option value="">{t('channels.mergeTargetPlaceholder')}</option>
             {mergeTargetOptions.map((p) => (
               <option key={p.id} value={p.id}>
                 {'—'.repeat(p.depth)} {p.name}
@@ -380,7 +387,7 @@ function ChannelItem({
               checked={mergeIncludeDescendants}
               onChange={(e) => setMergeIncludeDescendants(e.target.checked)}
             />
-            <span>Include sub-channels</span>
+            <span>{t('channels.includeSubchannels')}</span>
           </label>
           <button
             type="button"
@@ -388,10 +395,10 @@ function ChannelItem({
             onClick={handleMergeConfirm}
             disabled={mergeLoading || !mergeTargetId}
           >
-            {mergeLoading ? 'Merging…' : 'Merge'}
+            {mergeLoading ? t('common.merging') : t('common.merge')}
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleMergeCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       )}
@@ -404,7 +411,8 @@ function ChannelItem({
           >
             {moveOptions.map((p) => (
               <option key={p.id || 'root'} value={p.id}>
-                {'—'.repeat(p.depth)} {p.name}
+                {'—'.repeat(p.depth)}{' '}
+                {p.name === '__root__' ? t('channels.moveParentNone') : p.name}
               </option>
             ))}
           </select>
@@ -414,10 +422,10 @@ function ChannelItem({
             onClick={handleMoveConfirm}
             disabled={moveLoading}
           >
-            {moveLoading ? 'Moving…' : 'Move'}
+            {moveLoading ? t('common.moving') : t('common.move')}
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleMoveCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       )}

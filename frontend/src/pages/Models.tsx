@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2, Server } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,6 +24,7 @@ import './Models.css';
 type ModalMode = 'provider' | 'model' | null;
 
 export function Models() {
+  const { t } = useTranslation('workspace');
   const navigate = useNavigate();
   const [providers, setProviders] = useState<ApiProviderResponse[]>([]);
   const [models, setModels] = useState<ApiModelResponse[]>([]);
@@ -54,7 +56,7 @@ export function Models() {
       const res = await fetchProviders();
       setProviders(res.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load providers');
+      toast.error(e instanceof Error ? e.message : t('models.loadProvidersFailed'));
     }
   }, []);
 
@@ -74,11 +76,11 @@ export function Models() {
       setCategories(cats);
       setProviders(provsRes.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load models');
+      toast.error(e instanceof Error ? e.message : t('models.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeProvider, search]);
+  }, [activeCategory, activeProvider, search, t]);
 
   useEffect(() => {
     load();
@@ -140,20 +142,20 @@ export function Models() {
           base_url: provFormBaseUrl,
           api_key: provFormApiKey || undefined,
         });
-        toast.success('Provider updated');
+        toast.success(t('models.providerUpdated'));
       } else {
         await createProvider({
           name: provFormName,
           base_url: provFormBaseUrl,
           api_key: provFormApiKey || null,
         });
-        toast.success('Provider added');
+        toast.success(t('models.providerAdded'));
       }
       closeModal();
       await loadProviders();
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Operation failed');
+      toast.error(e instanceof Error ? e.message : t('shared.operationFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -177,41 +179,41 @@ export function Models() {
       };
       if (editModel) {
         await updateModel(editModel.id, payload);
-        toast.success('Model updated');
+        toast.success(t('models.modelUpdated'));
       } else {
         await createModel(payload);
-        toast.success('Model added');
+        toast.success(t('models.modelAdded'));
       }
       closeModal();
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Operation failed');
+      toast.error(e instanceof Error ? e.message : t('shared.operationFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDeleteProvider = async (id: string) => {
-    if (!window.confirm('Delete this provider? Models under it must be deleted first.')) return;
+    if (!window.confirm(t('models.providerDeleteConfirm'))) return;
     try {
       await deleteProvider(id);
-      toast.success('Provider deleted');
+      toast.success(t('models.providerDeleted'));
       if (activeProvider === id) setActiveProvider(null);
       await loadProviders();
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('shared.deleteFailed'));
     }
   };
 
   const handleDeleteModel = async (id: string) => {
-    if (!window.confirm('Delete this model? This cannot be undone.')) return;
+    if (!window.confirm(t('models.modelDeleteConfirm'))) return;
     try {
       await deleteModel(id);
-      toast.success('Model deleted');
+      toast.success(t('models.modelDeleted'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('shared.deleteFailed'));
     }
   };
 
@@ -220,10 +222,10 @@ export function Models() {
     if (m.is_default_in_category) return;
     try {
       await updateModel(m.id, { is_default_in_category: true });
-      toast.success(`"${m.name}" set as default for ${categoryLabel(m.category)}`);
+      toast.success(t('models.defaultSet', { name: m.name, category: categoryLabel(m.category) }));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to set default');
+      toast.error(e instanceof Error ? e.message : t('models.defaultFailed'));
     }
   };
 
@@ -235,19 +237,19 @@ export function Models() {
     <div className="models">
       <div className="page-header models-header">
         <div>
-          <h1>Models</h1>
+          <h1>{t('models.title')}</h1>
           <p className="page-subtitle">
-            Manage service providers first, then add models under each provider.
+            {t('models.subtitle')}
           </p>
         </div>
       </div>
       <div className="models-main">
         <div className="models-categories">
           <div className="models-categories-header">
-            <h3>Service Providers</h3>
+            <h3>{t('models.serviceProviders')}</h3>
             <button type="button" className="btn btn-secondary btn-sm" onClick={openAddProvider}>
               <Plus size={14} />
-              Add
+              {t('shared.add')}
             </button>
           </div>
           <ul className="models-category-list">
@@ -256,7 +258,7 @@ export function Models() {
               onClick={() => setActiveProvider(null)}
             >
               <Server size={16} />
-              <span>All</span>
+              <span>{t('shared.all')}</span>
             </li>
             {providers.map((p) => (
               <li
@@ -268,10 +270,10 @@ export function Models() {
                 <span className="models-provider-name">{p.name}</span>
                 <span className="models-provider-count">({providerModelCount(p.id)})</span>
                 <div className="models-provider-actions" onClick={(e) => e.stopPropagation()}>
-                  <button type="button" title="Edit provider" onClick={() => openEditProvider(p)}>
+                  <button type="button" title={t('models.editProvider')} onClick={() => openEditProvider(p)}>
                     <Pencil size={12} />
                   </button>
-                  <button type="button" title="Delete provider" onClick={() => handleDeleteProvider(p.id)}>
+                  <button type="button" title={t('models.deleteProvider')} onClick={() => handleDeleteProvider(p.id)}>
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -286,8 +288,8 @@ export function Models() {
                 <Search size={18} />
                 <input
                   type="search"
-                  aria-label="Search models"
-                  placeholder="Search models..."
+                  aria-label={t('models.searchAria')}
+                  placeholder={t('models.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -298,7 +300,7 @@ export function Models() {
                   className={`models-filter-btn ${activeCategory === null ? 'active' : ''}`}
                   onClick={() => setActiveCategory(null)}
                 >
-                  All
+                  {t('shared.all')}
                 </button>
                 {categories.map((c) => (
                   <button
@@ -313,7 +315,7 @@ export function Models() {
               </div>
               <button type="button" className="btn btn-primary models-toolbar-add" onClick={openAddModel} disabled={providers.length === 0}>
                 <Plus size={18} />
-                <span>Add Model</span>
+                <span>{t('models.addModel')}</span>
               </button>
             </div>
           </div>
@@ -321,18 +323,18 @@ export function Models() {
             {loading ? (
               <div className="models-loading">
                 <Loader2 size={32} className="models-loading-spinner" />
-                <p>Loading models…</p>
+                <p>{t('models.loading')}</p>
               </div>
             ) : (
               <table className="models-table">
                 <thead>
                   <tr>
-                    <th>Model</th>
-                    <th>Provider</th>
-                    <th>Category</th>
-                    <th>Default</th>
-                    <th>Base URL</th>
-                    <th className="models-table-actions-col">Actions</th>
+                    <th>{t('models.colModel')}</th>
+                    <th>{t('models.colProvider')}</th>
+                    <th>{t('models.colCategory')}</th>
+                    <th>{t('models.colDefault')}</th>
+                    <th>{t('models.colBaseUrl')}</th>
+                    <th className="models-table-actions-col">{t('shared.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -340,8 +342,8 @@ export function Models() {
                     <tr>
                       <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
                         {providers.length === 0
-                          ? 'Add a provider first, then add models.'
-                          : 'No models yet. Click "Add Model" to get started.'}
+                          ? t('models.emptyNoProviders')
+                          : t('models.emptyNoModels')}
                       </td>
                     </tr>
                   ) : (
@@ -366,15 +368,15 @@ export function Models() {
                         <td>{categoryLabel(m.category)}</td>
                         <td>
                           {m.is_default_in_category ? (
-                            <span className="models-default-badge">Default</span>
+                            <span className="models-default-badge">{t('models.defaultBadge')}</span>
                           ) : (
                             <button
                               type="button"
                               className="models-set-default-btn"
-                              title={`Set as default for ${categoryLabel(m.category)}`}
+                              title={t('models.setDefaultTitle', { category: categoryLabel(m.category) })}
                               onClick={(e) => handleSetDefault(m, e)}
                             >
-                              Set
+                              {t('models.set')}
                             </button>
                           )}
                         </td>
@@ -383,14 +385,14 @@ export function Models() {
                           <div className="models-table-btns">
                             <button
                               type="button"
-                              title="Edit"
+                              title={t('shared.edit')}
                               onClick={(e) => { e.stopPropagation(); openEditModel(m); }}
                             >
                               <Pencil size={16} />
                             </button>
                             <button
                               type="button"
-                              title="Delete"
+                              title={t('shared.delete')}
                               onClick={(e) => { e.stopPropagation(); handleDeleteModel(m.id); }}
                             >
                               <Trash2 size={16} />
@@ -411,43 +413,43 @@ export function Models() {
         <div className="models-modal-overlay" onClick={closeModal}>
           <div className="models-modal" onClick={(e) => e.stopPropagation()}>
             <div className="models-modal-header">
-              <h2>{editProvider ? 'Edit Provider' : 'Add Service Provider'}</h2>
-              <button type="button" onClick={closeModal} disabled={submitting} aria-label="Close">
+              <h2>{editProvider ? t('models.modalProviderEdit') : t('models.modalProviderAdd')}</h2>
+              <button type="button" onClick={closeModal} disabled={submitting} aria-label={t('shared.close')}>
                 <X size={20} />
               </button>
             </div>
             <div className="models-modal-body">
               <label>
-                Name *
+                {t('models.provName')}
                 <input
                   type="text"
                   value={provFormName}
                   onChange={(e) => setProvFormName(e.target.value)}
-                  placeholder="e.g. OpenAI, Anthropic"
+                  placeholder={t('models.provNamePlaceholder')}
                 />
               </label>
               <label>
-                Base URL *
+                {t('models.provBaseUrl')}
                 <input
                   type="text"
                   value={provFormBaseUrl}
                   onChange={(e) => setProvFormBaseUrl(e.target.value)}
-                  placeholder="e.g. https://api.openai.com/v1"
+                  placeholder={t('models.provBasePlaceholder')}
                 />
               </label>
               <label>
-                API Key
+                {t('models.provApiKey')}
                 <input
                   type="password"
                   value={provFormApiKey}
                   onChange={(e) => setProvFormApiKey(e.target.value)}
-                  placeholder={editProvider ? '(leave empty to keep current)' : '(optional)'}
+                  placeholder={editProvider ? t('models.provApiKeyPlaceholderEdit') : t('models.provApiKeyPlaceholderNew')}
                 />
               </label>
             </div>
             <div className="models-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
-                Cancel
+                {t('shared.cancel')}
               </button>
               <button
                 type="button"
@@ -455,7 +457,7 @@ export function Models() {
                 onClick={handleProviderSubmit}
                 disabled={!provFormName.trim() || !provFormBaseUrl.trim() || submitting}
               >
-                {submitting ? 'Saving…' : editProvider ? 'Update' : 'Add'}
+                {submitting ? t('shared.saving') : editProvider ? t('shared.update') : t('shared.add')}
               </button>
             </div>
           </div>
@@ -466,37 +468,37 @@ export function Models() {
         <div className="models-modal-overlay" onClick={closeModal}>
           <div className="models-modal" onClick={(e) => e.stopPropagation()}>
             <div className="models-modal-header">
-              <h2>{editModel ? 'Edit Model' : 'Add Model'}</h2>
-              <button type="button" onClick={closeModal} disabled={submitting} aria-label="Close">
+              <h2>{editModel ? t('models.modalModelEdit') : t('models.modalModelAdd')}</h2>
+              <button type="button" onClick={closeModal} disabled={submitting} aria-label={t('shared.close')}>
                 <X size={20} />
               </button>
             </div>
             <div className="models-modal-body">
               <label>
-                Provider *
+                {t('models.modelProvider')}
                 <select
                   value={formProviderId}
                   onChange={(e) => setFormProviderId(e.target.value)}
                 >
-                  <option value="">Select provider</option>
+                  <option value="">{t('models.selectProvider')}</option>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </select>
               </label>
               <label>
-                Name *
+                {t('models.modelName')}
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. GPT-4"
+                  placeholder={t('models.modelNamePlaceholder')}
                 />
               </label>
               <label>
-                Category *
+                {t('models.category')}
                 <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
-                  <option value="">Select category</option>
+                  <option value="">{t('models.selectCategory')}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.label}</option>
                   ))}
@@ -508,30 +510,30 @@ export function Models() {
                   checked={formIsDefaultInCategory}
                   onChange={(e) => setFormIsDefaultInCategory(e.target.checked)}
                 />
-                <span>Default in category</span>
+                <span>{t('models.defaultInCategory')}</span>
               </label>
               <label>
-                Model Name
+                {t('models.modelApiName')}
                 <input
                   type="text"
                   value={formModelName}
                   onChange={(e) => setFormModelName(e.target.value)}
-                  placeholder="e.g. gpt-4"
+                  placeholder={t('models.modelApiPlaceholder')}
                 />
               </label>
               <label>
-                Config (JSON)
+                {t('models.configJson')}
                 <textarea
                   rows={3}
                   value={formConfig}
                   onChange={(e) => setFormConfig(e.target.value)}
-                  placeholder='{"max_concurrency": 3}'
+                  placeholder={t('models.configPlaceholder')}
                 />
               </label>
             </div>
             <div className="models-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeModal} disabled={submitting}>
-                Cancel
+                {t('shared.cancel')}
               </button>
               <button
                 type="button"
@@ -539,7 +541,7 @@ export function Models() {
                 onClick={handleModelSubmit}
                 disabled={!formName.trim() || !formProviderId || !formCategory || submitting}
               >
-                {submitting ? 'Saving…' : editModel ? 'Update' : 'Add'}
+                {submitting ? t('shared.saving') : editModel ? t('shared.update') : t('shared.add')}
               </button>
             </div>
           </div>

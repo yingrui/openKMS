@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -6,15 +7,20 @@ import { fetchJobs, createJob, retryJob, deleteJob, type JobResponse } from '../
 import { fetchPipelines, type PipelineResponse } from '../data/pipelinesApi';
 import './Jobs.css';
 
-function formatDate(iso?: string | null): string {
-  if (!iso) return '—';
+function formatDate(iso: string | undefined | null, dash: string): string {
+  if (!iso) return dash;
   return new Date(iso).toLocaleString(undefined, {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 export function Jobs() {
+  const { t } = useTranslation('workspace');
   const navigate = useNavigate();
+  const dash = t('shared.dash');
   const [jobs, setJobs] = useState<JobResponse[]>([]);
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,43 +36,40 @@ export function Jobs() {
     setLoading(true);
     setError(null);
     try {
-      const [jobsRes, pipRes] = await Promise.all([
-        fetchJobs({ limit: 100 }),
-        fetchPipelines(),
-      ]);
+      const [jobsRes, pipRes] = await Promise.all([fetchJobs({ limit: 100 }), fetchPipelines()]);
       setJobs(jobsRes.items);
       setPipelines(pipRes.items);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to load jobs';
+      const msg = e instanceof Error ? e.message : t('jobs.loadFailed');
       setError(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const handleRetry = async (jobId: number) => {
     try {
       await retryJob(jobId);
-      toast.success('Job retry queued');
+      toast.success(t('jobs.retryQueued'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Retry failed');
+      toast.error(e instanceof Error ? e.message : t('jobs.retryFailed'));
     }
   };
 
   const handleDelete = async (jobId: number) => {
-    if (!window.confirm('Delete this job? This cannot be undone.')) return;
+    if (!window.confirm(t('jobs.deleteConfirm'))) return;
     try {
       await deleteJob(jobId);
-      toast.success('Job deleted');
+      toast.success(t('jobs.deletedToast'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('shared.deleteFailed'));
     }
   };
 
@@ -81,10 +84,10 @@ export function Jobs() {
       setShowCreate(false);
       setDocIdInput('');
       setPipelineIdInput('');
-      toast.success('Job created');
+      toast.success(t('jobs.createdToast'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to create job');
+      toast.error(e instanceof Error ? e.message : t('jobs.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -108,18 +111,16 @@ export function Jobs() {
     <div className="jobs">
       <div className="page-header jobs-header">
         <div>
-          <h1>Jobs</h1>
-          <p className="page-subtitle">
-            Document processing jobs. Create jobs to process uploaded documents via pipelines.
-          </p>
+          <h1>{t('jobs.title')}</h1>
+          <p className="page-subtitle">{t('jobs.subtitle')}</p>
         </div>
         <div className="jobs-header-actions">
-          <button type="button" className="btn btn-secondary" onClick={load} title="Refresh">
+          <button type="button" className="btn btn-secondary" onClick={() => void load()} title={t('shared.refresh')}>
             <RefreshCw size={18} />
           </button>
           <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
             <Plus size={18} />
-            <span>New Job</span>
+            <span>{t('jobs.newJob')}</span>
           </button>
         </div>
       </div>
@@ -129,22 +130,18 @@ export function Jobs() {
             <Search size={18} />
             <input
               type="search"
-              aria-label="Search by document ID"
-              placeholder="Search by document ID..."
+              aria-label={t('jobs.searchAria')}
+              placeholder={t('jobs.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select
-            aria-label="Filter by status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All status</option>
-            <option value="pending">Pending</option>
-            <option value="running">Running</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
+          <select aria-label={t('jobs.filterStatusAria')} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">{t('jobs.statusAll')}</option>
+            <option value="pending">{t('jobs.statusPending')}</option>
+            <option value="running">{t('jobs.statusRunning')}</option>
+            <option value="completed">{t('jobs.statusCompleted')}</option>
+            <option value="failed">{t('jobs.statusFailed')}</option>
           </select>
         </div>
         {error && <p className="jobs-error">{error}</p>}
@@ -152,32 +149,32 @@ export function Jobs() {
           {loading ? (
             <div className="jobs-loading">
               <Loader2 size={32} className="jobs-loading-spinner" />
-              <p>Loading jobs…</p>
+              <p>{t('jobs.loadingJobs')}</p>
             </div>
           ) : (
             <table className="jobs-table">
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Task</th>
-                  <th>Document</th>
-                  <th>Pipeline</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Attempts</th>
-                  <th className="jobs-table-actions-col">Actions</th>
+                  <th>{t('jobs.colId')}</th>
+                  <th>{t('jobs.colTask')}</th>
+                  <th>{t('jobs.colDocument')}</th>
+                  <th>{t('jobs.colPipeline')}</th>
+                  <th>{t('jobs.colStatus')}</th>
+                  <th>{t('jobs.colCreated')}</th>
+                  <th>{t('jobs.colAttempts')}</th>
+                  <th className="jobs-table-actions-col">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
-                      {jobs.length === 0 ? 'No jobs yet. Create one to process a document.' : 'No matches found.'}
+                      {jobs.length === 0 ? t('jobs.empty') : t('jobs.noMatches')}
                     </td>
                   </tr>
                 ) : (
                   filtered.map((job) => {
-                    const docId = String(job.args?.document_id || '—');
+                    const docId = String(job.args?.document_id || dash);
                     const pipelineId = String(job.args?.pipeline_id || '');
                     const pipeline = pipelineMap.get(pipelineId);
                     return (
@@ -196,11 +193,11 @@ export function Jobs() {
                         <td className="jobs-table-docid" title={docId}>
                           {docId.length > 12 ? `${docId.slice(0, 10)}…` : docId}
                         </td>
-                        <td>{pipeline?.name || pipelineId || '—'}</td>
+                        <td>{pipeline?.name || pipelineId || dash}</td>
                         <td>
                           <span className={`job-status job-status-${job.status}`}>{job.status}</span>
                         </td>
-                        <td>{formatDate(job.created_at)}</td>
+                        <td>{formatDate(job.created_at, dash)}</td>
                         <td>{job.attempts}</td>
                         <td className="jobs-table-actions-col">
                           <div className="jobs-table-actions-btns">
@@ -208,8 +205,11 @@ export function Jobs() {
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm"
-                                onClick={(e) => { e.stopPropagation(); handleRetry(job.id); }}
-                                title="Retry"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleRetry(job.id);
+                                }}
+                                title={t('shared.retry')}
                               >
                                 <RefreshCw size={14} />
                               </button>
@@ -218,8 +218,11 @@ export function Jobs() {
                               <button
                                 type="button"
                                 className="btn btn-secondary btn-sm jobs-delete-btn"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(job.id); }}
-                                title="Delete"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleDelete(job.id);
+                                }}
+                                title={t('shared.delete')}
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -240,39 +243,41 @@ export function Jobs() {
         <div className="jobs-modal-overlay" onClick={() => !submitting && setShowCreate(false)}>
           <div className="jobs-modal" onClick={(e) => e.stopPropagation()}>
             <div className="jobs-modal-header">
-              <h2>New Job</h2>
+              <h2>{t('jobs.modalTitle')}</h2>
             </div>
             <div className="jobs-modal-body">
               <label>
-                Document ID
+                {t('jobs.documentId')}
                 <input
                   type="text"
                   value={docIdInput}
                   onChange={(e) => setDocIdInput(e.target.value)}
-                  placeholder="Paste document ID"
+                  placeholder={t('jobs.documentPlaceholder')}
                 />
               </label>
               <label>
-                Pipeline
+                {t('jobs.pipeline')}
                 <select value={pipelineIdInput} onChange={(e) => setPipelineIdInput(e.target.value)}>
-                  <option value="">Use channel default</option>
+                  <option value="">{t('jobs.pipelineDefault')}</option>
                   {pipelines.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
               </label>
             </div>
             <div className="jobs-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={submitting}>
-                Cancel
+                {t('shared.cancel')}
               </button>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={handleCreate}
+                onClick={() => void handleCreate()}
                 disabled={!docIdInput.trim() || submitting}
               >
-                {submitting ? 'Creating…' : 'Create Job'}
+                {submitting ? t('shared.creating') : t('jobs.createJob')}
               </button>
             </div>
           </div>

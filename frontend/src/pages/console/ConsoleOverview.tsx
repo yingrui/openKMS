@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Shield, KeyRound, Database, Box, Settings, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,55 +9,32 @@ import './ConsoleOverview.css';
 
 const PERMS_ONBOARDING_KEY = 'openkms_permissions_onboarding_dismissed';
 
+type FeatureId = 'permissions' | 'dataSecurity' | 'dataSources' | 'usersToggles' | 'systemSettings';
+
 type FeatureItem = {
-  title: string;
-  description: string;
+  id: FeatureId;
   path?: string;
 };
 
 const CONSOLE_TOOL_FEATURES: FeatureItem[] = [
-  {
-    title: 'Permissions & roles',
-    description:
-      'Define operation keys in the catalog, assign them to roles, and map IdP realm roles (OIDC) or local users to those roles.',
-    path: '/console/permission-management',
-  },
-  {
-    title: 'Data security',
-    description:
-      'In local auth mode, create access groups and attach allow lists for channels, knowledge bases, evaluation datasets, datasets, and ontology types.',
-    path: '/console/data-security/groups',
-  },
-  {
-    title: 'Data sources',
-    description:
-      'Register databases and other connections (PostgreSQL, Neo4j, etc.) used by datasets and pipelines.',
-    path: '/console/data-sources',
-  },
-  {
-    title: 'Users & feature toggles',
-    description:
-      'Manage local users (when not using a central IdP) and turn product areas such as articles, knowledge bases, or ontology UI on or off.',
-    path: '/console/users',
-  },
-  {
-    title: 'System settings',
-    description: 'Reserved for deployment-specific options; extend here as new console settings are added.',
-    path: '/console/settings',
-  },
+  { id: 'permissions', path: '/console/permission-management' },
+  { id: 'dataSecurity', path: '/console/data-security/groups' },
+  { id: 'dataSources', path: '/console/data-sources' },
+  { id: 'usersToggles', path: '/console/users' },
+  { id: 'systemSettings', path: '/console/settings' },
 ];
 
-function iconFor(title: string) {
-  switch (title) {
-    case 'Permissions & roles':
+function iconFor(id: FeatureId) {
+  switch (id) {
+    case 'permissions':
       return KeyRound;
-    case 'Data security':
+    case 'dataSecurity':
       return Shield;
-    case 'Data sources':
+    case 'dataSources':
       return Database;
-    case 'Users & feature toggles':
+    case 'usersToggles':
       return Users;
-    case 'System settings':
+    case 'systemSettings':
       return Settings;
     default:
       return Box;
@@ -64,6 +42,7 @@ function iconFor(title: string) {
 }
 
 export function ConsoleOverview() {
+  const { t } = useTranslation('console');
   const { hasPermission, canAccessPath } = useAuth();
   const [showPermSetupNudge, setShowPermSetupNudge] = useState(false);
 
@@ -94,21 +73,22 @@ export function ConsoleOverview() {
   const renderFeatureCards = (items: FeatureItem[]) => (
     <ul className="console-overview-feature-grid">
       {items.map((f) => {
-        const Icon = iconFor(f.title);
+        const Icon = iconFor(f.id);
         const open = f.path && canAccessPath(f.path);
+        const title = t(`overview.features.${f.id}.title`);
         const inner = (
           <div className="console-overview-feature-card-inner">
             <div className="console-overview-feature-icon" aria-hidden>
               <Icon size={22} strokeWidth={1.75} />
             </div>
             <div className="console-overview-feature-body">
-              <h3 className="console-overview-feature-title">{f.title}</h3>
-              <p className="console-overview-feature-text">{f.description}</p>
+              <h3 className="console-overview-feature-title">{title}</h3>
+              <p className="console-overview-feature-text">{t(`overview.features.${f.id}.description`)}</p>
             </div>
           </div>
         );
         return (
-          <li key={f.title} className="console-overview-feature-card">
+          <li key={f.id} className="console-overview-feature-card">
             {open && f.path ? (
               <Link to={f.path} className="console-overview-feature-card-hit">
                 {inner}
@@ -125,17 +105,20 @@ export function ConsoleOverview() {
   return (
     <div className="console-overview">
       <div className="page-header">
-        <h1>Console Overview</h1>
-        <p className="page-subtitle">
-          Security, access, database connections, local users, feature toggles, and console settings—everything available
-          from the console sidebar.
-        </p>
+        <h1>{t('overview.pageTitle')}</h1>
+        <p className="page-subtitle">{t('overview.subtitle')}</p>
       </div>
       {showPermSetupNudge ? (
         <section className="console-overview-nudge" role="status">
           <p>
-            Your permission catalog only defines <code>all</code>.{' '}
-            <Link to="/console/permission-management">Set up operation keys and roles</Link> before delegating access.
+            <Trans
+              i18nKey="overview.nudge"
+              ns="console"
+              components={{
+                codeTag: <code />,
+                setupLink: <Link to="/console/permission-management" />,
+              }}
+            />
           </p>
         </section>
       ) : null}
@@ -144,21 +127,27 @@ export function ConsoleOverview() {
           {hasPermission(PERM_CONSOLE_PERMISSIONS) && (
             <Link to="/console/permission-management" className="console-overview-quick-card">
               <KeyRound size={22} />
-              <span>Permissions</span>
+              <span>{t('overview.quickPermissions')}</span>
             </Link>
           )}
           {hasPermission(PERM_CONSOLE_GROUPS) && (
             <Link to="/console/data-security/groups" className="console-overview-quick-card">
               <Shield size={22} />
-              <span>Access groups</span>
+              <span>{t('overview.quickAccessGroups')}</span>
             </Link>
           )}
         </section>
       )}
       <section className="console-overview-intro" aria-labelledby="console-intro-heading">
-        <h2 id="console-intro-heading">What you can do</h2>
+        <h2 id="console-intro-heading">{t('overview.introHeading')}</h2>
         <p className="console-overview-intro-lead">
-          Each card links to a console page when your role allows it; paths are under <code>/console/…</code>.
+          <Trans
+            i18nKey="overview.introLead"
+            ns="console"
+            components={{
+              codePath: <code />,
+            }}
+          />
         </p>
         {renderFeatureCards(CONSOLE_TOOL_FEATURES)}
       </section>

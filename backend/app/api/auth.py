@@ -24,6 +24,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.models.user_api_key import UserApiKey
+from app.models.user_preference import UserPreference
 from app.services.permission_catalog import PERM_ALL
 from app.services.security_permission_service import list_permissions_sorted, sorted_permission_keys
 from app.services.permission_resolution import (
@@ -32,6 +33,7 @@ from app.services.permission_resolution import (
     resolve_user_permission_keys,
 )
 from app.oidc_discovery import get_oidc_provider_metadata
+from app.i18n.errors import error_detail_no_request, http_error
 
 _JWKS_CLIENT: PyJWKClient | None = None
 
@@ -68,7 +70,9 @@ def _verify_oidc_jwt(token: str) -> dict:
             kw["issuer"] = issuer
         return jwt.decode(token, key.key, **kw)
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid or expired token") from e
+        raise HTTPException(
+            status_code=401, detail=error_detail_no_request("INVALID_OR_EXPIRED_TOKEN")
+        ) from e
 
 
 def _verify_local_jwt(token: str) -> dict:
@@ -81,7 +85,9 @@ def _verify_local_jwt(token: str) -> dict:
             options={"verify_aud": False},
         )
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid or expired token") from e
+        raise HTTPException(
+            status_code=401, detail=error_detail_no_request("INVALID_OR_EXPIRED_TOKEN")
+        ) from e
 
 
 def _verify_token_for_mode(token: str) -> dict:
@@ -244,7 +250,7 @@ async def authenticate_request(request: Request, db: AsyncSession) -> str:
         _set_auth_state(request, payload, token)
         return token
 
-    raise HTTPException(status_code=401, detail="Authentication required")
+    raise http_error(request, 401, "AUTHENTICATION_REQUIRED")
 
 
 async def require_auth(request: Request, db: AsyncSession = Depends(get_db)) -> str:
@@ -268,7 +274,7 @@ async def require_admin(request: Request, db: AsyncSession = Depends(get_db)) ->
     token = await authenticate_request(request, db)
     payload = request.state.openkms_jwt_payload
     if not jwt_payload_is_admin(payload):
-        raise HTTPException(status_code=403, detail="Admin role required")
+        raise http_error(request, 403, "ADMIN_ROLE_REQUIRED")
     return token
 
 
@@ -282,7 +288,7 @@ async def ensure_permission(request: Request, db: AsyncSession, permission: str)
     if sub == "local-cli":
         return
     if not isinstance(sub, str):
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise http_error(request, 403, "FORBIDDEN_GENERIC")
     if settings.auth_mode == "local":
         perms = await resolve_user_permission_keys(db, sub)
     else:
@@ -290,7 +296,7 @@ async def ensure_permission(request: Request, db: AsyncSession, permission: str)
     if PERM_ALL in perms:
         return
     if permission not in perms:
-        raise HTTPException(status_code=403, detail=f"Missing permission: {permission}")
+        raise http_error(request, 403, "MISSING_PERMISSION", permission=permission)
 
 
 def require_permission(permission: str):
@@ -303,7 +309,7 @@ def require_permission(permission: str):
 async def ensure_any_permission(request: Request, db: AsyncSession, *permissions: str) -> None:
     """Grant if admin, local-cli, all, or the user holds any of the given permission keys."""
     if not permissions:
-        raise HTTPException(status_code=500, detail="No permissions provided")
+        raise http_error(request, 500, "NO_PERMISSIONS_PROVIDED")
     await authenticate_request(request, db)
     payload = request.state.openkms_jwt_payload
     if jwt_payload_is_admin(payload):
@@ -312,7 +318,7 @@ async def ensure_any_permission(request: Request, db: AsyncSession, *permissions
     if sub == "local-cli":
         return
     if not isinstance(sub, str):
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise http_error(request, 403, "FORBIDDEN_GENERIC")
     if settings.auth_mode == "local":
         perms = await resolve_user_permission_keys(db, sub)
     else:
@@ -322,7 +328,7 @@ async def ensure_any_permission(request: Request, db: AsyncSession, *permissions
     if any(p in perms for p in permissions):
         return
     need = " or ".join(permissions)
-    raise HTTPException(status_code=403, detail=f"Missing permission: need one of ({need})")
+    raise http_error(request, 403, "MISSING_PERMISSION_ONE_OF", need=need)
 
 
 def require_any_permission(*permissions: str):
@@ -337,7 +343,7 @@ async def require_service_client(request: Request, db: AsyncSession = Depends(ge
     payload = request.state.openkms_jwt_payload
     azp = payload.get("azp") or payload.get("client_id")
     if azp != settings.oidc_service_client_id:
-        raise HTTPException(status_code=403, detail="Service client required")
+        raise http_error(request, 403, "SERVICE_CLIENT_REQUIRED")
     return token
 
 
@@ -349,10 +355,10 @@ async def sync_session(request: Request) -> dict:
     """Sync browser JWT to backend session (cookie) for credentialed img/object requests."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="Bearer token required")
+        raise http_error(request, 401, "BEARER_TOKEN_REQUIRED")
     token = auth_header[7:].strip()
     if not token:
-        raise HTTPException(status_code=401, detail="Bearer token required")
+        raise http_error(request, 401, "BEARER_TOKEN_REQUIRED")
     _verify_token_for_mode(token)
     request.session["access_token"] = token
     return {"ok": True}
@@ -366,7 +372,7 @@ async def login(request: Request) -> RedirectResponse:
     meta = get_oidc_provider_metadata()
     auth_ep = meta.get("authorization_endpoint")
     if not auth_ep:
-        raise HTTPException(status_code=500, detail="OIDC metadata missing authorization_endpoint")
+        raise http_error(request, 500, "OIDC_METADATA_MISSING_AUTH_ENDPOINT")
     state = secrets.token_urlsafe(32)
     request.session["oauth_state"] = state
     params = {
@@ -488,6 +494,10 @@ class AuthUserOut(BaseModel):
         default_factory=list,
         description="Resolved operation permissions; IdP admins receive the full catalog.",
     )
+    ui_locale: str | None = Field(
+        default=None,
+        description="Saved UI language from user_preferences (en or zh-CN).",
+    )
 
 
 class TokenResponse(BaseModel):
@@ -526,17 +536,18 @@ def _verify_password(password: str, password_hash: str) -> bool:
 
 @api_auth_router.post("/register", response_model=TokenResponse)
 async def register(
+    request: Request,
     body: RegisterBody,
     db: AsyncSession = Depends(get_db),
 ):
     if settings.auth_mode != "local":
-        raise HTTPException(status_code=404, detail="Registration is only available in local auth mode")
+        raise http_error(request, 404, "REGISTRATION_LOCAL_ONLY")
     if not settings.allow_signup:
-        raise HTTPException(status_code=403, detail="Sign up is disabled")
+        raise http_error(request, 403, "SIGNUP_DISABLED")
 
     username = body.username.strip()
     if not username:
-        raise HTTPException(status_code=400, detail="Username is required")
+        raise http_error(request, 400, "USERNAME_REQUIRED")
 
     cnt = await db.scalar(select(func.count()).select_from(User))
     is_admin = False
@@ -555,7 +566,7 @@ async def register(
     try:
         await db.flush()
     except IntegrityError:
-        raise HTTPException(status_code=409, detail="Email or username already registered") from None
+        raise http_error(request, 409, "EMAIL_OR_USERNAME_TAKEN") from None
 
     from app.services.user_roles_sync import sync_security_roles_for_user
 
@@ -577,9 +588,9 @@ async def register(
 
 
 @api_auth_router.post("/login", response_model=TokenResponse)
-async def login_json(body: LoginBody, db: AsyncSession = Depends(get_db)):
+async def login_json(request: Request, body: LoginBody, db: AsyncSession = Depends(get_db)):
     if settings.auth_mode != "local":
-        raise HTTPException(status_code=404, detail="Password login is only available in local auth mode")
+        raise http_error(request, 404, "PASSWORD_LOGIN_LOCAL_ONLY")
 
     raw = body.login.strip()
     key = raw.lower()
@@ -588,7 +599,7 @@ async def login_json(body: LoginBody, db: AsyncSession = Depends(get_db)):
     )
     user = result.scalar_one_or_none()
     if not user or not _verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise http_error(request, 401, "INVALID_CREDENTIALS")
 
     token = mint_local_user_jwt(user)
     roles = ["admin"] if user.is_admin else []
@@ -688,7 +699,7 @@ def _current_owner_sub(request: Request) -> str:
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if not isinstance(sub, str) or sub == "local-cli":
-        raise HTTPException(status_code=403, detail="Cannot manage API keys for this principal")
+        raise http_error(request, 403, "CANNOT_MANAGE_API_KEYS_PRINCIPAL")
     return sub
 
 
@@ -778,7 +789,7 @@ async def revoke_api_key(
     sub = _current_owner_sub(request)
     row = await db.get(UserApiKey, key_id)
     if row is None or row.owner_sub != sub:
-        raise HTTPException(status_code=404, detail="API key not found")
+        raise http_error(request, 404, "API_KEY_NOT_FOUND")
     if row.revoked_at is not None:
         return Response(status_code=204)
     row.revoked_at = datetime.now(timezone.utc)
@@ -786,13 +797,34 @@ async def revoke_api_key(
     return Response(status_code=204)
 
 
-@api_auth_router.get("/me", response_model=AuthUserOut)
-async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
-    await authenticate_request(request, db)
+class MePatchBody(BaseModel):
+    ui_locale: Literal["en", "zh-CN"]
+
+
+async def _pref_ui_locale(db: AsyncSession, sub: str) -> str | None:
+    row = await db.get(UserPreference, sub)
+    if row is None or row.ui_locale is None:
+        return None
+    if row.ui_locale in ("en", "zh-CN"):
+        return row.ui_locale
+    return None
+
+
+async def _save_pref_ui_locale(db: AsyncSession, sub: str, ui_locale: Literal["en", "zh-CN"]) -> None:
+    row = await db.get(UserPreference, sub)
+    if row is None:
+        db.add(UserPreference(subject_sub=sub, ui_locale=ui_locale))
+    else:
+        row.ui_locale = ui_locale
+    await db.flush()
+
+
+async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut:
+    """Build ``AuthUserOut`` from JWT in ``request.state`` (after ``authenticate_request``)."""
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if not isinstance(sub, str):
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise http_error(request, 401, "INVALID_TOKEN")
     email = p.get("email")
     if email is not None and not isinstance(email, str):
         email = None
@@ -817,6 +849,7 @@ async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
     else:
         perm_set = await resolve_oidc_permission_keys(db, p)
         perms = sorted(perm_set)
+    ui_loc = await _pref_ui_locale(db, sub)
     return AuthUserOut(
         id=sub,
         email=email or "",
@@ -824,7 +857,26 @@ async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
         is_admin=is_admin,
         roles=role_strs,
         permissions=perms,
+        ui_locale=ui_loc,
     )
+
+
+@api_auth_router.get("/me", response_model=AuthUserOut)
+async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
+    await authenticate_request(request, db)
+    return await build_auth_user_out(request, db)
+
+
+@api_auth_router.patch("/me", response_model=AuthUserOut)
+async def patch_auth_me(request: Request, body: MePatchBody, db: AsyncSession = Depends(get_db)):
+    await authenticate_request(request, db)
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str) or sub == "local-cli":
+        raise http_error(request, 403, "CANNOT_EDIT_PROFILE_PRINCIPAL")
+    await _save_pref_ui_locale(db, sub, body.ui_locale)
+    await db.commit()
+    return await build_auth_user_out(request, db)
 
 
 @api_auth_router.post("/logout")

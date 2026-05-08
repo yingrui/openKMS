@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArticleChannels } from '../contexts/ArticleChannelsContext';
@@ -32,6 +33,7 @@ function findParentId(nodes: ChannelNode[], targetId: string, parent: string | n
 }
 
 export function ArticleChannelSettings() {
+  const { t } = useTranslation('articles');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error, refetch } = useArticleChannels();
@@ -47,10 +49,11 @@ export function ArticleChannelSettings() {
   const parentOptions = useMemo(() => flattenForParent(channels), [channels]);
 
   const moveParentChoices = useMemo(() => {
-    if (!channelId) return [{ id: '', name: 'None (top-level)', depth: 0 }];
+    const root = t('channelSettings.parentNone');
+    if (!channelId) return [{ id: '', name: root, depth: 0 }];
     const exclude = getDescendantIds(channels, channelId);
-    return [{ id: '', name: 'None (top-level)', depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
-  }, [channels, channelId, parentOptions]);
+    return [{ id: '', name: root, depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
+  }, [channels, channelId, parentOptions, t]);
 
   useEffect(() => {
     if (!channelId) navigate('/articles/channels');
@@ -69,7 +72,7 @@ export function ArticleChannelSettings() {
     if (!channelId || !channel) return;
     const name = nameField.trim();
     if (!name) {
-      toast.error('Name is required');
+      toast.error(t('channelSettings.nameRequired'));
       return;
     }
     setSaving(true);
@@ -80,20 +83,20 @@ export function ArticleChannelSettings() {
         parent_id: parentIdField || null,
       });
       await refetch();
-      toast.success('Channel settings saved');
+      toast.success(t('channelSettings.saved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save settings');
+      toast.error(e instanceof Error ? e.message : t('channelSettings.saveFailed'));
     } finally {
       setSaving(false);
     }
-  }, [channelId, channel, nameField, descriptionField, parentIdField, refetch]);
+  }, [channelId, channel, nameField, descriptionField, parentIdField, refetch, t]);
 
   if (!channelId) return null;
 
   if (loading) {
     return (
       <div className="document-channel-settings">
-        <p className="page-subtitle">Loading…</p>
+        <p className="page-subtitle">{t('channelSettings.loading')}</p>
       </div>
     );
   }
@@ -112,11 +115,11 @@ export function ArticleChannelSettings() {
       <div className="document-channel-settings">
         <Link to="/articles/channels" className="document-channel-settings-back">
           <ArrowLeft size={18} />
-          <span>Back to channel management</span>
+          <span>{t('channelSettings.backToManagement')}</span>
         </Link>
         <div className="page-header">
-          <h1>Channel not found</h1>
-          <p className="page-subtitle">This channel does not exist or you do not have access.</p>
+          <h1>{t('channelSettings.notFoundTitle')}</h1>
+          <p className="page-subtitle">{t('channelSettings.notFoundSubtitle')}</p>
         </div>
       </div>
     );
@@ -126,42 +129,42 @@ export function ArticleChannelSettings() {
     <div className="document-channel-settings">
       <Link to={`/articles/channels/${channelId}`} className="document-channel-settings-back">
         <ArrowLeft size={18} />
-        <span>Back to channel</span>
+        <span>{t('channelSettings.backToChannel')}</span>
       </Link>
 
       <div className="page-header">
-        <h1>Channel settings</h1>
-        <p className="page-subtitle">Configure {channelName}</p>
+        <h1>{t('channelSettings.pageTitle')}</h1>
+        <p className="page-subtitle">{t('channelSettings.configureSubtitle', { name: channelName })}</p>
       </div>
 
       <div className="document-channel-settings-form">
         <section className="document-channel-settings-section">
-          <h2>General</h2>
+          <h2>{t('channelSettings.general')}</h2>
           <p className="document-channel-settings-hint">
-            These channels only organize articles. Merge, reorder, and delete stay on the manage channels screen.
+            {t('channelSettings.generalHint')}
           </p>
           <div className="document-channel-settings-field">
-            <label htmlFor="ac-settings-name">Name</label>
+            <label htmlFor="ac-settings-name">{t('channelSettings.name')}</label>
             <input
               id="ac-settings-name"
               type="text"
               value={nameField}
               onChange={(e) => setNameField(e.target.value)}
-              placeholder="Channel name"
+              placeholder={t('channelSettings.namePlaceholder')}
             />
           </div>
           <div className="document-channel-settings-field">
-            <label htmlFor="ac-settings-description">Description</label>
+            <label htmlFor="ac-settings-description">{t('channelSettings.description')}</label>
             <textarea
               id="ac-settings-description"
               value={descriptionField}
               onChange={(e) => setDescriptionField(e.target.value)}
-              placeholder="Optional description"
+              placeholder={t('channelSettings.descPlaceholder')}
               rows={3}
             />
           </div>
           <div className="document-channel-settings-field">
-            <label htmlFor="ac-settings-parent">Parent</label>
+            <label htmlFor="ac-settings-parent">{t('channelSettings.parent')}</label>
             <select
               id="ac-settings-parent"
               value={parentIdField}
@@ -173,13 +176,13 @@ export function ArticleChannelSettings() {
                 </option>
               ))}
             </select>
-            <p className="document-channel-settings-hint">You cannot set a parent to this channel or its descendants.</p>
+            <p className="document-channel-settings-hint">{t('channelSettings.parentHint')}</p>
           </div>
         </section>
 
         <div className="document-channel-settings-actions">
           <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('channelSettings.saving') : t('channelSettings.save')}
           </button>
         </div>
       </div>

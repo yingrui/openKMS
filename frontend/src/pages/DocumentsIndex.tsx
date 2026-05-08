@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FileStack, Folder, Upload } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../data/channelUtils';
@@ -7,6 +8,7 @@ import { fetchDocumentStats } from '../data/documentsApi';
 import './DocumentsIndex.css';
 
 export function DocumentsIndex() {
+  const { t } = useTranslation('documents');
   const { channels, loading, error } = useDocumentChannels();
   const [documentCount, setDocumentCount] = useState<number | null>(null);
 
@@ -22,7 +24,7 @@ export function DocumentsIndex() {
     return (
       <div className="documents-index">
         <div className="page-header">
-          <p className="page-subtitle">Loading…</p>
+          <p className="page-subtitle">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -41,9 +43,9 @@ export function DocumentsIndex() {
   return (
     <div className="documents-index">
       <div className="page-header">
-        <h1>Documents</h1>
+        <h1>{t('index.title')}</h1>
         <p className="page-subtitle">
-          Organize documents in channel trees. Upload PDF, HTML, ZIP, or images. Manage channels to create your structure.
+          {t('index.subtitle')}
         </p>
       </div>
 
@@ -57,7 +59,7 @@ export function DocumentsIndex() {
           </div>
           <div className="documents-index-stat-content">
             <span className="documents-index-stat-value">{channelCount}</span>
-            <span className="documents-index-stat-label">Channels</span>
+            <span className="documents-index-stat-label">{t('index.statChannels')}</span>
           </div>
         </Link>
         <Link
@@ -69,25 +71,25 @@ export function DocumentsIndex() {
           </div>
           <div className="documents-index-stat-content">
             <span className="documents-index-stat-value">{documentCount ?? '–'}</span>
-            <span className="documents-index-stat-label">Documents</span>
+            <span className="documents-index-stat-label">{t('index.statDocuments')}</span>
           </div>
         </Link>
       </section>
 
       <div className="documents-index-grid">
         <section className="documents-index-card">
-          <h2>Quick Actions</h2>
+          <h2>{t('index.quickActions')}</h2>
           <div className="documents-index-quick-actions">
             <Link to="/documents/channels" className="documents-index-quick-action">
               <Folder size={20} />
-              <span>Manage channels</span>
+              <span>{t('index.manageChannels')}</span>
             </Link>
             <Link
               to={firstLeafId ? `/documents/channels/${firstLeafId}` : '/documents/channels'}
               className="documents-index-quick-action"
             >
               <Upload size={20} />
-              <span>Upload document</span>
+              <span>{t('index.uploadDocument')}</span>
             </Link>
           </div>
         </section>

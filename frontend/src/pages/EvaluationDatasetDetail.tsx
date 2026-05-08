@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Plus,
@@ -41,6 +42,7 @@ const DEFAULT_ITEMS_PAGE_SIZE = 10;
 import './EvaluationDatasetDetail.css';
 
 export function EvaluationDatasetDetail() {
+  const { t } = useTranslation('workspace');
   const { id: datasetId } = useParams<{ id: string }>();
   const [dataset, setDataset] = useState<EvaluationDatasetResponse | null>(null);
   const [items, setItems] = useState<EvaluationDatasetItemResponse[]>([]);
@@ -85,11 +87,11 @@ export function EvaluationDatasetDetail() {
       const data = await fetchEvaluationDataset(datasetId);
       setDataset(data);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load evaluation dataset');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastLoadDatasetFailed'));
     } finally {
       setLoading(false);
     }
-  }, [datasetId]);
+  }, [datasetId, t]);
 
   const fetchItemsForPage = useCallback(
     async (page: number) => {
@@ -107,12 +109,12 @@ export function EvaluationDatasetDetail() {
         setItemsTotal(res.total);
         setItemsPage(page);
       } catch (e: unknown) {
-        toast.error(e instanceof Error ? e.message : 'Failed to load items');
+        toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastLoadItemsFailed'));
       } finally {
         setItemsLoading(false);
       }
     },
-    [datasetId, itemsPageSize]
+    [datasetId, itemsPageSize, t]
   );
 
   useEffect(() => {
@@ -153,11 +155,11 @@ export function EvaluationDatasetDetail() {
       setItemQuery('');
       setItemExpected('');
       setItemTopic('');
-      toast.success('Item added');
+      toast.success(t('evaluationDetail.toastAddSuccess'));
       await fetchItemsForPage(itemsPage);
       loadDataset();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to add item');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastAddFailed'));
     } finally {
       setItemSaving(false);
     }
@@ -176,25 +178,25 @@ export function EvaluationDatasetDetail() {
       setItemQuery('');
       setItemExpected('');
       setItemTopic('');
-      toast.success('Item updated');
+      toast.success(t('evaluationDetail.toastUpdateSuccess'));
       await fetchItemsForPage(itemsPage);
       loadDataset();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update item');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastUpdateFailed'));
     } finally {
       setItemSaving(false);
     }
   };
 
   const handleDeleteItem = async (item: EvaluationDatasetItemResponse) => {
-    if (!datasetId || !confirm('Delete this item?')) return;
+    if (!datasetId || !confirm(t('evaluationDetail.deleteItemConfirm'))) return;
     try {
       await deleteEvaluationDatasetItem(datasetId, item.id);
-      toast.success('Item deleted');
+      toast.success(t('evaluationDetail.toastItemDeleted'));
       await fetchItemsForPage(itemsPage);
       loadDataset();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete item');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastDeleteItemFailed'));
     }
   };
 
@@ -222,11 +224,11 @@ export function EvaluationDatasetDetail() {
     setImporting(true);
     try {
       const res = await importEvaluationDatasetItems(datasetId, file);
-      toast.success(`Imported ${res.imported} items`);
+      toast.success(t('evaluationDetail.toastImported', { count: res.imported }));
       loadDataset();
       await fetchItemsForPage(0);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to import CSV');
+      toast.error(err instanceof Error ? err.message : t('evaluationDetail.toastImportFailed'));
     } finally {
       setImporting(false);
     }
@@ -239,10 +241,16 @@ export function EvaluationDatasetDetail() {
     try {
       const res = await runEvaluation(datasetId, { evaluation_type: evaluationType });
       setRunView(res);
-      toast.success(`Run ${res.run_id.slice(0, 8)}… · ${res.pass_count}/${res.item_count} pass`);
+      toast.success(
+        t('evaluationDetail.toastRunSuccess', {
+          runId: `${res.run_id.slice(0, 8)}…`,
+          pass: res.pass_count,
+          total: res.item_count,
+        }),
+      );
       loadRuns();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to run evaluation');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastRunFailed'));
     } finally {
       setRunning(false);
     }
@@ -253,14 +261,14 @@ export function EvaluationDatasetDetail() {
     try {
       const res = await getEvaluationRun(datasetId, runId);
       setRunView(res);
-      toast.success('Loaded run');
+      toast.success(t('evaluationDetail.toastLoadedRun'));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load run');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastLoadRunFailed'));
     }
   };
 
   const handleDeleteRun = async (runId: string) => {
-    if (!datasetId || !confirm('Delete this evaluation run from history?')) return;
+    if (!datasetId || !confirm(t('evaluationDetail.deleteRunConfirm'))) return;
     setDeletingRunId(runId);
     try {
       await deleteEvaluationRun(datasetId, runId);
@@ -273,10 +281,10 @@ export function EvaluationDatasetDetail() {
       ) {
         setCompareData(null);
       }
-      toast.success('Run deleted');
+      toast.success(t('evaluationDetail.toastRunDeleted'));
       await loadRuns();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete run');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastDeleteRunFailed'));
     } finally {
       setDeletingRunId(null);
     }
@@ -284,7 +292,7 @@ export function EvaluationDatasetDetail() {
 
   const handleCompare = async () => {
     if (!datasetId || !compareRunA || !compareRunB || compareRunA === compareRunB) {
-      toast.error('Pick two different runs');
+      toast.error(t('evaluationDetail.toastPickTwoRuns'));
       return;
     }
     setCompareLoading(true);
@@ -293,7 +301,7 @@ export function EvaluationDatasetDetail() {
       const res = await compareEvaluationRuns(datasetId, compareRunA, compareRunB);
       setCompareData(res);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to compare');
+      toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastCompareFailed'));
     } finally {
       setCompareLoading(false);
     }
@@ -302,7 +310,7 @@ export function EvaluationDatasetDetail() {
   if (loading || !dataset) {
     return (
       <div className="eval-detail">
-        <p className="eval-detail-loading">Loading...</p>
+        <p className="eval-detail-loading">{t('evaluationDetail.loading')}</p>
       </div>
     );
   }
@@ -311,7 +319,7 @@ export function EvaluationDatasetDetail() {
     <div className="eval-detail">
       <Link to="/evaluation-datasets" className="eval-detail-back">
         <ArrowLeft size={18} />
-        <span>Back to Evaluation</span>
+        <span>{t('evaluationDetail.back')}</span>
       </Link>
 
       <header className="eval-detail-header">
@@ -324,15 +332,15 @@ export function EvaluationDatasetDetail() {
         </div>
         <div className="eval-detail-header-actions">
           <label className="eval-detail-type-label">
-            <span>Type</span>
+            <span>{t('evaluationDetail.typeLabel')}</span>
             <select
               value={evaluationType}
               onChange={(e) => setEvaluationType(e.target.value)}
               disabled={running}
               className="eval-detail-type-select"
             >
-              <option value={EVAL_TYPE_SEARCH}>Search retrieval</option>
-              <option value={EVAL_TYPE_QA}>Question answering (agent)</option>
+              <option value={EVAL_TYPE_SEARCH}>{t('evaluationDetail.evalTypeSearch')}</option>
+              <option value={EVAL_TYPE_QA}>{t('evaluationDetail.evalTypeQa')}</option>
             </select>
           </label>
           <button
@@ -342,14 +350,14 @@ export function EvaluationDatasetDetail() {
             disabled={running || itemsTotal === 0}
           >
             {running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-            <span>{running ? 'Running...' : 'Run evaluation'}</span>
+            <span>{running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
           </button>
         </div>
       </header>
 
       <section className="eval-detail-section">
         <div className="eval-detail-section-header">
-          <h2>Items ({itemsTotal})</h2>
+          <h2>{t('evaluationDetail.itemsHeading', { count: itemsTotal })}</h2>
           <div className="eval-detail-section-actions">
             <input
               ref={fileInputRef}
@@ -366,7 +374,7 @@ export function EvaluationDatasetDetail() {
               disabled={importing}
             >
               {importing ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-              <span>{importing ? 'Importing...' : 'Import Data'}</span>
+              <span>{importing ? t('evaluationDetail.importing') : t('evaluationDetail.importData')}</span>
             </button>
             <button
               type="button"
@@ -379,17 +387,17 @@ export function EvaluationDatasetDetail() {
               }}
             >
               <Plus size={16} />
-              <span>Add Item</span>
+              <span>{t('evaluationDetail.addItem')}</span>
             </button>
             <label className="eval-items-page-size">
-              <span className="eval-items-page-size-label">Per page</span>
+              <span className="eval-items-page-size-label">{t('evaluationDetail.perPage')}</span>
               <select
                 value={itemsPageSize}
                 onChange={(e) => {
                   setItemsPageSize(Number(e.target.value));
                   setItemsPage(0);
                 }}
-                aria-label="Items per page"
+                aria-label={t('evaluationDetail.itemsPerPageAria')}
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
@@ -401,41 +409,41 @@ export function EvaluationDatasetDetail() {
         </div>
 
         {itemsLoading && items.length === 0 ? (
-          <p className="eval-detail-loading">Loading items…</p>
+          <p className="eval-detail-loading">{t('evaluationDetail.loadingItems')}</p>
         ) : itemsTotal === 0 ? (
-          <p className="eval-empty-text">No items yet. Add query + expected answer pairs.</p>
+          <p className="eval-empty-text">{t('evaluationDetail.emptyItems')}</p>
         ) : (
           <>
             <div className={`eval-table-wrap ${itemsLoading ? 'eval-table-wrap--loading' : ''}`}>
               <table className="eval-table">
                 <thead>
                   <tr>
-                    <th>Topic</th>
-                    <th>Query</th>
-                    <th>Expected Answer</th>
-                    <th className="eval-table-actions">Actions</th>
+                    <th>{t('evaluationDetail.colTopic')}</th>
+                    <th>{t('evaluationDetail.colQuery')}</th>
+                    <th>{t('evaluationDetail.colExpected')}</th>
+                    <th className="eval-table-actions">{t('evaluationDetail.colActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((item) => (
                     <tr key={item.id}>
-                      <td className="eval-table-topic">{item.topic ?? '—'}</td>
+                      <td className="eval-table-topic">{item.topic ?? t('shared.dash')}</td>
                       <td className="eval-table-query">{item.query}</td>
                       <td className="eval-table-expected">{item.expected_answer}</td>
                       <td className="eval-table-actions">
                         <div className="eval-table-btns">
                           <button
                             type="button"
-                            title="Edit"
-                            aria-label="Edit"
+                            title={t('shared.edit')}
+                            aria-label={t('shared.edit')}
                             onClick={() => openEditItem(item)}
                           >
                             <Pencil size={16} />
                           </button>
                           <button
                             type="button"
-                            title="Delete"
-                            aria-label="Delete"
+                            title={t('shared.delete')}
+                            aria-label={t('shared.delete')}
                             onClick={() => handleDeleteItem(item)}
                           >
                             <Trash2 size={16} />
@@ -454,7 +462,9 @@ export function EvaluationDatasetDetail() {
               return (
                 <div className="eval-items-pagination">
                   <span className="eval-items-pagination-range">
-                    {itemsTotal === 0 ? '0 items' : `Showing ${from}–${to} of ${itemsTotal}`}
+                    {itemsTotal === 0
+                      ? t('evaluationDetail.paginationZero')
+                      : t('evaluationDetail.paginationRange', { from, to, total: itemsTotal })}
                   </span>
                   <div className="eval-items-pagination-nav">
                     <button
@@ -462,19 +472,19 @@ export function EvaluationDatasetDetail() {
                       className="btn btn-secondary btn-sm"
                       disabled={itemsPage <= 0 || itemsLoading}
                       onClick={() => setItemsPage((p) => Math.max(0, p - 1))}
-                      aria-label="Previous page"
+                      aria-label={t('evaluationDetail.prevPageAria')}
                     >
                       <ChevronLeft size={18} />
                     </button>
                     <span className="eval-items-pagination-page">
-                      Page {itemsPage + 1} / {totalPages}
+                      {t('evaluationDetail.pageOf', { current: itemsPage + 1, total: totalPages })}
                     </span>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
                       disabled={itemsPage >= totalPages - 1 || itemsLoading}
                       onClick={() => setItemsPage((p) => p + 1)}
-                      aria-label="Next page"
+                      aria-label={t('evaluationDetail.nextPageAria')}
                     >
                       <ChevronRight size={18} />
                     </button>
@@ -488,7 +498,7 @@ export function EvaluationDatasetDetail() {
 
       <section className="eval-detail-section">
         <div className="eval-detail-section-header">
-          <h2>Run history</h2>
+          <h2>{t('evaluationDetail.runHistory')}</h2>
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -496,22 +506,22 @@ export function EvaluationDatasetDetail() {
             disabled={runsLoading}
           >
             {runsLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-            <span>Refresh</span>
+            <span>{t('shared.refresh')}</span>
           </button>
         </div>
         {runs.length === 0 ? (
-          <p className="eval-empty-text">No saved runs yet. Run an evaluation to create a report.</p>
+          <p className="eval-empty-text">{t('evaluationDetail.emptyRuns')}</p>
         ) : (
           <div className="eval-table-wrap">
             <table className="eval-table eval-runs-table">
               <thead>
                 <tr>
-                  <th>When</th>
-                  <th>Type</th>
-                  <th>Pass</th>
-                  <th>Avg score</th>
-                  <th>Status</th>
-                  <th className="eval-table-actions">Actions</th>
+                  <th>{t('evaluationDetail.colWhen')}</th>
+                  <th>{t('evaluationDetail.colType')}</th>
+                  <th>{t('evaluationDetail.colPass')}</th>
+                  <th>{t('evaluationDetail.colAvgScore')}</th>
+                  <th>{t('evaluationDetail.colStatus')}</th>
+                  <th className="eval-table-actions">{t('evaluationDetail.colActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -524,14 +534,14 @@ export function EvaluationDatasetDetail() {
                     <td>
                       {r.pass_count}/{r.item_count}
                     </td>
-                    <td>{r.avg_score != null ? r.avg_score.toFixed(2) : '—'}</td>
+                    <td>{r.avg_score != null ? r.avg_score.toFixed(2) : t('shared.dash')}</td>
                     <td>{r.status}</td>
                     <td className="eval-table-actions">
                       <div className="eval-table-btns">
                         <button
                           type="button"
-                          title="View"
-                          aria-label="View run"
+                          title={t('evaluationDetail.viewTitle')}
+                          aria-label={t('evaluationDetail.viewRunAria')}
                           onClick={() => handleLoadRun(r.id)}
                           disabled={deletingRunId === r.id}
                         >
@@ -539,8 +549,8 @@ export function EvaluationDatasetDetail() {
                         </button>
                         <button
                           type="button"
-                          title="Delete"
-                          aria-label="Delete run"
+                          title={t('evaluationDetail.deleteRunTitle')}
+                          aria-label={t('evaluationDetail.deleteRunAria')}
                           onClick={() => handleDeleteRun(r.id)}
                           disabled={deletingRunId === r.id}
                         >
@@ -561,19 +571,19 @@ export function EvaluationDatasetDetail() {
       </section>
 
       <section className="eval-detail-section">
-        <h2>Compare runs</h2>
+        <h2>{t('evaluationDetail.compareRuns')}</h2>
         <p className="eval-compare-hint">
-          Select two runs to compare pass/score per dataset item (same items in both runs).
+          {t('evaluationDetail.compareHint')}
         </p>
         <div className="eval-compare-controls">
           <label>
-            <span>Run A</span>
+            <span>{t('evaluationDetail.runA')}</span>
             <select
               value={compareRunA}
               onChange={(e) => setCompareRunA(e.target.value)}
               className="eval-compare-select"
             >
-              <option value="">—</option>
+              <option value="">{t('shared.dash')}</option>
               {runs.map((r) => {
                 const model = r.judge_model_name || r.judge_model_id;
                 return (
@@ -591,13 +601,13 @@ export function EvaluationDatasetDetail() {
             )}
           </label>
           <label>
-            <span>Run B</span>
+            <span>{t('evaluationDetail.runB')}</span>
             <select
               value={compareRunB}
               onChange={(e) => setCompareRunB(e.target.value)}
               className="eval-compare-select"
             >
-              <option value="">—</option>
+              <option value="">{t('shared.dash')}</option>
               {runs.map((r) => {
                 const model = r.judge_model_name || r.judge_model_id;
                 return (
@@ -621,7 +631,7 @@ export function EvaluationDatasetDetail() {
             disabled={compareLoading || !compareRunA || !compareRunB}
           >
             {compareLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-            <span>Compare</span>
+            <span>{compareLoading ? t('evaluationDetail.comparing') : t('evaluationDetail.compare')}</span>
           </button>
         </div>
         {compareData && compareData.rows.length > 0 && (
@@ -629,25 +639,25 @@ export function EvaluationDatasetDetail() {
             <table className="eval-table">
               <thead>
                 <tr>
-                  <th>Query</th>
-                  <th>Pass A</th>
-                  <th>Score A</th>
-                  <th>Pass B</th>
-                  <th>Score B</th>
-                  <th>Δ score</th>
-                  <th>Pass changed</th>
+                  <th>{t('evaluationDetail.compareColQuery')}</th>
+                  <th>{t('evaluationDetail.compareColPassA')}</th>
+                  <th>{t('evaluationDetail.compareColScoreA')}</th>
+                  <th>{t('evaluationDetail.compareColPassB')}</th>
+                  <th>{t('evaluationDetail.compareColScoreB')}</th>
+                  <th>{t('evaluationDetail.compareColDelta')}</th>
+                  <th>{t('evaluationDetail.compareColPassChanged')}</th>
                 </tr>
               </thead>
               <tbody>
                 {compareData.rows.map((row) => (
                   <tr key={row.evaluation_dataset_item_id}>
                     <td className="eval-table-query">{row.query.slice(0, 120)}{row.query.length > 120 ? '…' : ''}</td>
-                    <td>{row.pass_a ? 'Yes' : 'No'}</td>
+                    <td>{row.pass_a ? t('shared.yes') : t('shared.no')}</td>
                     <td>{row.score_a.toFixed(2)}</td>
-                    <td>{row.pass_b ? 'Yes' : 'No'}</td>
+                    <td>{row.pass_b ? t('shared.yes') : t('shared.no')}</td>
                     <td>{row.score_b.toFixed(2)}</td>
                     <td>{row.score_delta >= 0 ? '+' : ''}{row.score_delta.toFixed(2)}</td>
-                    <td>{row.pass_changed ? 'Yes' : 'No'}</td>
+                    <td>{row.pass_changed ? t('shared.yes') : t('shared.no')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -658,52 +668,61 @@ export function EvaluationDatasetDetail() {
 
       {runView && runView.results.length > 0 && (
         <section className="eval-detail-section eval-results-section">
-          <h2>Run detail</h2>
+          <h2>{t('evaluationDetail.runDetail')}</h2>
           <div className="eval-results-meta">
             <span>
-              <strong>Run</strong> <code>{runView.run_id}</code>
+              <strong>{t('evaluationDetail.runMetaRun')}</strong> <code>{runView.run_id}</code>
             </span>
             <span>
-              <strong>Type</strong> <code>{runView.evaluation_type}</code>
+              <strong>{t('evaluationDetail.runMetaType')}</strong> <code>{runView.evaluation_type}</code>
             </span>
             <span>
-              <strong>Status</strong> {runView.status}
+              <strong>{t('evaluationDetail.runMetaStatus')}</strong> {runView.status}
             </span>
           </div>
           <div className="eval-results-summary">
-            Pass: {runView.pass_count} / {runView.item_count} · Avg score:{' '}
-            {runView.avg_score != null ? runView.avg_score.toFixed(2) : '—'}
+            {t('evaluationDetail.resultsSummary', {
+              pass: runView.pass_count,
+              total: runView.item_count,
+              avg:
+                runView.avg_score != null ? runView.avg_score.toFixed(2) : t('shared.dash'),
+            })}
           </div>
           <div className="eval-results-list">
             {runView.results.map((r) => (
               <div key={r.item_id} className="eval-result-item">
                 <div className="eval-result-header">
                   <span className={`eval-result-badge ${r.pass ? 'eval-result-pass' : 'eval-result-fail'}`}>
-                    {r.pass ? 'Pass' : 'Fail'}
+                    {r.pass ? t('evaluationDetail.pass') : t('evaluationDetail.fail')}
                   </span>
-                  <span className="eval-result-score">Score: {r.score.toFixed(2)}</span>
+                  <span className="eval-result-score">
+                    {t('evaluationDetail.scoreShort', { score: r.score.toFixed(2) })}
+                  </span>
                 </div>
                 <div className="eval-result-query">
-                  <strong>Query:</strong> {r.query}
+                  <strong>{t('evaluationDetail.queryLabel')}</strong> {r.query}
                 </div>
                 <div className="eval-result-expected">
-                  <strong>Expected:</strong>
+                  <strong>{t('evaluationDetail.expectedLabel')}</strong>
                   <p>{r.expected_answer}</p>
                 </div>
                 {runView.evaluation_type === EVAL_TYPE_QA && r.generated_answer != null && r.generated_answer !== '' && (
                   <div className="eval-result-generated">
-                    <strong>Generated answer:</strong>
+                    <strong>{t('evaluationDetail.generatedAnswer')}</strong>
                     <p>{r.generated_answer}</p>
                   </div>
                 )}
                 {runView.evaluation_type === EVAL_TYPE_QA && (r.qa_sources?.length ?? 0) > 0 && (
                   <div className="eval-result-snippets">
-                    <strong>Sources:</strong>
+                    <strong>{t('evaluationDetail.sourcesLabel')}</strong>
                     <ul>
                       {(r.qa_sources ?? []).map((s, i) => (
                         <li key={i}>
                           <span className="eval-snippet-meta">
-                            [{s.source_type}] score={s.score.toFixed(2)}
+                            {t('evaluationDetail.snippetMeta', {
+                              type: s.source_type,
+                              score: s.score.toFixed(2),
+                            })}
                           </span>
                           {s.content}
                         </li>
@@ -712,17 +731,20 @@ export function EvaluationDatasetDetail() {
                   </div>
                 )}
                 <div className="eval-result-reasoning">
-                  <strong>Judge reasoning:</strong>
+                  <strong>{t('evaluationDetail.judgeReasoning')}</strong>
                   <p>{r.reasoning}</p>
                 </div>
                 {runView.evaluation_type === EVAL_TYPE_SEARCH && r.search_results.length > 0 && (
                   <div className="eval-result-snippets">
-                    <strong>Top search results:</strong>
+                    <strong>{t('evaluationDetail.topSearchResults')}</strong>
                     <ul>
                       {r.search_results.map((s, i) => (
                         <li key={i}>
                           <span className="eval-snippet-meta">
-                            [{s.source_type}] score={s.score.toFixed(2)}
+                            {t('evaluationDetail.snippetMeta', {
+                              type: s.source_type,
+                              score: s.score.toFixed(2),
+                            })}
                           </span>
                           {s.content}
                         </li>
@@ -738,9 +760,9 @@ export function EvaluationDatasetDetail() {
 
       {runView && runView.results.length === 0 && (
         <section className="eval-detail-section eval-results-section">
-          <h2>Run detail</h2>
+          <h2>{t('evaluationDetail.runDetail')}</h2>
           <p className="eval-empty-text">
-            Run <code>{runView.run_id}</code> has no item results ({runView.status}).
+            {t('evaluationDetail.runEmpty', { runId: runView.run_id, status: runView.status })}
             {runView.error_message ? (
               <>
                 {' '}
@@ -755,43 +777,43 @@ export function EvaluationDatasetDetail() {
         <div className="eval-dialog-overlay" onClick={closeItemForm}>
           <div className="eval-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="eval-dialog-header">
-              <h2>{editItem ? 'Edit Item' : 'Add Item'}</h2>
+              <h2>{editItem ? t('evaluationDetail.dialogEditItem') : t('evaluationDetail.dialogAddItem')}</h2>
               <button type="button" className="eval-dialog-close" onClick={closeItemForm}>
                 <X size={20} />
               </button>
             </div>
             <div className="eval-dialog-body">
               <label>
-                <span>Topic (optional)</span>
+                <span>{t('evaluationDetail.topicOptional')}</span>
                 <input
                   type="text"
                   value={itemTopic}
                   onChange={(e) => setItemTopic(e.target.value)}
-                  placeholder="e.g. 投保年龄"
+                  placeholder={t('evaluationDetail.topicPlaceholder')}
                 />
               </label>
               <label>
-                <span>Query</span>
+                <span>{t('evaluationDetail.queryLabelForm')}</span>
                 <textarea
                   value={itemQuery}
                   onChange={(e) => setItemQuery(e.target.value)}
-                  placeholder="Question to ask"
+                  placeholder={t('evaluationDetail.queryPlaceholder')}
                   rows={3}
                 />
               </label>
               <label>
-                <span>Expected Answer</span>
+                <span>{t('evaluationDetail.expectedLabelForm')}</span>
                 <textarea
                   value={itemExpected}
                   onChange={(e) => setItemExpected(e.target.value)}
-                  placeholder="Expected answer"
+                  placeholder={t('evaluationDetail.expectedPlaceholder')}
                   rows={4}
                 />
               </label>
             </div>
             <div className="eval-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeItemForm}>
-                Cancel
+                {t('evaluationDetail.cancel')}
               </button>
               <button
                 type="button"
@@ -799,7 +821,7 @@ export function EvaluationDatasetDetail() {
                 disabled={!itemQuery.trim() || !itemExpected.trim() || itemSaving}
                 onClick={editItem ? handleUpdateItem : handleAddItem}
               >
-                {itemSaving ? 'Saving...' : editItem ? 'Save' : 'Add'}
+                {itemSaving ? t('evaluationDetail.saving') : editItem ? t('evaluationDetail.save') : t('evaluationDetail.add')}
               </button>
             </div>
           </div>

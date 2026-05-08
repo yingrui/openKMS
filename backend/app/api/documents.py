@@ -17,6 +17,7 @@ from app.api.auth import get_jwt_payload, require_auth
 from app.config import settings
 from app.constants import DocumentStatus
 from app.database import get_db
+from app.i18n.errors import http_error
 from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
@@ -60,7 +61,7 @@ async def _require_document_in_scope(request: Request, db: AsyncSession, doc: Do
     if not isinstance(sub, str):
         return
     if not await document_passes_scoped_predicate(db, p, sub, doc):
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise http_error(request, 404, "DOCUMENT_NOT_FOUND")
 
 
 async def get_scoped_document(
@@ -70,7 +71,7 @@ async def get_scoped_document(
 ) -> Document:
     doc = await db.get(Document, document_id)
     if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise http_error(request, 404, "DOCUMENT_NOT_FOUND")
     await _require_document_in_scope(request, db, doc)
     return doc
 
@@ -147,7 +148,7 @@ async def list_documents(
         all_channels = list(result.scalars().all())
         target = next((c for c in all_channels if c.id == channel_id), None)
         if not target:
-            raise HTTPException(status_code=404, detail="Channel not found")
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
         ids_to_include: set[str] = set()
         _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
         if not ids_to_include:
@@ -186,14 +187,14 @@ async def upload_document(
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
         if not await channel_allowed_for_document_upload(db, sub, channel_id):
-            raise HTTPException(status_code=404, detail="Channel not found")
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
 
     content = await file.read()
     if not content:
-        raise HTTPException(status_code=400, detail="Empty file")
+        raise http_error(request, 400, "DOCUMENT_EMPTY_FILE")
 
     filename = file.filename or "document.pdf"
 
@@ -475,10 +476,10 @@ async def update_document(
         sub = p.get("sub")
         if isinstance(sub, str) and scope_applies(p, sub):
             if not await channel_allowed_for_document_upload(db, sub, body.channel_id):
-                raise HTTPException(status_code=404, detail="Channel not found")
+                raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
         channel = await db.get(DocumentChannel, body.channel_id)
         if not channel:
-            raise HTTPException(status_code=404, detail="Channel not found")
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
         doc.channel_id = body.channel_id
     await db.commit()
     await db.refresh(doc)
@@ -782,7 +783,7 @@ async def extract_document_metadata(
 
     channel = await db.get(DocumentChannel, doc.channel_id)
     if not channel:
-        raise HTTPException(status_code=404, detail="Channel not found")
+        raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
 
     model_id = channel.extraction_model_id or settings.extraction_model_id
     if not model_id:
@@ -877,7 +878,7 @@ async def get_document_file(
         raise HTTPException(status_code=400, detail="Invalid path")
 
     if not doc.file_hash or doc.file_hash.lower() != file_hash.lower():
-        raise HTTPException(status_code=404, detail="Document not found")
+        raise http_error(request, 404, "DOCUMENT_NOT_FOUND")
 
     try:
         key = _storage_key(file_hash, path)

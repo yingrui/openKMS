@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.config import settings
 from app.database import get_db
+from app.i18n.errors import http_error
 from app.schemas.global_search import GlobalSearchResponse
 from app.services.global_search import allowed_types_from_permissions, parse_types_param, run_global_search
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
@@ -17,14 +18,14 @@ from app.services.permission_resolution import resolve_oidc_permission_keys, res
 router = APIRouter(prefix="/search", tags=["search"], dependencies=[Depends(require_auth)])
 
 
-def _parse_optional_dt(raw: str | None, label: str) -> datetime | None:
+def _parse_optional_dt(request: Request, raw: str | None, label: str) -> datetime | None:
     if raw is None or not raw.strip():
         return None
     s = raw.strip()
     try:
         return datetime.fromisoformat(s.replace("Z", "+00:00"))
     except ValueError as e:
-        raise HTTPException(status_code=422, detail=f"Invalid {label}: use ISO 8601 datetime") from e
+        raise http_error(request, 422, "SEARCH_INVALID_DATETIME_PARAM", label=label) from e
 
 
 async def _resolve_perms(request: Request, db: AsyncSession) -> frozenset[str]:
@@ -37,13 +38,14 @@ async def _resolve_perms(request: Request, db: AsyncSession) -> frozenset[str]:
     return frozenset(await resolve_oidc_permission_keys(db, payload))
 
 
-def _forbidden_if_no_overlap(requested: set[str], allowed: set[str]) -> None:
+def _forbidden_if_no_overlap(request: Request, requested: set[str], allowed: set[str]) -> None:
     if not requested:
         return
     if not (requested & allowed):
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have permission to search the requested resource types.",
+        raise http_error(
+            request,
+            403,
+            "SEARCH_RESOURCE_TYPES_FORBIDDEN",
         )
 
 
@@ -62,13 +64,13 @@ async def global_search(
     perms = await _resolve_perms(request, db)
     requested = parse_types_param(types)
     allowed = allowed_types_from_permissions(perms)
-    _forbidden_if_no_overlap(requested, allowed)
+    _forbidden_if_no_overlap(request, requested, allowed)
 
     sub = request.state.openkms_jwt_payload.get("sub")
     sub_str = sub if isinstance(sub, str) else None
 
-    ua = _parse_optional_dt(updated_after, "updated_after")
-    ub = _parse_optional_dt(updated_before, "updated_before")
+    ua = _parse_optional_dt(request, updated_after, "updated_after")
+    ub = _parse_optional_dt(request, updated_before, "updated_before")
 
     out, err = await run_global_search(
         db,
@@ -84,11 +86,11 @@ async def global_search(
         limit=limit,
     )
     if err == "forbidden":
-        raise HTTPException(status_code=403, detail="You do not have permission to search the requested resource types.")
+        raise http_error(request, 403, "SEARCH_RESOURCE_TYPES_FORBIDDEN")
     if err == "document_channel_not_found":
-        raise HTTPException(status_code=404, detail="Document channel not found")
+        raise http_error(request, 404, "SEARCH_DOCUMENT_CHANNEL_NOT_FOUND")
     if err == "article_channel_not_found":
-        raise HTTPException(status_code=404, detail="Article channel not found")
+        raise http_error(request, 404, "SEARCH_ARTICLE_CHANNEL_NOT_FOUND")
     assert out is not None
     return out
 
@@ -103,5 +105,5 @@ async def global_search_head(
     perms = await _resolve_perms(request, db)
     requested = parse_types_param(types)
     allowed = allowed_types_from_permissions(perms)
-    _forbidden_if_no_overlap(requested, allowed)
+    _forbidden_if_no_overlap(request, requested, allowed)
     return Response(status_code=200)

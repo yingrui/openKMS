@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './Header.css';
 
 export function Header() {
+  const { t } = useTranslation('layout');
   const location = useLocation();
   const navigate = useNavigate();
   const onConsole = location.pathname.startsWith('/console');
@@ -66,9 +68,9 @@ export function Header() {
               navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
             }
           }}
-          placeholder="Search documents, articles, ..."
+          placeholder={t('searchPlaceholder')}
           className="header-search-input"
-          aria-label="Search"
+          aria-label={t('searchAriaLabel')}
         />
         <kbd className="header-search-kbd">⌘K</kbd>
       </div>
@@ -77,7 +79,7 @@ export function Header() {
           (onConsole ? (
             <Link to="/" className="header-console-link header-console-link--exit">
               <ArrowLeft size={16} strokeWidth={1.75} aria-hidden />
-              <span>Exit Console</span>
+              <span>{t('exitConsole')}</span>
             </Link>
           ) : (
             <NavLink
@@ -86,14 +88,14 @@ export function Header() {
                 `header-console-link ${isActive ? 'header-console-link-active' : ''}`
               }
             >
-              <span>Console</span>
+              <span>{t('console')}</span>
             </NavLink>
           ))}
         <button
           type="button"
           onClick={toggleTheme}
           className="header-theme-btn"
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          aria-label={theme === 'light' ? t('switchToDark') : t('switchToLight')}
         >
           {theme === 'light' ? (
             <Moon size={20} strokeWidth={1.75} />
@@ -107,10 +109,10 @@ export function Header() {
               type="button"
               onClick={login}
               className="header-login-btn"
-              aria-label="Log in"
+              aria-label={t('logIn')}
             >
               <LogIn size={20} strokeWidth={1.75} />
-              <span>Log in</span>
+              <span>{t('logIn')}</span>
             </button>
           ) : (
             <>
@@ -118,7 +120,7 @@ export function Header() {
                 type="button"
                 onClick={() => setUserMenuOpen((v) => !v)}
                 className="header-user-btn"
-                aria-label="User menu"
+                aria-label={t('userMenu')}
                 aria-expanded={userMenuOpen}
                 aria-haspopup="true"
               >
@@ -127,7 +129,7 @@ export function Header() {
               {userMenuOpen && (
                 <div className="header-user-dropdown">
                   <div className="header-user-dropdown-header">
-                    <span className="header-user-name">{user?.name ?? user?.username ?? 'User'}</span>
+                    <span className="header-user-name">{user?.name ?? user?.username ?? t('fallbackUser')}</span>
                     <span className="header-user-email">{user?.email ?? ''}</span>
                   </div>
                   <div className="header-user-dropdown-divider" />
@@ -137,7 +139,7 @@ export function Header() {
                     onClick={() => setUserMenuOpen(false)}
                   >
                     <UserCircle size={18} />
-                    <span>Profile</span>
+                    <span>{t('profile')}</span>
                   </Link>
                   <Link
                     to="/settings"
@@ -145,7 +147,7 @@ export function Header() {
                     onClick={() => setUserMenuOpen(false)}
                   >
                     <Settings size={18} />
-                    <span>Settings</span>
+                    <span>{t('settings')}</span>
                   </Link>
                   <div className="header-user-dropdown-divider" />
                   <button
@@ -154,7 +156,7 @@ export function Header() {
                     onClick={logout}
                   >
                     <LogOut size={18} />
-                    <span>Log out</span>
+                    <span>{t('logOut')}</span>
                   </button>
                 </div>
               )}

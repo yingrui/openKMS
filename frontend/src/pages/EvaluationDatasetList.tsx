@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ClipboardList, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../data/knowled
 import './EvaluationDatasetList.css';
 
 export function EvaluationDatasetList() {
+  const { t } = useTranslation('workspace');
   const [datasets, setDatasets] = useState<EvaluationDatasetResponse[]>([]);
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,20 +27,19 @@ export function EvaluationDatasetList() {
 
   const load = async () => {
     try {
-      const [dsData, kbData] = await Promise.all([
-        fetchEvaluationDatasets(),
-        fetchKnowledgeBases(),
-      ]);
+      const [dsData, kbData] = await Promise.all([fetchEvaluationDatasets(), fetchKnowledgeBases()]);
       setDatasets(dsData.items);
       setKbs(kbData.items);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load evaluation datasets');
+      toast.error(e instanceof Error ? e.message : t('evaluation.loadFailed'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   const handleCreate = async () => {
     if (!formName.trim() || !formKbId) return;
@@ -53,10 +54,10 @@ export function EvaluationDatasetList() {
       setFormName('');
       setFormKbId('');
       setFormDesc('');
-      toast.success('Evaluation dataset created');
-      load();
+      toast.success(t('evaluation.createdToast'));
+      void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
+      toast.error(e instanceof Error ? e.message : t('evaluation.createFailed'));
     } finally {
       setSaving(false);
     }
@@ -73,10 +74,10 @@ export function EvaluationDatasetList() {
       setEditDs(null);
       setFormName('');
       setFormDesc('');
-      toast.success('Evaluation dataset updated');
-      load();
+      toast.success(t('evaluation.updatedToast'));
+      void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Update failed');
+      toast.error(e instanceof Error ? e.message : t('evaluation.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -85,13 +86,13 @@ export function EvaluationDatasetList() {
   const handleDelete = async (ds: EvaluationDatasetResponse, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Delete "${ds.name}"? This will remove all evaluation items.`)) return;
+    if (!confirm(t('evaluation.deleteConfirm', { name: ds.name }))) return;
     try {
       await deleteEvaluationDataset(ds.id);
-      toast.success('Evaluation dataset deleted');
-      load();
+      toast.success(t('evaluation.deletedToast'));
+      void load();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed');
+      toast.error(err instanceof Error ? err.message : t('shared.deleteFailed'));
     }
   };
 
@@ -115,10 +116,8 @@ export function EvaluationDatasetList() {
     <div className="eval-list">
       <div className="page-header eval-header">
         <div>
-          <h1>Evaluation</h1>
-          <p className="page-subtitle">
-            Manage query + expected answer pairs to evaluate KB QA performance. Experimental feature.
-          </p>
+          <h1>{t('evaluation.title')}</h1>
+          <p className="page-subtitle">{t('evaluation.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -131,16 +130,16 @@ export function EvaluationDatasetList() {
           }}
         >
           <Plus size={18} />
-          <span>New Dataset</span>
+          <span>{t('evaluation.newDataset')}</span>
         </button>
       </div>
 
-      {loading && <p className="eval-loading">Loading...</p>}
+      {loading && <p className="eval-loading">{t('evaluation.loading')}</p>}
 
       {!loading && datasets.length === 0 && (
         <div className="eval-empty">
           <ClipboardList size={48} strokeWidth={1} />
-          <p>No evaluation datasets yet. Create one to get started.</p>
+          <p>{t('evaluation.empty')}</p>
         </div>
       )}
 
@@ -152,19 +151,19 @@ export function EvaluationDatasetList() {
                 <ClipboardList size={28} strokeWidth={1.5} />
               </div>
               <div className="eval-card-actions">
-                <button type="button" title="Edit" aria-label="Edit" onClick={(e) => openEdit(ds, e)}>
+                <button type="button" title={t('shared.edit')} aria-label={t('shared.edit')} onClick={(e) => openEdit(ds, e)}>
                   <Pencil size={15} />
                 </button>
-                <button type="button" title="Delete" aria-label="Delete" onClick={(e) => handleDelete(ds, e)}>
+                <button type="button" title={t('shared.delete')} aria-label={t('shared.delete')} onClick={(e) => void handleDelete(ds, e)}>
                   <Trash2 size={15} />
                 </button>
               </div>
             </div>
             <h3>{ds.name}</h3>
-            <p className="eval-desc">{ds.description || 'No description'}</p>
+            <p className="eval-desc">{ds.description || t('evaluation.noDescription')}</p>
             <div className="eval-meta">
               <span>{ds.knowledge_base_name || ds.knowledge_base_id}</span>
-              <span>{ds.item_count} items</span>
+              <span>{t('evaluation.itemsCount', { count: ds.item_count })}</span>
             </div>
           </Link>
         ))}
@@ -174,56 +173,56 @@ export function EvaluationDatasetList() {
         <div className="eval-dialog-overlay" onClick={closeDialog}>
           <div className="eval-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="eval-dialog-header">
-              <h2>{editDs ? 'Edit Evaluation Dataset' : 'New Evaluation Dataset'}</h2>
-              <button type="button" className="eval-dialog-close" onClick={closeDialog}>
+              <h2>{editDs ? t('evaluation.dialogEdit') : t('evaluation.dialogNew')}</h2>
+              <button type="button" className="eval-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
                 <X size={20} />
               </button>
             </div>
             <div className="eval-dialog-body">
               <label>
-                <span>Name</span>
+                <span>{t('shared.name')}</span>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Dataset name"
+                  placeholder={t('evaluation.namePlaceholder')}
                   autoFocus
                 />
               </label>
               {showCreate && (
                 <label>
-                  <span>Knowledge Base</span>
-                  <select
-                    value={formKbId}
-                    onChange={(e) => setFormKbId(e.target.value)}
-                    required
-                  >
-                    <option value="">Select KB...</option>
+                  <span>{t('evaluation.knowledgeBase')}</span>
+                  <select value={formKbId} onChange={(e) => setFormKbId(e.target.value)} required>
+                    <option value="">{t('evaluation.selectKb')}</option>
                     {kbs.map((kb) => (
-                      <option key={kb.id} value={kb.id}>{kb.name}</option>
+                      <option key={kb.id} value={kb.id}>
+                        {kb.name}
+                      </option>
                     ))}
                   </select>
                 </label>
               )}
               <label>
-                <span>Description</span>
+                <span>{t('shared.description')}</span>
                 <textarea
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder="Optional description"
+                  placeholder={t('evaluation.descPlaceholder')}
                   rows={3}
                 />
               </label>
             </div>
             <div className="eval-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeDialog}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={closeDialog}>
+                {t('shared.cancel')}
+              </button>
               <button
                 type="button"
                 className="btn btn-primary"
                 disabled={!formName.trim() || (showCreate && !formKbId) || saving}
-                onClick={editDs ? handleEdit : handleCreate}
+                onClick={() => void (editDs ? handleEdit() : handleCreate())}
               >
-                {saving ? 'Saving...' : editDs ? 'Save' : 'Create'}
+                {saving ? t('evaluation.saving') : editDs ? t('shared.save') : t('shared.create')}
               </button>
             </div>
           </div>

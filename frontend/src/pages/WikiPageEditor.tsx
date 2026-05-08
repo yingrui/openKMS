@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import { Link, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { ArrowLeft, Network, Save } from 'lucide-react';
@@ -22,6 +23,7 @@ function previewUrlTransform(url: string): string {
 }
 
 export function WikiPageEditor() {
+  const { t } = useTranslation('explore');
   const { id: spaceId, pageId } = useParams<{ id: string; pageId: string }>();
   const [page, setPage] = useState<WikiPageResponse | null>(null);
   const [body, setBody] = useState('');
@@ -39,12 +41,12 @@ export function WikiPageEditor() {
       setPage(p);
       setBody(p.body);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load page');
+      toast.error(e instanceof Error ? e.message : t('wiki.pageEditor.loadFailed'));
       setPage(null);
     } finally {
       setLoading(false);
     }
-  }, [spaceId, pageId]);
+  }, [spaceId, pageId, t]);
 
   useEffect(() => {
     void load();
@@ -103,7 +105,7 @@ export function WikiPageEditor() {
           return (
             <span
               className="wiki-page-editor-wikilink wiki-page-editor-wikilink--missing"
-              title={`No page in this space: ${target}`}
+              title={t('wiki.pageEditor.wikilinkMissing', { target })}
             >
               {children as ReactNode}
             </span>
@@ -122,7 +124,7 @@ export function WikiPageEditor() {
         );
       },
     }),
-    [spaceId, wikiPages]
+    [spaceId, wikiPages, t]
   );
 
   const previewSource = useMemo(() => prepareWikiPreviewMarkdown(body), [body]);
@@ -133,16 +135,16 @@ export function WikiPageEditor() {
     try {
       const p = await updateWikiPage(spaceId, pageId, { body });
       setPage(p);
-      toast.success('Saved');
+      toast.success(t('wiki.pageEditor.saved'));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Save failed');
+      toast.error(e instanceof Error ? e.message : t('wiki.pageEditor.saveFailed'));
     } finally {
       setSaving(false);
     }
   };
 
   if (!spaceId || !pageId) {
-    return <p className="wiki-page-editor-muted">Missing route params</p>;
+    return <p className="wiki-page-editor-muted">{t('wiki.pageEditor.missingParams')}</p>;
   }
 
   return (
@@ -159,7 +161,7 @@ export function WikiPageEditor() {
             <div className="wiki-page-editor-toolbar">
               <Link to={`/wikis/${spaceId}`} className="wiki-page-editor-back">
                 <ArrowLeft size={18} />
-                Back to space
+                {t('wiki.pageEditor.backToSpace')}
               </Link>
               <div className="wiki-page-editor-tabs">
                 <button
@@ -167,31 +169,31 @@ export function WikiPageEditor() {
                   className={tab === 'edit' ? 'active' : ''}
                   onClick={() => setTab('edit')}
                 >
-                  Edit
+                  {t('wiki.pageEditor.edit')}
                 </button>
                 <button
                   type="button"
                   className={tab === 'preview' ? 'active' : ''}
                   onClick={() => setTab('preview')}
                 >
-                  Preview
+                  {t('wiki.pageEditor.preview')}
                 </button>
               </div>
               <Link
                 to={`/wikis/${spaceId}/graph?focus=${encodeURIComponent(pageId)}`}
                 className="btn btn-secondary wiki-page-editor-graph-link"
-                title="Open Graph View for this wiki space"
+                title={t('wiki.pageEditor.graphViewTitle')}
               >
                 <Network size={18} />
-                Graph View
+                {t('wiki.pageEditor.graphView')}
               </Link>
               <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void handleSave()}>
                 <Save size={18} />
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('wiki.pageEditor.saving') : t('wiki.pageEditor.save')}
               </button>
             </div>
 
-            {loading && <p className="wiki-page-editor-muted wiki-page-editor-status">Loading page…</p>}
+            {loading && <p className="wiki-page-editor-muted wiki-page-editor-status">{t('wiki.pageEditor.loadingPage')}</p>}
 
             {!loading && page && (
               <div className="wiki-page-editor-workspace">
@@ -224,7 +226,7 @@ export function WikiPageEditor() {
             )}
 
             {!loading && !page && (
-              <p className="wiki-page-editor-muted wiki-page-editor-status">Could not load this page.</p>
+              <p className="wiki-page-editor-muted wiki-page-editor-status">{t('wiki.pageEditor.couldNotLoad')}</p>
             )}
           </div>
         </div>

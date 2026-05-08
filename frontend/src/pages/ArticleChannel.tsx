@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FileText, Plus, Search, Folder, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArticleChannels } from '../contexts/ArticleChannelsContext';
@@ -17,6 +18,7 @@ function formatUpdated(iso: string): string {
 }
 
 export function ArticleChannel() {
+  const { t } = useTranslation('articles');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error } = useArticleChannels();
@@ -58,13 +60,13 @@ export function ArticleChannel() {
       setItems(res.items);
       setTotal(res.total);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load articles');
+      toast.error(e instanceof Error ? e.message : t('channel.loadFailed'));
       setItems([]);
       setTotal(0);
     } finally {
       setListLoading(false);
     }
-  }, [channelId, debouncedSearch, channelIds]);
+  }, [channelId, debouncedSearch, channelIds, t]);
 
   useEffect(() => {
     void load();
@@ -85,7 +87,7 @@ export function ArticleChannel() {
     if (!channelId || !channelIds.has(channelId)) return;
     const name = newTitle.trim();
     if (!name) {
-      toast.error('Enter a title first');
+      toast.error(t('channel.titleRequired'));
       return;
     }
     setNewCreating(true);
@@ -96,11 +98,11 @@ export function ArticleChannel() {
         markdown: newMarkdown.trim() || null,
         origin_article_id: newSourceRef.trim() || null,
       });
-      toast.success('Article created');
+      toast.success(t('channel.created'));
       setNewArticleOpen(false);
       navigate(`/articles/view/${row.id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
+      toast.error(e instanceof Error ? e.message : t('channel.createFailed'));
     } finally {
       setNewCreating(false);
     }
@@ -110,7 +112,7 @@ export function ArticleChannel() {
     return (
       <div className="documents">
         <div className="page-header">
-          <p className="page-subtitle">Loading channels…</p>
+          <p className="page-subtitle">{t('channel.loadingChannels')}</p>
         </div>
       </div>
     );
@@ -131,11 +133,11 @@ export function ArticleChannel() {
       <div className="documents">
         <div className="documents-empty-state">
           <Folder size={64} />
-          <h2>No channels yet</h2>
-          <p>Create your first channel to organize articles.</p>
+          <h2>{t('channel.noChannelsTitle')}</h2>
+          <p>{t('channel.noChannelsHint')}</p>
           <Link to="/articles/channels" className="btn btn-primary">
             <Folder size={18} />
-            <span>Create channel</span>
+            <span>{t('channel.createChannel')}</span>
           </Link>
         </div>
       </div>
@@ -146,10 +148,10 @@ export function ArticleChannel() {
     return (
       <div className="documents">
         <div className="page-header">
-          <h1>Channel not found</h1>
-          <p className="page-subtitle">This channel does not exist or you do not have access.</p>
+          <h1>{t('channel.notFoundTitle')}</h1>
+          <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
           <Link to="/articles" className="btn btn-secondary" style={{ marginTop: 16, display: 'inline-flex' }}>
-            Back to Articles
+            {t('channel.backToArticles')}
           </Link>
         </div>
       </div>
@@ -166,17 +168,17 @@ export function ArticleChannel() {
           <p className="page-subtitle">
             {channelDescription?.trim()
               ? channelDescription
-              : 'Articles in this channel use markdown, attachments, and version history. Pick a channel in the sidebar to switch context.'}
+              : t('channel.defaultDescription')}
           </p>
         </div>
         <div className="documents-header-actions">
           <Link to={`/articles/channels/${channelId}/settings`} className="btn btn-secondary">
             <Settings size={18} />
-            <span>Channel settings</span>
+            <span>{t('channel.channelSettings')}</span>
           </Link>
           <button type="button" className="btn btn-primary" onClick={openNewArticleModal}>
             <Plus size={18} />
-            <span>New article</span>
+            <span>{t('channel.newArticle')}</span>
           </button>
         </div>
       </div>
@@ -187,8 +189,8 @@ export function ArticleChannel() {
             <Search size={18} />
             <input
               type="search"
-              aria-label="Search in channel"
-              placeholder="Search by title…"
+              aria-label={t('channel.searchAria')}
+              placeholder={t('channel.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -196,16 +198,16 @@ export function ArticleChannel() {
         </div>
         <div className="articles-table-wrap">
           {listLoading ? (
-            <p className="articles-empty-hint">Loading…</p>
+            <p className="articles-empty-hint">{t('channel.loading')}</p>
           ) : items.length > 0 ? (
             <table className="articles-table">
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Source</th>
-                  <th>Lifecycle</th>
-                  <th>Applicable</th>
-                  <th>Updated</th>
+                  <th>{t('channel.colTitle')}</th>
+                  <th>{t('channel.colSource')}</th>
+                  <th>{t('channel.colLifecycle')}</th>
+                  <th>{t('channel.colApplicable')}</th>
+                  <th>{t('channel.colUpdated')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -245,17 +247,17 @@ export function ArticleChannel() {
                           </span>
                         )
                       ) : (
-                        '—'
+                        t('channel.dash')
                       )}
                     </td>
                     <td>
                       <span
                         className={`article-status article-status-${(article.lifecycle_status ?? 'unset').toLowerCase()}`}
                       >
-                        {article.lifecycle_status ?? '—'}
+                        {article.lifecycle_status ?? t('channel.dash')}
                       </span>
                     </td>
-                    <td>{article.is_current_for_rag ? 'Yes' : 'No'}</td>
+                    <td>{article.is_current_for_rag ? t('channel.yes') : t('channel.no')}</td>
                     <td>{formatUpdated(article.updated_at)}</td>
                   </tr>
                 ))}
@@ -264,9 +266,9 @@ export function ArticleChannel() {
           ) : (
             <div className="articles-empty">
               <Folder size={48} />
-              <p>No articles in this channel</p>
+              <p>{t('channel.emptyTitle')}</p>
               <p className="articles-empty-hint">
-                {total === 0 && debouncedSearch ? 'Try a different search' : 'Create an article or pick another channel in the sidebar'}
+                {total === 0 && debouncedSearch ? t('channel.emptyHintSearch') : t('channel.emptyHintDefault')}
               </p>
             </div>
           )}
@@ -284,49 +286,49 @@ export function ArticleChannel() {
         >
           <div className="documents-upload-modal" onClick={(e) => e.stopPropagation()}>
             <div className="documents-upload-modal-header">
-              <h2 id="article-new-title">New article</h2>
+              <h2 id="article-new-title">{t('channel.modalTitle')}</h2>
               <button
                 type="button"
                 className="documents-upload-modal-close"
                 onClick={closeNewArticleModal}
                 disabled={newCreating}
-                aria-label="Close"
+                aria-label={t('channel.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
-            <p className="documents-upload-modal-hint">Choose a title before creating. You can add Markdown now or later on the article page.</p>
+            <p className="documents-upload-modal-hint">{t('channel.modalHint')}</p>
             <div className="articles-new-modal-fields">
               <div className="articles-new-modal-field">
-                <label htmlFor="article-new-name">Title</label>
+                <label htmlFor="article-new-name">{t('channel.titleLabel')}</label>
                 <input
                   id="article-new-name"
                   type="text"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Release checklist"
+                  placeholder={t('channel.titlePlaceholder')}
                   autoFocus
                   disabled={newCreating}
                 />
               </div>
               <div className="articles-new-modal-field">
-                <label htmlFor="article-new-source">Source (external ID or URL, optional)</label>
+                <label htmlFor="article-new-source">{t('channel.sourceLabel')}</label>
                 <input
                   id="article-new-source"
                   type="text"
                   value={newSourceRef}
                   onChange={(e) => setNewSourceRef(e.target.value)}
-                  placeholder="e.g. upstream doc id or https://…"
+                  placeholder={t('channel.sourcePlaceholder')}
                   disabled={newCreating}
                 />
               </div>
               <div className="articles-new-modal-field">
-                <label htmlFor="article-new-md">Initial content (optional)</label>
+                <label htmlFor="article-new-md">{t('channel.initialContentLabel')}</label>
                 <textarea
                   id="article-new-md"
                   value={newMarkdown}
                   onChange={(e) => setNewMarkdown(e.target.value)}
-                  placeholder="Markdown…"
+                  placeholder={t('channel.markdownPlaceholder')}
                   rows={6}
                   disabled={newCreating}
                 />
@@ -334,7 +336,7 @@ export function ArticleChannel() {
             </div>
             <div className="documents-upload-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeNewArticleModal} disabled={newCreating}>
-                Cancel
+                {t('channel.cancel')}
               </button>
               <button
                 type="button"
@@ -342,7 +344,7 @@ export function ArticleChannel() {
                 onClick={() => void submitNewArticle()}
                 disabled={newCreating || !newTitle.trim()}
               >
-                {newCreating ? 'Creating…' : 'Create'}
+                {newCreating ? t('channel.creating') : t('channel.create')}
               </button>
             </div>
           </div>

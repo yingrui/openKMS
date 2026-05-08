@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FileText,
   Upload,
@@ -50,12 +51,6 @@ const fileTypeIcons: Record<string, typeof FileText> = {
   XLSX: FileText,
 };
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, {
@@ -68,10 +63,20 @@ function formatDate(iso: string): string {
 }
 
 export function DocumentChannel() {
+  const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error, refetch: refetchChannels } = useDocumentChannels();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatSize = useCallback(
+    (bytes: number) => {
+      if (bytes < 1024) return t('channel.sizeB', { n: bytes });
+      if (bytes < 1024 * 1024) return t('channel.sizeKB', { n: (bytes / 1024).toFixed(1) });
+      return t('channel.sizeMB', { n: (bytes / (1024 * 1024)).toFixed(1) });
+    },
+    [t],
+  );
 
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
@@ -101,12 +106,12 @@ export function DocumentChannel() {
       const res = await fetchDocumentsByChannel(channelId);
       setDocuments(res.items);
     } catch (e) {
-      setDocsError(e instanceof Error ? e.message : 'Failed to load documents');
+      setDocsError(e instanceof Error ? e.message : t('channel.loadDocsFailed'));
       setDocuments([]);
     } finally {
       setDocsLoading(false);
     }
-  }, [channelId]);
+  }, [channelId, t]);
 
   useEffect(() => {
     loadDocuments();
@@ -122,9 +127,7 @@ export function DocumentChannel() {
     const files = Array.from(e.target.files ?? []);
     const accepted = files.filter((f) => isAcceptedFile(f));
     if (accepted.length !== files.length) {
-      setUploadError(
-        'Some files were skipped. Supported: PDF, PNG, JPG, JPEG, WEBP, DOCX, PPTX, XLSX'
-      );
+      setUploadError(t('channel.filesSkipped'));
     }
     setSelectedFiles(accepted);
     e.target.value = '';
@@ -136,6 +139,7 @@ export function DocumentChannel() {
 
   const handleUploadSubmit = async () => {
     if (selectedFiles.length === 0 || !channelId) return;
+    const count = selectedFiles.length;
     setUploading(true);
     setUploadError(null);
     try {
@@ -144,10 +148,10 @@ export function DocumentChannel() {
       }
       setSelectedFiles([]);
       setShowUploadModal(false);
-      toast.success(`${selectedFiles.length} document(s) uploaded`);
+      toast.success(t('channel.uploadToast', { count }));
       await loadDocuments();
     } catch (e) {
-      setUploadError(e instanceof Error ? e.message : 'Upload failed');
+      setUploadError(e instanceof Error ? e.message : t('channel.uploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -163,14 +167,14 @@ export function DocumentChannel() {
 
   const handleDeleteClick = async (e: React.MouseEvent, doc: DocumentResponse) => {
     e.stopPropagation();
-    if (!window.confirm(`Delete "${doc.name}"? This cannot be undone.`)) return;
+    if (!window.confirm(t('channel.deleteConfirm', { name: doc.name }))) return;
     setDeletingId(doc.id);
     try {
       await deleteDocument(doc.id);
-      toast.success(`"${doc.name}" deleted`);
+      toast.success(t('channel.deletedToast', { name: doc.name }));
       await loadDocuments();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete document');
+      toast.error(err instanceof Error ? err.message : t('channel.deleteFailed'));
     } finally {
       setDeletingId(null);
     }
@@ -181,10 +185,10 @@ export function DocumentChannel() {
     setProcessingId(doc.id);
     try {
       await createJob({ document_id: doc.id });
-      toast.success('Processing job created');
+      toast.success(t('channel.processJobCreated'));
       await loadDocuments();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create processing job');
+      toast.error(err instanceof Error ? err.message : t('channel.processJobFailed'));
     } finally {
       setProcessingId(null);
     }
@@ -263,12 +267,12 @@ export function DocumentChannel() {
     setMoveLoading(true);
     try {
       await updateDocument(moveDoc.id, { channel_id: moveTargetChannelId });
-      toast.success(`"${moveDoc.name}" moved`);
+      toast.success(t('channel.movedToast', { name: moveDoc.name }));
       await loadDocuments();
       if (refetchChannels) await refetchChannels();
       closeMoveModal();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to move document');
+      toast.error(err instanceof Error ? err.message : t('channel.moveFailed'));
     } finally {
       setMoveLoading(false);
     }
@@ -278,7 +282,7 @@ export function DocumentChannel() {
     return (
       <div className="documents">
         <div className="page-header">
-          <p className="page-subtitle">Loading channels…</p>
+          <p className="page-subtitle">{t('channel.loadingChannels')}</p>
         </div>
       </div>
     );
@@ -299,11 +303,11 @@ export function DocumentChannel() {
       <div className="documents">
         <div className="documents-empty-state">
           <Folder size={64} />
-          <h2>No channels yet</h2>
-          <p>Create your first channel to organize documents.</p>
+          <h2>{t('channel.noChannelsTitle')}</h2>
+          <p>{t('channel.noChannelsHint')}</p>
           <Link to="/documents/channels" className="btn btn-primary">
             <Folder size={18} />
-            <span>Create channel</span>
+            <span>{t('channel.createChannel')}</span>
           </Link>
         </div>
       </div>
@@ -318,7 +322,7 @@ export function DocumentChannel() {
             <h1>{channelName}</h1>
           </div>
           <p className="page-subtitle">
-            {channelDescription ?? 'Upload PDF, HTML, ZIP, or images. Documents are converted to Markdown. Organize by channel.'}
+            {channelDescription ?? t('channel.defaultDescription')}
           </p>
         </div>
         <div className="documents-header-actions">
@@ -327,7 +331,7 @@ export function DocumentChannel() {
             className="btn btn-secondary"
           >
             <Settings size={18} />
-            <span>Channel settings</span>
+            <span>{t('channel.channelSettings')}</span>
           </Link>
           <button
             type="button"
@@ -335,7 +339,7 @@ export function DocumentChannel() {
             onClick={handleUploadClick}
           >
             <Upload size={18} />
-            <span>Upload</span>
+            <span>{t('common.upload')}</span>
           </button>
         </div>
       </div>
@@ -344,14 +348,14 @@ export function DocumentChannel() {
         <div className="documents-toolbar">
           <div className="documents-search">
             <Search size={18} />
-            <input type="search" aria-label="Search in channel" placeholder="Search in channel..." />
+            <input type="search" aria-label={t('channel.searchAria')} placeholder={t('channel.searchPlaceholder')} />
           </div>
-          <select aria-label="Filter by type">
-            <option>All types</option>
-            <option>PDF</option>
-            <option>HTML</option>
-            <option>ZIP</option>
-            <option>Image</option>
+          <select aria-label={t('channel.filterTypeAria')}>
+            <option>{t('channel.filterAll')}</option>
+            <option>{t('channel.filterPdf')}</option>
+            <option>{t('channel.filterHtml')}</option>
+            <option>{t('channel.filterZip')}</option>
+            <option>{t('channel.filterImage')}</option>
           </select>
           <select
             aria-label="Filter by status"
@@ -392,7 +396,7 @@ export function DocumentChannel() {
           {docsLoading ? (
             <div className="documents-loading">
               <Loader2 size={32} className="documents-loading-spinner" />
-              <p>Loading documents…</p>
+              <p>{t('channel.loadingDocs')}</p>
             </div>
           ) : docsError ? (
             <div className="documents-error">
@@ -411,12 +415,12 @@ export function DocumentChannel() {
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Size</th>
-                  <th>Status</th>
-                  <th>Uploaded</th>
-                  <th className="documents-table-actions">Actions</th>
+                  <th>{t('channel.tableName')}</th>
+                  <th>{t('channel.tableType')}</th>
+                  <th>{t('channel.tableSize')}</th>
+                  <th>{t('channel.tableStatus')}</th>
+                  <th>{t('channel.tableUploaded')}</th>
+                  <th className="documents-table-actions">{t('channel.tableActions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -458,8 +462,8 @@ export function DocumentChannel() {
                           {(doc.status === 'uploaded' || doc.status === 'failed') && (
                             <button
                               type="button"
-                              title="Process"
-                              aria-label={`Process ${doc.name}`}
+                              title={t('common.process')}
+                              aria-label={t('channel.ariaProcess', { name: doc.name })}
                               onClick={(e) => handleProcessClick(e, doc)}
                               disabled={processingId === doc.id}
                             >
@@ -470,24 +474,24 @@ export function DocumentChannel() {
                               )}
                             </button>
                           )}
-                          <button type="button" title="Edit" aria-label="Edit">
+                          <button type="button" title={t('common.edit')} aria-label={t('channel.ariaEdit')}>
                             <Pencil size={16} />
                           </button>
                           <button
                             type="button"
-                            title="Move"
-                            aria-label={`Move ${doc.name} to channel`}
+                            title={t('common.move')}
+                            aria-label={t('channel.ariaMoveDoc', { name: doc.name })}
                             onClick={(e) => handleMoveClick(e, doc)}
                           >
                             <FolderInput size={16} />
                           </button>
-                          <button type="button" title="Download" aria-label="Download">
+                          <button type="button" title={t('common.download')} aria-label={t('channel.ariaDownload')}>
                             <Download size={16} />
                           </button>
                           <button
                             type="button"
-                            title="Delete"
-                            aria-label={`Delete ${doc.name}`}
+                            title={t('common.delete')}
+                            aria-label={t('channel.ariaDeleteDoc', { name: doc.name })}
                             onClick={(e) => handleDeleteClick(e, doc)}
                             disabled={deletingId === doc.id}
                           >
@@ -507,8 +511,8 @@ export function DocumentChannel() {
           ) : (
             <div className="documents-empty">
               <Folder size={48} />
-              <p>No documents in this channel</p>
-              <p className="documents-empty-hint">Upload or move documents here</p>
+              <p>{t('channel.emptyTitle')}</p>
+              <p className="documents-empty-hint">{t('channel.emptyHint')}</p>
             </div>
           )}
         </div>
@@ -528,19 +532,19 @@ export function DocumentChannel() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="documents-upload-modal-header">
-              <h2 id="upload-modal-title">Upload documents</h2>
+              <h2 id="upload-modal-title">{t('channel.uploadModalTitle')}</h2>
               <button
                 type="button"
                 className="documents-upload-modal-close"
                 onClick={closeUploadModal}
                 disabled={uploading}
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X size={20} />
               </button>
             </div>
             <p className="documents-upload-modal-hint">
-              PDF, Office (DOCX, PPTX, XLSX), and images (PNG, JPG, JPEG, WEBP) supported.
+              {t('channel.uploadModalHint')}
             </p>
             <input
               ref={fileInputRef}
@@ -573,7 +577,7 @@ export function DocumentChannel() {
               }}
             >
               <Upload size={32} />
-              <span>Choose files or drag and drop</span>
+              <span>{t('channel.dropzone')}</span>
             </div>
             {uploadError && (
               <p className="documents-upload-error">{uploadError}</p>
@@ -588,7 +592,7 @@ export function DocumentChannel() {
                       type="button"
                       onClick={() => removeFile(i)}
                       disabled={uploading}
-                      aria-label={`Remove ${file.name}`}
+                      aria-label={`${t('common.close')} ${file.name}`}
                     >
                       <X size={16} />
                     </button>
@@ -603,7 +607,7 @@ export function DocumentChannel() {
                 onClick={closeUploadModal}
                 disabled={uploading}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -614,12 +618,12 @@ export function DocumentChannel() {
                 {uploading ? (
                   <>
                     <Loader2 size={18} className="documents-upload-spinner" />
-                    <span>Uploading…</span>
+                    <span>{t('common.uploading')}</span>
                   </>
                 ) : (
                   <>
                     <Upload size={18} />
-                    <span>Upload</span>
+                    <span>{t('common.upload')}</span>
                   </>
                 )}
               </button>
@@ -642,22 +646,22 @@ export function DocumentChannel() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="documents-upload-modal-header">
-              <h2 id="move-modal-title">Move document</h2>
+              <h2 id="move-modal-title">{t('channel.moveModalTitle')}</h2>
               <button
                 type="button"
                 className="documents-upload-modal-close"
                 onClick={closeMoveModal}
                 disabled={moveLoading}
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X size={20} />
               </button>
             </div>
             <p className="documents-upload-modal-hint">
-              Move &quot;{moveDoc.name}&quot; to another channel.
+              {t('channel.moveModalHint', { name: moveDoc.name })}
             </p>
             <div className="documents-move-form">
-              <label htmlFor="move-target-channel">Target channel</label>
+              <label htmlFor="move-target-channel">{t('common.targetChannel')}</label>
               <select
                 id="move-target-channel"
                 value={moveTargetChannelId}
@@ -678,7 +682,7 @@ export function DocumentChannel() {
                 onClick={closeMoveModal}
                 disabled={moveLoading}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -689,12 +693,12 @@ export function DocumentChannel() {
                 {moveLoading ? (
                   <>
                     <Loader2 size={18} className="documents-upload-spinner" />
-                    <span>Moving…</span>
+                    <span>{t('common.moving')}</span>
                   </>
                 ) : (
                   <>
                     <FolderInput size={18} />
-                    <span>Move</span>
+                    <span>{t('common.move')}</span>
                   </>
                 )}
               </button>

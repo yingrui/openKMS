@@ -1,69 +1,47 @@
+import { useTranslation } from 'react-i18next';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './ConsoleFeatureToggles.css';
 
-const features = [
-  {
-    id: 'articles' as const,
-    name: 'Articles',
-    description: 'CMS-style articles with content and fields. Lower priority feature.',
-  },
-  {
-    id: 'knowledgeBases' as const,
-    name: 'Knowledge Bases',
-    description: 'Knowledge bases with RAG Q&A. Lower priority feature.',
-  },
-  {
-    id: 'wikiSpaces' as const,
-    name: 'Wiki spaces',
-    description: 'Markdown wiki pages per space; CLI and UI editing; optional image uploads.',
-  },
-  {
-    id: 'objectsAndLinks' as const,
-    name: 'Objects & Links',
-    description: 'Ontology layer: object types, link types, and their instances. Schema managed in Object Types and Link Types.',
-  },
-  {
-    id: 'evaluationDatasets' as const,
-    name: 'Evaluation',
-    description: 'Evaluation datasets for KB QA performance (experimental). Query + expected answer pairs to measure RAG quality.',
-  },
-  {
-    id: 'taxonomy' as const,
-    name: 'Knowledge Map',
-    description:
-      'Sitemap-style hierarchy of terms and links from channels and wiki spaces so people can browse how content is organized.',
-  },
-];
+const FEATURE_IDS = [
+  'articles',
+  'knowledgeBases',
+  'wikiSpaces',
+  'objectsAndLinks',
+  'evaluationDatasets',
+  'taxonomy',
+] as const;
 
 export function ConsoleFeatureToggles() {
+  const { t } = useTranslation('console');
   const { toggles, setToggle } = useFeatureToggles();
 
   return (
     <div className="console-feature-toggles">
       <div className="page-header">
-        <h1>Feature Toggles</h1>
-        <p className="page-subtitle">
-          Enable or disable features for all users. Disabled features are hidden from the sidebar and navigation.
-        </p>
+        <h1>{t('featureToggles.pageTitle')}</h1>
+        <p className="page-subtitle">{t('featureToggles.subtitle')}</p>
       </div>
       <div className="console-feature-toggles-list">
-        {features.map((f) => (
-          <div key={f.id} className="console-feature-toggle-item">
-            <div className="console-feature-toggle-info">
-              <h3>{f.name}</h3>
-              <p>{f.description}</p>
+        {FEATURE_IDS.map((id) => {
+          const name = t(`featureToggles.features.${id}.name`);
+          return (
+            <div key={id} className="console-feature-toggle-item">
+              <div className="console-feature-toggle-info">
+                <h3>{name}</h3>
+                <p>{t(`featureToggles.features.${id}.description`)}</p>
+              </div>
+              <label className="console-feature-toggle-switch">
+                <input
+                  type="checkbox"
+                  checked={id === 'taxonomy' ? toggles.taxonomy !== false : Boolean(toggles[id])}
+                  onChange={(e) => setToggle(id, e.target.checked)}
+                  aria-label={t('featureToggles.enableAria', { feature: name })}
+                />
+                <span className="console-feature-toggle-slider" />
+              </label>
             </div>
-            <label className="console-feature-toggle-switch">
-              <input
-                type="checkbox"
-                checked={f.id === 'taxonomy' ? toggles.taxonomy !== false : Boolean(toggles[f.id])}
-                onChange={(e) => setToggle(f.id, e.target.checked)}
-                aria-label={`Enable ${f.name}`}
-              />
-              <span className="console-feature-toggle-slider" />
-            </label>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

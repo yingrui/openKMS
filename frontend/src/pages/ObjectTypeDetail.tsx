@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, X, Search as SearchIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,14 +16,17 @@ import {
 } from '../data/ontologyApi';
 import './ObjectTypeDetail.css';
 
-function displayValue(v: unknown): string {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
-
 export function ObjectTypeDetail() {
+  const { t } = useTranslation('explore');
+  const displayValue = useCallback(
+    (v: unknown): string => {
+      if (v === null || v === undefined) return t('shared.dash');
+      if (typeof v === 'boolean') return v ? t('ontology.objectTypeDetail.booleanYes') : t('ontology.objectTypeDetail.booleanNo');
+      if (typeof v === 'object') return JSON.stringify(v);
+      return String(v);
+    },
+    [t]
+  );
   const { typeId } = useParams<{ typeId: string }>();
   const { isAdmin } = useAuth();
   const [objectType, setObjectType] = useState<ObjectTypeResponse | null>(null);
@@ -41,11 +45,11 @@ export function ObjectTypeDetail() {
       const data = await fetchObjectType(typeId, { countFromNeo4j: true });
       setObjectType(data);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load object type');
+      toast.error(e instanceof Error ? e.message : t('ontology.objectTypeDetail.toastLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [typeId]);
+  }, [typeId, t]);
 
   const loadInstances = useCallback(
     async (searchQuery?: string) => {
@@ -78,8 +82,8 @@ export function ObjectTypeDetail() {
     const isSearchChange = prevSearchRef.current !== null && !typeChanged;
     prevSearchRef.current = search;
     const delay = isSearchChange ? 300 : 0;
-    const t = setTimeout(() => loadInstances(search), delay);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => loadInstances(search), delay);
+    return () => clearTimeout(timer);
   }, [typeId, search, loadInstances]);
 
   const openAdd = () => {
@@ -110,7 +114,7 @@ export function ObjectTypeDetail() {
       if (p.required) {
         const v = formData[p.name];
         if (v === undefined || v === null || v === '') {
-          toast.error(`"${p.name}" is required`);
+          toast.error(t('ontology.objectTypeDetail.fieldRequired', { field: p.name }));
           return;
         }
       }
@@ -119,16 +123,16 @@ export function ObjectTypeDetail() {
     try {
       if (editInstance) {
         await updateObjectInstance(typeId, editInstance.id, formData);
-        toast.success('Object updated');
+        toast.success(t('ontology.objectTypeDetail.toastObjectUpdated'));
       } else {
         await createObjectInstance(typeId, formData);
-        toast.success('Object created');
+        toast.success(t('ontology.objectTypeDetail.toastObjectCreated'));
       }
       closeForm();
       loadInstances();
       loadType();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save');
+      toast.error(e instanceof Error ? e.message : t('ontology.objectTypeDetail.toastSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -136,14 +140,14 @@ export function ObjectTypeDetail() {
 
   const handleDelete = async (inst: ObjectInstanceResponse) => {
     if (!typeId) return;
-    if (!confirm('Delete this object?')) return;
+    if (!confirm(t('ontology.objectTypeDetail.deleteConfirm'))) return;
     try {
       await deleteObjectInstance(typeId, inst.id);
-      toast.success('Object deleted');
+      toast.success(t('ontology.objectTypeDetail.toastObjectDeleted'));
       loadInstances();
       loadType();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('ontology.objectTypeDetail.toastDeleteFailed'));
     }
   };
 
@@ -154,7 +158,7 @@ export function ObjectTypeDetail() {
   if (loading || !objectType) {
     return (
       <div className="object-type-detail">
-        <p className="object-type-detail-loading">Loading...</p>
+        <p className="object-type-detail-loading">{t('ontology.objectTypeDetail.loading')}</p>
       </div>
     );
   }
@@ -167,14 +171,14 @@ export function ObjectTypeDetail() {
       <div className="object-type-detail-header">
         <Link to="/objects" className="object-type-back">
           <ArrowLeft size={18} />
-          <span>Objects</span>
+          <span>{t('ontology.objectTypeDetail.backObjects')}</span>
         </Link>
         <div className="object-type-detail-title-row">
           <h1>{objectType.name}</h1>
           {isAdmin && (
             <button type="button" className="btn btn-primary" onClick={openAdd}>
               <Plus size={18} />
-              <span>Add Object</span>
+              <span>{t('ontology.objectTypeDetail.addObject')}</span>
             </button>
           )}
         </div>
@@ -189,7 +193,7 @@ export function ObjectTypeDetail() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search instances..."
+          placeholder={t('ontology.objectTypeDetail.searchPlaceholder')}
           className="object-type-search-input"
         />
       </div>
@@ -210,14 +214,18 @@ export function ObjectTypeDetail() {
                 <td colSpan={cols.length} className="object-type-empty">
                   <span className="object-type-loading">
                     <Loader2 size={18} className="object-type-spinner" />
-                    {search ? 'Searching...' : 'Loading instances...'}
+                    {search ? t('ontology.objectTypeDetail.loadingSearching') : t('ontology.objectTypeDetail.loadingInstances')}
                   </span>
                 </td>
               </tr>
             ) : instances.length === 0 ? (
               <tr>
                 <td colSpan={cols.length} className="object-type-empty">
-                  {search ? 'No matching instances' : 'No instances yet.' + (isAdmin ? ' Click "Add Object" to create one.' : '')}
+                  {search
+                    ? t('ontology.objectTypeDetail.noMatchingInstances')
+                    : isAdmin
+                      ? t('ontology.objectTypeDetail.emptyAdmin')
+                      : t('ontology.objectTypeDetail.emptyUser')}
                 </td>
               </tr>
             ) : (
@@ -230,16 +238,16 @@ export function ObjectTypeDetail() {
                     <td className="object-type-actions-col">
                       <button
                         type="button"
-                        title="Edit"
-                        aria-label="Edit"
+                        title={t('ontology.objectTypeDetail.editTitle')}
+                        aria-label={t('ontology.objectTypeDetail.editTitle')}
                         onClick={() => openEdit(inst)}
                       >
                         <Pencil size={14} />
                       </button>
                       <button
                         type="button"
-                        title="Delete"
-                        aria-label="Delete"
+                        title={t('ontology.objectTypeDetail.deleteTitle')}
+                        aria-label={t('ontology.objectTypeDetail.deleteTitle')}
                         onClick={() => handleDelete(inst)}
                       >
                         <Trash2 size={14} />
@@ -257,7 +265,7 @@ export function ObjectTypeDetail() {
         <div className="object-type-dialog-overlay" onClick={closeForm}>
           <div className="object-type-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="object-type-dialog-header">
-              <h2>{editInstance ? 'Edit Object' : 'Add Object'}</h2>
+              <h2>{editInstance ? t('ontology.objectTypeDetail.dialogEditObject') : t('ontology.objectTypeDetail.dialogAddObject')}</h2>
               <button type="button" className="object-type-dialog-close" onClick={closeForm}>
                 <X size={20} />
               </button>
@@ -271,8 +279,8 @@ export function ObjectTypeDetail() {
                       value={String(formData[p.name] ?? false)}
                       onChange={(e) => updateFormField(p.name, e.target.value === 'true')}
                     >
-                      <option value="false">No</option>
-                      <option value="true">Yes</option>
+                      <option value="false">{t('ontology.objectTypeDetail.booleanNo')}</option>
+                      <option value="true">{t('ontology.objectTypeDetail.booleanYes')}</option>
                     </select>
                   ) : p.type === 'number' ? (
                     <input
@@ -282,25 +290,25 @@ export function ObjectTypeDetail() {
                         const v = e.target.value;
                         updateFormField(p.name, v === '' ? undefined : Number(v));
                       }}
-                      placeholder={p.required ? 'Required' : 'Optional'}
+                      placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
                     />
                   ) : (
                     <input
                       type="text"
                       value={String(formData[p.name] ?? '')}
                       onChange={(e) => updateFormField(p.name, e.target.value)}
-                      placeholder={p.required ? 'Required' : 'Optional'}
+                      placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
                     />
                   )}
                 </label>
               ))}
               {properties.length === 0 && (
-                <p className="object-type-no-props">No properties defined. Add properties in Console → Object Types.</p>
+                <p className="object-type-no-props">{t('ontology.objectTypeDetail.noPropertiesHint')}</p>
               )}
             </div>
             <div className="object-type-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeForm}>
-                Cancel
+                {t('ontology.objectTypeDetail.cancel')}
               </button>
               <button
                 type="button"
@@ -308,7 +316,7 @@ export function ObjectTypeDetail() {
                 disabled={saving}
                 onClick={handleSave}
               >
-                {saving ? 'Saving...' : editInstance ? 'Save' : 'Create'}
+                {saving ? t('ontology.objectTypeDetail.saving') : editInstance ? t('ontology.objectTypeDetail.save') : t('ontology.objectTypeDetail.create')}
               </button>
             </div>
           </div>

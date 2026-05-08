@@ -20,7 +20,7 @@
   --color-error: #dc2626;
   
   /* Typography */
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'DM Sans', 'Noto Sans SC', -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
   --font-serif: 'Source Serif 4', Georgia, serif;
   
   /* Spacing & radius */

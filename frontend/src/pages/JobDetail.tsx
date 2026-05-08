@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu } from 'lucide-react';
 import { toast } from 'sonner';
@@ -7,16 +8,20 @@ import { fetchPipelineById, type PipelineResponse } from '../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../data/modelsApi';
 import './JobDetail.css';
 
-function formatDateTime(iso?: string | null): string {
-  if (!iso) return '—';
+function formatDateTime(iso: string | undefined | null, dash: string): string {
+  if (!iso) return dash;
   return new Date(iso).toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   });
 }
 
-function formatDuration(startIso?: string | null, endIso?: string | null): string {
-  if (!startIso || !endIso) return '—';
+function formatDuration(startIso?: string | null, endIso?: string | null, dash = '—'): string {
+  if (!startIso || !endIso) return dash;
   const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
   if (ms < 1000) return `${ms}ms`;
   const secs = Math.floor(ms / 1000);
@@ -27,6 +32,8 @@ function formatDuration(startIso?: string | null, endIso?: string | null): strin
 }
 
 export function JobDetail() {
+  const { t } = useTranslation('workspace');
+  const dash = t('shared.dash');
   const { jobId } = useParams<{ jobId: string }>();
   const [job, setJob] = useState<JobResponse | null>(null);
   const [pipeline, setPipeline] = useState<PipelineResponse | null>(null);
@@ -61,14 +68,14 @@ export function JobDetail() {
         setModel(null);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load job');
+      toast.error(e instanceof Error ? e.message : t('jobDetail.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [jobId]);
+  }, [jobId, t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const handleRetry = async () => {
@@ -76,10 +83,10 @@ export function JobDetail() {
     setRetrying(true);
     try {
       await retryJob(job.id);
-      toast.success('Job retry queued');
+      toast.success(t('jobDetail.retryQueued'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Retry failed');
+      toast.error(e instanceof Error ? e.message : t('jobs.retryFailed'));
     } finally {
       setRetrying(false);
     }
@@ -90,7 +97,7 @@ export function JobDetail() {
       <div className="job-detail">
         <div className="job-detail-loading">
           <Loader2 size={32} className="job-detail-spinner" />
-          <p>Loading job…</p>
+          <p>{t('jobDetail.loading')}</p>
         </div>
       </div>
     );
@@ -99,8 +106,10 @@ export function JobDetail() {
   if (!job) {
     return (
       <div className="job-detail">
-        <Link to="/jobs" className="job-detail-back"><ArrowLeft size={18} /> Back to Jobs</Link>
-        <p className="job-detail-not-found">Job not found.</p>
+        <Link to="/jobs" className="job-detail-back">
+          <ArrowLeft size={18} /> {t('jobDetail.back')}
+        </Link>
+        <p className="job-detail-not-found">{t('jobDetail.notFound')}</p>
       </div>
     );
   }
@@ -115,28 +124,23 @@ export function JobDetail() {
     <div className="job-detail">
       <Link to="/jobs" className="job-detail-back">
         <ArrowLeft size={18} />
-        <span>Back to Jobs</span>
+        <span>{t('jobDetail.back')}</span>
       </Link>
 
       <div className="job-detail-header">
         <div className="job-detail-title-row">
           <ListTodo size={24} />
-          <h1>Job #{job.id}</h1>
+          <h1>{t('jobDetail.title', { id: job.id })}</h1>
           <span className={`job-status job-status-${job.status}`}>{job.status}</span>
         </div>
         <div className="job-detail-header-actions">
-          <button type="button" className="btn btn-secondary" onClick={load} title="Refresh">
+          <button type="button" className="btn btn-secondary" onClick={() => void load()} title={t('shared.refresh')}>
             <RefreshCw size={16} />
           </button>
           {job.status === 'failed' && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleRetry}
-              disabled={retrying}
-            >
+            <button type="button" className="btn btn-primary" onClick={() => void handleRetry()} disabled={retrying}>
               {retrying ? <Loader2 size={16} className="job-detail-spinner" /> : <RefreshCw size={16} />}
-              <span>{retrying ? 'Retrying…' : 'Retry'}</span>
+              <span>{retrying ? t('jobDetail.retrying') : t('shared.retry')}</span>
             </button>
           )}
         </div>
@@ -144,55 +148,63 @@ export function JobDetail() {
 
       <div className="job-detail-grid">
         <section className="job-detail-card">
-          <h2><Clock size={18} /> Timing</h2>
+          <h2>
+            <Clock size={18} /> {t('jobDetail.timing')}
+          </h2>
           <dl className="job-detail-dl">
-            <dt>Created</dt>
-            <dd>{formatDateTime(job.created_at)}</dd>
-            <dt>Scheduled</dt>
-            <dd>{formatDateTime(job.scheduled_at)}</dd>
-            <dt>Started</dt>
-            <dd>{formatDateTime(job.started_at)}</dd>
-            <dt>Finished</dt>
-            <dd>{formatDateTime(job.finished_at)}</dd>
-            <dt>Duration</dt>
-            <dd>{formatDuration(job.started_at, job.finished_at)}</dd>
-            <dt>Attempts</dt>
+            <dt>{t('jobDetail.created')}</dt>
+            <dd>{formatDateTime(job.created_at, dash)}</dd>
+            <dt>{t('jobDetail.scheduled')}</dt>
+            <dd>{formatDateTime(job.scheduled_at, dash)}</dd>
+            <dt>{t('jobDetail.started')}</dt>
+            <dd>{formatDateTime(job.started_at, dash)}</dd>
+            <dt>{t('jobDetail.finished')}</dt>
+            <dd>{formatDateTime(job.finished_at, dash)}</dd>
+            <dt>{t('jobDetail.duration')}</dt>
+            <dd>{formatDuration(job.started_at, job.finished_at, dash)}</dd>
+            <dt>{t('jobDetail.attempts')}</dt>
             <dd>{job.attempts}</dd>
           </dl>
         </section>
 
         <section className="job-detail-card">
-          <h2><FileText size={18} /> Document</h2>
+          <h2>
+            <FileText size={18} /> {t('jobDetail.document')}
+          </h2>
           <dl className="job-detail-dl">
-            <dt>Document ID</dt>
+            <dt>{t('jobDetail.documentId')}</dt>
             <dd>
               {documentId ? (
                 <Link to={`/documents/view/${documentId}`} className="job-detail-link">
                   {documentId}
                 </Link>
-              ) : '—'}
+              ) : (
+                dash
+              )}
             </dd>
-            <dt>File Hash</dt>
-            <dd className="job-detail-mono">{String(job.args?.file_hash || '—')}</dd>
-            <dt>File Extension</dt>
-            <dd>{String(job.args?.file_ext || '—')}</dd>
+            <dt>{t('jobDetail.fileHash')}</dt>
+            <dd className="job-detail-mono">{String(job.args?.file_hash || dash)}</dd>
+            <dt>{t('jobDetail.fileExtension')}</dt>
+            <dd>{String(job.args?.file_ext || dash)}</dd>
           </dl>
         </section>
 
         <section className="job-detail-card">
-          <h2><GitBranch size={18} /> Pipeline</h2>
+          <h2>
+            <GitBranch size={18} /> {t('jobDetail.pipeline')}
+          </h2>
           <dl className="job-detail-dl">
-            <dt>Pipeline</dt>
-            <dd>{pipeline?.name || pipelineId || '—'}</dd>
+            <dt>{t('jobDetail.pipeline')}</dt>
+            <dd>{pipeline?.name || pipelineId || dash}</dd>
             {pipeline?.description && (
               <>
-                <dt>Description</dt>
+                <dt>{t('shared.description')}</dt>
                 <dd>{pipeline.description}</dd>
               </>
             )}
             {renderedCommand && (
               <>
-                <dt>Command</dt>
+                <dt>{t('jobDetail.command')}</dt>
                 <dd>
                   <pre className="job-detail-pre">{renderedCommand}</pre>
                 </dd>
@@ -200,13 +212,13 @@ export function JobDetail() {
             )}
             {commandTemplate && (
               <>
-                <dt>Template</dt>
+                <dt>{t('jobDetail.template')}</dt>
                 <dd className="job-detail-mono">{commandTemplate}</dd>
               </>
             )}
             {defaultArgs && Object.keys(defaultArgs).length > 0 && (
               <>
-                <dt>Default Args</dt>
+                <dt>{t('jobDetail.defaultArgs')}</dt>
                 <dd>
                   <pre className="job-detail-pre">{JSON.stringify(defaultArgs, null, 2)}</pre>
                 </dd>
@@ -217,19 +229,21 @@ export function JobDetail() {
 
         {model && (
           <section className="job-detail-card">
-            <h2><Cpu size={18} /> Model</h2>
+            <h2>
+              <Cpu size={18} /> {t('jobDetail.model')}
+            </h2>
             <dl className="job-detail-dl">
-              <dt>Name</dt>
+              <dt>{t('shared.name')}</dt>
               <dd>{model.name}</dd>
-              <dt>Provider</dt>
+              <dt>{t('jobDetail.provider')}</dt>
               <dd>{model.provider_name}</dd>
-              <dt>Category</dt>
+              <dt>{t('jobDetail.category')}</dt>
               <dd>{model.category}</dd>
-              <dt>Base URL</dt>
+              <dt>{t('jobDetail.baseUrl')}</dt>
               <dd className="job-detail-mono">{model.base_url}</dd>
               {model.model_name && (
                 <>
-                  <dt>Model Name</dt>
+                  <dt>{t('jobDetail.modelName')}</dt>
                   <dd className="job-detail-mono">{model.model_name}</dd>
                 </>
               )}
@@ -238,11 +252,13 @@ export function JobDetail() {
         )}
 
         <section className="job-detail-card">
-          <h2><ListTodo size={18} /> Task Info</h2>
+          <h2>
+            <ListTodo size={18} /> {t('jobDetail.taskInfo')}
+          </h2>
           <dl className="job-detail-dl">
-            <dt>Task Name</dt>
+            <dt>{t('jobDetail.taskName')}</dt>
             <dd className="job-detail-mono">{job.task_name}</dd>
-            <dt>Queue</dt>
+            <dt>{t('jobDetail.queue')}</dt>
             <dd>{job.queue_name}</dd>
           </dl>
         </section>
@@ -250,12 +266,14 @@ export function JobDetail() {
 
       {job.events && job.events.length > 0 && (
         <section className="job-detail-card job-detail-events">
-          <h2><Clock size={18} /> Event Log</h2>
+          <h2>
+            <Clock size={18} /> {t('jobDetail.eventLog')}
+          </h2>
           <table className="job-detail-events-table">
             <thead>
               <tr>
-                <th>Event</th>
-                <th>Timestamp</th>
+                <th>{t('jobDetail.event')}</th>
+                <th>{t('jobDetail.timestamp')}</th>
               </tr>
             </thead>
             <tbody>
@@ -264,7 +282,7 @@ export function JobDetail() {
                   <td>
                     <span className={`job-event-type job-event-type-${ev.type}`}>{ev.type}</span>
                   </td>
-                  <td>{formatDateTime(ev.at)}</td>
+                  <td>{formatDateTime(ev.at, dash)}</td>
                 </tr>
               ))}
             </tbody>

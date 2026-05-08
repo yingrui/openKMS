@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { config } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import './AuthLocal.css';
 
 export function Signup() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const { authMode, authModeReady, allowSignup, completeLocalSession } = useAuth();
   useEffect(() => {
@@ -36,13 +38,19 @@ export function Signup() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const d = data.detail;
-        setError(typeof d === 'string' ? d : Array.isArray(d) ? d.map((x: { msg?: string }) => x.msg).join(' ') : 'Sign up failed');
+        setError(
+          typeof d === 'string'
+            ? d
+            : Array.isArray(d)
+              ? d.map((x: { msg?: string }) => x.msg).join(' ')
+              : t('signupFailed'),
+        );
         return;
       }
       await completeLocalSession(data.access_token as string);
       navigate('/', { replace: true });
     } catch {
-      setError('Network error');
+      setError(t('networkError'));
     } finally {
       setPending(false);
     }
@@ -52,7 +60,7 @@ export function Signup() {
     return (
       <div className="auth-local-page">
         <div className="auth-local-card">
-          <p className="auth-local-sub">Detecting sign-in method…</p>
+          <p className="auth-local-sub">{t('detectingAuth')}</p>
         </div>
       </div>
     );
@@ -62,14 +70,14 @@ export function Signup() {
     <div className="auth-local-page">
       <div className="auth-local-card">
         <Link to="/" className="auth-local-back">
-          ← Back to home
+          {t('backHome')}
         </Link>
-        <h1>Create account</h1>
-        <p className="auth-local-sub">Register for openKMS (local auth mode).</p>
+        <h1>{t('signupTitle')}</h1>
+        <p className="auth-local-sub">{t('signupSub')}</p>
         {error && <p className="auth-local-error">{error}</p>}
         <form onSubmit={onSubmit}>
           <div className="auth-local-field">
-            <label htmlFor="signup-email">Email</label>
+            <label htmlFor="signup-email">{t('emailLabel')}</label>
             <input
               id="signup-email"
               type="email"
@@ -80,7 +88,7 @@ export function Signup() {
             />
           </div>
           <div className="auth-local-field">
-            <label htmlFor="signup-username">Username</label>
+            <label htmlFor="signup-username">{t('signupUsernameLabel')}</label>
             <input
               id="signup-username"
               type="text"
@@ -92,7 +100,7 @@ export function Signup() {
             />
           </div>
           <div className="auth-local-field">
-            <label htmlFor="signup-password">Password</label>
+            <label htmlFor="signup-password">{t('signupPasswordLabel')}</label>
             <input
               id="signup-password"
               type="password"
@@ -104,11 +112,15 @@ export function Signup() {
             />
           </div>
           <button type="submit" className="auth-local-submit" disabled={pending}>
-            {pending ? 'Creating…' : 'Create account'}
+            {pending ? t('signupCreating') : t('signupButton')}
           </button>
         </form>
         <p className="auth-local-footer">
-          Already have an account? <Link to="/login">Sign in</Link>
+          <Trans
+            i18nKey="signupFooter"
+            ns="auth"
+            components={{ signInLink: <Link to="/login" /> }}
+          />
         </p>
       </div>
     </div>

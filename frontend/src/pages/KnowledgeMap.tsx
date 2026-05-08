@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Plus,
@@ -30,12 +31,6 @@ import {
 } from '../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../data/wikiSpacesApi';
 import './KnowledgeMap.css';
-
-const RESOURCE_TYPE_LABELS: Record<string, string> = {
-  document_channel: 'Document channel',
-  article_channel: 'Article channel',
-  wiki_space: 'Wiki space',
-};
 
 function flattenKnowledgeMapOptions(nodes: KnowledgeMapNode[], prefix = ''): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];
@@ -138,6 +133,7 @@ function KnowledgeMapTreeItem({
   onReload: () => Promise<void>;
   getMoveParentOptions: (excludeId: string) => { id: string; name: string; depth: number }[];
 }) {
+  const { t } = useTranslation('knowledgeMap');
   const [moving, setMoving] = useState(false);
   const [moveParentId, setMoveParentId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
@@ -164,9 +160,11 @@ function KnowledgeMapTreeItem({
       await updateKnowledgeMapNode(a.id, { sort_order: b.sort_order });
       await updateKnowledgeMapNode(b.id, { sort_order: a.sort_order });
       await onReload();
-      toast.success(`Moved "${node.name}" ${direction}`);
+      toast.success(
+        direction === 'up' ? t('toastMovedUp', { name: node.name }) : t('toastMovedDown', { name: node.name }),
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to reorder term');
+      toast.error(e instanceof Error ? e.message : t('toastReorderFailed'));
     }
   };
 
@@ -179,11 +177,11 @@ function KnowledgeMapTreeItem({
     try {
       await updateKnowledgeMapNode(node.id, { parent_id: newParent });
       await onReload();
-      toast.success(`Moved "${node.name}"`);
+      toast.success(t('toastMoved', { name: node.name }));
       setMoving(false);
       setMoveParentId('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to move term');
+      toast.error(e instanceof Error ? e.message : t('toastMoveFailed'));
     } finally {
       setMoveLoading(false);
     }
@@ -203,7 +201,7 @@ function KnowledgeMapTreeItem({
   const handleEditSave = async () => {
     const name = editName.trim();
     if (!name) {
-      toast.error('Name is required');
+      toast.error(t('toastNameRequired'));
       return;
     }
     setEditLoading(true);
@@ -213,10 +211,10 @@ function KnowledgeMapTreeItem({
         description: editDescription.trim() || null,
       });
       await onReload();
-      toast.success('Term updated');
+      toast.success(t('toastTermUpdated'));
       setEditing(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update term');
+      toast.error(e instanceof Error ? e.message : t('toastUpdateFailed'));
     } finally {
       setEditLoading(false);
     }
@@ -233,10 +231,10 @@ function KnowledgeMapTreeItem({
     try {
       await deleteKnowledgeMapNode(node.id);
       await onReload();
-      toast.success(`Deleted "${node.name}"`);
+      toast.success(t('toastDeleted', { name: node.name }));
       setDeleteConfirming(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('toastDeleteFailed'));
     } finally {
       setDeleteLoading(false);
     }
@@ -262,7 +260,7 @@ function KnowledgeMapTreeItem({
             ) : null}
           </span>
           {node.link_count > 0 && (
-            <span className="knowledge-map-tree-badge" title="Resources this term refers to">
+            <span className="knowledge-map-tree-badge" title={t('linkBadgeTitle')}>
               {node.link_count}
             </span>
           )}
@@ -272,8 +270,8 @@ function KnowledgeMapTreeItem({
             <button
               type="button"
               className="knowledge-map-tree-action"
-              title="Move up"
-              aria-label="Move term up"
+              title={t('treeMoveUp')}
+              aria-label={t('treeMoveUpAria')}
               onClick={() => void handleReorder('up')}
               disabled={!canMoveUp}
             >
@@ -282,23 +280,23 @@ function KnowledgeMapTreeItem({
             <button
               type="button"
               className="knowledge-map-tree-action"
-              title="Move down"
-              aria-label="Move term down"
+              title={t('treeMoveDown')}
+              aria-label={t('treeMoveDownAria')}
               onClick={() => void handleReorder('down')}
               disabled={!canMoveDown}
             >
               <ChevronDown size={14} />
             </button>
-            <button type="button" className="knowledge-map-tree-action" title="Edit" onClick={handleEditOpen}>
+            <button type="button" className="knowledge-map-tree-action" title={t('treeEdit')} onClick={handleEditOpen}>
               <Pencil size={14} />
             </button>
-            <button type="button" className="knowledge-map-tree-action" title="Move under…" onClick={() => setMoving(true)}>
+            <button type="button" className="knowledge-map-tree-action" title={t('treeMoveUnder')} onClick={() => setMoving(true)}>
               <ArrowRightLeft size={14} />
             </button>
             <button
               type="button"
               className="knowledge-map-tree-action knowledge-map-tree-action-delete"
-              title="Delete"
+              title={t('treeDelete')}
               onClick={handleDeleteClick}
             >
               <Trash2 size={14} />
@@ -308,19 +306,17 @@ function KnowledgeMapTreeItem({
       </div>
       {deleteConfirming && (
         <div className="knowledge-map-confirm-bar">
-          <span>
-            Delete &quot;{node.name}&quot; and nested terms? Refer-to mappings are removed. This cannot be undone.
-          </span>
+          <span>{t('deleteConfirm', { name: node.name })}</span>
           <button
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => void handleDeleteConfirm()}
             disabled={deleteLoading}
           >
-            {deleteLoading ? 'Deleting…' : 'Delete'}
+            {deleteLoading ? t('deleting') : t('delete')}
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleDeleteCancel}>
-            Cancel
+            {t('cancel')}
           </button>
         </div>
       )}
@@ -328,26 +324,26 @@ function KnowledgeMapTreeItem({
         <div className="knowledge-map-edit-bar">
           <div className="knowledge-map-edit-fields">
             <label className="knowledge-map-edit-label">
-              <span>Name</span>
+              <span>{t('fieldName')}</span>
               <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="knowledge-map-edit-input" />
             </label>
             <label className="knowledge-map-edit-label">
-              <span>Description</span>
+              <span>{t('fieldDescription')}</span>
               <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 rows={2}
                 className="knowledge-map-edit-textarea"
-                placeholder="Optional"
+                placeholder={t('descPlaceholderOptional')}
               />
             </label>
           </div>
           <div className="knowledge-map-edit-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => void handleEditSave()} disabled={editLoading}>
-              {editLoading ? 'Saving…' : 'Save'}
+              {editLoading ? t('saving') : t('save')}
             </button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={handleEditCancel}>
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
@@ -358,7 +354,7 @@ function KnowledgeMapTreeItem({
             value={moveParentId}
             onChange={(e) => setMoveParentId(e.target.value)}
             className="knowledge-map-move-select"
-            aria-label="Parent term"
+            aria-label={t('parentTermAria')}
           >
             {moveOptions.map((p) => (
               <option key={p.id || 'root'} value={p.id}>
@@ -372,10 +368,10 @@ function KnowledgeMapTreeItem({
             onClick={() => void handleMoveConfirm()}
             disabled={moveLoading}
           >
-            {moveLoading ? 'Moving…' : 'Move'}
+            {moveLoading ? t('moving') : t('move')}
           </button>
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleMoveCancel}>
-            Cancel
+            {t('cancel')}
           </button>
         </div>
       )}
@@ -403,6 +399,7 @@ function KnowledgeMapTreeItem({
 }
 
 export function KnowledgeMap() {
+  const { t } = useTranslation('knowledgeMap');
   const { hasPermission } = useAuth();
   const { channels } = useDocumentChannels();
   const [searchParams] = useSearchParams();
@@ -446,7 +443,7 @@ export function KnowledgeMap() {
         setLinks(l);
         setLoadError(null);
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Failed to load Knowledge Map';
+        const msg = e instanceof Error ? e.message : t('toastLoadFailed');
         toast.error(msg);
         setLoadError(msg);
         setTree([]);
@@ -455,7 +452,7 @@ export function KnowledgeMap() {
         if (!silent) setLoading(false);
       }
     },
-    [canRead],
+    [canRead, t],
   );
 
   useEffect(() => {
@@ -519,9 +516,9 @@ export function KnowledgeMap() {
   const getMoveParentOptions = useCallback(
     (excludeTermId: string) => {
       const exclude = getKnowledgeMapDescendantIds(tree, excludeTermId);
-      return [{ id: '', name: 'None (top-level)', depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
+      return [{ id: '', name: t('parentNoneTopLevel'), depth: 0 }, ...parentOptions.filter((p) => !exclude.has(p.id))];
     },
-    [tree, parentOptions],
+    [tree, parentOptions, t],
   );
 
   const resolveResourceLabel = useCallback(
@@ -561,14 +558,14 @@ export function KnowledgeMap() {
       setCreateName('');
       setCreateDescription('');
       setCreateParentId('');
-      toast.success('Term created');
+      toast.success(t('toastTermCreated'));
       setShowNewTermModal(false);
       // Reload tree before selecting: avoids a frame where selection points at a term not yet in `tree`,
       // which triggered the sync effect and broke updates (especially first term from empty tree).
       await load({ silent: true });
       setSelectedNodeId(created.id);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Could not create term');
+      setCreateError(err instanceof Error ? err.message : t('toastCreateFailed'));
     } finally {
       setCreating(false);
     }
@@ -576,11 +573,11 @@ export function KnowledgeMap() {
 
   const onAddLink = async () => {
     if (!selectedNodeId) {
-      toast.error('Select a term in the tree first.');
+      toast.error(t('toastSelectTermFirst'));
       return;
     }
     if (!linkResourceId.trim()) {
-      toast.error('Choose a resource to refer to.');
+      toast.error(t('toastChooseResource'));
       return;
     }
     try {
@@ -589,22 +586,22 @@ export function KnowledgeMap() {
         resource_type: linkType,
         resource_id: linkResourceId.trim(),
       });
-      toast.success('Refer-to saved');
+      toast.success(t('toastReferToSaved'));
       setLinkResourceId('');
       await load({ silent: true });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save refer-to');
+      toast.error(e instanceof Error ? e.message : t('toastReferToSaveFailed'));
     }
   };
 
   const onDeleteLink = async (resourceType: string, resourceId: string) => {
-    if (!window.confirm('Remove this refer-to?')) return;
+    if (!window.confirm(t('confirmRemoveReferTo'))) return;
     try {
       await deleteResourceLink(resourceType, resourceId);
-      toast.success('Refer-to removed');
+      toast.success(t('toastReferToRemoved'));
       await load({ silent: true });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Remove failed');
+      toast.error(e instanceof Error ? e.message : t('toastReferToRemoveFailed'));
     }
   };
 
@@ -612,8 +609,8 @@ export function KnowledgeMap() {
     return (
       <div className="knowledge-map-page">
         <div className="page-header">
-          <h1>Knowledge Map</h1>
-          <p className="page-subtitle">You need the taxonomy:read permission to view the Knowledge Map.</p>
+          <h1>{t('noPermissionTitle')}</h1>
+          <p className="page-subtitle">{t('noPermissionBody')}</p>
         </div>
       </div>
     );
@@ -623,16 +620,12 @@ export function KnowledgeMap() {
     <div className="knowledge-map-page">
       <Link to="/" className="knowledge-map-back-row">
         <ArrowLeft size={18} />
-        <span>Back to Home</span>
+        <span>{t('back')}</span>
       </Link>
 
       <div className="page-header knowledge-map-header">
-        <h1>Knowledge Map</h1>
-        <p className="page-subtitle">
-          Like a <strong>sitemap</strong> for your knowledge base: a tree of terms that shows how topics nest. Terms
-          can <strong>refer to</strong> document channels, article channels, or wiki spaces so people can jump from a
-          term to real content.
-        </p>
+        <h1>{t('title')}</h1>
+        <p className="page-subtitle">{t('subtitle')}</p>
       </div>
 
       {loadError && (
@@ -644,32 +637,30 @@ export function KnowledgeMap() {
       {loading ? (
         <div className="knowledge-map-loading">
           <Loader2 className="knowledge-map-spinner" size={28} aria-hidden />
-          <span>Loading…</span>
+          <span>{t('loading')}</span>
         </div>
       ) : (
         <>
           <div className="knowledge-map-master-detail">
-            <section className="knowledge-map-tree-panel" aria-label="Knowledge Map tree">
+            <section className="knowledge-map-tree-panel" aria-label={t('treeAriaLabel')}>
               <div className="knowledge-map-tree-panel-header">
                 <h2>
                   <FolderTree size={20} />
-                  Tree
+                  {t('treeHeading')}
                 </h2>
                 {canWrite && (
                   <button type="button" className="btn btn-primary knowledge-map-new-node-btn" onClick={openNewTermModal}>
                     <Plus size={18} />
-                    <span>New node</span>
+                    <span>{t('newNode')}</span>
                   </button>
                 )}
               </div>
               {!tree.length ? (
                 <div className="knowledge-map-empty">
                   <FolderTree size={40} />
-                  <p>No terms yet</p>
+                  <p>{t('treeEmptyTitle')}</p>
                   <p className="knowledge-map-empty-hint">
-                    {canWrite
-                      ? 'Use New node to add a root or narrower node. Choose “None (top-level)” for a root entry.'
-                      : 'An editor with taxonomy:write can add terms to the map here.'}
+                    {canWrite ? t('treeEmptyHintWriter') : t('treeEmptyHintReader')}
                   </p>
                 </div>
               ) : (
@@ -693,17 +684,13 @@ export function KnowledgeMap() {
               )}
             </section>
 
-            <section className="knowledge-map-detail-card" aria-label="Node details">
+            <section className="knowledge-map-detail-card" aria-label={t('detailAriaLabel')}>
               {!tree.length ? (
-                <p className="knowledge-map-muted knowledge-map-detail-placeholder">
-                  Add terms to the map to select one and manage refer-tos.
-                </p>
+                <p className="knowledge-map-muted knowledge-map-detail-placeholder">{t('detailPlaceholderNoTree')}</p>
               ) : !selectedNodeId || !selectedNode ? (
                 <div className="knowledge-map-detail-placeholder">
-                  <p className="knowledge-map-detail-placeholder-title">Node details</p>
-                  <p className="knowledge-map-muted">
-                    Select a term in the map to see its path, notes, and which channels or wiki spaces refer to it.
-                  </p>
+                  <p className="knowledge-map-detail-placeholder-title">{t('detailHeading')}</p>
+                  <p className="knowledge-map-muted">{t('detailSelectPrompt')}</p>
                 </div>
               ) : (
                 <>
@@ -713,28 +700,23 @@ export function KnowledgeMap() {
                     {selectedNode.description ? (
                       <p className="knowledge-map-detail-description">{selectedNode.description}</p>
                     ) : (
-                      <p className="knowledge-map-detail-description knowledge-map-muted">No description.</p>
+                      <p className="knowledge-map-detail-description knowledge-map-muted">{t('noDescription')}</p>
                     )}
                     <p className="knowledge-map-detail-id">
-                      <span className="knowledge-map-muted">Id</span> <code>{selectedNode.id}</code>
+                      <span className="knowledge-map-muted">{t('idLabel')}</span> <code>{selectedNode.id}</code>
                     </p>
                   </header>
 
                   <div className="knowledge-map-detail-refer">
                     <h3 className="knowledge-map-detail-subheading">
                       <Link2 size={16} className="knowledge-map-inline-icon" aria-hidden />
-                      Refer to
+                      {t('referToHeading')}
                     </h3>
-                    <p className="knowledge-map-muted knowledge-map-detail-refer-intro">
-                      This node can refer to many document channels, article channels, and wiki spaces—add each one
-                      below and it appears in the table. The same channel or wiki space can only be linked to one node
-                      at a time; saving here moves that link from another node if needed. Article channel IDs match the
-                      sidebar (mock data until a backend exists).
-                    </p>
+                    <p className="knowledge-map-muted knowledge-map-detail-refer-intro">{t('referToIntro')}</p>
                     {canWrite && (
                       <div className="knowledge-map-link-form">
                         <select
-                          aria-label="Resource type"
+                          aria-label={t('resourceTypeAria')}
                           className="knowledge-map-select"
                           value={linkType}
                           onChange={(e) => {
@@ -742,18 +724,18 @@ export function KnowledgeMap() {
                             setLinkResourceId('');
                           }}
                         >
-                          <option value="document_channel">Document channel</option>
-                          <option value="article_channel">Article channel</option>
-                          <option value="wiki_space">Wiki space</option>
+                          <option value="document_channel">{t('resourceTypes.document_channel')}</option>
+                          <option value="article_channel">{t('resourceTypes.article_channel')}</option>
+                          <option value="wiki_space">{t('resourceTypes.wiki_space')}</option>
                         </select>
                         {linkType === 'document_channel' && (
                           <select
-                            aria-label="Document channel"
+                            aria-label={t('documentChannelAria')}
                             className="knowledge-map-select"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           >
-                            <option value="">Select channel…</option>
+                            <option value="">{t('selectChannel')}</option>
                             {docChannelOptions.map((o) => (
                               <option key={o.id} value={o.id}>
                                 {o.label}
@@ -763,12 +745,12 @@ export function KnowledgeMap() {
                         )}
                         {linkType === 'wiki_space' && (
                           <select
-                            aria-label="Wiki space"
+                            aria-label={t('wikiSpaceAria')}
                             className="knowledge-map-select"
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           >
-                            <option value="">Select wiki…</option>
+                            <option value="">{t('selectWiki')}</option>
                             {wikiOptions.map((o) => (
                               <option key={o.id} value={o.id}>
                                 {o.label}
@@ -780,32 +762,32 @@ export function KnowledgeMap() {
                           <input
                             type="text"
                             className="knowledge-map-input"
-                            placeholder="Article channel id (e.g. ac1a)"
+                            placeholder={t('articleChannelPlaceholder')}
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           />
                         )}
                         <button type="button" className="btn btn-secondary" onClick={() => void onAddLink()}>
-                          Save
+                          {t('saveLink')}
                         </button>
                       </div>
                     )}
                     {!linksForSelected.length ? (
-                      <p className="knowledge-map-muted">This term has no refer-tos yet.</p>
+                      <p className="knowledge-map-muted">{t('noReferTosYet')}</p>
                     ) : (
                       <div className="knowledge-map-table-wrap">
                         <table className="knowledge-map-table">
                           <thead>
                             <tr>
-                              <th>Type</th>
-                              <th>Resource</th>
-                              {canWrite && <th aria-label="Actions" />}
+                              <th>{t('colType')}</th>
+                              <th>{t('colResource')}</th>
+                              {canWrite && <th aria-label={t('colActions')} />}
                             </tr>
                           </thead>
                           <tbody>
                             {linksForSelected.map((r) => (
                               <tr key={r.id}>
-                                <td>{RESOURCE_TYPE_LABELS[r.resource_type] ?? r.resource_type}</td>
+                                <td>{t(`resourceTypes.${r.resource_type}`, { defaultValue: r.resource_type })}</td>
                                 <td>
                                   <span className="knowledge-map-resource-label">
                                     {resolveResourceLabel(r.resource_type, r.resource_id)}
@@ -817,7 +799,7 @@ export function KnowledgeMap() {
                                     <button
                                       type="button"
                                       className="btn btn-ghost"
-                                      aria-label="Remove refer-to"
+                                      aria-label={t('removeReferToAria')}
                                       onClick={() => void onDeleteLink(r.resource_type, r.resource_id)}
                                     >
                                       <Trash2 size={16} />
@@ -846,11 +828,11 @@ export function KnowledgeMap() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="knowledge-map-dialog-header">
-                  <h2 id="knowledge-map-new-node-title">New node</h2>
+                  <h2 id="knowledge-map-new-node-title">{t('modalNewNodeTitle')}</h2>
                   <button
                     type="button"
                     className="knowledge-map-dialog-close"
-                    aria-label="Close"
+                    aria-label={t('closeAria')}
                     onClick={closeNewTermModal}
                     disabled={creating}
                   >
@@ -864,28 +846,28 @@ export function KnowledgeMap() {
                     </div>
                   )}
                   <label>
-                    <span>Name (preferred label)</span>
+                    <span>{t('modalNameLabel')}</span>
                     <input
                       type="text"
                       value={createName}
                       onChange={(e) => setCreateName(e.target.value)}
-                      placeholder="e.g. Product family"
+                      placeholder={t('modalNamePlaceholder')}
                       autoFocus
                     />
                   </label>
                   <label>
-                    <span>Description</span>
+                    <span>{t('modalDescriptionLabel')}</span>
                     <textarea
                       value={createDescription}
                       onChange={(e) => setCreateDescription(e.target.value)}
-                      placeholder="Scope note or definition (optional)"
+                      placeholder={t('modalDescriptionPlaceholder')}
                       rows={2}
                     />
                   </label>
                   <label>
-                    <span>Broader term (parent)</span>
+                    <span>{t('modalParentLabel')}</span>
                     <select value={createParentId} onChange={(e) => setCreateParentId(e.target.value)}>
-                      <option value="">None (top-level)</option>
+                      <option value="">{t('parentNoneTopLevel')}</option>
                       {parentOptions.map((p) => (
                         <option key={p.id} value={p.id}>
                           {'—'.repeat(p.depth)} {p.name}
@@ -896,7 +878,7 @@ export function KnowledgeMap() {
                 </div>
                 <div className="knowledge-map-dialog-footer">
                   <button type="button" className="btn btn-secondary" onClick={closeNewTermModal} disabled={creating}>
-                    Cancel
+                    {t('cancel')}
                   </button>
                   <button
                     type="button"
@@ -904,7 +886,7 @@ export function KnowledgeMap() {
                     disabled={creating || !createName.trim()}
                     onClick={() => void handleCreateTerm()}
                   >
-                    {creating ? 'Creating…' : 'Create'}
+                    {creating ? t('creating') : t('create')}
                   </button>
                 </div>
               </div>

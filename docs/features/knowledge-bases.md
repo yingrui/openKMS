@@ -4,6 +4,7 @@ Index documents into a knowledge base, generate FAQs and chunks, run hybrid sema
 
 | Feature | Status | Description |
 |---------|--------|-------------|
+| SPA i18n | ✅ | List + detail UI use **`knowledgeBase`** namespace (`frontend/src/i18n/locales/{en,zh-CN}/knowledgeBase.json`) |
 | KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying; Add Documents dialog: left sidebar channel tree, right documents list with search and pagination |
 | FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for document metadata (from KB metadata_keys; channel label_config/extraction_schema for object_type/list[object_type]) |

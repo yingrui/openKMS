@@ -192,6 +192,29 @@
   color: var(--color-text-secondary);
 }
 
+.user-settings-card--locale {
+  margin-bottom: 24px;
+}
+
+.user-settings-section-title {
+  margin: 0 0 8px;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.user-settings-section-intro {
+  margin: 0 0 16px;
+}
+
+.user-settings-locale-row {
+  flex-wrap: wrap;
+}
+
+.user-settings-locale-saving {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
 @media (min-width: 520px) {
   .user-settings-api-key-item {
     grid-template-columns: 1fr 1fr auto;

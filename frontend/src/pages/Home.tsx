@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileStack, Inbox, Loader2, Share2, Waypoints } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,6 +30,7 @@ function flattenDocChannels(nodes: ChannelNode[], prefix = ''): { id: string; la
 }
 
 export function Home() {
+  const { t } = useTranslation('home');
   const { isAuthenticated, login, hasPermission } = useAuth();
   const { toggles } = useFeatureToggles();
   const { channels } = useDocumentChannels();
@@ -50,11 +52,11 @@ export function Home() {
       setHub(data);
     } catch (e) {
       setHub(null);
-      setHubError(e instanceof Error ? e.message : 'Could not load home data');
+      setHubError(e instanceof Error ? e.message : t('hubLoadError'));
     } finally {
       setHubLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (isAuthenticated) void loadHub();
@@ -80,16 +82,16 @@ export function Home() {
     setKnowledgeMapTreeError(null);
     void (async () => {
       try {
-        const [t, l] = await Promise.all([fetchKnowledgeMapTree(), fetchResourceLinks()]);
+        const [tree, links] = await Promise.all([fetchKnowledgeMapTree(), fetchResourceLinks()]);
         if (!cancelled) {
-          setKnowledgeMapTree(t);
-          setResourceLinks(l);
+          setKnowledgeMapTree(tree);
+          setResourceLinks(links);
         }
       } catch (e) {
         if (!cancelled) {
           setKnowledgeMapTree(null);
           setResourceLinks([]);
-          setKnowledgeMapTreeError(e instanceof Error ? e.message : 'Could not load Knowledge Map');
+          setKnowledgeMapTreeError(e instanceof Error ? e.message : t('mapLoadError'));
         }
       } finally {
         if (!cancelled) setKnowledgeMapTreeLoading(false);
@@ -98,7 +100,7 @@ export function Home() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, showKnowledgeMapHub]);
+  }, [isAuthenticated, showKnowledgeMapHub, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,9 +155,9 @@ export function Home() {
         <>
           <header className="home-map-hero-header">
             <div className="home-map-hero-header-text">
-              <h1>Home</h1>
+              <h1>{t('title')}</h1>
               <p className="page-subtitle home-map-hero-subtitle">
-                The live Knowledge Map, work items, and quick links.
+                {t('subtitleMap')}
               </p>
             </div>
             <div className="home-map-hero-header-aside">
@@ -163,19 +165,19 @@ export function Home() {
                 <div className="home-map-hero-stats" aria-live="polite">
                   <span className="home-map-hero-stat">
                     <span className="home-map-hero-stat-value">{nodeCount}</span>
-                    <span className="home-map-hero-stat-label">nodes</span>
+                    <span className="home-map-hero-stat-label">{t('nodes')}</span>
                   </span>
                   <span className="home-map-hero-stat-divider" aria-hidden />
                   <span className="home-map-hero-stat">
                     <span className="home-map-hero-stat-value">{linkCount}</span>
-                    <span className="home-map-hero-stat-label">links</span>
+                    <span className="home-map-hero-stat-label">{t('links')}</span>
                   </span>
                 </div>
               ) : hubLoading ? (
-                <span className="home-muted home-map-hero-stats-muted">Loading overview…</span>
+                <span className="home-muted home-map-hero-stats-muted">{t('loadingOverview')}</span>
               ) : null}
               <Link to="/knowledge-map" className="btn btn-secondary home-map-manage-btn">
-                {showKnowledgeMapWrite ? 'Edit Knowledge Map' : 'Open Knowledge Map'}
+                {showKnowledgeMapWrite ? t('editKnowledgeMap') : t('openKnowledgeMap')}
               </Link>
             </div>
           </header>
@@ -186,15 +188,15 @@ export function Home() {
             </p>
           )}
 
-          <section className="home-map-stage" aria-label="Knowledge Map graph">
+          <section className="home-map-stage" aria-label={t('sectionKnowledgeMap')}>
             <div className="home-map-stage-title">
               <Waypoints size={22} aria-hidden />
-              <span>Knowledge Map</span>
+              <span>{t('knowledgeMapHeading')}</span>
             </div>
             {knowledgeMapTreeLoading && !mapLoaded ? (
               <div className="home-map-stage-loading">
                 <Loader2 className="home-map-stage-spinner" size={32} aria-hidden />
-                <span>Loading graph…</span>
+                <span>{t('loadingGraph')}</span>
               </div>
             ) : knowledgeMapTreeError ? (
               <p className="home-error home-map-stage-error" role="alert">
@@ -202,15 +204,13 @@ export function Home() {
               </p>
             ) : !mapHasTerms ? (
               <div className="home-map-stage-empty">
-                <p className="home-map-stage-empty-title">No nodes yet</p>
+                <p className="home-map-stage-empty-title">{t('noNodesTitle')}</p>
                 <p className="home-muted">
-                  {showKnowledgeMapWrite
-                    ? 'Add nodes on the Knowledge Map page to see them here with links to channels and wiki spaces.'
-                    : 'An editor with taxonomy:write can add nodes to the map.'}
+                  {showKnowledgeMapWrite ? t('noNodesEditor') : t('noNodesViewer')}
                 </p>
                 {showKnowledgeMapWrite ? (
                   <Link to="/knowledge-map" className="btn btn-primary home-map-stage-empty-cta">
-                    Go to Knowledge Map
+                    {t('goToKnowledgeMap')}
                   </Link>
                 ) : null}
               </div>
@@ -226,7 +226,7 @@ export function Home() {
             ) : null}
             {mapHasTerms ? (
               <p className="home-muted home-map-stage-hint">
-                Navigate the Knowledge Map, click node to visit channel or wiki space.
+                {t('mapHint')}
               </p>
             ) : null}
           </section>
@@ -236,14 +236,13 @@ export function Home() {
               <section className="home-hub-card">
                 <h2 className="home-hub-card-title">
                   <Inbox size={20} aria-hidden />
-                  Work items
+                  {t('workItems')}
                 </h2>
                 <p className="home-muted home-hub-card-intro">
-                  Recent document relationships (supersedes, amends, implements, see also). Open a document to resolve or
-                  update lifecycle.
+                  {t('workItemsIntro')}
                 </p>
                 {!hub?.work_items?.length ? (
-                  <p className="home-muted">No items in the recent queue.</p>
+                  <p className="home-muted">{t('workItemsEmpty')}</p>
                 ) : (
                   <ul className="home-work-list">
                     {hub.work_items.map((w) => (
@@ -269,25 +268,25 @@ export function Home() {
               <section className="home-hub-card home-hub-card--compact">
                 <h2 className="home-hub-card-title">
                   <Share2 size={20} aria-hidden />
-                  Share requests
+                  {t('shareRequests')}
                 </h2>
-                <p className="home-muted">Nothing here yet. Future versions will surface access and collaboration requests.</p>
+                <p className="home-muted">{t('shareRequestsEmpty')}</p>
               </section>
 
               <section className="home-hub-card home-hub-card--compact">
                 <h2 className="home-hub-card-title">
                   <FileStack size={20} aria-hidden />
-                  Browse content
+                  {t('browseContent')}
                 </h2>
                 <ul className="home-quick-links">
                   <li>
-                    <Link to="/documents">Documents</Link>
+                    <Link to="/documents">{t('linkDocuments')}</Link>
                   </li>
                   <li>
-                    <Link to="/articles">Articles</Link>
+                    <Link to="/articles">{t('linkArticles')}</Link>
                   </li>
                   <li>
-                    <Link to="/wikis">Wiki spaces</Link>
+                    <Link to="/wikis">{t('linkWikis')}</Link>
                   </li>
                 </ul>
               </section>
@@ -298,15 +297,14 @@ export function Home() {
         <>
           <div className="page-header home-header">
             <div>
-              <h1>Home</h1>
+              <h1>{t('title')}</h1>
               <p className="page-subtitle">
-                Knowledge operations: document lifecycle signals and shortcuts. The Knowledge Map appears here when you
-                have taxonomy access.
+                {t('subtitleNoTaxonomy')}
               </p>
             </div>
           </div>
 
-          {hubLoading && <p className="home-muted">Loading…</p>}
+          {hubLoading && <p className="home-muted">{t('loading')}</p>}
           {hubError && (
             <p className="home-error" role="alert">
               {hubError}
@@ -319,14 +317,13 @@ export function Home() {
                 <section className="home-hub-card">
                   <h2 className="home-hub-card-title">
                     <Inbox size={20} aria-hidden />
-                    Work items
+                    {t('workItems')}
                   </h2>
                   <p className="home-muted home-hub-card-intro">
-                    Recent document relationships (supersedes, amends, implements, see also). Open a document to resolve or
-                    update lifecycle.
+                    {t('workItemsIntro')}
                   </p>
                   {!hub?.work_items?.length ? (
-                    <p className="home-muted">No items in the recent queue.</p>
+                    <p className="home-muted">{t('workItemsEmpty')}</p>
                   ) : (
                     <ul className="home-work-list">
                       {hub.work_items.map((w) => (
@@ -352,25 +349,25 @@ export function Home() {
                 <section className="home-hub-card home-hub-card--compact">
                   <h2 className="home-hub-card-title">
                     <Share2 size={20} aria-hidden />
-                    Share requests
+                    {t('shareRequests')}
                   </h2>
-                  <p className="home-muted">Nothing here yet. Future versions will surface access and collaboration requests.</p>
+                  <p className="home-muted">{t('shareRequestsEmpty')}</p>
                 </section>
 
                 <section className="home-hub-card home-hub-card--compact">
                   <h2 className="home-hub-card-title">
                     <FileStack size={20} aria-hidden />
-                    Browse content
+                    {t('browseContent')}
                   </h2>
                   <ul className="home-quick-links">
                     <li>
-                      <Link to="/documents">Documents</Link>
+                      <Link to="/documents">{t('linkDocuments')}</Link>
                     </li>
                     <li>
-                      <Link to="/articles">Articles</Link>
+                      <Link to="/articles">{t('linkArticles')}</Link>
                     </li>
                     <li>
-                      <Link to="/wikis">Wiki spaces</Link>
+                      <Link to="/wikis">{t('linkWikis')}</Link>
                     </li>
                   </ul>
                 </section>

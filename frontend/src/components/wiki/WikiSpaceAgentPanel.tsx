@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bot, ChevronsRight, MessageCirclePlus, RefreshCw, Send, Terminal, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -96,20 +97,11 @@ function lineId(): string {
 const INTRO: ChatLine = {
   id: 'intro',
   role: 'assistant',
-  text: 'Ask about this wiki: pages, content, or linked channel documents.',
+  text: '',
 };
 
 /** Server-persisted agent row ids (uuid from API). */
 const PERSISTED_AGENT_MSG_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function formatConvLabel(c: AgentConversationResponse): string {
-  if (c.title && c.title.trim()) return c.title.trim();
-  const d = new Date(c.updated_at);
-  if (!Number.isNaN(d.getTime())) {
-    return `Chat · ${d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
-  }
-  return `Chat · ${c.id.slice(0, 8)}…`;
-}
 
 export type WikiSpaceAgentPanelProps = {
   spaceId: string;
@@ -119,6 +111,7 @@ export type WikiSpaceAgentPanelProps = {
 };
 
 export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: WikiSpaceAgentPanelProps) {
+  const { t } = useTranslation('wikiSpace');
   const [conversations, setConversations] = useState<AgentConversationResponse[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([INTRO]);
@@ -133,6 +126,18 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSlashStKeyRef = useRef('');
+
+  const formatConvLabel = useCallback(
+    (c: AgentConversationResponse) => {
+      if (c.title && c.title.trim()) return c.title.trim();
+      const d = new Date(c.updated_at);
+      if (!Number.isNaN(d.getTime())) {
+        return `${t('copilot.chatDatePrefix')} ${d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+      }
+      return t('copilot.chatFallback', { snippet: `${c.id.slice(0, 8)}…` });
+    },
+    [t],
+  );
 
   const loadConversations = useCallback(async () => {
     try {
@@ -237,7 +242,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         } catch {
           if (!cancelled) {
             setLines([INTRO]);
-            toast.error('Failed to load messages for this chat');
+            toast.error(t('copilot.toastLoadMessagesFailed'));
           }
         }
       } else {
@@ -248,7 +253,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
     return () => {
       cancelled = true;
     };
-  }, [spaceId, loadConversations, loadMessages]);
+  }, [spaceId, loadConversations, loadMessages, t]);
 
   const onSelectConversation = useCallback(
     (e: ChangeEvent<HTMLSelectElement>) => {
@@ -266,7 +271,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         try {
           await loadMessages(v);
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Failed to load');
+          toast.error(err instanceof Error ? err.message : t('copilot.toastLoadConvFailed'));
           setLines([INTRO]);
         } finally {
           setConvReady(true);
@@ -286,13 +291,11 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
     (userLine: ChatLine) => {
       if (!activeConvId || sending || restarting) return;
       if (!PERSISTED_AGENT_MSG_ID.test(userLine.id)) {
-        toast.error('Wait until this message is saved, then use restart.');
+        toast.error(t('copilot.toastRestartWait'));
         return;
       }
       if (
-        !window.confirm(
-          'Remove this message and everything after it? Your text will reappear in the input so you can edit and resend.'
-        )
+        !window.confirm(t('copilot.confirmRestart'))
       ) {
         return;
       }
@@ -304,20 +307,20 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           setDraft(saved);
           await loadMessages(activeConvId);
           void loadConversations();
-          toast.success('You can edit and resend to continue from here.');
+          toast.success(t('copilot.toastRestartOk'));
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Could not restart from here');
+          toast.error(e instanceof Error ? e.message : t('copilot.toastRestartFailed'));
         } finally {
           setRestarting(false);
         }
       })();
     },
-    [activeConvId, loadMessages, loadConversations, sending, restarting]
+    [activeConvId, loadMessages, loadConversations, sending, restarting, t]
   );
 
   const removeActiveChat = useCallback(() => {
     if (!activeConvId) return;
-    if (!window.confirm('Delete this chat and its messages? This cannot be undone.')) return;
+    if (!window.confirm(t('copilot.confirmDeleteChat'))) return;
     const deletedId = activeConvId;
     void (async () => {
       try {
@@ -341,16 +344,16 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         } else {
           setLines([INTRO]);
         }
-        toast.success('Chat deleted');
+        toast.success(t('copilot.toastChatDeleted'));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Delete failed');
+        toast.error(e instanceof Error ? e.message : t('copilot.toastDeleteChatFailed'));
       }
     })();
-  }, [activeConvId, spaceId, loadConversations, loadMessages]);
+  }, [activeConvId, spaceId, loadConversations, loadMessages, t]);
 
   const send = useCallback(() => {
-    const t = draft.trim();
-    if (!t || !convReady || restarting) return;
+    const userText = draft.trim();
+    if (!userText || !convReady || restarting) return;
     setDraft('');
     const tempUserId = lineId();
     const asstStreamId = lineId();
@@ -361,7 +364,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         const base = prev.length === 1 && prev[0]?.id === 'intro' ? [] : prev;
         return [
           ...base,
-          { id: tempUserId, role: 'user' as const, text: t },
+          { id: tempUserId, role: 'user' as const, text: userText },
           { id: asstStreamId, role: 'assistant' as const, text: '', streamParts: [] },
         ];
       });
@@ -377,7 +380,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           setStoredWikiAgentConversationId(spaceId, c.id);
           setConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
         }
-        await postAgentMessageStream(convId, t, (e) => {
+        await postAgentMessageStream(convId, userText, (e) => {
           console.log('[WikiCopilot stream]', e.type, e);
           if (e.type === 'user') {
             setLines((prev) =>
@@ -499,7 +502,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                 streamed && streamed.role === 'assistant' ? streamed.streamParts : undefined;
               return [
                 ...without,
-                { id: e.user.id, role: 'user', text: t },
+                { id: e.user.id, role: 'user', text: userText },
                 {
                   id: e.message.id,
                   role: 'assistant',
@@ -522,24 +525,24 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         });
         void loadConversations();
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Assistant request failed');
-        setDraft(t);
+        toast.error(e instanceof Error ? e.message : t('copilot.toastAssistantFailed'));
+        setDraft(userText);
         setLines((prev) => prev.filter((p) => p.id !== tempUserId && p.id !== asstStreamId));
       } finally {
         setSending(false);
       }
     })();
-  }, [draft, convReady, restarting, spaceId, activeConvId, loadConversations]);
+  }, [draft, convReady, restarting, spaceId, activeConvId, loadConversations, t]);
 
   const convSelectValue =
     activeConvId && conversations.some((c) => c.id === activeConvId) ? activeConvId : '';
 
   return (
-    <aside className="wiki-space-agent-panel" aria-label="Wiki Copilot">
+    <aside className="wiki-space-agent-panel" aria-label={t('copilot.threadAria')}>
       <div className="wiki-space-agent-panel__head">
         <Bot size={20} className="wiki-space-agent-panel__head-icon" aria-hidden />
         <div className="wiki-space-agent-panel__head-text">
-          <h2 className="wiki-space-agent-panel__title">Wiki Copilot</h2>
+          <h2 className="wiki-space-agent-panel__title">{t('copilot.title')}</h2>
           <p className="wiki-space-agent-panel__sub">{spaceName?.trim() || spaceId}</p>
         </div>
         {onRequestCollapse && (
@@ -547,16 +550,16 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
             type="button"
             className="wiki-space-agent-panel__collapse"
             onClick={onRequestCollapse}
-            title="Hide Wiki Copilot"
-            aria-label="Collapse Wiki Copilot"
+            title={t('copilot.collapseTitle')}
+            aria-label={t('copilot.collapseAria')}
           >
             <ChevronsRight size={20} strokeWidth={2} aria-hidden />
           </button>
         )}
       </div>
-      <div className="wiki-space-agent-panel__chats" aria-label="Conversations for this wiki">
+      <div className="wiki-space-agent-panel__chats" aria-label={t('copilot.conversationsAria')}>
         <label className="wiki-space-agent-panel__chats-label" htmlFor="wiki-space-agent-conv">
-          Chats
+          {t('copilot.chatsLabel')}
         </label>
         <select
           id="wiki-space-agent-conv"
@@ -567,14 +570,14 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         >
           {conversationsLoading && conversations.length === 0 ? (
             <option value="" disabled>
-              Loading…
+              {t('copilot.chatsLoading')}
             </option>
           ) : null}
           {!conversationsLoading && conversations.length === 0 ? (
-            <option value="">No chats yet — your first message starts one</option>
+            <option value="">{t('copilot.noChatsYet')}</option>
           ) : null}
           {!conversationsLoading && conversations.length > 0 && (
-            <option value="">＋ New message (draft)</option>
+            <option value="">{t('copilot.newDraftOption')}</option>
           )}
           {conversations.map((c) => (
             <option key={c.id} value={c.id}>
@@ -586,8 +589,8 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           type="button"
           className="wiki-space-agent-panel__chats-icon-btn"
           onClick={startNewChat}
-          title="Start new chat"
-          aria-label="Start new chat"
+          title={t('copilot.newChatTitle')}
+          aria-label={t('copilot.newChatAria')}
           disabled={restarting}
         >
           <MessageCirclePlus size={18} strokeWidth={2} />
@@ -596,8 +599,8 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           type="button"
           className="wiki-space-agent-panel__chats-icon-btn wiki-space-agent-panel__chats-icon-btn--danger"
           onClick={removeActiveChat}
-          title="Delete this chat"
-          aria-label="Delete this chat"
+          title={t('copilot.deleteChatTitle')}
+          aria-label={t('copilot.deleteChatAria')}
           disabled={!activeConvId || sending || restarting}
         >
           <Trash2 size={18} strokeWidth={2} />
@@ -615,8 +618,8 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                 key={m.id}
                 className="wiki-space-agent-panel__msg wiki-space-agent-panel__msg--assistant wiki-space-agent-panel__msg--intro"
               >
-                <span className="wiki-space-agent-panel__msg-label">Copilot</span>
-                <WikiAgentMessageBody text={m.text} variant="plain" />
+                <span className="wiki-space-agent-panel__msg-label">{t('copilot.labelCopilot')}</span>
+                <WikiAgentMessageBody text={t('copilot.intro')} variant="plain" />
               </div>
             );
           }
@@ -626,10 +629,10 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
               className={`wiki-space-agent-panel__msg wiki-space-agent-panel__msg--${m.role}`}
             >
               <span className="wiki-space-agent-panel__msg-label">
-                {m.role === 'user' ? 'You' : 'Copilot'}
+                {m.role === 'user' ? t('copilot.labelYou') : t('copilot.labelCopilot')}
               </span>
               {m.role === 'assistant' && m.streamParts && m.streamParts.length > 0 ? (
-                <div className="wiki-space-agent-panel__assistant-stream" aria-label="Copilot reply">
+                <div className="wiki-space-agent-panel__assistant-stream" aria-label={t('copilot.replyAria')}>
                   {m.streamParts.map((part, i) =>
                     part.type === 'text' ? (
                       <WikiAgentMessageBody
@@ -657,19 +660,19 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                           ) : null}
                           {part.step.status === 'ok' ? (
                             <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--ok">
-                              done
+                              {t('copilot.toolDone')}
                             </span>
                           ) : null}
                           {part.step.status === 'err' ? (
                             <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--err">
-                              error
+                              {t('copilot.toolError')}
                             </span>
                           ) : null}
                         </div>
                         {(part.step.input || part.step.output || part.step.error) &&
                         (part.step.status !== 'running' || part.step.input) ? (
                           <details className="wiki-space-agent-panel__tool-details">
-                            <summary>Input / output</summary>
+                            <summary>{t('copilot.toolIoSummary')}</summary>
                             {part.step.input ? (
                               <pre className="wiki-space-agent-panel__tool-pre">
                                 {part.step.input}
@@ -706,8 +709,8 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                     className="wiki-space-agent-panel__restart"
                     onClick={() => onRestartFromUserMessage(m)}
                     disabled={!activeConvId || sending || restarting}
-                    title="Remove this and later messages; your text returns to the input to edit and resend"
-                    aria-label="Restart from this message"
+                    title={t('copilot.restartTitle')}
+                    aria-label={t('copilot.restartAria')}
                   >
                     <RefreshCw size={15} strokeWidth={2} aria-hidden />
                   </button>
@@ -720,14 +723,14 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
       </div>
       <div className="wiki-space-agent-panel__composer">
         <label htmlFor="wiki-agent-draft" className="wiki-space-agent-panel__sr-only">
-          Message
+          {t('copilot.draftLabel')}
         </label>
         <div className="wiki-space-agent-panel__input-wrap">
           {slashList.length > 0 && (
             <ul
               className="wiki-space-agent-panel__slash-menu"
               role="listbox"
-              aria-label="Wiki skills"
+              aria-label={t('copilot.slashSkillsAria')}
               id="wiki-agent-slash-list"
             >
               {slashList.map((s, i) => (
@@ -755,7 +758,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
             id="wiki-agent-draft"
             className="wiki-space-agent-panel__input"
             rows={3}
-            placeholder="Ask about this wiki… Type / for skills"
+            placeholder={t('copilot.inputPlaceholder')}
             value={draft}
             disabled={sending || !convReady || restarting}
             aria-autocomplete="list"
@@ -811,21 +814,16 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           />
         </div>
         <div className="wiki-space-agent-panel__composer-footer">
-          <p className="wiki-space-agent-panel__composer-hint">
-            <kbd className="wiki-space-agent-panel__kbd">/</kbd> skills ·{' '}
-            <kbd className="wiki-space-agent-panel__kbd">Enter</kbd> to send ·{' '}
-            <kbd className="wiki-space-agent-panel__kbd">Shift</kbd>+<kbd className="wiki-space-agent-panel__kbd">Enter</kbd>{' '}
-            new line
-          </p>
+          <p className="wiki-space-agent-panel__composer-hint">{t('copilot.composerHint')}</p>
           <button
             type="button"
             className="btn btn-primary wiki-space-agent-panel__send"
             onClick={send}
             disabled={!draft.trim() || sending || !convReady || restarting}
-            aria-label="Send message"
+            aria-label={t('copilot.sendAria')}
           >
             <Send size={18} strokeWidth={2} aria-hidden />
-            {sending ? '…' : 'Send'}
+            {sending ? t('copilot.sending') : t('copilot.send')}
           </button>
         </div>
       </div>

@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { config } from '../config';
+import { getStoredLocale } from '../i18n/config';
+import { formatApiErrorMessage } from '../utils/apiError';
 import { useAuth } from '../contexts/AuthContext';
 import './AuthLocal.css';
 
 export function Login() {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const { authMode, authModeReady, allowSignup, completeLocalSession } = useAuth();
   useEffect(() => {
@@ -27,19 +31,22 @@ export function Login() {
     try {
       const res = await fetch(`${config.apiUrl}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept-Language': getStoredLocale(),
+        },
         credentials: 'include',
         body: JSON.stringify({ login, password }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(typeof data.detail === 'string' ? data.detail : 'Login failed');
+        setError(formatApiErrorMessage(data));
         return;
       }
       await completeLocalSession(data.access_token as string);
       navigate('/', { replace: true });
     } catch {
-      setError('Network error');
+      setError(t('networkError'));
     } finally {
       setPending(false);
     }
@@ -49,7 +56,7 @@ export function Login() {
     return (
       <div className="auth-local-page">
         <div className="auth-local-card">
-          <p className="auth-local-sub">Detecting sign-in method…</p>
+          <p className="auth-local-sub">{t('detectingAuth')}</p>
         </div>
       </div>
     );
@@ -59,24 +66,24 @@ export function Login() {
     <div className="auth-local-page">
       <div className="auth-local-card">
         <Link to="/" className="auth-local-back">
-          ← Back to home
+          {t('backHome')}
         </Link>
-        <h1>Sign in</h1>
-        <p className="auth-local-sub">Use your openKMS account (local auth mode).</p>
+        <h1>{t('signInTitle')}</h1>
+        <p className="auth-local-sub">{t('signInSub')}</p>
         {notice === 'local_auth' && (
           <p className="auth-local-sub" style={{ color: 'var(--color-accent, #3b82f6)' }}>
-            OIDC login is disabled. Sign in here instead.
+            {t('noticeOidcDisabled')}
           </p>
         )}
         {notice === 'signup_disabled' && (
           <p className="auth-local-sub" style={{ color: 'var(--color-accent, #3b82f6)' }}>
-            New account registration is disabled on this server.
+            {t('noticeSignupDisabled')}
           </p>
         )}
         {error && <p className="auth-local-error">{error}</p>}
         <form onSubmit={onSubmit}>
           <div className="auth-local-field">
-            <label htmlFor="login-username">Username or email</label>
+            <label htmlFor="login-username">{t('usernameLabel')}</label>
             <input
               id="login-username"
               type="text"
@@ -87,7 +94,7 @@ export function Login() {
             />
           </div>
           <div className="auth-local-field">
-            <label htmlFor="login-password">Password</label>
+            <label htmlFor="login-password">{t('passwordLabel')}</label>
             <input
               id="login-password"
               type="password"
@@ -98,12 +105,12 @@ export function Login() {
             />
           </div>
           <button type="submit" className="auth-local-submit" disabled={pending}>
-            {pending ? 'Signing in…' : 'Sign in'}
+            {pending ? t('signingIn') : t('signInButton')}
           </button>
         </form>
         {allowSignup && (
           <p className="auth-local-footer">
-            No account? <Link to="/signup">Create one</Link>
+            {t('noAccount')} <Link to="/signup">{t('createOne')}</Link>
           </p>
         )}
       </div>

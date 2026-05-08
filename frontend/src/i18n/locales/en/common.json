@@ -1,0 +1,5 @@
+{
+  "appLoading": "Loading…",
+  "graphPanZoomHint": "Drag to pan, scroll to zoom.",
+  "wikiSpaceGraphInteractionHint": "Drag to pan, scroll to zoom. Click a note to open it. Larger dots are more connected. If distant notes shrink the view, use Fit main cluster (expand icon) to frame the dense part."
+}

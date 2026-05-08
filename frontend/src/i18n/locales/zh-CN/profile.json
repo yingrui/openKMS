@@ -1,0 +1,16 @@
+{
+  "title": "个人资料",
+  "subtitle": "openKMS 识别的账户信息。要为助手和脚本创建 API 密钥，请打开 <settingsLink>设置</settingsLink>。",
+  "loading": "加载中…",
+  "loadError": "无法加载个人资料",
+  "tryAgain": "重试",
+  "displayName": "显示名称",
+  "email": "邮箱",
+  "administrator": "管理员",
+  "roles": "角色",
+  "accountId": "账户 ID",
+  "yes": "是",
+  "no": "否",
+  "emptyValue": "—",
+  "rolesAria": "已分配角色"
+}

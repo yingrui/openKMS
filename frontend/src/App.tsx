@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
@@ -41,6 +42,15 @@ import { EvaluationDatasetList } from './pages/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/EvaluationDatasetDetail';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+function AppLoadingFallback() {
+  const { t } = useTranslation('common');
+  return (
+    <div className="app-loading" aria-live="polite">
+      {t('appLoading')}
+    </div>
+  );
+}
 
 const KnowledgeBaseDetail = lazy(() => import('./pages/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })));
 const Pipelines = lazy(() => import('./pages/Pipelines').then((m) => ({ default: m.Pipelines })));
@@ -90,7 +100,7 @@ function App() {
       <DocumentChannelsProvider>
       <ArticleChannelsProvider>
       <ErrorBoundary>
-      <Suspense fallback={<div className="app-loading" aria-live="polite">Loading...</div>}>
+      <Suspense fallback={<AppLoadingFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />

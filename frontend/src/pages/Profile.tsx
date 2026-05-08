@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { UserCircle } from 'lucide-react';
 import { fetchAuthMe, type AuthMeResponse } from '../data/authApi';
 import './Profile.css';
 
 export function Profile() {
+  const { t } = useTranslation('profile');
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,11 +19,11 @@ export function Profile() {
       setMe(data);
     } catch (e) {
       setMe(null);
-      setError(e instanceof Error ? e.message : 'Could not load profile');
+      setError(e instanceof Error ? e.message : t('loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -32,21 +34,23 @@ export function Profile() {
       <div className="page-header">
         <h1 className="profile-page-title">
           <UserCircle size={28} strokeWidth={1.75} aria-hidden />
-          Profile
+          {t('title')}
         </h1>
         <p className="page-subtitle">
-          Your account details as recognized by openKMS. To create API keys for assistants and scripts, open{' '}
-          <Link to="/settings" className="profile-settings-link">
-            Settings
-          </Link>
-          .
+          <Trans
+            i18nKey="subtitle"
+            ns="profile"
+            components={{
+              settingsLink: <Link to="/settings" className="profile-settings-link" />,
+            }}
+          />
         </p>
       </div>
 
       {loading && (
         <div className="profile-card">
           <p className="page-subtitle" style={{ margin: 0 }}>
-            Loading…
+            {t('loading')}
           </p>
         </div>
       )}
@@ -55,7 +59,7 @@ export function Profile() {
         <div className="profile-card">
           <p className="profile-error">{error}</p>
           <button type="button" className="profile-retry" onClick={() => void load()}>
-            Try again
+            {t('tryAgain')}
           </button>
         </div>
       )}
@@ -64,28 +68,28 @@ export function Profile() {
         <div className="profile-card">
           <dl className="profile-dl">
             <div>
-              <dt>Display name</dt>
+              <dt>{t('displayName')}</dt>
               <dd>{me.username}</dd>
             </div>
             <div>
-              <dt>Email</dt>
-              <dd>{me.email || '—'}</dd>
+              <dt>{t('email')}</dt>
+              <dd>{me.email || t('emptyValue')}</dd>
             </div>
             <div>
-              <dt>Administrator</dt>
+              <dt>{t('administrator')}</dt>
               <dd>
                 <span className={`profile-role ${me.is_admin ? 'profile-role--admin' : ''}`}>
-                  {me.is_admin ? 'Yes' : 'No'}
+                  {me.is_admin ? t('yes') : t('no')}
                 </span>
               </dd>
             </div>
             <div>
-              <dt>Roles</dt>
+              <dt>{t('roles')}</dt>
               <dd>
                 {(me.roles ?? []).length === 0 ? (
-                  '—'
+                  t('emptyValue')
                 ) : (
-                  <ul className="profile-role-list" aria-label="Assigned roles">
+                  <ul className="profile-role-list" aria-label={t('rolesAria')}>
                     {[...(me.roles ?? [])]
                       .sort((a, b) => a.localeCompare(b))
                       .map((r) => (
@@ -98,7 +102,7 @@ export function Profile() {
               </dd>
             </div>
             <div>
-              <dt>Account ID</dt>
+              <dt>{t('accountId')}</dt>
               <dd>
                 <code style={{ fontSize: '0.9em' }}>{me.id}</code>
               </dd>

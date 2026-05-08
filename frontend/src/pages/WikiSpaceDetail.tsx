@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Bot, ChevronsLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,13 +45,14 @@ function formatBytes(n: number): string {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatRowUpdatedAt(iso: string): string {
+function formatRowUpdatedAt(iso: string, dash: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return dash;
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export function WikiSpaceDetail() {
+  const { t } = useTranslation('wikiSpace');
   const { id: spaceId } = useParams<{ id: string }>();
   const [space, setSpace] = useState<WikiSpaceResponse | null>(null);
   const [pages, setPages] = useState<WikiPageResponse[]>([]);
@@ -116,7 +118,7 @@ export function WikiSpaceDetail() {
   useEffect(() => {
     if (!docPickerOpen || !spaceId) return;
     let cancelled = false;
-    const t = window.setTimeout(() => {
+    const pickTimer = window.setTimeout(() => {
       void (async () => {
         setDocPickerLoading(true);
         try {
@@ -132,7 +134,7 @@ export function WikiSpaceDetail() {
           );
         } catch (e) {
           if (!cancelled) {
-            toast.error(e instanceof Error ? e.message : 'Failed to load documents');
+            toast.error(e instanceof Error ? e.message : t('toastDocPickerLoadFailed'));
             setDocPickerItems([]);
           }
         } finally {
@@ -142,9 +144,9 @@ export function WikiSpaceDetail() {
     }, 280);
     return () => {
       cancelled = true;
-      window.clearTimeout(t);
+      window.clearTimeout(pickTimer);
     };
-  }, [docPickerOpen, spaceId, docSearch, docChannelFilter]);
+  }, [docPickerOpen, spaceId, docSearch, docChannelFilter, t]);
 
   useEffect(() => {
     if (!spaceId) return;
@@ -181,7 +183,7 @@ export function WikiSpaceDetail() {
         setPages(pg.items);
       } catch (e: unknown) {
         if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : 'Failed to load');
+          toast.error(e instanceof Error ? e.message : t('toastSpaceLoadFailed'));
           setSpace(null);
           setPages([]);
           setPagesTotal(0);
@@ -194,7 +196,7 @@ export function WikiSpaceDetail() {
     return () => {
       cancelled = true;
     };
-  }, [spaceId, pageIndex, listNonce]);
+  }, [spaceId, pageIndex, listNonce, t]);
 
   const handleCreatePage = async () => {
     const path = newPath.trim();
@@ -210,10 +212,10 @@ export function WikiSpaceDetail() {
       });
       setShowNewPage(false);
       setNewPath('');
-      toast.success('Page created');
+      toast.success(t('toastPageCreated'));
       window.location.href = `/wikis/${spaceId}/pages/${p.id}`;
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
+      toast.error(e instanceof Error ? e.message : t('toastCreateFailed'));
     } finally {
       setSaving(false);
     }
@@ -240,7 +242,7 @@ export function WikiSpaceDetail() {
     if (!spaceId) return;
     if (!vaultFolderModalOpen) return;
     if (files.length === 0) {
-      toast.error('No files were selected (or the folder is empty).');
+      toast.error(t('toastNoFilesSelected'));
       return;
     }
     const skipSet = vaultSkipExtensionSet(vaultSkipOpts);
@@ -249,7 +251,7 @@ export function WikiSpaceDetail() {
     setVaultProgress(null);
     try {
       const r = await importWikiVaultFolder(spaceId, files, (p) => setVaultProgress(p), skipSet);
-      toast.success(`Vault import: ${summarizeVaultImport(r)}`);
+      toast.success(`${t('toastVaultImportPrefix')} ${summarizeVaultImport(r)}`);
       if (r.warnings.length) {
         toast.warning(
           `${r.warnings.length} warning(s): ${r.warnings.slice(0, 3).join(' · ')}${r.warnings.length > 3 ? '…' : ''}`
@@ -258,7 +260,7 @@ export function WikiSpaceDetail() {
       setPageIndex(0);
       setListNonce((n) => n + 1);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Vault import failed');
+      toast.error(err instanceof Error ? err.message : t('toastVaultImportFailed'));
     } finally {
       setVaultImporting(false);
       setVaultProgress(null);
@@ -272,7 +274,7 @@ export function WikiSpaceDetail() {
     setVaultImporting(true);
     try {
       const r = await importWikiVaultZip(spaceId, zipFile);
-      toast.success(`Vault import: ${summarizeVaultImport(r)}`);
+      toast.success(`${t('toastVaultImportPrefix')} ${summarizeVaultImport(r)}`);
       if (r.warnings.length) {
         toast.warning(
           `${r.warnings.length} warning(s): ${r.warnings.slice(0, 3).join(' · ')}${r.warnings.length > 3 ? '…' : ''}`
@@ -281,32 +283,32 @@ export function WikiSpaceDetail() {
       setPageIndex(0);
       setListNonce((n) => n + 1);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Vault import failed');
+      toast.error(err instanceof Error ? err.message : t('toastVaultImportFailed'));
     } finally {
       setVaultImporting(false);
     }
   };
 
   const handleDeletePage = async (p: WikiPageResponse) => {
-    if (!spaceId || !confirm(`Delete page "${p.path}"?`)) return;
+    if (!spaceId || !confirm(t('confirmDeletePage', { path: p.path }))) return;
     try {
       await deleteWikiPage(spaceId, p.id);
-      toast.success('Page deleted');
+      toast.success(t('toastPageDeleted'));
       setListNonce((n) => n + 1);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('toastDeleteFailed'));
     }
   };
 
   if (!spaceId) {
-    return <p className="wiki-space-detail-muted">Missing space id</p>;
+    return <p className="wiki-space-detail-muted">{t('missingSpaceId')}</p>;
   }
 
   const progressDisplay: VaultImportProgress = vaultProgress ?? {
     phase: 'binary',
     currentIndex: 0,
     total: 1,
-    path: 'Preparing…',
+    path: t('preparing'),
   };
 
   const importOverallPercent =
@@ -340,15 +342,15 @@ export function WikiSpaceDetail() {
         <div className="wiki-space-detail-toolbar-span">
           <Link to="/wikis" className="wiki-space-detail-back">
             <ArrowLeft size={18} />
-            Wiki spaces
+            {t('back')}
           </Link>
         </div>
         {loading && (
-          <p className="wiki-space-detail-body-loading wiki-space-detail-muted">Loading…</p>
+          <p className="wiki-space-detail-body-loading wiki-space-detail-muted">{t('loading')}</p>
         )}
         {!loading && !space && (
           <p className="wiki-space-detail-body-loading wiki-space-detail-muted" role="alert">
-            Could not load this wiki space.
+            {t('loadFailed')}
           </p>
         )}
         {!loading && space && (
@@ -362,21 +364,21 @@ export function WikiSpaceDetail() {
               <div className="wiki-space-detail-actions">
                 <Link to={`/wikis/${spaceId}/graph`} className="btn btn-secondary">
                   <Network size={18} />
-                  Graph View
+                  {t('graphView')}
                 </Link>
                 <button
                   type="button"
                   className="btn btn-secondary wiki-space-detail-import-folder-btn"
-                  title="Upload an Obsidian vault folder (.md + attachments). Skips .obsidian and .trash."
+                  title={t('importFolderTitle')}
                   disabled={vaultImporting || vaultFolderModalOpen}
                   onClick={openVaultFolderModal}
                 >
                   <FolderUp size={18} />
-                  Import folder
+                  {t('importFolder')}
                 </button>
                 <label
                   className="btn btn-secondary wiki-space-detail-import-label"
-                  title="Upload a zip of your vault (same layout as folder import)."
+                  title={t('importZipTitle')}
                 >
                   <input
                     type="file"
@@ -386,16 +388,16 @@ export function WikiSpaceDetail() {
                     onChange={(ev) => void handleVaultZipChange(ev)}
                   />
                   <Upload size={18} />
-                  Import zip
+                  {t('importZip')}
                 </label>
                 <button type="button" className="btn btn-primary" onClick={() => setShowNewPage(true)}>
                   <Plus size={18} />
-                  New page
+                  {t('newPage')}
                 </button>
               </div>
             </header>
 
-            <div className="wiki-space-detail-tabs" role="tablist" aria-label="Wiki space sections">
+            <div className="wiki-space-detail-tabs" role="tablist" aria-label={t('tabsAriaLabel')}>
               <button
                 type="button"
                 role="tab"
@@ -404,7 +406,7 @@ export function WikiSpaceDetail() {
                 onClick={() => setMainTab('pages')}
               >
                 <FileText size={16} aria-hidden />
-                Pages
+                {t('tabPages')}
               </button>
               <button
                 type="button"
@@ -414,17 +416,17 @@ export function WikiSpaceDetail() {
                 onClick={() => setMainTab('documents')}
               >
                 <FileStack size={16} aria-hidden />
-                Documents
+                {t('tabDocuments')}
               </button>
             </div>
 
             {mainTab === 'pages' && (
               <section
                 className={`wiki-space-detail-section${pagesTotal > 0 ? ' wiki-space-detail-section--tight' : ''}`}
-                aria-label="Wiki pages in this space"
+                aria-label={t('pagesSectionAria')}
               >
                 {pagesTotal === 0 ? (
-                  <p className="wiki-space-detail-muted">No pages yet.</p>
+                  <p className="wiki-space-detail-muted">{t('noPagesYet')}</p>
                 ) : (
                   <>
                     <ul className="wiki-space-detail-pages">
@@ -439,12 +441,12 @@ export function WikiSpaceDetail() {
                             dateTime={p.updated_at}
                             title={p.updated_at}
                           >
-                            {formatRowUpdatedAt(p.updated_at)}
+                            {formatRowUpdatedAt(p.updated_at, t('dashDate'))}
                           </time>
                           <button
                             type="button"
                             className="wiki-space-detail-icon-btn"
-                            aria-label="Delete page"
+                            aria-label={t('deletePageAria')}
                             onClick={() => void handleDeletePage(p)}
                           >
                             <Trash2 size={18} strokeWidth={1.5} />
@@ -453,18 +455,22 @@ export function WikiSpaceDetail() {
                       ))}
                     </ul>
                     {pageCount > 1 && (
-                      <nav className="wiki-space-detail-pagination" aria-label="Pages pagination">
+                      <nav className="wiki-space-detail-pagination" aria-label={t('paginationAria')}>
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
                           disabled={pageIndex <= 0}
                           onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
                         >
-                          Previous
+                          {t('previous')}
                         </button>
                         <span className="wiki-space-detail-pagination-status">
-                          Page {pageIndex + 1} of {pageCount} · {pagesTotal} page{pagesTotal === 1 ? '' : 's'} (
-                          {WIKI_PAGES_LIST_PAGE_SIZE} per page)
+                          {t('paginationStatus', {
+                            current: pageIndex + 1,
+                            total: pageCount,
+                            count: pagesTotal,
+                            size: WIKI_PAGES_LIST_PAGE_SIZE,
+                          })}
                         </span>
                         <button
                           type="button"
@@ -472,7 +478,7 @@ export function WikiSpaceDetail() {
                           disabled={pageIndex >= pageCount - 1}
                           onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
                         >
-                          Next
+                          {t('next')}
                         </button>
                       </nav>
                     )}
@@ -485,7 +491,7 @@ export function WikiSpaceDetail() {
               <section className="wiki-space-detail-section" aria-labelledby="wiki-tab-docs-heading">
                 <div className="wiki-space-detail-documents-head">
                   <h2 id="wiki-tab-docs-heading" className="wiki-space-detail-section-title">
-                    Linked documents
+                    {t('linkedDocuments')}
                   </h2>
                   <button
                     type="button"
@@ -496,11 +502,11 @@ export function WikiSpaceDetail() {
                       setDocPickerOpen(true);
                     }}
                   >
-                    Add documents…
+                    {t('addDocuments')}
                   </button>
                 </div>
                 {linkedDocs.length === 0 ? (
-                  <p className="wiki-space-detail-muted">No channel documents linked yet. Use Add documents to pick from your library.</p>
+                  <p className="wiki-space-detail-muted">{t('noLinkedDocsHint')}</p>
                 ) : (
                   <ul className="wiki-space-detail-pages">
                     {linkedDocs.map((d) => (
@@ -514,21 +520,21 @@ export function WikiSpaceDetail() {
                           dateTime={d.updated_at}
                           title={d.updated_at}
                         >
-                          {formatRowUpdatedAt(d.updated_at)}
+                          {formatRowUpdatedAt(d.updated_at, t('dashDate'))}
                         </time>
                         <button
                           type="button"
                           className="wiki-space-detail-icon-btn"
-                          aria-label="Remove link"
+                          aria-label={t('removeLinkAria')}
                           onClick={() => {
                             if (!spaceId) return;
                             void (async () => {
                               try {
                                 await unlinkDocumentFromWikiSpace(spaceId, d.id);
                                 setLinkedDocs((prev) => prev.filter((x) => x.id !== d.id));
-                                toast.success('Link removed');
+                                toast.success(t('toastLinkRemoved'));
                               } catch (e: unknown) {
-                                toast.error(e instanceof Error ? e.message : 'Failed to remove link');
+                                toast.error(e instanceof Error ? e.message : t('toastRemoveLinkFailed'));
                               }
                             })();
                           }}
@@ -547,14 +553,14 @@ export function WikiSpaceDetail() {
               type="button"
               className="wiki-space-detail-agent-expand"
               onClick={expandWikiAssistant}
-              title="Show Wiki Copilot"
+              title={t('expandCopilot')}
               aria-expanded="false"
             >
               <span className="wiki-space-detail-agent-expand__icon" aria-hidden>
                 <Bot size={20} strokeWidth={2} />
                 <ChevronsLeft size={18} strokeWidth={2} />
               </span>
-              <span className="wiki-space-detail-agent-expand__label">Wiki Copilot</span>
+              <span className="wiki-space-detail-agent-expand__label">{t('copilotLabel')}</span>
             </button>
           ) : (
             <div className="wiki-space-detail-agent-rail">
@@ -582,20 +588,17 @@ export function WikiSpaceDetail() {
             aria-labelledby="wiki-doc-picker-title"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <h3 id="wiki-doc-picker-title">Add documents to this space</h3>
-            <p className="wiki-space-detail-muted wiki-space-detail-doc-picker-hint">
-              Choose documents you already have in openKMS. Search and optional channel filter use{' '}
-              <code className="wiki-space-detail-code">GET /api/documents</code>.
-            </p>
+            <h3 id="wiki-doc-picker-title">{t('docPickerTitle')}</h3>
+            <p className="wiki-space-detail-muted wiki-space-detail-doc-picker-hint">{t('docPickerHint')}</p>
             <div className="wiki-space-detail-doc-picker-filters">
               <label className="wiki-space-detail-doc-picker-label">
-                Channel
+                {t('channel')}
                 <select
                   className="wiki-space-detail-doc-picker-select"
                   value={docChannelFilter}
                   onChange={(e) => setDocChannelFilter(e.target.value)}
                 >
-                  <option value="">All (scoped list)</option>
+                  <option value="">{t('channelFilterAll')}</option>
                   {channelOptions.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label}
@@ -604,21 +607,21 @@ export function WikiSpaceDetail() {
                 </select>
               </label>
               <label className="wiki-space-detail-doc-picker-label wiki-space-detail-doc-picker-label--grow">
-                Search by name
+                {t('searchByName')}
                 <input
                   type="search"
                   className="wiki-space-detail-doc-picker-input"
                   value={docSearch}
                   onChange={(e) => setDocSearch(e.target.value)}
-                  placeholder="Filter…"
+                  placeholder={t('filterPlaceholder')}
                 />
               </label>
             </div>
-            <div className="wiki-space-detail-doc-picker-list" role="listbox" aria-label="Document results">
+            <div className="wiki-space-detail-doc-picker-list" role="listbox" aria-label={t('docResultsAria')}>
               {docPickerLoading ? (
-                <p className="wiki-space-detail-muted">Loading…</p>
+                <p className="wiki-space-detail-muted">{t('docPickerLoading')}</p>
               ) : docPickerItems.length === 0 ? (
-                <p className="wiki-space-detail-muted">No documents match.</p>
+                <p className="wiki-space-detail-muted">{t('noDocumentsMatch')}</p>
               ) : (
                 <ul className="wiki-space-detail-doc-picker-ul">
                   {docPickerItems.map((d) => {
@@ -646,14 +649,14 @@ export function WikiSpaceDetail() {
                                     updated_at: row.updated_at,
                                   },
                                 ]);
-                                toast.success('Document linked');
+                                toast.success(t('toastDocumentLinked'));
                               } catch (e: unknown) {
-                                toast.error(e instanceof Error ? e.message : 'Failed to link document');
+                                toast.error(e instanceof Error ? e.message : t('toastLinkFailed'));
                               }
                             })();
                           }}
                         >
-                          {already ? 'Linked' : 'Link'}
+                          {already ? t('alreadyLinked') : t('linkAction')}
                         </button>
                       </li>
                     );
@@ -663,7 +666,7 @@ export function WikiSpaceDetail() {
             </div>
             <div className="wiki-space-detail-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setDocPickerOpen(false)}>
-                Close
+                {t('close')}
               </button>
             </div>
           </div>
@@ -683,11 +686,8 @@ export function WikiSpaceDetail() {
             aria-labelledby="vault-import-options-title"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <h3 id="vault-import-options-title">Import folder</h3>
-            <p className="wiki-space-detail-vault-options-hint">
-              Set skip options, then choose your folder. The browser will ask once to allow reading those files (sites cannot
-              remove that step). Import starts as soon as you confirm there—no second click in this dialog.
-            </p>
+            <h3 id="vault-import-options-title">{t('vaultModalTitle')}</h3>
+            <p className="wiki-space-detail-vault-options-hint">{t('vaultModalHint')}</p>
             <ul className="wiki-space-detail-vault-options-list">
               <li>
                 <label className="wiki-space-detail-vault-options-row">
@@ -696,7 +696,7 @@ export function WikiSpaceDetail() {
                     checked={vaultSkipOpts.skipPdf}
                     onChange={(ev) => setVaultSkipOpts((o) => ({ ...o, skipPdf: ev.target.checked }))}
                   />
-                  <span>Skip PDF ( .pdf )</span>
+                  <span>{t('skipPdf')}</span>
                 </label>
               </li>
               <li>
@@ -706,7 +706,7 @@ export function WikiSpaceDetail() {
                     checked={vaultSkipOpts.skipDocx}
                     onChange={(ev) => setVaultSkipOpts((o) => ({ ...o, skipDocx: ev.target.checked }))}
                   />
-                  <span>Skip Word ( .docx )</span>
+                  <span>{t('skipDocx')}</span>
                 </label>
               </li>
               <li>
@@ -716,7 +716,7 @@ export function WikiSpaceDetail() {
                     checked={vaultSkipOpts.skipDoc}
                     onChange={(ev) => setVaultSkipOpts((o) => ({ ...o, skipDoc: ev.target.checked }))}
                   />
-                  <span>Skip Word ( .doc )</span>
+                  <span>{t('skipDoc')}</span>
                 </label>
               </li>
               <li>
@@ -726,7 +726,7 @@ export function WikiSpaceDetail() {
                     checked={vaultSkipOpts.skipPptx}
                     onChange={(ev) => setVaultSkipOpts((o) => ({ ...o, skipPptx: ev.target.checked }))}
                   />
-                  <span>Skip PowerPoint ( .pptx )</span>
+                  <span>{t('skipPptx')}</span>
                 </label>
               </li>
               <li>
@@ -736,13 +736,13 @@ export function WikiSpaceDetail() {
                     checked={vaultSkipOpts.skipPpt}
                     onChange={(ev) => setVaultSkipOpts((o) => ({ ...o, skipPpt: ev.target.checked }))}
                   />
-                  <span>Skip PowerPoint ( .ppt )</span>
+                  <span>{t('skipPpt')}</span>
                 </label>
               </li>
             </ul>
             <div className="wiki-space-detail-modal-actions wiki-space-detail-vault-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={cancelVaultFolderModal}>
-                Cancel
+                {t('cancel')}
               </button>
               <label className="btn btn-primary wiki-space-detail-import-label wiki-space-detail-modal-folder-label">
                 <input
@@ -753,7 +753,7 @@ export function WikiSpaceDetail() {
                   disabled={vaultImporting}
                   onChange={(ev) => void handleVaultFolderChange(ev)}
                 />
-                Choose vault folder…
+                {t('chooseVaultFolder')}
               </label>
             </div>
           </div>
@@ -763,9 +763,9 @@ export function WikiSpaceDetail() {
       {vaultImporting && (
         <div className="wiki-space-detail-import-overlay" role="status" aria-live="polite" aria-busy="true">
           <div className="wiki-space-detail-import-dialog">
-            <h3 className="wiki-space-detail-import-title">Importing vault</h3>
+            <h3 className="wiki-space-detail-import-title">{t('importingTitle')}</h3>
             <p className="wiki-space-detail-import-phase">
-              {progressDisplay.phase === 'binary' ? 'Uploading attachment' : 'Importing markdown page'}
+              {progressDisplay.phase === 'binary' ? t('phaseUploadBinary') : t('phaseImportMd')}
             </p>
             <p className="wiki-space-detail-import-path" title={progressDisplay.path}>
               {progressDisplay.path}
@@ -778,8 +778,11 @@ export function WikiSpaceDetail() {
             </div>
             <p className="wiki-space-detail-import-count">
               {progressDisplay.currentIndex > 0
-                ? `File ${progressDisplay.currentIndex} / ${progressDisplay.total}`
-                : 'Starting…'}
+                ? t('fileProgress', {
+                    current: progressDisplay.currentIndex,
+                    total: progressDisplay.total,
+                  })
+                : t('starting')}
             </p>
             {progressDisplay.phase === 'binary' &&
               progressDisplay.fileTotal != null &&
@@ -810,19 +813,19 @@ export function WikiSpaceDetail() {
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3>New page</h3>
+            <h3>{t('newPageModalTitle')}</h3>
             <label>
-              Path <span className="wiki-space-detail-req">*</span>
+              {t('pathRequired')} <span className="wiki-space-detail-req">*</span>
               <input
                 type="text"
                 value={newPath}
                 onChange={(e) => setNewPath(e.target.value)}
-                placeholder="e.g. guides/onboarding"
+                placeholder={t('pathPlaceholder')}
               />
             </label>
             <div className="wiki-space-detail-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewPage(false)}>
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -830,7 +833,7 @@ export function WikiSpaceDetail() {
                 disabled={saving || !newPath.trim()}
                 onClick={() => void handleCreatePage()}
               >
-                Create
+                {t('create')}
               </button>
             </div>
           </div>
