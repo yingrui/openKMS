@@ -1,7 +1,151 @@
 # openkms-skill
 
-Personal API key–driven helpers for [OpenCode](https://opencode.ai/docs/skills) (and similar agents) to manage **openKMS** via the normal REST API.
+Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills), [Claude Code](https://claude.com/claude-code), or any LLM agent talk to an **openKMS** deployment over its public HTTP API. One personal API key in `config.yml`, every command JSON-prints the raw response so the agent can chain calls.
 
-- **Install:** `./install.sh` → `~/.config/opencode/skills/openkms/` (re-run upgrades the tree; existing **`config.yml`** in the install dir is kept)
-- **Configure:** `config.yml` (see `config.yml.example`); create keys in the app under **Settings** (`/settings`, header user menu).
-- **Docs (MkDocs):** [OpenCode skill](https://yingrui.github.io/openKMS/features/opencode-openkms-skill/) on the published site, or `docs/features/opencode-openkms-skill.md` in this repo.
+- **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; pass `--target opencode|claude-code|both` or `--dest <path>` to override). Re-running upgrades the tree but **preserves your `config.yml`**.
+- **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
+- **Agent-facing instructions:** [`SKILL.md`](SKILL.md). Per-command JSON shapes & `curl` equivalents: [`reference.md`](reference.md).
+
+## Capabilities at a glance
+
+The skill covers **read + write** for every major resource. Top-level groups:
+
+| Group | Read | Write |
+|---|---|---|
+| `ping` | identity / API-key smoke test | — |
+| `search` | global cross-resource (documents/articles/wiki/KB) | — |
+| `documents` | `list`, `get`, `markdown` | `upload` |
+| `articles` | `list`, `get`, `markdown` | `create`, `from-url` |
+| `wiki` | `list-pages`, `get-page` | `put-page` |
+| `wiki-spaces` | `list` | `create` |
+| `document-channels` / `article-channels` | `list` | `create` |
+| `kb` | `list`, `get`, `search`, `ask` | — |
+| `kb-faq` | `list` | `create` |
+| `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — |
+| `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
+| `evaluation-runs` | `list`, `get`, `compare` | — |
+
+## Quick examples
+
+All commands print raw JSON to stdout. Pipe through `jq` or parse with `json.loads`.
+
+### 1. Smoke test
+
+```bash
+python scripts/cli.py ping
+# → { "id": "...", "email": "...", "username": "...", "permissions": ["all"] }
+```
+
+### 2. Global search → fetch markdown
+
+Discover by title across all resource types, then pull one article's body to a file.
+
+```bash
+python scripts/cli.py search --q "重疾" --types articles,documents --limit 10
+
+python scripts/cli.py articles markdown \
+  --id 56d19db5-99b1-4a6e-b82d-502fcddfb06b \
+  --out /tmp/compare.md
+```
+
+### 3. KB semantic search + grounded Q&A
+
+`kb search` returns raw chunks + FAQ matches with confidence scores. `kb ask` proxies to the QA agent and returns a grounded answer with citations.
+
+```bash
+python scripts/cli.py kb search \
+  --id <kb_id> --q "甲状腺结节核保" --limit 5
+
+python scripts/cli.py kb ask \
+  --id <kb_id> --question "重疾险等待期一般是多久？"
+```
+
+### 4. Ontology graph (NL → Cypher → answer)
+
+```bash
+# convenience: 3-call chain (text-to-cypher → run → summarize)
+python scripts/cli.py ontology ask \
+  --question "哪些重疾产品覆盖原位癌？"
+
+# or hand-write Cypher
+python scripts/cli.py ontology cypher \
+  --query "MATCH (p:Product)-[:COVERS]->(d:Disease {name:'原位癌'}) RETURN p.name"
+```
+
+### 5. Wiki upsert (read → write loop)
+
+```bash
+# read first
+python scripts/cli.py wiki list-pages --space-id <space_id> --limit 50
+python scripts/cli.py wiki get-page --space-id <space_id> --path notes/onboarding
+
+# then upsert
+python scripts/cli.py wiki put-page \
+  --space-id <space_id> \
+  --path sops/sop-1092 \
+  --title "SOP-1092 重疾理赔申请材料清单" \
+  --file ./sop-1092.md
+```
+
+### 6. Compare two evaluation runs
+
+```bash
+python scripts/cli.py evaluation-runs compare \
+  --dataset-id <ds> --run-a <runA> --run-b <runB>
+```
+
+### 7. Tight-loop discovery + fetch (shell)
+
+```bash
+# pull markdown for every article whose title matches a regex
+python scripts/cli.py articles list --channel-id <ch> --limit 200 \
+  | jq -r '.items[] | select(.name | test("乳腺癌")) | .id' \
+  | while read id; do
+      python scripts/cli.py articles markdown --id "$id" --out "./$id.md"
+    done
+```
+
+## What's new (vs prior version)
+
+Previously the skill was mostly write-only (`upload`, `create`, `put-page`). This refactor adds the read paths needed for an agent to **discover → fetch → reason → write**:
+
+| Area | Before | Now |
+|---|---|---|
+| Global search | (none) | `search` (cross-resource by title) |
+| Documents | `upload` only | `+ list / get / markdown` |
+| Articles | `create` / `from-url` only | `+ list / get / markdown` |
+| Wiki | `put-page` only | `+ list-pages / get-page` |
+| KB | (none) | `list / get / search / ask` |
+| Ontology | (none) | `cypher / text-to-cypher / answer / ask` |
+| Eval runs | datasets only | `+ list / get / compare` |
+
+Structural changes:
+- Old 600-line `cli.py` → 42-line dispatcher + `scripts/openkms/` package (`client.py`, `config.py`, `_io.py`, `commands/*.py`). Adding a new command now means adding one file under `commands/`.
+- `install.sh` gained `--target opencode|claude-code|both|auto` and `--dest <path>`; auto-mode picks runtimes that exist on the machine. Existing `config.yml` at any destination is preserved on re-install.
+- New `tests/` suite under `pytest` against an `httpx` mock transport (`pip install -r dev-requirements.txt`, then `pytest -v`).
+
+## Development
+
+```bash
+pip install -r requirements.txt -r dev-requirements.txt
+pytest -v
+```
+
+Layout:
+
+```
+openkms-skill/
+  scripts/
+    cli.py              # 42-line dispatcher
+    openkms/
+      client.py         # httpx client + Bearer auth from config.yml
+      config.py         # config.yml loader
+      _io.py            # JSON pretty-print, file helpers
+      commands/         # one module per resource (ping, search, kb, ontology, ...)
+  tests/                # httpx MockTransport-based tests
+  SKILL.md              # agent instructions (when/how to use)
+  reference.md          # per-command JSON shapes + curl equivalents
+  install.sh            # multi-target installer
+```
+
+See [`SKILL.md`](SKILL.md) for the full command matrix and workflow recipes.
