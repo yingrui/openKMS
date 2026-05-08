@@ -21,3 +21,14 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     answer: str
     sources: list[SourceItem] = []
+
+
+class RetrieveRequest(BaseModel):
+    knowledge_base_id: str
+    query: str
+    access_token: str = ""
+    top_k: int = 5
+
+
+class RetrieveResponse(BaseModel):
+    results: list[SourceItem] = []
