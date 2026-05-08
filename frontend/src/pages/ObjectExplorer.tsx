@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Box, ChevronLeft, ChevronRight, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
   fetchLinkTypes,
   executeCypherQuery,
+  generateCypherFromQuestion,
+  summarizeAnswer,
   type ObjectTypeResponse,
   type LinkTypeResponse,
 } from '../data/ontologyApi';
@@ -18,10 +20,10 @@ function neo4jLabel(name: string): string {
   return s || 'Node';
 }
 
-/** Convert link type name to Neo4j relationship type (UPPER_SNAKE) */
+/** Convert link type name to Neo4j relationship type. Preserves case — link_type names are stored in lower_snake_case (e.g. governed_by, covers) and indexed verbatim in Neo4j. */
 function neo4jRelType(name: string): string {
-  const s = name.replace(/[^a-zA-Z0-9_]/g, '_').toUpperCase();
-  return s || 'RELATES_TO';
+  const s = name.replace(/[^a-zA-Z0-9_]/g, '_');
+  return s || 'relates_to';
 }
 
 function buildCypher(
@@ -86,6 +88,7 @@ function getNodeLabel(obj: Record<string, unknown>, nodeFallback: string): strin
 }
 
 function getNodeId(obj: Record<string, unknown>, fallback: string): string {
+  if (obj._id != null) return `n-${String(obj._id)}`;
   if (obj.id != null) return `n-${String(obj.id)}`;
   return fallback;
 }
@@ -179,6 +182,11 @@ export function ObjectExplorer() {
   const [selectedObjectTypeIds, setSelectedObjectTypeIds] = useState<Set<string>>(new Set());
   const [selectedLinkTypeIds, setSelectedLinkTypeIds] = useState<Set<string>>(new Set());
   const [cypherInput, setCypherInput] = useState('');
+  const [userQuestion, setUserQuestion] = useState('');
+  const [mockedAnswer, setMockedAnswer] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [answerExpanded, setAnswerExpanded] = useState(false);
+  const [userQOpen, setUserQOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null);
@@ -284,6 +292,19 @@ export function ObjectExplorer() {
     }
   }, [graphData, resultView, dagLayoutMode]);
 
+  // ESC closes any expanded overlay (answer card or graph fullscreen)
+  useEffect(() => {
+    if (!answerExpanded && !canvasFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (answerExpanded) setAnswerExpanded(false);
+        if (canvasFullscreen) setCanvasFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [answerExpanded, canvasFullscreen]);
+
   const handleExecute = async () => {
     const query = cypherInput.trim();
     if (!query) {
@@ -300,6 +321,71 @@ export function ObjectExplorer() {
       toast.error(e instanceof Error ? e.message : t('toastQueryFailed'));
     } finally {
       setExecuting(false);
+    }
+  };
+
+  /**
+   * Real text-to-Cypher pipeline:
+   *   1. POST /api/ontology/text-to-cypher  -> LLM generates Cypher from the user question + ontology schema.
+   *   2. POST /api/ontology/explore         -> run the Cypher against Neo4j.
+   *   3. POST /api/ontology/answer          -> LLM summarises the rows into a final NL answer.
+   * Fails are surfaced as toasts; partial successes still show whatever's available.
+   */
+  const handleAskQuestion = async () => {
+    const q = userQuestion.trim();
+    if (!q) {
+      toast.error('Type a question or pick one from the dropdown');
+      return;
+    }
+    setGenerating(true);
+    setMockedAnswer(null);
+    setResult(null);
+    setCypherInput('');
+
+    let cypher = '';
+    try {
+      const gen = await generateCypherFromQuestion(q);
+      cypher = (gen.cypher || '').trim();
+      if (!cypher) {
+        toast.error(gen.explanation || 'Could not generate Cypher for this question');
+        return;
+      }
+      setCypherInput(cypher);
+    } catch (e) {
+      toast.error(e instanceof Error ? `Cypher gen failed: ${e.message}` : 'Cypher gen failed');
+      return;
+    } finally {
+      setGenerating(false);
+    }
+
+    setExecuting(true);
+    let data: { columns: string[]; rows: Record<string, unknown>[] } | null = null;
+    try {
+      data = await executeCypherQuery(cypher);
+      setResult(data);
+      setResultView('graph');
+      toast.success(`Generated Cypher → ${data.rows.length} rows`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Query failed');
+      return;
+    } finally {
+      setExecuting(false);
+    }
+
+    // Summarise answer (best-effort — graph + cypher already shown)
+    try {
+      const ans = await summarizeAnswer({
+        question: q,
+        cypher,
+        columns: data.columns,
+        rows: data.rows,
+      });
+      setMockedAnswer(ans.answer || '(LLM returned an empty answer.)');
+    } catch (e) {
+      setMockedAnswer(
+        `(Answer summarisation failed: ${e instanceof Error ? e.message : 'unknown'}. ` +
+          `Look at the graph / list view above.)`
+      );
     }
   };
 
@@ -354,6 +440,60 @@ export function ObjectExplorer() {
         </aside>
         <main className="object-explorer-main">
           <div className="object-explorer-search-bar">
+            <div className={`object-explorer-userq-wrap${userQOpen ? '' : ' object-explorer-userq-collapsed'}`}>
+              <button
+                type="button"
+                className="object-explorer-userq-header"
+                onClick={() => setUserQOpen((v) => !v)}
+                aria-expanded={userQOpen}
+                aria-controls="object-explorer-userq-body"
+              >
+                <Sparkles size={14} aria-hidden />
+                <span className="object-explorer-userq-title">Ask in plain language</span>
+                <span className="object-explorer-userq-badge">text-to-cypher</span>
+                {!userQOpen && userQuestion.trim() && (
+                  <span className="object-explorer-userq-preview" title={userQuestion}>
+                    {userQuestion.length > 60 ? userQuestion.slice(0, 60) + '…' : userQuestion}
+                  </span>
+                )}
+                <span className="object-explorer-userq-chevron" aria-hidden>
+                  {userQOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </span>
+              </button>
+              {userQOpen && (
+                <div id="object-explorer-userq-body" className="object-explorer-userq-body">
+                  <textarea
+                    id="object-explorer-userq"
+                    className="object-explorer-userq-input"
+                    value={userQuestion}
+                    onChange={(e) => setUserQuestion(e.target.value)}
+                    placeholder="Ask a graph-shaped question in plain language; the LLM will translate it to Cypher against the current schema."
+                    rows={2}
+                  />
+                  <div className="object-explorer-userq-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleAskQuestion}
+                      disabled={generating || executing || !userQuestion.trim()}
+                      title="Translates the question to Cypher via the LLM, runs it against the graph, and summarises the rows back to natural language."
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 size={16} className="object-explorer-spinner" />
+                          Generating Cypher...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} />
+                          Generate Cypher & Run
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="object-explorer-cypher-wrap">
               <label htmlFor="object-explorer-cypher" className="object-explorer-cypher-label">
                 {t('cypherLabel')}
@@ -389,6 +529,28 @@ export function ObjectExplorer() {
             </div>
           </div>
           <div className="object-explorer-results">
+            {mockedAnswer && (
+              <div
+                className={`object-explorer-answer-card${answerExpanded ? ' object-explorer-answer-card-fullscreen' : ''}`}
+                role={answerExpanded ? 'dialog' : undefined}
+                aria-modal={answerExpanded || undefined}
+              >
+                <div className="object-explorer-answer-header">
+                  <Sparkles size={16} aria-hidden />
+                  <span>Final Answer (grounded in graph)</span>
+                  <button
+                    type="button"
+                    className="object-explorer-answer-maximize"
+                    onClick={() => setAnswerExpanded((v) => !v)}
+                    title={answerExpanded ? 'Restore (Esc)' : 'Maximize'}
+                    aria-label={answerExpanded ? 'Restore' : 'Maximize'}
+                  >
+                    {answerExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  </button>
+                </div>
+                <div className="object-explorer-answer-body">{mockedAnswer}</div>
+              </div>
+            )}
             {result === null ? (
               <p className="object-explorer-results-placeholder">{t('resultsPlaceholder')}</p>
             ) : result.rows.length === 0 ? (
@@ -414,6 +576,17 @@ export function ObjectExplorer() {
                     <Network size={16} />
                     <span>{t('graphView')}</span>
                   </button>
+                  {resultView === 'graph' && (
+                    <button
+                      type="button"
+                      className="object-explorer-view-btn object-explorer-view-btn-icon"
+                      onClick={() => setCanvasFullscreen((v) => !v)}
+                      title={canvasFullscreen ? 'Exit fullscreen (Esc)' : 'Maximize graph'}
+                      aria-label={canvasFullscreen ? 'Exit fullscreen' : 'Maximize graph'}
+                    >
+                      {canvasFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                    </button>
+                  )}
                 </div>
                 {resultView === 'list' ? (
               <div className="object-explorer-table-wrap">

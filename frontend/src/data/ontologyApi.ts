@@ -117,6 +117,41 @@ export async function indexObjectTypesToNeo4j(neo4jDataSourceId: string): Promis
   return res.json();
 }
 
+export async function generateCypherFromQuestion(question: string): Promise<{ cypher: string; explanation: string }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/ontology/text-to-cypher`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ question }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to generate Cypher');
+  }
+  return res.json();
+}
+
+export async function summarizeAnswer(payload: {
+  question: string;
+  cypher: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+}): Promise<{ answer: string }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/ontology/answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(payload),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to summarise answer');
+  }
+  return res.json();
+}
+
 export async function executeCypherQuery(cypher: string): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/ontology/explore`, {

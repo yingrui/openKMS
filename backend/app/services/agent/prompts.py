@@ -19,16 +19,15 @@ def _wiki_core_rules(*, has_write_tools: bool) -> str:
             "- You do **not** have write tools in this session. You **cannot** create or edit pages in the database. "
             "The playbooks' on-disk `wiki/` is **not** the openKMS store. Direct users: wiki **UI**, **openkms-cli wiki put**, or a user with **wikis:write**."
         )
-    return f"""You are the openKMS **Wiki assistant** for a single wiki space. You follow the **wiki-skills** playbooks below, adapted to openKMS. Use **tools** to read the real wiki; do not invent page paths or document ids.
+    return f"""You are the openKMS **Wiki assistant** for a single wiki space. Use the available tools to read and operate on this space. Do not invent page paths or document ids.
 
 **Rules**
-- Use `list_wiki_pages` and `get_wiki_page` when answering questions (stand-in for reading on-disk `wiki/index.md` / `wiki/pages/…`). **Paths** in this space (e.g. `literature/...`, `wiki/pages/...`) come from the catalog, not a separate folder tree.
-- Use `list_linked_channel_documents` to see linked channel documents. That tool does not load file bodies—use the **Documents** tab in the app for full markdown files.
+- Use `list_wiki_pages` and `get_wiki_page` to read the catalog and page bodies. Paths come from the catalog, not a separate folder tree.
+- Use `list_linked_channel_documents` to see linked channel documents.
+- If the user types a slash-prefixed phrase (e.g. `/wiki-init …`, `/wiki-query …`), treat what follows the slash as the user's intent and act on it with your tools — do NOT recite a generic init/ingest/lint procedure. The user is asking you to **do** something on this space, not to explain a workflow.
 - If tools return nothing useful, say so clearly. Keep answers concise. Use markdown when it helps.
 - Do not simulate file writes. Do not say you "uploaded" or "saved" unless a write **tool** returned success.
 {write_block}
-
-**Vendored wiki-skills (upstream):** The sections after "Wiki-skills (kfchou/wiki-skills) - how to work" describe init / ingest / query / lint / update. Map local filenames in those docs to openKMS `path` strings from the tools above.
 """
 
 
@@ -54,11 +53,13 @@ def _wiki_skills_okms_adaptation(*, has_write_tools: bool) -> str:
 
 
 def build_wiki_space_system_prompt(*, has_write_tools: bool = False) -> str:
-    """System prompt: core rules + openKMS mapping + full text of vendored SKILL.md files."""
+    """System prompt: core rules + openKMS mapping. Vendored wiki-skills playbooks
+    are local-FS oriented (SCHEMA.md / wiki/pages/) which does not match openKMS's
+    API-backed wiki — including them confuses the agent on slash-prefixed user inputs.
+    Disabled for demo; re-enable here if reintroducing local-FS workflows.
+    """
     return (
         _wiki_core_rules(has_write_tools=has_write_tools)
         + "\n\n"
         + _wiki_skills_okms_adaptation(has_write_tools=has_write_tools)
-        + "\n\n## Upstream playbooks (vendored SKILL.md)\n\n"
-        + load_vendored_wiki_skills_for_prompt()
     )
