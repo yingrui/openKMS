@@ -11,6 +11,8 @@ from . import (
     evaluation,
     kb,
     kb_faq,
+    links,
+    objects,
     ontology,
     ping,
     search,
@@ -32,4 +34,6 @@ def register(sub: _SubParsersAction) -> None:
     kb.add_subparser(sub)
     kb_faq.add_subparser(sub)
     ontology.add_subparser(sub)
+    objects.add_subparser(sub)
+    links.add_subparser(sub)
     evaluation.add_subparser(sub)
