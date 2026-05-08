@@ -20,6 +20,21 @@ describe('isRejectedJwtResponse', () => {
     expect(isRejectedJwtResponse(401, 'Invalid or expired token')).toBe(true);
   });
 
+  it('detects structured JSON detail for expired JWT', () => {
+    expect(
+      isRejectedJwtResponse(
+        401,
+        '{"detail":{"code":"INVALID_OR_EXPIRED_TOKEN","message":"令牌无效或已过期"}}',
+      ),
+    ).toBe(true);
+    expect(
+      isRejectedJwtResponse(
+        401,
+        '{"detail":{"code":"INVALID_CREDENTIALS","message":"Bad"}}',
+      ),
+    ).toBe(false);
+  });
+
   it('returns false for other 401 reasons', () => {
     expect(isRejectedJwtResponse(401, '{"detail":"Not authenticated"}')).toBe(false);
     expect(isRejectedJwtResponse(401, '{"detail":"Invalid username or password"}')).toBe(false);

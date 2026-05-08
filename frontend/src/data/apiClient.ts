@@ -1,5 +1,7 @@
 /** Central API client. Injects auth token from provider (set by AuthProvider). */
 
+import { getStoredLocale } from '../i18n/config';
+
 let tokenProvider: (() => Promise<string | undefined>) | null = null;
 
 /** Clears SPA auth state when the API rejects the JWT (see backend `require_auth` / verify). */
@@ -28,6 +30,10 @@ export function isRejectedJwtResponse(status: number, bodyText: string): boolean
     const d = j.detail;
     if (typeof d === 'string') {
       return d === 'Invalid or expired token' || d === 'Invalid token';
+    }
+    if (d && typeof d === 'object' && d !== null && 'code' in d) {
+      const code = (d as { code?: string }).code;
+      return code === 'INVALID_OR_EXPIRED_TOKEN' || code === 'INVALID_TOKEN';
     }
   } catch {
     /* not JSON */
@@ -70,8 +76,11 @@ export async function authAwareFetch(input: RequestInfo | URL, init?: RequestIni
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const token = tokenProvider ? await tokenProvider() : undefined;
+  const headers: Record<string, string> = {
+    'Accept-Language': getStoredLocale(),
+  };
   if (token) {
-    return { Authorization: `Bearer ${token}` };
+    headers.Authorization = `Bearer ${token}`;
   }
-  return {};
+  return headers;
 }

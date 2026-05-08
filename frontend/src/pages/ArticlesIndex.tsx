@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Folder } from 'lucide-react';
 import { useArticleChannels } from '../contexts/ArticleChannelsContext';
@@ -7,6 +8,7 @@ import { fetchArticleStats } from '../data/articlesApi';
 import './DocumentsIndex.css';
 
 export function ArticlesIndex() {
+  const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { channels, loading, error } = useArticleChannels();
@@ -32,7 +34,7 @@ export function ArticlesIndex() {
     return (
       <div className="documents-index">
         <div className="page-header">
-          <p className="page-subtitle">Loading…</p>
+          <p className="page-subtitle">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -51,10 +53,9 @@ export function ArticlesIndex() {
   return (
     <div className="documents-index">
       <div className="page-header">
-        <h1>Articles</h1>
+        <h1>{t('articlesIndex.title')}</h1>
         <p className="page-subtitle">
-          Organize articles in channel trees. Write markdown, attach files, and track versions. Manage channels to match
-          how you structure knowledge.
+          {t('articlesIndex.subtitle')}
         </p>
       </div>
 
@@ -65,7 +66,7 @@ export function ArticlesIndex() {
           </div>
           <div className="documents-index-stat-content">
             <span className="documents-index-stat-value">{channelCount}</span>
-            <span className="documents-index-stat-label">Channels</span>
+            <span className="documents-index-stat-label">{t('articlesIndex.statChannels')}</span>
           </div>
         </Link>
         <Link
@@ -77,25 +78,25 @@ export function ArticlesIndex() {
           </div>
           <div className="documents-index-stat-content">
             <span className="documents-index-stat-value">{articleCount ?? '–'}</span>
-            <span className="documents-index-stat-label">Articles</span>
+            <span className="documents-index-stat-label">{t('articlesIndex.statArticles')}</span>
           </div>
         </Link>
       </section>
 
       <div className="documents-index-grid">
         <section className="documents-index-card">
-          <h2>Quick Actions</h2>
+          <h2>{t('articlesIndex.quickActions')}</h2>
           <div className="documents-index-quick-actions">
             <Link to="/articles/channels" className="documents-index-quick-action">
               <Folder size={20} />
-              <span>Manage channels</span>
+              <span>{t('articlesIndex.manageChannels')}</span>
             </Link>
             <Link
               to={firstLeafId ? `/articles/channels/${firstLeafId}` : '/articles/channels'}
               className="documents-index-quick-action"
             >
               <FileText size={20} />
-              <span>Browse articles</span>
+              <span>{t('articlesIndex.browseArticles')}</span>
             </Link>
           </div>
         </section>

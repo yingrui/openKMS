@@ -1,0 +1,16 @@
+{
+  "title": "Profile",
+  "subtitle": "Your account details as recognized by openKMS. To create API keys for assistants and scripts, open <settingsLink>Settings</settingsLink>.",
+  "loading": "Loading…",
+  "loadError": "Could not load profile",
+  "tryAgain": "Try again",
+  "displayName": "Display name",
+  "email": "Email",
+  "administrator": "Administrator",
+  "roles": "Roles",
+  "accountId": "Account ID",
+  "yes": "Yes",
+  "no": "No",
+  "emptyValue": "—",
+  "rolesAria": "Assigned roles"
+}

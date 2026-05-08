@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Pencil, Trash2, X, Wifi, Loader2, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -15,6 +16,7 @@ import './ConsoleObjectTypes.css';
 const KINDS = ['postgresql', 'neo4j'] as const;
 
 export function ConsoleDataSources() {
+  const { t } = useTranslation('console');
   const [items, setItems] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -37,11 +39,11 @@ export function ConsoleDataSources() {
       const res = await fetchDataSources();
       setItems(res.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load data sources');
+      toast.error(e instanceof Error ? e.message : t('dataSources.toastLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     load();
@@ -73,7 +75,7 @@ export function ConsoleDataSources() {
 
   const handleSubmit = async () => {
     if (!formName.trim() || !formHost.trim() || !formUsername.trim()) {
-      toast.error('Name, host, and username are required');
+      toast.error(t('dataSources.toastRequiredFields'));
       return;
     }
     setSubmitting(true);
@@ -89,7 +91,7 @@ export function ConsoleDataSources() {
           username: formUsername.trim(),
           password: formPassword || undefined,
         });
-        toast.success('Data source updated');
+        toast.success(t('dataSources.toastUpdated'));
       } else {
         await createDataSource({
           name: formName.trim(),
@@ -100,25 +102,25 @@ export function ConsoleDataSources() {
           username: formUsername.trim(),
           password: formPassword || undefined,
         });
-        toast.success('Data source created');
+        toast.success(t('dataSources.toastCreated'));
       }
       setShowForm(false);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Operation failed');
+      toast.error(e instanceof Error ? e.message : t('dataSources.toastOperationFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this data source? All datasets will be deleted.')) return;
+    if (!window.confirm(t('dataSources.deleteConfirm'))) return;
     try {
       await deleteDataSource(id);
-      toast.success('Data source deleted');
+      toast.success(t('dataSources.toastDeleted'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('dataSources.toastDeleteFailed'));
     }
   };
 
@@ -127,12 +129,12 @@ export function ConsoleDataSources() {
     try {
       const res = await testDataSourceConnection(id);
       if (res.ok) {
-        toast.success('Connection successful');
+        toast.success(t('dataSources.toastConnectionOk'));
       } else {
-        toast.error(res.message || 'Connection failed');
+        toast.error(res.message || t('dataSources.toastConnectionFailed'));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Test failed');
+      toast.error(e instanceof Error ? e.message : t('dataSources.toastTestFailed'));
     } finally {
       setTesting(null);
     }
@@ -146,12 +148,12 @@ export function ConsoleDataSources() {
     try {
       const res = await neo4jDeleteAll(id);
       if (res.ok) {
-        toast.success('All Neo4j data deleted');
+        toast.success(t('dataSources.toastNeo4jAllDeleted'));
       } else {
-        toast.error(res.message || 'Delete all failed');
+        toast.error(res.message || t('dataSources.toastNeo4jDeleteAllFailed'));
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete all failed');
+      toast.error(e instanceof Error ? e.message : t('dataSources.toastNeo4jDeleteAllFailed'));
     } finally {
       setDeletingAll(null);
     }
@@ -161,14 +163,12 @@ export function ConsoleDataSources() {
     <div className="console-object-types">
       <div className="page-header">
         <div>
-          <h1>Data Sources</h1>
-          <p className="page-subtitle">
-            Manage PostgreSQL and Neo4j connections. Credentials are encrypted at rest.
-          </p>
+          <h1>{t('dataSources.pageTitle')}</h1>
+          <p className="page-subtitle">{t('dataSources.subtitle')}</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={openCreate}>
           <Plus size={18} />
-          <span>New Data Source</span>
+          <span>{t('dataSources.newDataSource')}</span>
         </button>
       </div>
 
@@ -177,25 +177,25 @@ export function ConsoleDataSources() {
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" />
-              <p>Loading…</p>
+              <p>{t('dataSources.loading')}</p>
             </div>
           ) : (
             <table className="console-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Kind</th>
-                <th>Host</th>
-                <th>Port</th>
-                <th>Database</th>
-                <th className="console-table-actions">Actions</th>
+                <th>{t('dataSources.colName')}</th>
+                <th>{t('dataSources.colKind')}</th>
+                <th>{t('dataSources.colHost')}</th>
+                <th>{t('dataSources.colPort')}</th>
+                <th>{t('dataSources.colDatabase')}</th>
+                <th className="console-table-actions">{t('dataSources.colActions')}</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="console-table-empty">
-                    No data sources yet. Create one to get started.
+                    {t('dataSources.empty')}
                   </td>
                 </tr>
               ) : (
@@ -204,13 +204,13 @@ export function ConsoleDataSources() {
                     <td><strong>{d.name}</strong></td>
                     <td>{d.kind}</td>
                     <td>{d.host}</td>
-                    <td>{d.port ?? '—'}</td>
-                    <td>{d.database ?? '—'}</td>
+                    <td>{d.port ?? t('dataSources.dash')}</td>
+                    <td>{d.database ?? t('dataSources.dash')}</td>
                     <td className="console-table-actions">
                       <div className="console-table-btns">
                         <button
                           type="button"
-                          title="Test connection"
+                          title={t('dataSources.testTitle')}
                           onClick={() => handleTest(d.id)}
                           disabled={testing === d.id}
                         >
@@ -219,7 +219,7 @@ export function ConsoleDataSources() {
                         {d.kind === 'neo4j' && (
                           <button
                             type="button"
-                            title="Delete all nodes and relationships in Neo4j"
+                            title={t('dataSources.deleteAllNeo4jTitle')}
                             onClick={() => setDeleteAllConfirmId(d.id)}
                             disabled={deletingAll === d.id}
                           >
@@ -230,10 +230,10 @@ export function ConsoleDataSources() {
                             )}
                           </button>
                         )}
-                        <button type="button" title="Edit" onClick={() => openEdit(d)}>
+                        <button type="button" title={t('dataSources.editTitle')} onClick={() => openEdit(d)}>
                           <Pencil size={16} />
                         </button>
-                        <button type="button" title="Delete" onClick={() => handleDelete(d.id)}>
+                        <button type="button" title={t('dataSources.deleteTitle')} onClick={() => handleDelete(d.id)}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -251,28 +251,28 @@ export function ConsoleDataSources() {
         <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
-              <h2>{editItem ? 'Edit Data Source' : 'New Data Source'}</h2>
+              <h2>{editItem ? t('dataSources.modalEditTitle') : t('dataSources.modalNewTitle')}</h2>
               <button
                 type="button"
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
-                aria-label="Close"
+                aria-label={t('dataSources.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="console-modal-body">
               <label>
-                <span>Name</span>
+                <span>{t('dataSources.fieldName')}</span>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Clinical DB"
+                  placeholder={t('dataSources.placeholderName')}
                 />
               </label>
               <label>
-                <span>Kind</span>
+                <span>{t('dataSources.fieldKind')}</span>
                 <select value={formKind} onChange={(e) => setFormKind(e.target.value)}>
                   {KINDS.map((k) => (
                     <option key={k} value={k}>{k}</option>
@@ -280,16 +280,16 @@ export function ConsoleDataSources() {
                 </select>
               </label>
               <label>
-                <span>Host</span>
+                <span>{t('dataSources.fieldHost')}</span>
                 <input
                   type="text"
                   value={formHost}
                   onChange={(e) => setFormHost(e.target.value)}
-                  placeholder="localhost"
+                  placeholder={t('dataSources.placeholderHost')}
                 />
               </label>
               <label>
-                <span>Port</span>
+                <span>{t('dataSources.fieldPort')}</span>
                 <input
                   type="text"
                   value={formPort}
@@ -299,31 +299,34 @@ export function ConsoleDataSources() {
               </label>
               {formKind === 'postgresql' && (
                 <label>
-                  <span>Database</span>
+                  <span>{t('dataSources.fieldDatabase')}</span>
                   <input
                     type="text"
                     value={formDatabase}
                     onChange={(e) => setFormDatabase(e.target.value)}
-                    placeholder="postgres"
+                    placeholder={t('dataSources.placeholderDb')}
                   />
                 </label>
               )}
               <label>
-                <span>Username</span>
+                <span>{t('dataSources.fieldUsername')}</span>
                 <input
                   type="text"
                   value={formUsername}
                   onChange={(e) => setFormUsername(e.target.value)}
-                  placeholder="user"
+                  placeholder={t('dataSources.placeholderUser')}
                 />
               </label>
               <label>
-                <span>Password {editItem && '(leave empty to keep current)'}</span>
+                <span>
+                  {t('dataSources.fieldPassword')}
+                  {editItem ? ` ${t('dataSources.passwordLeaveBlank')}` : ''}
+                </span>
                 <input
                   type="password"
                   value={formPassword}
                   onChange={(e) => setFormPassword(e.target.value)}
-                  placeholder={editItem ? '••••••••' : 'optional'}
+                  placeholder={editItem ? t('dataSources.placeholderPasswordEdit') : t('dataSources.placeholderPasswordNew')}
                 />
               </label>
             </div>
@@ -334,7 +337,7 @@ export function ConsoleDataSources() {
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
               >
-                Cancel
+                {t('dataSources.cancel')}
               </button>
               <button
                 type="button"
@@ -342,7 +345,7 @@ export function ConsoleDataSources() {
                 onClick={handleSubmit}
                 disabled={!formName.trim() || !formHost.trim() || !formUsername.trim() || submitting}
               >
-                {submitting ? 'Saving…' : editItem ? 'Update' : 'Create'}
+                {submitting ? t('dataSources.saving') : editItem ? t('dataSources.update') : t('dataSources.create')}
               </button>
             </div>
           </div>
@@ -356,20 +359,18 @@ export function ConsoleDataSources() {
         >
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
-              <h2>Delete All Neo4j Data</h2>
+              <h2>{t('dataSources.neo4jDeleteAllHeading')}</h2>
               <button
                 type="button"
                 onClick={() => !deletingAll && setDeleteAllConfirmId(null)}
                 disabled={!!deletingAll}
-                aria-label="Close"
+                aria-label={t('dataSources.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="console-modal-body">
-              <p className="console-modal-hint">
-                Delete all nodes and relationships in this Neo4j database? This cannot be undone.
-              </p>
+              <p className="console-modal-hint">{t('dataSources.neo4jDeleteAllBody')}</p>
             </div>
             <div className="console-modal-actions">
               <button
@@ -378,7 +379,7 @@ export function ConsoleDataSources() {
                 onClick={() => !deletingAll && setDeleteAllConfirmId(null)}
                 disabled={!!deletingAll}
               >
-                Cancel
+                {t('dataSources.cancel')}
               </button>
               <button
                 type="button"
@@ -389,10 +390,10 @@ export function ConsoleDataSources() {
                 {deletingAll ? (
                   <>
                     <Loader2 size={18} className="console-loading-spinner" />
-                    <span>Deleting…</span>
+                    <span>{t('dataSources.deleting')}</span>
                   </>
                 ) : (
-                  'Confirm & Delete All'
+                  t('dataSources.confirmDeleteAll')
                 )}
               </button>
             </div>

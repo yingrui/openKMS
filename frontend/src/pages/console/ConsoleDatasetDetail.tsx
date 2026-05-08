@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Table, FileJson, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,14 +15,8 @@ import './ConsoleDatasetDetail.css';
 
 type TabId = 'data' | 'metadata';
 
-function displayValue(v: unknown): string {
-  if (v === null || v === undefined) return '—';
-  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
-  if (typeof v === 'object') return JSON.stringify(v);
-  return String(v);
-}
-
 export function ConsoleDatasetDetail() {
+  const { t } = useTranslation('console');
   const { id } = useParams<{ id: string }>();
   const [dataset, setDataset] = useState<DatasetResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +29,16 @@ export function ConsoleDatasetDetail() {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(100);
 
+  const displayCellValue = useCallback(
+    (v: unknown): string => {
+      if (v === null || v === undefined) return t('datasetDetail.dash');
+      if (typeof v === 'boolean') return v ? t('datasetDetail.yes') : t('datasetDetail.no');
+      if (typeof v === 'object') return JSON.stringify(v);
+      return String(v);
+    },
+    [t],
+  );
+
   const loadDataset = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -41,11 +46,11 @@ export function ConsoleDatasetDetail() {
       const d = await fetchDataset(id);
       setDataset(d);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load dataset');
+      toast.error(e instanceof Error ? e.message : t('datasetDetail.toastLoadDatasetFailed'));
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     loadDataset();
@@ -61,11 +66,11 @@ export function ConsoleDatasetDetail() {
       });
       setRowsData(res);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load rows');
+      toast.error(e instanceof Error ? e.message : t('datasetDetail.toastLoadRowsFailed'));
     } finally {
       setRowsLoading(false);
     }
-  }, [id, page, pageSize]);
+  }, [id, page, pageSize, t]);
 
   const loadMetadata = useCallback(async () => {
     if (!id) return;
@@ -74,11 +79,11 @@ export function ConsoleDatasetDetail() {
       const cols = await fetchDatasetMetadata(id);
       setMetadata(cols);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load metadata');
+      toast.error(e instanceof Error ? e.message : t('datasetDetail.toastLoadMetadataFailed'));
     } finally {
       setMetadataLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (activeTab === 'data') loadRows();
@@ -93,7 +98,7 @@ export function ConsoleDatasetDetail() {
       <div className="console-dataset-detail">
         <div className="console-dataset-detail-loading">
           <Loader2 size={32} className="console-loading-spinner" />
-          <p>Loading dataset…</p>
+          <p>{t('datasetDetail.loadingDataset')}</p>
         </div>
       </div>
     );
@@ -111,7 +116,7 @@ export function ConsoleDatasetDetail() {
       <div className="console-dataset-detail-header">
         <Link to="/ontology/datasets" className="console-dataset-detail-back">
           <ArrowLeft size={18} />
-          <span>Back to Datasets</span>
+          <span>{t('datasetDetail.back')}</span>
         </Link>
         <div>
           <h1>{displayName}</h1>
@@ -129,7 +134,7 @@ export function ConsoleDatasetDetail() {
           onClick={() => setActiveTab('data')}
         >
           <Table size={18} />
-          <span>Data</span>
+          <span>{t('datasetDetail.tabData')}</span>
         </button>
         <button
           type="button"
@@ -137,7 +142,7 @@ export function ConsoleDatasetDetail() {
           onClick={() => setActiveTab('metadata')}
         >
           <FileJson size={18} />
-          <span>Metadata</span>
+          <span>{t('datasetDetail.tabMetadata')}</span>
         </button>
       </div>
 
@@ -147,7 +152,7 @@ export function ConsoleDatasetDetail() {
             {rowsLoading ? (
               <div className="console-loading">
                 <Loader2 size={32} className="console-loading-spinner" />
-                <p>Loading rows…</p>
+                <p>{t('datasetDetail.loadingRows')}</p>
               </div>
             ) : (
               <>
@@ -164,14 +169,14 @@ export function ConsoleDatasetDetail() {
                       {!rowsData?.rows?.length ? (
                         <tr>
                           <td colSpan={columns.length || 1} className="console-table-empty">
-                            No rows in this table.
+                            {t('datasetDetail.emptyRows')}
                           </td>
                         </tr>
                       ) : (
                         rowsData.rows.map((row, idx) => (
                           <tr key={idx}>
                             {columns.map((col) => (
-                              <td key={col}>{displayValue(row[col])}</td>
+                              <td key={col}>{displayCellValue(row[col])}</td>
                             ))}
                           </tr>
                         ))
@@ -183,10 +188,10 @@ export function ConsoleDatasetDetail() {
                   <div className="console-dataset-detail-pagination">
                     <div className="console-dataset-detail-pagination-info">
                       <span>
-                        Showing {startRow}–{endRow} of {total} rows
+                        {t('datasetDetail.paginationRange', { start: startRow, end: endRow, total })}
                       </span>
                       <label>
-                        <span>Page size:</span>
+                        <span>{t('datasetDetail.pageSize')}</span>
                         <select
                           value={pageSize}
                           onChange={(e) => {
@@ -208,7 +213,7 @@ export function ConsoleDatasetDetail() {
                           className="btn btn-secondary btn-sm"
                           onClick={() => setPage(0)}
                           disabled={page === 0 || rowsLoading}
-                          title="First page"
+                          title={t('datasetDetail.firstPageTitle')}
                         >
                           «
                         </button>
@@ -218,10 +223,10 @@ export function ConsoleDatasetDetail() {
                           onClick={() => setPage((p) => Math.max(0, p - 1))}
                           disabled={page === 0 || rowsLoading}
                         >
-                          Previous
+                          {t('datasetDetail.previous')}
                         </button>
                         <span className="console-dataset-detail-page-nums">
-                          Page {page + 1} of {totalPages}
+                          {t('datasetDetail.pageOf', { current: page + 1, total: totalPages })}
                         </span>
                         <button
                           type="button"
@@ -229,14 +234,14 @@ export function ConsoleDatasetDetail() {
                           onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
                           disabled={page >= totalPages - 1 || rowsLoading}
                         >
-                          Next
+                          {t('datasetDetail.next')}
                         </button>
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"
                           onClick={() => setPage(totalPages - 1)}
                           disabled={page >= totalPages - 1 || rowsLoading}
-                          title="Last page"
+                          title={t('datasetDetail.lastPageTitle')}
                         >
                           »
                         </button>
@@ -254,24 +259,24 @@ export function ConsoleDatasetDetail() {
             {metadataLoading ? (
               <div className="console-loading">
                 <Loader2 size={32} className="console-loading-spinner" />
-                <p>Loading metadata…</p>
+                <p>{t('datasetDetail.loadingMetadata')}</p>
               </div>
             ) : (
               <div className="console-dataset-detail-table-wrap">
                 <table className="console-table">
                   <thead>
                     <tr>
-                      <th>Column</th>
-                      <th>Data Type</th>
-                      <th>Nullable</th>
-                      <th>Position</th>
+                      <th>{t('datasetDetail.colColumn')}</th>
+                      <th>{t('datasetDetail.colDataType')}</th>
+                      <th>{t('datasetDetail.colNullable')}</th>
+                      <th>{t('datasetDetail.colPosition')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {metadata.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="console-table-empty">
-                          No metadata available.
+                          {t('datasetDetail.emptyMetadata')}
                         </td>
                       </tr>
                     ) : (
@@ -279,7 +284,7 @@ export function ConsoleDatasetDetail() {
                         <tr key={col.column_name}>
                           <td><strong>{col.column_name}</strong></td>
                           <td>{col.data_type}</td>
-                          <td>{col.is_nullable ? 'Yes' : 'No'}</td>
+                          <td>{col.is_nullable ? t('datasetDetail.yes') : t('datasetDetail.no')}</td>
                           <td>{col.ordinal_position}</td>
                         </tr>
                       ))

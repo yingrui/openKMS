@@ -35,3 +35,6 @@ _site/
 
 # MkDocs build output
 /site/
+
+# Third-party
+third-party/llm_wiki

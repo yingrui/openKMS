@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import { useTranslation } from 'react-i18next';
 import { forceCollide } from 'd3-force';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
@@ -214,6 +215,7 @@ function useDataTheme(): 'light' | 'dark' {
 }
 
 export function WikiSpaceGraph() {
+  const { t } = useTranslation('common');
   const { id: spaceId } = useParams();
   const [searchParams] = useSearchParams();
   const focusId = searchParams.get('focus') ?? undefined;
@@ -500,10 +502,7 @@ export function WikiSpaceGraph() {
             )}
           </div>
           {graphData.nodes.length > 0 && (
-            <p className="wiki-space-graph-hint">
-              Drag to pan, scroll to zoom. Click a note to open it. Larger dots are more connected. If distant
-              notes shrink the view, use Fit main cluster (expand icon) to frame the dense part.
-            </p>
+            <p className="wiki-space-graph-hint">{t('wikiSpaceGraphInteractionHint')}</p>
           )}
         </div>
       )}

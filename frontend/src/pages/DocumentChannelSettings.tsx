@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch, Tag } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
@@ -43,6 +44,7 @@ const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
 
 export function DocumentChannelSettings() {
   const navigate = useNavigate();
+  const { t } = useTranslation('documents');
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, refetch: refreshChannels } = useDocumentChannels();
 
@@ -182,9 +184,9 @@ export function DocumentChannelSettings() {
         object_type_extraction_max_instances: objectTypeExtractionMaxInstances === '' ? null : Number(objectTypeExtractionMaxInstances),
       });
       if (refreshChannels) await refreshChannels();
-      toast.success('Channel settings saved');
+      toast.success(t('settings.savedToast'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save settings');
+      toast.error(e instanceof Error ? e.message : t('settings.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -239,37 +241,40 @@ export function DocumentChannelSettings() {
     setLabelConfig((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
-    { id: 'general', label: 'General', icon: Settings },
-    { id: 'processing', label: 'Processing', icon: Zap },
-    { id: 'extraction', label: 'Metadata extraction', icon: FileSearch },
-    { id: 'labels', label: 'Manual Labels', icon: Tag },
-  ];
+  const tabs: { id: TabId; label: string; icon: typeof Settings }[] = useMemo(
+    () => [
+      { id: 'general', label: t('settings.tabGeneral'), icon: Settings },
+      { id: 'processing', label: t('settings.tabProcessing'), icon: Zap },
+      { id: 'extraction', label: t('settings.tabExtraction'), icon: FileSearch },
+      { id: 'labels', label: t('settings.tabLabels'), icon: Tag },
+    ],
+    [t],
+  );
 
   return (
     <div className="document-channel-settings">
       <Link to={`/documents/channels/${channelId}`} className="document-channel-settings-back">
         <ArrowLeft size={18} />
-        <span>Back to Documents</span>
+        <span>{t('common.backToDocuments')}</span>
       </Link>
 
       <div className="page-header">
-        <h1>Channel settings</h1>
+        <h1>{t('settings.pageTitle')}</h1>
         <p className="page-subtitle">
-          Configure {channelName}
+          {t('settings.pageSubtitle', { name: channelName })}
         </p>
       </div>
 
       <div className="document-channel-settings-tabs">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <button
-            key={t.id}
+            key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === t.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(t.id)}
+            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
           >
-            <t.icon size={16} />
-            <span>{t.label}</span>
+            <tab.icon size={16} />
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
@@ -277,24 +282,24 @@ export function DocumentChannelSettings() {
       <div className="document-channel-settings-form">
         {activeTab === 'general' && (
         <section className="document-channel-settings-section">
-          <h2>General</h2>
+          <h2>{t('settings.generalHeading')}</h2>
           <div className="document-channel-settings-field">
-            <label htmlFor="channel-name">Name</label>
+            <label htmlFor="channel-name">{t('common.name')}</label>
             <input
               id="channel-name"
               type="text"
               value={channelNameField}
               onChange={(e) => setChannelNameField(e.target.value)}
-              placeholder="Channel name"
+              placeholder={t('settings.namePlaceholder')}
             />
           </div>
           <div className="document-channel-settings-field">
-            <label htmlFor="channel-description">Description</label>
+            <label htmlFor="channel-description">{t('common.description')}</label>
             <textarea
               id="channel-description"
               value={channelDescription}
               onChange={(e) => setChannelDescription(e.target.value)}
-              placeholder="Optional description"
+              placeholder={t('settings.descPlaceholder')}
               rows={2}
             />
           </div>
@@ -303,13 +308,13 @@ export function DocumentChannelSettings() {
 
         {activeTab === 'processing' && (
         <section className="document-channel-settings-section">
-          <h2>Document processing pipeline</h2>
+          <h2>{t('settings.pipelineHeading')}</h2>
           <div className="document-channel-settings-field">
-            <label htmlFor="pipeline">Pipeline</label>
+            <label htmlFor="pipeline">{t('settings.pipelineLabel')}</label>
             {pipelinesLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Loader2 size={16} className="dcs-spinner" />
-                <span>Loading pipelines…</span>
+                <span>{t('settings.loadingPipelines')}</span>
               </div>
             ) : (
               <select
@@ -317,7 +322,7 @@ export function DocumentChannelSettings() {
                 value={pipelineId}
                 onChange={(e) => setPipelineId(e.target.value)}
               >
-                <option value="">None</option>
+                <option value="">{t('common.none')}</option>
                 {pipelines.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -327,7 +332,7 @@ export function DocumentChannelSettings() {
             )}
           </div>
 
-          <h2>Auto-process</h2>
+          <h2>{t('settings.autoProcessHeading')}</h2>
           <div className="document-channel-settings-field">
             <label>
               <input
@@ -335,11 +340,10 @@ export function DocumentChannelSettings() {
                 checked={autoProcess}
                 onChange={(e) => setAutoProcess(e.target.checked)}
               />
-              <span>Automatically process documents when uploaded to this channel</span>
+              <span>{t('settings.autoProcessLabel')}</span>
             </label>
             <p className="document-channel-settings-hint">
-              When enabled, a processing job will be created automatically for each uploaded document
-              using the selected pipeline.
+              {t('settings.autoProcessHint')}
             </p>
           </div>
         </section>
@@ -347,16 +351,16 @@ export function DocumentChannelSettings() {
 
         {activeTab === 'extraction' && (
         <section className="document-channel-settings-section">
-          <h2>Metadata extraction (pydantic-ai)</h2>
+          <h2>{t('settings.extractionHeading')}</h2>
           <p className="document-channel-settings-hint">
-            Configure an LLM to extract metadata using pydantic-ai Agent with StructuredDict. Define the output schema (fields map to JSON Schema for StructuredDict).
+            {t('settings.extractionIntro')}
           </p>
           <div className="document-channel-settings-field">
-            <label htmlFor="extraction-model">Extraction model</label>
+            <label htmlFor="extraction-model">{t('settings.extractionModel')}</label>
             {modelsLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Loader2 size={16} className="dcs-spinner" />
-                <span>Loading models…</span>
+                <span>{t('settings.loadingModels')}</span>
               </div>
             ) : (
               <select
@@ -364,7 +368,7 @@ export function DocumentChannelSettings() {
                 value={extractionModelId}
                 onChange={(e) => setExtractionModelId(e.target.value)}
               >
-                <option value="">None</option>
+                <option value="">{t('common.none')}</option>
                 {llmModels.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
@@ -374,9 +378,9 @@ export function DocumentChannelSettings() {
             )}
           </div>
           <div className="document-channel-settings-field">
-            <label>StructuredDict schema</label>
+            <label>{t('settings.schemaLabel')}</label>
             <p className="document-channel-settings-hint">
-              Fields define the output schema for pydantic-ai StructuredDict. Key, label, type, description, and required. Descriptions are used in the JSON Schema to guide the model.
+              {t('settings.schemaHint')}
             </p>
             <div className="dcs-schema-presets">
               {Object.keys(SCHEMA_PRESETS).map((k) => (
@@ -386,7 +390,7 @@ export function DocumentChannelSettings() {
                   className="btn btn-secondary dcs-preset-btn"
                   onClick={() => applyPreset(k)}
                 >
-                  {k === 'academic' ? 'Academic paper' : k === 'report' ? 'Report' : 'Minimal'}
+                  {k === 'academic' ? t('settings.presetAcademic') : k === 'report' ? t('settings.presetReport') : t('settings.presetMinimal')}
                 </button>
               ))}
             </div>
@@ -400,7 +404,7 @@ export function DocumentChannelSettings() {
                         className="dcs-schema-move-btn"
                         onClick={() => moveSchemaField(i, 'up')}
                         disabled={i === 0}
-                        aria-label="Move up"
+                        aria-label={t('settings.ariaMoveSchemaUp')}
                       >
                         <ChevronUp size={14} />
                       </button>
@@ -409,21 +413,21 @@ export function DocumentChannelSettings() {
                         className="dcs-schema-move-btn"
                         onClick={() => moveSchemaField(i, 'down')}
                         disabled={i === extractionSchema.length - 1}
-                        aria-label="Move down"
+                        aria-label={t('settings.ariaMoveSchemaDown')}
                       >
                         <ChevronDown size={14} />
                       </button>
                     </div>
                     <input
                       type="text"
-                      placeholder="key"
+                      placeholder={t('settings.placeholderKey')}
                       value={field.key}
                       onChange={(e) => updateSchemaField(i, { key: e.target.value })}
                       className="dcs-schema-input dcs-schema-key"
                     />
                     <input
                       type="text"
-                      placeholder="label"
+                      placeholder={t('settings.placeholderLabel')}
                       value={field.label}
                       onChange={(e) => updateSchemaField(i, { label: e.target.value })}
                       className="dcs-schema-input dcs-schema-label"
@@ -449,20 +453,20 @@ export function DocumentChannelSettings() {
                         checked={!!field.required}
                         onChange={(e) => updateSchemaField(i, { required: e.target.checked })}
                       />
-                      <span>Required</span>
+                      <span>{t('settings.required')}</span>
                     </label>
                     <button
                       type="button"
                       className="dcs-schema-remove"
                       onClick={() => removeSchemaField(i)}
-                      aria-label="Remove field"
+                      aria-label={t('settings.ariaRemoveField')}
                     >
                       <Trash2 size={14} />
                     </button>
                   </div>
                   <input
                     type="text"
-                    placeholder="Description (used in JSON Schema to guide extraction)"
+                    placeholder={t('settings.descriptionPlaceholder')}
                     value={field.description ?? ''}
                     onChange={(e) => updateSchemaField(i, { description: e.target.value })}
                     className="dcs-schema-input dcs-schema-description"
@@ -470,7 +474,7 @@ export function DocumentChannelSettings() {
                   {field.type === 'enum' && (
                     <input
                       type="text"
-                      placeholder="Enum values (comma-separated, e.g. draft, published, archived)"
+                      placeholder={t('settings.enumPlaceholder')}
                       value={(field.enum ?? []).join(', ')}
                       onChange={(e) =>
                         updateSchemaField(i, {
@@ -487,7 +491,7 @@ export function DocumentChannelSettings() {
                       className="dcs-schema-select dcs-schema-object-type"
                       style={{ marginTop: 4 }}
                     >
-                      <option value="">Select object type</option>
+                      <option value="">{t('settings.selectObjectType')}</option>
                       {masterDataObjectTypes.map((ot) => (
                         <option key={ot.id} value={ot.id}>
                           {ot.name}
@@ -500,16 +504,16 @@ export function DocumentChannelSettings() {
             </div>
             <button type="button" className="btn btn-secondary dcs-add-field" onClick={addSchemaField}>
               <Plus size={14} />
-              <span>Add field</span>
+              <span>{t('settings.addField')}</span>
             </button>
             <button
               type="button"
               className="btn btn-secondary dcs-view-json-btn"
               onClick={() => setShowJsonPreview((v) => !v)}
-              title={showJsonPreview ? 'Hide JSON' : 'View JSON Schema'}
+              title={showJsonPreview ? t('settings.hideJson') : t('settings.jsonPreviewTitle')}
             >
               <Code size={14} />
-              <span>{showJsonPreview ? 'Hide JSON' : 'View JSON'}</span>
+              <span>{showJsonPreview ? t('settings.hideJson') : t('settings.viewJson')}</span>
             </button>
             {showJsonPreview && (
               <pre className="dcs-json-preview">
@@ -519,24 +523,24 @@ export function DocumentChannelSettings() {
               </pre>
             )}
             <div className="document-channel-settings-field" style={{ marginTop: 16 }}>
-              <label htmlFor="extraction-max-instances">Object type extraction max instances</label>
+              <label htmlFor="extraction-max-instances">{t('settings.maxInstancesLabel')}</label>
               <input
                 id="extraction-max-instances"
                 type="number"
                 min={1}
-                placeholder="100 (default)"
+                placeholder={t('settings.maxInstancesPlaceholder')}
                 value={objectTypeExtractionMaxInstances}
                 onChange={(e) => setObjectTypeExtractionMaxInstances(e.target.value === '' ? '' : Number(e.target.value))}
                 className="dcs-schema-input"
                 style={{ width: 120 }}
               />
               <p className="document-channel-settings-hint">
-                For object_type / list[object_type] fields: if an object type has more instances than this limit, it will be skipped during extraction and a warning shown.
+                {t('settings.maxInstancesHint')}
               </p>
             </div>
             {extractionModelId && extractionSchema.length === 0 && (
               <p className="document-channel-settings-hint dcs-schema-empty-hint">
-                Add fields or choose a preset. If empty, the default StructuredDict schema (abstract, author, publish_date, source, tags, categories) will be used.
+                {t('settings.schemaEmptyHint')}
               </p>
             )}
           </div>
@@ -545,19 +549,19 @@ export function DocumentChannelSettings() {
 
         {activeTab === 'labels' && (
         <section className="document-channel-settings-section">
-          <h2>Manual Labels</h2>
+          <h2>{t('settings.labelsHeading')}</h2>
           <p className="document-channel-settings-hint">
-            Manual labels are metadata that you assign by hand. Configure which metadata keys can be manually set on documents in this channel. Each key maps to a Master Data object type. Only object types marked as Master Data in Console → Object Types appear here.
+            {t('settings.labelsIntro')}
           </p>
           <div className="document-channel-settings-field">
-            <label>Label configs</label>
+            <label>{t('settings.labelConfigs')}</label>
             <div className="dcs-schema-list">
               {labelConfig.map((item, i) => (
                 <div key={i} className="dcs-schema-item">
                   <div className="dcs-schema-row">
                     <input
                       type="text"
-                      placeholder="key (e.g. product)"
+                      placeholder={t('settings.labelKeyPlaceholder')}
                       value={item.key}
                       onChange={(e) => updateLabelConfig(i, { key: e.target.value })}
                       className="dcs-schema-input dcs-schema-key"
@@ -567,7 +571,7 @@ export function DocumentChannelSettings() {
                       onChange={(e) => updateLabelConfig(i, { object_type_id: e.target.value })}
                       className="dcs-schema-select"
                     >
-                      <option value="">Select object type</option>
+                      <option value="">{t('settings.selectObjectType')}</option>
                       {masterDataObjectTypes.map((ot) => (
                         <option key={ot.id} value={ot.id}>
                           {ot.name}
@@ -576,7 +580,7 @@ export function DocumentChannelSettings() {
                     </select>
                     <input
                       type="text"
-                      placeholder="Display label (optional)"
+                      placeholder={t('settings.displayLabelPlaceholder')}
                       value={item.display_label ?? ''}
                       onChange={(e) => updateLabelConfig(i, { display_label: e.target.value })}
                       className="dcs-schema-input"
@@ -595,7 +599,7 @@ export function DocumentChannelSettings() {
                       type="button"
                       className="dcs-schema-remove"
                       onClick={() => removeLabelConfig(i)}
-                      aria-label="Remove label config"
+                      aria-label={t('settings.ariaRemoveLabel')}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -606,16 +610,16 @@ export function DocumentChannelSettings() {
             {objectTypesLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                 <Loader2 size={16} className="dcs-spinner" />
-                <span>Loading master data object types…</span>
+                <span>{t('settings.loadingObjectTypes')}</span>
               </div>
             ) : masterDataObjectTypes.length === 0 ? (
               <p className="document-channel-settings-hint">
-                No master data object types. Mark object types as Master Data in Console → Object Types.
+                {t('settings.noMasterDataTypes')}
               </p>
             ) : null}
             <button type="button" className="btn btn-secondary dcs-add-field" onClick={addLabelConfig} style={{ marginTop: 8 }}>
               <Plus size={14} />
-              <span>Add manual label</span>
+              <span>{t('settings.addManualLabel')}</span>
             </button>
           </div>
         </section>
@@ -623,7 +627,7 @@ export function DocumentChannelSettings() {
 
         <div className="document-channel-settings-actions">
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? t('settings.saving') : t('settings.save')}
           </button>
         </div>
       </div>

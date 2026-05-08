@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { BookOpen, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +13,7 @@ import {
 import './KnowledgeBaseList.css';
 
 export function WikiSpaceList() {
+  const { t } = useTranslation('explore');
   const [spaces, setSpaces] = useState<WikiSpaceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -25,7 +27,7 @@ export function WikiSpaceList() {
       const data = await fetchWikiSpaces();
       setSpaces(data.items);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load wiki spaces');
+      toast.error(e instanceof Error ? e.message : t('wiki.toastLoadFailed'));
     } finally {
       setLoading(false);
     }
@@ -43,10 +45,10 @@ export function WikiSpaceList() {
       setShowCreate(false);
       setFormName('');
       setFormDesc('');
-      toast.success('Wiki space created');
+      toast.success(t('wiki.toastCreated'));
       void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
+      toast.error(e instanceof Error ? e.message : t('shared.createFailed'));
     } finally {
       setSaving(false);
     }
@@ -60,10 +62,10 @@ export function WikiSpaceList() {
       setEditSp(null);
       setFormName('');
       setFormDesc('');
-      toast.success('Wiki space updated');
+      toast.success(t('wiki.toastUpdated'));
       void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Update failed');
+      toast.error(e instanceof Error ? e.message : t('shared.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -72,13 +74,13 @@ export function WikiSpaceList() {
   const handleDelete = async (sp: WikiSpaceResponse, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Delete "${sp.name}"? All pages and file metadata in this space will be removed.`)) return;
+    if (!confirm(t('wiki.deleteConfirm', { name: sp.name }))) return;
     try {
       await deleteWikiSpace(sp.id);
-      toast.success('Wiki space deleted');
+      toast.success(t('wiki.toastDeleted'));
       void load();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed');
+      toast.error(err instanceof Error ? err.message : t('shared.deleteFailed'));
     }
   };
 
@@ -101,10 +103,8 @@ export function WikiSpaceList() {
     <div className="kb-list">
       <div className="page-header kb-header">
         <div>
-          <h1>Wiki spaces</h1>
-          <p className="page-subtitle">
-            Organize markdown wiki pages; sync content from openkms-cli or edit in the browser.
-          </p>
+          <h1>{t('wiki.title')}</h1>
+          <p className="page-subtitle">{t('wiki.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -116,16 +116,16 @@ export function WikiSpaceList() {
           }}
         >
           <Plus size={18} />
-          <span>New wiki space</span>
+          <span>{t('wiki.newSpace')}</span>
         </button>
       </div>
 
-      {loading && <p className="kb-loading">Loading...</p>}
+      {loading && <p className="kb-loading">{t('shared.loading')}</p>}
 
       {!loading && spaces.length === 0 && (
         <div className="kb-empty">
           <BookOpen size={48} strokeWidth={1} />
-          <p>No wiki spaces yet. Create one to get started.</p>
+          <p>{t('wiki.empty')}</p>
         </div>
       )}
 
@@ -138,20 +138,28 @@ export function WikiSpaceList() {
                   <BookOpen size={28} strokeWidth={1.5} />
                 </div>
                 <div className="kb-card-actions">
-                  <button type="button" title="Edit" aria-label="Edit" onClick={(e) => openEdit(sp, e)}>
+                  <button
+                    type="button"
+                    title={t('shared.edit')}
+                    aria-label={t('shared.edit')}
+                    onClick={(e) => openEdit(sp, e)}
+                  >
                     <Pencil size={15} />
                   </button>
-                  <button type="button" title="Delete" aria-label="Delete" onClick={(e) => void handleDelete(sp, e)}>
+                  <button
+                    type="button"
+                    title={t('shared.delete')}
+                    aria-label={t('shared.delete')}
+                    onClick={(e) => void handleDelete(sp, e)}
+                  >
                     <Trash2 size={15} />
                   </button>
                 </div>
               </div>
               <h3>{sp.name}</h3>
-              <p className="kb-desc">{sp.description || 'No description'}</p>
+              <p className="kb-desc">{sp.description || t('shared.noDescription')}</p>
               <div className="kb-meta">
-                <span>
-                  {sp.page_count} page{sp.page_count === 1 ? '' : 's'}
-                </span>
+                <span>{t('wiki.pageCount', { count: sp.page_count })}</span>
               </div>
             </Link>
           ))}
@@ -162,35 +170,35 @@ export function WikiSpaceList() {
         <div className="kb-dialog-overlay" role="presentation" onClick={closeDialog}>
           <div className="kb-dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="kb-dialog-header">
-              <h2>{editSp ? 'Edit wiki space' : 'New wiki space'}</h2>
-              <button type="button" className="kb-dialog-close" aria-label="Close" onClick={closeDialog}>
+              <h2>{editSp ? t('wiki.dialogEdit') : t('wiki.dialogNew')}</h2>
+              <button type="button" className="kb-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
                 <X size={20} />
               </button>
             </div>
             <div className="kb-dialog-body">
               <label>
-                <span>Name</span>
+                <span>{t('shared.name')}</span>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Product wiki"
+                  placeholder={t('wiki.placeholderName')}
                   autoFocus
                 />
               </label>
               <label>
-                <span>Description</span>
+                <span>{t('shared.description')}</span>
                 <textarea
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder="Optional"
+                  placeholder={t('shared.optional')}
                   rows={3}
                 />
               </label>
             </div>
             <div className="kb-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeDialog}>
-                Cancel
+                {t('shared.cancel')}
               </button>
               <button
                 type="button"
@@ -198,7 +206,7 @@ export function WikiSpaceList() {
                 disabled={saving || !formName.trim()}
                 onClick={() => void (editSp ? handleEdit() : handleCreate())}
               >
-                {saving ? 'Saving…' : editSp ? 'Save' : 'Create'}
+                {saving ? t('shared.saving') : editSp ? t('shared.save') : t('shared.create')}
               </button>
             </div>
           </div>

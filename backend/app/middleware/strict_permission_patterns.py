@@ -36,6 +36,7 @@ _UNAUTH_EXACT: frozenset[tuple[str, str]] = frozenset(
 _AUTH_PATTERN_SKIP_EXACT: frozenset[tuple[str, str]] = frozenset(
     {
         ("GET", "/api/auth/me"),
+        ("PATCH", "/api/auth/me"),
         ("GET", "/api/auth/permission-catalog"),
         ("POST", "/api/auth/logout"),
         ("GET", "/api/feature-toggles"),

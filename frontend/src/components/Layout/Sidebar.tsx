@@ -29,6 +29,7 @@ import {
   FolderTree,
 } from 'lucide-react';
 import { useCallback, useEffect, useState, startTransition } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import logo from '../../assets/logo.svg';
 import { DEFAULT_SYSTEM_DISPLAY_NAME, effectiveSystemDisplayName, fetchSystemPublic } from '../../data/systemApi';
@@ -56,6 +57,7 @@ function SidebarChannelTree({
   onToggle: (id: string) => void;
   depth?: number;
 }) {
+  const { t } = useTranslation('layout');
   return (
     <ul className="sidebar-channel-tree" style={{ paddingLeft: depth > 0 ? 8 : 0 }}>
       {channels.map((ch) => (
@@ -66,7 +68,7 @@ function SidebarChannelTree({
                 type="button"
                 className="sidebar-channel-toggle"
                 onClick={() => onToggle(ch.id)}
-                aria-label={expanded[ch.id] ? 'Collapse' : 'Expand'}
+                aria-label={expanded[ch.id] ? t('collapseTree') : t('expandTree')}
               >
                 <ChevronRight size={12} className={expanded[ch.id] ? 'expanded' : ''} />
               </button>
@@ -103,6 +105,7 @@ function SidebarChannelTree({
 }
 
 function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string) => boolean }) {
+  const { t } = useTranslation('layout');
   return (
     <>
       {canAccessPath('/ontology/datasets') && (
@@ -113,7 +116,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
           }
         >
           <Table size={18} strokeWidth={1.75} />
-          <span>Datasets</span>
+          <span>{t('datasets')}</span>
         </NavLink>
       )}
       {canAccessPath('/ontology/object-types') && (
@@ -124,7 +127,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
           }
         >
           <Box size={18} strokeWidth={1.75} />
-          <span>Object types</span>
+          <span>{t('objectTypes')}</span>
         </NavLink>
       )}
       {canAccessPath('/ontology/link-types') && (
@@ -135,7 +138,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
           }
         >
           <Link2 size={18} strokeWidth={1.75} />
-          <span>Link types</span>
+          <span>{t('linkTypes')}</span>
         </NavLink>
       )}
       {canAccessPath('/objects') && (
@@ -146,7 +149,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
           }
         >
           <Box size={18} strokeWidth={1.75} />
-          <span>Objects</span>
+          <span>{t('objects')}</span>
         </NavLink>
       )}
       {canAccessPath('/links') && (
@@ -157,7 +160,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
           }
         >
           <Link2 size={18} strokeWidth={1.75} />
-          <span>Links</span>
+          <span>{t('links')}</span>
         </NavLink>
       )}
       {canAccessPath('/object-explorer') && (
@@ -168,7 +171,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
           }
         >
           <Compass size={18} strokeWidth={1.75} />
-          <span>Object Explorer</span>
+          <span>{t('objectExplorer')}</span>
         </NavLink>
       )}
     </>
@@ -176,6 +179,7 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
 }
 
 export function Sidebar() {
+  const { t } = useTranslation('layout');
   const location = useLocation();
   const navigate = useNavigate();
   const { channels } = useDocumentChannels();
@@ -301,32 +305,32 @@ export function Sidebar() {
               {canAccessPath('/console') && (
                 <NavLink to="/console" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                   <LayoutDashboard size={18} strokeWidth={1.75} />
-                  <span>Overview</span>
+                  <span>{t('overview')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/permission-management') && (
                 <>
-                  <div className="sidebar-menu-label">Permission management</div>
+                  <div className="sidebar-menu-label">{t('permissionManagement')}</div>
                   <NavLink
                     to="/console/permission-management"
                     className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                   >
                     <KeyRound size={18} strokeWidth={1.75} />
-                    <span>Permissions</span>
+                    <span>{t('permissions')}</span>
                   </NavLink>
                 </>
               )}
               {(canAccessPath('/console/data-security/groups') ||
                 canAccessPath('/console/data-security/data-resources')) && (
                 <>
-                  <div className="sidebar-menu-label">Data security</div>
+                  <div className="sidebar-menu-label">{t('dataSecurity')}</div>
                   {canAccessPath('/console/data-security/groups') && (
                     <NavLink
                       to="/console/data-security/groups"
                       className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                     >
                       <Shield size={18} strokeWidth={1.75} />
-                      <span>Access groups</span>
+                      <span>{t('accessGroups')}</span>
                     </NavLink>
                   )}
                   {canAccessPath('/console/data-security/data-resources') && (
@@ -335,41 +339,41 @@ export function Sidebar() {
                       className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                     >
                       <Tags size={18} strokeWidth={1.75} />
-                      <span>Data resources</span>
+                      <span>{t('dataResources')}</span>
                     </NavLink>
                   )}
                 </>
               )}
-              {showConsoleDataLabel && <div className="sidebar-menu-label">Console</div>}
+              {showConsoleDataLabel && <div className="sidebar-menu-label">{t('consoleSection')}</div>}
               {canAccessPath('/console/data-sources') && (
                 <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                   <Database size={18} strokeWidth={1.75} />
-                  <span>Data Sources</span>
+                  <span>{t('dataSources')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/settings') && (
                 <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                   <Settings size={18} strokeWidth={1.75} />
-                  <span>System Settings</span>
+                  <span>{t('systemSettings')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/users') && (
                 <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                   <Users size={18} strokeWidth={1.75} />
-                  <span>Users &amp; roles</span>
+                  <span>{t('usersAndRoles')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/feature-toggles') && (
                 <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
                   <ToggleLeft size={18} strokeWidth={1.75} />
-                  <span>Feature Toggles</span>
+                  <span>{t('featureToggles')}</span>
                 </NavLink>
               )}
             </div>
             <div className="sidebar-nav-console-footer">
               <Link to="/" className="sidebar-link sidebar-link-exit">
                 <ArrowLeft size={18} strokeWidth={1.75} />
-                <span>Exit Console</span>
+                <span>{t('exitConsole')}</span>
               </Link>
             </div>
           </>
@@ -382,7 +386,7 @@ export function Sidebar() {
           }
         >
           <HomeIcon size={18} strokeWidth={1.75} />
-          <span>Home</span>
+          <span>{t('home')}</span>
         </NavLink>
         {canAccessPath('/documents') && (
         <div className="sidebar-menu-group">
@@ -393,7 +397,7 @@ export function Sidebar() {
             }
           >
             <FileStack size={18} strokeWidth={1.75} />
-            <span>Documents</span>
+            <span>{t('documents')}</span>
           </NavLink>
           {onDocuments && channels.length > 0 && (
             <div className="sidebar-subnav">
@@ -417,7 +421,7 @@ export function Sidebar() {
               }
             >
               <FileText size={18} strokeWidth={1.75} />
-              <span>Articles</span>
+              <span>{t('articles')}</span>
             </NavLink>
             {onArticles && articleChannels.length > 0 && (
               <div className="sidebar-subnav">
@@ -440,7 +444,7 @@ export function Sidebar() {
             }
           >
             <Library size={18} strokeWidth={1.75} />
-            <span>Wiki Spaces</span>
+            <span>{t('wikiSpaces')}</span>
           </NavLink>
         )}
         {toggles.taxonomy !== false &&
@@ -459,7 +463,7 @@ export function Sidebar() {
             }
           >
             <FolderTree size={18} strokeWidth={1.75} />
-            <span>Knowledge Map</span>
+            <span>{t('knowledgeMap')}</span>
           </NavLink>
         )}
         {(canAccessPath('/glossaries') || showOntologySection) && (
@@ -472,7 +476,7 @@ export function Sidebar() {
                 }
               >
                 <BookOpen size={18} strokeWidth={1.75} />
-                <span>Glossaries</span>
+                <span>{t('glossaries')}</span>
               </NavLink>
             )}
             {showOntologySection && (
@@ -485,7 +489,7 @@ export function Sidebar() {
                     }
                   >
                     <Network size={18} strokeWidth={1.75} />
-                    <span>Ontology</span>
+                    <span>{t('ontology')}</span>
                   </NavLink>
                 )}
                 {onOntology && (
@@ -505,7 +509,7 @@ export function Sidebar() {
             }
           >
             <Database size={18} strokeWidth={1.75} />
-            <span>Knowledge Bases</span>
+            <span>{t('knowledgeBases')}</span>
           </NavLink>
         )}
         {toggles.evaluationDatasets && canAccessPath('/evaluation-datasets') && (
@@ -516,7 +520,7 @@ export function Sidebar() {
             }
           >
             <ClipboardList size={18} strokeWidth={1.75} />
-            <span>Evaluation</span>
+            <span>{t('evaluation')}</span>
           </NavLink>
         )}
         {canAccessPath('/pipelines') && (
@@ -527,7 +531,7 @@ export function Sidebar() {
           }
         >
           <GitBranch size={18} strokeWidth={1.75} />
-          <span>Pipelines</span>
+          <span>{t('pipelines')}</span>
         </NavLink>
         )}
         {canAccessPath('/jobs') && (
@@ -538,7 +542,7 @@ export function Sidebar() {
           }
         >
           <ListTodo size={18} strokeWidth={1.75} />
-          <span>Jobs</span>
+          <span>{t('jobs')}</span>
         </NavLink>
         )}
         {canAccessPath('/models') && (
@@ -549,7 +553,7 @@ export function Sidebar() {
           }
         >
           <Cpu size={18} strokeWidth={1.75} />
-          <span>Models</span>
+          <span>{t('models')}</span>
         </NavLink>
         )}
           </>

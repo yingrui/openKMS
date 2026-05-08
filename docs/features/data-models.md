@@ -172,6 +172,12 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id` (UUID), `email` (unique), `username` (unique), `password_hash`, `is_admin`, `created_at`, `updated_at`
 - Only present in `OPENKMS_AUTH_MODE=local`. In OIDC mode users are not stored here; identity comes from the JWT.
 
+### UserPreference (UI preferences)
+
+- `subject_sub` (PK, string): JWT `sub` (local user id or OIDC subject line); same principal space as `UserApiKey.owner_sub`
+- `ui_locale` (`en` \| `zh-CN` \| null): SPA display language saved from **Settings**; read on `GET /api/auth/me`
+- `updated_at`
+
 ### UserApiKey (personal API keys)
 
 - `id` (UUID string; embedded in issued token as `okms.{id}.{secret}`), `owner_sub` (JWT `sub`: local user id or OIDC IdP subject), `auth_mode` (`local` \| `oidc`), `name`, `key_prefix` (short display prefix, no secret), `secret_hash` (bcrypt of secret segment only), `oidc_realm_roles` (JSONB snapshot of realm role names at creation; OIDC only), `display_username`, `display_email` (snapshot for `/me`-style claims), `created_at`, `last_used_at`, `revoked_at` (soft revoke)

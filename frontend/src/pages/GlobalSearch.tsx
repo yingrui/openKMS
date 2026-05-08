@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
@@ -100,6 +101,7 @@ function Section({
   section: GlobalSearchResponse['documents'];
   emptyHint: string;
 }) {
+  const { t } = useTranslation('search');
   if (section.total === 0 && section.items.length === 0) {
     return (
       <section className="global-search-section" aria-labelledby={`search-${title}`}>
@@ -108,13 +110,13 @@ function Section({
       </section>
     );
   }
+  const resultsLine =
+    `${t('resultsCount', { count: section.total })}` +
+    (section.total > section.items.length ? ` ${t('firstPageSuffix')}` : '');
   return (
     <section className="global-search-section" aria-labelledby={`search-${title}`}>
       <h2 id={`search-${title}`}>{title}</h2>
-      <p className="global-search-section-meta">
-        {section.total} result{section.total === 1 ? '' : 's'}
-        {section.total > section.items.length ? ' (showing first page)' : ''}
-      </p>
+      <p className="global-search-section-meta">{resultsLine}</p>
       <ul className="global-search-list">
         {section.items.map((h) => (
           <HitRow key={`${h.kind}-${h.id}`} hit={h} />
@@ -125,6 +127,7 @@ function Section({
 }
 
 export function GlobalSearch() {
+  const { t } = useTranslation('search');
   const [searchParams, setSearchParams] = useSearchParams();
   const qParam = searchParams.get('q') ?? '';
   const { channels: docChannels } = useDocumentChannels();
@@ -138,14 +141,14 @@ export function GlobalSearch() {
 
   const tabDefs = useMemo(() => {
     const rows: { id: SearchTab; label: string }[] = [
-      { id: 'all', label: 'All' },
-      { id: 'documents', label: 'Documents' },
+      { id: 'all', label: t('tabAll') },
+      { id: 'documents', label: t('tabDocuments') },
     ];
-    if (isEnabled('articles')) rows.push({ id: 'articles', label: 'Articles' });
-    if (isEnabled('wikiSpaces')) rows.push({ id: 'wiki_spaces', label: 'Wiki spaces' });
-    if (isEnabled('knowledgeBases')) rows.push({ id: 'knowledge_bases', label: 'Knowledge bases' });
+    if (isEnabled('articles')) rows.push({ id: 'articles', label: t('tabArticles') });
+    if (isEnabled('wikiSpaces')) rows.push({ id: 'wiki_spaces', label: t('tabWikiSpaces') });
+    if (isEnabled('knowledgeBases')) rows.push({ id: 'knowledge_bases', label: t('tabKnowledgeBases') });
     return rows;
-  }, [isEnabled]);
+  }, [isEnabled, t]);
 
   const [docChannel, setDocChannel] = useState(searchParams.get('document_channel_id') ?? '');
   const [artChannel, setArtChannel] = useState(searchParams.get('article_channel_id') ?? '');
@@ -201,10 +204,10 @@ export function GlobalSearch() {
       .then(setData)
       .catch((e: unknown) => {
         setData(null);
-        setError(e instanceof Error ? e.message : 'Search failed');
+        setError(e instanceof Error ? e.message : t('searchFailed'));
       })
       .finally(() => setLoading(false));
-  }, [qParam, typesParam, docChannel, artChannel, updatedAfter, updatedBefore]);
+  }, [qParam, typesParam, docChannel, artChannel, updatedAfter, updatedBefore, t]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -271,10 +274,10 @@ export function GlobalSearch() {
   return (
     <div className="global-search">
       <div className="global-search-results-shell">
-        <nav className="global-search-tabs" aria-label="Result type">
+        <nav className="global-search-tabs" aria-label={t('resultTypeNav')}>
           {tabDefs.map(({ id, label }) => {
             const count = tabResultCount(data, id, isEnabled);
-            const aria = count === null ? label : `${label}, ${count} results`;
+            const aria = count === null ? label : t('tabAria', { label, count });
             return (
               <button
                 key={id}
@@ -291,16 +294,16 @@ export function GlobalSearch() {
           })}
         </nav>
 
-        <div className="global-search-filters" role="region" aria-label="Search filters">
+        <div className="global-search-filters" role="region" aria-label={t('filtersRegionAria')}>
           <div className="global-search-filters-label">
             <SlidersHorizontal size={16} strokeWidth={2} aria-hidden />
-            <span>Filters</span>
+            <span>{t('filters')}</span>
           </div>
           <div className="global-search-filters-fields">
             <label>
-              Document channel
-              <select value={docChannel} onChange={(e) => setDocChannel(e.target.value)} aria-label="Document channel">
-                <option value="">Any</option>
+              {t('documentChannel')}
+              <select value={docChannel} onChange={(e) => setDocChannel(e.target.value)} aria-label={t('documentChannel')}>
+                <option value="">{t('channelAny')}</option>
                 {docOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.label}
@@ -310,9 +313,9 @@ export function GlobalSearch() {
             </label>
             {isEnabled('articles') && (
               <label>
-                Article channel
-                <select value={artChannel} onChange={(e) => setArtChannel(e.target.value)} aria-label="Article channel">
-                  <option value="">Any</option>
+                {t('articleChannel')}
+                <select value={artChannel} onChange={(e) => setArtChannel(e.target.value)} aria-label={t('articleChannel')}>
+                  <option value="">{t('channelAny')}</option>
                   {artOptions.map((o) => (
                     <option key={o.id} value={o.id}>
                       {o.label}
@@ -322,53 +325,53 @@ export function GlobalSearch() {
               </label>
             )}
             <label>
-              Updated after
+              {t('updatedAfter')}
               <input
                 type="datetime-local"
                 value={updatedAfter}
                 onChange={(e) => setUpdatedAfter(e.target.value)}
-                aria-label="Updated after"
+                aria-label={t('updatedAfter')}
               />
             </label>
             <label>
-              Updated before
+              {t('updatedBefore')}
               <input
                 type="datetime-local"
                 value={updatedBefore}
                 onChange={(e) => setUpdatedBefore(e.target.value)}
-                aria-label="Updated before"
+                aria-label={t('updatedBefore')}
               />
             </label>
             <button type="button" className="btn btn-primary global-search-apply" onClick={applyFiltersToUrl}>
-              Apply filters
+              {t('applyFilters')}
             </button>
           </div>
         </div>
       </div>
 
-      {loading && <p className="global-search-status">Loading…</p>}
+      {loading && <p className="global-search-status">{t('loading')}</p>}
       {error && <p className="global-search-error">{error}</p>}
 
       {data && !loading && (
         <div className="global-search-results">
           {show('documents') && (
             <Section
-              title="Documents"
+              title={t('sectionDocuments')}
               section={data.documents}
-              emptyHint="No matching documents."
+              emptyHint={t('emptyDocuments')}
             />
           )}
           {isEnabled('articles') && show('articles') && (
-            <Section title="Articles" section={data.articles} emptyHint="No matching articles." />
+            <Section title={t('sectionArticles')} section={data.articles} emptyHint={t('emptyArticles')} />
           )}
           {isEnabled('wikiSpaces') && show('wiki_spaces') && (
-            <Section title="Wiki spaces" section={data.wiki_spaces} emptyHint="No matching wiki spaces." />
+            <Section title={t('sectionWikiSpaces')} section={data.wiki_spaces} emptyHint={t('emptyWikiSpaces')} />
           )}
           {isEnabled('knowledgeBases') && show('knowledge_bases') && (
             <Section
-              title="Knowledge bases"
+              title={t('sectionKnowledgeBases')}
               section={data.knowledge_bases}
-              emptyHint="No matching knowledge bases."
+              emptyHint={t('emptyKnowledgeBases')}
             />
           )}
         </div>

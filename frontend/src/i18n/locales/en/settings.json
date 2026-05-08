@@ -1,0 +1,32 @@
+{
+  "pageTitle": "Settings",
+  "pageSubtitle": "Display language, API keys, and integration access.",
+  "interfaceLanguageTitle": "Display language",
+  "interfaceLanguageIntro": "Your choice is saved to your account and applies when you sign in on any device.",
+  "interfaceLanguageSignInHint": "Sign in to save your display language to your account.",
+  "localeSaving": "Saving…",
+  "apiKeysTitle": "API keys",
+  "apiKeysIntro": "Create keys for assistants and scripts that call openKMS on your behalf.",
+  "keyCreatedTitle": "Key created — copy it now",
+  "keyCreatedHint": "This value is shown only once. If you lose it, revoke the key and create a new one.",
+  "copy": "Copy",
+  "done": "Done",
+  "labelOptional": "Label (optional)",
+  "placeholderLabel": "e.g. laptop assistant",
+  "creating": "Creating…",
+  "createKey": "Create key",
+  "loadingKeys": "Loading keys…",
+  "noKeys": "No active keys yet.",
+  "unnamed": "Unnamed",
+  "lastUsed": "Last used {{when}}",
+  "neverUsed": "Never used",
+  "revoking": "Revoking…",
+  "revoke": "Revoke",
+  "confirmRevoke": "Revoke this key? Apps using it will stop working.",
+  "errors": {
+    "loadKeys": "Could not load API keys",
+    "createKey": "Could not create key",
+    "revokeKey": "Could not revoke key",
+    "localeSave": "Could not save display language"
+  }
+}

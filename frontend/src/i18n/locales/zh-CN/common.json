@@ -1,0 +1,5 @@
+{
+  "appLoading": "加载中…",
+  "graphPanZoomHint": "拖拽平移，滚动缩放。",
+  "wikiSpaceGraphInteractionHint": "拖拽平移，滚动缩放。点击笔记即可打开。圆点越大表示连接越多。若远端笔记使视图收缩，可使用「适应主簇」（展开图标）框选密集区域。"
+}

@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { X, LogIn, Home } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -6,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import '../../App.css';
 
 export function MainLayout() {
+  const { t } = useTranslation('layout');
   const location = useLocation();
   const navigate = useNavigate();
   const {
@@ -37,13 +39,11 @@ export function MainLayout() {
         <Header />
         {showAuthRequired && (
           <div className="auth-required-message" role="alert">
-            <h2 className="auth-required-title">Authentication Required</h2>
-            <p className="auth-required-text">
-              You need to be logged in to access this page. Please sign in with your account to continue.
-            </p>
+            <h2 className="auth-required-title">{t('authRequiredTitle')}</h2>
+            <p className="auth-required-text">{t('authRequiredBody')}</p>
             <button type="button" onClick={login} className="auth-required-btn">
               <LogIn size={20} />
-              <span>Sign in</span>
+              <span>{t('logIn')}</span>
             </button>
           </div>
         )}
@@ -52,13 +52,13 @@ export function MainLayout() {
             <span>{authError}</span>
             <div className="auth-error-banner-actions">
               <button type="button" onClick={retryAuth} className="auth-error-banner-retry">
-                Retry
+                {t('authErrorRetry')}
               </button>
               <button
                 type="button"
                 onClick={clearAuthError}
                 className="auth-error-banner-dismiss"
-                aria-label="Dismiss"
+                aria-label={t('dismiss')}
               >
                 <X size={16} />
               </button>
@@ -67,14 +67,11 @@ export function MainLayout() {
         )}
         {!showAuthRequired && showPathDenied && (
           <div className="auth-required-message" role="alert">
-            <h2 className="auth-required-title">Access denied</h2>
-            <p className="auth-required-text">
-              You do not have permission to open this page. Ask an administrator for the appropriate access, or go
-              back to home.
-            </p>
+            <h2 className="auth-required-title">{t('accessDeniedTitle')}</h2>
+            <p className="auth-required-text">{t('accessDeniedBody')}</p>
             <button type="button" onClick={() => navigate('/', { replace: true })} className="auth-required-btn">
               <Home size={20} />
-              <span>Home</span>
+              <span>{t('home')}</span>
             </button>
           </div>
         )}

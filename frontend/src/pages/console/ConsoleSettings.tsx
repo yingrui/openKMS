@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -25,6 +26,7 @@ function fromServer(s: SystemSettingsResponse): FormState {
 }
 
 export function ConsoleSettings() {
+  const { t } = useTranslation('console');
   const [form, setForm] = useState<FormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,12 +37,12 @@ export function ConsoleSettings() {
       const s = await fetchSystemSettings();
       setForm(fromServer(s));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load system settings');
+      toast.error(e instanceof Error ? e.message : t('loadFailedToast'));
       setForm(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -57,13 +59,13 @@ export function ConsoleSettings() {
       });
       setForm(fromServer(updated));
       notifySystemSettingsUpdated();
-      toast.success('Settings saved');
+      toast.success(t('savedToast'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save settings');
+      toast.error(e instanceof Error ? e.message : t('saveFailedToast'));
     } finally {
       setSaving(false);
     }
-  }, [form]);
+  }, [form, t]);
 
   const handleReset = useCallback(() => {
     setForm((f) =>
@@ -75,14 +77,14 @@ export function ConsoleSettings() {
           }
         : null
     );
-    toast.info('Form reset to defaults (not saved yet)');
-  }, []);
+    toast.info(t('resetInfoToast'));
+  }, [t]);
 
   if (loading) {
     return (
       <div className="console-settings console-settings--loading">
         <Loader2 className="console-settings-loader" size={28} aria-hidden />
-        <p className="console-settings-hint">Loading settings…</p>
+        <p className="console-settings-hint">{t('loading')}</p>
       </div>
     );
   }
@@ -91,11 +93,11 @@ export function ConsoleSettings() {
     return (
       <div className="console-settings">
         <div className="page-header">
-          <h1>System Settings</h1>
-          <p className="page-subtitle">Could not load settings. You may need the console:settings permission.</p>
+          <h1>{t('pageTitle')}</h1>
+          <p className="page-subtitle">{t('loadErrorSubtitle')}</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => void load()}>
-          Retry
+          {t('retry')}
         </button>
       </div>
     );
@@ -104,19 +106,16 @@ export function ConsoleSettings() {
   return (
     <div className="console-settings">
       <div className="page-header">
-        <h1>System Settings</h1>
-        <p className="page-subtitle">
-          System name is stored on the server and exposed to everyone via <code>GET /api/public/system</code> (no
-          login). Other fields require an authenticated admin with <strong>console:settings</strong>.
-        </p>
+        <h1>{t('pageTitle')}</h1>
+        <p className="page-subtitle">{t('intro')}</p>
       </div>
       <div className="console-settings-card">
         <h2>
           <Settings size={20} />
-          General
+          {t('general')}
         </h2>
         <div className="console-settings-section">
-          <label htmlFor="console-settings-system-name">System name</label>
+          <label htmlFor="console-settings-system-name">{t('systemName')}</label>
           <input
             id="console-settings-system-name"
             type="text"
@@ -127,7 +126,7 @@ export function ConsoleSettings() {
           />
         </div>
         <div className="console-settings-section">
-          <label htmlFor="console-settings-timezone">Default timezone</label>
+          <label htmlFor="console-settings-timezone">{t('defaultTimezone')}</label>
           <select
             id="console-settings-timezone"
             className="console-settings-select"
@@ -141,28 +140,26 @@ export function ConsoleSettings() {
         </div>
       </div>
       <div className="console-settings-card">
-        <h2>API &amp; Integrations</h2>
+        <h2>{t('apiIntegrations')}</h2>
         <div className="console-settings-section">
-          <label htmlFor="console-settings-api-url">API base URL (reference note)</label>
+          <label htmlFor="console-settings-api-url">{t('apiBaseUrlNote')}</label>
           <input
             id="console-settings-api-url"
             type="text"
             className="console-settings-input"
-            placeholder="Optional note (not used for API calls)"
+            placeholder={t('apiBasePlaceholder')}
             value={form.apiBaseUrl}
             onChange={(e) => setForm((f) => (f ? { ...f, apiBaseUrl: e.target.value } : null))}
           />
-          <p className="console-settings-hint">
-            Free-text note stored with system settings. The SPA continues to use the build-time API URL for requests.
-          </p>
+          <p className="console-settings-hint">{t('apiBaseHint')}</p>
         </div>
       </div>
       <div className="console-settings-actions">
         <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
-          {saving ? 'Saving…' : 'Save changes'}
+          {saving ? t('saving') : t('saveChanges')}
         </button>
         <button type="button" className="btn btn-secondary" onClick={handleReset} disabled={saving}>
-          Reset form to defaults
+          {t('resetForm')}
         </button>
       </div>
     </div>

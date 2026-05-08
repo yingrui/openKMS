@@ -127,12 +127,16 @@ frontend/src/
     └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 
+### Internationalization (SPA)
+
+The SPA uses **i18next** + **react-i18next** ([`frontend/src/i18n/`](../frontend/src/i18n/)): locales **`en`** and **`zh-CN`**, with namespaces per surface (e.g. **`layout`**, **`knowledgeBase`**, **`wikiSpace`**) registered in **`frontend/src/i18n/config.ts`**. When signed in, the chosen language is persisted in **`user_preferences`** (JWT `sub`) via **`PATCH /api/auth/me`** and reapplied on **`GET /api/auth/me`**; **`localStorage`** (`openkms_locale`) still caches the active locale for **`Accept-Language`** ([`getAuthHeaders`](../frontend/src/data/apiClient.ts)) and first paint before profile loads. Core shell strings use translation keys.
+
 ## Backend Structure
 
 ```
 backend/
 ├── app/
-│   ├── main.py                  # FastAPI app, middleware (StrictPermissionPattern inside Session/CORS stack), routers, procrastinate lifespan; rejects default secret in production
+│   ├── i18n/                  # API error catalogs (`catalog.py`) + `Accept-Language` resolution + structured HTTP errors (`errors.py`)
 │   ├── middleware/
 │   │   └── strict_permission_patterns.py  # Optional OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT: catalog pattern match + permission key check
 │   ├── config.py                # Settings (env: OPENKMS_*); vlm_url primary for VLM

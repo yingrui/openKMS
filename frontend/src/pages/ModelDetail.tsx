@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Cpu, Loader2, Send, Settings, Globe, Clock, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,6 +27,7 @@ function fileToDataUri(file: File): Promise<string> {
 }
 
 export function ModelDetail() {
+  const { t } = useTranslation('workspace');
   const { modelId } = useParams<{ modelId: string }>();
   const [model, setModel] = useState<ApiModelResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,6 @@ export function ModelDetail() {
   const [temperature, setTemperature] = useState(0.7);
   const [showSettings, setShowSettings] = useState(false);
 
-  // VL form state
   const [imageDataUri, setImageDataUri] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string | null>(null);
   const [vlResponse, setVlResponse] = useState<{ content: string; elapsed_ms: number } | null>(null);
@@ -53,13 +54,15 @@ export function ModelDetail() {
       const m = await fetchModelById(modelId);
       setModel(m);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load model');
+      toast.error(e instanceof Error ? e.message : t('modelDetail.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [modelId]);
+  }, [modelId, t]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,7 +76,7 @@ export function ModelDetail() {
       setImageDataUri(dataUri);
       setImageFileName(file.name);
     } catch {
-      toast.error('Failed to read image');
+      toast.error(t('modelDetail.readImageFailed'));
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -98,10 +101,10 @@ export function ModelDetail() {
       if (res.success && res.content) {
         setVlResponse({ content: res.content, elapsed_ms: res.elapsed_ms });
       } else {
-        setVlError(res.error || 'Unknown error');
+        setVlError(res.error || t('modelDetail.unknownError'));
       }
     } catch (e) {
-      setVlError(e instanceof Error ? e.message : 'Request failed');
+      setVlError(e instanceof Error ? e.message : t('modelDetail.requestFailed'));
     } finally {
       setSending(false);
     }
@@ -129,13 +132,13 @@ export function ModelDetail() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: 'error', content: res.error || 'Unknown error', elapsed_ms: res.elapsed_ms },
+          { role: 'error', content: res.error || t('modelDetail.unknownError'), elapsed_ms: res.elapsed_ms },
         ]);
       }
     } catch (e) {
       setMessages((prev) => [
         ...prev,
-        { role: 'error', content: e instanceof Error ? e.message : 'Request failed' },
+        { role: 'error', content: e instanceof Error ? e.message : t('modelDetail.requestFailed') },
       ]);
     } finally {
       setSending(false);
@@ -145,7 +148,7 @@ export function ModelDetail() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
@@ -154,7 +157,7 @@ export function ModelDetail() {
       <div className="model-detail">
         <div className="model-detail-loading">
           <Loader2 size={32} className="model-detail-spinner" />
-          <p>Loading model…</p>
+          <p>{t('modelDetail.loading')}</p>
         </div>
       </div>
     );
@@ -163,8 +166,10 @@ export function ModelDetail() {
   if (!model) {
     return (
       <div className="model-detail">
-        <Link to="/models" className="model-detail-back"><ArrowLeft size={18} /> Back to Models</Link>
-        <p className="model-detail-not-found">Model not found.</p>
+        <Link to="/models" className="model-detail-back">
+          <ArrowLeft size={18} /> {t('modelDetail.back')}
+        </Link>
+        <p className="model-detail-not-found">{t('modelDetail.notFound')}</p>
       </div>
     );
   }
@@ -177,7 +182,7 @@ export function ModelDetail() {
     <div className="model-detail">
       <Link to="/models" className="model-detail-back">
         <ArrowLeft size={18} />
-        <span>Back to Models</span>
+        <span>{t('modelDetail.back')}</span>
       </Link>
 
       <div className="model-detail-header">
@@ -193,30 +198,42 @@ export function ModelDetail() {
 
       <div className="model-detail-grid">
         <section className="model-detail-card">
-          <h2><Globe size={18} /> Connection</h2>
+          <h2>
+            <Globe size={18} /> {t('modelDetail.connection')}
+          </h2>
           <dl className="model-detail-dl">
-            <dt>Base URL</dt>
+            <dt>{t('modelDetail.baseUrl')}</dt>
             <dd className="model-detail-mono">{model.base_url}</dd>
-            <dt>Provider</dt>
+            <dt>{t('modelDetail.provider')}</dt>
             <dd>{model.provider_name}</dd>
-            <dt>API Key</dt>
-            <dd>{model.api_key_set ? <span className="model-detail-key-set">Configured (from provider)</span> : <span className="model-detail-key-unset">Not set</span>}</dd>
+            <dt>{t('modelDetail.apiKey')}</dt>
+            <dd>
+              {model.api_key_set ? (
+                <span className="model-detail-key-set">{t('shared.configuredFromProvider')}</span>
+              ) : (
+                <span className="model-detail-key-unset">{t('shared.notSet')}</span>
+              )}
+            </dd>
           </dl>
         </section>
 
         {model.config && Object.keys(model.config).length > 0 && (
           <section className="model-detail-card">
-            <h2><Settings size={18} /> Config</h2>
+            <h2>
+              <Settings size={18} /> {t('modelDetail.config')}
+            </h2>
             <pre className="model-detail-pre">{JSON.stringify(model.config, null, 2)}</pre>
           </section>
         )}
 
         <section className="model-detail-card">
-          <h2><Clock size={18} /> Timestamps</h2>
+          <h2>
+            <Clock size={18} /> {t('modelDetail.timestamps')}
+          </h2>
           <dl className="model-detail-dl">
-            <dt>Created</dt>
+            <dt>{t('modelDetail.created')}</dt>
             <dd>{new Date(model.created_at).toLocaleString()}</dd>
-            <dt>Updated</dt>
+            <dt>{t('modelDetail.updated')}</dt>
             <dd>{new Date(model.updated_at).toLocaleString()}</dd>
           </dl>
         </section>
@@ -224,13 +241,13 @@ export function ModelDetail() {
 
       <section className="model-detail-playground">
         <div className="playground-header">
-          <h2>Playground</h2>
+          <h2>{t('modelDetail.playground')}</h2>
           {!isEmbedding && (
             <button
               type="button"
               className="playground-settings-toggle"
               onClick={() => setShowSettings((v) => !v)}
-              title="Settings"
+              title={t('modelDetail.settingsTitle')}
             >
               <Settings size={16} />
             </button>
@@ -240,7 +257,7 @@ export function ModelDetail() {
         {showSettings && !isEmbedding && (
           <div className="playground-settings">
             <label>
-              Max tokens
+              {t('modelDetail.maxTokens')}
               <input
                 type="number"
                 min={1}
@@ -250,7 +267,7 @@ export function ModelDetail() {
               />
             </label>
             <label>
-              Temperature
+              {t('modelDetail.temperature')}
               <input
                 type="number"
                 min={0}
@@ -267,34 +284,40 @@ export function ModelDetail() {
           <div className="playground-embedding">
             <div className="playground-embedding-input">
               <label>
-                Input text
+                {t('modelDetail.inputText')}
                 <textarea
                   rows={3}
-                  placeholder="Enter text to embed…"
+                  placeholder={t('modelDetail.embedPlaceholder')}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   disabled={sending}
                 />
               </label>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSend}
-                disabled={!prompt.trim() || sending}
-              >
-                {sending ? <><Loader2 size={16} className="model-detail-spinner" /> Computing…</> : 'Generate Embedding'}
+              <button type="button" className="btn btn-primary" onClick={() => void handleSend()} disabled={!prompt.trim() || sending}>
+                {sending ? (
+                  <>
+                    <Loader2 size={16} className="model-detail-spinner" /> {t('modelDetail.computing')}
+                  </>
+                ) : (
+                  t('modelDetail.generateEmbedding')
+                )}
               </button>
             </div>
             {messages.length > 0 && (
               <div className="playground-embedding-results">
-                {messages.filter((m) => m.role !== 'user').map((msg, i) => (
-                  <div key={i} className={`playground-embedding-result ${msg.role === 'error' ? 'playground-embedding-error' : ''}`}>
-                    <pre className="playground-embedding-output">{msg.content}</pre>
-                    {msg.elapsed_ms !== undefined && msg.elapsed_ms > 0 && (
-                      <span className="playground-msg-meta">{msg.elapsed_ms}ms</span>
-                    )}
-                  </div>
-                ))}
+                {messages
+                  .filter((m) => m.role !== 'user')
+                  .map((msg, i) => (
+                    <div
+                      key={i}
+                      className={`playground-embedding-result ${msg.role === 'error' ? 'playground-embedding-error' : ''}`}
+                    >
+                      <pre className="playground-embedding-output">{msg.content}</pre>
+                      {msg.elapsed_ms !== undefined && msg.elapsed_ms > 0 && (
+                        <span className="playground-msg-meta">{msg.elapsed_ms}ms</span>
+                      )}
+                    </div>
+                  ))}
               </div>
             )}
           </div>
@@ -302,21 +325,19 @@ export function ModelDetail() {
           <div className="playground-vl-form">
             <div className="playground-vl-inputs">
               <div className="playground-vl-image-section">
-                <label>Image</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  hidden
-                />
+                <label>{t('modelDetail.image')}</label>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} hidden />
                 {imageDataUri ? (
                   <div className="playground-vl-image-preview">
-                    <img src={imageDataUri} alt="Preview" />
+                    <img src={imageDataUri} alt={t('modelDetail.previewAlt')} />
                     <div className="playground-vl-image-actions">
                       <span className="playground-vl-image-name">{imageFileName}</span>
-                      <button type="button" onClick={clearImage} title="Remove image"><X size={14} /></button>
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="btn btn-sm">Replace</button>
+                      <button type="button" onClick={clearImage} title={t('modelDetail.removeImage')}>
+                        <X size={14} />
+                      </button>
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="btn btn-sm">
+                        {t('modelDetail.replace')}
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -327,15 +348,15 @@ export function ModelDetail() {
                     disabled={sending}
                   >
                     <ImagePlus size={24} />
-                    <span>Click to upload an image</span>
+                    <span>{t('modelDetail.uploadImage')}</span>
                   </button>
                 )}
               </div>
               <div className="playground-vl-prompt-section">
-                <label>Prompt</label>
+                <label>{t('modelDetail.prompt')}</label>
                 <textarea
                   rows={4}
-                  placeholder="Describe what you want to know about the image…"
+                  placeholder={t('modelDetail.vlPlaceholder')}
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   disabled={sending}
@@ -344,16 +365,27 @@ export function ModelDetail() {
               <button
                 type="button"
                 className="btn btn-primary playground-vl-submit"
-                onClick={handleVLSend}
+                onClick={() => void handleVLSend()}
                 disabled={!prompt.trim() || sending}
               >
-                {sending ? <><Loader2 size={16} className="model-detail-spinner" /> Analyzing…</> : <><Send size={16} /> Analyze</>}
+                {sending ? (
+                  <>
+                    <Loader2 size={16} className="model-detail-spinner" /> {t('modelDetail.analyzing')}
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} /> {t('modelDetail.analyze')}
+                  </>
+                )}
               </button>
             </div>
 
             {(vlResponse || vlError) && (
               <div className="playground-vl-result">
-                <h3>Response {vlResponse?.elapsed_ms ? <span className="playground-msg-meta">{vlResponse.elapsed_ms}ms</span> : null}</h3>
+                <h3>
+                  {t('modelDetail.response')}{' '}
+                  {vlResponse?.elapsed_ms ? <span className="playground-msg-meta">{vlResponse.elapsed_ms}ms</span> : null}
+                </h3>
                 {vlError ? (
                   <div className="playground-vl-error">{vlError}</div>
                 ) : (
@@ -367,19 +399,19 @@ export function ModelDetail() {
             <div className="playground-messages">
               {messages.length === 0 && (
                 <div className="playground-empty">
-                  {isChatModel
-                    ? 'Send a message to test the model. The request uses the OpenAI-compatible chat completions format.'
-                    : 'Send input to test the model API endpoint. The request is proxied through the backend.'}
+                  {isChatModel ? t('modelDetail.emptyChatLLM') : t('modelDetail.emptyChatOther')}
                 </div>
               )}
               {messages.map((msg, i) => (
                 <div key={i} className={`playground-msg playground-msg-${msg.role}`}>
                   <div className="playground-msg-role">
-                    {msg.role === 'user' ? 'You' : msg.role === 'assistant' ? model.name : 'Error'}
+                    {msg.role === 'user'
+                      ? t('modelDetail.roleYou')
+                      : msg.role === 'assistant'
+                        ? model.name
+                        : t('modelDetail.roleError')}
                   </div>
-                  <div className="playground-msg-content">
-                    {msg.content}
-                  </div>
+                  <div className="playground-msg-content">{msg.content}</div>
                   {msg.elapsed_ms !== undefined && msg.elapsed_ms > 0 && (
                     <div className="playground-msg-meta">{msg.elapsed_ms}ms</div>
                   )}
@@ -390,7 +422,7 @@ export function ModelDetail() {
                   <div className="playground-msg-role">{model.name}</div>
                   <div className="playground-msg-content playground-typing">
                     <Loader2 size={16} className="model-detail-spinner" />
-                    <span>{isChatModel ? 'Thinking…' : 'Processing…'}</span>
+                    <span>{isChatModel ? t('modelDetail.thinking') : t('modelDetail.processing')}</span>
                   </div>
                 </div>
               )}
@@ -400,9 +432,9 @@ export function ModelDetail() {
             <div className="playground-input">
               <textarea
                 rows={2}
-                placeholder={isChatModel
-                  ? 'Type a message… (Enter to send, Shift+Enter for new line)'
-                  : 'Enter input text… (Enter to send)'}
+                placeholder={
+                  isChatModel ? t('modelDetail.placeholderChat') : t('modelDetail.placeholderOther')
+                }
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -411,7 +443,7 @@ export function ModelDetail() {
               <button
                 type="button"
                 className="btn btn-primary playground-send"
-                onClick={handleSend}
+                onClick={() => void handleSend()}
                 disabled={!prompt.trim() || sending}
               >
                 {sending ? <Loader2 size={18} className="model-detail-spinner" /> : <Send size={18} />}

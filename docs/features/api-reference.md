@@ -4,6 +4,10 @@ Every HTTP route the backend exposes. Browser-facing routes live under `/api/...
 
 For per-feature context (when an endpoint is used, what it returns), see the matching feature page in the [Features index](../functionalities.md).
 
+### Localization
+
+Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many auth, search, and document responses use structured JSON for **`detail`**: `{ "code": "<STABLE_CODE>", "message": "<localized human text>" }` instead of a plain string (some paths may still return a string). Stable **`code`** values are defined with English and Chinese templates in **`backend/app/i18n/catalog.py`**.
+
 ## Auth, sessions, system
 
 | Method | Path | Description |
@@ -18,7 +22,8 @@ For per-feature context (when an endpoint is used, what it returns), see the mat
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
 | POST | `/api/auth/login` | Local mode only: body `{ "login", "password" }` — `login` is username or email; returns JWT + user |
-| GET | `/api/auth/me` | Current user from Bearer, session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys) |
+| GET | `/api/auth/me` | Current user from Bearer, session, (local) CLI Basic, or **personal API key** (`okms.*`); includes `permissions` (resolved keys) and optional `ui_locale` (`en` \| `zh-CN`) from `user_preferences` |
+| PATCH | `/api/auth/me` | Authenticated user: body `{ "ui_locale": "en" \| "zh-CN" }` — save SPA display language to `user_preferences` (keyed by JWT `sub`; local and OIDC) |
 | POST | `/api/auth/api-keys` | Authenticated user: create personal API key; response includes plaintext `token` once |
 | GET | `/api/auth/api-keys` | List caller's keys (metadata only; query `include_revoked=true` optional) |
 | DELETE | `/api/auth/api-keys/{id}` | Revoke caller's key (soft) |

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Search as SearchIcon,
@@ -31,10 +32,12 @@ function TagInput({
   tags,
   onChange,
   placeholder,
+  removeAriaLabel,
 }: {
   tags: string[];
   onChange: (tags: string[]) => void;
   placeholder?: string;
+  removeAriaLabel?: string;
 }) {
   const [input, setInput] = useState('');
 
@@ -56,7 +59,7 @@ function TagInput({
         {tags.map((t, i) => (
           <span key={`${t}-${i}`} className="tag">
             {t}
-            <button type="button" onClick={() => removeTag(i)} aria-label="Remove">
+            <button type="button" onClick={() => removeTag(i)} aria-label={removeAriaLabel}>
               <X size={12} />
             </button>
           </span>
@@ -76,6 +79,7 @@ function TagInput({
 }
 
 export function GlossaryDetail() {
+  const { t } = useTranslation('explore');
   const { id: glossaryId } = useParams<{ id: string }>();
   const [glossary, setGlossary] = useState<GlossaryResponse | null>(null);
   const [terms, setTerms] = useState<GlossaryTermResponse[]>([]);
@@ -104,11 +108,11 @@ export function GlossaryDetail() {
       const data = await fetchGlossary(glossaryId);
       setGlossary(data);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load glossary');
+      toast.error(e instanceof Error ? e.message : t('glossary.detail.toastLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [glossaryId]);
+  }, [glossaryId, t]);
 
   const loadTerms = useCallback(
     async (searchQuery?: string) => {
@@ -156,13 +160,13 @@ export function GlossaryDetail() {
     setShowTermForm(true);
   };
 
-  const openEditTerm = (t: GlossaryTermResponse) => {
-    setEditTerm(t);
-    setTermPrimaryEn(t.primary_en || '');
-    setTermPrimaryCn(t.primary_cn || '');
-    setTermDefinition(t.definition || '');
-    setTermSynonymsEn(t.synonyms_en || []);
-    setTermSynonymsCn(t.synonyms_cn || []);
+  const openEditTerm = (term: GlossaryTermResponse) => {
+    setEditTerm(term);
+    setTermPrimaryEn(term.primary_en || '');
+    setTermPrimaryCn(term.primary_cn || '');
+    setTermDefinition(term.definition || '');
+    setTermSynonymsEn(term.synonyms_en || []);
+    setTermSynonymsCn(term.synonyms_cn || []);
     setShowTermForm(true);
   };
 
@@ -178,7 +182,7 @@ export function GlossaryDetail() {
 
   const handleSaveTerm = async () => {
     if (!glossaryId || (!termPrimaryEn.trim() && !termPrimaryCn.trim())) {
-      toast.error('At least one of Primary EN or Primary CN is required');
+      toast.error(t('glossary.detail.toastPrimaryRequired'));
       return;
     }
     setTermSaving(true);
@@ -192,16 +196,16 @@ export function GlossaryDetail() {
       };
       if (editTerm) {
         await updateGlossaryTerm(glossaryId, editTerm.id, payload);
-        toast.success('Term updated');
+        toast.success(t('glossary.detail.toastTermUpdated'));
       } else {
         await createGlossaryTerm(glossaryId, payload);
-        toast.success('Term added');
+        toast.success(t('glossary.detail.toastTermAdded'));
       }
       closeTermForm();
       loadTerms();
       loadGlossary();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save term');
+      toast.error(e instanceof Error ? e.message : t('glossary.detail.toastSaveTermFailed'));
     } finally {
       setTermSaving(false);
     }
@@ -211,7 +215,7 @@ export function GlossaryDetail() {
     const en = termPrimaryEn.trim();
     const cn = termPrimaryCn.trim();
     if (!en && !cn) {
-      toast.error('Enter primary term (EN or CN) first');
+      toast.error(t('glossary.detail.toastEnterPrimaryFirst'));
       return;
     }
     if (!glossaryId) return;
@@ -226,9 +230,9 @@ export function GlossaryDetail() {
       setTermDefinition(res.definition || '');
       setTermSynonymsEn(res.synonyms_en || []);
       setTermSynonymsCn(res.synonyms_cn || []);
-      toast.success('AI suggestion applied. Edit if needed, then Add.');
+      toast.success(t('glossary.detail.toastAiApplied'));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'AI suggestion failed');
+      toast.error(e instanceof Error ? e.message : t('glossary.detail.toastAiFailed'));
     } finally {
       setTermSuggesting(false);
     }
@@ -236,14 +240,14 @@ export function GlossaryDetail() {
 
   const handleDeleteTerm = async (termId: string) => {
     if (!glossaryId) return;
-    if (!confirm('Delete this term?')) return;
+    if (!confirm(t('glossary.detail.deleteTermConfirm'))) return;
     try {
       await deleteGlossaryTerm(glossaryId, termId);
-      toast.success('Term deleted');
+      toast.success(t('glossary.detail.toastTermDeleted'));
       loadTerms();
       loadGlossary();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete term');
+      toast.error(e instanceof Error ? e.message : t('glossary.detail.toastDeleteTermFailed'));
     }
   };
 
@@ -258,15 +262,15 @@ export function GlossaryDetail() {
       a.download = `glossary-${glossary?.name || glossaryId}-export.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Glossary exported');
+      toast.success(t('glossary.detail.toastExported'));
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Export failed');
+      toast.error(e instanceof Error ? e.message : t('glossary.detail.toastExportFailed'));
     }
   };
 
   const handleImport = async () => {
     if (!glossaryId || !importFile) {
-      toast.error('Select a JSON file to import');
+      toast.error(t('glossary.detail.toastSelectFile'));
       return;
     }
     setImporting(true);
@@ -282,7 +286,7 @@ export function GlossaryDetail() {
             typeof (t as { primary_cn?: string }).primary_cn === 'string')
       );
       if (validTerms.length === 0) {
-        toast.error('No valid terms found in file');
+        toast.error(t('glossary.detail.toastNoValidTerms'));
         return;
       }
       await importGlossary(glossaryId, {
@@ -295,13 +299,13 @@ export function GlossaryDetail() {
         })),
         mode: importMode,
       });
-      toast.success(`Imported ${validTerms.length} terms`);
+      toast.success(t('glossary.detail.toastImported', { count: validTerms.length }));
       setShowImport(false);
       setImportFile(null);
       loadTerms();
       loadGlossary();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Import failed');
+      toast.error(e instanceof Error ? e.message : t('glossary.detail.toastImportFailed'));
     } finally {
       setImporting(false);
     }
@@ -310,7 +314,7 @@ export function GlossaryDetail() {
   if (loading || !glossary) {
     return (
       <div className="glossary-detail">
-        <p className="glossary-detail-loading">Loading...</p>
+        <p className="glossary-detail-loading">{t('glossary.detail.loading')}</p>
       </div>
     );
   }
@@ -320,22 +324,22 @@ export function GlossaryDetail() {
       <div className="glossary-detail-header">
         <Link to="/glossaries" className="glossary-back">
           <ArrowLeft size={18} />
-          <span>Glossaries</span>
+          <span>{t('glossary.detail.backToGlossaries')}</span>
         </Link>
         <div className="glossary-detail-title-row">
           <h1>{glossary.name}</h1>
           <div className="glossary-detail-actions">
-            <button type="button" className="btn btn-secondary" onClick={handleExport} title="Export">
+            <button type="button" className="btn btn-secondary" onClick={handleExport} title={t('glossary.detail.export')}>
               <Download size={18} />
-              <span>Export</span>
+              <span>{t('glossary.detail.export')}</span>
             </button>
-            <button type="button" className="btn btn-secondary" onClick={() => setShowImport(true)} title="Import">
+            <button type="button" className="btn btn-secondary" onClick={() => setShowImport(true)} title={t('glossary.detail.import')}>
               <Upload size={18} />
-              <span>Import</span>
+              <span>{t('glossary.detail.import')}</span>
             </button>
             <button type="button" className="btn btn-primary" onClick={openAddTerm}>
               <Plus size={18} />
-              <span>Add Term</span>
+              <span>{t('glossary.detail.addTerm')}</span>
             </button>
           </div>
         </div>
@@ -350,7 +354,7 @@ export function GlossaryDetail() {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search terms (EN, CN, definition, or synonyms)..."
+          placeholder={t('glossary.detail.searchPlaceholder')}
           className="glossary-search-input"
         />
       </div>
@@ -359,11 +363,11 @@ export function GlossaryDetail() {
         <table className="glossary-terms-table">
                 <thead>
                   <tr>
-                    <th>Primary CN</th>
-                    <th>Primary EN</th>
-                    <th>Definition</th>
-                    <th>Synonyms CN</th>
-                    <th>Synonyms EN</th>
+                    <th>{t('glossary.detail.colPrimaryCn')}</th>
+                    <th>{t('glossary.detail.colPrimaryEn')}</th>
+                    <th>{t('glossary.detail.colDefinition')}</th>
+                    <th>{t('glossary.detail.colSynonymsCn')}</th>
+                    <th>{t('glossary.detail.colSynonymsEn')}</th>
                     <th className="glossary-terms-actions-col" />
                   </tr>
                 </thead>
@@ -373,38 +377,38 @@ export function GlossaryDetail() {
                 <td colSpan={6} className="glossary-terms-empty">
                   <span className="glossary-terms-loading">
                     <Loader2 size={18} className="glossary-terms-spinner" />
-                    {search ? 'Searching...' : 'Loading terms...'}
+                    {search ? t('glossary.detail.loadingSearching') : t('glossary.detail.loadingTerms')}
                   </span>
                 </td>
               </tr>
             ) : terms.length === 0 ? (
               <tr>
                 <td colSpan={6} className="glossary-terms-empty">
-                  {search ? 'No matching terms' : 'No terms yet. Add one to get started.'}
+                  {search ? t('glossary.detail.emptyNoMatch') : t('glossary.detail.emptyNoTerms')}
                 </td>
               </tr>
             ) : (
-              terms.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.primary_cn || '—'}</td>
-                  <td>{t.primary_en || '—'}</td>
-                  <td className="glossary-term-definition">{t.definition || '—'}</td>
-                  <td>{t.synonyms_cn?.length ? t.synonyms_cn.join(', ') : '—'}</td>
-                  <td>{t.synonyms_en?.length ? t.synonyms_en.join(', ') : '—'}</td>
+              terms.map((term) => (
+                <tr key={term.id}>
+                  <td>{term.primary_cn || t('glossary.detail.dash')}</td>
+                  <td>{term.primary_en || t('glossary.detail.dash')}</td>
+                  <td className="glossary-term-definition">{term.definition || t('glossary.detail.dash')}</td>
+                  <td>{term.synonyms_cn?.length ? term.synonyms_cn.join(', ') : t('glossary.detail.dash')}</td>
+                  <td>{term.synonyms_en?.length ? term.synonyms_en.join(', ') : t('glossary.detail.dash')}</td>
                   <td className="glossary-terms-actions-col">
                     <button
                       type="button"
-                      title="Edit"
-                      aria-label="Edit"
-                      onClick={() => openEditTerm(t)}
+                      title={t('glossary.detail.editTitle')}
+                      aria-label={t('glossary.detail.editTitle')}
+                      onClick={() => openEditTerm(term)}
                     >
                       <Pencil size={14} />
                     </button>
                     <button
                       type="button"
-                      title="Delete"
-                      aria-label="Delete"
-                      onClick={() => handleDeleteTerm(t.id)}
+                      title={t('glossary.detail.deleteTitle')}
+                      aria-label={t('glossary.detail.deleteTitle')}
+                      onClick={() => handleDeleteTerm(term.id)}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -420,59 +424,61 @@ export function GlossaryDetail() {
         <div className="glossary-dialog-overlay" onClick={closeTermForm}>
           <div className="glossary-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="glossary-dialog-header">
-              <h2>{editTerm ? 'Edit Term' : 'Add Term'}</h2>
+              <h2>{editTerm ? t('glossary.detail.dialogEditTerm') : t('glossary.detail.dialogAddTerm')}</h2>
               <button type="button" className="glossary-dialog-close" onClick={closeTermForm}>
                 <X size={20} />
               </button>
             </div>
             <div className="glossary-dialog-body">
               <label>
-                <span>Primary (CN)</span>
+                <span>{t('glossary.detail.primaryCn')}</span>
                 <input
                   type="text"
                   value={termPrimaryCn}
                   onChange={(e) => setTermPrimaryCn(e.target.value)}
-                  placeholder="e.g. 机器学习"
+                  placeholder={t('glossary.detail.primaryCnPlaceholder')}
                 />
               </label>
               <label>
-                <span>Primary (EN)</span>
+                <span>{t('glossary.detail.primaryEn')}</span>
                 <input
                   type="text"
                   value={termPrimaryEn}
                   onChange={(e) => setTermPrimaryEn(e.target.value)}
-                  placeholder="e.g. Machine Learning"
+                  placeholder={t('glossary.detail.primaryEnPlaceholder')}
                 />
               </label>
               <label>
-                <span>Definition</span>
+                <span>{t('glossary.detail.definitionLabel')}</span>
                 <textarea
                   rows={2}
                   value={termDefinition}
                   onChange={(e) => setTermDefinition(e.target.value)}
-                  placeholder="Optional definition of the term"
+                  placeholder={t('glossary.detail.definitionPlaceholder')}
                 />
               </label>
               <label>
-                <span>Synonyms (CN)</span>
+                <span>{t('glossary.detail.synonymsCn')}</span>
                 <TagInput
                   tags={termSynonymsCn}
                   onChange={setTermSynonymsCn}
-                  placeholder="Add synonym, press Enter"
+                  placeholder={t('glossary.detail.synonymPlaceholder')}
+                  removeAriaLabel={t('glossary.detail.removeTagAria')}
                 />
               </label>
               <label>
-                <span>Synonyms (EN)</span>
+                <span>{t('glossary.detail.synonymsEn')}</span>
                 <TagInput
                   tags={termSynonymsEn}
                   onChange={setTermSynonymsEn}
-                  placeholder="Add synonym, press Enter"
+                  placeholder={t('glossary.detail.synonymPlaceholder')}
+                  removeAriaLabel={t('glossary.detail.removeTagAria')}
                 />
               </label>
             </div>
             <div className="glossary-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeTermForm}>
-                Cancel
+                {t('glossary.detail.cancel')}
               </button>
               {(termPrimaryEn.trim() || termPrimaryCn.trim()) && (
                 <button
@@ -486,7 +492,7 @@ export function GlossaryDetail() {
                   ) : (
                     <Sparkles size={18} />
                   )}
-                  <span>{termSuggesting ? 'Suggesting...' : 'AI Suggestion'}</span>
+                  <span>{termSuggesting ? t('glossary.detail.aiSuggesting') : t('glossary.detail.aiSuggestion')}</span>
                 </button>
               )}
               <button
@@ -495,7 +501,7 @@ export function GlossaryDetail() {
                 disabled={(!termPrimaryEn.trim() && !termPrimaryCn.trim()) || termSaving}
                 onClick={handleSaveTerm}
               >
-                {termSaving ? 'Saving...' : editTerm ? 'Save' : 'Add'}
+                {termSaving ? t('glossary.detail.saving') : editTerm ? t('glossary.detail.save') : t('glossary.detail.add')}
               </button>
             </div>
           </div>
@@ -506,7 +512,7 @@ export function GlossaryDetail() {
         <div className="glossary-dialog-overlay" onClick={() => !importing && setShowImport(false)}>
           <div className="glossary-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="glossary-dialog-header">
-              <h2>Import Terms</h2>
+              <h2>{t('glossary.detail.importTermsTitle')}</h2>
               <button
                 type="button"
                 className="glossary-dialog-close"
@@ -517,14 +523,14 @@ export function GlossaryDetail() {
             </div>
             <div className="glossary-dialog-body">
               <label>
-                <span>Import mode</span>
+                <span>{t('glossary.detail.importMode')}</span>
                 <select value={importMode} onChange={(e) => setImportMode(e.target.value as 'append' | 'replace')}>
-                  <option value="append">Append (add to existing)</option>
-                  <option value="replace">Replace (delete existing, then add)</option>
+                  <option value="append">{t('glossary.detail.importAppend')}</option>
+                  <option value="replace">{t('glossary.detail.importReplace')}</option>
                 </select>
               </label>
               <label>
-                <span>JSON file</span>
+                <span>{t('glossary.detail.jsonFile')}</span>
                 <input
                   type="file"
                   accept=".json,application/json"
@@ -534,7 +540,7 @@ export function GlossaryDetail() {
             </div>
             <div className="glossary-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={() => !importing && setShowImport(false)}>
-                Cancel
+                {t('glossary.detail.cancel')}
               </button>
               <button
                 type="button"
@@ -542,7 +548,7 @@ export function GlossaryDetail() {
                 disabled={!importFile || importing}
                 onClick={handleImport}
               >
-                {importing ? 'Importing...' : 'Import'}
+                {importing ? t('glossary.detail.importing') : t('glossary.detail.importVerb')}
               </button>
             </div>
           </div>

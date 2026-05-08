@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Link2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
@@ -6,6 +7,7 @@ import { fetchLinkTypes, type LinkTypeResponse } from '../data/ontologyApi';
 import './LinksList.css';
 
 export function LinksList() {
+  const { t } = useTranslation('explore');
   const [types, setTypes] = useState<LinkTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -14,53 +16,51 @@ export function LinksList() {
       const data = await fetchLinkTypes({ countFromNeo4j: true });
       setTypes(data.items);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load link types');
+      toast.error(e instanceof Error ? e.message : t('links.loadFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   return (
     <div className="links-list">
       <div className="page-header links-header">
         <div>
-          <h1>Links</h1>
-          <p className="page-subtitle">
-            Browse relationship types between objects. Schema is managed in Console → Link Types.
-          </p>
+          <h1>{t('links.title')}</h1>
+          <p className="page-subtitle">{t('links.subtitle')}</p>
         </div>
       </div>
 
-      {loading && <p className="links-loading">Loading...</p>}
+      {loading && <p className="links-loading">{t('shared.loading')}</p>}
 
       {!loading && types.length === 0 && (
         <div className="links-empty">
           <Link2 size={48} strokeWidth={1} />
-          <p>No link types yet. Add them in Console → Link Types.</p>
+          <p>{t('links.empty')}</p>
         </div>
       )}
 
       <div className="links-grid">
-        {types.map((t) => (
-          <Link key={t.id} to={`/links/${t.id}`} className="links-card">
+        {types.map((lt) => (
+          <Link key={lt.id} to={`/links/${lt.id}`} className="links-card">
             <div className="links-card-top">
               <div className="links-icon">
                 <Link2 size={28} strokeWidth={1.5} />
               </div>
             </div>
-            <h3>{t.name}</h3>
-            <p className="links-desc">{t.description || 'No description'}</p>
+            <h3>{lt.name}</h3>
+            <p className="links-desc">{lt.description || t('shared.noDescription')}</p>
             <div className="links-meta">
               <span className="links-type-arrow">
-                {t.source_object_type_name || 'Source'}
+                {lt.source_object_type_name || t('ontology.endpointSource')}
                 <ArrowRight size={14} />
-                {t.target_object_type_name || 'Target'}
+                {lt.target_object_type_name || t('ontology.endpointTarget')}
               </span>
-              <span>{t.link_count} link{t.link_count !== 1 ? 's' : ''}</span>
+              <span>{t('ontology.linkCount', { count: lt.link_count })}</span>
             </div>
           </Link>
         ))}

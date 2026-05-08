@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -120,6 +121,7 @@ function PageIndexTreeNode({
   lineRangeMap: Map<string | undefined, { startLine: number; endLine: number }>;
   onContentClick: (content: string, node: PageIndexNode) => void;
 }) {
+  const { t } = useTranslation('documents');
   const [expanded, setExpanded] = useState(true);
   const hasChildren = node.nodes && node.nodes.length > 0;
   const lineRange = lineRangeMap.get(node.node_id);
@@ -152,8 +154,8 @@ function PageIndexTreeNode({
             type="button"
             className="document-detail-pageindex-content-btn"
             onClick={handleContentClick}
-            title="Show content"
-            aria-label={`Show content of ${node.title}`}
+            title={t('detail.showContent')}
+            aria-label={t('detail.showContentAria', { title: node.title })}
           >
             <FileText size={14} />
           </button>
@@ -192,6 +194,7 @@ function PageIndexTree({
   markdown: string | null;
   markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components'];
 }) {
+  const { t } = useTranslation('documents');
   const [contentPopover, setContentPopover] = useState<{ content: string; title: string } | null>(null);
   const lineRangeMap = useMemo(
     () => (pageIndex?.structure?.length ? buildNodeLineRanges(pageIndex.structure) : new Map()),
@@ -202,13 +205,13 @@ function PageIndexTree({
   }, []);
 
   if (docConfig) {
-    return <p className="document-detail-muted">Page Index not available for example documents.</p>;
+    return <p className="document-detail-muted">{t('detail.pageIndexExampleDoc')}</p>;
   }
   if (loading) {
     return (
       <div className="document-detail-pageindex-loading">
         <Loader2 size={20} className="doc-detail-spinner" />
-        <span>Loading page index…</span>
+        <span>{t('detail.loadingPageIndex')}</span>
       </div>
     );
   }
@@ -218,7 +221,7 @@ function PageIndexTree({
   if (!pageIndex || !pageIndex.structure?.length) {
     return (
       <p className="document-detail-muted">
-        No page index available. Re-process the document to build the index.
+        {t('detail.noPageIndex')}
       </p>
     );
   }
@@ -242,7 +245,7 @@ function PageIndexTree({
                 type="button"
                 className="document-detail-pageindex-dialog-close"
                 onClick={() => setContentPopover(null)}
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <XIcon size={18} />
               </button>
@@ -253,7 +256,7 @@ function PageIndexTree({
                 rehypePlugins={[rehypeRaw, rehypeKatex]}
                 components={markdownComponents}
               >
-                {contentPopover.content || '_No content_'}
+                {contentPopover.content || t('detail.popoverNoContent')}
               </ReactMarkdown>
             </div>
           </div>
@@ -286,6 +289,7 @@ const documentToFolder: Record<string, { folderId: string; markdownFile: string 
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation('documents');
   const { channels } = useDocumentChannels();
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [parsingResult, setParsingResult] = useState<ParsingResult | null>(null);
@@ -385,7 +389,7 @@ export function DocumentDetail() {
             }
           })
           .catch((e) => {
-            if (!cancelled && e?.name !== 'AbortError') setError('Failed to load document content');
+            if (!cancelled && e?.name !== 'AbortError') setError(t('detail.loadContentFailed'));
           })
           .finally(() => {
             if (!cancelled) setLoading(false);
@@ -400,7 +404,7 @@ export function DocumentDetail() {
             }
           })
           .catch((e) => {
-            if (!cancelled && e?.name !== 'AbortError') setError(e instanceof Error ? e.message : 'Failed to load document');
+            if (!cancelled && e?.name !== 'AbortError') setError(e instanceof Error ? e.message : t('detail.loadDocFailed'));
           })
           .finally(() => {
             if (!cancelled) setLoading(false);
@@ -414,7 +418,7 @@ export function DocumentDetail() {
       controller.abort();
       clearTimeout(timeoutId);
     };
-  }, [id, docConfig]);
+  }, [id, docConfig, t]);
 
   useEffect(() => {
     if (!id || rightPanelView !== 'pageIndex' || docConfig) {
@@ -431,7 +435,7 @@ export function DocumentDetail() {
       })
       .catch((e) => {
         if (!cancelled && e?.name !== 'AbortError') {
-          setPageIndexError(e instanceof Error ? e.message : 'Failed to load page index');
+          setPageIndexError(e instanceof Error ? e.message : t('detail.loadPageIndexFailed'));
           setPageIndex(null);
         }
       })
@@ -442,7 +446,7 @@ export function DocumentDetail() {
       cancelled = true;
       controller.abort();
     };
-  }, [id, rightPanelView, docConfig, pageIndexRefreshKey]);
+  }, [id, rightPanelView, docConfig, pageIndexRefreshKey, t]);
 
   /** Images: examples use /examples/, backend docs use proxy. */
   const getImageUrl = (path: string) => (id ? getDocumentFileUrl(id, path) : '');
@@ -625,15 +629,15 @@ export function DocumentDetail() {
     setProcessing(true);
     try {
       await createJob({ document_id: id });
-      toast.success('Processing job created');
+      toast.success(t('detail.toastProcessJob'));
       const updated = await fetchDocumentById(id);
       setDocument(updated);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to create processing job');
+      toast.error(e instanceof Error ? e.message : t('detail.toastProcessJobFail'));
     } finally {
       setProcessing(false);
     }
-  }, [id, document]);
+  }, [id, document, t]);
 
   const handleReset = useCallback(async () => {
     if (!id || !document) return;
@@ -641,13 +645,13 @@ export function DocumentDetail() {
     try {
       const updated = await resetDocumentStatus(id);
       setDocument(updated);
-      toast.success('Document status reset to uploaded');
+      toast.success(t('detail.toastStatusReset'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to reset status');
+      toast.error(e instanceof Error ? e.message : t('detail.toastStatusResetFail'));
     } finally {
       setResetting(false);
     }
-  }, [id, document]);
+  }, [id, document, t]);
 
   const handleExtract = useCallback(async () => {
     if (!id || !document) return;
@@ -657,13 +661,13 @@ export function DocumentDetail() {
       const result = await extractDocumentMetadata(id);
       setDocument(result.document);
       setExtractWarnings(result.warnings ?? []);
-      toast.success('Metadata extracted');
+      toast.success(t('detail.toastMetadataExtracted'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Extraction failed');
+      toast.error(e instanceof Error ? e.message : t('detail.toastExtractFail'));
     } finally {
       setExtracting(false);
     }
-  }, [id, document]);
+  }, [id, document, t]);
 
   const handleSaveMarkdown = useCallback(async () => {
     if (!id || markdown === null) return;
@@ -674,17 +678,17 @@ export function DocumentDetail() {
       setMarkdown(updated.markdown ?? '');
       setMarkdownEditMode(false);
       setPageIndexRefreshKey((k) => k + 1);
-      toast.success('Markdown saved');
+      toast.success(t('detail.toastMarkdownSaved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save markdown');
+      toast.error(e instanceof Error ? e.message : t('detail.toastMarkdownSaveFail'));
     } finally {
       setSaving(false);
     }
-  }, [id, markdown]);
+  }, [id, markdown, t]);
 
   const handleRestoreMarkdown = useCallback(async () => {
     if (!id) return;
-    if (!window.confirm('Restore from original? Unsaved edits will be lost.')) return;
+    if (!window.confirm(t('detail.confirmRestoreMarkdown'))) return;
     setRestoring(true);
     try {
       const updated = await restoreDocumentMarkdown(id);
@@ -692,13 +696,13 @@ export function DocumentDetail() {
       setMarkdown(updated.markdown ?? '');
       setMarkdownEditMode(false);
       setPageIndexRefreshKey((k) => k + 1);
-      toast.success('Markdown restored from storage');
+      toast.success(t('detail.toastMarkdownRestored'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Restore failed');
+      toast.error(e instanceof Error ? e.message : t('detail.toastRestoreFail'));
     } finally {
       setRestoring(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const handleRebuildPageIndex = useCallback(async () => {
     if (!id) return;
@@ -707,13 +711,13 @@ export function DocumentDetail() {
       const data = await rebuildPageIndex(id);
       setPageIndex(data);
       setPageIndexError(null);
-      toast.success('Page index updated');
+      toast.success(t('detail.toastPageIndex'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to rebuild page index');
+      toast.error(e instanceof Error ? e.message : t('detail.toastPageIndexFail'));
     } finally {
       setPageIndexRebuilding(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const handleEnterInfoEdit = useCallback(() => {
     setEditName(document?.name ?? '');
@@ -731,13 +735,13 @@ export function DocumentDetail() {
       const updated = await updateDocument(id, { name: editName.trim() });
       setDocument(updated);
       setInfoEditMode(false);
-      toast.success('Document info saved');
+      toast.success(t('detail.toastDocInfoSaved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save');
+      toast.error(e instanceof Error ? e.message : t('detail.toastSaveFail'));
     } finally {
       setSavingInfo(false);
     }
-  }, [id, document, editName]);
+  }, [id, document, editName, t]);
 
   const handleCancelInfoEdit = useCallback(() => {
     setInfoEditMode(false);
@@ -761,13 +765,13 @@ export function DocumentDetail() {
       const updated = await updateDocumentMetadata(id, editMeta);
       setDocument(updated);
       setMetadataEditMode(false);
-      toast.success('Metadata saved');
+      toast.success(t('detail.toastMetadataSaved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save metadata');
+      toast.error(e instanceof Error ? e.message : t('detail.toastMetadataSaveFail'));
     } finally {
       setSavingMetadata(false);
     }
-  }, [id, editMeta]);
+  }, [id, editMeta, t]);
 
   const handleCancelMetadataEdit = useCallback(() => {
     setMetadataEditMode(false);
@@ -851,17 +855,17 @@ export function DocumentDetail() {
       });
       setDocument(updated);
       setLifecycleEdit(false);
-      toast.success('Lifecycle saved');
+      toast.success(t('detail.toastLifecycleSaved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save');
+      toast.error(e instanceof Error ? e.message : t('detail.toastSaveFail'));
     } finally {
       setLifecycleSaving(false);
     }
-  }, [id, editSeriesId, editLifecycleStatus, editEffectiveFrom, editEffectiveTo]);
+  }, [id, editSeriesId, editLifecycleStatus, editEffectiveFrom, editEffectiveTo, t]);
 
   const handleAddRelationship = useCallback(async () => {
     if (!id || !newRelTarget.trim()) {
-      toast.error('Target document ID required');
+      toast.error(t('detail.toastTargetIdRequired'));
       return;
     }
     setRelSaving(true);
@@ -874,13 +878,13 @@ export function DocumentDetail() {
       setNewRelTarget('');
       setNewRelNote('');
       await refreshLineage();
-      toast.success('Relationship added');
+      toast.success(t('detail.toastRelationshipAdded'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to add');
+      toast.error(e instanceof Error ? e.message : t('detail.toastRelationshipAddFail'));
     } finally {
       setRelSaving(false);
     }
-  }, [id, newRelTarget, newRelType, newRelNote, refreshLineage]);
+  }, [id, newRelTarget, newRelType, newRelNote, refreshLineage, t]);
 
   const handleDeleteRelationship = useCallback(
     async (relationshipId: string) => {
@@ -888,12 +892,12 @@ export function DocumentDetail() {
       try {
         await deleteDocumentRelationship(id, relationshipId);
         await refreshLineage();
-        toast.success('Removed');
+        toast.success(t('detail.toastRemoved'));
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to remove');
+        toast.error(e instanceof Error ? e.message : t('detail.toastRemoveFail'));
       }
     },
-    [id, refreshLineage]
+    [id, refreshLineage, t]
   );
 
   const showSaveVersionButton = useMemo(() => {
@@ -910,12 +914,12 @@ export function DocumentDetail() {
       const { items } = await listDocumentVersions(id);
       setVersionsItems(items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load versions');
+      toast.error(e instanceof Error ? e.message : t('detail.toastVersionsLoadFail'));
       setVersionsItems([]);
     } finally {
       setVersionsLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const handleCreateVersion = useCallback(async () => {
     if (!id) return;
@@ -929,7 +933,7 @@ export function DocumentDetail() {
         created_at: created.created_at,
         version_number: created.version_number,
       });
-      toast.success('Version saved');
+      toast.success(t('detail.toastVersionSaved'));
       setSaveVersionModalOpen(false);
       setSaveVersionTag('');
       if (versionsModalOpen) {
@@ -937,11 +941,11 @@ export function DocumentDetail() {
         setVersionsItems(items);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save version');
+      toast.error(e instanceof Error ? e.message : t('detail.toastVersionSaveFail'));
     } finally {
       setSaveVersionSubmitting(false);
     }
-  }, [id, saveVersionTag, versionsModalOpen]);
+  }, [id, saveVersionTag, versionsModalOpen, t]);
 
   const handlePreviewVersion = useCallback(async (vid: string) => {
     if (!id) return;
@@ -951,11 +955,11 @@ export function DocumentDetail() {
       const detail = await getDocumentVersion(id, vid);
       setVersionPreview(detail);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load version');
+      toast.error(e instanceof Error ? e.message : t('detail.toastVersionLoadFail'));
     } finally {
       setVersionPreviewLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const handleConfirmRestore = useCallback(async () => {
     if (!id || !restoreModalVersion) return;
@@ -981,18 +985,18 @@ export function DocumentDetail() {
       setRestoreSaveCurrent(false);
       setRestoreLabel('');
       setRestoreNote('');
-      toast.success('Version restored');
+      toast.success(t('detail.toastVersionRestored'));
       if (versionsModalOpen) {
         const { items } = await listDocumentVersions(id);
         setVersionsItems(items);
       }
       await refreshLatestVersionSnapshot();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Restore failed');
+      toast.error(e instanceof Error ? e.message : t('detail.toastVersionRestoreFail'));
     } finally {
       setRestoreSubmitting(false);
     }
-  }, [id, restoreModalVersion, restoreSaveCurrent, restoreLabel, restoreNote, versionsModalOpen, metaKeys, refreshLatestVersionSnapshot]);
+  }, [id, restoreModalVersion, restoreSaveCurrent, restoreLabel, restoreNote, versionsModalOpen, metaKeys, refreshLatestVersionSnapshot, t]);
 
   const setEditMetaField = useCallback((key: string, value: unknown) => {
     setEditMeta((prev) => ({ ...prev, [key]: value }));
@@ -1019,10 +1023,10 @@ export function DocumentDetail() {
     <div className="document-detail">
       <Link to={document?.channel_id ? `/documents/channels/${document.channel_id}` : '/documents'} className="document-detail-back">
         <ArrowLeft size={18} />
-        <span>Back to Documents</span>
+        <span>{t('common.backToDocuments')}</span>
       </Link>
       {loading ? (
-        <div className="document-detail-loading">Loading...</div>
+        <div className="document-detail-loading">{t('detail.loadingShort')}</div>
       ) : (
         <>
           {document && !extendedPanel && (
@@ -1036,12 +1040,12 @@ export function DocumentDetail() {
                 aria-expanded={infoVisible}
               >
                 <Info size={20} />
-                <span>Document Information{showMetadataSection ? ' & Metadata' : ''}</span>
+                <span>{showMetadataSection ? t('detail.infoTitleMetadata') : t('detail.infoTitle')}</span>
                 <button
                   type="button"
                   className="document-detail-info-toggle-btn"
                   onClick={(e) => { e.stopPropagation(); setInfoVisible((v) => !v); }}
-                  aria-label={infoVisible ? 'Hide' : 'Show'}
+                  aria-label={infoVisible ? t('common.hide') : t('common.show')}
                 >
                   {infoVisible ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
@@ -1050,7 +1054,7 @@ export function DocumentDetail() {
                 <div className="document-detail-info-body">
                   <dl className="document-detail-info-list document-detail-info-list--name-row">
                     <div className="document-detail-info-item document-detail-info-item--name">
-                      <dt>Name</dt>
+                      <dt>{t('detail.fieldName')}</dt>
                       <dd>
                         {infoEditMode && !docConfig ? (
                           <div className="document-detail-info-edit-row">
@@ -1059,7 +1063,7 @@ export function DocumentDetail() {
                               className="document-detail-info-input"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
-                              aria-label="Document name"
+                              aria-label={t('detail.ariaDocumentName')}
                             />
                             <div className="document-detail-info-edit-actions">
                               <button
@@ -1069,7 +1073,7 @@ export function DocumentDetail() {
                                 disabled={savingInfo || !editName.trim()}
                               >
                                 {savingInfo ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                <span>{savingInfo ? 'Saving…' : 'Save'}</span>
+                                <span>{savingInfo ? t('detail.savingInfo') : t('detail.saveInfo')}</span>
                               </button>
                               <button
                                 type="button"
@@ -1077,7 +1081,7 @@ export function DocumentDetail() {
                                 onClick={handleCancelInfoEdit}
                                 disabled={savingInfo}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </button>
                             </div>
                           </div>
@@ -1089,8 +1093,8 @@ export function DocumentDetail() {
                                 type="button"
                                 className="document-detail-info-edit-btn"
                                 onClick={handleEnterInfoEdit}
-                                title="Edit document info"
-                                aria-label="Edit"
+                                title={t('detail.editDocInfoTitle')}
+                                aria-label={t('detail.ariaEdit')}
                               >
                                 <Edit3 size={12} />
                               </button>
@@ -1104,15 +1108,15 @@ export function DocumentDetail() {
                     <div className="document-detail-info-stats-col">
                       <dl className="document-detail-info-list document-detail-info-list--col">
                         <div className="document-detail-info-item document-detail-info-item--compact">
-                          <dt>Type</dt>
+                          <dt>{t('detail.fieldType')}</dt>
                           <dd>{document.file_type}</dd>
                         </div>
                         <div className="document-detail-info-item document-detail-info-item--compact">
-                          <dt>Size</dt>
+                          <dt>{t('detail.fieldSize')}</dt>
                           <dd>{document.size_bytes ? `${(document.size_bytes / 1024).toFixed(1)} KB` : '—'}</dd>
                         </div>
                         <div className="document-detail-info-item document-detail-info-item--compact">
-                          <dt>Uploaded</dt>
+                          <dt>{t('detail.fieldUploaded')}</dt>
                           <dd>{document.created_at ? new Date(document.created_at).toLocaleString() : '—'}</dd>
                         </div>
                       </dl>
@@ -1120,7 +1124,7 @@ export function DocumentDetail() {
                     <div className="document-detail-info-stats-col">
                       <dl className="document-detail-info-list document-detail-info-list--col">
                         <div className="document-detail-info-item document-detail-info-item--compact">
-                          <dt>Status</dt>
+                          <dt>{t('detail.fieldStatus')}</dt>
                           <dd>
                             <span className={`doc-status doc-status-${document.status || 'completed'}`}>
                               {document.status || 'completed'}
@@ -1131,10 +1135,10 @@ export function DocumentDetail() {
                                 className="document-detail-process-btn"
                                 onClick={handleProcess}
                                 disabled={processing}
-                                title="Process this document"
+                                title={t('detail.titleProcessDoc')}
                               >
                                 {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
-                                <span>{processing ? 'Processing…' : 'Process'}</span>
+                                <span>{processing ? t('detail.processing') : t('detail.process')}</span>
                               </button>
                             )}
                             {(document.status === 'pending' || document.status === 'failed') && (
@@ -1143,28 +1147,28 @@ export function DocumentDetail() {
                                 className="document-detail-reset-btn"
                                 onClick={handleReset}
                                 disabled={resetting}
-                                title="Reset status to uploaded"
+                                title={t('detail.titleResetStatus')}
                               >
                                 {resetting ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
-                                <span>{resetting ? 'Resetting…' : 'Reset'}</span>
+                                <span>{resetting ? t('detail.resetting') : t('detail.reset')}</span>
                               </button>
                             )}
                           </dd>
                         </div>
                         <div className="document-detail-info-item document-detail-info-item--compact">
-                          <dt>Markdown</dt>
-                          <dd>{markdown ? 'Yes' : 'No'}</dd>
+                          <dt>{t('detail.fieldMarkdown')}</dt>
+                          <dd>{markdown ? t('detail.markdownYes') : t('detail.markdownNo')}</dd>
                         </div>
                         {fileHash ? (
                           <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>File hash</dt>
+                            <dt>{t('detail.fieldFileHash')}</dt>
                             <dd className="document-detail-info-hash" title={fileHash}>
                               {fileHash.length > 12 ? `${fileHash.slice(0, 10)}...` : fileHash}
                             </dd>
                           </div>
                         ) : (
                           <div className="document-detail-info-item document-detail-info-item--compact">
-                            <dt>File hash</dt>
+                            <dt>{t('detail.fieldFileHash')}</dt>
                             <dd>—</dd>
                           </div>
                         )}
@@ -1172,13 +1176,13 @@ export function DocumentDetail() {
                     </div>
                     <div className="document-detail-info-stats-col document-detail-info-stats-col--version">
                       <div className="document-detail-version-panel">
-                        <div className="document-detail-version-panel-label">Version</div>
+                        <div className="document-detail-version-panel-label">{t('detail.fieldVersion')}</div>
                         <div className="document-detail-version-panel-body">
                           <div className="document-detail-version-panel-status">
                             {docConfig ? (
                               '—'
                             ) : versionSnapshotLoading ? (
-                              <span className="document-detail-muted">Loading…</span>
+                              <span className="document-detail-muted">{t('common.loading')}</span>
                             ) : latestVersionSnapshot ? (
                               <span className="document-detail-info-version-text">
                                 v{latestVersionSnapshot.version_number}
@@ -1188,9 +1192,9 @@ export function DocumentDetail() {
                             ) : (
                               <span
                                 className="document-detail-muted"
-                                title="Markdown can exist without a named version. Save version stores a checkpoint of the current markdown and metadata."
+                                title={t('detail.noVersionYetTitle')}
                               >
-                                No version saved yet
+                                {t('detail.noVersionYet')}
                               </span>
                             )}
                           </div>
@@ -1200,10 +1204,10 @@ export function DocumentDetail() {
                                 type="button"
                                 className="document-detail-version-panel-btn document-detail-version-panel-btn--ghost"
                                 onClick={handleOpenVersionsModal}
-                                title="View and restore document versions"
+                                title={t('detail.versionsBtnTitle')}
                               >
                                 <History size={14} />
-                                <span>Versions</span>
+                                <span>{t('detail.versionsBtn')}</span>
                               </button>
                               {showSaveVersionButton && (
                                 <button
@@ -1213,10 +1217,10 @@ export function DocumentDetail() {
                                     setSaveVersionTag('');
                                     setSaveVersionModalOpen(true);
                                   }}
-                                  title="Save current markdown and metadata as a named version"
+                                  title={t('detail.saveVersionBtnTitle')}
                                 >
                                   <Bookmark size={14} />
-                                  <span>Save version</span>
+                                  <span>{t('detail.saveVersionBtn')}</span>
                                 </button>
                               )}
                             </div>
@@ -1231,24 +1235,24 @@ export function DocumentDetail() {
                       <div className="document-detail-metadata-body">
                         <h3 className="document-detail-metadata-subtitle">
                           <Sparkles size={16} />
-                          METADATA
+                          {t('detail.metadataHeading')}
                           {(metaKeys.length > 0 || extractionSchemaFields.length > 0 || labelConfig.length > 0) && !metadataEditMode ? (
                             <button
                               type="button"
                               className="document-detail-metadata-edit-btn"
                               onClick={handleEnterMetadataEdit}
-                              title="Edit metadata"
-                              aria-label="Edit metadata"
+                              title={t('detail.editMetadataTitle')}
+                              aria-label={t('detail.ariaEditMetadata')}
                             >
                               <Edit3 size={12} />
-                              <span>Edit</span>
+                              <span>{t('common.edit')}</span>
                             </button>
                           ) : null}
                         </h3>
                         {metaKeys.length === 0 && !metadataEditMode ? (
                           <p className="document-detail-metadata-empty">
-                            No metadata yet. Click Extract to use LLM, or configure Manual Labels in channel settings.
-                            {!hasExtractionModel && ' (Configure an extraction model in channel settings.)'}
+                            {t('detail.noMetadata')}
+                            {!hasExtractionModel && t('detail.noMetadataExtractionHint')}
                           </p>
                         ) : metadataEditMode ? (
                           <div className="document-detail-metadata-edit">
@@ -1281,7 +1285,7 @@ export function DocumentDetail() {
                                             const s = e.target.value.trim();
                                             setEditMetaField(key, s ? s.split(',').map((x) => x.trim()).filter(Boolean) : []);
                                           }}
-                                          placeholder="Comma-separated values"
+                                          placeholder={t('detail.placeholderCommaList')}
                                           aria-label={label}
                                         />
                                       ) : fieldType === 'enum' && field?.enum && field.enum.length > 0 ? (
@@ -1309,7 +1313,7 @@ export function DocumentDetail() {
                                             const n = parseInt(s, 10);
                                             setEditMetaField(key, s === '' || Number.isNaN(n) ? null : n);
                                           }}
-                                          placeholder="Integer"
+                                          placeholder={t('detail.placeholderInteger')}
                                           aria-label={label}
                                         />
                                       ) : fieldType === 'number' ? (
@@ -1323,7 +1327,7 @@ export function DocumentDetail() {
                                             const n = parseFloat(s);
                                             setEditMetaField(key, s === '' || Number.isNaN(n) ? null : n);
                                           }}
-                                          placeholder="Number"
+                                          placeholder={t('detail.placeholderNumber')}
                                           aria-label={label}
                                         />
                                       ) : fieldType === 'boolean' ? (
@@ -1360,9 +1364,9 @@ export function DocumentDetail() {
                                                   }
                                                   e.target.value = '';
                                                 }}
-                                                aria-label={`Add ${label}`}
+                                                aria-label={t('detail.metaAddAria', { label })}
                                               >
-                                                <option value="">— Add —</option>
+                                                <option value="">{t('detail.metaAddOption')}</option>
                                                 {instances.map((inst) => (
                                                   <option key={inst.id} value={inst.id}>
                                                     {getInstanceDisplay(otid, inst)}
@@ -1382,7 +1386,7 @@ export function DocumentDetail() {
                                                           const arr = Array.isArray(currentVal) ? currentVal.filter((x: string) => x !== pk) : [];
                                                           setEditMetaField(key, arr);
                                                         }}
-                                                        aria-label={`Remove ${display}`}
+                                                        aria-label={t('detail.metaRemoveAria', { label: display })}
                                                       >
                                                         <XIcon size={12} />
                                                       </button>
@@ -1429,7 +1433,7 @@ export function DocumentDetail() {
                                 disabled={savingMetadata}
                               >
                                 {savingMetadata ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                <span>{savingMetadata ? 'Saving…' : 'Save'}</span>
+                                <span>{savingMetadata ? t('detail.savingInfo') : t('detail.saveInfo')}</span>
                               </button>
                               <button
                                 type="button"
@@ -1437,7 +1441,7 @@ export function DocumentDetail() {
                                 onClick={handleCancelMetadataEdit}
                                 disabled={savingMetadata}
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </button>
                             </div>
                           </div>
@@ -1505,12 +1509,12 @@ export function DocumentDetail() {
                             }
                             title={
                               !hasExtractionModel
-                                ? 'Configure extraction model in channel settings'
+                                ? t('detail.hintExtractionModel')
                                 : !markdown
-                                  ? 'Document has no markdown'
+                                  ? t('detail.hintNoMarkdown')
                                   : document?.status !== 'completed'
-                                    ? 'Document must be fully parsed'
-                                    : 'Extract metadata using LLM'
+                                    ? t('detail.hintMustParse')
+                                    : t('detail.hintExtract')
                             }
                           >
                             {extracting ? (
@@ -1518,7 +1522,7 @@ export function DocumentDetail() {
                             ) : (
                               <Sparkles size={14} />
                             )}
-                            <span>{extracting ? 'Extracting…' : 'Extract'}</span>
+                            <span>{extracting ? t('detail.extracting') : t('detail.extract')}</span>
                           </button>
                           )}
                         </div>
@@ -1534,12 +1538,12 @@ export function DocumentDetail() {
                             id="document-lineage-heading"
                           >
                             <GitBranch size={16} aria-hidden />
-                            <span>Lineage & lifecycle</span>
+                            <span>{t('detail.lineageTitle')}</span>
                             {lineageSectionOpen ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
                           </button>
                           {!lineageSectionOpen && (
                             <p className="document-detail-lineage-hint document-detail-muted">
-                              Policy series, validity window, relationships to other documents. Click to expand.
+                              {t('detail.lineageCollapsedHint')}
                             </p>
                           )}
                           {lineageSectionOpen && document && (
@@ -1550,13 +1554,12 @@ export function DocumentDetail() {
                               aria-labelledby="document-lineage-heading"
                             >
                               <p className="document-detail-lineage-intro document-detail-muted">
-                                <strong>Series</strong> groups editions of one policy. <strong>Relationships</strong> link this file to
-                                others (replaces, amends, and so on).
+                                {t('detail.lineageIntro')}
                               </p>
 
                               <div className="document-detail-lineage-lifecycle-card">
                                 <div className="document-detail-lineage-lifecycle-toolbar">
-                                  <span className="document-detail-lineage-lifecycle-toolbar-label">Lifecycle</span>
+                                  <span className="document-detail-lineage-lifecycle-toolbar-label">{t('detail.lifecycleToolbar')}</span>
                                   <div className="document-detail-lineage-lifecycle-toolbar-actions">
                                     {lifecycleEdit ? (
                                       <>
@@ -1567,7 +1570,7 @@ export function DocumentDetail() {
                                           disabled={lifecycleSaving}
                                         >
                                           {lifecycleSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                          Save
+                                          {lifecycleSaving ? t('detail.savingInfo') : t('detail.saveInfo')}
                                         </button>
                                         <button
                                           type="button"
@@ -1575,7 +1578,7 @@ export function DocumentDetail() {
                                           onClick={() => setLifecycleEdit(false)}
                                           disabled={lifecycleSaving}
                                         >
-                                          Cancel
+                                          {t('common.cancel')}
                                         </button>
                                       </>
                                     ) : (
@@ -1585,7 +1588,7 @@ export function DocumentDetail() {
                                         onClick={() => setLifecycleEdit(true)}
                                       >
                                         <Edit3 size={12} />
-                                        Edit
+                                        {t('common.edit')}
                                       </button>
                                     )}
                                   </div>
@@ -1593,30 +1596,30 @@ export function DocumentDetail() {
 
                                 <div className="document-detail-lineage-field-grid">
                                   <div className="document-detail-lineage-field">
-                                    <span className="document-detail-lineage-field-label">Applicable</span>
+                                    <span className="document-detail-lineage-field-label">{t('detail.fieldApplicable')}</span>
                                     <div>
                                       {document.is_current_for_rag === false ? (
                                         <span className="document-detail-lineage-pill document-detail-lineage-pill--off">
-                                          Not applicable
+                                          {t('detail.notApplicable')}
                                         </span>
                                       ) : (
                                         <span className="document-detail-lineage-pill document-detail-lineage-pill--on">
-                                          Applicable
+                                          {t('detail.applicableYes')}
                                         </span>
                                       )}
                                     </div>
                                   </div>
                                   <div className="document-detail-lineage-field">
-                                    <span className="document-detail-lineage-field-label">Lifecycle status</span>
+                                    <span className="document-detail-lineage-field-label">{t('detail.lifecycleStatusLabel')}</span>
                                     <div className="document-detail-lineage-field-value">
                                       {lifecycleEdit ? (
                                         <select
                                           className="document-detail-info-input document-detail-lineage-input"
                                           value={editLifecycleStatus}
                                           onChange={(e) => setEditLifecycleStatus(e.target.value)}
-                                          aria-label="Lifecycle status"
+                                          aria-label={t('detail.lifecycleStatusLabel')}
                                         >
-                                          <option value="">— (unset)</option>
+                                          <option value="">{t('detail.lifecycleUnset')}</option>
                                           {DOCUMENT_LIFECYCLE_STATUSES.map((s) => (
                                             <option key={s} value={s}>
                                               {s}
@@ -1629,7 +1632,7 @@ export function DocumentDetail() {
                                     </div>
                                   </div>
                                   <div className="document-detail-lineage-field document-detail-lineage-field--full">
-                                    <span className="document-detail-lineage-field-label">Series ID</span>
+                                    <span className="document-detail-lineage-field-label">{t('detail.seriesIdLabel')}</span>
                                     <div className="document-detail-lineage-field-value">
                                       {lifecycleEdit ? (
                                         <input
@@ -1637,7 +1640,7 @@ export function DocumentDetail() {
                                           className="document-detail-info-input document-detail-lineage-input"
                                           value={editSeriesId}
                                           onChange={(e) => setEditSeriesId(e.target.value)}
-                                          aria-label="Series ID"
+                                          aria-label={t('detail.seriesIdLabel')}
                                         />
                                       ) : (
                                         <code className="document-detail-lineage-series-id" title={document.series_id ?? document.id}>
@@ -1647,7 +1650,7 @@ export function DocumentDetail() {
                                     </div>
                                   </div>
                                   <div className="document-detail-lineage-field">
-                                    <span className="document-detail-lineage-field-label">Effective from</span>
+                                    <span className="document-detail-lineage-field-label">{t('detail.effectiveFromLabel')}</span>
                                     <div className="document-detail-lineage-field-value">
                                       {lifecycleEdit ? (
                                         <input
@@ -1655,7 +1658,7 @@ export function DocumentDetail() {
                                           className="document-detail-info-input document-detail-lineage-input"
                                           value={editEffectiveFrom}
                                           onChange={(e) => setEditEffectiveFrom(e.target.value)}
-                                          aria-label="Effective from"
+                                          aria-label={t('detail.effectiveFromLabel')}
                                         />
                                       ) : (
                                         <span>{(document.effective_from && new Date(document.effective_from).toLocaleString()) || '—'}</span>
@@ -1663,7 +1666,7 @@ export function DocumentDetail() {
                                     </div>
                                   </div>
                                   <div className="document-detail-lineage-field">
-                                    <span className="document-detail-lineage-field-label">Effective to</span>
+                                    <span className="document-detail-lineage-field-label">{t('detail.effectiveToLabel')}</span>
                                     <div className="document-detail-lineage-field-value">
                                       {lifecycleEdit ? (
                                         <input
@@ -1671,7 +1674,7 @@ export function DocumentDetail() {
                                           className="document-detail-info-input document-detail-lineage-input"
                                           value={editEffectiveTo}
                                           onChange={(e) => setEditEffectiveTo(e.target.value)}
-                                          aria-label="Effective to"
+                                          aria-label={t('detail.effectiveToLabel')}
                                         />
                                       ) : (
                                         <span>{(document.effective_to && new Date(document.effective_to).toLocaleString()) || '—'}</span>
@@ -1682,20 +1685,20 @@ export function DocumentDetail() {
                               </div>
 
                               <div className="document-detail-lineage-rel-block">
-                              <h4 className="document-detail-lineage-section-title">Relationships</h4>
+                              <h4 className="document-detail-lineage-section-title">{t('detail.relationshipsHeading')}</h4>
                               {lineageLoading ? (
-                                <p className="document-detail-muted">Loading…</p>
+                                <p className="document-detail-muted">{t('common.loading')}</p>
                               ) : (
                                 <>
                                   <div className="document-detail-lineage-tables">
                                     <div>
-                                      <div className="document-detail-lineage-dir">Outgoing (this → other)</div>
+                                      <div className="document-detail-lineage-dir">{t('detail.relOutgoing')}</div>
                                       {lineageRels && lineageRels.outgoing.length > 0 ? (
                                         <table className="document-detail-lineage-table">
                                           <thead>
                                             <tr>
-                                              <th>Type</th>
-                                              <th>Other document</th>
+                                              <th>{t('detail.relColType')}</th>
+                                              <th>{t('detail.relColOther')}</th>
                                               <th />
                                             </tr>
                                           </thead>
@@ -1710,7 +1713,7 @@ export function DocumentDetail() {
                                                   <button
                                                     type="button"
                                                     className="document-detail-lineage-rm"
-                                                    title="Remove"
+                                                    title={t('detail.removeRelTitle')}
                                                     onClick={() => void handleDeleteRelationship(r.id)}
                                                   >
                                                     <Trash2 size={14} />
@@ -1721,17 +1724,17 @@ export function DocumentDetail() {
                                           </tbody>
                                         </table>
                                       ) : (
-                                        <p className="document-detail-muted document-detail-lineage-empty">No outgoing links.</p>
+                                        <p className="document-detail-muted document-detail-lineage-empty">{t('detail.noOutgoing')}</p>
                                       )}
                                     </div>
                                     <div>
-                                      <div className="document-detail-lineage-dir">Incoming (other → this)</div>
+                                      <div className="document-detail-lineage-dir">{t('detail.relIncoming')}</div>
                                       {lineageRels && lineageRels.incoming.length > 0 ? (
                                         <table className="document-detail-lineage-table">
                                           <thead>
                                             <tr>
-                                              <th>Type</th>
-                                              <th>Other document</th>
+                                              <th>{t('detail.relColType')}</th>
+                                              <th>{t('detail.relColOther')}</th>
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -1746,40 +1749,40 @@ export function DocumentDetail() {
                                           </tbody>
                                         </table>
                                       ) : (
-                                        <p className="document-detail-muted document-detail-lineage-empty">No incoming links.</p>
+                                        <p className="document-detail-muted document-detail-lineage-empty">{t('detail.noIncoming')}</p>
                                       )}
                                     </div>
                                   </div>
                                   <div className="document-detail-lineage-add">
-                                    <span className="document-detail-lineage-dir">Add outgoing edge</span>
+                                    <span className="document-detail-lineage-dir">{t('detail.addOutgoingEdge')}</span>
                                     <div className="document-detail-lineage-add-row">
                                       <select
                                         value={newRelType}
                                         onChange={(e) => setNewRelType(e.target.value)}
                                         className="document-detail-info-input"
-                                        aria-label="Relation type"
+                                        aria-label={t('detail.relTypeAria')}
                                       >
-                                        {DOCUMENT_RELATION_TYPES.map((t) => (
-                                          <option key={t} value={t}>
-                                            {t}
+                                        {DOCUMENT_RELATION_TYPES.map((relType) => (
+                                          <option key={relType} value={relType}>
+                                            {relType}
                                           </option>
                                         ))}
                                       </select>
                                       <input
                                         type="text"
                                         className="document-detail-info-input"
-                                        placeholder="Target document ID"
+                                        placeholder={t('detail.placeholderTargetDocId')}
                                         value={newRelTarget}
                                         onChange={(e) => setNewRelTarget(e.target.value)}
-                                        aria-label="Target document ID"
+                                        aria-label={t('detail.placeholderTargetDocId')}
                                       />
                                       <input
                                         type="text"
                                         className="document-detail-info-input"
-                                        placeholder="Note (optional)"
+                                        placeholder={t('detail.placeholderRelNote')}
                                         value={newRelNote}
                                         onChange={(e) => setNewRelNote(e.target.value)}
-                                        aria-label="Note"
+                                        aria-label={t('detail.noteAria')}
                                       />
                                       <button
                                         type="button"
@@ -1788,7 +1791,7 @@ export function DocumentDetail() {
                                         disabled={relSaving}
                                       >
                                         {relSaving ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                                        Add
+                                        {t('detail.addRelationship')}
                                       </button>
                                     </div>
                                   </div>
@@ -1817,13 +1820,13 @@ export function DocumentDetail() {
           <section className="document-detail-panel document-detail-images">
             <h2 className="document-detail-panel-header">
               {isSpreadsheetLayout ? <Table size={16} /> : <ImageIcon size={16} />}
-              <span>{isSpreadsheetLayout ? 'Workbook' : 'Document Pages'}</span>
+              <span>{isSpreadsheetLayout ? t('detail.panelWorkbook') : t('detail.panelPages')}</span>
               <button
                 type="button"
                 className="document-detail-extend-btn"
                 onClick={() => setExtendedPanel((p) => (p === 'images' ? null : 'images'))}
-                title={extendedPanel === 'images' ? 'Restore split view' : 'Extend to view larger'}
-                aria-label={extendedPanel === 'images' ? 'Restore split view' : 'Extend document pages'}
+                title={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.extendView')}
+                aria-label={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.ariaExtendPages')}
               >
                 {extendedPanel === 'images' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
@@ -1854,9 +1857,10 @@ export function DocumentDetail() {
                         <>
                           {(activeSpreadsheetSheet.truncated_rows || activeSpreadsheetSheet.truncated_cols) && (
                             <p className="document-detail-spreadsheet-note">
-                              Showing a preview
-                              {activeSpreadsheetSheet.truncated_rows ? ' (rows truncated)' : ''}
-                              {activeSpreadsheetSheet.truncated_cols ? ' (columns truncated)' : ''}.
+                              {t('detail.spreadsheetPreview', {
+                                rows: activeSpreadsheetSheet.truncated_rows ? t('detail.spreadsheetRowsTrunc') : '',
+                                cols: activeSpreadsheetSheet.truncated_cols ? t('detail.spreadsheetColsTrunc') : '',
+                              })}
                             </p>
                           )}
                           <div className="document-detail-spreadsheet-scroll">
@@ -1876,7 +1880,7 @@ export function DocumentDetail() {
                       ) : null}
                     </>
                   ) : !parsingResult?.error ? (
-                    <p className="document-detail-muted">No sheet data yet.</p>
+                    <p className="document-detail-muted">{t('detail.noSheetData')}</p>
                   ) : null}
                 </div>
               ) : parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
@@ -1887,7 +1891,7 @@ export function DocumentDetail() {
                     const blocks = pageBlocks.filter((b) => b.pageIndex === pageIndex);
                     return (
                       <div key={pageIndex} className="document-detail-page-item">
-                        <span className="document-detail-page-no">Page {pageIndex + 1}</span>
+                        <span className="document-detail-page-no">{t('detail.pageN', { n: pageIndex + 1 })}</span>
                         <div
                           className="document-detail-page-img-wrap"
                           onMouseMove={(e) => handlePageMouseMove(e, pageIndex)}
@@ -1896,7 +1900,7 @@ export function DocumentDetail() {
                           <img
                             onLoad={(e) => onPageImageLoad(pageIndex, e.currentTarget)}
                             src={folderId ? `/examples/${item.input_img}` : (item.input_img ? getImageUrl(item.input_img) : '')}
-                            alt={`Page ${pageIndex + 1}`}
+                            alt={t('detail.pageAlt', { n: pageIndex + 1 })}
                             className="document-detail-layout-img"
                             loading="lazy"
                             crossOrigin={!folderId ? 'use-credentials' : undefined}
@@ -1931,7 +1935,7 @@ export function DocumentDetail() {
                     );
                   })
               ) : (
-                <p className="document-detail-muted">No layout images</p>
+                <p className="document-detail-muted">{t('detail.noLayoutImages')}</p>
               )}
             </div>
           </section>
@@ -1945,7 +1949,7 @@ export function DocumentDetail() {
                   aria-pressed={rightPanelView === 'markdown'}
                 >
                   <FileText size={14} />
-                  <span>Markdown</span>
+                  <span>{t('detail.tabMarkdown')}</span>
                 </button>
                 {!isSpreadsheetLayout ? (
                   <button
@@ -1955,7 +1959,7 @@ export function DocumentDetail() {
                     aria-pressed={rightPanelView === 'pageIndex'}
                   >
                     <ListTree size={14} />
-                    <span>Page Index</span>
+                    <span>{t('detail.tabPageIndex')}</span>
                   </button>
                 ) : null}
               </div>
@@ -1967,14 +1971,14 @@ export function DocumentDetail() {
                       className="document-detail-edit-toggle document-detail-save-btn"
                       onClick={handleSaveMarkdown}
                       disabled={saving}
-                      title="Save markdown"
+                      title={t('detail.titleSaveMarkdown')}
                     >
                       {saving ? (
                         <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
                       ) : (
                         <Save size={14} aria-hidden />
                       )}
-                      <span>{saving ? 'Saving…' : 'Save'}</span>
+                      <span>{saving ? t('detail.savingInfo') : t('detail.saveInfo')}</span>
                     </button>
                     <button
                       type="button"
@@ -1984,10 +1988,10 @@ export function DocumentDetail() {
                         setMarkdownEditMode(false);
                       }}
                       disabled={saving}
-                      title="Cancel and discard changes"
+                      title={t('detail.titleCancelEdit')}
                     >
                       <XIcon size={14} />
-                      <span>Cancel</span>
+                      <span>{t('common.cancel')}</span>
                     </button>
                   </>
                 ) : (
@@ -1998,11 +2002,11 @@ export function DocumentDetail() {
                       setSelectedBlock(null);
                       setMarkdownEditMode(true);
                     }}
-                    title="Edit markdown"
+                    title={t('detail.titleEditMarkdown')}
                     aria-pressed={false}
                   >
                     <Edit3 size={14} />
-                    <span>Edit</span>
+                    <span>{t('common.edit')}</span>
                   </button>
                 )
               )}
@@ -2012,8 +2016,8 @@ export function DocumentDetail() {
                   className="document-detail-edit-toggle"
                   onClick={handleRebuildPageIndex}
                   disabled={pageIndexRebuilding}
-                  title="parse markdown to tree"
-                  aria-label="parse markdown to tree"
+                  title={t('detail.titleRebuildPageIndex')}
+                  aria-label={t('detail.ariaRebuildPageIndex')}
                 >
                   {pageIndexRebuilding ? (
                     <Loader2 size={14} className="doc-detail-spinner" />
@@ -2026,8 +2030,8 @@ export function DocumentDetail() {
                 type="button"
                 className="document-detail-extend-btn"
                 onClick={() => setExtendedPanel((p) => (p === 'markdown' ? null : 'markdown'))}
-                title={extendedPanel === 'markdown' ? 'Restore split view' : 'Extend to view larger'}
-                aria-label={extendedPanel === 'markdown' ? 'Restore split view' : 'Extend markdown content'}
+                title={extendedPanel === 'markdown' ? t('detail.restoreSplit') : t('detail.extendView')}
+                aria-label={extendedPanel === 'markdown' ? t('detail.restoreSplit') : t('detail.ariaExtendMarkdown')}
               >
                 {extendedPanel === 'markdown' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>
@@ -2049,7 +2053,7 @@ export function DocumentDetail() {
                     className="document-detail-block-back"
                     onClick={() => setSelectedBlock(null)}
                   >
-                    ← Show full content
+                    {t('detail.blockBack')}
                   </button>
                   <div className="document-detail-block-meta">
                     <span className="document-detail-block-label">{selectedBlock.label}</span>
@@ -2057,7 +2061,7 @@ export function DocumentDetail() {
                   {selectedBlock.parsingItem.image_path ? (
                     <img
                       src={folderId ? `/examples/${selectedBlock.parsingItem.image_path}` : getImageUrl(selectedBlock.parsingItem.image_path)}
-                      alt={selectedBlock.parsingItem.label || 'Block'}
+                      alt={selectedBlock.parsingItem.label || t('detail.blockAlt')}
                       className="document-detail-block-img"
                       loading="lazy"
                       crossOrigin={!folderId ? 'use-credentials' : undefined}
@@ -2073,7 +2077,7 @@ export function DocumentDetail() {
                       </ReactMarkdown>
                     </div>
                   ) : (
-                    <p className="document-detail-muted">No content</p>
+                    <p className="document-detail-muted">{t('detail.noBlockContent')}</p>
                   )}
                 </div>
               ) : markdownEditMode && !docConfig ? (
@@ -2082,7 +2086,7 @@ export function DocumentDetail() {
                     className="document-detail-markdown-textarea"
                     value={markdown ?? ''}
                     onChange={(e) => setMarkdown(e.target.value)}
-                    placeholder="Markdown content..."
+                    placeholder={t('detail.placeholderMarkdown')}
                   />
                   <div className="document-detail-markdown-actions">
                     <button
@@ -2090,10 +2094,10 @@ export function DocumentDetail() {
                       className="document-detail-restore-btn"
                       onClick={handleRestoreMarkdown}
                       disabled={restoring || !fileHash}
-                      title={!fileHash ? 'No file hash – restore not available' : 'Restore from original storage'}
+                      title={!fileHash ? t('detail.noFileHashRestore') : t('detail.restoreFromStorage')}
                     >
                       {restoring ? <Loader2 size={14} className="doc-detail-spinner" /> : <RotateCcw size={14} />}
-                      <span>{restoring ? 'Restoring…' : 'Restore'}</span>
+                      <span>{restoring ? t('common.restoring') : t('detail.restoreVersion')}</span>
                     </button>
                   </div>
                 </div>
@@ -2108,7 +2112,7 @@ export function DocumentDetail() {
                 </ReactMarkdown>
                 </div>
               ) : (
-                <p key="empty-view" className="document-detail-muted">No markdown content</p>
+                <p key="empty-view" className="document-detail-muted">{t('detail.noMarkdownContent')}</p>
               )}
             </div>
           </section>
@@ -2127,23 +2131,23 @@ export function DocumentDetail() {
                   aria-labelledby="save-version-title"
                 >
                   <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="save-version-title">Save as version</h2>
+                    <h2 id="save-version-title">{t('detail.saveVersionModalTitle')}</h2>
                     <button
                       type="button"
                       className="document-detail-pageindex-dialog-close"
                       onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
-                      aria-label="Close"
+                      aria-label={t('common.close')}
                     >
                       <XIcon size={18} />
                     </button>
                   </div>
                   <div className="document-detail-save-version-body">
                     <p className="document-detail-save-version-hint">
-                      Saves a checkpoint of the current markdown and metadata. Ordinary saves do not add a version.
+                      {t('detail.saveVersionHint')}
                     </p>
                     <div className="document-detail-save-version-field">
                       <label htmlFor="save-version-tag" className="document-detail-save-version-label">
-                        Tag <span className="document-detail-save-version-optional">(optional)</span>
+                        {t('detail.saveVersionTagLabel')} <span className="document-detail-save-version-optional">{t('detail.optionalParen')}</span>
                       </label>
                       <input
                         id="save-version-tag"
@@ -2151,7 +2155,7 @@ export function DocumentDetail() {
                         className="document-detail-save-version-input"
                         value={saveVersionTag}
                         onChange={(e) => setSaveVersionTag(e.target.value)}
-                        placeholder="e.g. Before review"
+                        placeholder={t('detail.placeholderVersionTag')}
                         autoComplete="off"
                         disabled={saveVersionSubmitting}
                       />
@@ -2164,7 +2168,7 @@ export function DocumentDetail() {
                         disabled={saveVersionSubmitting}
                       >
                         {saveVersionSubmitting ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
-                        <span>{saveVersionSubmitting ? 'Saving…' : 'Create version'}</span>
+                        <span>{saveVersionSubmitting ? t('detail.savingInfo') : t('detail.createVersionSubmit')}</span>
                       </button>
                       <button
                         type="button"
@@ -2172,7 +2176,7 @@ export function DocumentDetail() {
                         onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
                         disabled={saveVersionSubmitting}
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                     </div>
                   </div>
@@ -2191,12 +2195,12 @@ export function DocumentDetail() {
                   aria-labelledby="versions-list-title"
                 >
                   <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="versions-list-title">Document versions</h2>
+                    <h2 id="versions-list-title">{t('detail.versionsModalTitle')}</h2>
                     <button
                       type="button"
                       className="document-detail-pageindex-dialog-close"
                       onClick={() => !restoreSubmitting && setVersionsModalOpen(false)}
-                      aria-label="Close"
+                      aria-label={t('common.close')}
                     >
                       <XIcon size={18} />
                     </button>
@@ -2205,19 +2209,19 @@ export function DocumentDetail() {
                     {versionsLoading ? (
                       <div className="document-detail-pageindex-loading">
                         <Loader2 size={20} className="doc-detail-spinner" />
-                        <span>Loading…</span>
+                        <span>{t('common.loading')}</span>
                       </div>
                     ) : versionsItems.length === 0 ? (
-                      <p className="document-detail-muted">No versions yet. Use &quot;Save version&quot; to create one.</p>
+                      <p className="document-detail-muted">{t('detail.noVersionsYet')}</p>
                     ) : (
                       <table className="document-detail-versions-table">
                         <thead>
                           <tr>
-                            <th scope="col">Version</th>
-                            <th scope="col">Tag</th>
-                            <th scope="col">Saved</th>
+                            <th scope="col">{t('detail.colVersion')}</th>
+                            <th scope="col">{t('detail.colTag')}</th>
+                            <th scope="col">{t('detail.colSaved')}</th>
                             <th scope="col" className="document-detail-versions-th-actions">
-                              Actions
+                              {t('detail.colActions')}
                             </th>
                           </tr>
                         </thead>
@@ -2249,14 +2253,14 @@ export function DocumentDetail() {
                                     className="btn btn-sm"
                                     onClick={() => handlePreviewVersion(v.id)}
                                   >
-                                    Preview
+                                    {t('detail.previewVersion')}
                                   </button>
                                   <button
                                     type="button"
                                     className="btn btn-primary btn-sm"
                                     onClick={() => setRestoreModalVersion(v)}
                                   >
-                                    Restore
+                                    {t('detail.restoreVersionBtn')}
                                   </button>
                                 </div>
                               </td>
@@ -2288,7 +2292,7 @@ export function DocumentDetail() {
                       type="button"
                       className="document-detail-pageindex-dialog-close"
                       onClick={() => setVersionPreview(null)}
-                      aria-label="Close"
+                      aria-label={t('common.close')}
                     >
                       <XIcon size={18} />
                     </button>
@@ -2298,7 +2302,7 @@ export function DocumentDetail() {
                       <Loader2 className="doc-detail-spinner" />
                     ) : (
                       <>
-                        <h3 className="document-detail-version-preview-sub">Markdown</h3>
+                        <h3 className="document-detail-version-preview-sub">{t('detail.previewMarkdownSub')}</h3>
                         <div className="document-detail-version-preview-md">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm, remarkMath]}
@@ -2308,7 +2312,7 @@ export function DocumentDetail() {
                             {versionPreview.markdown || ''}
                           </ReactMarkdown>
                         </div>
-                        <h3 className="document-detail-version-preview-sub">Metadata</h3>
+                        <h3 className="document-detail-version-preview-sub">{t('detail.previewMetadataSub')}</h3>
                         <pre className="document-detail-version-preview-json">
                           {JSON.stringify(versionPreview.metadata ?? {}, null, 2)}
                         </pre>
@@ -2330,19 +2334,19 @@ export function DocumentDetail() {
                   aria-labelledby="restore-version-title"
                 >
                   <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="restore-version-title">Restore version v{restoreModalVersion.version_number}?</h2>
+                    <h2 id="restore-version-title">{t('detail.restoreConfirmTitle', { n: restoreModalVersion.version_number })}</h2>
                     <button
                       type="button"
                       className="document-detail-pageindex-dialog-close"
                       onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
-                      aria-label="Close"
+                      aria-label={t('common.close')}
                     >
                       <XIcon size={18} />
                     </button>
                   </div>
                   <div className="document-detail-pageindex-dialog-body document-detail-versions-form">
                     <p className="document-detail-muted" style={{ marginTop: 0 }}>
-                      Replaces the working copy markdown and metadata with this snapshot.
+                      {t('detail.restoreReplacesHint')}
                     </p>
                     <label className="document-detail-versions-check">
                       <input
@@ -2350,22 +2354,22 @@ export function DocumentDetail() {
                         checked={restoreSaveCurrent}
                         onChange={(e) => setRestoreSaveCurrent(e.target.checked)}
                       />
-                      Save current state as a version first
+                      {t('detail.restoreSaveCurrentFirst')}
                     </label>
                     {restoreSaveCurrent && (
                       <>
                         <label className="document-detail-versions-label">
-                          Label (optional)
+                          {t('detail.restoreLabelOptional')}
                           <input
                             type="text"
                             className="document-detail-info-input"
                             value={restoreLabel}
                             onChange={(e) => setRestoreLabel(e.target.value)}
-                            placeholder="Checkpoint before restore"
+                            placeholder={t('detail.placeholderCheckpoint')}
                           />
                         </label>
                         <label className="document-detail-versions-label">
-                          Note (optional)
+                          {t('detail.restoreNoteOptional')}
                           <textarea
                             className="document-detail-markdown-textarea"
                             rows={2}
@@ -2384,7 +2388,7 @@ export function DocumentDetail() {
                         disabled={restoreSubmitting}
                       >
                         {restoreSubmitting ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                        <span>{restoreSubmitting ? 'Restoring…' : 'Restore'}</span>
+                        <span>{restoreSubmitting ? t('common.restoring') : t('detail.restoreVersionBtn')}</span>
                       </button>
                       <button
                         type="button"
@@ -2392,7 +2396,7 @@ export function DocumentDetail() {
                         onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
                         disabled={restoreSubmitting}
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                     </div>
                   </div>

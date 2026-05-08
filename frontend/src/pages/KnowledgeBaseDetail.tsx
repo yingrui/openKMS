@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -58,14 +59,16 @@ import './KnowledgeBaseDetail.css';
 
 type TabId = 'documents' | 'faqs' | 'chunks' | 'search' | 'qa' | 'settings';
 
-const tabs: { id: TabId; label: string; icon: typeof FileStack }[] = [
-  { id: 'documents', label: 'Documents', icon: FileStack },
-  { id: 'faqs', label: 'FAQs', icon: HelpCircle },
-  { id: 'chunks', label: 'Chunks', icon: Layers },
-  { id: 'search', label: 'Search', icon: SearchIcon },
-  { id: 'qa', label: 'Q&A', icon: MessageSquare },
-  { id: 'settings', label: 'Settings', icon: Settings },
-];
+const TAB_ORDER: TabId[] = ['documents', 'faqs', 'chunks', 'search', 'qa', 'settings'];
+
+const TAB_ICONS: Record<TabId, typeof FileStack> = {
+  documents: FileStack,
+  faqs: HelpCircle,
+  chunks: Layers,
+  search: SearchIcon,
+  qa: MessageSquare,
+  settings: Settings,
+};
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -88,6 +91,7 @@ function DocPickerChannelTree({
   onToggle: (id: string) => void;
   depth: number;
 }) {
+  const { t } = useTranslation('knowledgeBase');
   const hasChildren = node.children && node.children.length > 0;
   const isExpanded = expanded[node.id];
   return (
@@ -101,7 +105,7 @@ function DocPickerChannelTree({
             type="button"
             className="kb-doc-picker-channel-toggle"
             onClick={() => onToggle(node.id)}
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            aria-label={isExpanded ? t('detail.collapseTree') : t('detail.expandTree')}
           >
             <ChevronRight size={14} className={isExpanded ? 'expanded' : ''} />
           </button>
@@ -143,6 +147,7 @@ function DocPickerChannelTree({
 export function KnowledgeBaseDetail() {
   const { id: kbId } = useParams<{ id: string }>();
   const { channels } = useDocumentChannels();
+  const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('documents');
   const [loading, setLoading] = useState(true);
@@ -241,11 +246,11 @@ export function KnowledgeBaseDetail() {
       setSettingsFaqPrompt(data.faq_prompt || '');
       setSettingsMetadataKeys(Array.isArray(data.metadata_keys) ? data.metadata_keys.join(', ') : '');
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load KB');
+      toast.error(e instanceof Error ? e.message : t('detail.toastLoadKbFailed'));
     } finally {
       setLoading(false);
     }
-  }, [kbId]);
+  }, [kbId, t]);
 
   const loadDocs = useCallback(async () => {
     if (!kbId) return;
@@ -396,7 +401,7 @@ export function KnowledgeBaseDetail() {
     setPickerAdding(false);
     setShowDocPicker(false);
     if (added > 0) {
-      toast.success(`${added} document${added > 1 ? 's' : ''} added`);
+      toast.success(t('detail.toastDocumentsAdded', { count: added }));
       loadDocs();
       loadKb();
     }
@@ -412,11 +417,11 @@ export function KnowledgeBaseDetail() {
     if (!kbId) return;
     try {
       await removeKBDocument(kbId, docId);
-      toast.success('Document removed');
+      toast.success(t('detail.toastDocRemoved'));
       loadDocs();
       loadKb();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to remove document');
+      toast.error(e instanceof Error ? e.message : t('detail.toastRemoveDocFailed'));
     }
   };
 
@@ -460,10 +465,10 @@ export function KnowledgeBaseDetail() {
       const payload = { question: faqQuestion, answer: faqAnswer, doc_metadata: doc_metadata ?? undefined };
       if (editFaq) {
         await updateFAQ(kbId, editFaq.id, payload);
-        toast.success('FAQ updated');
+        toast.success(t('detail.toastFaqUpdated'));
       } else {
         await createFAQ(kbId, payload);
-        toast.success('FAQ created');
+        toast.success(t('detail.toastFaqCreated'));
       }
       setShowFaqDialog(false);
       setEditFaq(null);
@@ -476,7 +481,7 @@ export function KnowledgeBaseDetail() {
       loadFaqs();
       loadKb();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save FAQ');
+      toast.error(e instanceof Error ? e.message : t('detail.toastSaveFaqFailed'));
     }
   };
 
@@ -484,11 +489,11 @@ export function KnowledgeBaseDetail() {
     if (!kbId) return;
     try {
       await deleteFAQ(kbId, faqId);
-      toast.success('FAQ deleted');
+      toast.success(t('detail.toastFaqDeleted'));
       loadFaqs();
       loadKb();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to delete FAQ');
+      toast.error(e instanceof Error ? e.message : t('detail.toastDeleteFaqFailed'));
     }
   };
 
@@ -518,7 +523,7 @@ export function KnowledgeBaseDetail() {
     if (!kbId || !genModelId) return;
     const docIds = Array.from(genSelectedDocs);
     if (docIds.length === 0) {
-      toast.error('Select at least one document');
+      toast.error(t('detail.toastSelectDoc'));
       return;
     }
     const docIdToName = new Map(docs.map((d) => [d.document_id, d.document_name || d.document_id]));
@@ -557,10 +562,10 @@ export function KnowledgeBaseDetail() {
       setGenProgress(null);
       setGenPreviewFaqs(allResults);
       setGenStep('review');
-      toast.success(`Generated ${allResults.length} FAQ pairs. Review and remove any you don't want, then Save.`);
+      toast.success(t('detail.toastGenDone', { count: allResults.length }));
     } catch (e: unknown) {
       setGenProgress(null);
-      toast.error(e instanceof Error ? e.message : 'FAQ generation failed');
+      toast.error(e instanceof Error ? e.message : t('detail.toastGenFailed'));
     } finally {
       setGenerating(false);
     }
@@ -581,12 +586,12 @@ export function KnowledgeBaseDetail() {
         doc_metadata: f.doc_metadata ?? undefined,
       }));
       await saveFAQs(kbId, items);
-      toast.success(`Saved ${items.length} FAQs`);
+      toast.success(t('detail.toastFaqsSaved', { count: items.length }));
       setShowGenerateModal(false);
       loadFaqs();
       loadKb();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save FAQs');
+      toast.error(e instanceof Error ? e.message : t('detail.toastSaveFaqsFailed'));
     } finally {
       setGenSaving(false);
     }
@@ -644,12 +649,12 @@ export function KnowledgeBaseDetail() {
         content: chunkContent,
         doc_metadata: doc_metadata ?? undefined,
       });
-      toast.success('Chunk updated');
+      toast.success(t('detail.toastChunkUpdated'));
       closeChunkDialog();
       loadChunks();
       loadKb();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update chunk');
+      toast.error(e instanceof Error ? e.message : t('detail.toastChunkFailed'));
     } finally {
       setChunkSaving(false);
     }
@@ -686,7 +691,7 @@ export function KnowledgeBaseDetail() {
       setSearchResults(res.results);
       setHasSearched(true);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Search failed');
+      toast.error(e instanceof Error ? e.message : t('detail.toastSearchFailed'));
     } finally {
       setSearching(false);
     }
@@ -707,7 +712,7 @@ export function KnowledgeBaseDetail() {
     } catch (e: unknown) {
       setChatMessages((prev) => [...prev, {
         role: 'assistant',
-        content: `Error: ${e instanceof Error ? e.message : 'Failed to get answer'}`,
+        content: `${t('detail.qaErrorPrefix')} ${e instanceof Error ? e.message : t('detail.toastAnswerFailed')}`,
       }]);
     } finally {
       setQaLoading(false);
@@ -734,51 +739,52 @@ export function KnowledgeBaseDetail() {
         faq_prompt: settingsFaqPrompt.trim() || null,
         metadata_keys: metadataKeys.length > 0 ? metadataKeys : null,
       });
-      toast.success('Settings saved');
+      toast.success(t('detail.toastSettingsSaved'));
       loadKb();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to save settings');
+      toast.error(e instanceof Error ? e.message : t('detail.toastSettingsFailed'));
     } finally {
       setSettingsSaving(false);
     }
   };
 
-  if (loading) return <div className="kb-detail"><p>Loading...</p></div>;
-  if (!kb) return <div className="kb-detail"><p>Knowledge base not found.</p></div>;
+  if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
+  if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
 
   return (
     <div className="kb-detail">
       <Link to="/knowledge-bases" className="kb-detail-back">
         <ArrowLeft size={18} />
-        <span>Back to Knowledge Bases</span>
+        <span>{t('detail.backToList')}</span>
       </Link>
 
       <header className="kb-detail-header">
         <div>
           <h1>{kb.name}</h1>
-          <p className="kb-detail-desc">{kb.description || 'No description'}</p>
+          <p className="kb-detail-desc">{kb.description || t('detail.noDescription')}</p>
           <div className="kb-detail-stats">
-            <span>{kb.document_count} docs</span>
-            <span>{kb.faq_count} FAQs</span>
-            <span>{kb.chunk_count} chunks</span>
+            <span>{t('detail.statDocs', { count: kb.document_count })}</span>
+            <span>{t('detail.statFaqs', { count: kb.faq_count })}</span>
+            <span>{t('detail.statChunks', { count: kb.chunk_count })}</span>
           </div>
         </div>
       </header>
 
       <div className="kb-detail-tabs">
-        {tabs
-          .filter((tab) => tab.id !== 'qa' || Boolean(kb?.agent_url))
-          .map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`kb-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <tab.icon size={18} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
+        {TAB_ORDER.filter((tabId) => tabId !== 'qa' || Boolean(kb?.agent_url)).map((tabId) => {
+          const Icon = TAB_ICONS[tabId];
+          return (
+            <button
+              key={tabId}
+              type="button"
+              className={`kb-tab ${activeTab === tabId ? 'active' : ''}`}
+              onClick={() => setActiveTab(tabId)}
+            >
+              <Icon size={18} />
+              <span>{t(`detail.tabs.${tabId}`)}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="kb-detail-content">
@@ -786,23 +792,23 @@ export function KnowledgeBaseDetail() {
         {activeTab === 'documents' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>Documents</h2>
+              <h2>{t('detail.documentsTitle')}</h2>
               <button type="button" className="btn btn-primary btn-sm" onClick={openDocPicker}>
                 <Plus size={16} />
-                <span>Add document</span>
+                <span>{t('detail.addDocument')}</span>
               </button>
             </div>
             {docs.length === 0 ? (
-              <p className="kb-empty-text">No documents added yet.</p>
+              <p className="kb-empty-text">{t('detail.emptyDocuments')}</p>
             ) : (
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                      <th className="kb-table-actions">Actions</th>
+                      <th>{t('detail.colName')}</th>
+                      <th>{t('detail.colType')}</th>
+                      <th>{t('detail.colStatus')}</th>
+                      <th className="kb-table-actions">{t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -818,10 +824,10 @@ export function KnowledgeBaseDetail() {
                         <td>{doc.document_status}</td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <Link to={`/documents/view/${doc.document_id}`} title="View" aria-label="View">
+                            <Link to={`/documents/view/${doc.document_id}`} title={t('detail.view')} aria-label={t('detail.view')}>
                               <Eye size={16} />
                             </Link>
-                            <button type="button" title="Remove" aria-label="Remove" onClick={() => handleRemoveDocument(doc.document_id)}>
+                            <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleRemoveDocument(doc.document_id)}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -839,11 +845,11 @@ export function KnowledgeBaseDetail() {
         {activeTab === 'faqs' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>FAQs ({faqTotal})</h2>
+              <h2>{t('detail.faqsTitle', { count: faqTotal })}</h2>
               <div className="kb-section-header-btns">
                 <button type="button" className="btn btn-secondary btn-sm" onClick={openGenerateModal}>
                   <Sparkles size={16} />
-                  <span>Generate FAQ</span>
+                  <span>{t('detail.generateFaq')}</span>
                 </button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => {
                   setEditFaq(null);
@@ -855,23 +861,23 @@ export function KnowledgeBaseDetail() {
                   setShowFaqDialog(true);
                 }}>
                   <Plus size={16} />
-                  <span>Add FAQ</span>
+                  <span>{t('detail.addFaq')}</span>
                 </button>
               </div>
             </div>
 
             {faqTotal === 0 ? (
-              <p className="kb-empty-text">No FAQs yet.</p>
+              <p className="kb-empty-text">{t('detail.emptyFaqs')}</p>
             ) : (
               <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th className="kb-table-question-col">Question</th>
-                      <th>Answer</th>
-                      <th className="kb-table-source-col">Source</th>
-                      <th className="kb-table-actions">Actions</th>
+                      <th className="kb-table-question-col">{t('detail.colQuestion')}</th>
+                      <th>{t('detail.colAnswer')}</th>
+                      <th className="kb-table-source-col">{t('detail.colSource')}</th>
+                      <th className="kb-table-actions">{t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -889,12 +895,12 @@ export function KnowledgeBaseDetail() {
                             className="kb-table-source"
                             title={faq.document_name || faq.document_id || undefined}
                           >
-                            {faq.document_name || faq.document_id || '—'}
+                            {faq.document_name || faq.document_id || t('detail.dash')}
                           </span>
                         </td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <button type="button" title="Edit" aria-label="Edit" onClick={async () => {
+                            <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={async () => {
                               setEditFaq(faq);
                               setFaqQuestion(faq.question);
                               setFaqAnswer(faq.answer);
@@ -924,7 +930,7 @@ export function KnowledgeBaseDetail() {
                             }}>
                               <Pencil size={16} />
                             </button>
-                            <button type="button" title="Remove" aria-label="Remove" onClick={() => handleDeleteFaq(faq.id)}>
+                            <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleDeleteFaq(faq.id)}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -938,11 +944,14 @@ export function KnowledgeBaseDetail() {
                 <div className="kb-pagination">
                   <div className="kb-pagination-info">
                     <span>
-                      Showing {faqTotal === 0 ? 0 : faqPage * faqPageSize + 1}–
-                      {Math.min((faqPage + 1) * faqPageSize, faqTotal)} of {faqTotal}
+                      {t('detail.paginationRange', {
+                        start: faqTotal === 0 ? 0 : faqPage * faqPageSize + 1,
+                        end: Math.min((faqPage + 1) * faqPageSize, faqTotal),
+                        total: faqTotal,
+                      })}
                     </span>
                     <label>
-                      <span>Page size:</span>
+                      <span>{t('detail.pageSize')}</span>
                       <select
                         value={faqPageSize}
                         onChange={(e) => {
@@ -963,7 +972,7 @@ export function KnowledgeBaseDetail() {
                         className="btn btn-secondary btn-sm"
                         onClick={() => setFaqPage(0)}
                         disabled={faqPage === 0}
-                        title="First page"
+                        title={t('detail.firstPage')}
                       >
                         «
                       </button>
@@ -973,10 +982,13 @@ export function KnowledgeBaseDetail() {
                         onClick={() => setFaqPage((p) => Math.max(0, p - 1))}
                         disabled={faqPage === 0}
                       >
-                        Previous
+                        {t('detail.previous')}
                       </button>
                       <span className="kb-pagination-nums">
-                        Page {faqPage + 1} of {Math.ceil(faqTotal / faqPageSize) || 1}
+                        {t('detail.pageOf', {
+                          current: faqPage + 1,
+                          total: Math.ceil(faqTotal / faqPageSize) || 1,
+                        })}
                       </span>
                       <button
                         type="button"
@@ -984,14 +996,14 @@ export function KnowledgeBaseDetail() {
                         onClick={() => setFaqPage((p) => Math.min(Math.ceil(faqTotal / faqPageSize) - 1, p + 1))}
                         disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
                       >
-                        Next
+                        {t('detail.next')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={() => setFaqPage(Math.ceil(faqTotal / faqPageSize) - 1)}
                         disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
-                        title="Last page"
+                        title={t('detail.lastPage')}
                       >
                         »
                       </button>
@@ -1008,21 +1020,21 @@ export function KnowledgeBaseDetail() {
         {activeTab === 'chunks' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>Chunks ({chunkTotal})</h2>
+              <h2>{t('detail.chunksTitle', { count: chunkTotal })}</h2>
             </div>
             {chunkTotal === 0 ? (
-              <p className="kb-empty-text">No chunks yet. Run indexing from Settings to generate chunks.</p>
+              <p className="kb-empty-text">{t('detail.emptyChunks')}</p>
             ) : (
               <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th>Source</th>
-                      <th>Excerpt</th>
-                      <th>Tokens</th>
-                      <th>Embedded</th>
-                      <th className="kb-table-actions">Actions</th>
+                      <th>{t('detail.chunkSource')}</th>
+                      <th>{t('detail.colExcerpt')}</th>
+                      <th>{t('detail.colTokens')}</th>
+                      <th>{t('detail.colEmbedded')}</th>
+                      <th className="kb-table-actions">{t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1035,11 +1047,11 @@ export function KnowledgeBaseDetail() {
                           </div>
                         </td>
                         <td className="kb-table-excerpt">{chunk.content.slice(0, 150)}...</td>
-                        <td>{chunk.token_count ?? '—'}</td>
-                        <td>{chunk.has_embedding ? 'Yes' : 'No'}</td>
+                        <td>{chunk.token_count ?? t('detail.dash')}</td>
+                        <td>{chunk.has_embedding ? t('detail.yes') : t('detail.no')}</td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <button type="button" title="Edit" aria-label="Edit" onClick={() => openChunkEdit(chunk)}>
+                            <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={() => openChunkEdit(chunk)}>
                               <Pencil size={16} />
                             </button>
                           </div>
@@ -1053,11 +1065,14 @@ export function KnowledgeBaseDetail() {
                 <div className="kb-pagination">
                   <div className="kb-pagination-info">
                     <span>
-                      Showing {chunkTotal === 0 ? 0 : chunkPage * chunkPageSize + 1}–
-                      {Math.min((chunkPage + 1) * chunkPageSize, chunkTotal)} of {chunkTotal}
+                      {t('detail.paginationRange', {
+                        start: chunkTotal === 0 ? 0 : chunkPage * chunkPageSize + 1,
+                        end: Math.min((chunkPage + 1) * chunkPageSize, chunkTotal),
+                        total: chunkTotal,
+                      })}
                     </span>
                     <label>
-                      <span>Page size:</span>
+                      <span>{t('detail.pageSize')}</span>
                       <select
                         value={chunkPageSize}
                         onChange={(e) => {
@@ -1078,7 +1093,7 @@ export function KnowledgeBaseDetail() {
                         className="btn btn-secondary btn-sm"
                         onClick={() => setChunkPage(0)}
                         disabled={chunkPage === 0}
-                        title="First page"
+                        title={t('detail.firstPage')}
                       >
                         «
                       </button>
@@ -1088,10 +1103,13 @@ export function KnowledgeBaseDetail() {
                         onClick={() => setChunkPage((p) => Math.max(0, p - 1))}
                         disabled={chunkPage === 0}
                       >
-                        Previous
+                        {t('detail.previous')}
                       </button>
                       <span className="kb-pagination-nums">
-                        Page {chunkPage + 1} of {Math.ceil(chunkTotal / chunkPageSize) || 1}
+                        {t('detail.pageOf', {
+                          current: chunkPage + 1,
+                          total: Math.ceil(chunkTotal / chunkPageSize) || 1,
+                        })}
                       </span>
                       <button
                         type="button"
@@ -1099,14 +1117,14 @@ export function KnowledgeBaseDetail() {
                         onClick={() => setChunkPage((p) => Math.min(Math.ceil(chunkTotal / chunkPageSize) - 1, p + 1))}
                         disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
                       >
-                        Next
+                        {t('detail.next')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
                         onClick={() => setChunkPage(Math.ceil(chunkTotal / chunkPageSize) - 1)}
                         disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
-                        title="Last page"
+                        title={t('detail.lastPage')}
                       >
                         »
                       </button>
@@ -1122,9 +1140,9 @@ export function KnowledgeBaseDetail() {
         {/* ===== SEARCH TAB ===== */}
         {activeTab === 'search' && (
           <section className="kb-section kb-search-section">
-            <h2>Semantic Search</h2>
+            <h2>{t('detail.searchTitle')}</h2>
             <p className="kb-section-desc">
-              Search over document chunks and FAQs using vector similarity.
+              {t('detail.searchDesc')}
             </p>
             <div className="kb-search-type-tabs">
               {(['all', 'chunks', 'faqs'] as const).map((type) => (
@@ -1135,7 +1153,7 @@ export function KnowledgeBaseDetail() {
                   onClick={() => setSearchType(type)}
                   aria-pressed={searchType === type}
                 >
-                  {type === 'all' ? 'All' : type === 'chunks' ? 'Chunks' : 'FAQs'}
+                  {type === 'all' ? t('detail.searchTypeAll') : type === 'chunks' ? t('detail.searchTypeChunks') : t('detail.searchTypeFaqs')}
                 </button>
               ))}
             </div>
@@ -1143,15 +1161,15 @@ export function KnowledgeBaseDetail() {
               <SearchIcon size={20} />
               <input
                 type="search"
-                aria-label="Search"
-                placeholder="Search chunks and FAQs..."
+                aria-label={t('detail.searchAria')}
+                placeholder={t('detail.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="kb-search-input"
               />
               <button type="submit" className="kb-search-submit" disabled={searching}>
                 <Send size={18} />
-                <span>{searching ? 'Searching...' : 'Search'}</span>
+                <span>{searching ? t('detail.searching') : t('detail.search')}</span>
               </button>
             </form>
 
@@ -1169,26 +1187,26 @@ export function KnowledgeBaseDetail() {
                     <ChevronRight size={18} />
                   )}
                   <Filter size={18} />
-                  <span>Filters</span>
+                  <span>{t('detail.filters')}</span>
                   {(Object.values(searchLabelFilters).some(Boolean) || Object.values(searchMetadataFilters).some(Boolean)) && (
-                    <span className="kb-search-filters-badge">active</span>
+                    <span className="kb-search-filters-badge">{t('detail.filtersActive')}</span>
                   )}
                 </button>
                 {searchFiltersExpanded && (
                   <div className="kb-search-filters-panel">
                     <p className="kb-search-filters-hint">
-                      Restrict results by metadata. Use exact values; comma-separated for multiple.
+                      {t('detail.filtersHint')}
                     </p>
                     {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
                       <div className="kb-search-filters-group">
-                        <span className="kb-search-filters-group-label">Metadata</span>
+                        <span className="kb-search-filters-group-label">{t('detail.metadataLabel')}</span>
                         {kb.metadata_keys.map((key) => (
                           <div key={key} className="kb-search-filter-row">
                             <label htmlFor={`search-meta-${key}`}>{key}</label>
                             <input
                               id={`search-meta-${key}`}
                               type="text"
-                              placeholder={`e.g. Alice or tag1, tag2`}
+                              placeholder={t('detail.placeholderMetaExample')}
                               value={searchMetadataFilters[key] ?? ''}
                               onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
                             />
@@ -1201,21 +1219,21 @@ export function KnowledgeBaseDetail() {
               </div>
             ) : (
               <p className="kb-search-filters-empty-hint">
-                Configure metadata_keys in Settings to filter search results (e.g. product = xx).
+                {t('detail.metadataKeysEmptyHint')}
               </p>
             )}
 
             {hasSearched && searchResults.length > 0 && (
               <div className="kb-search-results-panel">
-                <h3>Results ({searchResults.length})</h3>
+                <h3>{t('detail.resultsTitle', { count: searchResults.length })}</h3>
                 <ul className="kb-search-results-list">
                   {searchResults.map((r) => (
                     <li key={r.id} className="kb-search-result-item">
                       <span className="kb-search-result-source">
-                        [{r.source_type}] {r.source_name || r.document_id || 'FAQ'}
+                        [{r.source_type}] {r.source_name || r.document_id || t('detail.faqSourceFallback')}
                       </span>
                       <p className="kb-search-result-excerpt">{r.content.slice(0, 300)}</p>
-                      <span className="kb-search-result-score">{(r.score * 100).toFixed(0)}% match</span>
+                      <span className="kb-search-result-score">{t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}</span>
                     </li>
                   ))}
                 </ul>
@@ -1223,13 +1241,13 @@ export function KnowledgeBaseDetail() {
             )}
 
             {hasSearched && searchResults.length === 0 && (
-              <p className="kb-empty-text">No results found.</p>
+              <p className="kb-empty-text">{t('detail.noSearchResults')}</p>
             )}
 
             {!hasSearched && (
               <div className="kb-search-empty">
                 <SearchIcon size={48} strokeWidth={1} />
-                <p>Enter a search query above</p>
+                <p>{t('detail.searchEmptyPrompt')}</p>
               </div>
             )}
           </section>
@@ -1238,13 +1256,13 @@ export function KnowledgeBaseDetail() {
         {/* ===== QA TAB ===== */}
         {activeTab === 'qa' && (
           <section className="kb-section kb-qa-section">
-            <h2>Q&A</h2>
+            <h2>{t('detail.qaTitle')}</h2>
             <p className="kb-section-desc">
-              Ask questions against this knowledge base. Requires an agent service to be configured in Settings.
+              {t('detail.qaDesc')}
             </p>
             {!kb.agent_url && (
               <div className="kb-qa-warning">
-                No agent URL configured. Go to Settings to set up the QA agent service URL.
+                {t('detail.qaNoAgent')}
               </div>
             )}
 
@@ -1253,7 +1271,7 @@ export function KnowledgeBaseDetail() {
                 {chatMessages.length === 0 && (
                   <div className="kb-qa-empty">
                     <MessageSquare size={40} strokeWidth={1} />
-                    <p>Ask a question to get started</p>
+                    <p>{t('detail.qaEmpty')}</p>
                   </div>
                 )}
                 {chatMessages.map((msg, i) => (
@@ -1261,10 +1279,10 @@ export function KnowledgeBaseDetail() {
                     <div className="kb-qa-msg-content">{msg.content}</div>
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="kb-qa-sources">
-                        <span className="kb-qa-sources-label">Sources:</span>
+                        <span className="kb-qa-sources-label">{t('detail.sources')}</span>
                         {msg.sources.map((s, j) => (
                           <span key={j} className="kb-qa-source-tag">
-                            [{s.source_type}] {s.source_name || 'FAQ'} ({(s.score * 100).toFixed(0)}%)
+                            [{s.source_type}] {s.source_name || t('detail.faqSourceFallback')} ({(s.score * 100).toFixed(0)}%)
                           </span>
                         ))}
                       </div>
@@ -1273,14 +1291,14 @@ export function KnowledgeBaseDetail() {
                 ))}
                 {qaLoading && (
                   <div className="kb-qa-msg kb-qa-msg-assistant">
-                    <div className="kb-qa-msg-content kb-qa-typing">Thinking...</div>
+                    <div className="kb-qa-msg-content kb-qa-typing">{t('detail.qaThinking')}</div>
                   </div>
                 )}
               </div>
               <form className="kb-qa-input-form" onSubmit={handleAsk}>
                 <input
                   type="text"
-                  placeholder="Ask a question..."
+                  placeholder={t('detail.qaPlaceholder')}
                   value={qaInput}
                   onChange={(e) => setQaInput(e.target.value)}
                   disabled={qaLoading || !kb.agent_url}
@@ -1296,45 +1314,45 @@ export function KnowledgeBaseDetail() {
         {/* ===== SETTINGS TAB ===== */}
         {activeTab === 'settings' && (
           <section className="kb-section kb-settings-section">
-            <h2>Knowledge Base Settings</h2>
+            <h2>{t('detail.settingsTitle')}</h2>
 
             <div className="kb-settings-form">
               <label>
-                <span>QA Agent Service URL</span>
+                <span>{t('detail.qaAgentUrl')}</span>
                 <input
                   type="url"
-                  placeholder="http://localhost:8103"
+                  placeholder={t('detail.qaAgentUrlPlaceholder')}
                   value={settingsAgentUrl}
                   onChange={(e) => setSettingsAgentUrl(e.target.value)}
                 />
-                <small>URL of the QA agent service for answering questions</small>
+                <small>{t('detail.qaAgentUrlHelp')}</small>
               </label>
 
               <label>
-                <span>Embedding Model</span>
+                <span>{t('detail.embeddingModel')}</span>
                 <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)}>
-                  <option value="">None</option>
+                  <option value="">{t('detail.modelNone')}</option>
                   {embeddingModels.map((m) => (
                     <option key={m.id} value={m.id}>{m.name} ({m.model_name})</option>
                   ))}
                 </select>
-                <small>Used for generating chunk and FAQ embeddings during indexing</small>
+                <small>{t('detail.embeddingHelp')}</small>
               </label>
 
               <fieldset className="kb-settings-fieldset">
-                <legend>Chunking Configuration</legend>
+                <legend>{t('detail.chunkingFieldset')}</legend>
                 <label>
-                  <span>Strategy</span>
+                  <span>{t('detail.strategy')}</span>
                   <select value={settingsChunkStrategy} onChange={(e) => setSettingsChunkStrategy(e.target.value)}>
-                    <option value="fixed_size">Fixed Size</option>
-                    <option value="markdown_header">Markdown Header</option>
-                    <option value="paragraph">Paragraph</option>
+                    <option value="fixed_size">{t('detail.strategyFixedSize')}</option>
+                    <option value="markdown_header">{t('detail.strategyMarkdownHeader')}</option>
+                    <option value="paragraph">{t('detail.strategyParagraph')}</option>
                   </select>
                 </label>
                 {settingsChunkStrategy === 'fixed_size' && (
                   <>
                     <label>
-                      <span>Chunk Size (characters)</span>
+                      <span>{t('detail.chunkSize')}</span>
                       <input
                         type="number"
                         min={100}
@@ -1344,7 +1362,7 @@ export function KnowledgeBaseDetail() {
                       />
                     </label>
                     <label>
-                      <span>Chunk Overlap (characters)</span>
+                      <span>{t('detail.chunkOverlap')}</span>
                       <input
                         type="number"
                         min={0}
@@ -1358,30 +1376,30 @@ export function KnowledgeBaseDetail() {
               </fieldset>
 
               <label>
-                <span>FAQ Generation Prompt</span>
+                <span>{t('detail.faqGenPrompt')}</span>
                 <textarea
-                  placeholder="Custom system prompt for FAQ generation (leave empty for default)"
+                  placeholder={t('detail.faqGenPromptPlaceholder')}
                   value={settingsFaqPrompt}
                   onChange={(e) => setSettingsFaqPrompt(e.target.value)}
                   rows={6}
                 />
-                <small>System prompt sent to the LLM when generating FAQ pairs from documents</small>
+                <small>{t('detail.faqGenPromptHelp')}</small>
               </label>
 
               <label>
-                <span>Metadata Keys</span>
+                <span>{t('detail.metadataKeys')}</span>
                 <input
                   type="text"
-                  placeholder="product, author, publish_date, tags"
+                  placeholder={t('detail.metadataKeysPlaceholder')}
                   value={settingsMetadataKeys}
                   onChange={(e) => setSettingsMetadataKeys(e.target.value)}
                 />
-                <small>Comma-separated keys from document metadata (extracted or manual) to propagate to FAQs and chunks (e.g. product, author, publish_date)</small>
+                <small>{t('detail.metadataKeysHelp')}</small>
               </label>
 
               <div className="kb-settings-actions">
                 <button type="button" className="btn btn-primary" disabled={settingsSaving} onClick={handleSaveSettings}>
-                  {settingsSaving ? 'Saving...' : 'Save Settings'}
+                  {settingsSaving ? t('detail.savingSettings') : t('detail.saveSettings')}
                 </button>
               </div>
             </div>
@@ -1399,13 +1417,13 @@ export function KnowledgeBaseDetail() {
         >
           <div className="kb-doc-picker" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="gen-faq-title">{genStep === 'config' ? 'Generate FAQs' : 'Review FAQs'}</h2>
+              <h2 id="gen-faq-title">{genStep === 'config' ? t('detail.genModalTitleConfig') : t('detail.genModalTitleReview')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
                 onClick={closeGenerateModal}
                 disabled={generating || genSaving}
-                aria-label="Close"
+                aria-label={t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
@@ -1413,9 +1431,13 @@ export function KnowledgeBaseDetail() {
             <p className="kb-doc-picker-hint">
               {genStep === 'config'
                 ? generating && genProgress
-                  ? `Generating document ${genProgress.current} of ${genProgress.total}: ${genProgress.documentName}`
-                  : 'Select an LLM model and choose which documents to generate Q&A pairs from.'
-                : 'Review the generated FAQs. Remove any you do not want to keep, then Save.'}
+                  ? t('detail.genHintProgress', {
+                      current: genProgress.current,
+                      total: genProgress.total,
+                      name: genProgress.documentName,
+                    })
+                  : t('detail.genHintConfig')
+                : t('detail.genHintReview')}
             </p>
             {generating && genProgress && genProgress.total > 1 && (
               <div className="kb-gen-progress-bar">
@@ -1430,18 +1452,18 @@ export function KnowledgeBaseDetail() {
               <>
                 <div className="kb-gen-model-select">
                   <label>
-                    <span>LLM Model</span>
+                    <span>{t('detail.llmModel')}</span>
                     <select value={genModelId} onChange={(e) => setGenModelId(e.target.value)}>
-                      <option value="">Select a model...</option>
+                      <option value="">{t('detail.selectModel')}</option>
                       {llmModels.map((m) => (
                         <option key={m.id} value={m.id}>{m.name}</option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    <span>Prompt</span>
+                    <span>{t('detail.prompt')}</span>
                     <textarea
-                      placeholder="Leave empty to use default prompt"
+                      placeholder={t('detail.promptPlaceholder')}
                       value={genPrompt}
                       onChange={(e) => setGenPrompt(e.target.value)}
                       rows={4}
@@ -1450,7 +1472,7 @@ export function KnowledgeBaseDetail() {
                 </div>
 
                 <div className="kb-gen-doc-header">
-                  <span className="kb-gen-doc-label">Documents</span>
+                  <span className="kb-gen-doc-label">{t('detail.documents')}</span>
                   <button
                     type="button"
                     className="kb-gen-toggle-all"
@@ -1459,14 +1481,14 @@ export function KnowledgeBaseDetail() {
                       else setGenSelectedDocs(new Set(docs.map((d) => d.document_id)));
                     }}
                   >
-                    {genSelectedDocs.size === docs.length ? 'Deselect all' : 'Select all'}
+                    {genSelectedDocs.size === docs.length ? t('detail.deselectAll') : t('detail.selectAll')}
                   </button>
                 </div>
 
                 <div className="kb-doc-picker-list">
                   {docs.length === 0 ? (
                     <div className="kb-doc-picker-empty">
-                      <p>No documents in this knowledge base</p>
+                      <p>{t('detail.genNoDocs')}</p>
                     </div>
                   ) : (
                     docs.map((doc) => {
@@ -1504,7 +1526,7 @@ export function KnowledgeBaseDetail() {
               <div className="kb-gen-review-list">
                 {genPreviewFaqs.length === 0 ? (
                   <div className="kb-doc-picker-empty">
-                    <p>No FAQs to save. Go back and generate again.</p>
+                    <p>{t('detail.genNoPreview')}</p>
                   </div>
                 ) : (
                   genPreviewFaqs.map((faq, idx) => (
@@ -1518,8 +1540,8 @@ export function KnowledgeBaseDetail() {
                         type="button"
                         className="kb-gen-review-remove"
                         onClick={() => removeGenPreviewFaq(idx)}
-                        aria-label="Remove this FAQ"
-                        title="Remove"
+                        aria-label={t('detail.genRemoveFaqAria')}
+                        title={t('detail.remove')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -1533,9 +1555,9 @@ export function KnowledgeBaseDetail() {
               <span className="kb-doc-picker-count">
                 {genStep === 'config'
                   ? (genSelectedDocs.size > 0
-                      ? `${genSelectedDocs.size} document${genSelectedDocs.size > 1 ? 's' : ''} selected`
-                      : 'No documents selected')
-                  : `${genPreviewFaqs.length} FAQ${genPreviewFaqs.length !== 1 ? 's' : ''} to save`}
+                      ? t('detail.genFooterSelectedDocs', { count: genSelectedDocs.size })
+                      : t('detail.genFooterNoDocs'))
+                  : t('detail.genFooterSaveCount', { count: genPreviewFaqs.length })}
               </span>
               <div className="kb-doc-picker-actions">
                 {genStep === 'config' ? (
@@ -1546,7 +1568,7 @@ export function KnowledgeBaseDetail() {
                       onClick={closeGenerateModal}
                       disabled={generating}
                     >
-                      Cancel
+                      {t('detail.cancel')}
                     </button>
                     <button
                       type="button"
@@ -1557,12 +1579,12 @@ export function KnowledgeBaseDetail() {
                       {generating ? (
                         <>
                           <Loader2 size={18} className="kb-doc-picker-spinner" />
-                          <span>Generating...</span>
+                          <span>{t('detail.generating')}</span>
                         </>
                       ) : (
                         <>
                           <Sparkles size={18} />
-                          <span>Generate</span>
+                          <span>{t('detail.generate')}</span>
                         </>
                       )}
                     </button>
@@ -1575,7 +1597,7 @@ export function KnowledgeBaseDetail() {
                       onClick={handleGenBackToConfig}
                       disabled={genSaving}
                     >
-                      Back
+                      {t('detail.genModalBack')}
                     </button>
                     <button
                       type="button"
@@ -1586,12 +1608,12 @@ export function KnowledgeBaseDetail() {
                       {genSaving ? (
                         <>
                           <Loader2 size={18} className="kb-doc-picker-spinner" />
-                          <span>Saving...</span>
+                          <span>{t('detail.saving')}</span>
                         </>
                       ) : (
                         <>
                           <Check size={18} />
-                          <span>Save {genPreviewFaqs.length} FAQ{genPreviewFaqs.length !== 1 ? 's' : ''}</span>
+                          <span>{t('detail.saveFaqs', { count: genPreviewFaqs.length })}</span>
                         </>
                       )}
                     </button>
@@ -1613,23 +1635,23 @@ export function KnowledgeBaseDetail() {
         >
           <div className="kb-doc-picker kb-doc-picker-split" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="doc-picker-title">Add Documents</h2>
+              <h2 id="doc-picker-title">{t('detail.docPickerTitle')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
                 onClick={closeDocPicker}
                 disabled={pickerAdding}
-                aria-label="Close"
+                aria-label={t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="kb-doc-picker-body">
               <aside className="kb-doc-picker-sidebar">
-                <span className="kb-doc-picker-sidebar-label">Channels</span>
+                <span className="kb-doc-picker-sidebar-label">{t('detail.channels')}</span>
                 <ul className="kb-doc-picker-channel-tree">
                   {channels.length === 0 ? (
-                    <li className="kb-doc-picker-channel-empty">No channels</li>
+                    <li className="kb-doc-picker-channel-empty">{t('detail.noChannels')}</li>
                   ) : (
                     <>
                       {channels.map((ch) => (
@@ -1652,7 +1674,7 @@ export function KnowledgeBaseDetail() {
                   <SearchIcon size={18} />
                   <input
                     type="search"
-                    placeholder="Search documents by name..."
+                    placeholder={t('detail.searchDocsPlaceholder')}
                     value={pickerSearch}
                     onChange={(e) => handlePickerSearch(e.target.value)}
                     disabled={!pickerSelectedChannel}
@@ -1662,16 +1684,16 @@ export function KnowledgeBaseDetail() {
                 <div className="kb-doc-picker-list">
                   {!pickerSelectedChannel ? (
                     <div className="kb-doc-picker-empty">
-                      <p>Select a channel to see documents</p>
+                      <p>{t('detail.selectChannelFirst')}</p>
                     </div>
                   ) : pickerLoading ? (
                     <div className="kb-doc-picker-loading">
                       <Loader2 size={24} className="kb-doc-picker-spinner" />
-                      <span>Loading documents...</span>
+                      <span>{t('detail.loadingDocs')}</span>
                     </div>
                   ) : pickerResults.length === 0 ? (
                     <div className="kb-doc-picker-empty">
-                      <p>No documents found</p>
+                      <p>{t('detail.noDocsFound')}</p>
                     </div>
                   ) : (
                     pickerResults.map((doc) => {
@@ -1702,7 +1724,7 @@ export function KnowledgeBaseDetail() {
                               {doc.file_type} · {doc.status || 'completed'}
                             </span>
                           </div>
-                          {added && <span className="kb-doc-picker-item-badge">Added</span>}
+                          {added && <span className="kb-doc-picker-item-badge">{t('detail.addedBadge')}</span>}
                         </div>
                       );
                     })
@@ -1711,7 +1733,11 @@ export function KnowledgeBaseDetail() {
                 {pickerSelectedChannel && pickerTotal > 0 && (
                   <div className="kb-doc-picker-pagination">
                     <span className="kb-doc-picker-pagination-info">
-                      {pickerPage * pickerPageSize + 1}–{Math.min((pickerPage + 1) * pickerPageSize, pickerTotal)} of {pickerTotal}
+                      {t('detail.pickerPageRange', {
+                        start: pickerPage * pickerPageSize + 1,
+                        end: Math.min((pickerPage + 1) * pickerPageSize, pickerTotal),
+                        total: pickerTotal,
+                      })}
                     </span>
                     <div className="kb-doc-picker-pagination-btns">
                       <button
@@ -1719,7 +1745,7 @@ export function KnowledgeBaseDetail() {
                         className="btn btn-secondary btn-sm"
                         onClick={() => setPickerPage((p) => Math.max(0, p - 1))}
                         disabled={!pickerCanPrev}
-                        aria-label="Previous page"
+                        aria-label={t('detail.pickerAriaPrevPage')}
                       >
                         <ChevronLeft size={16} />
                       </button>
@@ -1728,7 +1754,7 @@ export function KnowledgeBaseDetail() {
                         className="btn btn-secondary btn-sm"
                         onClick={() => setPickerPage((p) => Math.min(pickerTotalPages - 1, p + 1))}
                         disabled={!pickerCanNext}
-                        aria-label="Next page"
+                        aria-label={t('detail.pickerAriaNextPage')}
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -1739,7 +1765,9 @@ export function KnowledgeBaseDetail() {
             </div>
             <div className="kb-doc-picker-footer">
               <span className="kb-doc-picker-count">
-                {pickerSelected.size > 0 ? `${pickerSelected.size} selected` : 'No documents selected'}
+                {pickerSelected.size > 0
+                  ? t('detail.pickerSelected', { count: pickerSelected.size })
+                  : t('detail.pickerNoneSelected')}
               </span>
               <div className="kb-doc-picker-actions">
                 <button
@@ -1748,7 +1776,7 @@ export function KnowledgeBaseDetail() {
                   onClick={closeDocPicker}
                   disabled={pickerAdding}
                 >
-                  Cancel
+                  {t('detail.cancel')}
                 </button>
                 <button
                   type="button"
@@ -1759,12 +1787,16 @@ export function KnowledgeBaseDetail() {
                   {pickerAdding ? (
                     <>
                       <Loader2 size={18} className="kb-doc-picker-spinner" />
-                      <span>Adding...</span>
+                      <span>{t('detail.adding')}</span>
                     </>
                   ) : (
                     <>
                       <Plus size={18} />
-                      <span>Add {pickerSelected.size > 0 ? `(${pickerSelected.size})` : ''}</span>
+                      <span>
+                        {pickerSelected.size > 0
+                          ? t('detail.addButtonWithCount', { count: pickerSelected.size })
+                          : t('detail.addButton')}
+                      </span>
                     </>
                   )}
                 </button>
@@ -1784,24 +1816,24 @@ export function KnowledgeBaseDetail() {
         >
           <div className="kb-doc-picker kb-faq-dialog kb-chunk-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="chunk-dialog-title">Edit Chunk</h2>
+              <h2 id="chunk-dialog-title">{t('detail.chunkDialogTitle')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
                 onClick={closeChunkDialog}
                 disabled={chunkSaving}
-                aria-label="Close"
+                aria-label={t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="kb-faq-dialog-form">
               <label>
-                <span>Source</span>
+                <span>{t('detail.chunkSource')}</span>
                 <input type="text" value={editChunk.document_name || editChunk.document_id} readOnly disabled className="kb-chunk-dialog-readonly" />
               </label>
               <label>
-                <span>Content</span>
+                <span>{t('detail.chunkContent')}</span>
                 <textarea
                   value={chunkContent}
                   onChange={(e) => setChunkContent(e.target.value)}
@@ -1811,16 +1843,16 @@ export function KnowledgeBaseDetail() {
 
               {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
                 <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">Metadata</span>
+                  <span className="kb-kv-editor-label">{t('detail.metadata')}</span>
                   <small className="kb-kv-editor-hint">
-                    Value per metadata key. {Object.values(chunkMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
+                    {Object.values(chunkMetadataIsArray).some(Boolean) ? t('detail.kvHintArray') : t('detail.kvHintSingle')}
                   </small>
                   {kb.metadata_keys.map((key) => (
                     <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{chunkMetadataIsArray[key] ? ' (array)' : ''}</span>
+                      <span className="kb-kv-key-label">{key}{chunkMetadataIsArray[key] ? t('detail.arraySuffix') : ''}</span>
                       <input
                         type="text"
-                        placeholder={chunkMetadataIsArray[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
+                        placeholder={chunkMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
                         value={chunkDocMetadataValues[key] ?? ''}
                         onChange={(e) => setChunkDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
                       />
@@ -1832,10 +1864,10 @@ export function KnowledgeBaseDetail() {
                 <div />
                 <div className="kb-doc-picker-actions">
                   <button type="button" className="btn btn-secondary" onClick={closeChunkDialog} disabled={chunkSaving}>
-                    Cancel
+                    {t('detail.cancel')}
                   </button>
                   <button type="button" className="btn btn-primary" onClick={handleSaveChunk} disabled={chunkSaving || !chunkContent.trim()}>
-                    {chunkSaving ? 'Saving...' : 'Update'}
+                    {chunkSaving ? t('detail.saving') : t('detail.update')}
                   </button>
                 </div>
               </div>
@@ -1854,31 +1886,31 @@ export function KnowledgeBaseDetail() {
         >
           <div className="kb-doc-picker kb-faq-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="faq-dialog-title">{editFaq ? 'Edit FAQ' : 'Add FAQ'}</h2>
+              <h2 id="faq-dialog-title">{editFaq ? t('detail.faqDialogEdit') : t('detail.faqDialogAdd')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
                 onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
-                aria-label="Close"
+                aria-label={t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="kb-faq-dialog-form">
               <label>
-                <span>Question</span>
+                <span>{t('detail.question')}</span>
                 <input
                   type="text"
-                  placeholder="Question"
+                  placeholder={t('detail.placeholderQuestion')}
                   value={faqQuestion}
                   onChange={(e) => setFaqQuestion(e.target.value)}
                   autoFocus
                 />
               </label>
               <label>
-                <span>Answer</span>
+                <span>{t('detail.answer')}</span>
                 <textarea
-                  placeholder="Answer"
+                  placeholder={t('detail.placeholderAnswer')}
                   value={faqAnswer}
                   onChange={(e) => setFaqAnswer(e.target.value)}
                   rows={5}
@@ -1887,16 +1919,16 @@ export function KnowledgeBaseDetail() {
 
               {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
                 <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">Metadata</span>
+                  <span className="kb-kv-editor-label">{t('detail.metadata')}</span>
                   <small className="kb-kv-editor-hint">
-                    Value per metadata key. {Object.values(faqMetadataIsArray).some(Boolean) ? 'Use comma for array fields.' : 'Values are stored as single strings.'}
+                    {Object.values(faqMetadataIsArray).some(Boolean) ? t('detail.kvHintArray') : t('detail.kvHintSingle')}
                   </small>
                   {kb.metadata_keys.map((key) => (
                     <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{faqMetadataIsArray[key] ? ' (array)' : ''}</span>
+                      <span className="kb-kv-key-label">{key}{faqMetadataIsArray[key] ? t('detail.arraySuffix') : ''}</span>
                       <input
                         type="text"
-                        placeholder={faqMetadataIsArray[key] ? `Value(s) for ${key} (comma-separated)` : `Value for ${key}`}
+                        placeholder={faqMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
                         value={faqDocMetadataValues[key] ?? ''}
                         onChange={(e) => setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
                       />
@@ -1909,10 +1941,10 @@ export function KnowledgeBaseDetail() {
                 <div />
                 <div className="kb-doc-picker-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}>
-                    Cancel
+                    {t('detail.cancel')}
                   </button>
                   <button type="button" className="btn btn-primary" onClick={handleSaveFaq} disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
-                    {editFaq ? 'Update' : 'Create'}
+                    {editFaq ? t('detail.update') : t('detail.create')}
                   </button>
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { forceCollide } from 'd3-force';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
@@ -352,6 +353,7 @@ export function KnowledgeMapForceGraph({
   resolveResourceLabel: (resourceType: string, resourceId: string) => string;
   className?: string;
 }) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const graphRef = useRef<ForceGraphMethods<KMNode, KMLink> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -616,11 +618,7 @@ export function KnowledgeMapForceGraph({
 
   return (
     <div className={scrollClass} role="application" aria-label="Knowledge Map graph">
-      <p className="km-map-graph-hint">
-        {
-          'Drag to pan, scroll to zoom.'
-        }
-      </p>
+      <p className="km-map-graph-hint">{t('graphPanZoomHint')}</p>
       <div className="km-map-graph-body">
         <div className="km-map-graph-controls" role="toolbar" aria-label="Graph controls">
           <button

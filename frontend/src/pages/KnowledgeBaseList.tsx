@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Database, Plus, MessageCircle, Trash2, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,6 +13,8 @@ import {
 import './KnowledgeBaseList.css';
 
 export function KnowledgeBaseList() {
+  const { t } = useTranslation('knowledgeBase');
+  const { t: ts } = useTranslation('explore');
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -25,13 +28,15 @@ export function KnowledgeBaseList() {
       const data = await fetchKnowledgeBases();
       setKbs(data.items);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load knowledge bases');
+      toast.error(e instanceof Error ? e.message : t('toastLoadFailed'));
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   const handleCreate = async () => {
     if (!formName.trim()) return;
@@ -41,10 +46,10 @@ export function KnowledgeBaseList() {
       setShowCreate(false);
       setFormName('');
       setFormDesc('');
-      toast.success('Knowledge base created');
-      load();
+      toast.success(t('toastCreated'));
+      void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
+      toast.error(e instanceof Error ? e.message : ts('shared.createFailed'));
     } finally {
       setSaving(false);
     }
@@ -58,10 +63,10 @@ export function KnowledgeBaseList() {
       setEditKb(null);
       setFormName('');
       setFormDesc('');
-      toast.success('Knowledge base updated');
-      load();
+      toast.success(t('toastUpdated'));
+      void load();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Update failed');
+      toast.error(e instanceof Error ? e.message : ts('shared.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -70,13 +75,13 @@ export function KnowledgeBaseList() {
   const handleDelete = async (kb: KnowledgeBaseResponse, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Delete "${kb.name}"? This will remove all associated documents, FAQs, and chunks.`)) return;
+    if (!confirm(t('deleteConfirm', { name: kb.name }))) return;
     try {
       await deleteKnowledgeBase(kb.id);
-      toast.success('Knowledge base deleted');
-      load();
+      toast.success(t('toastDeleted'));
+      void load();
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Delete failed');
+      toast.error(err instanceof Error ? err.message : ts('shared.deleteFailed'));
     }
   };
 
@@ -99,23 +104,29 @@ export function KnowledgeBaseList() {
     <div className="kb-list">
       <div className="page-header kb-header">
         <div>
-          <h1>Knowledge Bases</h1>
-          <p className="page-subtitle">
-            Create knowledge bases, add documents, generate FAQs, and enable RAG Q&A per KB.
-          </p>
+          <h1>{t('title')}</h1>
+          <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => { setShowCreate(true); setFormName(''); setFormDesc(''); }}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => {
+            setShowCreate(true);
+            setFormName('');
+            setFormDesc('');
+          }}
+        >
           <Plus size={18} />
-          <span>New Knowledge Base</span>
+          <span>{t('newKb')}</span>
         </button>
       </div>
 
-      {loading && <p className="kb-loading">Loading...</p>}
+      {loading && <p className="kb-loading">{ts('shared.loading')}</p>}
 
       {!loading && kbs.length === 0 && (
         <div className="kb-empty">
           <Database size={48} strokeWidth={1} />
-          <p>No knowledge bases yet. Create one to get started.</p>
+          <p>{t('empty')}</p>
         </div>
       )}
 
@@ -127,24 +138,24 @@ export function KnowledgeBaseList() {
                 <Database size={28} strokeWidth={1.5} />
               </div>
               <div className="kb-card-actions">
-                <button type="button" title="Edit" aria-label="Edit" onClick={(e) => openEdit(kb, e)}>
+                <button type="button" title={ts('shared.edit')} aria-label={ts('shared.edit')} onClick={(e) => openEdit(kb, e)}>
                   <Pencil size={15} />
                 </button>
-                <button type="button" title="Delete" aria-label="Delete" onClick={(e) => handleDelete(kb, e)}>
+                <button type="button" title={ts('shared.delete')} aria-label={ts('shared.delete')} onClick={(e) => void handleDelete(kb, e)}>
                   <Trash2 size={15} />
                 </button>
               </div>
             </div>
             <h3>{kb.name}</h3>
-            <p className="kb-desc">{kb.description || 'No description'}</p>
+            <p className="kb-desc">{kb.description || ts('shared.noDescription')}</p>
             <div className="kb-meta">
-              <span>{kb.document_count} docs</span>
-              <span>{kb.faq_count} FAQs</span>
-              <span>{kb.chunk_count} chunks</span>
+              <span>{t('metaDocs', { count: kb.document_count })}</span>
+              <span>{t('metaFaqs', { count: kb.faq_count })}</span>
+              <span>{t('metaChunks', { count: kb.chunk_count })}</span>
               {kb.agent_url && (
                 <span className="kb-rag-badge">
                   <MessageCircle size={14} />
-                  RAG Q&A
+                  {t('ragBadge')}
                 </span>
               )}
             </div>
@@ -156,41 +167,43 @@ export function KnowledgeBaseList() {
         <div className="kb-dialog-overlay" onClick={closeDialog}>
           <div className="kb-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="kb-dialog-header">
-              <h2>{editKb ? 'Edit Knowledge Base' : 'New Knowledge Base'}</h2>
-              <button type="button" className="kb-dialog-close" onClick={closeDialog}>
+              <h2>{editKb ? t('dialogEdit') : t('dialogNew')}</h2>
+              <button type="button" className="kb-dialog-close" aria-label={ts('shared.close')} onClick={closeDialog}>
                 <X size={20} />
               </button>
             </div>
             <div className="kb-dialog-body">
               <label>
-                <span>Name</span>
+                <span>{ts('shared.name')}</span>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Knowledge base name"
+                  placeholder={t('placeholderName')}
                   autoFocus
                 />
               </label>
               <label>
-                <span>Description</span>
+                <span>{ts('shared.description')}</span>
                 <textarea
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder="Optional description"
+                  placeholder={t('placeholderDesc')}
                   rows={3}
                 />
               </label>
             </div>
             <div className="kb-dialog-footer">
-              <button type="button" className="btn btn-secondary" onClick={closeDialog}>Cancel</button>
+              <button type="button" className="btn btn-secondary" onClick={closeDialog}>
+                {ts('shared.cancel')}
+              </button>
               <button
                 type="button"
                 className="btn btn-primary"
                 disabled={!formName.trim() || saving}
-                onClick={editKb ? handleEdit : handleCreate}
+                onClick={() => void (editKb ? handleEdit() : handleCreate())}
               >
-                {saving ? 'Saving...' : editKb ? 'Save' : 'Create'}
+                {saving ? ts('shared.saving') : editKb ? ts('shared.save') : ts('shared.create')}
               </button>
             </div>
           </div>

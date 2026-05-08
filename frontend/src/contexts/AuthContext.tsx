@@ -5,6 +5,7 @@ import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
 import { getUserManager } from '../oidc/userManager';
 import { authAwareFetch, setAuthTokenProvider, setSessionExpiredHandler } from '../data/apiClient';
+import { applyLocaleFromAuthMe } from '../i18n/config';
 import {
   buildFrontendPatternUnion,
   isSpaPublicPath,
@@ -22,6 +23,8 @@ export interface AuthUser {
   roles: string[];
   /** From GET /api/auth/me (full list for IdP admins). */
   permissions: string[];
+  /** Saved UI language when set in Settings (synced from DB). */
+  ui_locale?: 'en' | 'zh-CN' | null;
 }
 
 interface AuthContextValue {
@@ -50,6 +53,8 @@ interface AuthContextValue {
   canAccessPath: (pathname: string) => boolean;
   /** False until permission-catalog fetch finished (or skipped when logged out). */
   permissionPatternsReady: boolean;
+  /** Re-fetch ``/api/auth/me`` (e.g. after updating locale in Settings). */
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -96,14 +101,17 @@ function userFromMeJson(u: {
   is_admin?: boolean;
   roles?: string[];
   permissions?: string[];
+  ui_locale?: string | null;
 }): AuthUser {
   const roles = u.roles?.length ? u.roles : u.is_admin ? [ADMIN_ROLE] : [];
+  const ul = u.ui_locale === 'en' || u.ui_locale === 'zh-CN' ? u.ui_locale : null;
   return {
     username: u.username,
     email: u.email,
     name: u.username,
     roles,
     permissions: Array.isArray(u.permissions) ? u.permissions : [],
+    ui_locale: ul,
   };
 }
 
@@ -232,7 +240,9 @@ async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | nu
       is_admin?: boolean;
       roles?: string[];
       permissions?: string[];
+      ui_locale?: string | null;
     };
+    applyLocaleFromAuthMe(data.ui_locale);
     return userFromMeJson(data);
   } catch {
     return null;
@@ -327,6 +337,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       hasPermission: () => false,
       canAccessPath: () => true,
       permissionPatternsReady: false,
+      refreshUser: async () => {},
     }),
     [authMode, ready, allowSignup]
   );
@@ -379,6 +390,7 @@ function LocalAuthProvider({
         return;
       }
       const data = await res.json();
+      applyLocaleFromAuthMe((data as { ui_locale?: string | null }).ui_locale);
       setUser(userFromMeJson(data));
       setIsAuthenticated(true);
     } catch {
@@ -412,6 +424,7 @@ function LocalAuthProvider({
         throw new Error('Could not load profile');
       }
       const data = await res.json();
+      applyLocaleFromAuthMe((data as { ui_locale?: string | null }).ui_locale);
       setUser(userFromMeJson(data));
       setIsAuthenticated(true);
       setAuthError(null);
@@ -477,6 +490,10 @@ function LocalAuthProvider({
   const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
   const { canAccessPath, permissionPatternsReady } = useFrontendPermissionGate(isAuthenticated, user, getToken);
 
+  const refreshUser = useCallback(async () => {
+    await loadSession();
+  }, [loadSession]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -498,6 +515,7 @@ function LocalAuthProvider({
         hasPermission,
         canAccessPath,
         permissionPatternsReady,
+        refreshUser,
       }}
     >
       {children}
@@ -697,6 +715,22 @@ function OidcAuthProvider({
   const { hasPermission, canAccessConsole } = useMemo(() => buildPermissionHelpers(user), [user]);
   const { canAccessPath, permissionPatternsReady } = useFrontendPermissionGate(isAuthenticated, user, getToken);
 
+  const refreshUser = useCallback(async () => {
+    const mgr = getUserManager();
+    try {
+      let u = await mgr.getUser();
+      if (!u?.access_token) return;
+      if (u.expired) {
+        u = await mgr.signinSilent();
+        if (!u?.access_token) return;
+      }
+      const me = await fetchAuthMeWithBearer(u.access_token);
+      if (me) setUser(me);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -718,6 +752,7 @@ function OidcAuthProvider({
         hasPermission,
         canAccessPath,
         permissionPatternsReady,
+        refreshUser,
       }}
     >
       {children}

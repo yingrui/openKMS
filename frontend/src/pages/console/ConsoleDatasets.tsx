@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Plus, Pencil, Trash2, X, RefreshCw, Search, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +16,7 @@ import { fetchDataSources, type DataSourceResponse } from '../../data/dataSource
 import './ConsoleObjectTypes.css';
 
 export function ConsoleDatasets() {
+  const { t } = useTranslation('console');
   const [items, setItems] = useState<DatasetResponse[]>([]);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,11 +51,11 @@ export function ConsoleDatasets() {
       setItems(dsRes.items);
       setDataSources(dRes.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load');
+      toast.error(e instanceof Error ? e.message : t('datasets.toastLoadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [filterDataSourceId]);
+  }, [filterDataSourceId, t]);
 
   useEffect(() => {
     load();
@@ -69,7 +71,7 @@ export function ConsoleDatasets() {
       const t = await fetchTablesFromSource(dataSourceId);
       setTables(t);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load tables');
+      toast.error(e instanceof Error ? e.message : t('datasets.toastLoadTablesFailed'));
       setTables([]);
     } finally {
       setLoadingTables(false);
@@ -112,7 +114,7 @@ export function ConsoleDatasets() {
 
   const handleSubmit = async () => {
     if (!formDataSourceId || !formSchema.trim() || !formTable.trim()) {
-      toast.error('Data source, schema, and table are required');
+      toast.error(t('datasets.toastRequiredFields'));
       return;
     }
     setSubmitting(true);
@@ -123,7 +125,7 @@ export function ConsoleDatasets() {
           table_name: formTable.trim(),
           display_name: formDisplayName.trim() || undefined,
         });
-        toast.success('Dataset updated');
+        toast.success(t('datasets.toastUpdated'));
       } else {
         await createDataset({
           data_source_id: formDataSourceId,
@@ -131,25 +133,25 @@ export function ConsoleDatasets() {
           table_name: formTable.trim(),
           display_name: formDisplayName.trim() || undefined,
         });
-        toast.success('Dataset created');
+        toast.success(t('datasets.toastCreated'));
       }
       setShowForm(false);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Operation failed');
+      toast.error(e instanceof Error ? e.message : t('datasets.toastOperationFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this dataset?')) return;
+    if (!window.confirm(t('datasets.deleteConfirm'))) return;
     try {
       await deleteDataset(id);
-      toast.success('Dataset deleted');
+      toast.success(t('datasets.toastDeleted'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('datasets.toastDeleteFailed'));
     }
   };
 
@@ -159,10 +161,8 @@ export function ConsoleDatasets() {
     <div className="console-object-types">
       <div className="page-header">
         <div>
-          <h1>Datasets</h1>
-          <p className="page-subtitle">
-            Map PostgreSQL tables from data sources. Can be linked to Object Types and Link Types later.
-          </p>
+          <h1>{t('datasets.pageTitle')}</h1>
+          <p className="page-subtitle">{t('datasets.subtitle')}</p>
         </div>
         <button
           type="button"
@@ -171,7 +171,7 @@ export function ConsoleDatasets() {
           disabled={pgDataSources.length === 0}
         >
           <Plus size={18} />
-          <span>New Dataset</span>
+          <span>{t('datasets.newDataset')}</span>
         </button>
       </div>
 
@@ -181,20 +181,20 @@ export function ConsoleDatasets() {
           <Search size={18} />
           <input
             type="search"
-            aria-label="Search datasets"
-            placeholder="Search datasets..."
+            aria-label={t('datasets.searchAria')}
+            placeholder={t('datasets.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         {dataSources.length > 0 && (
           <label className="console-datasets-filter">
-            Filter by data source:
+            {t('datasets.filterLabel')}
             <select
               value={filterDataSourceId}
               onChange={(e) => setFilterDataSourceId(e.target.value)}
             >
-              <option value="">All</option>
+              <option value="">{t('datasets.filterAll')}</option>
               {dataSources.map((ds) => (
                 <option key={ds.id} value={ds.id}>{ds.name}</option>
               ))}
@@ -207,16 +207,16 @@ export function ConsoleDatasets() {
         {loading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" />
-            <p>Loading…</p>
+            <p>{t('datasets.loading')}</p>
           </div>
         ) : (
           <table className="console-table">
             <thead>
               <tr>
-                <th>Display Name</th>
-                <th>Data Source</th>
-                <th>Schema.Table</th>
-                <th className="console-table-actions">Actions</th>
+                <th>{t('datasets.colDisplayName')}</th>
+                <th>{t('datasets.colDataSource')}</th>
+                <th>{t('datasets.colSchemaTable')}</th>
+                <th className="console-table-actions">{t('datasets.colActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -224,10 +224,10 @@ export function ConsoleDatasets() {
                 <tr>
                   <td colSpan={4} className="console-table-empty">
                     {pgDataSources.length === 0
-                      ? 'Add a PostgreSQL data source first.'
+                      ? t('datasets.emptyNeedPg')
                       : search.trim()
-                        ? 'No matching datasets.'
-                        : 'No datasets yet. Create one to get started.'}
+                        ? t('datasets.emptyNoMatch')
+                        : t('datasets.emptyNone')}
                   </td>
                 </tr>
               ) : (
@@ -238,14 +238,14 @@ export function ConsoleDatasets() {
                         <strong>{d.display_name || `${d.schema_name}.${d.table_name}`}</strong>
                       </Link>
                     </td>
-                    <td>{d.data_source_name ?? '—'}</td>
+                    <td>{d.data_source_name ?? t('datasets.dash')}</td>
                     <td>{d.schema_name}.{d.table_name}</td>
                     <td className="console-table-actions">
                       <div className="console-table-btns">
-                        <button type="button" title="Edit" onClick={() => openEdit(d)}>
+                        <button type="button" title={t('datasets.editTitle')} onClick={() => openEdit(d)}>
                           <Pencil size={16} />
                         </button>
-                        <button type="button" title="Delete" onClick={() => handleDelete(d.id)}>
+                        <button type="button" title={t('datasets.deleteTitle')} onClick={() => handleDelete(d.id)}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -263,32 +263,32 @@ export function ConsoleDatasets() {
         <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
-              <h2>{editItem ? 'Edit Dataset' : 'New Dataset'}</h2>
+              <h2>{editItem ? t('datasets.modalEditTitle') : t('datasets.modalNewTitle')}</h2>
               <button
                 type="button"
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
-                aria-label="Close"
+                aria-label={t('datasets.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="console-modal-body">
               <label>
-                <span>Data Source</span>
+                <span>{t('datasets.fieldDataSource')}</span>
                 <select
                   value={formDataSourceId}
                   onChange={(e) => handleDataSourceChange(e.target.value)}
                   disabled={!!editItem}
                 >
-                  <option value="">Select data source</option>
+                  <option value="">{t('datasets.selectDataSource')}</option>
                   {pgDataSources.map((ds) => (
                     <option key={ds.id} value={ds.id}>{ds.name} ({ds.kind})</option>
                   ))}
                 </select>
               </label>
               <label>
-                <span>Table (from source)</span>
+                <span>{t('datasets.fieldTableFromSource')}</span>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <select
                     value={tables.length ? `${formSchema}.${formTable}` : ''}
@@ -303,7 +303,7 @@ export function ConsoleDatasets() {
                     disabled={!formDataSourceId || loadingTables || tables.length === 0}
                     style={{ flex: 1 }}
                   >
-                    <option value="">{loadingTables ? 'Loading…' : 'Select table'}</option>
+                    <option value="">{loadingTables ? t('datasets.loadingTables') : t('datasets.selectTable')}</option>
                     {tables.map((t) => (
                       <option key={`${t.schema_name}.${t.table_name}`} value={`${t.schema_name}.${t.table_name}`}>
                         {t.schema_name}.{t.table_name}
@@ -323,12 +323,12 @@ export function ConsoleDatasets() {
                 </div>
               </label>
               <label>
-                <span>Display Name (optional)</span>
+                <span>{t('datasets.fieldDisplayName')}</span>
                 <input
                   type="text"
                   value={formDisplayName}
                   onChange={(e) => setFormDisplayName(e.target.value)}
-                  placeholder="e.g. Diseases table"
+                  placeholder={t('datasets.displayNamePlaceholder')}
                 />
               </label>
             </div>
@@ -339,7 +339,7 @@ export function ConsoleDatasets() {
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
               >
-                Cancel
+                {t('datasets.cancel')}
               </button>
               <button
                 type="button"
@@ -347,7 +347,7 @@ export function ConsoleDatasets() {
                 onClick={handleSubmit}
                 disabled={!formDataSourceId || !formSchema.trim() || !formTable.trim() || submitting}
               >
-                {submitting ? 'Saving…' : editItem ? 'Update' : 'Create'}
+                {submitting ? t('datasets.saving') : editItem ? t('datasets.update') : t('datasets.create')}
               </button>
             </div>
           </div>
