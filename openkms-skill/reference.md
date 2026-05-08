@@ -81,6 +81,38 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `ontology answer` | POST | `/api/ontology/answer` | Body `{question, cypher, columns, rows}`. Summarises a Cypher result back to NL. |
 | `ontology ask` | (chain) | three calls above | Convenience: text-to-cypher → explore → answer. CLI emits `{question, cypher, explanation, columns, rows, answer}`. |
 
+### Ontology — object types (`objects`)
+
+All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY stdin → exit 2 (no HTTP call).
+
+| CLI | Method | Path | Body / params |
+|---|---|---|---|
+| `objects list` | GET | `/api/object-types` | Optional `?is_master_data=true&count_from_neo4j=true`. Returns `{items:[ObjectType], total}`. |
+| `objects get` | GET | `/api/object-types/{id}` | Optional `?count_from_neo4j=true`. |
+| `objects create-type` *(write)* | POST | `/api/object-types` | Body `{name, description?, dataset_id?, key_property?, is_master_data, display_property?, properties:[{name,type,required}]}`. |
+| `objects update-type` *(write)* | PUT | `/api/object-types/{id}` | Only the flags you pass are sent (all `ObjectTypeUpdate` fields optional). Empty update exits 2. |
+| `objects delete-type` *(write)* | DELETE | `/api/object-types/{id}` | Cascades; no body. |
+| `objects instances list` | GET | `/api/object-types/{id}/objects` | `?search=&limit=&offset=`. |
+| `objects instances get` | GET | `/api/object-types/{type-id}/objects/{id}` | — |
+| `objects instances create` *(write)* | POST | `/api/object-types/{type-id}/objects` | Body `{data: {…property values…}}`. |
+| `objects instances update` *(write)* | PUT | `/api/object-types/{type-id}/objects/{id}` | Body `{data: {…}}`. |
+| `objects instances delete` *(write)* | DELETE | `/api/object-types/{type-id}/objects/{id}` | — |
+| `objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. MERGEs all object instances into Neo4j as nodes. |
+
+### Ontology — link types (`links`)
+
+| CLI | Method | Path | Body / params |
+|---|---|---|---|
+| `links list` | GET | `/api/link-types` | Optional `?count_from_neo4j=true`. |
+| `links get` | GET | `/api/link-types/{id}` | Optional `?count_from_neo4j=true`. |
+| `links create-type` *(write)* | POST | `/api/link-types` | Body `{name, source_object_type_id, target_object_type_id, cardinality, description?, dataset_id?, source_key_property?, target_key_property?, source_dataset_column?, target_dataset_column?}`. `cardinality ∈ {one-to-one, one-to-many, many-to-one, many-to-many}` (default `one-to-many`). |
+| `links update-type` *(write)* | PUT | `/api/link-types/{id}` | Only the flags you pass are sent. Empty update exits 2. |
+| `links delete-type` *(write)* | DELETE | `/api/link-types/{id}` | — |
+| `links instances list` | GET | `/api/link-types/{id}/links` | `?limit=&offset=`. |
+| `links instances create` *(write)* | POST | `/api/link-types/{type-id}/links` | Body `{source_object_id, target_object_id}`. **Server rejects when type is m2m+dataset** (junction table is the source of truth) — surface the 4xx. |
+| `links instances delete` *(write)* | DELETE | `/api/link-types/{type-id}/links/{id}` | Same m2m+dataset rejection rule. |
+| `links sync-neo4j` *(write)* | POST | `/api/link-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. MERGEs all link instances into Neo4j as relationships. |
+
 ### Evaluation
 
 | CLI | Method | Path | Notes |

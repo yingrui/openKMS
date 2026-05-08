@@ -21,9 +21,13 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `document-channels` / `article-channels` | `list` | `create` |
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
-| `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — |
+| `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |
+| `objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j` |
+| `links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j` |
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
+
+> **Mutation safety.** Every write subcommand under `objects` and `links` requires explicit confirmation: pass `--yes`/`-y` to skip the prompt, `--dry-run` to print the planned `[METHOD] path + body` and exit 0, or answer `y` at the interactive prompt. **Without `--yes` on a non-TTY stdin (e.g. pipes, agents), the command refuses and exits 2** — agents that drive these commands must opt in deliberately.
 
 ## Quick examples
 
@@ -122,16 +126,32 @@ Previously the skill was mostly write-only (`upload`, `create`, `put-page`). Thi
 Structural changes:
 - Old 600-line `cli.py` → 42-line dispatcher + `scripts/openkms/` package (`client.py`, `config.py`, `_io.py`, `commands/*.py`). Adding a new command now means adding one file under `commands/`.
 - `install.sh` gained `--target opencode|claude-code|both|auto` and `--dest <path>`; auto-mode picks runtimes that exist on the machine. Existing `config.yml` at any destination is preserved on re-install.
-- New `tests/` suite under `pytest` against an `httpx` mock transport (`pip install -r dev-requirements.txt`, then `pytest -v`).
+- New `tests/` suite under `pytest` against an `httpx` mock transport (`pip install -r dev-requirements.txt`, then `pytest -v`), plus an end-to-end smoke runner (`tests/run_cli.sh`) that hits a real openKMS.
 
 ## Development
+
+### Unit tests (offline, no openKMS needed)
+
+`tests/test_*.py` use `httpx.MockTransport`, so they don't talk to any backend.
 
 ```bash
 pip install -r requirements.txt -r dev-requirements.txt
 pytest -v
 ```
 
-Layout:
+### End-to-end smoke (real openKMS)
+
+`tests/run_cli.sh` shells out to `python scripts/cli.py …` for 21 read-path commands (ping → search → documents/articles/wiki → KB list/search/ask → ontology cypher/text-to-cypher/ask → eval datasets), chaining ids automatically (the first `id` from each `list` feeds the next `get`/`markdown`). It can be run end-to-end or you can copy individual lines to your shell.
+
+Pre-reqs: a working `config.yml` (`api_base_url` + `api_key`) and `jq` on `PATH`.
+
+```bash
+bash tests/run_cli.sh
+```
+
+Edit the `Q_*` variables at the top of the script to change the search query, the KB question, the Cypher, etc. A failing step doesn't abort the rest (`set +e`), so you get a full pass over every endpoint in one go. The Python equivalent is at `tests/smoke.py` if you'd rather drive it from Python (same coverage, also writes a per-step report to `/tmp/openkms_smoke/`).
+
+### Layout
 
 ```
 openkms-skill/
@@ -142,7 +162,10 @@ openkms-skill/
       config.py         # config.yml loader
       _io.py            # JSON pretty-print, file helpers
       commands/         # one module per resource (ping, search, kb, ontology, ...)
-  tests/                # httpx MockTransport-based tests
+  tests/
+    test_*.py           # pytest + httpx MockTransport (offline)
+    run_cli.sh          # end-to-end smoke against a real openKMS (jq required)
+    smoke.py            # same coverage as run_cli.sh, in Python
   SKILL.md              # agent instructions (when/how to use)
   reference.md          # per-command JSON shapes + curl equivalents
   install.sh            # multi-target installer
