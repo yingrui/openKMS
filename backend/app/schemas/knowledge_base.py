@@ -194,6 +194,7 @@ class SearchRequest(BaseModel):
     label_filters: dict[str, str | list[str]] | None = None
     metadata_filters: dict[str, Any] | None = None
     include_historical_documents: bool = False
+    force_dense: bool = False  # internal: qa-agent sets this to bypass hybrid recursion
 
 
 class SearchResult(BaseModel):
