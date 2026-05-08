@@ -1,0 +1,7 @@
+# local secrets — copy of config.yml.example with api_key filled in
+config.yml
+
+# Python bytecode
+__pycache__/
+*.pyc
+.pytest_cache/
