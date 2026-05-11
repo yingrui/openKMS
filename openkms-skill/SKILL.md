@@ -18,6 +18,7 @@ description: >-
 1. **Config** — The runtime reads `config.yml` in **this directory** (next to `SKILL.md`). It must include:
    - `api_base_url` — backend origin only, e.g. `http://127.0.0.1:8102` (no trailing slash).
    - `api_key` — personal key from **Settings → API keys** in openKMS (user menu **Settings**; `okms.{uuid}.{secret}`).
+   - Optional: `default_document_channel_id` / `default_article_channel_id` — UUID strings; when set, `documents list|upload` and `articles list|create|from-url` may omit `--channel-id` and use these defaults (see `config.yml.example`).
 
 2. **If either value is missing** — Ask the user for the backend URL and a new key from **Settings** (they see the full token once when creating it). Then **write or update** `config.yml` in this skill directory. Never echo the key back in full unless the user explicitly asks.
 
@@ -55,7 +56,7 @@ Some practical guidance:
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is now **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches* with confidence scores. Lexical tokens like product codes (e.g. `WWY`, `MIL`) are heavily weighted via BM25, so `kb search --q "WWY 年化收益"` returns WWY-specific chunks even when the embedding alone wouldn't. First call per KB cold-starts the BM25 index (paginates all chunks/FAQs); subsequent calls are fast. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope. Don't try to bypass — surface the error.
-- **Write commands and confirm gating.** Old write groups (`documents upload`, `articles create`, `wiki put-page`, `kb-faq create`, `evaluation-datasets run`) execute immediately — confirm with the user before bulk loops. The newer `ontology objects` / `ontology links` subgroups gate every mutation: `--dry-run` prints the planned `[METHOD] path + body` without sending; `--yes`/`-y` skips the prompt; without either flag on a TTY the user is asked `Proceed? [y/N]`; **on a non-TTY stdin without `--yes` the command refuses and exits 2**, so an agent must pass `--yes` deliberately.
+- **Write commands and confirm gating.** Every mutating CLI subcommand uses the same pattern as ontology objects/links: `--dry-run` prints the planned `[METHOD] path + body` (upload uses a JSON summary with `channel_id` and `file` path, not file bytes) and exits 0 without HTTP; `-y` / `--yes` skips the prompt; without either on a TTY you get `Proceed? [y/N]`; **on a non-TTY without `--yes` the command exits 2** — agents must pass `--yes` deliberately.
 - **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then `ontology objects sync-neo4j` / `ontology links sync-neo4j` to MERGE the changes into Neo4j.
 - **Output is verbose.** Each list response can include long arrays. If you're scanning many records, pipe through `jq` to project just the fields you need rather than dumping everything into context.
 
@@ -94,28 +95,28 @@ Some practical guidance:
 
 ## Write tasks
 
+Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (non-TTY without `--yes` exits 2).
+
 | Goal | Command |
 |------|---------|
 | List document channels (tree) | `python scripts/cli.py document-channels list` |
-| Create document channel | `python scripts/cli.py document-channels create --name "Inbox"` |
-| Upload a file to a channel | `python scripts/cli.py documents upload --channel-id ID --file /path/to/doc.pdf` |
+| Create document channel | `python scripts/cli.py document-channels create --name "Inbox" --yes` |
+| Upload a file to a channel | `python scripts/cli.py documents upload --channel-id ID --file /path/to/doc.pdf --yes` (or omit `--channel-id` if `default_document_channel_id` is set in `config.yml`) |
 | List article channels (tree) | `python scripts/cli.py article-channels list` |
-| Create article channel | `python scripts/cli.py article-channels create --name "Internal Wiki"` |
-| Create article from a markdown file | `python scripts/cli.py articles create --channel-id ID --name "Title" --markdown-file ./x.md` |
-| Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a` |
+| Create article channel | `python scripts/cli.py article-channels create --name "Internal Wiki" --yes` |
+| Create article from a markdown file | `python scripts/cli.py articles create --channel-id ID --name "Title" --markdown-file ./x.md --yes` |
+| Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a --yes` |
 | List wiki spaces | `python scripts/cli.py wiki-spaces list` |
-| Create wiki space | `python scripts/cli.py wiki-spaces create --name "Field Notes"` |
-| Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md` |
-| Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A"` |
+| Create wiki space | `python scripts/cli.py wiki-spaces create --name "Field Notes" --yes` |
+| Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
+| Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluation datasets | `python scripts/cli.py evaluation-datasets list` |
-| Create evaluation dataset | `python scripts/cli.py evaluation-datasets create --name "..." --kb-id KB_ID` |
-| Trigger an evaluation run | `python scripts/cli.py evaluation-datasets run --id DS_ID --type qa_answer` |
+| Create evaluation dataset | `python scripts/cli.py evaluation-datasets create --name "..." --kb-id KB_ID --yes` |
+| Trigger an evaluation run | `python scripts/cli.py evaluation-datasets run --id DS_ID --type qa_answer --yes` |
 
-### Ontology objects + links (gated writes)
+### Ontology objects + links
 
-Every command below requires `--yes`/`-y` (skip prompt) or `--dry-run` (preview only); without either on a non-TTY stdin the command exits 2.
-
-| Goal | Command |
+Same confirmation rules as other writes. Commands:
 |------|---------|
 | Create object type | `python scripts/cli.py ontology objects create-type --name "Disease" --properties-json '[{"name":"icd","type":"string","required":true}]' --yes` |
 | Update object type | `python scripts/cli.py ontology objects update-type --id OT --display-property name --yes` |

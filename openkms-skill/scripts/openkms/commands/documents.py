@@ -5,8 +5,18 @@ import argparse
 import sys
 from pathlib import Path
 
+from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
+from ..config import load_config
 from .._io import print_json, write_or_print
+
+
+def _document_channel_id(ns: argparse.Namespace) -> str:
+    direct = (getattr(ns, "channel_id", None) or "").strip()
+    if direct:
+        return direct
+    cfg = load_config()
+    return (cfg.get("default_document_channel_id") or "").strip()
 
 
 def cmd_upload(ns: argparse.Namespace) -> None:
@@ -14,11 +24,27 @@ def cmd_upload(ns: argparse.Namespace) -> None:
     if not path.is_file():
         print(f"Not a file: {path}", file=sys.stderr)
         sys.exit(1)
+    chid = _document_channel_id(ns)
+    if not chid:
+        print(
+            "Missing channel: pass --channel-id or set default_document_channel_id in config.yml.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    preview = {"channel_id": chid, "file": str(path.resolve())}
+    confirm_or_abort(
+        "upload document",
+        "POST",
+        "/api/documents/upload",
+        preview,
+        ns.yes,
+        ns.dry_run,
+    )
     with client() as s, path.open("rb") as f:
         r = s.post(
             "/api/documents/upload",
             files={"file": (path.name, f, "application/octet-stream")},
-            data={"channel_id": ns.channel_id},
+            data={"channel_id": chid},
         )
     r.raise_for_status()
     print_json(r.json())
@@ -26,8 +52,9 @@ def cmd_upload(ns: argparse.Namespace) -> None:
 
 def cmd_list(ns: argparse.Namespace) -> None:
     params: dict[str, str | int] = {}
-    if ns.channel_id:
-        params["channel_id"] = ns.channel_id
+    chid = _document_channel_id(ns)
+    if chid:
+        params["channel_id"] = chid
     if ns.search:
         params["search"] = ns.search
     if ns.limit:
@@ -64,12 +91,21 @@ def add_subparser(sub) -> None:
     sp = p.add_subparsers(dest="doc_cmd", required=True)
 
     up = sp.add_parser("upload", help="Upload file to channel")
-    up.add_argument("--channel-id", required=True)
+    up.add_argument(
+        "--channel-id",
+        default="",
+        help="document channel UUID (or set default_document_channel_id in config.yml)",
+    )
     up.add_argument("--file", required=True)
+    add_write_flags(up)
     up.set_defaults(fn=cmd_upload)
 
     ls = sp.add_parser("list", help="List documents (GET /api/documents)")
-    ls.add_argument("--channel-id", default="")
+    ls.add_argument(
+        "--channel-id",
+        default="",
+        help="filter by channel (or use default_document_channel_id from config.yml)",
+    )
     ls.add_argument("--search", default="")
     ls.add_argument("--limit", type=int, default=0)
     ls.add_argument("--offset", type=int, default=0)

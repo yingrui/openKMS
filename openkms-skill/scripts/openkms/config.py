@@ -27,4 +27,18 @@ def load_config() -> dict[str, Any]:
     if not base or not key:
         print("config.yml must define api_base_url and api_key.", file=sys.stderr)
         sys.exit(2)
-    return {"api_base_url": base, "api_key": key, "raw": raw}
+
+    def _opt_channel_id(key: str) -> str | None:
+        v = raw.get(key)
+        if v is None:
+            return None
+        s = str(v).strip()
+        return s or None
+
+    return {
+        "api_base_url": base,
+        "api_key": key,
+        "raw": raw,
+        "default_document_channel_id": _opt_channel_id("default_document_channel_id"),
+        "default_article_channel_id": _opt_channel_id("default_article_channel_id"),
+    }

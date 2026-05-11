@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import pytest
+
 
 def test_documents_list_with_filters(mock_api):
     recorded, responses = mock_api
@@ -19,6 +21,61 @@ def test_documents_list_with_filters(mock_api):
     assert req.url.params["search"] == "cancer"
     assert req.url.params["limit"] == "20"
     assert req.url.params["offset"] == "10"
+
+
+def test_documents_list_uses_default_channel_from_config(monkeypatch, mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/documents")] = (200, {"items": [], "total": 0})
+
+    def fake_cfg():
+        return {
+            "api_base_url": "http://t",
+            "api_key": "k",
+            "raw": {},
+            "default_document_channel_id": "ch-def",
+            "default_article_channel_id": None,
+        }
+
+    import openkms.commands.documents as dmod
+
+    monkeypatch.setattr(dmod, "load_config", fake_cfg)
+    from openkms.commands.documents import cmd_list
+
+    cmd_list(argparse.Namespace(channel_id="", search="", limit=10, offset=0))
+    assert recorded[-1].url.params["channel_id"] == "ch-def"
+
+
+def test_documents_upload_dry_run_no_request(mock_api, tmp_path, monkeypatch):
+    f = tmp_path / "x.pdf"
+    f.write_bytes(b"%PDF-1.4")
+    recorded, _ = mock_api
+
+    import openkms.commands.documents as dmod
+
+    monkeypatch.setattr(
+        dmod,
+        "load_config",
+        lambda: {
+            "api_base_url": "http://t",
+            "api_key": "k",
+            "raw": {},
+            "default_document_channel_id": "ch1",
+            "default_article_channel_id": None,
+        },
+    )
+    from openkms.commands.documents import cmd_upload
+
+    with pytest.raises(SystemExit) as ei:
+        cmd_upload(
+            argparse.Namespace(
+                channel_id="",
+                file=str(f),
+                yes=False,
+                dry_run=True,
+            )
+        )
+    assert ei.value.code == 0
+    assert not recorded
 
 
 def test_documents_get(mock_api):
@@ -60,7 +117,7 @@ def test_documents_upload_multipart(mock_api, tmp_path):
     f.write_text("hi", encoding="utf-8")
 
     from openkms.commands.documents import cmd_upload
-    cmd_upload(argparse.Namespace(channel_id="ch9", file=str(f)))
+    cmd_upload(argparse.Namespace(channel_id="ch9", file=str(f), yes=True, dry_run=False))
 
     req = recorded[-1]
     assert req.method == "POST"

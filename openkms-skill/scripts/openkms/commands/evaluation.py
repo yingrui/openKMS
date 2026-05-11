@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
+from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
 from .._io import print_json
 
@@ -28,6 +29,14 @@ def cmd_ds_create(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {"name": ns.name, "knowledge_base_id": ns.kb_id}
     if ns.description:
         body["description"] = ns.description
+    confirm_or_abort(
+        "create evaluation dataset",
+        "POST",
+        "/api/evaluation-datasets",
+        body,
+        ns.yes,
+        ns.dry_run,
+    )
     with client() as s:
         r = s.post("/api/evaluation-datasets", json=body)
     r.raise_for_status()
@@ -57,8 +66,11 @@ def cmd_ds_run(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {}
     if ns.type:
         body["evaluation_type"] = ns.type
+    path = f"/api/evaluation-datasets/{ns.id}/run"
+    preview = body if body else None
+    confirm_or_abort("trigger evaluation run", "POST", path, preview, ns.yes, ns.dry_run)
     with client() as s:
-        r = s.post(f"/api/evaluation-datasets/{ns.id}/run", json=body or None)
+        r = s.post(path, json=body or None)
     r.raise_for_status()
     print_json(r.json())
 
@@ -110,6 +122,7 @@ def add_subparser(sub) -> None:
     cr.add_argument("--name", required=True)
     cr.add_argument("--kb-id", required=True)
     cr.add_argument("--description", default="")
+    add_write_flags(cr)
     cr.set_defaults(fn=cmd_ds_create)
 
     gt = ds_sub.add_parser("get", help="Get dataset (GET /api/evaluation-datasets/{id})")
@@ -130,6 +143,7 @@ def add_subparser(sub) -> None:
         choices=["", "search_retrieval", "qa_answer"],
         help="Restrict run to one evaluation type; default runs both",
     )
+    add_write_flags(rn)
     rn.set_defaults(fn=cmd_ds_run)
 
     # ----- evaluation-runs -----

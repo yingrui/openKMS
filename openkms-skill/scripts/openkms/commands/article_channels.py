@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
+from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
 from .._io import print_json
 
@@ -21,6 +22,14 @@ def cmd_create(ns: argparse.Namespace) -> None:
         body["description"] = ns.description
     if ns.parent_id:
         body["parent_id"] = ns.parent_id
+    confirm_or_abort(
+        "create article channel",
+        "POST",
+        "/api/article-channels",
+        body,
+        ns.yes,
+        ns.dry_run,
+    )
     with client() as s:
         r = s.post("/api/article-channels", json=body)
     r.raise_for_status()
@@ -36,4 +45,5 @@ def add_subparser(sub) -> None:
     c.add_argument("--description", default="")
     c.add_argument("--parent-id", default="")
     c.add_argument("--sort-order", type=int, default=0)
+    add_write_flags(c)
     c.set_defaults(fn=cmd_create)

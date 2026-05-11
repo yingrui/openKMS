@@ -9,17 +9,35 @@ from typing import Any
 
 import httpx
 
+from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
+from ..config import load_config
 from .._io import html_to_markish, print_json, write_or_print
 
 
+def _article_channel_id(ns: argparse.Namespace) -> str:
+    direct = (getattr(ns, "channel_id", None) or "").strip()
+    if direct:
+        return direct
+    cfg = load_config()
+    return (cfg.get("default_article_channel_id") or "").strip()
+
+
 def cmd_create(ns: argparse.Namespace) -> None:
+    chid = _article_channel_id(ns)
+    if not chid:
+        print(
+            "Missing channel: pass --channel-id or set default_article_channel_id in config.yml.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     md = ns.markdown or ""
     if ns.markdown_file:
         md = Path(ns.markdown_file).read_text(encoding="utf-8")
-    body: dict[str, Any] = {"channel_id": ns.channel_id, "name": ns.name, "markdown": md or None}
+    body: dict[str, Any] = {"channel_id": chid, "name": ns.name, "markdown": md or None}
     if ns.origin_url:
         body["origin_article_id"] = ns.origin_url
+    confirm_or_abort("create article", "POST", "/api/articles", body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.post("/api/articles", json=body)
     r.raise_for_status()
@@ -27,6 +45,13 @@ def cmd_create(ns: argparse.Namespace) -> None:
 
 
 def cmd_from_url(ns: argparse.Namespace) -> None:
+    chid = _article_channel_id(ns)
+    if not chid:
+        print(
+            "Missing channel: pass --channel-id or set default_article_channel_id in config.yml.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     with httpx.Client(timeout=60.0, follow_redirects=True) as u:
         fr = u.get(ns.url)
     fr.raise_for_status()
@@ -41,24 +66,31 @@ def cmd_from_url(ns: argparse.Namespace) -> None:
     else:
         body_md = text.strip()
         title = ns.name or "Imported page"
+    body = {
+        "channel_id": chid,
+        "name": title[:512],
+        "markdown": body_md,
+        "origin_article_id": ns.url[:512],
+    }
+    confirm_or_abort(
+        "create article from URL",
+        "POST",
+        "/api/articles",
+        body,
+        ns.yes,
+        ns.dry_run,
+    )
     with client() as s:
-        r = s.post(
-            "/api/articles",
-            json={
-                "channel_id": ns.channel_id,
-                "name": title[:512],
-                "markdown": body_md,
-                "origin_article_id": ns.url[:512],
-            },
-        )
+        r = s.post("/api/articles", json=body)
     r.raise_for_status()
     print_json(r.json())
 
 
 def cmd_list(ns: argparse.Namespace) -> None:
     params: dict[str, str | int] = {}
-    if ns.channel_id:
-        params["channel_id"] = ns.channel_id
+    chid = _article_channel_id(ns)
+    if chid:
+        params["channel_id"] = chid
     if ns.search:
         params["search"] = ns.search
     if ns.limit:
@@ -95,21 +127,35 @@ def add_subparser(sub) -> None:
     sp = p.add_subparsers(dest="ar_cmd", required=True)
 
     cr = sp.add_parser("create", help="Create article")
-    cr.add_argument("--channel-id", required=True)
+    cr.add_argument(
+        "--channel-id",
+        default="",
+        help="article channel UUID (or set default_article_channel_id in config.yml)",
+    )
     cr.add_argument("--name", required=True)
     cr.add_argument("--markdown", default="")
     cr.add_argument("--markdown-file", default="")
     cr.add_argument("--origin-url", default="")
+    add_write_flags(cr)
     cr.set_defaults(fn=cmd_create)
 
     fu = sp.add_parser("from-url", help="Fetch URL and create article (HTML simplified)")
-    fu.add_argument("--channel-id", required=True)
+    fu.add_argument(
+        "--channel-id",
+        default="",
+        help="article channel UUID (or set default_article_channel_id in config.yml)",
+    )
     fu.add_argument("--url", required=True)
     fu.add_argument("--name", default="")
+    add_write_flags(fu)
     fu.set_defaults(fn=cmd_from_url)
 
     ls = sp.add_parser("list", help="List articles (GET /api/articles)")
-    ls.add_argument("--channel-id", default="")
+    ls.add_argument(
+        "--channel-id",
+        default="",
+        help="filter by channel (or use default_article_channel_id from config.yml)",
+    )
     ls.add_argument("--search", default="")
     ls.add_argument("--limit", type=int, default=0)
     ls.add_argument("--offset", type=int, default=0)

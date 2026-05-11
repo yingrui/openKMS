@@ -27,7 +27,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 
-> **Mutation safety.** Every write subcommand under `ontology objects` and `ontology links` requires explicit confirmation: pass `--yes`/`-y` to skip the prompt, `--dry-run` to print the planned `[METHOD] path + body` and exit 0, or answer `y` at the interactive prompt. **Without `--yes` on a non-TTY stdin (e.g. pipes, agents), the command refuses and exits 2** — agents that drive these commands must opt in deliberately.
+> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, `articles create`/`from-url`, wiki, KB FAQ, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
 ## Quick examples
 
@@ -88,7 +88,8 @@ python scripts/cli.py wiki put-page \
   --space-id <space_id> \
   --path sops/sop-1092 \
   --title "SOP-1092 重疾理赔申请材料清单" \
-  --file ./sop-1092.md
+  --file ./sop-1092.md \
+  --yes
 ```
 
 ### 6. Compare two evaluation runs

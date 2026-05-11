@@ -4,6 +4,7 @@
 api_base_url: "http://127.0.0.1:8102"
 api_key: ""
 
-# optional:
+# Optional: default channel UUIDs when --channel-id is omitted on
+# documents list|upload and articles list|create|from-url
 # default_document_channel_id: ""
 # default_article_channel_id: ""

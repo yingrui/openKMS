@@ -7,10 +7,12 @@ Paths below are relative to `api_base_url` from `config.yml`. Send header `Autho
 ```yaml
 api_base_url: "http://127.0.0.1:8102"
 api_key: "okms.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.your-secret"
-# optional defaults (not currently consumed by cli.py, kept for downstream tools):
-# default_document_channel_id: "..."
-# default_article_channel_id: "..."
+# optional: when set, documents list|upload and articles list|create|from-url may omit --channel-id
+# default_document_channel_id: "uuid"
+# default_article_channel_id: "uuid"
 ```
+
+All mutating CLI commands accept `-y`/`--yes` and `--dry-run` (see `SKILL.md`). On a non-TTY, writes without `--yes` exit 2.
 
 Create keys in the openKMS web app: **Settings** (header user menu → **Settings**, `/settings`) → **API keys** section. The full token is shown only once at creation time.
 
@@ -36,7 +38,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `documents list` | GET | `/api/documents` | Query: `channel_id?`, `search?`, `limit?`, `offset?`. Returns `{items, total}`. Server-side scope filtering. |
+| `documents list` | GET | `/api/documents` | Query: `channel_id?`, `search?`, `limit?`, `offset?`. If `--channel-id` is omitted, `default_document_channel_id` from `config.yml` is used when set. |
 | `documents get` | GET | `/api/documents/{id}` | Full document, including `markdown`. 404 if user lacks access to the document's channel. |
 | `documents markdown` | GET | `/api/documents/{id}` | Same as `get`; CLI extracts `.markdown` and writes to stdout (or `--out FILE`). |
 | `documents upload` | POST multipart | `/api/documents/upload` | Fields: `file`, `channel_id`. For `.xlsx` the server builds a sheet preview synchronously; for other types it enqueues the channel pipeline if `auto_process` is on. |
@@ -45,7 +47,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `articles list` | GET | `/api/articles` | Query: `channel_id?`, `search?`, `limit?`, `offset?`. Returns `{items, total}`. |
+| `articles list` | GET | `/api/articles` | Query: `channel_id?`, `search?`, `limit?`, `offset?`. If `--channel-id` is omitted, `default_article_channel_id` from `config.yml` is used when set. Returns `{items, total}`. |
 | `articles get` | GET | `/api/articles/{id}` | Full article, including `markdown`. |
 | `articles markdown` | GET | `/api/articles/{id}` | Extracts `.markdown` for stdout/file. |
 | `articles create` | POST | `/api/articles` | Body `{channel_id, name, markdown, origin_article_id?}`. CLI accepts `--markdown` inline or `--markdown-file`. |

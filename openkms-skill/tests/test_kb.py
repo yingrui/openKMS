@@ -54,7 +54,7 @@ def test_kb_faq_create(mock_api):
     recorded, _ = mock_api
 
     from openkms.commands.kb_faq import cmd_create
-    cmd_create(argparse.Namespace(kb_id="kb1", question="Q", answer="A"))
+    cmd_create(argparse.Namespace(kb_id="kb1", question="Q", answer="A", yes=True, dry_run=False))
 
     req = recorded[-1]
     assert req.method == "POST"

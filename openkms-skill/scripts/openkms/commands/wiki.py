@@ -5,16 +5,20 @@ import argparse
 from pathlib import Path
 from urllib.parse import quote
 
+from .._confirm import add_write_flags, confirm_or_abort
 from ..client import client
 from .._io import print_json
 
 
 def cmd_put_page(ns: argparse.Namespace) -> None:
-    raw = Path(ns.file).read_text(encoding="utf-8")
+    path = Path(ns.file)
+    raw = path.read_text(encoding="utf-8")
     path_enc = quote(ns.path.strip("/").lstrip("/"), safe="")
+    api_path = f"/api/wiki-spaces/{ns.space_id}/pages/by-path/{path_enc}"
     body = {"title": ns.title, "body": raw, "metadata": None}
+    confirm_or_abort("upsert wiki page", "PUT", api_path, body, ns.yes, ns.dry_run)
     with client() as s:
-        r = s.put(f"/api/wiki-spaces/{ns.space_id}/pages/by-path/{path_enc}", json=body)
+        r = s.put(api_path, json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -48,6 +52,7 @@ def add_subparser(sub) -> None:
     pp.add_argument("--path", required=True, help="Obsidian-style path, e.g. notes/hello")
     pp.add_argument("--title", required=True)
     pp.add_argument("--file", required=True, help="Markdown file")
+    add_write_flags(pp)
     pp.set_defaults(fn=cmd_put_page)
 
     ls = sp.add_parser("list-pages", help="List pages in space (paginated)")

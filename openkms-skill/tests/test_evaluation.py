@@ -5,6 +5,30 @@ import argparse
 import json
 
 
+def test_ds_create_posts_body(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/evaluation-datasets")] = (200, {"id": "ds-new"})
+
+    from openkms.commands.evaluation import cmd_ds_create
+
+    cmd_ds_create(
+        argparse.Namespace(
+            name="Smoke DS",
+            kb_id="kb1",
+            description="d",
+            yes=True,
+            dry_run=False,
+        )
+    )
+    req = recorded[-1]
+    assert req.method == "POST"
+    assert json.loads(req.content) == {
+        "name": "Smoke DS",
+        "knowledge_base_id": "kb1",
+        "description": "d",
+    }
+
+
 def test_ds_items_pagination(mock_api):
     recorded, _ = mock_api
 
@@ -20,7 +44,7 @@ def test_ds_run_with_type(mock_api):
     recorded, _ = mock_api
 
     from openkms.commands.evaluation import cmd_ds_run
-    cmd_ds_run(argparse.Namespace(id="ds1", type="qa_answer"))
+    cmd_ds_run(argparse.Namespace(id="ds1", type="qa_answer", yes=True, dry_run=False))
 
     req = recorded[-1]
     assert req.method == "POST"
@@ -32,7 +56,7 @@ def test_ds_run_default_type(mock_api):
     recorded, _ = mock_api
 
     from openkms.commands.evaluation import cmd_ds_run
-    cmd_ds_run(argparse.Namespace(id="ds1", type=""))
+    cmd_ds_run(argparse.Namespace(id="ds1", type="", yes=True, dry_run=False))
 
     req = recorded[-1]
     # When --type omitted, body is omitted (server defaults to running both).

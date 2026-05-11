@@ -41,6 +41,7 @@ def test_wiki_put_page_body(mock_api, tmp_path):
     from openkms.commands.wiki import cmd_put_page
     cmd_put_page(argparse.Namespace(
         space_id="sp1", path="my/page", title="T", file=str(f),
+        yes=True, dry_run=False,
     ))
 
     req = recorded[-1]
