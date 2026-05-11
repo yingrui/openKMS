@@ -18,7 +18,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `articles` | `list`, `get`, `markdown` | `create`, `from-url` |
 | `wiki` | `list-pages`, `get-page` | `put-page` |
 | `wiki-spaces` | `list` | `create` |
-| `document-channels` / `article-channels` | `list` | `create` |
+| `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
 | `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |

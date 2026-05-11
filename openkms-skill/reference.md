@@ -27,12 +27,14 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 
 ### Channels
 
-| CLI | Method | Path |
-|---|---|---|
-| `document-channels list` | GET | `/api/document-channels` |
-| `document-channels create` | POST | `/api/document-channels` body `{name, sort_order, description?, parent_id?}` |
-| `article-channels list` | GET | `/api/article-channels` |
-| `article-channels create` | POST | `/api/article-channels` (same body shape) |
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `document-channels list` | GET | `/api/document-channels` | Default: JSON tree. Pass `--tree` for indented human-readable names + ids. |
+| `document-channels create` | POST | `/api/document-channels` | Body `{name, sort_order, description?, parent_id?}`. Requires `--yes` / `--dry-run` on non-TTY. |
+| `document-channels update` | PUT | `/api/document-channels/{id}` | Partial body: `name`, `description`, `parent_id`, `sort_order`, `pipeline_id`, `auto_process`, `extraction_model_id`, `extraction_schema` (CLI: `--extraction-schema-json`). Gated. |
+| `article-channels list` | GET | `/api/article-channels` | Default: JSON. `--tree` for human-readable. |
+| `article-channels create` | POST | `/api/article-channels` | Same create shape as document channels. Gated. |
+| `article-channels update` | PUT | `/api/article-channels/{id}` | Partial: `name`, `description`, `parent_id`, `sort_order`. Gated. |
 
 ### Documents
 

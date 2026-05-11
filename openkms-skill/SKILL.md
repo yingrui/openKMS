@@ -66,6 +66,8 @@ Some practical guidance:
 |------|---------|
 | Verify connectivity | `python scripts/cli.py ping` |
 | Global search across content | `python scripts/cli.py search --q "乳腺癌" --types documents,articles --limit 20` |
+| List document channels as indented tree (human-readable) | `python scripts/cli.py document-channels list --tree` |
+| List article channels as indented tree (human-readable) | `python scripts/cli.py article-channels list --tree` |
 | List documents (filter by channel/keyword) | `python scripts/cli.py documents list --channel-id ID --search "心梗" --limit 50` |
 | Get document metadata + body | `python scripts/cli.py documents get --id DOC_ID` |
 | Save just the document markdown to a file | `python scripts/cli.py documents markdown --id DOC_ID --out ./case.md` |
@@ -101,9 +103,11 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 |------|---------|
 | List document channels (tree) | `python scripts/cli.py document-channels list` |
 | Create document channel | `python scripts/cli.py document-channels create --name "Inbox" --yes` |
+| Update document channel | `python scripts/cli.py document-channels update --id DC_ID --name "Renamed" --yes` |
 | Upload a file to a channel | `python scripts/cli.py documents upload --channel-id ID --file /path/to/doc.pdf --yes` (or omit `--channel-id` if `default_document_channel_id` is set in `config.yml`) |
 | List article channels (tree) | `python scripts/cli.py article-channels list` |
 | Create article channel | `python scripts/cli.py article-channels create --name "Internal Wiki" --yes` |
+| Update article channel | `python scripts/cli.py article-channels update --id AC_ID --parent-id PARENT_UUID --yes` |
 | Create article from a markdown file | `python scripts/cli.py articles create --channel-id ID --name "Title" --markdown-file ./x.md --yes` |
 | Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a --yes` |
 | List wiki spaces | `python scripts/cli.py wiki-spaces list` |
