@@ -89,7 +89,7 @@
   },
   "channel": {
     "loadDocsFailed": "Failed to load documents",
-    "filesSkipped": "Some files were skipped. Supported: PDF, PNG, JPG, JPEG, WEBP, DOCX, PPTX, XLSX",
+    "filesSkipped": "Some files were skipped. Supported: PDF, PNG, JPG, JPEG, WEBP, DOCX, PPTX, XLSX, EPUB",
     "uploadToast": "{{count}} document(s) uploaded",
     "uploadFailed": "Upload failed",
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
@@ -128,7 +128,7 @@
     "emptyTitle": "No documents in this channel",
     "emptyHint": "Upload or move documents here",
     "uploadModalTitle": "Upload documents",
-    "uploadModalHint": "PDF, Office (DOCX, PPTX, XLSX), and images (PNG, JPG, JPEG, WEBP) supported.",
+    "uploadModalHint": "PDF, Office (DOCX, PPTX, XLSX), EPUB e-books, and images (PNG, JPG, JPEG, WEBP) supported.",
     "dropzone": "Choose files or drag and drop",
     "moveModalTitle": "Move document",
     "moveModalHint": "Move \"{{name}}\" to another channel.",

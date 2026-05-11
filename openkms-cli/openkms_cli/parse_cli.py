@@ -13,7 +13,7 @@ from .settings import get_cli_settings
 
 console = Console()
 
-parse_app = typer.Typer(help="Parse documents (PDF, images, DOCX, PPTX) using PaddleOCR-VL")
+parse_app = typer.Typer(help="Parse documents (PDF, images, DOCX, PPTX, EPUB) using PaddleOCR-VL")
 
 
 def _json_default(obj: Any) -> Any:
@@ -36,7 +36,7 @@ def parse_run(
         ...,
         path_type=Path,
         exists=True,
-        help="Input file (PDF, PNG, JPG, JPEG, WEBP) or directory for batch",
+        help="Input file (PDF, PNG, JPG, JPEG, WEBP, DOCX, PPTX, EPUB) or directory for batch",
     ),
     output_dir: Optional[Path] = typer.Option(
         None,
@@ -101,7 +101,7 @@ def parse_run(
         files = [input_path]
         out_base = output_dir or input_path.parent / "parsed"
     else:
-        exts = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".docx", ".pptx"}
+        exts = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".docx", ".pptx", ".epub"}
         files = [p for p in input_path.rglob("*") if p.is_file() and p.suffix.lower() in exts]
         if not files:
             console.print("[yellow]No supported files found[/yellow]")

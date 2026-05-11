@@ -69,7 +69,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
-| POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: builds sheet preview + markdown in-process, sets `completed` or `failed` (no parse job). **Other types**: `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX) |
+| POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: builds sheet preview + markdown in-process, sets `completed` or `failed` (no parse job). **Other types** (PDF, images, DOCX, PPTX, EPUB, …): `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX) |
 | GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted); search filters by name; offset/limit for pagination |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |

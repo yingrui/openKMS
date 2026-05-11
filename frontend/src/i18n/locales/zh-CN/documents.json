@@ -89,7 +89,7 @@
   },
   "channel": {
     "loadDocsFailed": "加载文档列表失败",
-    "filesSkipped": "部分文件已跳过。支持：PDF、PNG、JPG、JPEG、WEBP、DOCX、PPTX、XLSX",
+    "filesSkipped": "部分文件已跳过。支持：PDF、PNG、JPG、JPEG、WEBP、DOCX、PPTX、XLSX、EPUB",
     "uploadToast": "已上传 {{count}} 个文档",
     "uploadFailed": "上传失败",
     "deleteConfirm": "删除「{{name}}」？此操作不可撤销。",
@@ -128,7 +128,7 @@
     "emptyTitle": "此频道暂无文档",
     "emptyHint": "上传或将文档移入此频道",
     "uploadModalTitle": "上传文档",
-    "uploadModalHint": "支持 PDF、Office（DOCX、PPTX、XLSX）以及 PNG、JPG、JPEG、WEBP 图片。",
+    "uploadModalHint": "支持 PDF、Office（DOCX、PPTX、XLSX）、EPUB 电子书以及 PNG、JPG、JPEG、WEBP 图片。",
     "dropzone": "选择文件或拖放到此处",
     "moveModalTitle": "移动文档",
     "moveModalHint": "将「{{name}}」移动到其他频道。",

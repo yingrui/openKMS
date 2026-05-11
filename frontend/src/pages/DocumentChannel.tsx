@@ -17,6 +17,7 @@ import {
   X,
   Loader2,
   Play,
+  BookOpen,
 } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
@@ -47,6 +48,7 @@ const fileTypeIcons: Record<string, typeof FileText> = {
   DOCX: FileText,
   PPTX: FileText,
   XLSX: FileText,
+  EPUB: BookOpen,
 };
 
 function formatDate(iso: string): string {
@@ -441,7 +443,7 @@ export function DocumentChannel() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx,.xlsx,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx,.xlsx,.epub,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/epub+zip"
               multiple
               className="documents-upload-input"
               onChange={handleFileChange}

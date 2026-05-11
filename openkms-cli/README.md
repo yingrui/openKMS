@@ -39,7 +39,7 @@ Covers **`backend_defaults`** merge / fetch behavior (mocked HTTP) and **`parser
 
 **Parse** (local files → `parsed/{file_hash}/…`):
 
-Supported inputs: **PDF**, **PNG/JPG/JPEG/WEBP**, **DOCX**, **PPTX** (DOCX/PPTX need **LibreOffice** `soffice` or `libreoffice` on `PATH` for conversion to PDF).
+Supported inputs: **PDF**, **PNG/JPG/JPEG/WEBP**, **DOCX**, **PPTX** (needs **LibreOffice** `soffice` or `libreoffice` on `PATH`), **EPUB** (needs **MuPDF** `mutool`, e.g. package **mupdf-tools**).
 
 ```bash
 openkms-cli parse run document.pdf -o ./parsed
