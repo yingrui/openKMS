@@ -87,6 +87,20 @@ def api_request_auth() -> tuple[dict[str, str], tuple[str, str] | None]:
     return {"Authorization": f"Bearer {token}"}, None
 
 
+def auth_expired_response(resp: requests.Response) -> bool:
+    """True when the backend rejected a Bearer token as invalid or expired."""
+    if resp.status_code != 401:
+        return False
+    try:
+        body = resp.json()
+        detail = body.get("detail")
+        if isinstance(detail, dict):
+            return detail.get("code") in ("INVALID_OR_EXPIRED_TOKEN", "INVALID_TOKEN")
+    except Exception:
+        pass
+    return False
+
+
 def try_api_request_auth() -> tuple[dict[str, str], tuple[str, str] | None] | None:
     """
     Like api_request_auth but returns None if OIDC creds missing or local basic not set.

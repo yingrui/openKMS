@@ -32,6 +32,12 @@
     "loadFailed": "Failed to load jobs",
     "retryQueued": "Job retry queued",
     "retryFailed": "Retry failed",
+    "markFailed": "Mark failed",
+    "markFailedTitle": "Worker stopped or crashed; mark this job failed",
+    "markFailedConfirm": "Mark this job as failed? Use when the worker stopped and the job is stuck running or pending.",
+    "markFailedToast": "Job marked failed",
+    "markFailedFailed": "Could not mark job failed",
+    "markingFailed": "Marking failed…",
     "deleteConfirm": "Delete this job? This cannot be undone.",
     "deletedToast": "Job deleted",
     "createdToast": "Job created",
@@ -59,6 +65,8 @@
     "documentPlaceholder": "Paste document ID",
     "pipeline": "Pipeline",
     "pipelineDefault": "Use channel default",
+    "forceFullReparse": "Full re-parse",
+    "forceFullReparseTitle": "Ignore cached parse on storage and run the pipeline again.",
     "createJob": "Create Job"
   },
   "jobDetail": {
@@ -94,7 +102,10 @@
     "queue": "Queue",
     "eventLog": "Event Log",
     "event": "Event",
-    "timestamp": "Timestamp"
+    "timestamp": "Timestamp",
+    "workerLog": "Worker output",
+    "workerLogTruncatedBadge": "Truncated",
+    "workerLogLimit": "Stored up to {{limit}} characters"
   },
   "pipelines": {
     "title": "Pipelines",

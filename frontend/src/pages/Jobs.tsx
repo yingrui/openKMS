@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2 } from 'lucide-react';
+import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchJobs, createJob, retryJob, deleteJob, type JobResponse } from '../data/jobsApi';
+import { fetchJobs, createJob, retryJob, deleteJob, markJobFailed, type JobResponse } from '../data/jobsApi';
 import { fetchPipelines, type PipelineResponse } from '../data/pipelinesApi';
 import './Jobs.css';
 
@@ -31,6 +31,7 @@ export function Jobs() {
   const [docIdInput, setDocIdInput] = useState('');
   const [pipelineIdInput, setPipelineIdInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [forceReparseCreate, setForceReparseCreate] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,6 +63,17 @@ export function Jobs() {
     }
   };
 
+  const handleMarkFailed = async (jobId: number) => {
+    if (!window.confirm(t('jobs.markFailedConfirm'))) return;
+    try {
+      await markJobFailed(jobId);
+      toast.success(t('jobs.markFailedToast'));
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('jobs.markFailedFailed'));
+    }
+  };
+
   const handleDelete = async (jobId: number) => {
     if (!window.confirm(t('jobs.deleteConfirm'))) return;
     try {
@@ -80,10 +92,12 @@ export function Jobs() {
       await createJob({
         document_id: docIdInput.trim(),
         pipeline_id: pipelineIdInput || undefined,
+        force_reparse: forceReparseCreate,
       });
       setShowCreate(false);
       setDocIdInput('');
       setPipelineIdInput('');
+      setForceReparseCreate(false);
       toast.success(t('jobs.createdToast'));
       await load();
     } catch (e) {
@@ -214,6 +228,19 @@ export function Jobs() {
                                 <RefreshCw size={14} />
                               </button>
                             )}
+                            {(job.status === 'running' || job.status === 'pending') && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleMarkFailed(job.id);
+                                }}
+                                title={t('jobs.markFailedTitle')}
+                              >
+                                <CircleX size={14} />
+                              </button>
+                            )}
                             {job.status !== 'running' && (
                               <button
                                 type="button"
@@ -265,6 +292,15 @@ export function Jobs() {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="jobs-modal-checkbox">
+                <input
+                  type="checkbox"
+                  checked={forceReparseCreate}
+                  onChange={(e) => setForceReparseCreate(e.target.checked)}
+                  disabled={submitting}
+                />
+                <span title={t('jobs.forceFullReparseTitle')}>{t('jobs.forceFullReparse')}</span>
               </label>
             </div>
             <div className="jobs-modal-actions">

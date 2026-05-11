@@ -32,6 +32,12 @@
     "loadFailed": "无法加载任务",
     "retryQueued": "已加入重试队列",
     "retryFailed": "重试失败",
+    "markFailed": "标记失败",
+    "markFailedTitle": "Worker 已停止或崩溃时，将任务标记为失败",
+    "markFailedConfirm": "将此任务标记为失败？适用于 Worker 已停止而任务仍显示运行中或等待中。",
+    "markFailedToast": "已标记为失败",
+    "markFailedFailed": "无法标记为失败",
+    "markingFailed": "标记中…",
     "deleteConfirm": "删除此任务？此操作不可撤销。",
     "deletedToast": "已删除任务",
     "createdToast": "已创建任务",
@@ -59,6 +65,8 @@
     "documentPlaceholder": "粘贴文档 ID",
     "pipeline": "流水线",
     "pipelineDefault": "使用频道默认",
+    "forceFullReparse": "完整重新解析",
+    "forceFullReparseTitle": "忽略存储上的解析缓存并重新执行流水线。",
     "createJob": "创建任务"
   },
   "jobDetail": {
@@ -94,7 +102,10 @@
     "queue": "队列",
     "eventLog": "事件日志",
     "event": "事件",
-    "timestamp": "时间戳"
+    "timestamp": "时间戳",
+    "workerLog": "Worker 输出",
+    "workerLogTruncatedBadge": "已截断",
+    "workerLogLimit": "最多保存 {{limit}} 个字符"
   },
   "pipelines": {
     "title": "流水线",

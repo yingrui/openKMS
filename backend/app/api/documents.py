@@ -243,6 +243,24 @@ async def upload_document(
                 "error": "Could not read this workbook. The file may be corrupt or not a valid .xlsx.",
             }
             doc.status = DocumentStatus.FAILED
+    elif ext_lower == "xmind":
+        import asyncio
+
+        from app.services.mindmap_preview import build_xmind_preview
+
+        try:
+            preview, md = await asyncio.to_thread(build_xmind_preview, content, file_hash=file_hash)
+            doc.parsing_result = preview
+            doc.markdown = md
+            doc.status = DocumentStatus.COMPLETED
+            _maybe_upload_page_index_from_markdown(doc, md)
+        except Exception:
+            doc.parsing_result = {
+                "document_kind": "mindmap",
+                "file_hash": file_hash,
+                "error": "Could not read this mind map. The file may be corrupt or not a valid .xmind.",
+            }
+            doc.status = DocumentStatus.FAILED
     elif channel.auto_process and channel.pipeline_id:
         from app.models.pipeline import Pipeline
         pipeline = await db.get(Pipeline, channel.pipeline_id)

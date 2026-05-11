@@ -69,7 +69,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/api/document-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction: "up" \| "down" }`) |
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
-| POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: builds sheet preview + markdown in-process, sets `completed` or `failed` (no parse job). **Other types** (PDF, images, DOCX, PPTX, EPUB, …): `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX) |
+| POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: sheet preview + markdown in-process, `completed` or `failed` (no parse job). **XMIND**: outline markdown from archive `content.json` / `content.xml`, `completed` or `failed` (no parse job). **Other types** (PDF, images, DOCX, PPTX, EPUB, …): `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX/XMIND) |
 | GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted); search filters by name; offset/limit for pagination |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
@@ -118,9 +118,10 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | DELETE | `/api/models/{id}` | Delete model |
 | POST | `/api/models/{id}/test` | Test model (proxies to provider's base_url; supports chat/embedding/VL) |
 | GET | `/api/jobs` | List jobs (optional `?document_id=`) |
-| GET | `/api/jobs/{id}` | Get job detail |
-| POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id? }`). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id` required). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
-| POST | `/api/jobs/{id}/retry` | Retry a failed job (same task: `run_pipeline` vs `run_spreadsheet_preview` from original `task_name`) |
+| GET | `/api/jobs/{id}` | Get job detail (includes `events`, and when the worker persisted output: `worker_log` merged command/stderr/stdout as plain text, `worker_log_truncated`, `worker_log_char_limit`; list endpoint omits log fields) |
+| POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id?, force_reparse? }`). **`force_reparse`** (default `false`): for pipeline document types, if storage already has `{file_hash}/result.json` from a prior successful parse, the worker reuses it and skips VLM (set `true` to always run the CLI). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id`; `force_reparse` ignored). **`.xmind`**: defers `run_mindmap_preview` (no `pipeline_id`; `force_reparse` ignored). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
+| POST | `/api/jobs/{id}/retry` | Retry a failed job; **`run_pipeline` retries always set `force_reparse`** so the VLM CLI runs again (does not reuse partial cache) |
+| POST | `/api/jobs/{id}/mark-failed` | Mark a pending or running job failed when the worker stopped without finishing; updates linked document from pending/running to failed when present |
 | DELETE | `/api/jobs/{id}` | Delete a job (not running) |
 
 ## Knowledge bases

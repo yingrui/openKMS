@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu, Terminal, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchJobById, retryJob, type JobResponse } from '../data/jobsApi';
+import { fetchJobById, markJobFailed, retryJob, type JobResponse } from '../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../data/modelsApi';
 import './JobDetail.css';
@@ -40,6 +40,7 @@ export function JobDetail() {
   const [model, setModel] = useState<ApiModelResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
+  const [markingFailed, setMarkingFailed] = useState(false);
 
   const load = useCallback(async () => {
     if (!jobId) return;
@@ -92,6 +93,21 @@ export function JobDetail() {
     }
   };
 
+  const handleMarkFailed = async () => {
+    if (!job) return;
+    if (!window.confirm(t('jobs.markFailedConfirm'))) return;
+    setMarkingFailed(true);
+    try {
+      await markJobFailed(job.id);
+      toast.success(t('jobs.markFailedToast'));
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('jobs.markFailedFailed'));
+    } finally {
+      setMarkingFailed(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="job-detail">
@@ -137,6 +153,18 @@ export function JobDetail() {
           <button type="button" className="btn btn-secondary" onClick={() => void load()} title={t('shared.refresh')}>
             <RefreshCw size={16} />
           </button>
+          {(job.status === 'running' || job.status === 'pending') && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => void handleMarkFailed()}
+              disabled={markingFailed}
+              title={t('jobs.markFailedTitle')}
+            >
+              {markingFailed ? <Loader2 size={16} className="job-detail-spinner" /> : <CircleX size={16} />}
+              <span>{markingFailed ? t('jobs.markingFailed') : t('jobs.markFailed')}</span>
+            </button>
+          )}
           {job.status === 'failed' && (
             <button type="button" className="btn btn-primary" onClick={() => void handleRetry()} disabled={retrying}>
               {retrying ? <Loader2 size={16} className="job-detail-spinner" /> : <RefreshCw size={16} />}
@@ -263,6 +291,25 @@ export function JobDetail() {
           </dl>
         </section>
       </div>
+
+      {job.worker_log != null && job.worker_log !== '' && (
+        <section className="job-detail-card job-detail-worker-log">
+          <div className="job-detail-worker-log-heading">
+            <h2>
+              <Terminal size={18} /> {t('jobDetail.workerLog')}
+            </h2>
+            {job.worker_log_truncated && (
+              <span className="job-detail-worker-log-badge">{t('jobDetail.workerLogTruncatedBadge')}</span>
+            )}
+          </div>
+          {job.worker_log_char_limit != null && job.worker_log_char_limit > 0 && (
+            <p className="job-detail-worker-log-meta">
+              {t('jobDetail.workerLogLimit', { limit: job.worker_log_char_limit.toLocaleString() })}
+            </p>
+          )}
+          <pre className="job-detail-pre job-detail-worker-log-pre">{job.worker_log}</pre>
+        </section>
+      )}
 
       {job.events && job.events.length > 0 && (
         <section className="job-detail-card job-detail-events">

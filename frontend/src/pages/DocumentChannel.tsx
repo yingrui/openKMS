@@ -18,6 +18,7 @@ import {
   Loader2,
   Play,
   BookOpen,
+  GitBranch,
 } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import {
@@ -48,6 +49,7 @@ const fileTypeIcons: Record<string, typeof FileText> = {
   DOCX: FileText,
   PPTX: FileText,
   XLSX: FileText,
+  XMIND: GitBranch,
   EPUB: BookOpen,
 };
 
@@ -443,7 +445,7 @@ export function DocumentChannel() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx,.xlsx,.epub,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/epub+zip"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.pptx,.xlsx,.epub,.xmind,application/pdf,image/png,image/jpeg,image/webp,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/epub+zip,application/vnd.xmind.workbook"
               multiple
               className="documents-upload-input"
               onChange={handleFileChange}

@@ -83,24 +83,42 @@ def _content_type_for_path(path: str) -> str:
     return suffixes.get(p.suffix.lower(), "application/octet-stream")
 
 
+def _resolve_api_request_auth(*, required: bool = False) -> tuple[dict[str, str], Optional[tuple[str, str]], bool]:
+    from .auth import try_api_request_auth
+
+    cred = try_api_request_auth()
+    if cred is None:
+        if required:
+            console.print("[red]API authentication required[/red]")
+            raise typer.Exit(1)
+        return {}, None, False
+    auth_headers, basic_auth = cred
+    return auth_headers, basic_auth, True
+
+
 def _put_document_markdown(
     api_url: str, document_id: str, markdown: str, auth_headers: dict, basic: tuple[str, str] | None
-) -> bool:
+) -> tuple[bool, dict[str, str], Optional[tuple[str, str]]]:
     """Sync parsed markdown to backend (required before POST /versions snapshots DB state)."""
+    from .auth import auth_expired_response, try_api_request_auth
+
     base = api_url.rstrip("/")
-    headers = {**auth_headers, "Content-Type": "application/json"}
-    r = requests.put(
-        f"{base}/api/documents/{document_id}/markdown",
-        json={"markdown": markdown},
-        headers=headers,
-        auth=basic,
-        timeout=300,
-    )
-    if not r.ok:
+    url = f"{base}/api/documents/{document_id}/markdown"
+    payload = {"markdown": markdown}
+    for attempt in range(2):
+        headers = {**auth_headers, "Content-Type": "application/json"}
+        r = requests.put(url, json=payload, headers=headers, auth=basic, timeout=300)
+        if r.ok:
+            console.print("[dim]Markdown synced to API[/dim]")
+            return True, auth_headers, basic
+        if attempt == 0 and auth_expired_response(r):
+            cred = try_api_request_auth()
+            if cred is not None:
+                auth_headers, basic = cred
+                continue
         console.print(f"[yellow]PUT markdown failed: {r.status_code} {r.text[:200]}[/yellow]")
-        return False
-    console.print("[dim]Markdown synced to API[/dim]")
-    return True
+        return False, auth_headers, basic
+    return False, auth_headers, basic
 
 
 def _post_pipeline_version(
@@ -367,17 +385,10 @@ def pipeline_run(
             )
             raise typer.Exit(1)
     if document_id:
-        from .auth import try_api_request_auth
-
-        cred = try_api_request_auth()
-        if cred:
-            auth_headers, basic_auth = cred
-            has_api_auth = True
+        auth_headers, basic_auth, has_api_auth = _resolve_api_request_auth(required=extract_metadata)
+        if has_api_auth:
             console.print("[dim]Using API authentication[/dim]")
-        elif extract_metadata:
-            console.print("[red]API authentication required for --extract-metadata[/red]")
-            raise typer.Exit(1)
-        else:
+        elif not extract_metadata:
             console.print("[yellow]No API auth; skipping markdown sync and pipeline version.[/yellow]")
 
     access_key = cfg.aws_access_key_id
@@ -510,13 +521,16 @@ def pipeline_run(
             )
 
         markdown_synced = False
-        if not skip_upload and document_id and has_api_auth and result.get("markdown"):
-            progress.update(task, description="Syncing markdown to API...")
-            markdown_synced = _put_document_markdown(
-                api_url, document_id, result["markdown"], auth_headers, basic_auth
-            )
+        if not skip_upload and document_id and result.get("markdown"):
+            auth_headers, basic_auth, has_api_auth = _resolve_api_request_auth(required=extract_metadata)
+            if has_api_auth:
+                progress.update(task, description="Syncing markdown to API...")
+                markdown_synced, auth_headers, basic_auth = _put_document_markdown(
+                    api_url, document_id, result["markdown"], auth_headers, basic_auth
+                )
 
-        if extract_metadata and has_api_auth and document_id and result.get("markdown"):
+        if extract_metadata and document_id and result.get("markdown"):
+            auth_headers, basic_auth, has_api_auth = _resolve_api_request_auth(required=True)
             progress.update(task, description="Extracting metadata...")
             try:
                 from .extract import extract_metadata_sync
@@ -532,16 +546,29 @@ def pipeline_run(
 
             if extraction_model_name:
                 from urllib.parse import quote
+
+                from .auth import auth_expired_response, try_api_request_auth
+
                 base = api_url.rstrip("/")
                 config_url = f"{base}/api/models/config-by-name?model_name={quote(extraction_model_name)}"
-                req_headers = {**auth_headers}
-                config_resp = requests.get(
-                    config_url,
-                    headers=req_headers,
-                    auth=basic_auth,
-                    timeout=30,
-                )
-                if not config_resp.ok:
+                config_resp = None
+                for attempt in range(2):
+                    req_headers = {**auth_headers}
+                    config_resp = requests.get(
+                        config_url,
+                        headers=req_headers,
+                        auth=basic_auth,
+                        timeout=30,
+                    )
+                    if config_resp.ok:
+                        break
+                    if attempt == 0 and auth_expired_response(config_resp):
+                        cred = try_api_request_auth()
+                        if cred is not None:
+                            auth_headers, basic_auth = cred
+                            continue
+                    break
+                if config_resp is None or not config_resp.ok:
                     try:
                         err = config_resp.json().get("detail", config_resp.text)
                     except Exception:

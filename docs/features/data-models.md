@@ -165,6 +165,15 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 - Managed by procrastinate; stores task_name, args (document_id, pipeline_id, knowledge_base_id, etc.), status, attempts, timestamps
 
+### JobWorkerLog (job_worker_logs)
+
+- `procrastinate_job_id` (PK, bigint): same id as `procrastinate_jobs.id`
+- `log_text` (TEXT): captured worker output (command + stderr + stdout), truncated server-side to `char_limit_applied` when over limit
+- `truncated` (boolean)
+- `char_limit_applied` (integer): cap used for that row (from **`OPENKMS_JOB_LOG_MAX_CHARS`**)
+- `created_at`
+- Removed when the job is deleted via **`DELETE /api/jobs/{id}`**
+
 ## Auth and permissions
 
 ### User (local auth only)

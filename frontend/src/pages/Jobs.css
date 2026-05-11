@@ -249,6 +249,19 @@
   color: var(--color-text);
 }
 
+.jobs-modal-body label.jobs-modal-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.jobs-modal-body label.jobs-modal-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
 .jobs-modal-actions {
   display: flex;
   justify-content: flex-end;

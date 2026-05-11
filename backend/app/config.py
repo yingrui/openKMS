@@ -74,10 +74,17 @@ class Settings(BaseSettings):
 
     # --- Worker: document pipeline subprocess (openkms-cli pipeline run) ---
     pipeline_timeout_seconds: int = Field(
-        default=1800,
+        default=3600,
         ge=1,
         validation_alias="OPENKMS_PIPELINE_TIMEOUT_SECONDS",
         description="Max seconds to wait for run_pipeline subprocess (VLM parse + optional metadata extraction).",
+    )
+
+    job_log_max_chars: int = Field(
+        default=262_144,
+        ge=4096,
+        validation_alias="OPENKMS_JOB_LOG_MAX_CHARS",
+        description="Max characters stored per worker job log (command + stdout + stderr); larger output is truncated.",
     )
 
     # --- App ---

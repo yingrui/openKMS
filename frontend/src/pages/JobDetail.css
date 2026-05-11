@@ -120,6 +120,43 @@
   word-break: break-all;
 }
 
+.job-detail-worker-log {
+  margin-bottom: 24px;
+}
+
+.job-detail-worker-log-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.job-detail-worker-log-heading h2 {
+  margin: 0;
+}
+
+.job-detail-worker-log-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+}
+
+.job-detail-worker-log-meta {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.job-detail-worker-log-pre {
+  max-height: min(60vh, 480px);
+  overflow: auto;
+}
+
 .job-detail-events {
   grid-column: 1 / -1;
 }

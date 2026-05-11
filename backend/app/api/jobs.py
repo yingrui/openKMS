@@ -10,6 +10,7 @@ from app.constants import DocumentStatus
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
+from app.models.job_worker_log import JobWorkerLog
 from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
 
@@ -25,6 +26,8 @@ _STATUS_MAP = {
     "cancelled": "cancelled",
     "aborting": "running",
 }
+
+_MARK_FAILED_STATUSES = frozenset({"todo", "doing"})
 
 
 def _row_to_response(row) -> JobResponse:
@@ -115,6 +118,12 @@ async def get_job(job_id: int, db: AsyncSession = Depends(get_db)):
         if ev.type in ("succeeded", "failed", "cancelled") and ev.at:
             resp.finished_at = ev.at
 
+    wl = await db.get(JobWorkerLog, job_id)
+    if wl is not None:
+        resp.worker_log = wl.log_text
+        resp.worker_log_truncated = wl.truncated
+        resp.worker_log_char_limit = wl.char_limit_applied
+
     return resp
 
 
@@ -131,6 +140,14 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
         from app.jobs.tasks import run_spreadsheet_preview
 
         job_id = await run_spreadsheet_preview.defer_async(
+            document_id=doc.id,
+            file_hash=doc.file_hash or "",
+            file_ext=file_ext,
+        )
+    elif file_ext == "xmind":
+        from app.jobs.tasks import run_mindmap_preview
+
+        job_id = await run_mindmap_preview.defer_async(
             document_id=doc.id,
             file_hash=doc.file_hash or "",
             file_ext=file_ext,
@@ -162,6 +179,7 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
             command=pipeline.command,
             default_args=pipeline.default_args,
             model_id=pipeline.model_id,
+            force_reparse=body.force_reparse,
         )
 
     from sqlalchemy import update
@@ -217,6 +235,14 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
             file_hash=args.get("file_hash", ""),
             file_ext=args.get("file_ext", "xlsx"),
         )
+    elif task_name == "run_mindmap_preview":
+        from app.jobs.tasks import run_mindmap_preview
+
+        new_job_id = await run_mindmap_preview.defer_async(
+            document_id=args.get("document_id", ""),
+            file_hash=args.get("file_hash", ""),
+            file_ext=args.get("file_ext", "xmind"),
+        )
     else:
         from app.jobs.tasks import run_pipeline
 
@@ -230,6 +256,7 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
             command=cmd_template,
             default_args=args.get("default_args"),
             model_id=args.get("model_id"),
+            force_reparse=True,
         )
 
     from sqlalchemy import update
@@ -255,6 +282,60 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
     return _row_to_response(new_row)
 
 
+@router.post("/{job_id}/mark-failed", response_model=JobResponse)
+async def mark_job_failed(job_id: int, db: AsyncSession = Depends(get_db)):
+    """Mark a stale in-flight job failed when the worker stopped without finishing."""
+    from procrastinate.jobs import Status
+
+    from app.jobs import job_app
+
+    result = await db.execute(
+        text(
+            "SELECT id, queue_name, task_name, status, args, scheduled_at, attempts "
+            "FROM procrastinate_jobs WHERE id = :job_id"
+        ),
+        {"job_id": job_id},
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if row.status not in _MARK_FAILED_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only pending or running jobs can be marked failed",
+        )
+
+    try:
+        async with job_app.open_async():
+            await job_app.job_manager.finish_job_by_id_async(
+                job_id=job_id,
+                status=Status.FAILED,
+                delete_job=False,
+            )
+    except Exception as exc:
+        logger.exception("mark_job_failed: procrastinate finish_job failed for job_id=%s", job_id)
+        raise HTTPException(
+            status_code=400,
+            detail="Job could not be marked failed; it may already be finished",
+        ) from exc
+
+    args = row.args or {}
+    document_id = args.get("document_id")
+    if document_id:
+        from sqlalchemy import update
+
+        await db.execute(
+            update(Document)
+            .where(Document.id == document_id)
+            .where(Document.status.in_([DocumentStatus.PENDING, DocumentStatus.RUNNING]))
+            .values(status=DocumentStatus.FAILED)
+        )
+    await db.commit()
+
+    return await get_job(job_id, db)
+
+
 @router.delete("/{job_id}", status_code=204)
 async def delete_job(job_id: int, db: AsyncSession = Depends(get_db)):
     """Delete a job. Running jobs cannot be deleted."""
@@ -272,6 +353,10 @@ async def delete_job(job_id: int, db: AsyncSession = Depends(get_db)):
     if mapped_status == "running":
         raise HTTPException(status_code=400, detail="Cannot delete a running job")
 
+    await db.execute(
+        text("DELETE FROM job_worker_logs WHERE procrastinate_job_id = :job_id"),
+        {"job_id": job_id},
+    )
     await db.execute(
         text("DELETE FROM procrastinate_events WHERE job_id = :job_id"),
         {"job_id": job_id},

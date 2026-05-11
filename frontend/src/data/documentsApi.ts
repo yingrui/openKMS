@@ -62,6 +62,7 @@ const ACCEPTED_TYPES = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/epub+zip',
+  'application/vnd.xmind.workbook',
 ];
 const ACCEPTED_EXTENSIONS = [
   '.pdf',
@@ -73,6 +74,7 @@ const ACCEPTED_EXTENSIONS = [
   '.pptx',
   '.xlsx',
   '.epub',
+  '.xmind',
 ];
 
 export function isAcceptedFile(file: File): boolean {

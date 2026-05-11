@@ -19,6 +19,10 @@ export interface JobResponse {
   attempts: number;
   created_at?: string | null;
   events?: JobEvent[];
+  /** Captured worker subprocess output when present (size-capped on the server). */
+  worker_log?: string | null;
+  worker_log_truncated?: boolean | null;
+  worker_log_char_limit?: number | null;
 }
 
 export interface JobListResponse {
@@ -29,6 +33,8 @@ export interface JobListResponse {
 export interface JobCreate {
   document_id: string;
   pipeline_id?: string | null;
+  /** When true, always run VLM parse; when false, reuse existing `result.json` on storage if present. */
+  force_reparse?: boolean;
 }
 
 export async function fetchJobs(params?: {
@@ -71,6 +77,20 @@ export async function createJob(data: JobCreate): Promise<JobResponse> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to create job');
+  }
+  return res.json();
+}
+
+export async function markJobFailed(jobId: number): Promise<JobResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}/mark-failed`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to mark job failed');
   }
   return res.json();
 }

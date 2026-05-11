@@ -1437,6 +1437,21 @@
   cursor: not-allowed;
 }
 
+.document-detail-force-reparse {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.document-detail-force-reparse input {
+  cursor: pointer;
+}
+
 .document-detail-reset-btn {
   display: inline-flex;
   align-items: center;
@@ -1821,4 +1836,50 @@
 
 .document-detail-spreadsheet-table tr:nth-child(even) td {
   background: color-mix(in srgb, var(--color-bg-elevated) 55%, transparent);
+}
+
+/* Mind map (.xmind) preview */
+.document-detail-mindmap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 120px;
+}
+
+.document-detail-mindmap-sheets {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.document-detail-mindmap-sheet-name {
+  font-weight: 600;
+}
+
+.document-detail-mindmap-sheet-meta {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.document-detail-mindmap-attachments h3 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.document-detail-mindmap-attachments ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.document-detail-mindmap-attachments li {
+  margin-bottom: 4px;
+}
+
+.document-detail-mindmap-attachments code {
+  font-size: 0.8rem;
 }

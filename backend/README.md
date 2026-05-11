@@ -29,7 +29,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_DATABASE_PASSWORD` | (empty) | Database password |
 | `OPENKMS_DATABASE_NAME` | openkms | Database name |
 | `OPENKMS_VLM_URL` | http://localhost:8101 | **mlx-vlm** (PaddleOCR-VL) base URL — not an OpenAI-compatible `/api/v1` server; see [vlm-server](../vlm-server) |
-| `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | 1800 | Max wait for **`run_pipeline`** (`openkms-cli pipeline run`, seconds) |
+| `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | 3600 | Max wait for **`run_pipeline`** (`openkms-cli pipeline run`, seconds) |
 | `OPENKMS_AGENT_MODEL_ID` | (empty) | `api_models.id` for the **embedded** wiki agent (`/api/agent/...`); if empty, the **default LLM** in **Models** (category `llm`, set **Set as default** in the UI) is used. |
 | `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | **Max completion (output) cap** for the wiki agent: sent as `max_tokens` to the chat API. Default avoids invalid requests on models with low output limits; **raise** if your model allows more, **lower** for cost. |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | **Max LangGraph steps** (model+tool loop) per chat turn. The default was too low for bulk get/upsert; raise (e.g. 400) only if you need very large single-turn batches, or use smaller batches per message. |

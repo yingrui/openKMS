@@ -302,6 +302,7 @@ export function DocumentDetail() {
   const [infoVisible, setInfoVisible] = useState(true);
   const [document, setDocument] = useState<DocumentResponse | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [forceFullReparse, setForceFullReparse] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [markdownEditMode, setMarkdownEditMode] = useState(false);
@@ -519,9 +520,24 @@ export function DocumentDetail() {
   const isSpreadsheetLayout =
     (document?.file_type ?? '').toUpperCase() === 'XLSX' || parsingResult?.document_kind === 'spreadsheet';
 
+  const isMindmapLayout =
+    (document?.file_type ?? '').toUpperCase() === 'XMIND' || parsingResult?.document_kind === 'mindmap';
+
+  const isStructuredNonVlmLayout = isSpreadsheetLayout || isMindmapLayout;
+
   const spreadsheetSheets =
     parsingResult?.document_kind === 'spreadsheet' && Array.isArray(parsingResult.sheets)
       ? parsingResult.sheets
+      : null;
+
+  const mindmapSheets =
+    parsingResult?.document_kind === 'mindmap' && Array.isArray(parsingResult.sheets)
+      ? parsingResult.sheets
+      : null;
+
+  const mindmapAttachments =
+    parsingResult?.document_kind === 'mindmap' && Array.isArray(parsingResult.attachments)
+      ? parsingResult.attachments
       : null;
 
   useEffect(() => {
@@ -529,10 +545,10 @@ export function DocumentDetail() {
   }, [id, parsingResult?.document_kind, spreadsheetSheets?.length]);
 
   useEffect(() => {
-    if (isSpreadsheetLayout && rightPanelView === 'pageIndex') {
+    if (isStructuredNonVlmLayout && rightPanelView === 'pageIndex') {
       setRightPanelView('markdown');
     }
-  }, [isSpreadsheetLayout, rightPanelView]);
+  }, [isStructuredNonVlmLayout, rightPanelView]);
 
   const activeSpreadsheetSheet =
     spreadsheetSheets && spreadsheetSheets.length > 0
@@ -628,7 +644,12 @@ export function DocumentDetail() {
     if (!id || !document) return;
     setProcessing(true);
     try {
-      await createJob({ document_id: id });
+      const fileType = document.file_type.toUpperCase();
+      const isStructuredNonVlm = fileType === 'XLSX' || fileType === 'XMIND';
+      await createJob({
+        document_id: id,
+        ...(isStructuredNonVlm ? {} : { force_reparse: forceFullReparse }),
+      });
       toast.success(t('detail.toastProcessJob'));
       const updated = await fetchDocumentById(id);
       setDocument(updated);
@@ -637,7 +658,7 @@ export function DocumentDetail() {
     } finally {
       setProcessing(false);
     }
-  }, [id, document, t]);
+  }, [id, document, forceFullReparse, t]);
 
   const handleReset = useCallback(async () => {
     if (!id || !document) return;
@@ -1140,6 +1161,18 @@ export function DocumentDetail() {
                                 {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
                                 <span>{processing ? t('detail.processing') : t('detail.process')}</span>
                               </button>
+                            )}
+                            {(document.status === 'uploaded' || document.status === 'failed') &&
+                              !['XLSX', 'XMIND'].includes(document.file_type.toUpperCase()) && (
+                              <label className="document-detail-force-reparse">
+                                <input
+                                  type="checkbox"
+                                  checked={forceFullReparse}
+                                  onChange={(e) => setForceFullReparse(e.target.checked)}
+                                  disabled={processing}
+                                />
+                                <span title={t('detail.forceFullReparseTitle')}>{t('detail.forceFullReparse')}</span>
+                              </label>
                             )}
                             {(document.status === 'pending' || document.status === 'failed') && (
                               <button
@@ -1819,8 +1852,14 @@ export function DocumentDetail() {
         >
           <section className="document-detail-panel document-detail-images">
             <h2 className="document-detail-panel-header">
-              {isSpreadsheetLayout ? <Table size={16} /> : <ImageIcon size={16} />}
-              <span>{isSpreadsheetLayout ? t('detail.panelWorkbook') : t('detail.panelPages')}</span>
+              {isSpreadsheetLayout ? <Table size={16} /> : isMindmapLayout ? <ListTree size={16} /> : <ImageIcon size={16} />}
+              <span>
+                {isSpreadsheetLayout
+                  ? t('detail.panelWorkbook')
+                  : isMindmapLayout
+                    ? t('detail.panelMindmap')
+                    : t('detail.panelPages')}
+              </span>
               <button
                 type="button"
                 className="document-detail-extend-btn"
@@ -1881,6 +1920,43 @@ export function DocumentDetail() {
                     </>
                   ) : !parsingResult?.error ? (
                     <p className="document-detail-muted">{t('detail.noSheetData')}</p>
+                  ) : null}
+                </div>
+              ) : isMindmapLayout ? (
+                <div className="document-detail-mindmap">
+                  {parsingResult?.error ? (
+                    <p className="document-detail-spreadsheet-error">{parsingResult.error}</p>
+                  ) : null}
+                  {mindmapSheets && mindmapSheets.length > 0 ? (
+                    <ul className="document-detail-mindmap-sheets">
+                      {mindmapSheets.map((sheet, i) => (
+                        <li key={`${sheet.name}-${i}`}>
+                          <span className="document-detail-mindmap-sheet-name">{sheet.name}</span>
+                          {typeof sheet.topic_count === 'number' ? (
+                            <span className="document-detail-mindmap-sheet-meta">
+                              {t('detail.mindmapTopicCount', { count: sheet.topic_count })}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : !parsingResult?.error ? (
+                    <p className="document-detail-muted">{t('detail.noMindmapData')}</p>
+                  ) : null}
+                  {mindmapAttachments && mindmapAttachments.length > 0 ? (
+                    <div className="document-detail-mindmap-attachments">
+                      <h3>{t('detail.mindmapAttachments')}</h3>
+                      <ul>
+                        {mindmapAttachments.map((att) => (
+                          <li key={att.path}>
+                            <code>{att.path}</code>
+                            {typeof att.size_bytes === 'number' ? (
+                              <span>{t('detail.mindmapAttachmentSize', { size: att.size_bytes })}</span>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ) : null}
                 </div>
               ) : parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
@@ -1951,7 +2027,7 @@ export function DocumentDetail() {
                   <FileText size={14} />
                   <span>{t('detail.tabMarkdown')}</span>
                 </button>
-                {!isSpreadsheetLayout ? (
+                {!isStructuredNonVlmLayout ? (
                   <button
                     type="button"
                     className={`document-detail-panel-tab ${rightPanelView === 'pageIndex' ? 'document-detail-panel-tab--active' : ''}`}

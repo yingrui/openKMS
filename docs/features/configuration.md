@@ -65,7 +65,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_VLM_MODEL` | `mlx-community/Qwen2-VL-2B-Instruct-4bit` | Default model name |
 | `OPENKMS_PADDLEOCR_VL_SERVER_URL` / `OPENKMS_PADDLEOCR_VL_MODEL` | PaddleOCR-VL defaults | **Deprecated** aliases used by older pipelines; prefer `OPENKMS_VLM_*` |
 | `OPENKMS_EXTRACTION_MODEL_ID` | unset | `api_models.id` for the LLM that extracts document metadata; falls back to channel/default settings |
-| `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | `1800` | Worker timeout for `openkms-cli pipeline run` (VLM parse + extraction) |
+| `OPENKMS_PIPELINE_TIMEOUT_SECONDS` | `3600` | Worker timeout for `openkms-cli pipeline run` (VLM parse + extraction) |
 
 ## Embedded agent (LangGraph wiki / future surfaces)
 
