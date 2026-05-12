@@ -323,14 +323,9 @@ async def mark_job_failed(job_id: int, db: AsyncSession = Depends(get_db)):
     args = row.args or {}
     document_id = args.get("document_id")
     if document_id:
-        from sqlalchemy import update
+        from app.services.document_processing_status import sync_document_processing_status_from_jobs
 
-        await db.execute(
-            update(Document)
-            .where(Document.id == document_id)
-            .where(Document.status.in_([DocumentStatus.PENDING, DocumentStatus.RUNNING]))
-            .values(status=DocumentStatus.FAILED)
-        )
+        await sync_document_processing_status_from_jobs(db, document_id)
     await db.commit()
 
     return await get_job(job_id, db)

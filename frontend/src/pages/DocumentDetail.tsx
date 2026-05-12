@@ -563,9 +563,16 @@ export function DocumentDetail() {
 
   const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
   const hasExtractionModel = !!channel?.extraction_model_id;
-  const extractionSchemaFields = normalizeExtractionSchemaToFields(channel?.extraction_schema ?? null);
-  const labelConfig = (channel?.label_config ?? []).filter(
-    (l: { key?: string; object_type_id?: string }) => l.key && l.object_type_id
+  const extractionSchemaFields = useMemo(
+    () => normalizeExtractionSchemaToFields(channel?.extraction_schema ?? null),
+    [channel?.extraction_schema]
+  );
+  const labelConfig = useMemo(
+    () =>
+      (channel?.label_config ?? []).filter(
+        (l: { key?: string; object_type_id?: string }) => l.key && l.object_type_id
+      ),
+    [channel?.label_config]
   );
   const meta = useMemo(() => document?.metadata ?? {}, [document?.metadata]);
   const labelKeys = labelConfig.map((l: { key: string }) => l.key);
@@ -597,10 +604,14 @@ export function DocumentDetail() {
   const allObjectTypeIdsKey = useMemo(() => allObjectTypeIds.join(','), [allObjectTypeIds]);
 
   useEffect(() => {
-    if (allObjectTypeIds.length === 0) return;
+    const uniqueIds = allObjectTypeIdsKey ? allObjectTypeIdsKey.split(',').filter(Boolean) : [];
+    if (uniqueIds.length === 0) {
+      setLabelObjectTypes({});
+      setLabelInstances({});
+      return;
+    }
     let cancelled = false;
     const load = async () => {
-      const uniqueIds = allObjectTypeIds;
       try {
         const [typesRes, instancesRes] = await Promise.all([
           Promise.all(uniqueIds.map((otid) => fetchObjectType(otid))),
@@ -627,7 +638,7 @@ export function DocumentDetail() {
     };
     load();
     return () => { cancelled = true; };
-  }, [channel?.id, allObjectTypeIdsKey, allObjectTypeIds]);
+  }, [document?.channel_id, allObjectTypeIdsKey]);
 
   const getInstanceDisplay = (otid: string, instance: { id: string; data: Record<string, unknown> }) => {
     const ot = labelObjectTypes[otid];

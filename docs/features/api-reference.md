@@ -121,7 +121,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/jobs/{id}` | Get job detail (includes `events`, and when the worker persisted output: `worker_log` merged command/stderr/stdout as plain text, `worker_log_truncated`, `worker_log_char_limit`; list endpoint omits log fields) |
 | POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id?, force_reparse? }`). **`force_reparse`** (default `false`): for pipeline document types, if storage already has `{file_hash}/result.json` from a prior successful parse, the worker reuses it and skips VLM (set `true` to always run the CLI). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id`; `force_reparse` ignored). **`.xmind`**: defers `run_mindmap_preview` (no `pipeline_id`; `force_reparse` ignored). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
 | POST | `/api/jobs/{id}/retry` | Retry a failed job; **`run_pipeline` retries always set `force_reparse`** so the VLM CLI runs again (does not reuse partial cache) |
-| POST | `/api/jobs/{id}/mark-failed` | Mark a pending or running job failed when the worker stopped without finishing; updates linked document from pending/running to failed when present |
+| POST | `/api/jobs/{id}/mark-failed` | Mark a pending or running job failed when the worker stopped without finishing; reconciles linked document processing status from all jobs for that document (does not downgrade `completed` when a later job succeeded) |
 | DELETE | `/api/jobs/{id}` | Delete a job (not running) |
 
 ## Knowledge bases
