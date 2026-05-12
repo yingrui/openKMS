@@ -27,6 +27,8 @@ See `SKILL.md` inside the skill folder. The CLI entrypoint is:
 python scripts/cli.py ping
 ```
 
+**Agents:** use **only** `python scripts/cli.py …` from the installed skill (see `SKILL.md`). Do not hand-roll `curl` or other HTTP clients against `/api/…`; extend the skill in-repo if something is missing.
+
 Subcommands cover document/article channels (**`list`**, optional **`list --tree`** for a human outline, **`create`** / **`update`**), document upload, articles (including a simple **from-url** helper), evaluation datasets, KB FAQs, wiki spaces (**linked channel documents** via `wiki-spaces documents …`), wiki pages and **wiki files** (`wiki files list` / `wiki files delete`), and wiki page upsert — each maps to existing `/api/...` routes.
 
 **Mutations** require `-y`/`--yes` or `--dry-run` (on a non-TTY, writes without `--yes` exit 2). Optional `default_document_channel_id` / `default_article_channel_id` in `config.yml` let you omit `--channel-id` on `documents` and `articles` list/upload/create/from-url when you always use the same channels.

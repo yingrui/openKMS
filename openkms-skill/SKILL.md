@@ -10,10 +10,17 @@ description: >-
   create articles (incl. from URL), upsert wiki pages, delete wiki files, link/unlink
   wiki↔documents, create KB FAQs and evaluation
   datasets, trigger evaluation runs. Use when the user wants an agent — or any external
-  tool — to read content from or push content to openKMS without the web UI.
+  tool — to read content from or push content to openKMS without the web UI. Agents must use
+  the bundled `scripts/cli.py` only (no ad-hoc curl or custom HTTP).
 ---
 
 # openKMS skill
+
+## Mandatory for agents: use `scripts/cli.py` only
+
+Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [reference.md](reference.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
+
+**Every** read and write against this deployment must go through **`python scripts/cli.py …`** from this skill’s **`scripts/`** tree (after `pip install -r requirements.txt`). That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
 
 ## Before you act
 
@@ -24,7 +31,7 @@ description: >-
 
 2. **If either value is missing** — Ask the user for the backend URL and a new key from **Settings** (they see the full token once when creating it). Then **write or update** `config.yml` in this skill directory. Never echo the key back in full unless the user explicitly asks.
 
-3. **Prefer the bundled scripts** — Run Python CLI under `scripts/` so behavior stays consistent (see [reference.md](reference.md)).
+3. **Run the bundled CLI** — From this skill directory (agents: use an absolute path to the skill root):
 
 ```bash
 cd "$(dirname "$0")"   # skill root when invoked from repo; agents use absolute path to skill dir
@@ -32,7 +39,7 @@ pip install -q -r requirements.txt
 python scripts/cli.py ping
 ```
 
-4. **Auth header** — Always `Authorization: Bearer <api_key>`. Same permissions as the user who created the key.
+4. **Auth header** — The CLI sends `Authorization: Bearer <api_key>`. Same permissions as the user who created the key.
 
 ## Install (OpenCode and Claude Code)
 

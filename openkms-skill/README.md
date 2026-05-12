@@ -4,7 +4,7 @@ Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills),
 
 - **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; pass `--target opencode|claude-code|both` or `--dest <path>` to override). Re-running upgrades the tree but **preserves your `config.yml`**.
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
-- **Agent-facing instructions:** [`SKILL.md`](SKILL.md). Per-command JSON shapes & `curl` equivalents: [`reference.md`](reference.md).
+- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). [`reference.md`](reference.md) maps each CLI to HTTP for operators and code review, not for agents to bypass the CLI.
 
 ## Capabilities at a glance
 

@@ -1,6 +1,6 @@
 # openkms-skill — API reference
 
-Paths below are relative to `api_base_url` from `config.yml`. Send header `Authorization: Bearer <api_key>` on every request.
+Paths below are relative to `api_base_url` from `config.yml`. The **CLI** sends `Authorization: Bearer <api_key>` on every request. **Agents must not reimplement these calls with `curl` or custom HTTP code**—use `python scripts/cli.py …` only; this file is for humans maintaining the skill and for reviews.
 
 ## config.yml
 
