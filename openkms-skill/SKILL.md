@@ -11,7 +11,8 @@ description: >-
   wiki↔documents, create KB FAQs and evaluation
   datasets, trigger evaluation runs. Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
-  the bundled `scripts/cli.py` only (no ad-hoc curl or custom HTTP).
+  the bundled `scripts/cli.py` only (no ad-hoc curl or custom HTTP). Do not modify skill
+  source files; only `config.yml` may be created/updated for credentials when the user asks.
 ---
 
 # openKMS skill
@@ -21,6 +22,8 @@ description: >-
 Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [reference.md](reference.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
 
 **Every** read and write against this deployment must go through **`python scripts/cli.py …`** from this skill’s **`scripts/`** tree (after `pip install -r requirements.txt`). That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
+
+**Do not modify this skill’s shipped files.** Never edit, delete, or add files under this skill directory except **`config.yml`** — and **only** to set `api_base_url` and `api_key` when the user explicitly asks you to store them (see **Before you act** §2). Do not touch `SKILL.md`, `README.md`, `reference.md`, `scripts/`, `install.sh`, `requirements.txt`, tests, or any other path here; do not patch or extend the CLI inside the install tree. Changes belong in the **openKMS repository** with a normal human review, not in the agent’s copy of the skill.
 
 ## Before you act
 
