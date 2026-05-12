@@ -61,6 +61,9 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 |---|---|---|---|
 | `wiki-spaces list` | GET | `/api/wiki-spaces` | Requires `console:wikis_read` (server-enforced). |
 | `wiki-spaces create` | POST | `/api/wiki-spaces` | Requires `console:wikis_write`. |
+| `wiki-spaces documents list` | GET | `/api/wiki-spaces/{space_id}/documents` | Linked channel documents (reference only). |
+| `wiki-spaces documents link` | POST | `/api/wiki-spaces/{space_id}/documents` | Body `{document_id}`. 409 if already linked. Gated. |
+| `wiki-spaces documents unlink` | DELETE | `/api/wiki-spaces/{space_id}/documents/{document_id}` | Removes link only. Gated. |
 | `wiki list-pages` | GET | `/api/wiki-spaces/{space_id}/pages` | Paginated. |
 | `wiki get-page` | GET | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | `path` is Obsidian-style; CLI URL-encodes with `safe=""`. |
 | `wiki put-page` | PUT | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | Body `{title, body, metadata: null}`. Upserts. |

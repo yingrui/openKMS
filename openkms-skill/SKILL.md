@@ -74,6 +74,7 @@ Some practical guidance:
 | List articles (filter by channel/keyword) | `python scripts/cli.py articles list --channel-id ID --search "豁免"` |
 | Get article markdown | `python scripts/cli.py articles markdown --id ART_ID` |
 | List wiki pages in a space | `python scripts/cli.py wiki list-pages --space-id SP_ID` |
+| List channel documents linked to a wiki space (UI “linked documents”) | `python scripts/cli.py wiki-spaces documents list --space-id SP_ID` |
 | Get one wiki page by Obsidian path | `python scripts/cli.py wiki get-page --space-id SP_ID --path notes/onboarding` |
 | List knowledge bases | `python scripts/cli.py kb list` |
 | Semantic search over KB chunks + FAQs | `python scripts/cli.py kb search --id KB_ID --q "既往症定义" --limit 10` |
@@ -112,6 +113,8 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a --yes` |
 | List wiki spaces | `python scripts/cli.py wiki-spaces list` |
 | Create wiki space | `python scripts/cli.py wiki-spaces create --name "Field Notes" --yes` |
+| Link a channel document to a wiki space | `python scripts/cli.py wiki-spaces documents link --space-id SP_ID --document-id DOC_ID --yes` |
+| Unlink a document from a wiki space (does not delete the document) | `python scripts/cli.py wiki-spaces documents unlink --space-id SP_ID --document-id DOC_ID --yes` |
 | Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluation datasets | `python scripts/cli.py evaluation-datasets list` |

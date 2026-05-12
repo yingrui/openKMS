@@ -17,7 +17,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `documents` | `list`, `get`, `markdown` | `upload` |
 | `articles` | `list`, `get`, `markdown` | `create`, `from-url` |
 | `wiki` | `list-pages`, `get-page` | `put-page` |
-| `wiki-spaces` | `list` | `create` |
+| `wiki-spaces` | `list`, **`documents list`** | `create`, **`documents link`**, **`documents unlink`** |
 | `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
@@ -27,7 +27,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 
-> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, `articles create`/`from-url`, wiki, KB FAQ, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
+> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, `articles create`/`from-url`, `wiki put-page`, `wiki-spaces documents link|unlink`, KB FAQ, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
 ## Quick examples
 
