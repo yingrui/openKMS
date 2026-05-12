@@ -67,6 +67,8 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `wiki list-pages` | GET | `/api/wiki-spaces/{space_id}/pages` | Paginated. |
 | `wiki get-page` | GET | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | `path` is Obsidian-style; CLI URL-encodes with `safe=""`. |
 | `wiki put-page` | PUT | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | Body `{title, body, metadata: null}`. Upserts. |
+| `wiki files list` | GET | `/api/wiki-spaces/{space_id}/files` | `{items:[{id,filename,content_type,size_bytes,wiki_page_id,created_at}], total}`. |
+| `wiki files delete` | DELETE | `/api/wiki-spaces/{space_id}/files/{file_id}` | Removes DB row and storage object when configured. Gated. |
 
 ### Knowledge bases
 

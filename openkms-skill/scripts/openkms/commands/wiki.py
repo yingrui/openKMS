@@ -43,6 +43,29 @@ def cmd_get_page(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_files_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/wiki-spaces/{ns.space_id}/files")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_files_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/wiki-spaces/{ns.space_id}/files/{ns.file_id}"
+    confirm_or_abort(
+        "delete wiki file",
+        "DELETE",
+        path,
+        None,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted wiki file {ns.file_id} in space {ns.space_id}")
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("wiki", help="Wiki pages")
     sp = p.add_subparsers(dest="wp_cmd", required=True)
@@ -65,3 +88,14 @@ def add_subparser(sub) -> None:
     gp.add_argument("--space-id", required=True)
     gp.add_argument("--path", required=True, help="Obsidian-style path, e.g. notes/hello")
     gp.set_defaults(fn=cmd_get_page)
+
+    wf = sp.add_parser("files", help="Wiki space files (attachments / vault binaries)")
+    wfs = wf.add_subparsers(dest="wiki_files_cmd", required=True)
+    fl = wfs.add_parser("list", help="List files (GET …/files)")
+    fl.add_argument("--space-id", required=True)
+    fl.set_defaults(fn=cmd_files_list)
+    fd = wfs.add_parser("delete", help="Delete file row + storage object (DELETE …/files/{id})")
+    fd.add_argument("--space-id", required=True)
+    fd.add_argument("--file-id", required=True)
+    add_write_flags(fd)
+    fd.set_defaults(fn=cmd_files_delete)

@@ -3,10 +3,12 @@ name: openkms
 description: >-
   Operates and queries an openKMS deployment over its HTTP API using a personal API key.
   Read paths: global search across documents/articles/wiki/KBs; list & fetch markdown for
-  documents and articles; list & get wiki pages by path; KB semantic search and grounded
+  documents and articles; list & get wiki pages by path; list wiki space files and linked
+  channel documents; KB semantic search and grounded
   Q&A; run Cypher (or natural-language questions) against the ontology graph; list
   evaluation datasets, items, and runs. Write paths: create channels, upload documents,
-  create articles (incl. from URL), upsert wiki pages, create KB FAQs and evaluation
+  create articles (incl. from URL), upsert wiki pages, delete wiki files, link/unlink
+  wiki↔documents, create KB FAQs and evaluation
   datasets, trigger evaluation runs. Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI.
 ---
@@ -74,6 +76,7 @@ Some practical guidance:
 | List articles (filter by channel/keyword) | `python scripts/cli.py articles list --channel-id ID --search "豁免"` |
 | Get article markdown | `python scripts/cli.py articles markdown --id ART_ID` |
 | List wiki pages in a space | `python scripts/cli.py wiki list-pages --space-id SP_ID` |
+| List wiki space files (attachments / vault binaries) | `python scripts/cli.py wiki files list --space-id SP_ID` |
 | List channel documents linked to a wiki space (UI “linked documents”) | `python scripts/cli.py wiki-spaces documents list --space-id SP_ID` |
 | Get one wiki page by Obsidian path | `python scripts/cli.py wiki get-page --space-id SP_ID --path notes/onboarding` |
 | List knowledge bases | `python scripts/cli.py kb list` |
@@ -116,6 +119,7 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Link a channel document to a wiki space | `python scripts/cli.py wiki-spaces documents link --space-id SP_ID --document-id DOC_ID --yes` |
 | Unlink a document from a wiki space (does not delete the document) | `python scripts/cli.py wiki-spaces documents unlink --space-id SP_ID --document-id DOC_ID --yes` |
 | Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
+| Delete a wiki space file (DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluation datasets | `python scripts/cli.py evaluation-datasets list` |
 | Create evaluation dataset | `python scripts/cli.py evaluation-datasets create --name "..." --kb-id KB_ID --yes` |
