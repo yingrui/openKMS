@@ -42,26 +42,27 @@ class DocumentListItemResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def _map_doc_fields(cls, data: Any) -> Any:
-        if hasattr(data, "doc_metadata"):
-            from app.services.document_lifecycle import document_effective_for_rag
+        if isinstance(data, dict):
+            return data
 
-            return {
-                "id": data.id,
-                "name": data.name,
-                "file_type": data.file_type,
-                "size_bytes": data.size_bytes,
-                "channel_id": data.channel_id,
-                "file_hash": data.file_hash,
-                "status": data.status,
-                "series_id": data.series_id,
-                "effective_from": data.effective_from,
-                "effective_to": data.effective_to,
-                "lifecycle_status": data.lifecycle_status,
-                "is_current_for_rag": document_effective_for_rag(data),
-                "created_at": data.created_at,
-                "updated_at": data.updated_at,
-            }
-        return data
+        from app.services.document_lifecycle import document_effective_for_rag
+
+        return {
+            "id": data.id,
+            "name": data.name,
+            "file_type": data.file_type,
+            "size_bytes": data.size_bytes,
+            "channel_id": data.channel_id,
+            "file_hash": data.file_hash,
+            "status": data.status,
+            "series_id": data.series_id,
+            "effective_from": data.effective_from,
+            "effective_to": data.effective_to,
+            "lifecycle_status": data.lifecycle_status,
+            "is_current_for_rag": document_effective_for_rag(data),
+            "created_at": data.created_at,
+            "updated_at": data.updated_at,
+        }
 
 
 class DocumentResponse(BaseModel):

@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   Paperclip,
+  Printer,
   Save,
   Trash2,
   Upload,
@@ -1003,16 +1004,28 @@ export function ArticleDetail() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="document-detail-edit-toggle"
-                    onClick={() => setMarkdownEditMode(true)}
-                    title="Edit markdown"
-                    aria-pressed={false}
-                  >
-                    <Edit3 size={14} />
-                    <span>Edit</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={() => window.print()}
+                      title="Print markdown"
+                      aria-label="Print markdown"
+                    >
+                      <Printer size={14} />
+                      <span>Print</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={() => setMarkdownEditMode(true)}
+                      title="Edit markdown"
+                      aria-pressed={false}
+                    >
+                      <Edit3 size={14} />
+                      <span>Edit</span>
+                    </button>
+                  </>
                 )}
               </h2>
               <div
@@ -1100,6 +1113,12 @@ export function ArticleDetail() {
                   </div>
                 ) : editMarkdown.trim() ? (
                   <div className="article-detail-markdown-read">
+                    <div className="document-detail-print-header" aria-hidden>
+                      <h1 className="document-detail-print-title">{article.name}</h1>
+                      {article.origin_article_id ? (
+                        <p className="document-detail-print-subtitle">{article.origin_article_id}</p>
+                      ) : null}
+                    </div>
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm, remarkMath]}
                       rehypePlugins={[rehypeKatex]}

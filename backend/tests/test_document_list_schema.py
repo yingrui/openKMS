@@ -39,6 +39,36 @@ def test_document_list_item_response_omits_heavy_fields():
     assert "metadata" not in payload
 
 
+class _ListProjectionStub:
+    def __init__(self) -> None:
+        now = datetime.now(timezone.utc)
+        self.id = "doc-2"
+        self.name = "Projected.pdf"
+        self.file_type = "PDF"
+        self.size_bytes = 4321
+        self.channel_id = "ch-2"
+        self.file_hash = "hash-2"
+        self.status = "completed"
+        self.series_id = "series-2"
+        self.effective_from = None
+        self.effective_to = None
+        self.lifecycle_status = None
+        self.created_at = now
+        self.updated_at = now
+
+    @property
+    def doc_metadata(self):
+        raise AssertionError("list response should not touch unloaded doc_metadata")
+
+
+def test_document_list_item_response_does_not_touch_doc_metadata():
+    payload = DocumentListItemResponse.model_validate(_ListProjectionStub()).model_dump()
+
+    assert payload["id"] == "doc-2"
+    assert payload["name"] == "Projected.pdf"
+    assert "metadata" not in payload
+
+
 def test_document_detail_response_keeps_heavy_fields():
     payload = DocumentResponse.model_validate(_document_stub()).model_dump()
 

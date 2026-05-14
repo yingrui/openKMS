@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, Printer, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   richMarkdownPreComponent,
@@ -362,6 +362,7 @@ export function DocumentDetail() {
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
+  const showPrintButton = rightPanelView === 'markdown' && !markdownEditMode && !selectedBlock && !docConfig;
 
   useEffect(() => {
     if (!id) return;
@@ -2087,19 +2088,33 @@ export function DocumentDetail() {
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="document-detail-edit-toggle"
-                    onClick={() => {
-                      setSelectedBlock(null);
-                      setMarkdownEditMode(true);
-                    }}
-                    title={t('detail.titleEditMarkdown')}
-                    aria-pressed={false}
-                  >
-                    <Edit3 size={14} />
-                    <span>{t('common.edit')}</span>
-                  </button>
+                  <>
+                    {showPrintButton && (
+                      <button
+                        type="button"
+                        className="document-detail-edit-toggle"
+                        onClick={() => window.print()}
+                        title={t('detail.titlePrintMarkdown')}
+                        aria-label={t('detail.titlePrintMarkdown')}
+                      >
+                        <Printer size={14} />
+                        <span>{t('detail.printMarkdown')}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={() => {
+                        setSelectedBlock(null);
+                        setMarkdownEditMode(true);
+                      }}
+                      title={t('detail.titleEditMarkdown')}
+                      aria-pressed={false}
+                    >
+                      <Edit3 size={14} />
+                      <span>{t('common.edit')}</span>
+                    </button>
+                  </>
                 )
               )}
               {rightPanelView === 'pageIndex' && !docConfig && (
@@ -2195,13 +2210,22 @@ export function DocumentDetail() {
                 </div>
               ) : markdown && (folderId || markdownBaseUrl) ? (
                 <div key="markdown-view">
-                <ReactMarkdown
-                  remarkPlugins={richMarkdownRemarkPlugins}
-                  rehypePlugins={richMarkdownRehypePlugins}
-                  components={markdownComponents}
-                >
-                  {markdown}
-                </ReactMarkdown>
+                  {document && (
+                    <div className="document-detail-print-header" aria-hidden>
+                      <h1 className="document-detail-print-title">{document.name}</h1>
+                      <p className="document-detail-print-subtitle">
+                        {document.file_type}
+                        {document.created_at ? ` • ${new Date(document.created_at).toLocaleString()}` : ''}
+                      </p>
+                    </div>
+                  )}
+                  <ReactMarkdown
+                    remarkPlugins={richMarkdownRemarkPlugins}
+                    rehypePlugins={richMarkdownRehypePlugins}
+                    components={markdownComponents}
+                  >
+                    {markdown}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <p key="empty-view" className="document-detail-muted">{t('detail.noMarkdownContent')}</p>
