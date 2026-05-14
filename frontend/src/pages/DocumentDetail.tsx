@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, Printer, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
+import { ArrowLeft, Bookmark, ChevronDown, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, Printer, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import {
   richMarkdownPreComponent,
@@ -41,255 +41,18 @@ import { fetchObjectType, fetchObjectInstances } from '../data/ontologyApi';
 import { createJob } from '../data/jobsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { findChannel, normalizeExtractionSchemaToFields } from '../data/channelUtils';
+import { PageIndexTree } from './DocumentDetail.pageIndex';
+import type {
+  PageBlock,
+  ParsingResult,
+} from './DocumentDetail.types';
+import {
+  buildPageBlocks,
+  documentToFolder,
+  getPageImageItems,
+  shouldStartInLargeDocumentMode,
+} from './DocumentDetail.utils';
 import './DocumentDetail.css';
-
-interface ParsingResultItem {
-  label: string;
-  content: string;
-  bbox?: number[];
-  image_path?: string;
-}
-
-interface LayoutBox {
-  coordinate?: number[];
-  polygon_points?: number[][] | [number, number][];
-  label?: string;
-  block_index?: number;
-}
-
-interface LayoutDetItem {
-  _images?: { res?: string };
-  input_img?: string;
-  boxes?: LayoutBox[];
-}
-
-interface SpreadsheetSheet {
-  name: string;
-  rows: string[][];
-  truncated_rows?: boolean;
-  truncated_cols?: boolean;
-  /** Mind map (`.xmind`) sheet metadata when `document_kind` is `mindmap`. */
-  topic_count?: number;
-}
-
-interface ParsingResult {
-  file_hash?: string;
-  parsing_res_list?: ParsingResultItem[];
-  layout_det_res?: LayoutDetItem[];
-  document_kind?: string;
-  sheets?: SpreadsheetSheet[];
-  /** Mind map attachment list from backend when `document_kind` is `mindmap`. */
-  attachments?: { path: string; size_bytes?: number }[];
-  error?: string;
-}
-
-interface PageBlock {
-  pageIndex: number;
-  coordinate: number[];
-  label: string;
-  parsingItem: ParsingResultItem;
-}
-
-/** For each node, endLine = next sibling's startLine - 1 (or parent's end if last child).
- *  This makes parent content include all descendants. */
-function buildNodeLineRanges(
-  nodes: PageIndexNode[],
-  parentEndLine: number | null = null
-): Map<string | undefined, { startLine: number; endLine: number }> {
-  const map = new Map<string | undefined, { startLine: number; endLine: number }>();
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    const start = node.line_num ?? 1;
-    const nextSibling = nodes[i + 1];
-    const nextSiblingStart = nextSibling?.line_num ?? null;
-    const end = nextSiblingStart != null ? nextSiblingStart - 1 : (parentEndLine ?? 999999);
-    map.set(node.node_id, { startLine: start, endLine: end });
-    if (node.nodes && node.nodes.length > 0) {
-      const childMap = buildNodeLineRanges(node.nodes, end);
-      childMap.forEach((v, k) => map.set(k, v));
-    }
-  }
-  return map;
-}
-
-function PageIndexTreeNode({
-  node,
-  depth = 0,
-  markdown,
-  lineRangeMap,
-  onContentClick,
-}: {
-  node: PageIndexNode;
-  depth?: number;
-  markdown: string | null;
-  lineRangeMap: Map<string | undefined, { startLine: number; endLine: number }>;
-  onContentClick: (content: string, node: PageIndexNode) => void;
-}) {
-  const { t } = useTranslation('documents');
-  const [expanded, setExpanded] = useState(true);
-  const hasChildren = node.nodes && node.nodes.length > 0;
-  const lineRange = lineRangeMap.get(node.node_id);
-  const handleContentClick = () => {
-    if (!markdown || !lineRange) return;
-    const lines = markdown.split('\n');
-    const start = Math.max(0, lineRange.startLine - 1);
-    const end = Math.min(lines.length, lineRange.endLine);
-    const content = lines.slice(start, end).join('\n').trim();
-    onContentClick(content, node);
-  };
-  return (
-    <div className="document-detail-pageindex-node" style={{ marginLeft: depth * 12 }}>
-      <div className="document-detail-pageindex-node-header">
-        {hasChildren ? (
-          <button
-            type="button"
-            className="document-detail-pageindex-expand"
-            onClick={() => setExpanded((e) => !e)}
-            aria-expanded={expanded}
-          >
-            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-          </button>
-        ) : (
-          <span className="document-detail-pageindex-expand-placeholder" />
-        )}
-        <span className="document-detail-pageindex-node-title">{node.title}</span>
-        {lineRange && (
-          <button
-            type="button"
-            className="document-detail-pageindex-content-btn"
-            onClick={handleContentClick}
-            title={t('detail.showContent')}
-            aria-label={t('detail.showContentAria', { title: node.title })}
-          >
-            <FileText size={14} />
-          </button>
-        )}
-      </div>
-      {hasChildren && expanded && (
-        <div className="document-detail-pageindex-children">
-          {node.nodes!.map((child, i) => (
-            <PageIndexTreeNode
-              key={child.node_id ?? i}
-              node={child}
-              depth={depth + 1}
-              markdown={markdown}
-              lineRangeMap={lineRangeMap}
-              onContentClick={onContentClick}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PageIndexTree({
-  pageIndex,
-  loading,
-  error,
-  docConfig,
-  markdown,
-  markdownComponents,
-}: {
-  pageIndex: { structure: PageIndexNode[]; doc_name?: string | null } | null;
-  loading: boolean;
-  error: string | null;
-  docConfig: { folderId: string; markdownFile: string } | null;
-  markdown: string | null;
-  markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components'];
-}) {
-  const { t } = useTranslation('documents');
-  const [contentPopover, setContentPopover] = useState<{ content: string; title: string } | null>(null);
-  const lineRangeMap = useMemo(
-    () => (pageIndex?.structure?.length ? buildNodeLineRanges(pageIndex.structure) : new Map()),
-    [pageIndex]
-  );
-  const handleContentClick = useCallback((content: string, node: PageIndexNode) => {
-    setContentPopover({ content, title: node.title });
-  }, []);
-
-  if (docConfig) {
-    return <p className="document-detail-muted">{t('detail.pageIndexExampleDoc')}</p>;
-  }
-  if (loading) {
-    return (
-      <div className="document-detail-pageindex-loading">
-        <Loader2 size={20} className="doc-detail-spinner" />
-        <span>{t('detail.loadingPageIndex')}</span>
-      </div>
-    );
-  }
-  if (error) {
-    return <p className="document-detail-muted document-detail-pageindex-error">{error}</p>;
-  }
-  if (!pageIndex || !pageIndex.structure?.length) {
-    return (
-      <p className="document-detail-muted">
-        {t('detail.noPageIndex')}
-      </p>
-    );
-  }
-  return (
-    <div className="document-detail-pageindex">
-      {contentPopover && (
-        <div
-          className="document-detail-pageindex-dialog-overlay"
-          onClick={() => setContentPopover(null)}
-        >
-          <div
-            className="document-detail-pageindex-dialog"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="pageindex-dialog-title"
-          >
-            <div className="document-detail-pageindex-dialog-header">
-              <h2 id="pageindex-dialog-title">{contentPopover.title}</h2>
-              <button
-                type="button"
-                className="document-detail-pageindex-dialog-close"
-                onClick={() => setContentPopover(null)}
-                aria-label={t('common.close')}
-              >
-                <XIcon size={18} />
-              </button>
-            </div>
-            <div className="document-detail-pageindex-dialog-body">
-              <ReactMarkdown
-                remarkPlugins={richMarkdownRemarkPlugins}
-                rehypePlugins={richMarkdownRehypePlugins}
-                components={markdownComponents}
-              >
-                {contentPopover.content || t('detail.popoverNoContent')}
-              </ReactMarkdown>
-            </div>
-          </div>
-        </div>
-      )}
-      {pageIndex.structure.map((node, i) => (
-        <PageIndexTreeNode
-          key={node.node_id ?? i}
-          node={node}
-          markdown={markdown}
-          lineRangeMap={lineRangeMap}
-          onContentClick={handleContentClick}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Map document id to example folder (folder hash + markdown filename)
-const documentToFolder: Record<string, { folderId: string; markdownFile: string }> = {
-  '1': {
-    folderId: 'da4627b85a2d5dec05cc2dcad281a611a5c6f79bcb8fd1ecfa2f34f19b552871',
-    markdownFile: 'tmpau_x_tty.md',
-  },
-  '2': {
-    folderId: 'f3b3be345bf2df8979f2491ca9466e078e4fd1d6a216611faa8566e4c44d474b',
-    markdownFile: 'tmpp2p37481.md',
-  },
-};
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -359,6 +122,7 @@ export function DocumentDetail() {
   const [relSaving, setRelSaving] = useState(false);
   const [lineageSectionOpen, setLineageSectionOpen] = useState(false);
   const [spreadsheetSheetIndex, setSpreadsheetSheetIndex] = useState(0);
+  const [deferLargeDocImages, setDeferLargeDocImages] = useState(false);
 
   const docConfig = id ? documentToFolder[id] : null;
   const folderId = docConfig?.folderId ?? null;
@@ -380,8 +144,11 @@ export function DocumentDetail() {
         ])
           .then(([result, md]) => {
             if (!cancelled) {
+              const largeDocMode = shouldStartInLargeDocumentMode(result, md);
               setParsingResult(result);
               setMarkdown(md);
+              setDeferLargeDocImages(largeDocMode);
+              setExtendedPanel(null);
               setDocument({
                 id: id!,
                 name: docConfig!.markdownFile,
@@ -404,9 +171,14 @@ export function DocumentDetail() {
         fetchDocumentById(id, signal)
           .then((doc) => {
             if (!cancelled && doc) {
+              const nextParsing = (doc.parsing_result ?? null) as ParsingResult | null;
+              const nextMarkdown = doc.markdown ?? '';
+              const largeDocMode = shouldStartInLargeDocumentMode(nextParsing, nextMarkdown);
               setDocument(doc);
-              setParsingResult((doc.parsing_result ?? null) as ParsingResult | null);
-              setMarkdown(doc.markdown ?? '');
+              setParsingResult(nextParsing);
+              setMarkdown(nextMarkdown);
+              setDeferLargeDocImages(largeDocMode);
+              setExtendedPanel(null);
             }
           })
           .catch((e) => {
@@ -464,6 +236,13 @@ export function DocumentDetail() {
         ? `${getDocumentFilesBaseUrl(id)}/${encodeURIComponent(fileHash)}/markdown_out`
         : '');
 
+  const pageImageItems = useMemo(
+    () => getPageImageItems(parsingResult?.layout_det_res),
+    [parsingResult?.layout_det_res]
+  );
+
+  const shouldRenderDeferredImages = !deferLargeDocImages;
+
   /** Memoized to avoid remounting img elements on every re-render (which cancels in-flight requests). */
   const markdownComponents = useMemo(
     () => ({
@@ -481,47 +260,10 @@ export function DocumentDetail() {
   );
 
   // Build page blocks: for each layout box, find parsing item by matching coordinates
-  const pageBlocks = (() => {
-    if (!parsingResult?.layout_det_res || !parsingResult.parsing_res_list) return [];
-    const list: PageBlock[] = [];
-    const parsingList = parsingResult.parsing_res_list;
-
-    const coordMatch = (a: number[], b: number[], tol = 2) =>
-      a.length >= 4 && b.length >= 4 &&
-      Math.abs(a[0] - b[0]) <= tol && Math.abs(a[1] - b[1]) <= tol &&
-      Math.abs(a[2] - b[2]) <= tol && Math.abs(a[3] - b[3]) <= tol;
-
-    const layout = parsingResult.layout_det_res;
-    for (let pi = 0; pi < layout.length; pi++) {
-      const item = layout[pi];
-      const boxes = item?.boxes ?? [];
-      for (let bi = 0; bi < boxes.length; bi++) {
-        const box = boxes[bi];
-        let coordFlat: number[] | null = null;
-        if (Array.isArray(box?.coordinate) && box.coordinate.length >= 4) {
-          coordFlat = box.coordinate.slice(0, 4);
-        } else if (Array.isArray(box?.polygon_points) && box.polygon_points.length >= 2) {
-          const pts = box.polygon_points.flat() as number[];
-          const xs = pts.filter((_, i) => i % 2 === 0), ys = pts.filter((_, i) => i % 2 === 1);
-          if (xs.length && ys.length) coordFlat = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-        }
-        if (!coordFlat) continue;
-
-        const parsingIdx = parsingList.findIndex((p) => {
-          const bbox = p.bbox;
-          return Array.isArray(bbox) && coordMatch(coordFlat!, bbox as number[]);
-        });
-        const parsingItem = parsingIdx >= 0 ? parsingList[parsingIdx] : undefined;
-        list.push({
-          pageIndex: pi,
-          coordinate: coordFlat,
-          label: box?.label ?? parsingItem?.label ?? 'block',
-          parsingItem: parsingItem ?? { label: 'unknown', content: '' },
-        });
-      }
-    }
-    return list;
-  })();
+  const pageBlocks = useMemo(
+    () => buildPageBlocks(parsingResult, shouldRenderDeferredImages),
+    [parsingResult, shouldRenderDeferredImages]
+  );
 
   const isSpreadsheetLayout =
     (document?.file_type ?? '').toUpperCase() === 'XLSX' || parsingResult?.document_kind === 'spreadsheet';
@@ -560,6 +302,15 @@ export function DocumentDetail() {
     spreadsheetSheets && spreadsheetSheets.length > 0
       ? spreadsheetSheets[Math.min(spreadsheetSheetIndex, spreadsheetSheets.length - 1)]
       : null;
+
+  const handleLoadDeferredImages = useCallback(() => {
+    setDeferLargeDocImages(false);
+  }, []);
+
+  const handleToggleImagesPanel = useCallback(() => {
+    if (deferLargeDocImages) setDeferLargeDocImages(false);
+    setExtendedPanel((p) => (p === 'images' ? null : 'images'));
+  }, [deferLargeDocImages]);
 
   const onPageImageLoad = useCallback((pageIndex: number, img: HTMLImageElement) => {
     if (img?.naturalWidth && img?.naturalHeight) {
@@ -1880,7 +1631,7 @@ export function DocumentDetail() {
               <button
                 type="button"
                 className="document-detail-extend-btn"
-                onClick={() => setExtendedPanel((p) => (p === 'images' ? null : 'images'))}
+                onClick={handleToggleImagesPanel}
                 title={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.extendView')}
                 aria-label={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.ariaExtendPages')}
               >
@@ -1976,10 +1727,20 @@ export function DocumentDetail() {
                     </div>
                   ) : null}
                 </div>
-              ) : parsingResult?.layout_det_res && parsingResult.layout_det_res.length > 0 ? (
-                parsingResult.layout_det_res
-                  .filter((item) => item.input_img)
-                  .map((item, pageIndex) => {
+              ) : deferLargeDocImages && pageImageItems.length > 0 ? (
+                <div className="document-detail-large-doc-notice">
+                  <p className="document-detail-large-doc-title">{t('detail.largeDocImagesDeferredTitle')}</p>
+                  <p className="document-detail-muted">{t('detail.largeDocImagesDeferredBody', { count: pageImageItems.length })}</p>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm document-detail-large-doc-btn"
+                    onClick={handleLoadDeferredImages}
+                  >
+                    {t('detail.loadPageImages')}
+                  </button>
+                </div>
+              ) : pageImageItems.length > 0 ? (
+                pageImageItems.map((item, pageIndex) => {
                     const dims = pageDimensions[pageIndex];
                     const blocks = pageBlocks.filter((b) => b.pageIndex === pageIndex);
                     return (

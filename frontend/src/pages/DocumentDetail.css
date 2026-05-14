@@ -1217,6 +1217,27 @@
   gap: 24px;
 }
 
+.document-detail-large-doc-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-bg-muted) 75%, transparent);
+}
+
+.document-detail-large-doc-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.document-detail-large-doc-btn {
+  align-self: flex-start;
+}
+
 .document-detail-page-group {
   display: flex;
   flex-direction: column;
