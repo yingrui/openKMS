@@ -9,6 +9,7 @@ from . import (
     document_channels,
     documents,
     evaluation,
+    glossaries,
     kb,
     kb_faq,
     ontology,  # also nests `objects` and `links` under itself
@@ -31,5 +32,6 @@ def register(sub: _SubParsersAction) -> None:
     wiki.add_subparser(sub)
     kb.add_subparser(sub)
     kb_faq.add_subparser(sub)
+    glossaries.add_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)

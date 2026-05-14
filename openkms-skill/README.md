@@ -14,20 +14,21 @@ The skill covers **read + write** for every major resource. Top-level groups:
 |---|---|---|
 | `ping` | identity / API-key smoke test | — |
 | `search` | global cross-resource (documents/articles/wiki/KB) | — |
-| `documents` | `list`, `get`, `markdown` | `upload` |
-| `articles` | `list`, `get`, `markdown` | `create`, `from-url` |
-| `wiki` | `list-pages`, `get-page`, **`files list`** | `put-page`, **`files delete`** |
+| `documents` | `list`, `get`, `markdown`, **`relationships list`**, **`lifecycle patch`** | `upload`, **`relationships create`**, **`relationships delete`** |
+| `articles` | `list`, `get`, `markdown`, **`relationships list`** | `create`, `from-url`, **`relationships create`**, **`relationships delete`** |
+| `wiki` | `list-pages`, `get-page`, **`files list`** (vault `.md`/assets/uploads, not attachments-only) | `put-page`, **`files delete`** (same file store; can remove stored `.md`) |
 | `wiki-spaces` | `list`, **`documents list`** | `create`, **`documents link`**, **`documents unlink`** |
 | `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
+| `glossaries` | `list`, `get`, `export`, `terms list/get` | `create`, `update`, `delete`, `import`, `terms create/update/delete/suggest` |
 | `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |
 | `ontology objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j`, `sync-neo4j-type` |
 | `ontology links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j`, `sync-neo4j-type` |
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 
-> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, `articles create`/`from-url`, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, KB FAQ, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
+> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, KB FAQ, **`glossaries`** and **`glossaries terms`**, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
 ## Quick examples
 

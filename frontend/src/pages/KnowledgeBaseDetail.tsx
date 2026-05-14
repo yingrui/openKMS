@@ -50,7 +50,7 @@ import {
   type ChunkResponse,
   type SearchResult,
 } from '../data/knowledgeBasesApi';
-import { fetchDocumentById, fetchDocuments, type DocumentResponse } from '../data/documentsApi';
+import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse, type DocumentResponse } from '../data/documentsApi';
 import { fetchChannelById, type ChannelNode } from '../data/channelsApi';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../data/channelUtils';
@@ -156,7 +156,7 @@ export function KnowledgeBaseDetail() {
   const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
-  const [pickerResults, setPickerResults] = useState<DocumentResponse[]>([]);
+  const [pickerResults, setPickerResults] = useState<DocumentListItemResponse[]>([]);
   const [pickerLoading, setPickerLoading] = useState(false);
   const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
   const [pickerSelectedChannel, setPickerSelectedChannel] = useState<string | null>(null);

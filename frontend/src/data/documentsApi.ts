@@ -23,6 +23,23 @@ export interface DocumentResponse {
   updated_at: string;
 }
 
+export interface DocumentListItemResponse {
+  id: string;
+  name: string;
+  file_type: string;
+  size_bytes: number;
+  channel_id: string;
+  file_hash?: string | null;
+  status?: string;
+  series_id?: string;
+  effective_from?: string | null;
+  effective_to?: string | null;
+  lifecycle_status?: string | null;
+  is_current_for_rag?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 /** KB indexing / semantic search default: only `in_force` documents within effective dates; legacy rows treated as current. */
 export const DOCUMENT_RELATION_TYPES = [
   'supersedes',
@@ -48,7 +65,7 @@ export interface DocumentRelationshipsResponse {
 }
 
 export interface DocumentListResponse {
-  items: DocumentResponse[];
+  items: DocumentListItemResponse[];
   total: number;
 }
 

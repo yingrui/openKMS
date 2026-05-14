@@ -1,7 +1,8 @@
-"""documents — list/get/markdown/upload."""
+"""documents — list/get/markdown/upload/relationships/lifecycle."""
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pytest
@@ -126,3 +127,68 @@ def test_documents_upload_multipart(mock_api, tmp_path):
     assert b"channel_id" in body
     assert b"ch9" in body
     assert b"case.md" in body
+
+
+def test_documents_relationships_list(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/documents/d1/relationships")] = (
+        200,
+        {"outgoing": [], "incoming": []},
+    )
+    from openkms.commands.documents import cmd_relationships_list
+
+    cmd_relationships_list(argparse.Namespace(id="d1"))
+    assert recorded[-1].url.path == "/api/documents/d1/relationships"
+
+
+def test_documents_relationships_create_yes(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/documents/d1/relationships")] = (
+        201,
+        {
+            "id": "rel1",
+            "relation_type": "supersedes",
+            "peer_document_id": "d2",
+            "peer_document_name": "b",
+            "note": None,
+            "created_at": "2026-01-01T00:00:00Z",
+        },
+    )
+    from openkms.commands.documents import cmd_relationships_create
+
+    cmd_relationships_create(
+        argparse.Namespace(
+            id="d1",
+            target_id="d2",
+            relation_type="supersedes",
+            note="",
+            yes=True,
+            dry_run=False,
+        )
+    )
+    assert json.loads(recorded[-1].content) == {
+        "target_document_id": "d2",
+        "relation_type": "supersedes",
+    }
+
+
+def test_documents_lifecycle_patch_dry_run(mock_api):
+    recorded, _ = mock_api
+    from openkms.commands.documents import cmd_lifecycle_patch
+
+    with pytest.raises(SystemExit) as ei:
+        cmd_lifecycle_patch(
+            argparse.Namespace(
+                id="d1",
+                series_id=None,
+                effective_from=None,
+                effective_to=None,
+                lifecycle_status="withdrawn",
+                clear_effective_from=False,
+                clear_effective_to=False,
+                yes=False,
+                dry_run=True,
+            )
+        )
+    assert ei.value.code == 0
+    assert not recorded

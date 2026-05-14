@@ -41,9 +41,13 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | CLI | Method | Path | Notes |
 |---|---|---|---|
 | `documents list` | GET | `/api/documents` | Query: `channel_id?`, `search?`, `limit?`, `offset?`. If `--channel-id` is omitted, `default_document_channel_id` from `config.yml` is used when set. |
-| `documents get` | GET | `/api/documents/{id}` | Full document, including `markdown`. 404 if user lacks access to the document's channel. |
+| `documents get` | GET | `/api/documents/{id}` | Full document, including `markdown`, `series_id`, `effective_from` / `effective_to`, `lifecycle_status`, `is_current_for_rag`. 404 if user lacks access to the document's channel. |
 | `documents markdown` | GET | `/api/documents/{id}` | Same as `get`; CLI extracts `.markdown` and writes to stdout (or `--out FILE`). |
 | `documents upload` | POST multipart | `/api/documents/upload` | Fields: `file`, `channel_id`. For `.xlsx` the server builds a sheet preview synchronously; for other types it enqueues the channel pipeline if `auto_process` is on. |
+| `documents relationships list` | GET | `/api/documents/{id}/relationships` | `{outgoing:[{id, relation_type, peer_document_id, peer_document_name, note, created_at}], incoming:[…]}`. |
+| `documents lifecycle patch` *(write)* | PATCH | `/api/documents/{id}/lifecycle` | Partial JSON: `series_id`, `effective_from`, `effective_to`, `lifecycle_status`; CLI mirrors document-detail fields. `--clear-effective-from` / `--clear-effective-to` send JSON `null`. |
+| `documents relationships create` *(write)* | POST | `/api/documents/{id}/relationships` | Body `{target_document_id, relation_type, note?}`. `relation_type ∈ {supersedes, amends, implements, see_also}`. Edge is **source** = path `id` → **target**. |
+| `documents relationships delete` *(write)* | DELETE | `/api/documents/{id}/relationships/{relationship_id}` | **Outgoing only** (row's `source_document_id` must equal `{id}`). To remove an edge that appears under *incoming* for doc B, call `delete` with `--id` set to the **source** document and that edge's `id`. 204. |
 
 ### Articles
 
@@ -54,6 +58,9 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `articles markdown` | GET | `/api/articles/{id}` | Extracts `.markdown` for stdout/file. |
 | `articles create` | POST | `/api/articles` | Body `{channel_id, name, markdown, origin_article_id?}`. CLI accepts `--markdown` inline or `--markdown-file`. |
 | `articles from-url` | GET (external) + POST | `/api/articles` | CLI fetches the URL, simplifies HTML to text via regex heuristic, then POSTs. Sets `origin_article_id` to the source URL (truncated 512). |
+| `articles relationships list` | GET | `/api/articles/{id}/relationships` | `{outgoing:[{id, relation_type, peer_article_id, peer_article_name, note, created_at}], incoming:[…]}`. |
+| `articles relationships create` *(write)* | POST | `/api/articles/{id}/relationships` | Body `{target_article_id, relation_type, note?}`. Same `relation_type` set as documents (`supersedes`, `amends`, `implements`, `see_also`). |
+| `articles relationships delete` *(write)* | DELETE | `/api/articles/{id}/relationships/{relationship_id}` | **Outgoing only** (same rule as `documents relationships delete`). 204. |
 
 ### Wiki
 
@@ -67,8 +74,8 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `wiki list-pages` | GET | `/api/wiki-spaces/{space_id}/pages` | Paginated. |
 | `wiki get-page` | GET | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | `path` is Obsidian-style; CLI URL-encodes with `safe=""`. |
 | `wiki put-page` | PUT | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | Body `{title, body, metadata: null}`. Upserts. |
-| `wiki files list` | GET | `/api/wiki-spaces/{space_id}/files` | `{items:[{id,filename,content_type,size_bytes,wiki_page_id,created_at}], total}`. |
-| `wiki files delete` | DELETE | `/api/wiki-spaces/{space_id}/files/{file_id}` | Removes DB row and storage object when configured. Gated. |
+| `wiki files list` | GET | `/api/wiki-spaces/{space_id}/files` | All **stored files** for the space: vault imports (including **`.md`** and assets), uploads, etc. — not “attachments only”. Response `{items:[{id,filename,content_type,size_bytes,wiki_page_id,created_at}], total}`. |
+| `wiki files delete` | DELETE | `/api/wiki-spaces/{space_id}/files/{file_id}` | Deletes **one stored-file row** (same list as above): may be a vault-mirrored `.md`, an image, or any other stored object. Removes DB row + storage object when configured. **Distinct from** editing page body via `wiki put-page`. Gated. |
 
 ### Knowledge bases
 
@@ -80,6 +87,24 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `kb ask` | POST | `/api/knowledge-bases/{id}/ask` | Body `{question}`. Proxies to the QA agent — returns a grounded answer with source citations. Slower than `kb search` (LLM in the loop). |
 | `kb-faq list` | GET | `/api/knowledge-bases/{id}/faqs` | Paginated. |
 | `kb-faq create` | POST | `/api/knowledge-bases/{id}/faqs` | Body `{question, answer}`. |
+
+### Glossaries
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `glossaries list` | GET | `/api/glossaries` | `{items, total}`. |
+| `glossaries get` | GET | `/api/glossaries/{id}` | Includes `term_count`. |
+| `glossaries create` *(write)* | POST | `/api/glossaries` | Body `{name, description?}`. |
+| `glossaries update` *(write)* | PUT | `/api/glossaries/{id}` | Partial `{name?, description?}`; empty update exits 2. |
+| `glossaries delete` *(write)* | DELETE | `/api/glossaries/{id}` | Deletes all terms first; 204, CLI prints one line. |
+| `glossaries export` | GET | `/api/glossaries/{id}/export` | `{glossary_id, glossary_name, exported_at, terms:[…]}`. |
+| `glossaries import` *(write)* | POST | `/api/glossaries/{id}/import` | Body `{terms:[{primary_en?, primary_cn?, definition?, synonyms_en?, synonyms_cn?}], mode:"append"\|"replace"}`. `--terms-file` may be that object or a bare JSON array (then `--mode` applies). |
+| `glossaries terms list` | GET | `/api/glossaries/{id}/terms` | Optional `?search=` substring filter. |
+| `glossaries terms get` | GET | `/api/glossaries/{id}/terms/{term_id}` | — |
+| `glossaries terms create` *(write)* | POST | `/api/glossaries/{id}/terms` | At least one of `primary_en` / `primary_cn`. Optional `--synonyms-en-json` / `--synonyms-cn-json` (JSON arrays). |
+| `glossaries terms update` *(write)* | PUT | `/api/glossaries/{id}/terms/{term_id}` | Partial fields; empty update exits 2. |
+| `glossaries terms delete` *(write)* | DELETE | `/api/glossaries/{id}/terms/{term_id}` | 204. |
+| `glossaries terms suggest` *(write)* | POST | `/api/glossaries/{id}/terms/suggest` | Body `{primary_en?, primary_cn?}`; calls default LLM (same confirm gate as other writes). |
 
 ### Ontology (Neo4j graph)
 
@@ -154,4 +179,4 @@ HTTP <status>
 - **422** — pydantic validation error; check argument shapes.
 - **502** — upstream LLM or Neo4j failure (mostly seen on `ontology *` and `kb ask`).
 
-For authoritative tables and extra routes the skill does not yet wrap (admin: providers, models, data sources, glossaries, taxonomy, pipelines, jobs), see the repository file `docs/features/api-reference.md`.
+For authoritative tables and extra routes the skill does not yet wrap (admin: providers, models, data sources, taxonomy, pipelines, jobs), see the repository file `docs/features/api-reference.md`.

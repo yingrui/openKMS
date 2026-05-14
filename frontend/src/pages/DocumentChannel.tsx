@@ -32,7 +32,7 @@ import {
   deleteDocument,
   updateDocument,
   isAcceptedFile,
-  type DocumentResponse,
+  type DocumentListItemResponse,
 } from '../data/documentsApi';
 import { toast } from 'sonner';
 import { createJob } from '../data/jobsApi';
@@ -80,7 +80,7 @@ export function DocumentChannel() {
     [t],
   );
 
-  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [documents, setDocuments] = useState<DocumentListItemResponse[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [docsError, setDocsError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -89,7 +89,7 @@ export function DocumentChannel() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [moveDoc, setMoveDoc] = useState<DocumentResponse | null>(null);
+  const [moveDoc, setMoveDoc] = useState<DocumentListItemResponse | null>(null);
   const [moveTargetChannelId, setMoveTargetChannelId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
 
@@ -164,7 +164,7 @@ export function DocumentChannel() {
     }
   };
 
-  const handleDeleteClick = async (e: React.MouseEvent, doc: DocumentResponse) => {
+  const handleDeleteClick = async (e: React.MouseEvent, doc: DocumentListItemResponse) => {
     e.stopPropagation();
     if (!window.confirm(t('channel.deleteConfirm', { name: doc.name }))) return;
     setDeletingId(doc.id);
@@ -179,7 +179,7 @@ export function DocumentChannel() {
     }
   };
 
-  const handleProcessClick = async (e: React.MouseEvent, doc: DocumentResponse) => {
+  const handleProcessClick = async (e: React.MouseEvent, doc: DocumentListItemResponse) => {
     e.stopPropagation();
     setProcessingId(doc.id);
     try {
@@ -193,7 +193,7 @@ export function DocumentChannel() {
     }
   };
 
-  const handleMoveClick = (e: React.MouseEvent, doc: DocumentResponse) => {
+  const handleMoveClick = (e: React.MouseEvent, doc: DocumentListItemResponse) => {
     e.stopPropagation();
     setMoveDoc(doc);
     setMoveTargetChannelId(doc.channel_id);

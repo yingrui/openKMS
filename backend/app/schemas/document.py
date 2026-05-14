@@ -14,6 +14,56 @@ class DocumentCreate(DocumentBase):
     pass
 
 
+class DocumentListItemResponse(BaseModel):
+    id: str
+    name: str
+    file_type: str
+    size_bytes: int = 0
+    channel_id: str
+    file_hash: str | None = None
+    status: str = "uploaded"
+    series_id: str
+    effective_from: datetime | None = None
+    effective_to: datetime | None = None
+    lifecycle_status: str | None = None
+    is_current_for_rag: bool = Field(
+        default=True,
+        description=(
+            "Computed from lifecycle status and effective dates: whether the document is currently applicable "
+            "for normal knowledge-base answers and re-indexing. False when superseded, withdrawn, draft, "
+            "or outside the effective window."
+        ),
+    )
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_doc_fields(cls, data: Any) -> Any:
+        if hasattr(data, "doc_metadata"):
+            from app.services.document_lifecycle import document_effective_for_rag
+
+            return {
+                "id": data.id,
+                "name": data.name,
+                "file_type": data.file_type,
+                "size_bytes": data.size_bytes,
+                "channel_id": data.channel_id,
+                "file_hash": data.file_hash,
+                "status": data.status,
+                "series_id": data.series_id,
+                "effective_from": data.effective_from,
+                "effective_to": data.effective_to,
+                "lifecycle_status": data.lifecycle_status,
+                "is_current_for_rag": document_effective_for_rag(data),
+                "created_at": data.created_at,
+                "updated_at": data.updated_at,
+            }
+        return data
+
+
 class DocumentResponse(BaseModel):
     id: str
     name: str
@@ -122,7 +172,7 @@ class MarkdownUpdateBody(BaseModel):
 
 
 class DocumentListResponse(BaseModel):
-    items: list[DocumentResponse]
+    items: list[DocumentListItemResponse]
     total: int
 
 

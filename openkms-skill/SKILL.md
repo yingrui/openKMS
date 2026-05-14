@@ -3,13 +3,15 @@ name: openkms
 description: >-
   Operates and queries an openKMS deployment over its HTTP API using a personal API key.
   Read paths: global search across documents/articles/wiki/KBs; list & fetch markdown for
-  documents and articles; list & get wiki pages by path; list wiki space files and linked
+  documents and articles; list & get wiki pages by path; list wiki space stored files (vault .md, assets, uploads) and linked
   channel documents; KB semantic search and grounded
-  Q&A; run Cypher (or natural-language questions) against the ontology graph; list
+  Q&A; list glossaries and terms, export/import term payloads; document lineage (relationships)
+  and policy lifecycle fields; article↔article relationship list/create/delete; run Cypher (or natural-language questions) against the ontology graph; list
   evaluation datasets, items, and runs. Write paths: create channels, upload documents,
-  create articles (incl. from URL), upsert wiki pages, delete wiki files, link/unlink
+  create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
   wiki↔documents, create KB FAQs and evaluation
-  datasets, trigger evaluation runs; ontology object/link CRUD and Neo4j index (bulk or per-type).
+  datasets, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; document
+  lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
   Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
   the bundled `scripts/cli.py` only (no ad-hoc curl or custom HTTP). Do not modify skill
@@ -71,6 +73,7 @@ Some practical guidance:
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope. Don't try to bypass — surface the error.
 - **Write commands and confirm gating.** Every mutating CLI subcommand uses the same pattern as ontology objects/links: `--dry-run` prints the planned `[METHOD] path + body` (upload uses a JSON summary with `channel_id` and `file` path, not file bytes) and exits 0 without HTTP; `-y` / `--yes` skips the prompt; without either on a TTY you get `Proceed? [y/N]`; **on a non-TTY without `--yes` the command exits 2** — agents must pass `--yes` deliberately.
 - **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then **`ontology objects sync-neo4j`** / **`ontology links sync-neo4j`** (all indexable types) or **`sync-neo4j-type`** on one type id to MERGE into Neo4j.
+- **`wiki files` is the whole space file store, not “attachments only”.** `wiki files list` / `wiki files delete` operate on `/api/wiki-spaces/…/files`: vault imports (including mirrored **`.md`** and images/PDFs), uploads, etc. Deleting a row removes that stored object (DB + storage). To change **wiki page body** (the page entity), use **`wiki put-page`** (or the app editor) — do not treat “files” as only sidecar attachments.
 - **Output is verbose.** Each list response can include long arrays. If you're scanning many records, pipe through `jq` to project just the fields you need rather than dumping everything into context.
 
 ## Read / query tasks
@@ -83,17 +86,24 @@ Some practical guidance:
 | List article channels as indented tree (human-readable) | `python scripts/cli.py article-channels list --tree` |
 | List documents (filter by channel/keyword) | `python scripts/cli.py documents list --channel-id ID --search "心梗" --limit 50` |
 | Get document metadata + body | `python scripts/cli.py documents get --id DOC_ID` |
+| List document lineage (outgoing + incoming edges) | `python scripts/cli.py documents relationships list --id DOC_ID` |
 | Save just the document markdown to a file | `python scripts/cli.py documents markdown --id DOC_ID --out ./case.md` |
 | List articles (filter by channel/keyword) | `python scripts/cli.py articles list --channel-id ID --search "豁免"` |
+| List article lineage (outgoing + incoming edges) | `python scripts/cli.py articles relationships list --id ART_ID` |
 | Get article markdown | `python scripts/cli.py articles markdown --id ART_ID` |
 | List wiki pages in a space | `python scripts/cli.py wiki list-pages --space-id SP_ID` |
-| List wiki space files (attachments / vault binaries) | `python scripts/cli.py wiki files list --space-id SP_ID` |
+| List wiki space stored files (vault .md, assets, uploads; not attachments-only) | `python scripts/cli.py wiki files list --space-id SP_ID` |
 | List channel documents linked to a wiki space (UI “linked documents”) | `python scripts/cli.py wiki-spaces documents list --space-id SP_ID` |
 | Get one wiki page by Obsidian path | `python scripts/cli.py wiki get-page --space-id SP_ID --path notes/onboarding` |
 | List knowledge bases | `python scripts/cli.py kb list` |
 | Semantic search over KB chunks + FAQs | `python scripts/cli.py kb search --id KB_ID --q "既往症定义" --limit 10` |
 | Ask the KB a question (grounded answer) | `python scripts/cli.py kb ask --id KB_ID --question "..."` |
 | List FAQs on a KB | `python scripts/cli.py kb-faq list --kb-id KB_ID` |
+| List glossaries | `python scripts/cli.py glossaries list` |
+| Get one glossary | `python scripts/cli.py glossaries get --id GL_ID` |
+| List terms in a glossary (optional search) | `python scripts/cli.py glossaries terms list --glossary-id GL_ID --search "心梗"` |
+| Get one glossary term | `python scripts/cli.py glossaries terms get --glossary-id GL_ID --term-id TERM_ID` |
+| Export glossary terms (JSON) | `python scripts/cli.py glossaries export --glossary-id GL_ID` |
 | Run a Cypher query against the ontology graph | `python scripts/cli.py ontology cypher --query "MATCH (n:Customer) RETURN n LIMIT 10"` |
 | NL question → Cypher (just the translation) | `python scripts/cli.py ontology text-to-cypher --question "..."` |
 | NL question → Cypher → results → NL answer (3-call chain) | `python scripts/cli.py ontology ask --question "..."` |
@@ -120,25 +130,37 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Create document channel | `python scripts/cli.py document-channels create --name "Inbox" --yes` |
 | Update document channel | `python scripts/cli.py document-channels update --id DC_ID --name "Renamed" --yes` |
 | Upload a file to a channel | `python scripts/cli.py documents upload --channel-id ID --file /path/to/doc.pdf --yes` (or omit `--channel-id` if `default_document_channel_id` is set in `config.yml`) |
+| Patch document lifecycle (series, dates, status) | `python scripts/cli.py documents lifecycle patch --id DOC_ID --lifecycle-status in_force --series-id SER_UUID --yes` |
+| Add lineage edge (this doc → other) | `python scripts/cli.py documents relationships create --id DOC_ID --target-id OTHER_ID --relation-type supersedes --yes` |
+| Remove an outgoing lineage edge | `python scripts/cli.py documents relationships delete --id DOC_ID --relationship-id REL_ID --yes` |
 | List article channels (tree) | `python scripts/cli.py article-channels list` |
 | Create article channel | `python scripts/cli.py article-channels create --name "Internal Wiki" --yes` |
 | Update article channel | `python scripts/cli.py article-channels update --id AC_ID --parent-id PARENT_UUID --yes` |
 | Create article from a markdown file | `python scripts/cli.py articles create --channel-id ID --name "Title" --markdown-file ./x.md --yes` |
 | Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a --yes` |
+| Add article lineage edge (this article → other) | `python scripts/cli.py articles relationships create --id ART_ID --target-id OTHER_ID --relation-type supersedes --yes` |
+| Remove an outgoing article lineage edge | `python scripts/cli.py articles relationships delete --id ART_ID --relationship-id REL_ID --yes` |
 | List wiki spaces | `python scripts/cli.py wiki-spaces list` |
 | Create wiki space | `python scripts/cli.py wiki-spaces create --name "Field Notes" --yes` |
 | Link a channel document to a wiki space | `python scripts/cli.py wiki-spaces documents link --space-id SP_ID --document-id DOC_ID --yes` |
 | Unlink a document from a wiki space (does not delete the document) | `python scripts/cli.py wiki-spaces documents unlink --space-id SP_ID --document-id DOC_ID --yes` |
 | Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
-| Delete a wiki space file (DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
+| Delete one wiki stored file by id (vault .md or any stored path; DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluation datasets | `python scripts/cli.py evaluation-datasets list` |
 | Create evaluation dataset | `python scripts/cli.py evaluation-datasets create --name "..." --kb-id KB_ID --yes` |
 | Trigger an evaluation run | `python scripts/cli.py evaluation-datasets run --id DS_ID --type qa_answer --yes` |
+| Create glossary | `python scripts/cli.py glossaries create --name "Product terms" --yes` |
+| Update / delete glossary | `python scripts/cli.py glossaries update --id GL_ID --description "…" --yes` / `glossaries delete --id GL_ID --yes` |
+| Create / update / delete term | `python scripts/cli.py glossaries terms create --glossary-id GL_ID --primary-en "MI" --primary-cn "心梗" --yes` (and `terms update` / `terms delete`) |
+| Bulk-import terms from JSON file | `python scripts/cli.py glossaries import --glossary-id GL_ID --terms-file ./terms.json --mode replace --yes` |
+| AI suggest for a term (uses default LLM) | `python scripts/cli.py glossaries terms suggest --glossary-id GL_ID --primary-en "STEMI" --yes` |
 
 ### Ontology objects + links
 
-Same confirmation rules as other writes. Commands:
+Same confirmation rules as other writes.
+
+| Goal | Command |
 |------|---------|
 | Create object type | `python scripts/cli.py ontology objects create-type --name "Disease" --properties-json '[{"name":"icd","type":"string","required":true}]' --yes` |
 | Update object type | `python scripts/cli.py ontology objects update-type --id OT --display-property name --yes` |

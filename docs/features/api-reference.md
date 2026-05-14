@@ -60,6 +60,8 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 
 ## Documents
 
+The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the same way as the document detail page: `documents lifecycle patch`, `documents relationships list|create|delete` (see `openkms-skill/reference.md`).
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/document-channels` | List document channels (tree) |
@@ -70,7 +72,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
 | POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: sheet preview + markdown in-process, `completed` or `failed` (no parse job). **XMIND**: outline markdown from archive `content.json` / `content.xml`, `completed` or `failed` (no parse job). **Other types** (PDF, images, DOCX, PPTX, EPUB, …): `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX/XMIND) |
-| GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted); search filters by name; offset/limit for pagination |
+| GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted, descendants included when filtering by channel); search filters by name; offset/limit for pagination. Returns lightweight list items only (no `markdown`, `parsing_result`, or `metadata`) |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
 | PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
@@ -290,10 +292,10 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | PUT | `/api/wiki-spaces/{id}/pages/by-path/{page_path:path}` | Upsert page by path (create or update) |
 | DELETE | `/api/wiki-spaces/{id}/pages/by-path/{page_path:path}` | Delete page by path |
 | GET | `/api/wiki-spaces/{id}/pages/{page_id}/page-index` | PageIndex tree for in-page navigation |
-| GET | `/api/wiki-spaces/{id}/files` | List uploaded files in this space |
-| POST | `/api/wiki-spaces/{id}/files` | Upload file (multipart) — used by Obsidian assets and embedded images |
-| GET | `/api/wiki-spaces/{id}/files/{file_id}/content` | Stream file content from MinIO |
-| DELETE | `/api/wiki-spaces/{id}/files/{file_id}` | Delete file (storage + DB) |
+| GET | `/api/wiki-spaces/{id}/files` | List **stored files** for the space (`wiki_files`): vault mirror paths (including **`.md`**), ad-hoc uploads, etc. |
+| POST | `/api/wiki-spaces/{id}/files` | Upload file (multipart); vault-relative filename → mirror under `wiki/{id}/vault/…`, else `wiki/{id}/files/{file_id}/…` |
+| GET | `/api/wiki-spaces/{id}/files/{file_id}/content` | Redirect to presigned object URL |
+| DELETE | `/api/wiki-spaces/{id}/files/{file_id}` | Delete one **stored file** row (storage + DB); may be a vault `.md`/asset or an upload — same list as GET `…/files` |
 | GET | `/api/wiki-spaces/{id}/documents` | List documents linked to this wiki space |
 | POST | `/api/wiki-spaces/{id}/documents` | Link an existing document into this space |
 | DELETE | `/api/wiki-spaces/{id}/documents/{document_id}` | Unlink a document (does not delete the document) |

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from fastapi.responses import RedirectResponse
 
@@ -26,6 +27,7 @@ from app.models.document_version import DocumentVersion
 from app.constants import DocumentRelationType
 from app.schemas.document import (
     DocumentInfoUpdateBody,
+    DocumentListItemResponse,
     DocumentLifecycleUpdateBody,
     DocumentListResponse,
     DocumentRelationshipCreateBody,
@@ -134,7 +136,23 @@ async def list_documents(
     limit: int = 200,
 ):
     """List documents, optionally filtered by channel and/or name search. Supports pagination."""
-    base_query = select(Document)
+    base_query = select(Document).options(
+        load_only(
+            Document.id,
+            Document.name,
+            Document.file_type,
+            Document.size_bytes,
+            Document.channel_id,
+            Document.file_hash,
+            Document.status,
+            Document.series_id,
+            Document.effective_from,
+            Document.effective_to,
+            Document.lifecycle_status,
+            Document.created_at,
+            Document.updated_at,
+        )
+    )
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     scope_pred = (
@@ -172,7 +190,7 @@ async def list_documents(
     query = base_query.order_by(Document.created_at.desc()).offset(offset).limit(limit)
     docs_result = await db.execute(query)
     docs = list(docs_result.scalars().all())
-    return DocumentListResponse(items=[DocumentResponse.model_validate(d) for d in docs], total=total)
+    return DocumentListResponse(items=[DocumentListItemResponse.model_validate(d) for d in docs], total=total)
 
 
 @router.post("/upload", response_model=DocumentResponse)

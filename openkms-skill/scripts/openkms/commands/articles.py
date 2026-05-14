@@ -14,6 +14,9 @@ from ..client import client
 from ..config import load_config
 from .._io import html_to_markish, print_json, write_or_print
 
+# Same values as backend `DocumentRelationType` (articles API reuses them).
+_ARTICLE_RELATION_TYPES = ("supersedes", "amends", "implements", "see_also")
+
 
 def _article_channel_id(ns: argparse.Namespace) -> str:
     direct = (getattr(ns, "channel_id", None) or "").strip()
@@ -122,6 +125,51 @@ def cmd_markdown(ns: argparse.Namespace) -> None:
     write_or_print(md, ns.out or None)
 
 
+def cmd_relationships_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/articles/{ns.id}/relationships")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_relationships_create(ns: argparse.Namespace) -> None:
+    path = f"/api/articles/{ns.id}/relationships"
+    body: dict[str, Any] = {
+        "target_article_id": ns.target_id,
+        "relation_type": ns.relation_type,
+    }
+    if ns.note:
+        body["note"] = ns.note
+    confirm_or_abort(
+        "create article relationship (outgoing edge)",
+        "POST",
+        path,
+        body,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_relationships_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/articles/{ns.id}/relationships/{ns.relationship_id}"
+    confirm_or_abort(
+        "delete article relationship (outgoing only)",
+        "DELETE",
+        path,
+        None,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"deleted relationship {ns.relationship_id} from article {ns.id}")
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("articles", help="Articles")
     sp = p.add_subparsers(dest="ar_cmd", required=True)
@@ -172,3 +220,35 @@ def add_subparser(sub) -> None:
     md.add_argument("--id", required=True)
     md.add_argument("--out", default="", help="Output file path; omit to print to stdout")
     md.set_defaults(fn=cmd_markdown)
+
+    rel = sp.add_parser(
+        "relationships",
+        help="Lineage edges between articles (outgoing/incoming; same relation types as documents)",
+    )
+    rsp = rel.add_subparsers(dest="ar_rel_cmd", required=True)
+    rls = rsp.add_parser("list", help="List outgoing and incoming relationships")
+    rls.add_argument("--id", required=True, dest="id", help="article id")
+    rls.set_defaults(fn=cmd_relationships_list)
+    rcr = rsp.add_parser(
+        "create",
+        help="Create outgoing edge: this article → target (e.g. supersedes, amends)",
+    )
+    rcr.add_argument("--id", required=True, dest="id", help="source article id")
+    rcr.add_argument("--target-id", required=True, help="target article id")
+    rcr.add_argument(
+        "--relation-type",
+        required=True,
+        choices=_ARTICLE_RELATION_TYPES,
+        help="edge type",
+    )
+    rcr.add_argument("--note", default="")
+    add_write_flags(rcr)
+    rcr.set_defaults(fn=cmd_relationships_create)
+    rdl = rsp.add_parser(
+        "delete",
+        help="Delete an outgoing relationship by id (source must be --id)",
+    )
+    rdl.add_argument("--id", required=True, dest="id", help="source article id")
+    rdl.add_argument("--relationship-id", required=True)
+    add_write_flags(rdl)
+    rdl.set_defaults(fn=cmd_relationships_delete)
