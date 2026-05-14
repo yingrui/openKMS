@@ -641,7 +641,28 @@ function OidcAuthProvider({
   const login = useCallback(() => {
     toast.dismiss();
     setAuthError(null);
-    void getUserManager().signinRedirect();
+    void (async () => {
+      const mgr = getUserManager();
+      try {
+        await fetch(`${config.apiUrl}/clear-session`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        // proceed; interactive login can still recover
+      }
+      try {
+        await mgr.removeUser();
+      } catch {
+        // ignore stale local user cache cleanup failures
+      }
+      try {
+        await mgr.clearStaleState();
+      } catch {
+        // ignore stale authorize-state cleanup failures
+      }
+      await mgr.signinRedirect();
+    })();
   }, []);
 
   const logout = useCallback(async () => {
