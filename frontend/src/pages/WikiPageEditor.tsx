@@ -3,7 +3,11 @@ import type { Components } from 'react-markdown';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import {
+  richMarkdownPreComponent,
+  richMarkdownRemarkPlugins,
+  richMarkdownRehypePlugins,
+} from '../components/markdown/richMarkdown';
 import { ArrowLeft, Network, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '../config';
@@ -77,6 +81,7 @@ export function WikiPageEditor() {
 
   const markdownComponents = useMemo<Components>(
     () => ({
+      pre: richMarkdownPreComponent(),
       img: ({ src, alt, ...props }) => {
         let u = src || '';
         if (u.startsWith('/api/')) u = `${config.apiUrl}${u}`;
@@ -212,7 +217,8 @@ export function WikiPageEditor() {
                     <div className="wiki-page-editor-preview-scroll">
                       <article className="wiki-page-editor-markdown">
                         <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
+                          remarkPlugins={richMarkdownRemarkPlugins}
+                          rehypePlugins={richMarkdownRehypePlugins}
                           urlTransform={previewUrlTransform}
                           components={markdownComponents}
                         >

@@ -102,6 +102,7 @@ frontend/src/
 ├── components/KnowledgeMapForceGraph.tsx (+ `.css`)  # Home hub: **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from taxonomy tree + resource links; taxonomy nodes as teal circles; resource nodes differentiated in canvas (channel pill + accent bar, wiki hexagon, articles tall pill); term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
+├── components/markdown/     # `richMarkdown.tsx`: GFM + KaTeX + `rehype-raw` + **Mermaid** fenced blocks; **WikiPageEditor** preview, **WikiAgentMessageBody**, **DocumentDetail** markdown
 ├── contexts/                # DocumentChannelsContext, ArticleChannelsContext, FeatureTogglesContext, AuthContext
 ├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/taxonomy/*`), …, featureTogglesApi, securityAdminApi, channelUtils, **userApiKeysApi** (`/api/auth/api-keys`)
 └── pages/
@@ -119,7 +120,7 @@ frontend/src/
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
     ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** GFM; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`), WikiPageEditor.tsx
+    ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** markdown via `components/markdown/`; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`), WikiPageEditor.tsx (preview: same rich markdown as documents)
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx

@@ -3,11 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Bookmark, ChevronDown, ChevronRight, ChevronUp, Edit3, FileText, GitBranch, History, Image as ImageIcon, ListTree, Maximize2, Minimize2, Info, Play, Loader2, RefreshCw, RotateCcw, Save, Sparkles, Table, Trash2, X as XIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
+import {
+  richMarkdownPreComponent,
+  richMarkdownRemarkPlugins,
+  richMarkdownRehypePlugins,
+} from '../components/markdown/richMarkdown';
 import { toast } from 'sonner';
 import {
   createDocumentRelationship,
@@ -68,6 +68,8 @@ interface SpreadsheetSheet {
   rows: string[][];
   truncated_rows?: boolean;
   truncated_cols?: boolean;
+  /** Mind map (`.xmind`) sheet metadata when `document_kind` is `mindmap`. */
+  topic_count?: number;
 }
 
 interface ParsingResult {
@@ -76,6 +78,8 @@ interface ParsingResult {
   layout_det_res?: LayoutDetItem[];
   document_kind?: string;
   sheets?: SpreadsheetSheet[];
+  /** Mind map attachment list from backend when `document_kind` is `mindmap`. */
+  attachments?: { path: string; size_bytes?: number }[];
   error?: string;
 }
 
@@ -252,8 +256,8 @@ function PageIndexTree({
             </div>
             <div className="document-detail-pageindex-dialog-body">
               <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeRaw, rehypeKatex]}
+                remarkPlugins={richMarkdownRemarkPlugins}
+                rehypePlugins={richMarkdownRehypePlugins}
                 components={markdownComponents}
               >
                 {contentPopover.content || t('detail.popoverNoContent')}
@@ -470,6 +474,7 @@ export function DocumentDetail() {
           {...props}
         />
       ),
+      pre: richMarkdownPreComponent(),
     }),
     [markdownBaseUrl]
   );
@@ -1958,7 +1963,7 @@ export function DocumentDetail() {
                     <div className="document-detail-mindmap-attachments">
                       <h3>{t('detail.mindmapAttachments')}</h3>
                       <ul>
-                        {mindmapAttachments.map((att) => (
+                        {mindmapAttachments.map((att: { path: string; size_bytes?: number }) => (
                           <li key={att.path}>
                             <code>{att.path}</code>
                             {typeof att.size_bytes === 'number' ? (
@@ -2156,8 +2161,8 @@ export function DocumentDetail() {
                   ) : selectedBlock.parsingItem.content ? (
                     <div className="document-detail-block-content">
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkMath]}
-                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                        remarkPlugins={richMarkdownRemarkPlugins}
+                        rehypePlugins={richMarkdownRehypePlugins}
                         components={markdownComponents}
                       >
                         {selectedBlock.parsingItem.content}
@@ -2191,8 +2196,8 @@ export function DocumentDetail() {
               ) : markdown && (folderId || markdownBaseUrl) ? (
                 <div key="markdown-view">
                 <ReactMarkdown
-                  remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeRaw, rehypeKatex]}
+                  remarkPlugins={richMarkdownRemarkPlugins}
+                  rehypePlugins={richMarkdownRehypePlugins}
                   components={markdownComponents}
                 >
                   {markdown}
@@ -2392,8 +2397,8 @@ export function DocumentDetail() {
                         <h3 className="document-detail-version-preview-sub">{t('detail.previewMarkdownSub')}</h3>
                         <div className="document-detail-version-preview-md">
                           <ReactMarkdown
-                            remarkPlugins={[remarkGfm, remarkMath]}
-                            rehypePlugins={[rehypeRaw, rehypeKatex]}
+                            remarkPlugins={richMarkdownRemarkPlugins}
+                            rehypePlugins={richMarkdownRehypePlugins}
                             components={markdownComponents}
                           >
                             {versionPreview.markdown || ''}

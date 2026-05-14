@@ -1,7 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import {
+  richMarkdownPreComponent,
+  richMarkdownRemarkPlugins,
+  richMarkdownRehypePlugins,
+} from '../markdown/richMarkdown';
 import { Link } from 'react-router-dom';
 
 type WikiAgentMessageBodyProps = {
@@ -49,7 +53,7 @@ function useMarkdownComponents(): Partial<Components> {
           </code>
         );
       },
-      pre: ({ children }) => <pre className="wiki-agent-md__pre">{children}</pre>,
+      pre: richMarkdownPreComponent('wiki-agent-md__pre'),
       ul: ({ children }) => <ul className="wiki-agent-md__ul">{children}</ul>,
       ol: ({ children }) => <ol className="wiki-agent-md__ol">{children}</ol>,
       li: ({ children }) => <li className="wiki-agent-md__li">{children}</li>,
@@ -81,7 +85,11 @@ export function WikiAgentMessageBody({ text, variant }: WikiAgentMessageBodyProp
       className={`wiki-agent-md wiki-agent-md--${variant}`}
       data-variant={variant}
     >
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={richMarkdownRemarkPlugins}
+        rehypePlugins={richMarkdownRehypePlugins}
+        components={components}
+      >
         {text}
       </ReactMarkdown>
     </div>
