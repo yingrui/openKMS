@@ -319,12 +319,14 @@ Used by the Wiki agent surface (and any other in-app assistant). Uses `OPENKMS_A
 
 ## Knowledge map (taxonomy)
 
+The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowledge Map**: `knowledge-map nodes …` and `knowledge-map resource-links …` (see `openkms-skill/reference.md`).
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/taxonomy/nodes/tree` | Full Knowledge Map tree for the navigator |
 | POST | `/api/taxonomy/nodes` | Create node (`name`, optional `parent_id`, `description`, `sort_order`) |
 | PATCH | `/api/taxonomy/nodes/{id}` | Update node (rename, move, reorder) |
 | DELETE | `/api/taxonomy/nodes/{id}` | Delete node and its subtree |
-| GET | `/api/taxonomy/resource-links?node_id=` | List resources mapped to a node |
+| GET | `/api/taxonomy/resource-links` | List all resource–node mappings (filter client-side if needed) |
 | PUT | `/api/taxonomy/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `taxonomy_node_id`) |
 | DELETE | `/api/taxonomy/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |

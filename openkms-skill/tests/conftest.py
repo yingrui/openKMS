@@ -25,6 +25,7 @@ _PATCHED_MODULES = (
     "openkms.commands.kb",
     "openkms.commands.kb_faq",
     "openkms.commands.glossaries",
+    "openkms.commands.knowledge_map",
     "openkms.commands.ontology",
     "openkms.commands.objects",
     "openkms.commands.links",

@@ -22,13 +22,14 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
 | `glossaries` | `list`, `get`, `export`, `terms list/get` | `create`, `update`, `delete`, `import`, `terms create/update/delete/suggest` |
+| `knowledge-map` | **`nodes tree`**, **`resource-links list`** | **`nodes create`**, **`nodes patch`**, **`nodes delete`**, **`resource-links put`**, **`resource-links delete`** |
 | `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |
 | `ontology objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j`, `sync-neo4j-type` |
 | `ontology links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j`, `sync-neo4j-type` |
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 
-> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, KB FAQ, **`glossaries`** and **`glossaries terms`**, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
+> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, KB FAQ, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`run`, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
 ## Quick examples
 

@@ -5,12 +5,12 @@ description: >-
   Read paths: global search across documents/articles/wiki/KBs; list & fetch markdown for
   documents and articles; list & get wiki pages by path; list wiki space stored files (vault .md, assets, uploads) and linked
   channel documents; KB semantic search and grounded
-  Q&A; list glossaries and terms, export/import term payloads; document lineage (relationships)
+  Q&A; list glossaries and terms, export/import term payloads; knowledge map taxonomy tree and resource links; document lineage (relationships)
   and policy lifecycle fields; article↔article relationship list/create/delete; run Cypher (or natural-language questions) against the ontology graph; list
   evaluation datasets, items, and runs. Write paths: create channels, upload documents,
   create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
   wiki↔documents, create KB FAQs and evaluation
-  datasets, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; document
+  datasets, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
   lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
   Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
@@ -74,6 +74,7 @@ Some practical guidance:
 - **Write commands and confirm gating.** Every mutating CLI subcommand uses the same pattern as ontology objects/links: `--dry-run` prints the planned `[METHOD] path + body` (upload uses a JSON summary with `channel_id` and `file` path, not file bytes) and exits 0 without HTTP; `-y` / `--yes` skips the prompt; without either on a TTY you get `Proceed? [y/N]`; **on a non-TTY without `--yes` the command exits 2** — agents must pass `--yes` deliberately.
 - **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then **`ontology objects sync-neo4j`** / **`ontology links sync-neo4j`** (all indexable types) or **`sync-neo4j-type`** on one type id to MERGE into Neo4j.
 - **`wiki files` is the whole space file store, not “attachments only”.** `wiki files list` / `wiki files delete` operate on `/api/wiki-spaces/…/files`: vault imports (including mirrored **`.md`** and images/PDFs), uploads, etc. Deleting a row removes that stored object (DB + storage). To change **wiki page body** (the page entity), use **`wiki put-page`** (or the app editor) — do not treat “files” as only sidecar attachments.
+- **Knowledge map (`knowledge-map`).** Mirrors Console **Knowledge Map** under `/api/taxonomy/*`: taxonomy tree, node CRUD, and mapping document/article channels or wiki spaces to nodes. Requires **`taxonomy:read`** / **`taxonomy:write`** when the server enforces those permissions (same as the SPA).
 - **Output is verbose.** Each list response can include long arrays. If you're scanning many records, pipe through `jq` to project just the fields you need rather than dumping everything into context.
 
 ## Read / query tasks
@@ -119,6 +120,8 @@ Some practical guidance:
 | List runs for a dataset | `python scripts/cli.py evaluation-runs list --dataset-id DS_ID` |
 | Get one run with per-item results | `python scripts/cli.py evaluation-runs get --dataset-id DS_ID --run-id RUN_ID` |
 | Compare two runs | `python scripts/cli.py evaluation-runs compare --dataset-id DS_ID --run-a A --run-b B` |
+| Get knowledge map taxonomy tree | `python scripts/cli.py knowledge-map nodes tree` |
+| List all knowledge map resource links | `python scripts/cli.py knowledge-map resource-links list` |
 
 ## Write tasks
 
@@ -155,6 +158,10 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Create / update / delete term | `python scripts/cli.py glossaries terms create --glossary-id GL_ID --primary-en "MI" --primary-cn "心梗" --yes` (and `terms update` / `terms delete`) |
 | Bulk-import terms from JSON file | `python scripts/cli.py glossaries import --glossary-id GL_ID --terms-file ./terms.json --mode replace --yes` |
 | AI suggest for a term (uses default LLM) | `python scripts/cli.py glossaries terms suggest --glossary-id GL_ID --primary-en "STEMI" --yes` |
+| Create knowledge map node | `python scripts/cli.py knowledge-map nodes create --name "Claims" --yes` |
+| Patch / delete knowledge map node | `python scripts/cli.py knowledge-map nodes patch --id NODE_ID --name "Renamed" --yes` / `knowledge-map nodes delete --id NODE_ID --yes` |
+| Map a channel or wiki space to a taxonomy node | `python scripts/cli.py knowledge-map resource-links put --taxonomy-node-id NODE --resource-type document_channel --resource-id CHAN_ID --yes` |
+| Unmap a resource from the knowledge map | `python scripts/cli.py knowledge-map resource-links delete --resource-type wiki_space --resource-id WS_ID --yes` |
 
 ### Ontology objects + links
 
