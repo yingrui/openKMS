@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
+from app.api.object_types import _neo4j_safe_label, _resolve_neo4j_id_column_for_row
 from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count, get_dataset_row_count_where_not_null
 from app.database import get_db
@@ -371,24 +372,13 @@ async def delete_link_type(
     await db.delete(link_type)
 
 
-def _neo4j_safe_label(name: str) -> str:
-    """Convert name to Neo4j-safe label (alphanumeric, underscore)."""
-    s = re.sub(r"[^a-zA-Z0-9_]", "_", name)
-    return s or "Node"
-
-
 def _neo4j_safe_rel_type(name: str) -> str:
     """Sanitize a link type name for use as a Neo4j relationship type. Preserves case — link_type names are stored in lower_snake_case in Postgres and indexed verbatim in Neo4j (e.g. governed_by, covers)."""
     s = re.sub(r"[^a-zA-Z0-9_]", "_", name.strip())
     return s or "relates_to"
 
 
-@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE))])
-async def index_links_to_neo4j(
-    body: IndexToNeo4jRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """Index link types to Neo4j: many-to-many from junction table, many-to-one/one-to-many from source dataset FK. Admin only."""
+async def _open_neo4j_driver_for_link_index(body: IndexToNeo4jRequest, db: AsyncSession):
     neo4j_ds = await db.get(DataSource, body.neo4j_data_source_id)
     if not neo4j_ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -400,128 +390,239 @@ async def index_links_to_neo4j(
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
-        )
+        ) from None
     username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
     password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
     uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+    return GraphDatabase.driver(uri, auth=(username, password))
+
+
+async def _index_link_type_m2m_junction(
+    db: AsyncSession,
+    session,
+    link_type: LinkType,
+    source_type: ObjectType,
+    target_type: ObjectType,
+) -> int:
+    """MERGE relationships from many-to-many junction dataset rows."""
+    src_label = _neo4j_safe_label(source_type.name)
+    tgt_label = _neo4j_safe_label(target_type.name)
+    rel_type = _neo4j_safe_rel_type(link_type.name)
+    src_col = link_type.source_dataset_column
+    tgt_col = link_type.target_dataset_column
+    src_key = link_type.source_key_property or "id"
+    tgt_key = link_type.target_key_property or "id"
+    relationships_created = 0
+    offset = 0
+    batch_size = 1000
+    while True:
+        try:
+            rows, total = await fetch_dataset_rows(db, link_type.dataset_id, limit=batch_size, offset=offset)
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to fetch junction dataset for {link_type.name}: {e}",
+            ) from e
+        if not rows:
+            break
+        for row in rows:
+            src_val = row.get(src_col)
+            tgt_val = row.get(tgt_col)
+            if src_val is None or tgt_val is None:
+                continue
+            session.run(
+                f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
+                src_id=src_val,
+                tgt_id=tgt_val,
+            )
+            relationships_created += 1
+        offset += len(rows)
+        if offset >= total:
+            break
+    return relationships_created
+
+
+async def _index_link_type_m2o_source_fk(
+    db: AsyncSession,
+    session,
+    link_type: LinkType,
+    source_type: ObjectType,
+    target_type: ObjectType,
+) -> int:
+    """MERGE relationships from source object dataset rows (FK column → target node id)."""
+    if not source_type.dataset_id:
+        return 0
+    src_label = _neo4j_safe_label(source_type.name)
+    tgt_label = _neo4j_safe_label(target_type.name)
+    rel_type = _neo4j_safe_rel_type(link_type.name)
+    fk_col = link_type.source_key_property
+    src_key = link_type.target_key_property or "id"
+    tgt_key = src_key
+    relationships_created = 0
+    offset = 0
+    batch_size = 1000
+    while True:
+        try:
+            rows, total = await fetch_dataset_rows(
+                db, source_type.dataset_id, limit=batch_size, offset=offset
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to fetch source dataset for {link_type.name}: {e}",
+            ) from e
+        if not rows:
+            break
+        src_id_col = "id" if "id" in rows[0] else list(rows[0].keys())[0]
+        for row in rows:
+            tgt_val = row.get(fk_col)
+            if tgt_val is None:
+                continue
+            src_val = row.get(src_id_col)
+            if src_val is None:
+                continue
+            session.run(
+                f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
+                src_id=src_val,
+                tgt_id=tgt_val,
+            )
+            relationships_created += 1
+        offset += len(rows)
+        if offset >= total:
+            break
+    return relationships_created
+
+
+async def _index_link_type_from_saved_instances(
+    db: AsyncSession,
+    session,
+    link_type: LinkType,
+    source_type: ObjectType,
+    target_type: ObjectType,
+) -> int:
+    """MERGE relationships from link_instances (object ids resolved to Neo4j keys via instance data)."""
+    src_label = _neo4j_safe_label(source_type.name)
+    tgt_label = _neo4j_safe_label(target_type.name)
+    rel_type = _neo4j_safe_rel_type(link_type.name)
+    relationships_created = 0
+    offset = 0
+    batch_size = 500
+    while True:
+        result = await db.execute(
+            select(LinkInstance)
+            .where(LinkInstance.link_type_id == link_type.id)
+            .order_by(LinkInstance.id)
+            .offset(offset)
+            .limit(batch_size)
+        )
+        links = result.scalars().all()
+        if not links:
+            break
+        for li in links:
+            source_obj = await db.get(ObjectInstance, li.source_object_id)
+            target_obj = await db.get(ObjectInstance, li.target_object_id)
+            if not source_obj or not target_obj:
+                continue
+            src_row = {**(source_obj.data or {}), "id": source_obj.id}
+            tgt_row = {**(target_obj.data or {}), "id": target_obj.id}
+            src_key = _resolve_neo4j_id_column_for_row(source_type, src_row)
+            tgt_key = _resolve_neo4j_id_column_for_row(target_type, tgt_row)
+            src_val = src_row.get(src_key)
+            tgt_val = tgt_row.get(tgt_key)
+            if src_val is None or tgt_val is None:
+                continue
+            session.run(
+                f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
+                src_id=src_val,
+                tgt_id=tgt_val,
+            )
+            relationships_created += 1
+        offset += len(links)
+        if len(links) < batch_size:
+            break
+    return relationships_created
+
+
+async def _index_one_link_type_to_neo4j_session(
+    db: AsyncSession,
+    session,
+    link_type: LinkType,
+) -> tuple[int, bool]:
+    """Returns (relationships_created, did_run_an_indexing_mode)."""
+    source_type = await db.get(ObjectType, link_type.source_object_type_id)
+    target_type = await db.get(ObjectType, link_type.target_object_type_id)
+    if not source_type or not target_type:
+        return 0, False
+    if (
+        link_type.cardinality == "many-to-many"
+        and link_type.dataset_id
+        and link_type.source_dataset_column
+        and link_type.target_dataset_column
+    ):
+        n = await _index_link_type_m2m_junction(db, session, link_type, source_type, target_type)
+        return n, True
+    if (
+        link_type.cardinality in ("many-to-one", "one-to-many")
+        and link_type.source_key_property
+        and source_type.dataset_id
+    ):
+        n = await _index_link_type_m2o_source_fk(db, session, link_type, source_type, target_type)
+        return n, True
+    n_inst = await _link_instance_count(db, link_type.id)
+    if n_inst == 0:
+        return 0, False
+    n = await _index_link_type_from_saved_instances(db, session, link_type, source_type, target_type)
+    return n, True
+
+
+@router.post("/index-to-neo4j", response_model=IndexToNeo4jResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE))])
+async def index_links_to_neo4j(
+    body: IndexToNeo4jRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index link types to Neo4j: junction or source-FK datasets when configured, else saved link instances."""
+    driver = await _open_neo4j_driver_for_link_index(body, db)
     relationships_created = 0
     link_types_indexed = 0
-    driver = GraphDatabase.driver(uri, auth=(username, password))
-
-    # 1. Many-to-many: junction table
-    m2m_result = await db.execute(
-        select(LinkType)
-        .where(
-            LinkType.cardinality == "many-to-many",
-            LinkType.dataset_id.isnot(None),
-            LinkType.source_dataset_column.isnot(None),
-            LinkType.target_dataset_column.isnot(None),
-        )
-        .order_by(LinkType.name)
-    )
-    m2m_types = m2m_result.scalars().all()
-
-    # 2. Many-to-one / one-to-many: source object type has dataset, source_key_property = FK column
-    m2o_result = await db.execute(
-        select(LinkType)
-        .where(
-            LinkType.cardinality.in_(["many-to-one", "one-to-many"]),
-            LinkType.source_key_property.isnot(None),
-        )
-        .order_by(LinkType.name)
-    )
-    m2o_types = m2o_result.scalars().all()
-
     try:
         with driver.session() as session:
-            # Index many-to-many
-            for link_type in m2m_types:
-                source_type = await db.get(ObjectType, link_type.source_object_type_id)
-                target_type = await db.get(ObjectType, link_type.target_object_type_id)
-                if not source_type or not target_type:
-                    continue
-                src_label = _neo4j_safe_label(source_type.name)
-                tgt_label = _neo4j_safe_label(target_type.name)
-                rel_type = _neo4j_safe_rel_type(link_type.name)
-                src_col = link_type.source_dataset_column
-                tgt_col = link_type.target_dataset_column
-                src_key = link_type.source_key_property or "id"
-                tgt_key = link_type.target_key_property or "id"
-                offset = 0
-                batch_size = 1000
-                while True:
-                    try:
-                        rows, total = await fetch_dataset_rows(db, link_type.dataset_id, limit=batch_size, offset=offset)
-                    except Exception as e:
-                        raise HTTPException(
-                            status_code=502,
-                            detail=f"Failed to fetch junction dataset for {link_type.name}: {e}",
-                        ) from e
-                    if not rows:
-                        break
-                    for row in rows:
-                        src_val = row.get(src_col)
-                        tgt_val = row.get(tgt_col)
-                        if src_val is None or tgt_val is None:
-                            continue
-                        session.run(
-                            f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
-                            src_id=src_val,
-                            tgt_id=tgt_val,
-                        )
-                        relationships_created += 1
-                    offset += len(rows)
-                    if offset >= total:
-                        break
-                link_types_indexed += 1
-
-            # Index many-to-one / one-to-many: source dataset rows where FK column is not null
-            for link_type in m2o_types:
-                source_type = await db.get(ObjectType, link_type.source_object_type_id)
-                target_type = await db.get(ObjectType, link_type.target_object_type_id)
-                if not source_type or not target_type or not source_type.dataset_id:
-                    continue
-                src_label = _neo4j_safe_label(source_type.name)
-                tgt_label = _neo4j_safe_label(target_type.name)
-                rel_type = _neo4j_safe_rel_type(link_type.name)
-                fk_col = link_type.source_key_property  # column in source dataset holding target ref (e.g. parent_id)
-                src_key = link_type.target_key_property or "id"  # both nodes match on id
-                tgt_key = src_key
-                offset = 0
-                batch_size = 1000
-                while True:
-                    try:
-                        rows, total = await fetch_dataset_rows(
-                            db, source_type.dataset_id, limit=batch_size, offset=offset
-                        )
-                    except Exception as e:
-                        raise HTTPException(
-                            status_code=502,
-                            detail=f"Failed to fetch source dataset for {link_type.name}: {e}",
-                        ) from e
-                    if not rows:
-                        break
-                    src_id_col = "id" if "id" in rows[0] else list(rows[0].keys())[0]
-                    for row in rows:
-                        tgt_val = row.get(fk_col)
-                        if tgt_val is None:
-                            continue
-                        src_val = row.get(src_id_col)
-                        if src_val is None:
-                            continue
-                        session.run(
-                            f"MERGE (a:{src_label} {{`{src_key}`: $src_id}}) MERGE (b:{tgt_label} {{`{tgt_key}`: $tgt_id}}) MERGE (a)-[r:{rel_type}]->(b)",
-                            src_id=src_val,
-                            tgt_id=tgt_val,
-                        )
-                        relationships_created += 1
-                    offset += len(rows)
-                    if offset >= total:
-                        break
-                link_types_indexed += 1
+            result = await db.execute(select(LinkType).order_by(LinkType.name))
+            for link_type in result.scalars().all():
+                n, ok = await _index_one_link_type_to_neo4j_session(db, session, link_type)
+                if ok:
+                    link_types_indexed += 1
+                    relationships_created += n
     finally:
         driver.close()
     return IndexToNeo4jResponse(link_types_indexed=link_types_indexed, relationships_created=relationships_created)
+
+
+@router.post(
+    "/{link_type_id}/index-to-neo4j",
+    response_model=IndexToNeo4jResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE))],
+)
+async def index_one_link_type_to_neo4j(
+    link_type_id: str,
+    body: IndexToNeo4jRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index one link type to Neo4j (dataset path or saved instances). Admin only."""
+    link_type = await db.get(LinkType, link_type_id)
+    if not link_type:
+        raise HTTPException(status_code=404, detail="Link type not found")
+    driver = await _open_neo4j_driver_for_link_index(body, db)
+    try:
+        with driver.session() as session:
+            n, ok = await _index_one_link_type_to_neo4j_session(db, session, link_type)
+    finally:
+        driver.close()
+    if not ok:
+        raise HTTPException(
+            status_code=400,
+            detail="This link type has no junction or source-dataset configuration and no saved links to index.",
+        )
+    return IndexToNeo4jResponse(link_types_indexed=1, relationships_created=n)
 
 
 # --- Link instances (nested under link type) ---

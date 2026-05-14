@@ -11,7 +11,7 @@ import {
   summarizeAnswer,
   type ObjectTypeResponse,
   type LinkTypeResponse,
-} from '../data/ontologyApi';
+} from '../../data/ontologyApi';
 import './ObjectExplorer.css';
 
 /** Convert object type name to Neo4j label (alphanumeric, underscore) */

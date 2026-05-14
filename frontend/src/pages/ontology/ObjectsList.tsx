@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Box } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchObjectTypes, type ObjectTypeResponse } from '../data/ontologyApi';
+import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import './ObjectsList.css';
 
 export function ObjectsList() {

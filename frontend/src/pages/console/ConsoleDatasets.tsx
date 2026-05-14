@@ -13,7 +13,7 @@ import {
   type TableInfo,
 } from '../../data/datasetsApi';
 import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import './ConsoleObjectTypes.css';
+import '../ontology/ontology-admin.css';
 
 export function ConsoleDatasets() {
   const { t } = useTranslation('console');
@@ -158,7 +158,7 @@ export function ConsoleDatasets() {
   const pgDataSources = dataSources.filter((ds) => ds.kind === 'postgresql');
 
   return (
-    <div className="console-object-types">
+    <div className="ontology-admin">
       <div className="page-header">
         <div>
           <h1>{t('datasets.pageTitle')}</h1>
@@ -175,7 +175,7 @@ export function ConsoleDatasets() {
         </button>
       </div>
 
-      <div className="console-object-types-content">
+      <div className="ontology-admin-content">
       <div className="console-datasets-toolbar">
         <div className="console-datasets-search">
           <Search size={18} />
@@ -203,7 +203,7 @@ export function ConsoleDatasets() {
         )}
       </div>
 
-      <div className="console-object-types-table-wrap">
+      <div className="ontology-admin-table-wrap">
         {loading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" />

@@ -184,7 +184,7 @@ def test_instances_delete_yes(mock_api):
 def test_sync_neo4j_yes(mock_api):
     recorded, responses = mock_api
     responses[("POST", "/api/link-types/index-to-neo4j")] = (
-        200, {"object_types_indexed": 0, "nodes_created": 0},
+        200, {"link_types_indexed": 0, "relationships_created": 0},
     )
 
     from openkms.commands.links import cmd_sync_neo4j

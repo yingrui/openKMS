@@ -84,7 +84,7 @@ flowchart TB
     Pipelines[Pipelines]
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
-    Ontology[OntologyList; Datasets, DatasetDetail, ConsoleObjectTypes, ConsoleLinkTypes; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer]
+    Ontology[OntologyList; Datasets, DatasetDetail, ObjectTypesPage, LinkTypesPage; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer] — SPA sources under **`frontend/src/pages/ontology/`**
     Console[Console: Overview, Permission management, Data security, DataSources, Settings, Users, FeatureToggles]
     UserSettings[Profile, UserSettings /settings API keys]
   end
@@ -124,7 +124,7 @@ frontend/src/
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    ├── OntologyList.tsx, ObjectsList.tsx, ObjectTypeDetail.tsx, LinksList.tsx, LinkTypeDetail.tsx, ObjectExplorer.tsx
+    ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.css; co-located CSS per page
     └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 
@@ -153,8 +153,8 @@ backend/
 │   │   │   └── permission_reference.py  # GET /api/admin/permission-reference (routes + APIs + operation_key_hints for admins)
 │   │   ├── channels.py         # GET/POST/PUT /api/document-channels
 │   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id), PUT metadata, PUT markdown, POST restore-markdown, POST rebuild-page-index, POST/GET versions, GET version, POST version restore, POST extract-metadata, GET page-index, GET section (by line range)
-│   │   ├── object_types.py     # CRUD /api/object-types; is_master_data, display_property; is_master_data filter for label config; instances from Neo4j when available
-│   │   ├── link_types.py       # CRUD /api/link-types; instances from Neo4j when available; count_from_neo4j param for Links page
+│   │   ├── object_types.py     # CRUD /api/object-types; Neo4j index from linked dataset or object_instances when no dataset; is_master_data, display_property; master-data filter for label config; instances from Neo4j when available
+│   │   ├── link_types.py       # CRUD /api/link-types; Neo4j index from junction/source dataset or link_instances; count_from_neo4j; instances from Neo4j when available
 │   │   ├── ontology_explore.py # POST /api/ontology/explore; execute read-only Cypher against Neo4j (Object Explorer)
 │   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test, POST /{id}/neo4j-delete-all; credentials encrypted
 │   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata

@@ -1,8 +1,8 @@
-.console-object-types {
+.ontology-admin {
   width: 100%;
 }
 
-.console-object-types .page-header {
+.ontology-admin .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -11,18 +11,18 @@
   margin-bottom: 24px;
 }
 
-.console-object-types .page-header .btn-primary {
+.ontology-admin .page-header .btn-primary {
   flex-shrink: 0;
 }
 
-.console-object-types .page-header-actions {
+.ontology-admin .page-header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
 }
 
-.console-object-types-content {
+.ontology-admin-content {
   width: 100%;
 }
 
@@ -83,7 +83,7 @@
   background: var(--color-bg-elevated);
 }
 
-.console-object-types-table-wrap {
+.ontology-admin-table-wrap {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -192,7 +192,7 @@
   max-width: 640px;
 }
 
-.console-object-types .console-modal.console-modal--wide {
+.ontology-admin .console-modal.console-modal--wide {
   max-width: 680px;
 }
 
@@ -304,6 +304,44 @@
   margin-bottom: 12px;
   font-weight: 500;
   font-size: 0.875rem;
+}
+
+.ontology-admin .console-modal--index-one-dataset .console-modal-header {
+  border-bottom-color: var(--color-accent);
+  border-bottom-width: 2px;
+}
+
+.ontology-admin .console-modal--index-one-instances .console-modal-header {
+  border-bottom-color: var(--color-border-strong);
+  border-bottom-width: 2px;
+}
+
+.ontology-admin .console-modal-index-lead {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.ontology-admin .console-modal-index-callout {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-left-width: 4px;
+}
+
+.ontology-admin .console-modal-index-callout--dataset {
+  background: var(--color-accent-subtle);
+  border-left-color: var(--color-accent);
+}
+
+.ontology-admin .console-modal-index-callout--instances {
+  background: var(--color-bg-muted);
+  border-left-color: var(--color-text-secondary);
 }
 
 .console-modal-hint {

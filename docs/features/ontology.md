@@ -6,9 +6,9 @@ Object types and link types model an entity-relationship layer that can be backe
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); managed under Ontology → Object types (`/ontology/object-types`); Edit dialog: wider, property name/type read-only when editing, primary key radio selector; Master Data flag (only master data types usable for document labels); display_property for label picker display |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); managed under Ontology → Object types (`/ontology/object-types`); table Actions: index-to-graph when Neo4j exists and the type has a linked dataset or at least one stored instance; indexing uses dataset rows, or `object_instances` when there is no dataset; header **Index Objects** indexes all such types; Edit dialog: wider, property name/type read-only when editing, primary key radio selector; Master Data flag (only master data types usable for document labels); display_property for label picker display |
 | Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write) |
-| Link types | ✅ | Schema for relationships between two object types; managed under Ontology → Link types (`/ontology/link-types`) |
+| Link types | ✅ | Schema for relationships between two object types; managed under Ontology → Link types (`/ontology/link-types`); table Actions: index when Neo4j exists and the type has a junction/source-dataset setup or at least one saved link; per-row dialog differs for table-driven vs saved links; header **Index Links** runs bulk for all such types |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write) |
 | Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |

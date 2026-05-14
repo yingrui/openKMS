@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   fetchLinkType,
   fetchLinkInstances,
@@ -12,7 +12,7 @@ import {
   deleteLinkInstance,
   type LinkTypeResponse,
   type LinkInstanceResponse,
-} from '../data/ontologyApi';
+} from '../../data/ontologyApi';
 import './LinkTypeDetail.css';
 
 function objectLabel(

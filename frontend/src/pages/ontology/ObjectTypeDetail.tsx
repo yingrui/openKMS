@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Pencil, Trash2, X, Search as SearchIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   fetchObjectType,
   fetchObjectInstances,
@@ -13,7 +13,7 @@ import {
   type ObjectTypeResponse,
   type ObjectInstanceResponse,
   type PropertyDef,
-} from '../data/ontologyApi';
+} from '../../data/ontologyApi';
 import './ObjectTypeDetail.css';
 
 export function ObjectTypeDetail() {

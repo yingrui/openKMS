@@ -286,7 +286,7 @@ def add_subparser(sub) -> None:
     # ---- Write — sync ----
     sn = sp.add_parser(
         "sync-neo4j",
-        help="MERGE all link instances into Neo4j (POST /api/link-types/index-to-neo4j)",
+        help="MERGE link relationships into Neo4j (POST /api/link-types/index-to-neo4j): junction/source datasets or saved links",
     )
     sn.add_argument("--neo4j-data-source-id", required=True)
     add_write_flags(sn)

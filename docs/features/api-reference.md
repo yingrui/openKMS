@@ -202,7 +202,8 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance |
 | PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only) |
 | DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only) |
-| POST | `/api/object-types/index-to-neo4j` | Index object type datasets to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
+| POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
+| POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or from `object_instances` when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |
 | POST | `/api/link-types` | Create link type (admin-only) |
 | GET | `/api/link-types/{id}` | Get link type; ?count_from_neo4j=true for link_count from Neo4j |
@@ -211,7 +212,8 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/link-types/{id}/links` | List link instances (from Neo4j when available; ?limit=, ?offset=) |
 | POST | `/api/link-types/{id}/links` | Create link instance (admin-only; rejected when link type uses junction dataset) |
 | DELETE | `/api/link-types/{id}/links/{link_id}` | Delete link instance (admin-only; rejected when link type uses junction dataset) |
-| POST | `/api/link-types/index-to-neo4j` | Index link types (M:M junction + M:1/1:M from source dataset) to Neo4j as relationships (admin-only) |
+| POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
+| POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
 | GET | `/api/data-sources` | List data sources (`console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |

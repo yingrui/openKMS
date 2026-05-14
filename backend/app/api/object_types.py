@@ -4,7 +4,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
-from sqlalchemy import String, cast, func, select
+from sqlalchemy import String, cast, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
@@ -109,6 +109,40 @@ def _neo4j_safe_label(name: str) -> str:
     """Convert object type name to Neo4j-safe label (alphanumeric, underscore)."""
     s = re.sub(r"[^a-zA-Z0-9_]", "_", name)
     return s or "Node"
+
+
+def _resolve_neo4j_id_column_for_row(obj_type: ObjectType, sample_row: dict) -> str:
+    """Pick MERGE id property from a representative row (dataset row or instance payload + id)."""
+    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
+    if obj_type.key_property and sample_row and obj_type.key_property in sample_row:
+        return obj_type.key_property
+    if (prop_names and "id" in prop_names) or (sample_row and "id" in sample_row):
+        return "id"
+    if prop_names:
+        return prop_names[0]
+    if sample_row:
+        return list(sample_row.keys())[0]
+    return "id"
+
+
+def _merge_object_row_to_neo4j(session, label: str, id_col: str, row: dict) -> int:
+    """MERGE one flat property map into Neo4j. Returns 1 if a node was written, else 0."""
+    props = {k: v for k, v in row.items() if v is not None}
+    node_id = props.get(id_col, props.get(list(props.keys())[0]) if props else None)
+    if node_id is None:
+        return 0
+    safe_props: dict = {}
+    for k, v in props.items():
+        if isinstance(v, (str, int, float, bool)):
+            safe_props[k] = v
+        else:
+            safe_props[k] = str(v)
+    session.run(
+        f"MERGE (n:{label} {{`{id_col}`: $id_val}}) SET n += $props",
+        id_val=safe_props.get(id_col, node_id),
+        props=safe_props,
+    )
+    return 1
 
 
 async def _dataset_name(db: AsyncSession, dataset_id: str | None) -> str | None:
@@ -365,16 +399,71 @@ async def delete_object_type(
     await db.delete(obj_type)
 
 
-@router.post(
-    "/index-to-neo4j",
-    response_model=IndexToNeo4jResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))],
-)
-async def index_objects_to_neo4j(
-    body: IndexToNeo4jRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """Index all object types with datasets to the target Neo4j database. Admin only."""
+async def _index_object_type_dataset_to_neo4j_session(
+    db: AsyncSession,
+    session,
+    obj_type: ObjectType,
+) -> int:
+    """MERGE dataset rows for one object type into Neo4j (sync Neo4j session). Returns nodes_created."""
+    if not obj_type.dataset_id:
+        return 0
+    nodes_created = 0
+    label = _neo4j_safe_label(obj_type.name)
+    offset = 0
+    batch_size = 1000
+    while True:
+        try:
+            rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=batch_size, offset=offset)
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to fetch dataset for {obj_type.name}: {e}",
+            ) from e
+        if not rows:
+            break
+        id_col = _resolve_neo4j_id_column_for_row(obj_type, rows[0])
+        for row in rows:
+            nodes_created += _merge_object_row_to_neo4j(session, label, id_col, row)
+        offset += len(rows)
+        if offset >= total:
+            break
+    return nodes_created
+
+
+async def _index_object_type_instances_to_neo4j_session(
+    db: AsyncSession,
+    session,
+    obj_type: ObjectType,
+) -> int:
+    """MERGE rows from object_instances into Neo4j (same MERGE rules as dataset rows)."""
+    label = _neo4j_safe_label(obj_type.name)
+    offset = 0
+    batch_size = 1000
+    nodes_created = 0
+    while True:
+        result = await db.execute(
+            select(ObjectInstance)
+            .where(ObjectInstance.object_type_id == obj_type.id)
+            .order_by(ObjectInstance.id)
+            .offset(offset)
+            .limit(batch_size)
+        )
+        instances = result.scalars().all()
+        if not instances:
+            break
+        first_row = {**(instances[0].data or {}), "id": instances[0].id}
+        id_col = _resolve_neo4j_id_column_for_row(obj_type, first_row)
+        for inst in instances:
+            row = {**(inst.data or {}), "id": inst.id}
+            nodes_created += _merge_object_row_to_neo4j(session, label, id_col, row)
+        offset += len(instances)
+        if len(instances) < batch_size:
+            break
+    return nodes_created
+
+
+async def _open_neo4j_driver_for_index(body: IndexToNeo4jRequest, db: AsyncSession):
+    """Return connected Neo4j driver for the given data source id, or raise HTTPException."""
     neo4j_ds = await db.get(DataSource, body.neo4j_data_source_id)
     if not neo4j_ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -386,64 +475,79 @@ async def index_objects_to_neo4j(
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
-        )
+        ) from None
     username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
     password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
     uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
+    return GraphDatabase.driver(uri, auth=(username, password))
+
+
+@router.post(
+    "/index-to-neo4j",
+    response_model=IndexToNeo4jResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))],
+)
+async def index_objects_to_neo4j(
+    body: IndexToNeo4jRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index object types that have a linked dataset or stored instances to Neo4j. Admin only."""
+    has_instances = exists().where(ObjectInstance.object_type_id == ObjectType.id)
     result = await db.execute(
-        select(ObjectType).where(ObjectType.dataset_id.isnot(None)).order_by(ObjectType.name)
+        select(ObjectType)
+        .where(or_(ObjectType.dataset_id.isnot(None), has_instances))
+        .order_by(ObjectType.name)
     )
     obj_types = result.scalars().all()
     if not obj_types:
         return IndexToNeo4jResponse(object_types_indexed=0, nodes_created=0)
+    driver = await _open_neo4j_driver_for_index(body, db)
     nodes_created = 0
-    driver = GraphDatabase.driver(uri, auth=(username, password))
     try:
         with driver.session() as session:
             for obj_type in obj_types:
-                label = _neo4j_safe_label(obj_type.name)
-                offset = 0
-                batch_size = 1000
-                while True:
-                    try:
-                        rows, total = await fetch_dataset_rows(db, obj_type.dataset_id, limit=batch_size, offset=offset)
-                    except Exception as e:
-                        raise HTTPException(
-                            status_code=502,
-                            detail=f"Failed to fetch dataset for {obj_type.name}: {e}",
-                        ) from e
-                    if not rows:
-                        break
-                    prop_names = [p.get("name") for p in (obj_type.properties or []) if isinstance(p, dict) and p.get("name")]
-                    if obj_type.key_property and rows and obj_type.key_property in rows[0]:
-                        id_col = obj_type.key_property
-                    elif (prop_names and "id" in prop_names) or (rows and "id" in rows[0]):
-                        id_col = "id"
-                    else:
-                        id_col = prop_names[0] if prop_names else list(rows[0].keys())[0]
-                    for row in rows:
-                        props = {k: v for k, v in row.items() if v is not None}
-                        node_id = props.get(id_col, props.get(list(props.keys())[0]) if props else None)
-                        if node_id is None:
-                            continue
-                        safe_props = {}
-                        for k, v in props.items():
-                            if isinstance(v, (str, int, float, bool)):
-                                safe_props[k] = v
-                            else:
-                                safe_props[k] = str(v)
-                        session.run(
-                            f"MERGE (n:{label} {{`{id_col}`: $id_val}}) SET n += $props",
-                            id_val=safe_props.get(id_col, node_id),
-                            props=safe_props,
-                        )
-                        nodes_created += 1
-                    offset += len(rows)
-                    if offset >= total:
-                        break
+                if obj_type.dataset_id:
+                    nodes_created += await _index_object_type_dataset_to_neo4j_session(db, session, obj_type)
+                else:
+                    nodes_created += await _index_object_type_instances_to_neo4j_session(db, session, obj_type)
     finally:
         driver.close()
     return IndexToNeo4jResponse(object_types_indexed=len(obj_types), nodes_created=nodes_created)
+
+
+@router.post(
+    "/{object_type_id}/index-to-neo4j",
+    response_model=IndexToNeo4jResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE))],
+)
+async def index_one_object_type_to_neo4j(
+    object_type_id: str,
+    body: IndexToNeo4jRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Index one object type to Neo4j from its linked dataset, or from stored instances if there is no dataset."""
+    obj_type = await db.get(ObjectType, object_type_id)
+    if not obj_type:
+        raise HTTPException(status_code=404, detail="Object type not found")
+    if obj_type.dataset_id:
+        pass
+    else:
+        inst_n = await _object_instance_count(db, object_type_id)
+        if inst_n == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="This object type has no linked dataset and no stored instances. Link a dataset or create instances before indexing.",
+            )
+    driver = await _open_neo4j_driver_for_index(body, db)
+    try:
+        with driver.session() as session:
+            if obj_type.dataset_id:
+                nodes_created = await _index_object_type_dataset_to_neo4j_session(db, session, obj_type)
+            else:
+                nodes_created = await _index_object_type_instances_to_neo4j_session(db, session, obj_type)
+    finally:
+        driver.close()
+    return IndexToNeo4jResponse(object_types_indexed=1, nodes_created=nodes_created)
 
 
 # --- Object instances (nested under object type) ---

@@ -117,6 +117,27 @@ export async function indexObjectTypesToNeo4j(neo4jDataSourceId: string): Promis
   return res.json();
 }
 
+export async function indexObjectTypeToNeo4j(
+  objectTypeId: string,
+  neo4jDataSourceId: string
+): Promise<{ object_types_indexed: number; nodes_created: number }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/object-types/${encodeURIComponent(objectTypeId)}/index-to-neo4j`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to index to Neo4j');
+  }
+  return res.json();
+}
+
 export async function generateCypherFromQuestion(question: string): Promise<{ cypher: string; explanation: string }> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/ontology/text-to-cypher`, {
@@ -178,6 +199,27 @@ export async function indexLinkTypesToNeo4j(neo4jDataSourceId: string): Promise<
     body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
     credentials: 'include',
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to index links to Neo4j');
+  }
+  return res.json();
+}
+
+export async function indexLinkTypeToNeo4j(
+  linkTypeId: string,
+  neo4jDataSourceId: string
+): Promise<{ link_types_indexed: number; relationships_created: number }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/link-types/${encodeURIComponent(linkTypeId)}/index-to-neo4j`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
+      credentials: 'include',
+    }
+  );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || 'Failed to index links to Neo4j');

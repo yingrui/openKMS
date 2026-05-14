@@ -8,15 +8,36 @@ import {
   updateLinkType,
   deleteLinkType,
   indexLinkTypesToNeo4j,
+  indexLinkTypeToNeo4j,
   CARDINALITY_OPTIONS,
   type LinkTypeResponse,
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import './ConsoleObjectTypes.css';
+import './ontology-admin.css';
 
-export function ConsoleLinkTypes() {
+/** True when indexing reads from a junction or source-side dataset (not only saved links). */
+function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTypeResponse[]): boolean {
+  if (
+    t.cardinality === 'many-to-many' &&
+    t.dataset_id &&
+    t.source_dataset_column &&
+    t.target_dataset_column
+  ) {
+    return true;
+  }
+  if (
+    (t.cardinality === 'many-to-one' || t.cardinality === 'one-to-many') &&
+    t.source_key_property
+  ) {
+    const src = objectTypes.find((o) => o.id === t.source_object_type_id);
+    return Boolean(src?.dataset_id);
+  }
+  return false;
+}
+
+export function LinkTypesPage() {
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +58,11 @@ export function ConsoleLinkTypes() {
   const [datasetColumns, setDatasetColumns] = useState<{ column_name: string }[]>([]);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [showIndexDialog, setShowIndexDialog] = useState(false);
+  const [showIndexOneDialog, setShowIndexOneDialog] = useState(false);
+  const [indexOneLink, setIndexOneLink] = useState<LinkTypeResponse | null>(null);
   const [indexNeo4jId, setIndexNeo4jId] = useState('');
   const [indexing, setIndexing] = useState(false);
+  const [indexingLinkId, setIndexingLinkId] = useState<string | null>(null);
 
   const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
 
@@ -167,6 +191,21 @@ export function ConsoleLinkTypes() {
     }
   };
 
+  const handleIndexOneConfirm = async () => {
+    if (!indexNeo4jId || !indexOneLink) return;
+    setIndexingLinkId(indexOneLink.id);
+    try {
+      const res = await indexLinkTypeToNeo4j(indexOneLink.id, indexNeo4jId);
+      toast.success(`Indexed ${res.link_types_indexed} link type, ${res.relationships_created} relationships created`);
+      setShowIndexOneDialog(false);
+      setIndexOneLink(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Index failed');
+    } finally {
+      setIndexingLinkId(null);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this link type? All link instances will be deleted.')) return;
     try {
@@ -179,7 +218,7 @@ export function ConsoleLinkTypes() {
   };
 
   return (
-    <div className="console-object-types">
+    <div className="ontology-admin">
       <div className="page-header">
         <div>
           <h1>Link Types</h1>
@@ -192,7 +231,8 @@ export function ConsoleLinkTypes() {
             <button
               type="button"
               className="btn btn-secondary"
-              title="Index dataset to knowledge graph"
+              title="Index links to knowledge graph"
+              disabled={indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog}
               onClick={() => {
                 setIndexNeo4jId(neo4jDataSources[0]?.id || '');
                 setShowIndexDialog(true);
@@ -215,8 +255,8 @@ export function ConsoleLinkTypes() {
         </div>
       </div>
 
-      <div className="console-object-types-content">
-        <div className="console-object-types-table-wrap">
+      <div className="ontology-admin-content">
+        <div className="ontology-admin-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" />
@@ -266,6 +306,27 @@ export function ConsoleLinkTypes() {
                     <td>{t.link_count}</td>
                     <td className="console-table-actions">
                       <div className="console-table-btns">
+                        {(linkTypeUsesDatasetIndexing(t, objectTypes) || t.link_count > 0) &&
+                        neo4jDataSources.length > 0 ? (
+                          <button
+                            type="button"
+                            title="Index links to knowledge graph"
+                            disabled={
+                              indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog
+                            }
+                            onClick={() => {
+                              setIndexOneLink(t);
+                              setIndexNeo4jId(neo4jDataSources[0]?.id || '');
+                              setShowIndexOneDialog(true);
+                            }}
+                          >
+                            {indexingLinkId === t.id ? (
+                              <Loader2 size={16} className="console-loading-spinner" />
+                            ) : (
+                              <Database size={16} />
+                            )}
+                          </button>
+                        ) : null}
                         <button type="button" title="Edit" onClick={() => openEdit(t)}>
                           <Pencil size={16} />
                         </button>
@@ -475,15 +536,15 @@ export function ConsoleLinkTypes() {
       {showIndexDialog && (
         <div
           className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !indexing && setShowIndexDialog(false)}
+          onClick={(e) => e.target === e.currentTarget && !indexing && !indexingLinkId && setShowIndexDialog(false)}
         >
           <div className="console-modal" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
               <h2>Index Links to Knowledge Graph</h2>
               <button
                 type="button"
-                onClick={() => !indexing && setShowIndexDialog(false)}
-                disabled={indexing}
+                onClick={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
+                disabled={indexing || indexingLinkId !== null}
                 aria-label="Close"
               >
                 <X size={20} />
@@ -491,13 +552,15 @@ export function ConsoleLinkTypes() {
             </div>
             <div className="console-modal-body">
               <p className="console-modal-hint">
-                Index all link types with junction datasets to the selected Neo4j database as relationships.
+                Index every link type that has a junction or source-side dataset, or saved links, to the selected Neo4j
+                database as relationships.
               </p>
               <label>
                 <span>Neo4j Data Source</span>
                 <select
                   value={indexNeo4jId}
                   onChange={(e) => setIndexNeo4jId(e.target.value)}
+                  disabled={indexing || indexingLinkId !== null}
                 >
                   <option value="">Select…</option>
                   {neo4jDataSources.map((ds) => (
@@ -512,8 +575,8 @@ export function ConsoleLinkTypes() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                onClick={() => !indexing && setShowIndexDialog(false)}
-                disabled={indexing}
+                onClick={() => !indexing && !indexingLinkId && setShowIndexDialog(false)}
+                disabled={indexing || indexingLinkId !== null}
               >
                 Cancel
               </button>
@@ -521,7 +584,7 @@ export function ConsoleLinkTypes() {
                 type="button"
                 className="btn btn-primary"
                 onClick={handleIndexConfirm}
-                disabled={!indexNeo4jId || indexing}
+                disabled={!indexNeo4jId || indexing || indexingLinkId !== null}
               >
                 {indexing ? (
                   <>
@@ -530,6 +593,119 @@ export function ConsoleLinkTypes() {
                   </>
                 ) : (
                   'Confirm & Index'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIndexOneDialog && indexOneLink && (
+        <div
+          className="console-modal-overlay"
+          onClick={(e) => {
+            if (e.target !== e.currentTarget || indexingLinkId) return;
+            setShowIndexOneDialog(false);
+            setIndexOneLink(null);
+          }}
+        >
+          <div
+            className={`console-modal${
+              linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
+                ? ' console-modal--index-one-dataset'
+                : ' console-modal--index-one-instances'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="console-modal-header">
+              <h2>
+                {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes)
+                  ? 'Index from linked data'
+                  : 'Index from saved links'}
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (indexingLinkId) return;
+                  setShowIndexOneDialog(false);
+                  setIndexOneLink(null);
+                }}
+                disabled={!!indexingLinkId}
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="console-modal-body">
+              {linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
+                <>
+                  <p className="console-modal-index-lead">
+                    <strong>{indexOneLink.name}</strong> is configured to read from database tables (junction or
+                    source-side foreign key). Choose where to write relationships, then confirm.
+                  </p>
+                  <div className="console-modal-index-callout console-modal-index-callout--dataset" role="note">
+                    {indexOneLink.cardinality === 'many-to-many'
+                      ? 'Rows come from the junction table you linked. Each row creates one relationship between the two object types.'
+                      : 'Rows come from the source object type’s linked table. The foreign-key column points at the target object id on each relationship.'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="console-modal-index-lead">
+                    <strong>{indexOneLink.name}</strong> is not driven by a linked table for indexing. This run uses{' '}
+                    <strong>{indexOneLink.link_count}</strong>{' '}
+                    {indexOneLink.link_count === 1 ? 'saved link' : 'saved links'} you created in the app.
+                  </p>
+                  <div className="console-modal-index-callout console-modal-index-callout--instances" role="note">
+                    Each saved link connects two object instances. Endpoints are matched to graph nodes using the same
+                    keys as object indexing (primary key or key property on each side).
+                  </div>
+                </>
+              )}
+              <label>
+                <span>Neo4j Data Source</span>
+                <select
+                  value={indexNeo4jId}
+                  onChange={(e) => setIndexNeo4jId(e.target.value)}
+                  disabled={!!indexingLinkId}
+                >
+                  <option value="">Select…</option>
+                  {neo4jDataSources.map((ds) => (
+                    <option key={ds.id} value={ds.id}>
+                      {ds.name} ({ds.host}:{ds.port ?? 7687})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="console-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  if (indexingLinkId) return;
+                  setShowIndexOneDialog(false);
+                  setIndexOneLink(null);
+                }}
+                disabled={!!indexingLinkId}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleIndexOneConfirm}
+                disabled={!indexNeo4jId || !!indexingLinkId}
+              >
+                {indexingLinkId ? (
+                  <>
+                    <Loader2 size={18} className="console-loading-spinner" />
+                    <span>Indexing…</span>
+                  </>
+                ) : linkTypeUsesDatasetIndexing(indexOneLink, objectTypes) ? (
+                  'Index from dataset'
+                ) : (
+                  'Index saved links'
                 )}
               </button>
             </div>

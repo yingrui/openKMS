@@ -133,7 +133,7 @@ Automated pass (AST span **≥55** lines) on `backend/app/**/*.py` and `openkms-
 - **Neo4j-heavy APIs:** Move Cypher builders and row mapping toward `services/` with targeted tests.
 - **Worker:** Align KB index subprocess policy with async/non-blocking goals where the runtime allows.
 - **Agent / streaming:** Extract serialization and tool-dispatch helpers from long NDJSON/stream loops.
-- **Frontend file size:** `DocumentDetail.tsx`, `KnowledgeBaseDetail.tsx`, `ConsolePermissionManagement.tsx`, `KnowledgeMap.tsx`, `WikiSpaceDetail.tsx`, `EvaluationDatasetDetail.tsx`, `ObjectExplorer.tsx` — split into hooks and presentational components when touching those areas.
+- **Frontend file size:** `DocumentDetail.tsx`, `KnowledgeBaseDetail.tsx`, `ConsolePermissionManagement.tsx`, `KnowledgeMap.tsx`, `WikiSpaceDetail.tsx`, `EvaluationDatasetDetail.tsx`, `ontology/ObjectExplorer.tsx` — split into hooks and presentational components when touching those areas.
 
 ### Partial mitigations (CLI)
 

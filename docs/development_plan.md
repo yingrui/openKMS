@@ -82,7 +82,7 @@
 - [x] Object instances: CRUD under `/api/object-types/{id}/objects` (admin write)
 - [x] Link types: schema with source/target object types
 - [x] Link instances: CRUD under `/api/link-types/{id}/links` (admin write)
-- [x] Console Object Types page: CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector; is_master_data and display_property for document labels
+- [x] Ontology Object Types page (`/ontology/object-types`): CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector; is_master_data and display_property for document labels
 - [x] Console Link Types page: CRUD link types
 - [x] Ontology overview page (`/ontology`) – all object types and link types on one page
 - [x] User-facing Objects list (`/objects`), Object type detail with instances (`/objects/:typeId`)
@@ -107,11 +107,11 @@
 - [x] Link types FK mapping: source_key_property, target_key_property, source_dataset_column, target_dataset_column
 - [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
 - [x] Many-to-one/one-to-many: link_count from source object type dataset where FK column is not null
-- [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links buttons when Neo4j data source exists; POST /api/object-types/index-to-neo4j, POST /api/link-types/index-to-neo4j
+- [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links when Neo4j exists; POST /api/object-types/index-to-neo4j and POST /api/object-types/{id}/index-to-neo4j (dataset rows, or `object_instances` when no dataset); POST /api/link-types/index-to-neo4j and POST /api/link-types/{id}/index-to-neo4j (junction or source-FK dataset, else `link_instances`); Object types and Link types table row actions
 - [x] Ontology sidebar: **Ontology** top-level next to **Glossaries**; indented subnav (Datasets, Object types, Link types, Objects, Links, Object Explorer) when on those routes; schema admin at `/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`
 - [x] Objects & Links visible when Neo4j data source exists (hasNeo4jDataSource in feature toggles)
 - [x] Object Explorer: graph view at /object-explorer (react-force-graph-2d, Cypher execution, object/link type selection)
-- [x] Objects page: instances and instance_count from Neo4j; Console Object Types: counts from datasets
+- [x] Objects page: instances and instance_count from Neo4j; Ontology Object Types: counts from datasets
 - [x] Links page: instances and link_count from Neo4j; Console Link Types: counts from datasets
 - [x] API params: count_from_neo4j on GET /api/object-types, /object-types/{id}, /api/link-types, /link-types/{id}
 

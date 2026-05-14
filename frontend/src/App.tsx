@@ -30,8 +30,8 @@ import { ConsoleOverview } from './pages/console/ConsoleOverview';
 import { ConsoleSettings } from './pages/console/ConsoleSettings';
 import { ConsoleUsers } from './pages/console/ConsoleUsers';
 import { ConsoleFeatureToggles } from './pages/console/ConsoleFeatureToggles';
-import { ConsoleObjectTypes } from './pages/console/ConsoleObjectTypes';
-import { ConsoleLinkTypes } from './pages/console/ConsoleLinkTypes';
+import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
+import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
@@ -58,12 +58,12 @@ const Jobs = lazy(() => import('./pages/Jobs').then((m) => ({ default: m.Jobs })
 const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
 const Models = lazy(() => import('./pages/Models').then((m) => ({ default: m.Models })));
 const ModelDetail = lazy(() => import('./pages/ModelDetail').then((m) => ({ default: m.ModelDetail })));
-const OntologyList = lazy(() => import('./pages/OntologyList').then((m) => ({ default: m.OntologyList })));
-const ObjectsList = lazy(() => import('./pages/ObjectsList').then((m) => ({ default: m.ObjectsList })));
-const ObjectTypeDetail = lazy(() => import('./pages/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
-const LinksList = lazy(() => import('./pages/LinksList').then((m) => ({ default: m.LinksList })));
-const LinkTypeDetail = lazy(() => import('./pages/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
-const ObjectExplorer = lazy(() => import('./pages/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
+const OntologyList = lazy(() => import('./pages/ontology/OntologyList').then((m) => ({ default: m.OntologyList })));
+const ObjectsList = lazy(() => import('./pages/ontology/ObjectsList').then((m) => ({ default: m.ObjectsList })));
+const ObjectTypeDetail = lazy(() => import('./pages/ontology/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
+const LinksList = lazy(() => import('./pages/ontology/LinksList').then((m) => ({ default: m.LinksList })));
+const LinkTypeDetail = lazy(() => import('./pages/ontology/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
+const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
 const DocumentDetail = lazy(() => import('./pages/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
 const WikiSpaceDetail = lazy(() => import('./pages/WikiSpaceDetail').then((m) => ({ default: m.WikiSpaceDetail })));
 const WikiSpaceGraph = lazy(() => import('./pages/WikiSpaceGraph').then((m) => ({ default: m.WikiSpaceGraph })));
@@ -146,8 +146,8 @@ function App() {
             <Route index element={<OntologyList />} />
             <Route path="datasets" element={<ConsoleDatasets />} />
             <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
-            <Route path="object-types" element={<ConsoleObjectTypes />} />
-            <Route path="link-types" element={<ConsoleLinkTypes />} />
+            <Route path="object-types" element={<ObjectTypesPage />} />
+            <Route path="link-types" element={<LinkTypesPage />} />
           </Route>
           <Route path="objects" element={<FeatureGate feature="objectsAndLinks"><ObjectsList /></FeatureGate>} />
           <Route path="objects/:typeId" element={<FeatureGate feature="objectsAndLinks"><ObjectTypeDetail /></FeatureGate>} />

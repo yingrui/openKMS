@@ -8,7 +8,7 @@ import {
   fetchLinkTypes,
   type ObjectTypeResponse,
   type LinkTypeResponse,
-} from '../data/ontologyApi';
+} from '../../data/ontologyApi';
 import './OntologyList.css';
 
 export function OntologyList() {

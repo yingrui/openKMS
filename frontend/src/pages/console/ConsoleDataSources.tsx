@@ -11,7 +11,7 @@ import {
   neo4jDeleteAll,
   type DataSourceResponse,
 } from '../../data/dataSourcesApi';
-import './ConsoleObjectTypes.css';
+import '../ontology/ontology-admin.css';
 
 const KINDS = ['postgresql', 'neo4j'] as const;
 
@@ -160,7 +160,7 @@ export function ConsoleDataSources() {
   };
 
   return (
-    <div className="console-object-types">
+    <div className="ontology-admin">
       <div className="page-header">
         <div>
           <h1>{t('dataSources.pageTitle')}</h1>
@@ -172,8 +172,8 @@ export function ConsoleDataSources() {
         </button>
       </div>
 
-      <div className="console-object-types-content">
-        <div className="console-object-types-table-wrap">
+      <div className="ontology-admin-content">
+        <div className="ontology-admin-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" />

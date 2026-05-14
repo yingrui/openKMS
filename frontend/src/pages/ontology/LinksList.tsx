@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Link2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchLinkTypes, type LinkTypeResponse } from '../data/ontologyApi';
+import { fetchLinkTypes, type LinkTypeResponse } from '../../data/ontologyApi';
 import './LinksList.css';
 
 export function LinksList() {
