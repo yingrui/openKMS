@@ -41,6 +41,7 @@ import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { findChannel, normalizeExtractionSchemaToFields, type LabelConfigItem } from '../data/channelUtils';
 import { PageIndexTree } from './DocumentDetail.pageIndex';
 import { DocumentDetailInfoPanel } from './DocumentDetail.infoPanel';
+import { DocumentDetailVersionModals } from './DocumentDetail.modals';
 import type { PageBlock, ParsingResult } from './DocumentDetail.types';
 import {
   buildPageBlocks,
@@ -1271,292 +1272,34 @@ export function DocumentDetail() {
           </section>
         </div>
         {!docConfig && id && (
-          <>
-            {saveVersionModalOpen && (
-              <div
-                className="document-detail-pageindex-dialog-overlay"
-                onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
-              >
-                <div
-                  className="document-detail-pageindex-dialog document-detail-save-version-dialog"
-                  onClick={(e) => e.stopPropagation()}
-                  role="dialog"
-                  aria-labelledby="save-version-title"
-                >
-                  <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="save-version-title">{t('detail.saveVersionModalTitle')}</h2>
-                    <button
-                      type="button"
-                      className="document-detail-pageindex-dialog-close"
-                      onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
-                      aria-label={t('common.close')}
-                    >
-                      <XIcon size={18} />
-                    </button>
-                  </div>
-                  <div className="document-detail-save-version-body">
-                    <p className="document-detail-save-version-hint">
-                      {t('detail.saveVersionHint')}
-                    </p>
-                    <div className="document-detail-save-version-field">
-                      <label htmlFor="save-version-tag" className="document-detail-save-version-label">
-                        {t('detail.saveVersionTagLabel')} <span className="document-detail-save-version-optional">{t('detail.optionalParen')}</span>
-                      </label>
-                      <input
-                        id="save-version-tag"
-                        type="text"
-                        className="document-detail-save-version-input"
-                        value={saveVersionTag}
-                        onChange={(e) => setSaveVersionTag(e.target.value)}
-                        placeholder={t('detail.placeholderVersionTag')}
-                        autoComplete="off"
-                        disabled={saveVersionSubmitting}
-                      />
-                    </div>
-                    <div className="document-detail-save-version-actions">
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        onClick={handleCreateVersion}
-                        disabled={saveVersionSubmitting}
-                      >
-                        {saveVersionSubmitting ? <Loader2 size={14} className="doc-detail-spinner" /> : null}
-                        <span>{saveVersionSubmitting ? t('detail.savingInfo') : t('detail.createVersionSubmit')}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary document-detail-save-version-cancel"
-                        onClick={() => !saveVersionSubmitting && setSaveVersionModalOpen(false)}
-                        disabled={saveVersionSubmitting}
-                      >
-                        {t('common.cancel')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-            {versionsModalOpen && (
-              <div
-                className="document-detail-pageindex-dialog-overlay"
-                onClick={() => !restoreSubmitting && setVersionsModalOpen(false)}
-              >
-                <div
-                  className="document-detail-pageindex-dialog document-detail-versions-dialog document-detail-versions-dialog--wide"
-                  onClick={(e) => e.stopPropagation()}
-                  role="dialog"
-                  aria-labelledby="versions-list-title"
-                >
-                  <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="versions-list-title">{t('detail.versionsModalTitle')}</h2>
-                    <button
-                      type="button"
-                      className="document-detail-pageindex-dialog-close"
-                      onClick={() => !restoreSubmitting && setVersionsModalOpen(false)}
-                      aria-label={t('common.close')}
-                    >
-                      <XIcon size={18} />
-                    </button>
-                  </div>
-                  <div className="document-detail-pageindex-dialog-body">
-                    {versionsLoading ? (
-                      <div className="document-detail-pageindex-loading">
-                        <Loader2 size={20} className="doc-detail-spinner" />
-                        <span>{t('common.loading')}</span>
-                      </div>
-                    ) : versionsItems.length === 0 ? (
-                      <p className="document-detail-muted">{t('detail.noVersionsYet')}</p>
-                    ) : (
-                      <table className="document-detail-versions-table">
-                        <thead>
-                          <tr>
-                            <th scope="col">{t('detail.colVersion')}</th>
-                            <th scope="col">{t('detail.colTag')}</th>
-                            <th scope="col">{t('detail.colSaved')}</th>
-                            <th scope="col" className="document-detail-versions-th-actions">
-                              {t('detail.colActions')}
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {versionsItems.map((v) => (
-                            <tr key={v.id}>
-                              <td>
-                                <span className="document-detail-versions-vno">v{v.version_number}</span>
-                              </td>
-                              <td>
-                                {v.tag ? (
-                                  <span className="document-detail-versions-tag">{v.tag}</span>
-                                ) : (
-                                  <span className="document-detail-versions-empty">—</span>
-                                )}
-                              </td>
-                              <td>
-                                <time
-                                  className="document-detail-versions-date"
-                                  dateTime={v.created_at}
-                                >
-                                  {new Date(v.created_at).toLocaleString()}
-                                </time>
-                              </td>
-                              <td className="document-detail-versions-td-actions">
-                                <div className="document-detail-versions-actions">
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm"
-                                    onClick={() => handlePreviewVersion(v.id)}
-                                  >
-                                    {t('detail.previewVersion')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn btn-primary btn-sm"
-                                    onClick={() => setRestoreModalVersion(v)}
-                                  >
-                                    {t('detail.restoreVersionBtn')}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-            {versionPreview && (
-              <div
-                className="document-detail-pageindex-dialog-overlay"
-                onClick={() => setVersionPreview(null)}
-              >
-                <div
-                  className="document-detail-pageindex-dialog document-detail-versions-dialog document-detail-versions-dialog--wide"
-                  onClick={(e) => e.stopPropagation()}
-                  role="dialog"
-                >
-                  <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="version-preview-title">
-                      v{versionPreview.version_number}
-                      {versionPreview.tag ? ` — ${versionPreview.tag}` : ''}
-                    </h2>
-                    <button
-                      type="button"
-                      className="document-detail-pageindex-dialog-close"
-                      onClick={() => setVersionPreview(null)}
-                      aria-label={t('common.close')}
-                    >
-                      <XIcon size={18} />
-                    </button>
-                  </div>
-                  <div className="document-detail-pageindex-dialog-body document-detail-version-preview-body">
-                    {versionPreviewLoading ? (
-                      <Loader2 className="doc-detail-spinner" />
-                    ) : (
-                      <>
-                        <h3 className="document-detail-version-preview-sub">{t('detail.previewMarkdownSub')}</h3>
-                        <div className="document-detail-version-preview-md">
-                          <ReactMarkdown
-                            remarkPlugins={richMarkdownRemarkPlugins}
-                            rehypePlugins={richMarkdownRehypePlugins}
-                            components={markdownComponents}
-                          >
-                            {versionPreview.markdown || ''}
-                          </ReactMarkdown>
-                        </div>
-                        <h3 className="document-detail-version-preview-sub">{t('detail.previewMetadataSub')}</h3>
-                        <pre className="document-detail-version-preview-json">
-                          {JSON.stringify(versionPreview.metadata ?? {}, null, 2)}
-                        </pre>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-            {restoreModalVersion && (
-              <div
-                className="document-detail-pageindex-dialog-overlay"
-                onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
-              >
-                <div
-                  className="document-detail-pageindex-dialog document-detail-versions-dialog"
-                  onClick={(e) => e.stopPropagation()}
-                  role="dialog"
-                  aria-labelledby="restore-version-title"
-                >
-                  <div className="document-detail-pageindex-dialog-header">
-                    <h2 id="restore-version-title">{t('detail.restoreConfirmTitle', { n: restoreModalVersion.version_number })}</h2>
-                    <button
-                      type="button"
-                      className="document-detail-pageindex-dialog-close"
-                      onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
-                      aria-label={t('common.close')}
-                    >
-                      <XIcon size={18} />
-                    </button>
-                  </div>
-                  <div className="document-detail-pageindex-dialog-body document-detail-versions-form">
-                    <p className="document-detail-muted" style={{ marginTop: 0 }}>
-                      {t('detail.restoreReplacesHint')}
-                    </p>
-                    <label className="document-detail-versions-check">
-                      <input
-                        type="checkbox"
-                        checked={restoreSaveCurrent}
-                        onChange={(e) => setRestoreSaveCurrent(e.target.checked)}
-                      />
-                      {t('detail.restoreSaveCurrentFirst')}
-                    </label>
-                    {restoreSaveCurrent && (
-                      <>
-                        <label className="document-detail-versions-label">
-                          {t('detail.restoreLabelOptional')}
-                          <input
-                            type="text"
-                            className="document-detail-info-input"
-                            value={restoreLabel}
-                            onChange={(e) => setRestoreLabel(e.target.value)}
-                            placeholder={t('detail.placeholderCheckpoint')}
-                          />
-                        </label>
-                        <label className="document-detail-versions-label">
-                          {t('detail.restoreNoteOptional')}
-                          <textarea
-                            className="document-detail-markdown-textarea"
-                            rows={2}
-                            value={restoreNote}
-                            onChange={(e) => setRestoreNote(e.target.value)}
-                            style={{ minHeight: 56 }}
-                          />
-                        </label>
-                      </>
-                    )}
-                    <div className="document-detail-metadata-edit-actions">
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={handleConfirmRestore}
-                        disabled={restoreSubmitting}
-                      >
-                        {restoreSubmitting ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
-                        <span>{restoreSubmitting ? t('common.restoring') : t('detail.restoreVersionBtn')}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="document-detail-metadata-cancel-btn"
-                        onClick={() => !restoreSubmitting && setRestoreModalVersion(null)}
-                        disabled={restoreSubmitting}
-                      >
-                        {t('common.cancel')}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+          <DocumentDetailVersionModals
+            saveVersionModalOpen={saveVersionModalOpen}
+            saveVersionTag={saveVersionTag}
+            saveVersionSubmitting={saveVersionSubmitting}
+            onSaveVersionTagChange={setSaveVersionTag}
+            onCloseSaveVersion={() => setSaveVersionModalOpen(false)}
+            onCreateVersion={handleCreateVersion}
+            versionsModalOpen={versionsModalOpen}
+            versionsLoading={versionsLoading}
+            versionsItems={versionsItems}
+            restoreSubmitting={restoreSubmitting}
+            onCloseVersions={() => setVersionsModalOpen(false)}
+            onPreviewVersion={handlePreviewVersion}
+            onOpenRestore={setRestoreModalVersion}
+            versionPreview={versionPreview}
+            versionPreviewLoading={versionPreviewLoading}
+            onCloseVersionPreview={() => setVersionPreview(null)}
+            markdownComponents={markdownComponents}
+            restoreModalVersion={restoreModalVersion}
+            restoreSaveCurrent={restoreSaveCurrent}
+            restoreLabel={restoreLabel}
+            restoreNote={restoreNote}
+            onCloseRestore={() => setRestoreModalVersion(null)}
+            onRestoreSaveCurrentChange={setRestoreSaveCurrent}
+            onRestoreLabelChange={setRestoreLabel}
+            onRestoreNoteChange={setRestoreNote}
+            onConfirmRestore={handleConfirmRestore}
+          />
         )}
         </>
           )}
