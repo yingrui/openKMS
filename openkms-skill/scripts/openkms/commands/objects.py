@@ -229,6 +229,23 @@ def cmd_sync_neo4j(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_sync_neo4j_type(ns: argparse.Namespace) -> None:
+    body = {"neo4j_data_source_id": ns.neo4j_data_source_id}
+    path = f"/api/object-types/{ns.type_id}/index-to-neo4j"
+    confirm_or_abort(
+        action=f"sync object type {ns.type_id!r} to Neo4j (MERGE nodes)",
+        method="POST",
+        path=path,
+        body=body,
+        yes=ns.yes,
+        dry_run=ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 # ---------------------------------------------------------------------------
 # argparse wiring
 # ---------------------------------------------------------------------------
@@ -319,8 +336,17 @@ def add_subparser(sub) -> None:
     # ---- Write — sync ----
     sn = sp.add_parser(
         "sync-neo4j",
-        help="MERGE all object instances into Neo4j (POST /api/object-types/index-to-neo4j)",
+        help="MERGE all indexable object types into Neo4j (POST /api/object-types/index-to-neo4j): dataset rows or stored instances",
     )
     sn.add_argument("--neo4j-data-source-id", required=True)
     add_write_flags(sn)
     sn.set_defaults(fn=cmd_sync_neo4j)
+
+    snt = sp.add_parser(
+        "sync-neo4j-type",
+        help="MERGE one object type into Neo4j (POST /api/object-types/{id}/index-to-neo4j)",
+    )
+    snt.add_argument("--type-id", required=True)
+    snt.add_argument("--neo4j-data-source-id", required=True)
+    add_write_flags(snt)
+    snt.set_defaults(fn=cmd_sync_neo4j_type)

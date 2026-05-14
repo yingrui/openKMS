@@ -229,3 +229,15 @@ def test_sync_neo4j_dry_run(mock_api):
         cmd_sync_neo4j(_ns(neo4j_data_source_id="ds1", yes=False, dry_run=True))
     assert exc.value.code == 0
     assert recorded == []
+
+
+def test_sync_neo4j_type_yes(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/object-types/ot1/index-to-neo4j")] = (
+        200, {"object_types_indexed": 1, "nodes_created": 3},
+    )
+    from openkms.commands.objects import cmd_sync_neo4j_type
+    cmd_sync_neo4j_type(_ns(type_id="ot1", neo4j_data_source_id="ds1"))
+    assert recorded[-1].method == "POST"
+    assert recorded[-1].url.path == "/api/object-types/ot1/index-to-neo4j"
+    assert json.loads(recorded[-1].content) == {"neo4j_data_source_id": "ds1"}

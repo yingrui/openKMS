@@ -22,8 +22,8 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
 | `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |
-| `ontology objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j` |
-| `ontology links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j` |
+| `ontology objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j`, `sync-neo4j-type` |
+| `ontology links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j`, `sync-neo4j-type` |
 | `evaluation-datasets` | `list`, `get`, `items` | `create`, `run` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 

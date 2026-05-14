@@ -9,7 +9,8 @@ description: >-
   evaluation datasets, items, and runs. Write paths: create channels, upload documents,
   create articles (incl. from URL), upsert wiki pages, delete wiki files, link/unlink
   wiki↔documents, create KB FAQs and evaluation
-  datasets, trigger evaluation runs. Use when the user wants an agent — or any external
+  datasets, trigger evaluation runs; ontology object/link CRUD and Neo4j index (bulk or per-type).
+  Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
   the bundled `scripts/cli.py` only (no ad-hoc curl or custom HTTP). Do not modify skill
   source files; only `config.yml` may be created/updated for credentials when the user asks.
@@ -69,7 +70,7 @@ Some practical guidance:
 - **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope. Don't try to bypass — surface the error.
 - **Write commands and confirm gating.** Every mutating CLI subcommand uses the same pattern as ontology objects/links: `--dry-run` prints the planned `[METHOD] path + body` (upload uses a JSON summary with `channel_id` and `file` path, not file bytes) and exits 0 without HTTP; `-y` / `--yes` skips the prompt; without either on a TTY you get `Proceed? [y/N]`; **on a non-TTY without `--yes` the command exits 2** — agents must pass `--yes` deliberately.
-- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then `ontology objects sync-neo4j` / `ontology links sync-neo4j` to MERGE the changes into Neo4j.
+- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then **`ontology objects sync-neo4j`** / **`ontology links sync-neo4j`** (all indexable types) or **`sync-neo4j-type`** on one type id to MERGE into Neo4j.
 - **Output is verbose.** Each list response can include long arrays. If you're scanning many records, pipe through `jq` to project just the fields you need rather than dumping everything into context.
 
 ## Read / query tasks
@@ -145,13 +146,15 @@ Same confirmation rules as other writes. Commands:
 | Create object instance | `python scripts/cli.py ontology objects instances create --type-id OT --data-json '{"icd":"C50"}' --yes` |
 | Update object instance | `python scripts/cli.py ontology objects instances update --type-id OT --id OI --data-json '{"icd":"C50.1"}' --yes` |
 | Delete object instance | `python scripts/cli.py ontology objects instances delete --type-id OT --id OI --yes` |
-| MERGE object instances into Neo4j | `python scripts/cli.py ontology objects sync-neo4j --neo4j-data-source-id DS --yes` |
+| MERGE all indexable object types into Neo4j | `python scripts/cli.py ontology objects sync-neo4j --neo4j-data-source-id DS --yes` |
+| MERGE one object type into Neo4j | `python scripts/cli.py ontology objects sync-neo4j-type --type-id OT_ID --neo4j-data-source-id DS --yes` |
 | Create link type | `python scripts/cli.py ontology links create-type --name covers --source-type-id OT_PROD --target-type-id OT_DIS --cardinality many-to-many --yes` |
 | Update link type | `python scripts/cli.py ontology links update-type --id LT --description "..." --yes` |
 | Delete link type | `python scripts/cli.py ontology links delete-type --id LT --yes` |
 | Create link instance | `python scripts/cli.py ontology links instances create --type-id LT --source-object-id OI_A --target-object-id OI_B --yes` |
 | Delete link instance | `python scripts/cli.py ontology links instances delete --type-id LT --id LI --yes` |
-| MERGE link instances into Neo4j | `python scripts/cli.py ontology links sync-neo4j --neo4j-data-source-id DS --yes` |
+| MERGE all indexable link types into Neo4j | `python scripts/cli.py ontology links sync-neo4j --neo4j-data-source-id DS --yes` |
+| MERGE one link type into Neo4j | `python scripts/cli.py ontology links sync-neo4j-type --type-id LT_ID --neo4j-data-source-id DS --yes` |
 
 When a link type is `many-to-many` and dataset-backed, the server is the source of truth via the junction table — `ontology links instances create/delete` will return 4xx. Surface that error rather than trying to bypass.
 

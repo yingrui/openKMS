@@ -106,7 +106,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology objects instances create` *(write)* | POST | `/api/object-types/{type-id}/objects` | Body `{data: {…property values…}}`. |
 | `ontology objects instances update` *(write)* | PUT | `/api/object-types/{type-id}/objects/{id}` | Body `{data: {…}}`. |
 | `ontology objects instances delete` *(write)* | DELETE | `/api/object-types/{type-id}/objects/{id}` | — |
-| `ontology objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. MERGEs all object instances into Neo4j as nodes. |
+| `ontology objects sync-neo4j` *(write)* | POST | `/api/object-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{object_types_indexed, nodes_created}`. Indexes every object type that has a linked dataset or stored instances. |
+| `ontology objects sync-neo4j-type` *(write)* | POST | `/api/object-types/{id}/index-to-neo4j` | Same body. One type only (dataset rows or `object_instances` when no dataset). |
 
 ### Ontology — link types (`ontology links`)
 
@@ -120,7 +121,8 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology links instances list` | GET | `/api/link-types/{id}/links` | `?limit=&offset=`. |
 | `ontology links instances create` *(write)* | POST | `/api/link-types/{type-id}/links` | Body `{source_object_id, target_object_id}`. **Server rejects when type is m2m+dataset** (junction table is the source of truth) — surface the 4xx. |
 | `ontology links instances delete` *(write)* | DELETE | `/api/link-types/{type-id}/links/{id}` | Same m2m+dataset rejection rule. |
-| `ontology links sync-neo4j` *(write)* | POST | `/api/link-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. MERGEs all link instances into Neo4j as relationships. |
+| `ontology links sync-neo4j` *(write)* | POST | `/api/link-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{link_types_indexed, relationships_created}`. Junction / source-FK datasets or saved link rows. |
+| `ontology links sync-neo4j-type` *(write)* | POST | `/api/link-types/{id}/index-to-neo4j` | Same body. One link type only. |
 
 ### Evaluation
 
