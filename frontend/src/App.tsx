@@ -11,20 +11,20 @@ import { Home } from './pages/Home';
 import { GlobalSearch } from './pages/GlobalSearch';
 import { Profile } from './pages/Profile';
 import { UserSettings } from './pages/UserSettings';
-import { Login } from './pages/Login';
-import { OidcCallback } from './pages/OidcCallback';
-import { OidcSilentRenew } from './pages/OidcSilentRenew';
-import { Signup } from './pages/Signup';
-import { DocumentChannel } from './pages/DocumentChannel';
-import { DocumentsIndex } from './pages/DocumentsIndex';
-import { ArticlesIndex } from './pages/ArticlesIndex';
-import { ArticleChannel } from './pages/ArticleChannel';
-import { ArticleChannels } from './pages/ArticleChannels';
-import { KnowledgeBaseList } from './pages/KnowledgeBaseList';
-import { WikiSpaceList } from './pages/WikiSpaceList';
-import { GlossaryList } from './pages/GlossaryList';
-import { GlossaryDetail } from './pages/GlossaryDetail';
-import { DocumentChannels } from './pages/DocumentChannels';
+import { Login } from './pages/auth/Login';
+import { OidcCallback } from './pages/auth/OidcCallback';
+import { OidcSilentRenew } from './pages/auth/OidcSilentRenew';
+import { Signup } from './pages/auth/Signup';
+import { DocumentChannel } from './pages/documents/DocumentChannel';
+import { DocumentsIndex } from './pages/documents/DocumentsIndex';
+import { ArticlesIndex } from './pages/articles/ArticlesIndex';
+import { ArticleChannel } from './pages/articles/ArticleChannel';
+import { ArticleChannels } from './pages/articles/ArticleChannels';
+import { KnowledgeBaseList } from './pages/knowledge-bases/KnowledgeBaseList';
+import { WikiSpaceList } from './pages/wiki/WikiSpaceList';
+import { GlossaryList } from './pages/glossaries/GlossaryList';
+import { GlossaryDetail } from './pages/glossaries/GlossaryDetail';
+import { DocumentChannels } from './pages/documents/DocumentChannels';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
 import { ConsoleOverview } from './pages/console/ConsoleOverview';
 import { ConsoleSettings } from './pages/console/ConsoleSettings';
@@ -38,8 +38,8 @@ import { ConsolePermissionManagement } from './pages/console/ConsolePermissionMa
 import { ConsoleDataSecurityGroups } from './pages/console/ConsoleDataSecurityGroups';
 import { ConsoleGroupDataAccess } from './pages/console/ConsoleGroupDataAccess';
 import { ConsoleDataResources } from './pages/console/ConsoleDataResources';
-import { EvaluationDatasetList } from './pages/EvaluationDatasetList';
-import { EvaluationDatasetDetail } from './pages/EvaluationDatasetDetail';
+import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
+import { EvaluationDatasetDetail } from './pages/evaluation/EvaluationDatasetDetail';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -52,29 +52,33 @@ function AppLoadingFallback() {
   );
 }
 
-const KnowledgeBaseDetail = lazy(() => import('./pages/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })));
-const Pipelines = lazy(() => import('./pages/Pipelines').then((m) => ({ default: m.Pipelines })));
-const Jobs = lazy(() => import('./pages/Jobs').then((m) => ({ default: m.Jobs })));
-const JobDetail = lazy(() => import('./pages/JobDetail').then((m) => ({ default: m.JobDetail })));
-const Models = lazy(() => import('./pages/Models').then((m) => ({ default: m.Models })));
-const ModelDetail = lazy(() => import('./pages/ModelDetail').then((m) => ({ default: m.ModelDetail })));
+const KnowledgeBaseDetail = lazy(() =>
+  import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
+);
+const Pipelines = lazy(() => import('./pages/pipelines/Pipelines').then((m) => ({ default: m.Pipelines })));
+const Jobs = lazy(() => import('./pages/jobs/Jobs').then((m) => ({ default: m.Jobs })));
+const JobDetail = lazy(() => import('./pages/jobs/JobDetail').then((m) => ({ default: m.JobDetail })));
+const Models = lazy(() => import('./pages/models/Models').then((m) => ({ default: m.Models })));
+const ModelDetail = lazy(() => import('./pages/models/ModelDetail').then((m) => ({ default: m.ModelDetail })));
 const OntologyList = lazy(() => import('./pages/ontology/OntologyList').then((m) => ({ default: m.OntologyList })));
 const ObjectsList = lazy(() => import('./pages/ontology/ObjectsList').then((m) => ({ default: m.ObjectsList })));
 const ObjectTypeDetail = lazy(() => import('./pages/ontology/ObjectTypeDetail').then((m) => ({ default: m.ObjectTypeDetail })));
 const LinksList = lazy(() => import('./pages/ontology/LinksList').then((m) => ({ default: m.LinksList })));
 const LinkTypeDetail = lazy(() => import('./pages/ontology/LinkTypeDetail').then((m) => ({ default: m.LinkTypeDetail })));
 const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then((m) => ({ default: m.ObjectExplorer })));
-const DocumentDetail = lazy(() => import('./pages/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
-const WikiSpaceDetail = lazy(() => import('./pages/WikiSpaceDetail').then((m) => ({ default: m.WikiSpaceDetail })));
-const WikiSpaceGraph = lazy(() => import('./pages/WikiSpaceGraph').then((m) => ({ default: m.WikiSpaceGraph })));
-const WikiPageEditor = lazy(() => import('./pages/WikiPageEditor').then((m) => ({ default: m.WikiPageEditor })));
-const DocumentChannelSettings = lazy(() => import('./pages/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })));
-const ArticleDetail = lazy(() => import('./pages/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
+const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
+const WikiSpaceDetail = lazy(() => import('./pages/wiki/WikiSpaceDetail').then((m) => ({ default: m.WikiSpaceDetail })));
+const WikiSpaceGraph = lazy(() => import('./pages/wiki/WikiSpaceGraph').then((m) => ({ default: m.WikiSpaceGraph })));
+const WikiPageEditor = lazy(() => import('./pages/wiki/WikiPageEditor').then((m) => ({ default: m.WikiPageEditor })));
+const DocumentChannelSettings = lazy(() =>
+  import('./pages/documents/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })),
+);
+const ArticleDetail = lazy(() => import('./pages/articles/ArticleDetail').then((m) => ({ default: m.ArticleDetail })));
 const ArticleChannelSettings = lazy(() =>
-  import('./pages/ArticleChannelSettings').then((m) => ({ default: m.ArticleChannelSettings })),
+  import('./pages/articles/ArticleChannelSettings').then((m) => ({ default: m.ArticleChannelSettings })),
 );
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
-const KnowledgeMap = lazy(() => import('./pages/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
+const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 function EvaluationDatasetDetailPage() {
   const { id } = useParams();
   return <EvaluationDatasetDetail key={id ?? ''} />;
