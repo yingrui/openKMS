@@ -112,7 +112,7 @@ export function DocumentDetailSplitPanel({
   rightPanelView,
   onRightPanelView,
   markdownEditMode,
-  onMarkdownEditMode,
+  onMarkdownEditMode: _onMarkdownEditMode,
   markdown,
   onMarkdownChange,
   document,

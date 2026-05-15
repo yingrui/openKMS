@@ -120,7 +120,7 @@ frontend/src/
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
     ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** markdown via `components/markdown/`; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`), WikiPageEditor.tsx (preview: same rich markdown as documents)
+    ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** markdown via `components/markdown/`; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiPageEditor** graph tab), WikiPageEditor.tsx (preview: same rich markdown as documents; **WikiPagesTree** page list + filter; current page **path** as toolbar chip beside back link)
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx

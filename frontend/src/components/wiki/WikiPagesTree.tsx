@@ -127,9 +127,6 @@ export function WikiPagesTree({ spaceId, pages, currentPageId, loading }: WikiPa
 
   return (
     <aside className="wiki-pages-tree" aria-label="Pages in this wiki space">
-      <div className="wiki-pages-tree-toolbar">
-        <span className="wiki-pages-tree-title">Pages</span>
-      </div>
       <div className="wiki-pages-tree-search">
         <Search size={15} className="wiki-pages-tree-search-icon" aria-hidden />
         <input

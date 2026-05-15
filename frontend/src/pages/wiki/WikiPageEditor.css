@@ -48,6 +48,8 @@
   align-items: center;
   gap: 0.75rem;
   flex-shrink: 0;
+  box-sizing: border-box;
+  min-height: 2.75rem;
   padding-bottom: 0.65rem;
   margin-bottom: 0.65rem;
   border-bottom: 1px solid var(--color-border);
@@ -74,7 +76,30 @@
   text-decoration: none;
   font-size: 0.9375rem;
   font-weight: 500;
-  margin-right: auto;
+  flex-shrink: 0;
+}
+
+.wiki-page-editor-toolbar-spacer {
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+.wiki-page-editor-doc-tab {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: min(42vw, 20rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  border-radius: 0;
+  line-height: 1.3;
 }
 
 .wiki-page-editor-back:hover {
@@ -91,6 +116,10 @@
 }
 
 .wiki-page-editor-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   padding: 0.4rem 0.9rem;
   border: none;
   border-radius: 0;
@@ -124,23 +153,6 @@
   font-size: 0.9375rem;
 }
 
-.wiki-page-editor-meta {
-  flex-shrink: 0;
-  margin: 0;
-}
-
-.wiki-page-editor-path {
-  display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-  background: transparent;
-  padding: 0.15rem 0;
-  border-radius: 0;
-  border: none;
-  border-bottom: 1px dashed var(--color-border);
-}
-
 .wiki-page-editor-body:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
@@ -158,7 +170,6 @@
   color: var(--color-text);
   background: var(--color-bg);
   border: none;
-  border-top: 1px solid var(--color-border);
   border-radius: 0;
   resize: none;
   box-shadow: none;
@@ -170,7 +181,7 @@
   box-shadow: none;
 }
 
-/* Preview: same flat surface as editor */
+/* Preview: same flat surface as editor (no top border — toolbar already separates) */
 .wiki-page-editor-preview {
   flex: 1;
   min-height: 12rem;
@@ -178,10 +189,21 @@
   flex-direction: column;
   border-radius: 0;
   border: none;
-  border-top: 1px solid var(--color-border);
   background: var(--color-bg);
   box-shadow: none;
   overflow: hidden;
+}
+
+/* Same footprint as preview: graph fills the main content column.
+   No border-top: toolbar already has border-bottom (Graph tab has no meta row, so a top border doubled the rule). */
+.wiki-page-editor-graph-panel {
+  flex: 1;
+  min-height: 12rem;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg);
 }
 
 .wiki-page-editor-preview-scroll {

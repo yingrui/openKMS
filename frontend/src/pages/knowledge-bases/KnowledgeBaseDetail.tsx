@@ -50,7 +50,7 @@ import {
   type ChunkResponse,
   type SearchResult,
 } from '../../data/knowledgeBasesApi';
-import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse, type DocumentResponse } from '../../data/documentsApi';
+import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
 import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';

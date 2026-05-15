@@ -6,6 +6,31 @@
   box-sizing: border-box;
 }
 
+/* Fills wiki page editor main pane (below toolbar); no outer padding or full-viewport min-height */
+.wiki-space-graph.wiki-space-graph--embedded {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+}
+
+.wiki-space-graph.wiki-space-graph--embedded .wiki-space-graph-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.wiki-space-graph.wiki-space-graph--embedded .wiki-space-graph-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.wiki-space-graph.wiki-space-graph--embedded .wiki-space-graph-status {
+  margin: 0;
+  padding: 0.75rem 0;
+}
+
 .wiki-space-graph-toolbar {
   display: flex;
   flex-wrap: wrap;

@@ -15,6 +15,7 @@ import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
 import { fetchWikiPage, fetchWikiPages, updateWikiPage } from '../../data/wikiSpacesApi';
 import type { WikiPageResponse } from '../../data/wikiSpacesApi';
 import { findPageIdByWikilinkTarget, prepareWikiPreviewMarkdown } from './wikiPreviewMarkdown';
+import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
 import './WikiPageEditor.css';
 
 function previewUrlTransform(url: string): string {
@@ -33,7 +34,7 @@ export function WikiPageEditor() {
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'edit' | 'preview'>('preview');
+  const [tab, setTab] = useState<'edit' | 'preview' | 'graph'>('preview');
   const [wikiPages, setWikiPages] = useState<WikiPageResponse[]>([]);
   const [pagesLoading, setPagesLoading] = useState(true);
 
@@ -168,6 +169,12 @@ export function WikiPageEditor() {
                 <ArrowLeft size={18} />
                 {t('wiki.pageEditor.backToSpace')}
               </Link>
+              {!loading && page && (
+                <span className="wiki-page-editor-doc-tab" title={page.path}>
+                  {page.path}
+                </span>
+              )}
+              <div className="wiki-page-editor-toolbar-spacer" aria-hidden />
               <div className="wiki-page-editor-tabs">
                 <button
                   type="button"
@@ -183,15 +190,16 @@ export function WikiPageEditor() {
                 >
                   {t('wiki.pageEditor.preview')}
                 </button>
+                <button
+                  type="button"
+                  className={tab === 'graph' ? 'active' : ''}
+                  onClick={() => setTab('graph')}
+                  title={t('wiki.pageEditor.graphViewTitle')}
+                >
+                  <Network size={16} aria-hidden />
+                  {t('wiki.pageEditor.graphView')}
+                </button>
               </div>
-              <Link
-                to={`/wikis/${spaceId}/graph?focus=${encodeURIComponent(pageId)}`}
-                className="btn btn-secondary wiki-page-editor-graph-link"
-                title={t('wiki.pageEditor.graphViewTitle')}
-              >
-                <Network size={18} />
-                {t('wiki.pageEditor.graphView')}
-              </Link>
               <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void handleSave()}>
                 <Save size={18} />
                 {saving ? t('wiki.pageEditor.saving') : t('wiki.pageEditor.save')}
@@ -202,9 +210,6 @@ export function WikiPageEditor() {
 
             {!loading && page && (
               <div className="wiki-page-editor-workspace">
-                <div className="wiki-page-editor-meta">
-                  <code className="wiki-page-editor-path">{page.path}</code>
-                </div>
                 {tab === 'edit' ? (
                   <textarea
                     className="wiki-page-editor-body"
@@ -212,7 +217,7 @@ export function WikiPageEditor() {
                     onChange={(e) => setBody(e.target.value)}
                     spellCheck
                   />
-                ) : (
+                ) : tab === 'preview' ? (
                   <div className="wiki-page-editor-preview">
                     <div className="wiki-page-editor-preview-scroll">
                       <article className="wiki-page-editor-markdown">
@@ -226,6 +231,10 @@ export function WikiPageEditor() {
                         </ReactMarkdown>
                       </article>
                     </div>
+                  </div>
+                ) : (
+                  <div className="wiki-page-editor-graph-panel">
+                    <WikiSpaceGraphPanel spaceId={spaceId} focusPageId={pageId} variant="embedded" />
                   </div>
                 )}
               </div>
