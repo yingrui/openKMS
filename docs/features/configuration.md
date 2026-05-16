@@ -74,6 +74,8 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_AGENT_MODEL_ID` | unset | `api_models.id` for the LLM used by `POST /api/agent/.../messages`; falls back to the first available LLM |
 | `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | Upper bound on completion length passed as `max_tokens`; raise if your model supports more |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per turn (each tool+model cycle uses steps; bulk get/upsert needs a high value) |
+| `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **extra_body** for the wiki agent (other provider flags only). **enable_thinking** is always forced to **false** after merge — Wiki Copilot does not support thinking / `reasoning_content` round-trip. |
+| `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies). **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 
 ## App and operator behavior
 

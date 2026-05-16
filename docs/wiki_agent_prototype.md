@@ -1,12 +1,12 @@
 # Wiki space: linked documents and embedded agent (prototype design)
 
-This document is the **single spec** for wiki–document associations, the wiki-space **Documents** tab + **Wiki Copilot** UI, and the **in-process LangGraph agent** in the openKMS backend. It complements [architecture.md](./architecture.md).
+This document is the **single spec** for wiki–document associations, the wiki-space **Documents** tab (settings), **Wiki Copilot** in the **wiki workspace**, and the **in-process LangGraph agent** in the openKMS backend. It complements [architecture.md](./architecture.md).
 
 **Shipped (MVP v1)**
 
-- [WikiSpaceSettings](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/wiki/WikiSpaceSettings.tsx): main + right rail; **sectioned settings** (space, imports, pages, linked documents); **15** per page on the admin list; **Linked documents** uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
+- [WikiSpaceSettings](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/wiki/WikiSpaceSettings.tsx): sectioned **space settings** (space, imports, pages, linked documents); **15** per page on the admin list; **Linked documents** uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`). **Wiki Copilot** lives in [WikiWorkspace](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/wiki/WikiWorkspace.tsx) (toolbar toggle, **WikiSpaceAgentPanel**).
 - [WikiSpaceAgentPanel](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
-- **Backend** [app/api/agent.py](https://github.com/yingrui/openKMS/blob/main/backend/app/api/agent.py) + [app/services/agent/](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/wiki_runner.py). LLM from [api_models](https://github.com/yingrui/openKMS/blob/main/backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](https://github.com/yingrui/openKMS/tree/main/third-party/wiki-skills) (`git subtree`); [vendored_wiki_skills.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
+- **Backend** [app/api/agent.py](https://github.com/yingrui/openKMS/blob/main/backend/app/api/agent.py) + [app/services/agent/](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/wiki_runner.py). LLM from [api_models](https://github.com/yingrui/openKMS/blob/main/backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). The NDJSON “stream” response uses LangGraph **`astream_events` (v2)** with **`ChatOpenAI(streaming=True)`** so **`delta`** parts arrive as the model streams; **`tool_start` / `tool_end` / `tool_error`** are emitted from the same event loop. If no text deltas appear (rare), the server falls back to one **`ainvoke`** and sends a single **`delta`**. The **`_replay_wiki_invoke_to_stream`** helper remains for tests and any future replay path. **Wiki Copilot does not support** provider thinking / `reasoning_content` round-trip: every request sets **`extra_body.enable_thinking = false`** (after merging **`OPENKMS_AGENT_LLM_EXTRA_BODY`**); for **base_url** values other than **`api.openai.com`** (or when **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`** forces it), the wiki LLM client also sets **`reasoning_content`** on each outgoing assistant message so some OpenAI-compatible gateways do not return **400** in tool loops. A **pre-model hook** strips thinking-shaped blocks from in-memory history before each LLM call. Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](https://github.com/yingrui/openKMS/tree/main/third-party/wiki-skills) (`git subtree`); [vendored_wiki_skills.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
 
 ## Two services (do not conflate)
 
@@ -18,7 +18,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 ## Goals
 
 1. **Wiki space**: **Pages** | **Documents**; documents are **linked** to the space (DB `wiki_space_documents`). Add/remove with **document in user scope** (enforced in API).
-2. **Wiki Copilot** (right rail): Aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools.
+2. **Wiki Copilot** (wiki **workspace** rail): Aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools.
 3. **Multi-surface**: `agent_conversations.surface` (v1: `wiki_space`); other surfaces (evaluation, FAQ) later.
 
 ## Request path (implemented, v1)
@@ -26,7 +26,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 ```mermaid
 sequenceDiagram
   participant U as User
-  participant FE as WikiSpaceSettings
+  participant FE as WikiWorkspace
   participant API as FastAPI_backend
   participant G as LangGraph_wiki
   participant DB as PostgreSQL
@@ -45,7 +45,7 @@ sequenceDiagram
 |-------|---------|
 | **wiki_space_documents** | `id`, `wiki_space_id`, `document_id`, `created_at`; unique pair; `ON DELETE CASCADE` on space or document. |
 | **agent_conversations** | `user_sub` (OIDC/ local JWT `sub`), `surface`, `context` JSONB (`wiki_space_id`), `title?`, timestamps. |
-| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content`, `tool_calls?` JSONB. (Tool rounds not persisted in v1.) |
+| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content` (user-visible assistant text), `tool_calls?` JSONB — wiki Copilot stores `wiki_tool_traces_v1` (tool name + output) for replay into the model on the next turn; not shown as chat body in the UI. |
 
 ## REST API (implemented, v1)
 

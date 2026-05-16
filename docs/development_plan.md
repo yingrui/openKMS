@@ -33,7 +33,7 @@
 
 ### Wiki Copilot and linked documents (build on [wiki_agent_prototype.md](./wiki_agent_prototype.md))
 
-- [x] **Space settings** at **`/wikis/:id/settings`** (sectioned UI: space fields, imports, pages list, linked documents); **Wiki Copilot** on settings wired to **`/api/agent`** (persisted conversations; read tools; **list/delete** conversations, **markdown** + **auto-scroll** in panel); **wiki-skills** vendored via `git subtree` at `third-party/wiki-skills`, `SKILL.md` content in LangGraph system prompt
+- [x] **Space settings** at **`/wikis/:id/settings`** (sectioned UI: space fields, imports, pages list, linked documents); **Wiki Copilot** in **WikiWorkspace** (toolbar toggle; **WikiSpaceAgentPanel** + **`/api/agent`**); **wiki-skills** vendored via `git subtree` at `third-party/wiki-skills`, `SKILL.md` content in LangGraph system prompt
 - [x] `wiki_space_documents` + `agent_*` tables; link/unlink/list; SPA uses API (not sessionStorage) for links
 - [x] **Wiki workspace** (`WikiWorkspace` + `WikiPagePanel`): `/wikis/:id` redirects to **`/wikis/:id/pages/graph`**; **`/wikis/:id/pages/:pageId`** and **`/wikis/:id/pages/graph`** share one shell (multi-page tabs, embedded graph, toolbar); full reload opens only the URL (no tab-strip persistence); **`GET /api/search`** wiki space hits use `url_path` **`/wikis/{id}/pages/graph`**
 - [x] Backend embedded agent (v1): LangGraph `create_react_agent` + `agent_conversations` / `agent_messages`

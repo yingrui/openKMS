@@ -493,8 +493,11 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           }
           if (e.type === 'done') {
             setLines((prev) => {
+              // After `user`, the optimistic user row uses `e.user.id`, not `tempUserId`; strip both
+              // so we do not append a duplicate user beside the streamed placeholder.
               const without = prev.filter(
-                (p) => p.id !== tempUserId && p.id !== asstStreamId
+                (p) =>
+                  p.id !== asstStreamId && p.id !== e.user.id && p.id !== tempUserId
               );
               const streamed = prev.find((p) => p.id === asstStreamId);
               const parts =

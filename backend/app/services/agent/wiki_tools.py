@@ -170,7 +170,11 @@ async def make_wiki_tools(
 
     t1 = StructuredTool.from_function(
         name="list_wiki_pages",
-        description="List wiki pages: path, title, and id. Use before reading a page body or choosing a path for upsert.",
+        description=(
+            "List wiki pages: path, title, and id (catalog only, no page body). "
+            "Call at most once per user question unless they explicitly ask to refresh the list; "
+            "then call `get_wiki_page` for pages that may answer the question."
+        ),
         coroutine=list_wiki_pages,
     )
     t2 = StructuredTool.from_function(

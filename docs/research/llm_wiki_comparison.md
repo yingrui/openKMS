@@ -85,8 +85,8 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 
 | llm_wiki | openKMS |
 |----------|---------|
-| Tauri desktop; icon rail switches Wiki / Sources / Search / **Graph** / Lint / Review / Deep Research | Web SPA: `/wikis`, `/wikis/:id` → graph, **`/wikis/:id/settings`**, `/wikis/:id/pages/graph`, Wiki Copilot rail on settings |
-| Three-pane: knowledge tree + center view + preview | **`/wikis/:id/settings`** (space admin + Copilot) + graph/page routes + workspace |
+| Tauri desktop; icon rail switches Wiki / Sources / Search / **Graph** / Lint / Review / Deep Research | Web SPA: `/wikis`, `/wikis/:id` → graph, **`/wikis/:id/settings`**, `/wikis/:id/pages/graph`, **Wiki Copilot** in workspace |
+| Three-pane: knowledge tree + center view + preview | **`/wikis/:id/settings`** (space admin) + graph/page **workspace** (editing + optional Copilot rail) |
 | Graph: Type / Community / Insights toolbar, sigma.js + ForceAtlas2 | Graph view: force-directed 2D + Default / Type / Clusters + insights drawer |
 
 ---

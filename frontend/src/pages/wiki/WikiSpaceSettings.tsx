@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Bot, ChevronsLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { WikiSpaceAgentPanel } from '../../components/wiki/WikiSpaceAgentPanel';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../../data/channelsApi';
 import { fetchDocuments } from '../../data/documentsApi';
@@ -83,41 +82,6 @@ export function WikiSpaceSettings() {
   const [docChannelFilter, setDocChannelFilter] = useState('');
   const [docPickerLoading, setDocPickerLoading] = useState(false);
   const [docPickerItems, setDocPickerItems] = useState<Array<{ id: string; name: string; channel_id: string }>>([]);
-
-  const wikiRailStorageKey = spaceId ? `openkms_wiki_rail_collapsed_v1_${spaceId}` : null;
-  const [wikiAssistantCollapsed, setWikiAssistantCollapsed] = useState(false);
-
-  useEffect(() => {
-    if (!wikiRailStorageKey) {
-      setWikiAssistantCollapsed(false);
-      return;
-    }
-    try {
-      setWikiAssistantCollapsed(sessionStorage.getItem(wikiRailStorageKey) === '1');
-    } catch {
-      setWikiAssistantCollapsed(false);
-    }
-  }, [wikiRailStorageKey]);
-
-  const collapseWikiAssistant = useCallback(() => {
-    if (!wikiRailStorageKey) return;
-    setWikiAssistantCollapsed(true);
-    try {
-      sessionStorage.setItem(wikiRailStorageKey, '1');
-    } catch {
-      /* ignore */
-    }
-  }, [wikiRailStorageKey]);
-
-  const expandWikiAssistant = useCallback(() => {
-    if (!wikiRailStorageKey) return;
-    setWikiAssistantCollapsed(false);
-    try {
-      sessionStorage.removeItem(wikiRailStorageKey);
-    } catch {
-      /* ignore */
-    }
-  }, [wikiRailStorageKey]);
 
   useEffect(() => {
     if (!docPickerOpen || !spaceId) return;
@@ -372,13 +336,7 @@ export function WikiSpaceSettings() {
   const pageCount = Math.max(1, Math.ceil(pagesTotal / WIKI_PAGES_LIST_PAGE_SIZE));
 
   return (
-    <div
-      className={`wiki-space-settings${
-        !loading && space
-          ? ` wiki-space-settings--split${wikiAssistantCollapsed ? ' wiki-space-settings--agent-collapsed' : ''}`
-          : ''
-      }`}
-    >
+    <div className="wiki-space-settings">
       <div className="wiki-space-settings-body">
         <div className="wiki-space-settings-toolbar-span">
           <Link to="/wikis" className="wiki-space-settings-back">
@@ -629,29 +587,6 @@ export function WikiSpaceSettings() {
               )}
             </section>
           </div>
-          {wikiAssistantCollapsed ? (
-            <button
-              type="button"
-              className="wiki-space-settings-agent-expand"
-              onClick={expandWikiAssistant}
-              title={t('expandCopilot')}
-              aria-expanded="false"
-            >
-              <span className="wiki-space-settings-agent-expand__icon" aria-hidden>
-                <Bot size={20} strokeWidth={2} />
-                <ChevronsLeft size={18} strokeWidth={2} />
-              </span>
-              <span className="wiki-space-settings-agent-expand__label">{t('copilotLabel')}</span>
-            </button>
-          ) : (
-            <div className="wiki-space-settings-agent-rail">
-              <WikiSpaceAgentPanel
-                spaceId={spaceId}
-                spaceName={space.name}
-                onRequestCollapse={collapseWikiAssistant}
-              />
-            </div>
-          )}
           </div>
         )}
       </div>

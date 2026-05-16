@@ -5,11 +5,6 @@
   padding: 0 1rem 1rem;
 }
 
-/* Agent width shared by fixed rail + main gutter (avoids grid row stretching to full viewport height). */
-.wiki-space-settings--split {
-  --wiki-agent-w: min(640px, max(300px, calc(100vw - var(--sidebar-width, 220px) - 3.25rem)));
-}
-
 .wiki-space-settings-body {
   display: flex;
   flex-direction: column;
@@ -28,125 +23,6 @@
 .wiki-space-settings-content-row {
   position: relative;
   min-width: 0;
-}
-
-.wiki-space-settings-agent-rail {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-@media (min-width: 961px) {
-  .wiki-space-settings--split .wiki-space-settings-main {
-    padding-right: calc(var(--wiki-agent-w) + 1.25rem);
-    box-sizing: border-box;
-  }
-
-  .wiki-space-settings--split .wiki-space-settings-agent-rail {
-    position: fixed;
-    z-index: 3;
-    top: calc(var(--header-height, 56px) + 12px);
-    right: 16px;
-    width: var(--wiki-agent-w);
-    height: calc(100vh - var(--header-height, 56px) - 24px);
-    max-height: calc(100vh - var(--header-height, 56px) - 24px);
-    height: calc(100dvh - var(--header-height, 56px) - 24px);
-    max-height: calc(100dvh - var(--header-height, 56px) - 24px);
-  }
-
-  .wiki-space-settings--split .wiki-space-settings-agent-rail .wiki-space-agent-panel {
-    position: relative;
-    top: auto;
-    height: 100%;
-    max-height: none;
-    min-height: 0;
-  }
-
-  /* When the assistant is collapsed, main content uses full width (no reserved rail gutter). */
-  .wiki-space-settings--split.wiki-space-settings--agent-collapsed .wiki-space-settings-main {
-    padding-right: 0;
-  }
-}
-
-@media (max-width: 960px) {
-  .wiki-space-settings--split .wiki-space-settings-main {
-    padding-right: 0;
-  }
-
-  .wiki-space-settings--split .wiki-space-settings-agent-rail {
-    position: relative;
-    right: auto;
-    top: auto;
-    width: 100%;
-    height: auto;
-    max-height: none;
-  }
-
-  .wiki-space-settings--split .wiki-space-settings-agent-rail .wiki-space-agent-panel {
-    height: auto;
-    max-height: min(50vh, 420px);
-    min-height: 240px;
-  }
-}
-
-/* Docked “show assistant” control when the rail is hidden. */
-.wiki-space-settings-agent-expand {
-  position: fixed;
-  z-index: 3;
-  right: 0;
-  top: 38%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  min-height: 7.5rem;
-  padding: 0.65rem 0.3rem 0.65rem 0.4rem;
-  max-width: 2.9rem;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-right: none;
-  border-radius: 10px 0 0 10px;
-  background: var(--color-surface, #fff);
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.07);
-  cursor: pointer;
-  color: var(--color-text, #0f172a);
-  transition: background 0.15s ease, box-shadow 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.wiki-space-settings-agent-expand:hover {
-  background: var(--color-bg-muted, #f8fafc);
-  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.1);
-}
-
-.wiki-space-settings-agent-expand:focus-visible {
-  outline: 2px solid var(--color-accent, #0d9488);
-  outline-offset: 1px;
-}
-
-.wiki-space-settings-agent-expand__icon {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.1rem;
-  color: var(--color-accent, #0d9488);
-}
-
-.wiki-space-settings-agent-expand__label {
-  display: block;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 0.68rem;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  color: var(--color-text-muted, #64748b);
-}
-
-@media (max-width: 960px) {
-  .wiki-space-settings-agent-expand {
-    top: auto;
-    bottom: 5.5rem;
-  }
 }
 
 .wiki-space-settings-main {

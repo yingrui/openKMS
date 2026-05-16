@@ -54,7 +54,11 @@
       "closeTab": "关闭标签",
       "backToWikiList": "全部 Wiki 空间",
       "backToWikiListHint": "离开当前工作区，返回 Wiki 空间列表。",
-      "spaceSettingsHint": "空间设置：名称与说明、库导入、关联资料库文档、页面列表，以及 Wiki 助手。"
+      "spaceSettingsHint": "空间设置：名称与说明、库导入、关联资料库文档与页面列表。",
+      "copilotToggle": "Wiki 助手",
+      "copilotToggleHint": "显示或隐藏 Wiki 助手，可就本空间、页面与关联文档提问。",
+      "copilotResize": "调整 Wiki 助手宽度",
+      "copilotResizeHint": "拖动以改变宽度。"
     }
   },
   "glossary": {

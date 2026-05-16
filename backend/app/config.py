@@ -6,7 +6,7 @@ Every setting that reads from the environment lists its variable name explicitly
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings
 
 # .env next to backend root (parent of app/)
@@ -67,6 +67,30 @@ class Settings(BaseSettings):
         le=10_000,
         validation_alias="OPENKMS_AGENT_RECURSION_LIMIT",
         description="Max LangGraph supersteps for the wiki ReAct agent (each tool+model cycle uses steps; bulk get/upsert needs a high value).",
+    )
+    agent_llm_extra_body_json: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_AGENT_LLM_EXTRA_BODY",
+        description=(
+            "Optional JSON object merged into ChatOpenAI **extra_body** for the wiki embedded agent. "
+            "Wiki Copilot does **not** support provider “thinking” / reasoning round-trip mode: "
+            "**enable_thinking** is always forced to **false** after this merge (avoids some OpenAI-compat "
+            "`reasoning_content must be passed back` errors during tool loops). Use only for other "
+            "provider-specific flags your endpoint documents."
+        ),
+    )
+    agent_llm_reasoning_content_shim: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM",
+            "OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM",
+        ),
+        description=(
+            "Wiki agent (OpenAI SDK only): whether to inject **reasoning_content** on outgoing assistant messages for "
+            "OpenAI-compatible gateways that require it in tool loops. **auto** (unset): **on** for every **base_url** "
+            "except **api.openai.com**; set **0**/**false** to disable. **1**/**true**: always on (including api.openai.com). "
+            "Legacy alias: **OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM**."
+        ),
     )
 
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---

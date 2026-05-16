@@ -270,7 +270,7 @@ All junctions cascade on either side; no extra columns.
 
 ### AgentMessage
 
-- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content`, `tool_calls` (JSONB), `created_at`
+- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools), `created_at`
 
 ## Knowledge map (taxonomy)
 

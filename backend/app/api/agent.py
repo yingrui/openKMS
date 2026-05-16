@@ -27,7 +27,13 @@ from app.schemas.agent import (
 )
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.permission_catalog import PERM_WIKIS_READ
-from app.services.agent.wiki_runner import iter_wiki_conversation_stream_parts, new_id, run_wiki_conversation_turn
+from app.services.agent.wiki_runner import (
+    WIKI_TOOL_TRANSCRIPTS_KEY,
+    iter_wiki_conversation_stream_parts,
+    new_id,
+    run_wiki_conversation_turn,
+    truncate_wiki_tool_output_for_storage,
+)
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -306,6 +312,7 @@ async def _ndjson_wiki_message_response(
     user_out = _msg_to_out(user_m)
     yield _ndjson_line({"type": "user", "message": user_out.model_dump(mode="json")})
     acc: list[str] = []
+    tool_traces: list[dict[str, str]] = []
     asst_m: AgentMessage
     try:
         async for part in iter_wiki_conversation_stream_parts(db, c, jwt_payload):
@@ -347,12 +354,16 @@ async def _ndjson_wiki_message_response(
                 )
                 continue
             if ptype == "tool_end" and isinstance(part, dict):
+                tname = str(part.get("name") or "tool")
+                tout = str(part.get("output") or "")
+                if tout.strip():
+                    tool_traces.append({"name": tname, "output": truncate_wiki_tool_output_for_storage(tout)})
                 yield _ndjson_line(
                     {
                         "type": "tool_end",
                         "run_id": str(part.get("run_id") or ""),
-                        "name": str(part.get("name") or "tool"),
-                        "output": str(part.get("output") or ""),
+                        "name": tname,
+                        "output": tout,
                     }
                 )
                 continue
@@ -366,12 +377,16 @@ async def _ndjson_wiki_message_response(
                     }
                 )
                 continue
-        text = "".join(acc)
+        text = "".join(acc).strip()
+        tool_payload: dict[str, Any] | None = (
+            {WIKI_TOOL_TRANSCRIPTS_KEY: tool_traces} if tool_traces else None
+        )
         asst_m = AgentMessage(
             id=new_id(),
             conversation_id=c.id,
             role="assistant",
             content=text,
+            tool_calls=tool_payload,
         )
         db.add(asst_m)
         _bump_conversation_timestamp(c)
@@ -447,12 +462,13 @@ async def post_conversation_message(
             },
         )
 
-    assistant_text = await run_wiki_conversation_turn(db, c, p)
+    assistant_text, tool_calls_payload = await run_wiki_conversation_turn(db, c, p)
     asst_m = AgentMessage(
         id=new_id(),
         conversation_id=c.id,
         role="assistant",
         content=assistant_text,
+        tool_calls=tool_calls_payload,
     )
     db.add(asst_m)
     _bump_conversation_timestamp(c)

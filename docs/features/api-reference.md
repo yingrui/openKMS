@@ -314,7 +314,7 @@ Used by the Wiki agent surface (and any other in-app assistant). Uses `OPENKMS_A
 | PATCH | `/api/agent/conversations/{id}` | Update conversation (title, context) |
 | DELETE | `/api/agent/conversations/{id}` | Delete conversation (cascades messages) |
 | GET | `/api/agent/conversations/{id}/messages` | List messages |
-| POST | `/api/agent/conversations/{id}/messages` | Send a user message and stream back the agent reply (`text/event-stream`) |
+| POST | `/api/agent/conversations/{id}/messages` | Send a user message (`stream: true` → **`application/x-ndjson`** lines: `user`, `delta`, `tool_*`, `done` / `error`; `stream: false` → JSON with user + assistant messages) |
 | DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this message and everything after it (used by "regenerate") |
 
 ## Knowledge map (taxonomy)

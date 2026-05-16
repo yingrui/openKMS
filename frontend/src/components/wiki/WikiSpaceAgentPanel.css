@@ -6,7 +6,7 @@
   border-radius: 12px;
   background: var(--color-surface, #fff);
   overflow: hidden;
-  /* On wiki space settings, height comes from the fixed rail in WikiSpaceSettings.css (`.wiki-space-settings-agent-rail`). */
+  /* On the wiki workspace, height comes from the fixed rail in WikiWorkspace.css (`.wiki-workspace-agent-rail`). */
 }
 
 .wiki-space-agent-panel__head {
