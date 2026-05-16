@@ -69,7 +69,7 @@ const ObjectExplorer = lazy(() => import('./pages/ontology/ObjectExplorer').then
 const DocumentDetail = lazy(() => import('./pages/documents/DocumentDetail').then((m) => ({ default: m.DocumentDetail })));
 const WikiSpaceDetail = lazy(() => import('./pages/wiki/WikiSpaceDetail').then((m) => ({ default: m.WikiSpaceDetail })));
 const WikiSpaceGraph = lazy(() => import('./pages/wiki/WikiSpaceGraph').then((m) => ({ default: m.WikiSpaceGraph })));
-const WikiPageEditor = lazy(() => import('./pages/wiki/WikiPageEditor').then((m) => ({ default: m.WikiPageEditor })));
+const WikiWorkspace = lazy(() => import('./pages/wiki/WikiWorkspace').then((m) => ({ default: m.WikiWorkspace })));
 const DocumentChannelSettings = lazy(() =>
   import('./pages/documents/DocumentChannelSettings').then((m) => ({ default: m.DocumentChannelSettings })),
 );
@@ -93,6 +93,15 @@ function LegacyKnowledgeMapPathRedirect() {
   const location = useLocation();
   const tail = `${location.search ?? ''}${location.hash ?? ''}`;
   return <Navigate to={`/knowledge-map${tail}`} replace />;
+}
+
+function WikiSpacePagesGate() {
+  const { id } = useParams();
+  return (
+    <FeatureGate feature="wikiSpaces">
+      <WikiWorkspace key={id ?? ''} />
+    </FeatureGate>
+  );
 }
 
 function App() {
@@ -133,8 +142,9 @@ function App() {
           <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
           <Route path="wikis" element={<FeatureGate feature="wikiSpaces"><WikiSpaceList /></FeatureGate>} />
           <Route path="wikis/:id/graph" element={<FeatureGate feature="wikiSpaces"><WikiSpaceGraph /></FeatureGate>} />
+          <Route path="wikis/:id/pages/graph" element={<WikiSpacePagesGate />} />
           <Route path="wikis/:id" element={<FeatureGate feature="wikiSpaces"><WikiSpaceDetail /></FeatureGate>} />
-          <Route path="wikis/:id/pages/:pageId" element={<FeatureGate feature="wikiSpaces"><WikiPageEditor /></FeatureGate>} />
+          <Route path="wikis/:id/pages/:pageId" element={<WikiSpacePagesGate />} />
           <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />
           <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />

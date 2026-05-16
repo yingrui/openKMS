@@ -40,6 +40,7 @@
       "backToSpace": "Back to space",
       "edit": "Edit",
       "preview": "Preview",
+      "viewModeTabs": "Editor or preview",
       "graphViewTitle": "Show the wiki link graph in this pane",
       "graphView": "Graph view",
       "saving": "Saving…",
@@ -47,6 +48,10 @@
       "loadingPage": "Loading page…",
       "couldNotLoad": "Could not load this page.",
       "wikilinkMissing": "No page in this space: {{target}}"
+    },
+    "workspace": {
+      "openTabsLabel": "Open pages and graph",
+      "closeTab": "Close tab"
     }
   },
   "glossary": {

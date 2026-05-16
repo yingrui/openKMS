@@ -232,7 +232,7 @@ async def search_wiki_spaces_section(
             name=s.name,
             title=None,
             kind="wiki_space",
-            url_path=f"/wikis/{s.id}/graph",
+            url_path=f"/wikis/{s.id}/pages/graph",
             channel_id=None,
             channel_name=None,
             updated_at=s.updated_at,

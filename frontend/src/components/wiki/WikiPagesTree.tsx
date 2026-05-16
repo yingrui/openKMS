@@ -12,7 +12,8 @@ function sortedChildEntries(node: WikiTreeNode): [string, WikiTreeNode][] {
 interface WikiPagesTreeProps {
   spaceId: string;
   pages: WikiPageResponse[];
-  currentPageId: string;
+  /** When omitted (e.g. graph tab), folder expand still works from prior navigation. */
+  currentPageId?: string;
   loading?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function WikiPagesTree({ spaceId, pages, currentPageId, loading }: WikiPa
   }, []);
 
   useEffect(() => {
+    if (!currentPageId) return;
     const cur = pages.find((p) => p.id === currentPageId);
     if (cur) {
       startTransition(() => expandAncestorsOf(cur.path));

@@ -362,7 +362,7 @@ export function WikiSpaceDetail() {
                 {space.description && <p className="wiki-space-detail-desc">{space.description}</p>}
               </div>
               <div className="wiki-space-detail-actions">
-                <Link to={`/wikis/${spaceId}/graph`} className="btn btn-secondary">
+                <Link to={`/wikis/${spaceId}/pages/graph`} className="btn btn-secondary">
                   <Network size={18} />
                   {t('graphView')}
                 </Link>
