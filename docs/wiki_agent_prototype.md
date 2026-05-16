@@ -45,7 +45,7 @@ sequenceDiagram
 |-------|---------|
 | **wiki_space_documents** | `id`, `wiki_space_id`, `document_id`, `created_at`; unique pair; `ON DELETE CASCADE` on space or document. |
 | **agent_conversations** | `user_sub` (OIDC/ local JWT `sub`), `surface`, `context` JSONB (`wiki_space_id`), `title?`, timestamps. |
-| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content` (user-visible assistant text), `tool_calls?` JSONB — wiki Copilot stores `wiki_tool_traces_v1` (tool name + output) for replay into the model on the next turn; not shown as chat body in the UI. |
+| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content` (user-visible assistant text), `tool_calls?` JSONB — wiki Copilot stores `wiki_tool_traces_v1` (tool name + output) for **model replay** on later turns and for the **workspace rail** to rebuild tool rows when loading `GET …/messages` (order is approximate: completed tools, then final `content` as one text block—not the live interleaving). |
 
 ## REST API (implemented, v1)
 
@@ -104,6 +104,18 @@ sequenceDiagram
 - **v1** uses [langgraph.prebuilt.create_react_agent](https://github.com/langchain-ai/langgraph) with `langchain_openai.ChatOpenAI`.
 - **Langfuse**: not integrated yet; optional `CallbackHandler` as in backlog.
 - **Streaming**: `POST .../messages` with `stream: true` returns **NDJSON**; assistant completion bumps **`updated_at`** for conversation ordering.
+
+## Implementation constraints (Copilot + agent)
+
+For implementers changing the workspace rail, NDJSON client, or wiki LangGraph paths:
+
+1. **NDJSON `done` merge (SPA)** — In `frontend/src/components/wiki/WikiSpaceAgentPanel.tsx`, the stream sends `type: user` first, which rewrites the optimistic user row to the **server** message id. When applying `done`, remove in-flight rows by **`e.user.id`**, the pre-stream **`tempUserId`**, and the assistant placeholder id. Filtering only `tempUserId` **duplicates** the user bubble.
+2. **Stream failure rollback** — If `type: user` already ran, rollback must also remove the row whose id is the **persisted** user id, not only `tempUserId`.
+3. **Stream lifecycle** — Use **`AbortSignal`** on the stream request; abort when `spaceId` changes or the panel unmounts. Avoid updating chat state from stream callbacks after the panel’s wiki space no longer matches the in-flight request (use a ref or equivalent guard).
+4. **Reloaded threads + tool rail** — `GET /api/agent/conversations/{id}/messages` returns `tool_calls` including **`wiki_tool_traces_v1`**. Rebuild assistant `streamParts` in `frontend/src/components/wiki/wikiCopilotStreamParts.ts` so the tool rail appears after reload. Persisted order is approximate (completed tools, then final `content` as text—not token-level interleaving). Keep **`WIKI_TOOL_TRANSCRIPTS_KEY`** / `wiki_tool_traces_v1` aligned between `backend/app/services/agent/wiki_runner.py` and `wikiCopilotStreamParts.ts`.
+5. **`sessionStorage` + NDJSON parsing** — In `frontend/src/data/agentApi.ts`, conversation id helpers must tolerate missing storage and thrown errors (quota, private mode): **`try/catch`** on get/set/remove. Parse each NDJSON line safely; do not silently ignore corrupt lines—surface failure so the user can retry.
+6. **Streaming media type** — `POST .../messages` with `stream: true` returns **`application/x-ndjson`**, not SSE (`text/event-stream`).
+7. **Schema or persisted message shape** — Use Alembic and update `docs/` per project rules (`.cursor/rules/alembic-migrations.mdc`, `.cursor/rules/docs-before-commit.mdc`).
 
 ## Build backlog (next)
 

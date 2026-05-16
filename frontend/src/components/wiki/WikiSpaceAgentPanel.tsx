@@ -20,75 +20,19 @@ import {
   getActiveSlash,
   type WikiAgentSkill,
 } from './wikiAgentSkills';
+import {
+  appendDeltaToStreamParts,
+  assistantHistoryStreamParts,
+  updateToolInParts,
+  type AssistantStreamPart,
+} from './wikiCopilotStreamParts';
 import './WikiSpaceAgentPanel.css';
 
-type ChatRole = 'user' | 'assistant';
-
-export type AgentToolCallStep = {
-  runId: string;
-  name: string;
-  input?: string;
-  output?: string;
-  error?: string;
-  status: 'running' | 'ok' | 'err';
-};
-
-/** Interleaved text + tool rows in stream order (assistant messages only; omitted when loaded from API). */
-export type AssistantStreamPart =
-  | { type: 'text'; text: string }
-  | { type: 'tool'; step: AgentToolCallStep };
+export type { AgentToolCallStep, AssistantStreamPart } from './wikiCopilotStreamParts';
 
 type ChatLine =
   | { id: string; role: 'user'; text: string }
   | { id: string; role: 'assistant'; text: string; streamParts?: AssistantStreamPart[] };
-
-function appendDeltaToStreamParts(
-  parts: AssistantStreamPart[] | undefined,
-  delta: string
-): AssistantStreamPart[] {
-  const next = parts ? [...parts] : [];
-  const last = next[next.length - 1];
-  if (last?.type === 'text') {
-    next[next.length - 1] = { type: 'text', text: last.text + delta };
-  } else {
-    next.push({ type: 'text', text: delta });
-  }
-  return next;
-}
-
-function updateToolInParts(
-  parts: AssistantStreamPart[] | undefined,
-  runId: string,
-  f: (s: AgentToolCallStep) => AgentToolCallStep
-): { next: AssistantStreamPart[]; updated: boolean } {
-  const next = parts ? [...parts] : [];
-  let iFound = -1;
-  if (!runId) {
-    for (let i = next.length - 1; i >= 0; i--) {
-      const p = next[i];
-      if (p?.type === 'tool' && p.step.status === 'running') {
-        iFound = i;
-        break;
-      }
-    }
-  } else {
-    for (let i = 0; i < next.length; i++) {
-      const p = next[i];
-      if (p?.type === 'tool' && p.step.runId === runId) {
-        iFound = i;
-        break;
-      }
-    }
-  }
-  if (iFound < 0) {
-    return { next, updated: false };
-  }
-  const t = next[iFound]!;
-  if (t.type === 'tool') {
-    next[iFound] = { type: 'tool', step: f(t.step) };
-  }
-  return { next, updated: true };
-}
 
 function lineId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -112,6 +56,8 @@ export type WikiSpaceAgentPanelProps = {
 
 export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: WikiSpaceAgentPanelProps) {
   const { t } = useTranslation('wikiSpace');
+  const spaceIdRef = useRef(spaceId);
+  spaceIdRef.current = spaceId;
   const [conversations, setConversations] = useState<AgentConversationResponse[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [lines, setLines] = useState<ChatLine[]>([INTRO]);
@@ -126,6 +72,10 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const draftRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSlashStKeyRef = useRef('');
+  /** Abort in-flight NDJSON stream when the wiki space changes or a new send starts. */
+  const streamAbortRef = useRef<AbortController | null>(null);
+  /** After the `user` NDJSON event, the optimistic user row uses the server id (not `tempUserId`). */
+  const streamPersistedUserIdRef = useRef<string | null>(null);
 
   const formatConvLabel = useCallback(
     (c: AgentConversationResponse) => {
@@ -204,20 +154,31 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
     []
   );
 
-  const loadMessages = useCallback(
-    async (conversationId: string) => {
-      const items = await listAgentMessages(conversationId);
-      const mapped: ChatLine[] = items
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .map((m) => ({
-          id: m.id,
-          role: m.role as ChatRole,
-          text: m.content,
-        }));
-      setLines(mapped.length > 0 ? mapped : [INTRO]);
-    },
-    [setLines]
-  );
+  useEffect(() => {
+    return () => {
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
+    };
+  }, [spaceId]);
+
+  const loadMessages = useCallback(async (conversationId: string) => {
+    const items = await listAgentMessages(conversationId);
+    const mapped: ChatLine[] = items
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => {
+        if (m.role === 'assistant') {
+          const streamParts = assistantHistoryStreamParts(m.content, m.tool_calls);
+          return {
+            id: m.id,
+            role: 'assistant' as const,
+            text: m.content,
+            ...(streamParts ? { streamParts } : {}),
+          };
+        }
+        return { id: m.id, role: 'user' as const, text: m.content };
+      });
+    setLines(mapped.length > 0 ? mapped : [INTRO]);
+  }, []);
 
   useLayoutEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
@@ -278,7 +239,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         }
       })();
     },
-    [spaceId, loadMessages]
+    [spaceId, loadMessages, t]
   );
 
   const startNewChat = useCallback(() => {
@@ -354,11 +315,17 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
   const send = useCallback(() => {
     const userText = draft.trim();
     if (!userText || !convReady || restarting) return;
+    const startedInSpace = spaceId;
     setDraft('');
     const tempUserId = lineId();
     const asstStreamId = lineId();
 
     void (async () => {
+      streamAbortRef.current?.abort();
+      const ac = new AbortController();
+      streamAbortRef.current = ac;
+      streamPersistedUserIdRef.current = null;
+
       setSending(true);
       setLines((prev) => {
         const base = prev.length === 1 && prev[0]?.id === 'intro' ? [] : prev;
@@ -380,13 +347,18 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
           setStoredWikiAgentConversationId(spaceId, c.id);
           setConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
         }
-        await postAgentMessageStream(convId, userText, (e) => {
-          if (e.type === 'user') {
-            setLines((prev) =>
-              prev.map((p) => (p.id === tempUserId ? { ...p, id: e.message.id } : p))
-            );
-            return;
-          }
+        await postAgentMessageStream(
+          convId,
+          userText,
+          (e) => {
+            if (startedInSpace !== spaceIdRef.current) return;
+            if (e.type === 'user') {
+              streamPersistedUserIdRef.current = e.message.id;
+              setLines((prev) =>
+                prev.map((p) => (p.id === tempUserId ? { ...p, id: e.message.id } : p))
+              );
+              return;
+            }
           if (e.type === 'tool_start') {
             setLines((prev) =>
               prev.map((p) => {
@@ -524,13 +496,28 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
               )
             );
           }
-        });
-        void loadConversations();
+        },
+          { signal: ac.signal }
+        );
+        if (startedInSpace === spaceIdRef.current) void loadConversations();
       } catch (e) {
+        if (startedInSpace !== spaceIdRef.current) return;
+        const persisted = streamPersistedUserIdRef.current;
+        const aborted = e instanceof DOMException && e.name === 'AbortError';
+        const stripIds = (p: ChatLine) =>
+          p.id !== asstStreamId &&
+          p.id !== tempUserId &&
+          (persisted == null || p.id !== persisted);
+        if (aborted) {
+          setLines((prev) => prev.filter(stripIds));
+          return;
+        }
         toast.error(e instanceof Error ? e.message : t('copilot.toastAssistantFailed'));
         setDraft(userText);
-        setLines((prev) => prev.filter((p) => p.id !== tempUserId && p.id !== asstStreamId));
+        setLines((prev) => prev.filter(stripIds));
       } finally {
+        streamPersistedUserIdRef.current = null;
+        if (streamAbortRef.current === ac) streamAbortRef.current = null;
         setSending(false);
       }
     })();

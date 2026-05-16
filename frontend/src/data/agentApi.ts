@@ -27,6 +27,7 @@ export interface AgentMessageItem {
   id: string;
   role: string;
   content: string;
+  /** Wiki Copilot stores `wiki_tool_traces_v1` here for history replay in the UI. */
   tool_calls?: unknown;
   created_at: string;
 }
@@ -44,11 +45,21 @@ export function getStoredWikiAgentConversationId(spaceId: string): string | null
 }
 
 export function setStoredWikiAgentConversationId(spaceId: string, conversationId: string): void {
-  sessionStorage.setItem(CONV_KEY_PREFIX + spaceId, conversationId);
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(CONV_KEY_PREFIX + spaceId, conversationId);
+  } catch {
+    /* ignore quota / private mode */
+  }
 }
 
 export function clearStoredWikiAgentConversationId(spaceId: string): void {
-  sessionStorage.removeItem(CONV_KEY_PREFIX + spaceId);
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.removeItem(CONV_KEY_PREFIX + spaceId);
+  } catch {
+    /* ignore */
+  }
 }
 
 export async function listAgentConversationsForWiki(
@@ -182,9 +193,23 @@ export async function postAgentMessageStream(
       const line = buf.slice(0, idx);
       buf = buf.slice(idx + 1);
       if (!line.trim()) continue;
-      onEvent(JSON.parse(line) as AgentMessageStreamEvent);
+      let parsed: AgentMessageStreamEvent;
+      try {
+        parsed = JSON.parse(line) as AgentMessageStreamEvent;
+      } catch {
+        throw new Error('Agent stream contained invalid JSON');
+      }
+      onEvent(parsed);
     }
   }
   const rest = buf.trim();
-  if (rest) onEvent(JSON.parse(rest) as AgentMessageStreamEvent);
+  if (rest) {
+    let parsed: AgentMessageStreamEvent;
+    try {
+      parsed = JSON.parse(rest) as AgentMessageStreamEvent;
+    } catch {
+      throw new Error('Agent stream contained invalid JSON');
+    }
+    onEvent(parsed);
+  }
 }
