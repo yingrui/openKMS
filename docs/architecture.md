@@ -78,7 +78,7 @@ flowchart TB
     Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
     Articles[ArticlesIndex, ArticleChannel, ArticleChannels, ArticleChannelSettings, ArticleDetail]
     KB[KnowledgeBaseList, KnowledgeBaseDetail]
-    Wiki[WikiSpaceList, WikiSpaceDetail, WikiSpaceGraph, WikiWorkspace]
+    Wiki[WikiSpaceList, WikiSpaceSettings, WikiWorkspace]
     Eval[EvaluationDatasetList, EvaluationDatasetDetail]
     Glossaries[GlossaryList, GlossaryDetail]
     Pipelines[Pipelines]
@@ -120,7 +120,7 @@ frontend/src/
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
     ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── WikiSpaceList.tsx, WikiSpaceDetail.tsx (right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody** markdown via `components/markdown/`; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** full route + embedded in **WikiWorkspace**), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
+    ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx (`/wikis/:id/settings`; right rail **WikiSpaceAgentPanel** + **WikiAgentMessageBody**; sectioned settings UI; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiWorkspace** graph tab), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx

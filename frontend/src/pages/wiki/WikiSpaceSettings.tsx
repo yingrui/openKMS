@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Bot, ChevronsLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { WikiSpaceAgentPanel } from '../../components/wiki/WikiSpaceAgentPanel';
@@ -18,6 +18,7 @@ import {
   importWikiVaultZip,
   linkDocumentToWikiSpace,
   unlinkDocumentFromWikiSpace,
+  updateWikiSpace,
   type VaultImportSkipOptions,
   type VaultImportProgress,
   vaultSkipExtensionSet,
@@ -26,7 +27,7 @@ import {
   type WikiSpaceResponse,
   type WikiVaultImportResponse,
 } from '../../data/wikiSpacesApi';
-import './WikiSpaceDetail.css';
+import './WikiSpaceSettings.css';
 
 export type WikiLinkedDoc = { id: string; name: string; channel_id: string; updated_at: string };
 
@@ -51,8 +52,9 @@ function formatRowUpdatedAt(iso: string, dash: string): string {
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-export function WikiSpaceDetail() {
+export function WikiSpaceSettings() {
   const { t } = useTranslation('wikiSpace');
+  const navigate = useNavigate();
   const { id: spaceId } = useParams<{ id: string }>();
   const [space, setSpace] = useState<WikiSpaceResponse | null>(null);
   const [pages, setPages] = useState<WikiPageResponse[]>([]);
@@ -72,8 +74,10 @@ export function WikiSpaceDetail() {
   const { channels } = useDocumentChannels();
   const channelOptions = useMemo(() => flattenChannelOptions(channels), [channels]);
 
-  const [mainTab, setMainTab] = useState<'pages' | 'documents'>('pages');
   const [linkedDocs, setLinkedDocs] = useState<WikiLinkedDoc[]>([]);
+  const [spaceDraftName, setSpaceDraftName] = useState('');
+  const [spaceDraftDesc, setSpaceDraftDesc] = useState('');
+  const [spaceMetaSaving, setSpaceMetaSaving] = useState(false);
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [docSearch, setDocSearch] = useState('');
   const [docChannelFilter, setDocChannelFilter] = useState('');
@@ -165,6 +169,8 @@ export function WikiSpaceDetail() {
         ]);
         if (cancelled) return;
         setSpace(sp);
+        setSpaceDraftName(sp.name);
+        setSpaceDraftDesc(sp.description ?? '');
         setLinkedDocs(
           linked.items.map((x) => ({
             id: x.document_id,
@@ -185,6 +191,8 @@ export function WikiSpaceDetail() {
         if (!cancelled) {
           toast.error(e instanceof Error ? e.message : t('toastSpaceLoadFailed'));
           setSpace(null);
+          setSpaceDraftName('');
+          setSpaceDraftDesc('');
           setPages([]);
           setPagesTotal(0);
           setLinkedDocs([]);
@@ -197,6 +205,39 @@ export function WikiSpaceDetail() {
       cancelled = true;
     };
   }, [spaceId, pageIndex, listNonce, t]);
+
+  const spaceMetaDirty = useMemo(() => {
+    if (!space) return false;
+    const descNorm = (v: string) => v.trim();
+    return (
+      spaceDraftName.trim() !== space.name.trim() ||
+      descNorm(spaceDraftDesc) !== descNorm(space.description ?? '')
+    );
+  }, [space, spaceDraftName, spaceDraftDesc]);
+
+  const handleSaveSpaceMeta = async () => {
+    if (!spaceId || !space) return;
+    const name = spaceDraftName.trim();
+    if (!name) {
+      toast.error(t('toastSpaceNameRequired'));
+      return;
+    }
+    setSpaceMetaSaving(true);
+    try {
+      const updated = await updateWikiSpace(spaceId, {
+        name,
+        description: spaceDraftDesc.trim() || null,
+      });
+      setSpace(updated);
+      setSpaceDraftName(updated.name);
+      setSpaceDraftDesc(updated.description ?? '');
+      toast.success(t('toastSpaceMetaSaved'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('toastSpaceMetaFailed'));
+    } finally {
+      setSpaceMetaSaving(false);
+    }
+  };
 
   const handleCreatePage = async () => {
     const path = newPath.trim();
@@ -213,7 +254,7 @@ export function WikiSpaceDetail() {
       setShowNewPage(false);
       setNewPath('');
       toast.success(t('toastPageCreated'));
-      window.location.href = `/wikis/${spaceId}/pages/${p.id}`;
+      navigate(`/wikis/${spaceId}/pages/${p.id}`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('toastCreateFailed'));
     } finally {
@@ -301,7 +342,7 @@ export function WikiSpaceDetail() {
   };
 
   if (!spaceId) {
-    return <p className="wiki-space-detail-muted">{t('missingSpaceId')}</p>;
+    return <p className="wiki-space-settings-muted">{t('missingSpaceId')}</p>;
   }
 
   const progressDisplay: VaultImportProgress = vaultProgress ?? {
@@ -332,43 +373,103 @@ export function WikiSpaceDetail() {
 
   return (
     <div
-      className={`wiki-space-detail${
+      className={`wiki-space-settings${
         !loading && space
-          ? ` wiki-space-detail--split${wikiAssistantCollapsed ? ' wiki-space-detail--agent-collapsed' : ''}`
+          ? ` wiki-space-settings--split${wikiAssistantCollapsed ? ' wiki-space-settings--agent-collapsed' : ''}`
           : ''
       }`}
     >
-      <div className="wiki-space-detail-body">
-        <div className="wiki-space-detail-toolbar-span">
-          <Link to="/wikis" className="wiki-space-detail-back">
+      <div className="wiki-space-settings-body">
+        <div className="wiki-space-settings-toolbar-span">
+          <Link to="/wikis" className="wiki-space-settings-back">
             <ArrowLeft size={18} />
             {t('back')}
           </Link>
         </div>
         {loading && (
-          <p className="wiki-space-detail-body-loading wiki-space-detail-muted">{t('loading')}</p>
+          <p className="wiki-space-settings-body-loading wiki-space-settings-muted">{t('loading')}</p>
         )}
         {!loading && !space && (
-          <p className="wiki-space-detail-body-loading wiki-space-detail-muted" role="alert">
+          <p className="wiki-space-settings-body-loading wiki-space-settings-muted" role="alert">
             {t('loadFailed')}
           </p>
         )}
         {!loading && space && (
-          <div className="wiki-space-detail-content-row">
-          <div className="wiki-space-detail-main">
-            <header className="wiki-space-detail-header">
-              <div>
-                <h1>{space.name}</h1>
-                {space.description && <p className="wiki-space-detail-desc">{space.description}</p>}
+          <div className="wiki-space-settings-content-row">
+          <div className="wiki-space-settings-main">
+            <header className="wiki-space-settings-hero">
+              <p className="wiki-space-settings-eyebrow">{t('settingsEyebrow')}</p>
+              <h1 className="wiki-space-settings-page-title">{t('settingsPageTitle')}</h1>
+              <p className="wiki-space-settings-page-subtitle">{t('settingsPageSubtitle')}</p>
+            </header>
+
+            <div className="wiki-space-settings-cta">
+              <Link to={`/wikis/${spaceId}/pages/graph`} className="btn btn-primary wiki-space-settings-open-workspace">
+                <Network size={18} aria-hidden />
+                {t('openWorkspace')}
+              </Link>
+            </div>
+
+            <section className="wiki-space-settings-section wiki-space-settings-card" aria-labelledby="wiki-settings-space-heading">
+              <div className="wiki-space-settings-card-head">
+                <h2 id="wiki-settings-space-heading" className="wiki-space-settings-section-title">
+                  {t('sectionSpace')}
+                </h2>
               </div>
-              <div className="wiki-space-detail-actions">
-                <Link to={`/wikis/${spaceId}/pages/graph`} className="btn btn-secondary">
-                  <Network size={18} />
-                  {t('graphView')}
-                </Link>
+              <div className="wiki-space-settings-space-form">
+                <label className="wiki-space-settings-field">
+                  <span>{t('spaceNameLabel')}</span>
+                  <input
+                    type="text"
+                    value={spaceDraftName}
+                    onChange={(e) => setSpaceDraftName(e.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+                <label className="wiki-space-settings-field">
+                  <span>{t('spaceDescLabel')}</span>
+                  <textarea
+                    value={spaceDraftDesc}
+                    onChange={(e) => setSpaceDraftDesc(e.target.value)}
+                    rows={3}
+                  />
+                </label>
+                <div className="wiki-space-settings-space-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={!spaceMetaDirty || spaceMetaSaving}
+                    onClick={() => {
+                      if (!space) return;
+                      setSpaceDraftName(space.name);
+                      setSpaceDraftDesc(space.description ?? '');
+                    }}
+                  >
+                    {t('resetEdits')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={!spaceMetaDirty || spaceMetaSaving || !spaceDraftName.trim()}
+                    onClick={() => void handleSaveSpaceMeta()}
+                  >
+                    {spaceMetaSaving ? t('savingSpaceMeta') : t('saveSpaceMeta')}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section className="wiki-space-settings-section wiki-space-settings-card" aria-labelledby="wiki-settings-imports-heading">
+              <div className="wiki-space-settings-card-head">
+                <h2 id="wiki-settings-imports-heading" className="wiki-space-settings-section-title">
+                  {t('sectionImports')}
+                </h2>
+              </div>
+              <p className="wiki-space-settings-card-hint wiki-space-settings-muted">{t('sectionImportsHint')}</p>
+              <div className="wiki-space-settings-actions wiki-space-settings-import-actions">
                 <button
                   type="button"
-                  className="btn btn-secondary wiki-space-detail-import-folder-btn"
+                  className="btn btn-secondary wiki-space-settings-import-folder-btn"
                   title={t('importFolderTitle')}
                   disabled={vaultImporting || vaultFolderModalOpen}
                   onClick={openVaultFolderModal}
@@ -376,13 +477,10 @@ export function WikiSpaceDetail() {
                   <FolderUp size={18} />
                   {t('importFolder')}
                 </button>
-                <label
-                  className="btn btn-secondary wiki-space-detail-import-label"
-                  title={t('importZipTitle')}
-                >
+                <label className="btn btn-secondary wiki-space-settings-import-label" title={t('importZipTitle')}>
                   <input
                     type="file"
-                    className="wiki-space-detail-file-input-overlay"
+                    className="wiki-space-settings-file-input-overlay"
                     accept=".zip,application/zip"
                     disabled={vaultImporting}
                     onChange={(ev) => void handleVaultZipChange(ev)}
@@ -395,175 +493,158 @@ export function WikiSpaceDetail() {
                   {t('newPage')}
                 </button>
               </div>
-            </header>
+            </section>
 
-            <div className="wiki-space-detail-tabs" role="tablist" aria-label={t('tabsAriaLabel')}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mainTab === 'pages'}
-                className={`wiki-space-detail-tab${mainTab === 'pages' ? ' wiki-space-detail-tab--active' : ''}`}
-                onClick={() => setMainTab('pages')}
-              >
-                <FileText size={16} aria-hidden />
-                {t('tabPages')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mainTab === 'documents'}
-                className={`wiki-space-detail-tab${mainTab === 'documents' ? ' wiki-space-detail-tab--active' : ''}`}
-                onClick={() => setMainTab('documents')}
-              >
-                <FileStack size={16} aria-hidden />
-                {t('tabDocuments')}
-              </button>
-            </div>
-
-            {mainTab === 'pages' && (
-              <section
-                className={`wiki-space-detail-section${pagesTotal > 0 ? ' wiki-space-detail-section--tight' : ''}`}
-                aria-label={t('pagesSectionAria')}
-              >
-                {pagesTotal === 0 ? (
-                  <p className="wiki-space-detail-muted">{t('noPagesYet')}</p>
-                ) : (
-                  <>
-                    <ul className="wiki-space-detail-pages">
-                      {pages.map((p) => (
-                        <li key={p.id} className="wiki-space-detail-page-row">
-                          <Link to={`/wikis/${spaceId}/pages/${p.id}`} className="wiki-space-detail-page-link">
-                            <FileText size={18} strokeWidth={1.5} className="wiki-space-detail-page-icon" aria-hidden />
-                            <span className="wiki-space-detail-page-path">{p.path}</span>
-                          </Link>
-                          <time
-                            className="wiki-space-detail-page-updated"
-                            dateTime={p.updated_at}
-                            title={p.updated_at}
-                          >
-                            {formatRowUpdatedAt(p.updated_at, t('dashDate'))}
-                          </time>
-                          <button
-                            type="button"
-                            className="wiki-space-detail-icon-btn"
-                            aria-label={t('deletePageAria')}
-                            onClick={() => void handleDeletePage(p)}
-                          >
-                            <Trash2 size={18} strokeWidth={1.5} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                    {pageCount > 1 && (
-                      <nav className="wiki-space-detail-pagination" aria-label={t('paginationAria')}>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          disabled={pageIndex <= 0}
-                          onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
-                        >
-                          {t('previous')}
-                        </button>
-                        <span className="wiki-space-detail-pagination-status">
-                          {t('paginationStatus', {
-                            current: pageIndex + 1,
-                            total: pageCount,
-                            count: pagesTotal,
-                            size: WIKI_PAGES_LIST_PAGE_SIZE,
-                          })}
-                        </span>
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-sm"
-                          disabled={pageIndex >= pageCount - 1}
-                          onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
-                        >
-                          {t('next')}
-                        </button>
-                      </nav>
-                    )}
-                  </>
-                )}
-              </section>
-            )}
-
-            {mainTab === 'documents' && (
-              <section className="wiki-space-detail-section" aria-labelledby="wiki-tab-docs-heading">
-                <div className="wiki-space-detail-documents-head">
-                  <h2 id="wiki-tab-docs-heading" className="wiki-space-detail-section-title">
-                    {t('linkedDocuments')}
-                  </h2>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      setDocSearch('');
-                      setDocChannelFilter('');
-                      setDocPickerOpen(true);
-                    }}
-                  >
-                    {t('addDocuments')}
-                  </button>
-                </div>
-                {linkedDocs.length === 0 ? (
-                  <p className="wiki-space-detail-muted">{t('noLinkedDocsHint')}</p>
-                ) : (
-                  <ul className="wiki-space-detail-pages">
-                    {linkedDocs.map((d) => (
-                      <li key={d.id} className="wiki-space-detail-page-row">
-                        <Link to={`/documents/view/${d.id}`} className="wiki-space-detail-page-link">
-                          <FileStack size={18} strokeWidth={1.5} className="wiki-space-detail-page-icon" aria-hidden />
-                          <span className="wiki-space-detail-page-path">{d.name}</span>
+            <section
+              className={`wiki-space-settings-section wiki-space-settings-card${pagesTotal > 0 ? ' wiki-space-settings-section--tight' : ''}`}
+              aria-labelledby="wiki-settings-pages-heading"
+            >
+              <div className="wiki-space-settings-card-head wiki-space-settings-card-head--split">
+                <h2 id="wiki-settings-pages-heading" className="wiki-space-settings-section-title">
+                  {t('sectionPages')}
+                </h2>
+                <Link to={`/wikis/${spaceId}/pages/graph`} className="btn btn-secondary btn-sm">
+                  {t('browsePagesInWorkspace')}
+                </Link>
+              </div>
+              <p className="wiki-space-settings-card-hint wiki-space-settings-muted">{t('sectionPagesHint')}</p>
+              {pagesTotal === 0 ? (
+                <p className="wiki-space-settings-muted">{t('noPagesYet')}</p>
+              ) : (
+                <>
+                  <ul className="wiki-space-settings-pages">
+                    {pages.map((p) => (
+                      <li key={p.id} className="wiki-space-settings-page-row">
+                        <Link to={`/wikis/${spaceId}/pages/${p.id}`} className="wiki-space-settings-page-link">
+                          <FileText size={18} strokeWidth={1.5} className="wiki-space-settings-page-icon" aria-hidden />
+                          <span className="wiki-space-settings-page-path">{p.path}</span>
                         </Link>
                         <time
-                          className="wiki-space-detail-page-updated"
-                          dateTime={d.updated_at}
-                          title={d.updated_at}
+                          className="wiki-space-settings-page-updated"
+                          dateTime={p.updated_at}
+                          title={p.updated_at}
                         >
-                          {formatRowUpdatedAt(d.updated_at, t('dashDate'))}
+                          {formatRowUpdatedAt(p.updated_at, t('dashDate'))}
                         </time>
                         <button
                           type="button"
-                          className="wiki-space-detail-icon-btn"
-                          aria-label={t('removeLinkAria')}
-                          onClick={() => {
-                            if (!spaceId) return;
-                            void (async () => {
-                              try {
-                                await unlinkDocumentFromWikiSpace(spaceId, d.id);
-                                setLinkedDocs((prev) => prev.filter((x) => x.id !== d.id));
-                                toast.success(t('toastLinkRemoved'));
-                              } catch (e: unknown) {
-                                toast.error(e instanceof Error ? e.message : t('toastRemoveLinkFailed'));
-                              }
-                            })();
-                          }}
+                          className="wiki-space-settings-icon-btn"
+                          aria-label={t('deletePageAria')}
+                          onClick={() => void handleDeletePage(p)}
                         >
                           <Trash2 size={18} strokeWidth={1.5} />
                         </button>
                       </li>
                     ))}
                   </ul>
-                )}
-              </section>
-            )}
+                  {pageCount > 1 && (
+                    <nav className="wiki-space-settings-pagination" aria-label={t('paginationAria')}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={pageIndex <= 0}
+                        onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+                      >
+                        {t('previous')}
+                      </button>
+                      <span className="wiki-space-settings-pagination-status">
+                        {t('paginationStatus', {
+                          current: pageIndex + 1,
+                          total: pageCount,
+                          count: pagesTotal,
+                          size: WIKI_PAGES_LIST_PAGE_SIZE,
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={pageIndex >= pageCount - 1}
+                        onClick={() => setPageIndex((i) => Math.min(pageCount - 1, i + 1))}
+                      >
+                        {t('next')}
+                      </button>
+                    </nav>
+                  )}
+                </>
+              )}
+            </section>
+
+            <section className="wiki-space-settings-section wiki-space-settings-card" aria-labelledby="wiki-settings-docs-heading">
+              <div className="wiki-space-settings-documents-head">
+                <h2 id="wiki-settings-docs-heading" className="wiki-space-settings-section-title">
+                  {t('linkedDocuments')}
+                </h2>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    setDocSearch('');
+                    setDocChannelFilter('');
+                    setDocPickerOpen(true);
+                  }}
+                >
+                  {t('addDocuments')}
+                </button>
+              </div>
+              <p className="wiki-space-settings-card-hint wiki-space-settings-muted">{t('sectionLinkedDocsHint')}</p>
+              {linkedDocs.length === 0 ? (
+                <p className="wiki-space-settings-muted">{t('noLinkedDocsHint')}</p>
+              ) : (
+                <ul className="wiki-space-settings-pages">
+                  {linkedDocs.map((d) => (
+                    <li key={d.id} className="wiki-space-settings-page-row">
+                      <Link to={`/documents/view/${d.id}`} className="wiki-space-settings-page-link">
+                        <FileStack size={18} strokeWidth={1.5} className="wiki-space-settings-page-icon" aria-hidden />
+                        <span className="wiki-space-settings-page-path">{d.name}</span>
+                      </Link>
+                      <time
+                        className="wiki-space-settings-page-updated"
+                        dateTime={d.updated_at}
+                        title={d.updated_at}
+                      >
+                        {formatRowUpdatedAt(d.updated_at, t('dashDate'))}
+                      </time>
+                      <button
+                        type="button"
+                        className="wiki-space-settings-icon-btn"
+                        aria-label={t('removeLinkAria')}
+                        onClick={() => {
+                          if (!spaceId) return;
+                          void (async () => {
+                            try {
+                              await unlinkDocumentFromWikiSpace(spaceId, d.id);
+                              setLinkedDocs((prev) => prev.filter((x) => x.id !== d.id));
+                              toast.success(t('toastLinkRemoved'));
+                            } catch (e: unknown) {
+                              toast.error(e instanceof Error ? e.message : t('toastRemoveLinkFailed'));
+                            }
+                          })();
+                        }}
+                      >
+                        <Trash2 size={18} strokeWidth={1.5} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
           {wikiAssistantCollapsed ? (
             <button
               type="button"
-              className="wiki-space-detail-agent-expand"
+              className="wiki-space-settings-agent-expand"
               onClick={expandWikiAssistant}
               title={t('expandCopilot')}
               aria-expanded="false"
             >
-              <span className="wiki-space-detail-agent-expand__icon" aria-hidden>
+              <span className="wiki-space-settings-agent-expand__icon" aria-hidden>
                 <Bot size={20} strokeWidth={2} />
                 <ChevronsLeft size={18} strokeWidth={2} />
               </span>
-              <span className="wiki-space-detail-agent-expand__label">{t('copilotLabel')}</span>
+              <span className="wiki-space-settings-agent-expand__label">{t('copilotLabel')}</span>
             </button>
           ) : (
-            <div className="wiki-space-detail-agent-rail">
+            <div className="wiki-space-settings-agent-rail">
               <WikiSpaceAgentPanel
                 spaceId={spaceId}
                 spaceName={space.name}
@@ -577,24 +658,24 @@ export function WikiSpaceDetail() {
 
       {docPickerOpen && spaceId && (
         <div
-          className="wiki-space-detail-modal-overlay"
+          className="wiki-space-settings-modal-overlay"
           role="presentation"
           onClick={() => setDocPickerOpen(false)}
         >
           <div
-            className="wiki-space-detail-modal wiki-space-detail-doc-picker"
+            className="wiki-space-settings-modal wiki-space-settings-doc-picker"
             role="dialog"
             aria-modal="true"
             aria-labelledby="wiki-doc-picker-title"
             onClick={(ev) => ev.stopPropagation()}
           >
             <h3 id="wiki-doc-picker-title">{t('docPickerTitle')}</h3>
-            <p className="wiki-space-detail-muted wiki-space-detail-doc-picker-hint">{t('docPickerHint')}</p>
-            <div className="wiki-space-detail-doc-picker-filters">
-              <label className="wiki-space-detail-doc-picker-label">
+            <p className="wiki-space-settings-muted wiki-space-settings-doc-picker-hint">{t('docPickerHint')}</p>
+            <div className="wiki-space-settings-doc-picker-filters">
+              <label className="wiki-space-settings-doc-picker-label">
                 {t('channel')}
                 <select
-                  className="wiki-space-detail-doc-picker-select"
+                  className="wiki-space-settings-doc-picker-select"
                   value={docChannelFilter}
                   onChange={(e) => setDocChannelFilter(e.target.value)}
                 >
@@ -606,29 +687,29 @@ export function WikiSpaceDetail() {
                   ))}
                 </select>
               </label>
-              <label className="wiki-space-detail-doc-picker-label wiki-space-detail-doc-picker-label--grow">
+              <label className="wiki-space-settings-doc-picker-label wiki-space-settings-doc-picker-label--grow">
                 {t('searchByName')}
                 <input
                   type="search"
-                  className="wiki-space-detail-doc-picker-input"
+                  className="wiki-space-settings-doc-picker-input"
                   value={docSearch}
                   onChange={(e) => setDocSearch(e.target.value)}
                   placeholder={t('filterPlaceholder')}
                 />
               </label>
             </div>
-            <div className="wiki-space-detail-doc-picker-list" role="listbox" aria-label={t('docResultsAria')}>
+            <div className="wiki-space-settings-doc-picker-list" role="listbox" aria-label={t('docResultsAria')}>
               {docPickerLoading ? (
-                <p className="wiki-space-detail-muted">{t('docPickerLoading')}</p>
+                <p className="wiki-space-settings-muted">{t('docPickerLoading')}</p>
               ) : docPickerItems.length === 0 ? (
-                <p className="wiki-space-detail-muted">{t('noDocumentsMatch')}</p>
+                <p className="wiki-space-settings-muted">{t('noDocumentsMatch')}</p>
               ) : (
-                <ul className="wiki-space-detail-doc-picker-ul">
+                <ul className="wiki-space-settings-doc-picker-ul">
                   {docPickerItems.map((d) => {
                     const already = linkedDocs.some((l) => l.id === d.id);
                     return (
-                      <li key={d.id} className="wiki-space-detail-doc-picker-row">
-                        <span className="wiki-space-detail-doc-picker-name" title={d.name}>
+                      <li key={d.id} className="wiki-space-settings-doc-picker-row">
+                        <span className="wiki-space-settings-doc-picker-name" title={d.name}>
                           {d.name}
                         </span>
                         <button
@@ -664,7 +745,7 @@ export function WikiSpaceDetail() {
                 </ul>
               )}
             </div>
-            <div className="wiki-space-detail-modal-actions">
+            <div className="wiki-space-settings-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setDocPickerOpen(false)}>
                 {t('close')}
               </button>
@@ -675,22 +756,22 @@ export function WikiSpaceDetail() {
 
       {vaultFolderModalOpen && (
         <div
-          className="wiki-space-detail-modal-overlay wiki-space-detail-vault-options-overlay"
+          className="wiki-space-settings-modal-overlay wiki-space-settings-vault-options-overlay"
           role="presentation"
           onClick={() => cancelVaultFolderModal()}
         >
           <div
-            className="wiki-space-detail-modal wiki-space-detail-vault-options"
+            className="wiki-space-settings-modal wiki-space-settings-vault-options"
             role="dialog"
             aria-modal="true"
             aria-labelledby="vault-import-options-title"
             onClick={(ev) => ev.stopPropagation()}
           >
             <h3 id="vault-import-options-title">{t('vaultModalTitle')}</h3>
-            <p className="wiki-space-detail-vault-options-hint">{t('vaultModalHint')}</p>
-            <ul className="wiki-space-detail-vault-options-list">
+            <p className="wiki-space-settings-vault-options-hint">{t('vaultModalHint')}</p>
+            <ul className="wiki-space-settings-vault-options-list">
               <li>
-                <label className="wiki-space-detail-vault-options-row">
+                <label className="wiki-space-settings-vault-options-row">
                   <input
                     type="checkbox"
                     checked={vaultSkipOpts.skipPdf}
@@ -700,7 +781,7 @@ export function WikiSpaceDetail() {
                 </label>
               </li>
               <li>
-                <label className="wiki-space-detail-vault-options-row">
+                <label className="wiki-space-settings-vault-options-row">
                   <input
                     type="checkbox"
                     checked={vaultSkipOpts.skipDocx}
@@ -710,7 +791,7 @@ export function WikiSpaceDetail() {
                 </label>
               </li>
               <li>
-                <label className="wiki-space-detail-vault-options-row">
+                <label className="wiki-space-settings-vault-options-row">
                   <input
                     type="checkbox"
                     checked={vaultSkipOpts.skipDoc}
@@ -720,7 +801,7 @@ export function WikiSpaceDetail() {
                 </label>
               </li>
               <li>
-                <label className="wiki-space-detail-vault-options-row">
+                <label className="wiki-space-settings-vault-options-row">
                   <input
                     type="checkbox"
                     checked={vaultSkipOpts.skipPptx}
@@ -730,7 +811,7 @@ export function WikiSpaceDetail() {
                 </label>
               </li>
               <li>
-                <label className="wiki-space-detail-vault-options-row">
+                <label className="wiki-space-settings-vault-options-row">
                   <input
                     type="checkbox"
                     checked={vaultSkipOpts.skipPpt}
@@ -740,14 +821,14 @@ export function WikiSpaceDetail() {
                 </label>
               </li>
             </ul>
-            <div className="wiki-space-detail-modal-actions wiki-space-detail-vault-modal-actions">
+            <div className="wiki-space-settings-modal-actions wiki-space-settings-vault-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={cancelVaultFolderModal}>
                 {t('cancel')}
               </button>
-              <label className="btn btn-primary wiki-space-detail-import-label wiki-space-detail-modal-folder-label">
+              <label className="btn btn-primary wiki-space-settings-import-label wiki-space-settings-modal-folder-label">
                 <input
                   type="file"
-                  className="wiki-space-detail-file-input-overlay"
+                  className="wiki-space-settings-file-input-overlay"
                   {...({ webkitdirectory: '', directory: '' } as InputHTMLAttributes<HTMLInputElement>)}
                   multiple
                   disabled={vaultImporting}
@@ -761,22 +842,22 @@ export function WikiSpaceDetail() {
       )}
 
       {vaultImporting && (
-        <div className="wiki-space-detail-import-overlay" role="status" aria-live="polite" aria-busy="true">
-          <div className="wiki-space-detail-import-dialog">
-            <h3 className="wiki-space-detail-import-title">{t('importingTitle')}</h3>
-            <p className="wiki-space-detail-import-phase">
+        <div className="wiki-space-settings-import-overlay" role="status" aria-live="polite" aria-busy="true">
+          <div className="wiki-space-settings-import-dialog">
+            <h3 className="wiki-space-settings-import-title">{t('importingTitle')}</h3>
+            <p className="wiki-space-settings-import-phase">
               {progressDisplay.phase === 'binary' ? t('phaseUploadBinary') : t('phaseImportMd')}
             </p>
-            <p className="wiki-space-detail-import-path" title={progressDisplay.path}>
+            <p className="wiki-space-settings-import-path" title={progressDisplay.path}>
               {progressDisplay.path}
             </p>
-            <div className="wiki-space-detail-import-bar wiki-space-detail-import-bar--overall">
+            <div className="wiki-space-settings-import-bar wiki-space-settings-import-bar--overall">
               <div
-                className="wiki-space-detail-import-bar-fill"
+                className="wiki-space-settings-import-bar-fill"
                 style={{ width: `${importOverallPercent}%` }}
               />
             </div>
-            <p className="wiki-space-detail-import-count">
+            <p className="wiki-space-settings-import-count">
               {progressDisplay.currentIndex > 0
                 ? t('fileProgress', {
                     current: progressDisplay.currentIndex,
@@ -788,12 +869,12 @@ export function WikiSpaceDetail() {
               progressDisplay.fileTotal != null &&
               progressDisplay.fileTotal > 0 && (
                 <>
-                  <p className="wiki-space-detail-import-bytes">
+                  <p className="wiki-space-settings-import-bytes">
                     {formatBytes(progressDisplay.fileLoaded ?? 0)} / {formatBytes(progressDisplay.fileTotal)}
                   </p>
-                  <div className="wiki-space-detail-import-bar">
+                  <div className="wiki-space-settings-import-bar">
                     <div
-                      className="wiki-space-detail-import-bar-fill"
+                      className="wiki-space-settings-import-bar-fill"
                       style={{
                         width: `${Math.min(100, Math.round(((progressDisplay.fileLoaded ?? 0) / progressDisplay.fileTotal) * 100))}%`,
                       }}
@@ -806,16 +887,16 @@ export function WikiSpaceDetail() {
       )}
 
       {showNewPage && (
-        <div className="wiki-space-detail-modal-overlay" role="presentation" onClick={() => setShowNewPage(false)}>
+        <div className="wiki-space-settings-modal-overlay" role="presentation" onClick={() => setShowNewPage(false)}>
           <div
-            className="wiki-space-detail-modal"
+            className="wiki-space-settings-modal"
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
           >
             <h3>{t('newPageModalTitle')}</h3>
             <label>
-              {t('pathRequired')} <span className="wiki-space-detail-req">*</span>
+              {t('pathRequired')} <span className="wiki-space-settings-req">*</span>
               <input
                 type="text"
                 value={newPath}
@@ -823,7 +904,7 @@ export function WikiSpaceDetail() {
                 placeholder={t('pathPlaceholder')}
               />
             </label>
-            <div className="wiki-space-detail-modal-actions">
+            <div className="wiki-space-settings-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setShowNewPage(false)}>
                 {t('cancel')}
               </button>

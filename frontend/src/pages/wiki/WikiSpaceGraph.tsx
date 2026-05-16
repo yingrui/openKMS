@@ -1,21 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
-import { useTranslation } from 'react-i18next';
 import { forceCollide } from 'd3-force';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Expand, Loader2, Network, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Expand, Loader2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchWikiSpace, fetchWikiSpaceGraph } from '../../data/wikiSpacesApi';
+import { fetchWikiSpaceGraph } from '../../data/wikiSpacesApi';
 import type { WikiLinkGraphResponse } from '../../data/wikiSpacesApi';
 import './WikiSpaceGraph.css';
 
-/** Reusable graph canvas + controls. `page` = full route with back link and title; `embedded` = fills wiki page editor pane. */
-export type WikiSpaceGraphVariant = 'page' | 'embedded';
-
+/** Reusable graph canvas + controls (wiki workspace **Graph** tab / embedded pane). */
 export type WikiSpaceGraphPanelProps = {
   spaceId: string;
   focusPageId?: string;
-  variant: WikiSpaceGraphVariant;
 };
 
 type GNode = {
@@ -223,8 +219,7 @@ function useDataTheme(): 'light' | 'dark' {
   return theme;
 }
 
-export function WikiSpaceGraphPanel({ spaceId, focusPageId, variant }: WikiSpaceGraphPanelProps) {
-  const { t } = useTranslation('common');
+export function WikiSpaceGraphPanel({ spaceId, focusPageId }: WikiSpaceGraphPanelProps) {
   const navigate = useNavigate();
   const graphRef = useRef<ForceGraphMethods<GNode, GLink> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -232,7 +227,6 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId, variant }: WikiSpace
   /** Tracks when canvas was not yet mounted (size 0) so we can reset zoom after first layout. */
   const hadCanvasSizeRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [spaceName, setSpaceName] = useState<string | null>(null);
   const [data, setData] = useState<WikiLinkGraphResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const theme = useDataTheme();
@@ -265,21 +259,10 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId, variant }: WikiSpace
     let cancelled = false;
     startTransition(() => setLoading(true));
     zoomedRef.current = false;
-    const load =
-      variant === 'page'
-        ? Promise.all([fetchWikiSpace(spaceId), fetchWikiSpaceGraph(spaceId)]).then(([sp, g]) => {
-            if (!cancelled) {
-              setSpaceName(sp.name);
-              setData(g);
-            }
-          })
-        : fetchWikiSpaceGraph(spaceId).then((g) => {
-            if (!cancelled) {
-              setSpaceName(null);
-              setData(g);
-            }
-          });
-    load
+    void fetchWikiSpaceGraph(spaceId)
+      .then((g) => {
+        if (!cancelled) setData(g);
+      })
       .catch((e) => {
         if (!cancelled) toast.error(e instanceof Error ? e.message : 'Failed to load graph');
       })
@@ -289,7 +272,7 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId, variant }: WikiSpace
     return () => {
       cancelled = true;
     };
-  }, [spaceId, variant]);
+  }, [spaceId]);
 
   useEffect(() => {
     hadCanvasSizeRef.current = false;
@@ -411,18 +394,7 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId, variant }: WikiSpace
   );
 
   return (
-    <div className={`wiki-space-graph ${variant === 'embedded' ? 'wiki-space-graph--embedded' : ''}`}>
-      {variant === 'page' && (
-        <div className="wiki-space-graph-toolbar">
-          <Link to={`/wikis/${spaceId}`} className="wiki-space-graph-back">
-            ← Back to space
-          </Link>
-          <h1 className="wiki-space-graph-title">
-            <Network size={22} aria-hidden />
-            {spaceName ? `${spaceName} — Graph View` : 'Graph View'}
-          </h1>
-        </div>
-      )}
+    <div className="wiki-space-graph wiki-space-graph--embedded">
       {loading && (
         <p className="wiki-space-graph-status">
           <Loader2 className="wiki-space-graph-spin" size={18} aria-hidden />
@@ -513,21 +485,8 @@ export function WikiSpaceGraphPanel({ spaceId, focusPageId, variant }: WikiSpace
               )
             )}
           </div>
-          {graphData.nodes.length > 0 && variant === 'page' && (
-            <p className="wiki-space-graph-hint">{t('wikiSpaceGraphInteractionHint')}</p>
-          )}
         </div>
       )}
     </div>
   );
-}
-
-export function WikiSpaceGraph() {
-  const { id: spaceId } = useParams();
-  const [searchParams] = useSearchParams();
-  const focusPageId = searchParams.get('focus') ?? undefined;
-  if (!spaceId) {
-    return <p className="wiki-space-graph-muted">Missing space id</p>;
-  }
-  return <WikiSpaceGraphPanel spaceId={spaceId} focusPageId={focusPageId} variant="page" />;
 }

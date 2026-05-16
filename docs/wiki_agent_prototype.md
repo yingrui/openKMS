@@ -4,7 +4,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 
 **Shipped (MVP v1)**
 
-- [WikiSpaceDetail](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/WikiSpaceDetail.tsx): main + right rail; **Pages | Documents** tabs; **15** per page; **Documents** list uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
+- [WikiSpaceSettings](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/wiki/WikiSpaceSettings.tsx): main + right rail; **sectioned settings** (space, imports, pages, linked documents); **15** per page on the admin list; **Linked documents** uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`).
 - [WikiSpaceAgentPanel](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
 - **Backend** [app/api/agent.py](https://github.com/yingrui/openKMS/blob/main/backend/app/api/agent.py) + [app/services/agent/](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/wiki_runner.py). LLM from [api_models](https://github.com/yingrui/openKMS/blob/main/backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](https://github.com/yingrui/openKMS/tree/main/third-party/wiki-skills) (`git subtree`); [vendored_wiki_skills.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
 
@@ -26,7 +26,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 ```mermaid
 sequenceDiagram
   participant U as User
-  participant FE as WikiSpaceDetail
+  participant FE as WikiSpaceSettings
   participant API as FastAPI_backend
   participant G as LangGraph_wiki
   participant DB as PostgreSQL

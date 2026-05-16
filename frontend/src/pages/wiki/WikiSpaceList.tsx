@@ -132,7 +132,7 @@ export function WikiSpaceList() {
       {!loading && spaces.length > 0 && (
         <div className="kb-grid">
           {spaces.map((sp) => (
-            <Link key={sp.id} to={`/wikis/${sp.id}`} className="kb-card">
+            <Link key={sp.id} to={`/wikis/${sp.id}/pages/graph`} className="kb-card">
               <div className="kb-card-top">
                 <div className="kb-icon">
                   <BookOpen size={28} strokeWidth={1.5} />

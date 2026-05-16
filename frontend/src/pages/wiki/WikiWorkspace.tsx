@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Network, Save, X } from 'lucide-react';
 import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
@@ -36,6 +36,7 @@ export function WikiWorkspace() {
   const { t } = useTranslation('explore');
   const { id: spaceId, pageId: pageIdParam } = useParams<{ id: string; pageId?: string }>();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const isGraph = useMemo(() => /\/pages\/graph\/?$/.test(location.pathname), [location.pathname]);
@@ -195,7 +196,7 @@ export function WikiWorkspace() {
           />
           <div className="wiki-page-editor-main wiki-workspace-main">
             <div className="wiki-page-editor-toolbar wiki-workspace-toolbar">
-              <Link to={`/wikis/${spaceId}`} className="wiki-page-editor-back">
+              <Link to={`/wikis/${spaceId}/settings`} className="wiki-page-editor-back">
                 <ArrowLeft size={18} />
                 {t('wiki.pageEditor.backToSpace')}
               </Link>
@@ -300,8 +301,7 @@ export function WikiWorkspace() {
                 <div className="wiki-page-editor-graph-panel wiki-workspace-graph-inner">
                   <WikiSpaceGraphPanel
                     spaceId={spaceId}
-                    focusPageId={lastPageIdRef.current}
-                    variant="embedded"
+                    focusPageId={isGraph ? (searchParams.get('focus') ?? lastPageIdRef.current) : lastPageIdRef.current}
                   />
                 </div>
               </div>
