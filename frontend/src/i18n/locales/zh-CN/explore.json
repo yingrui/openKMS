@@ -51,7 +51,10 @@
     },
     "workspace": {
       "openTabsLabel": "已打开页面与图谱",
-      "closeTab": "关闭标签"
+      "closeTab": "关闭标签",
+      "backToWikiList": "全部 Wiki 空间",
+      "backToWikiListHint": "离开当前工作区，返回 Wiki 空间列表。",
+      "spaceSettingsHint": "空间设置：名称与说明、库导入、关联资料库文档、页面列表，以及 Wiki 助手。"
     }
   },
   "glossary": {

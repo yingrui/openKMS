@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Network, Save, X } from 'lucide-react';
+import { ArrowLeft, Network, Save, Settings, X } from 'lucide-react';
 import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
 import { fetchWikiPages } from '../../data/wikiSpacesApi';
 import type { WikiPageResponse } from '../../data/wikiSpacesApi';
@@ -196,10 +196,6 @@ export function WikiWorkspace() {
           />
           <div className="wiki-page-editor-main wiki-workspace-main">
             <div className="wiki-page-editor-toolbar wiki-workspace-toolbar">
-              <Link to={`/wikis/${spaceId}/settings`} className="wiki-page-editor-back">
-                <ArrowLeft size={18} />
-                {t('wiki.pageEditor.backToSpace')}
-              </Link>
               <div className="wiki-workspace-toolbar-tail">
                 <div className="wiki-workspace-doc-tabs" role="tablist" aria-label={t('wiki.workspace.openTabsLabel')}>
                   {pageTabKeysForBar.map((key) => {
@@ -236,41 +232,59 @@ export function WikiWorkspace() {
                     {t('wiki.pageEditor.graphView')}
                   </button>
                 </div>
-                {!isGraph && pageIdParam && (
-                  <div className="wiki-workspace-toolbar-controls">
-                    <div className="wiki-page-editor-tabs wiki-workspace-page-modes" role="tablist" aria-label={t('wiki.pageEditor.viewModeTabs')}>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={(panelModes[pageIdParam] ?? 'preview') === 'edit'}
-                        className={(panelModes[pageIdParam] ?? 'preview') === 'edit' ? 'active' : undefined}
-                        onClick={() => setPanelModes((m) => ({ ...m, [pageIdParam]: 'edit' }))}
-                      >
-                        {t('wiki.pageEditor.edit')}
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={(panelModes[pageIdParam] ?? 'preview') === 'preview'}
-                        className={(panelModes[pageIdParam] ?? 'preview') === 'preview' ? 'active' : undefined}
-                        onClick={() => setPanelModes((m) => ({ ...m, [pageIdParam]: 'preview' }))}
-                      >
-                        {t('wiki.pageEditor.preview')}
-                      </button>
+                <div className="wiki-workspace-toolbar-end">
+                  <Link
+                    to="/wikis"
+                    className="wiki-page-editor-back wiki-workspace-toolbar-icon-link"
+                    aria-label={t('wiki.workspace.backToWikiList')}
+                    title={t('wiki.workspace.backToWikiListHint')}
+                  >
+                    <ArrowLeft size={18} aria-hidden />
+                  </Link>
+                  {!isGraph && pageIdParam && (
+                    <div className="wiki-workspace-toolbar-controls">
+                      <div className="wiki-page-editor-tabs wiki-workspace-page-modes" role="tablist" aria-label={t('wiki.pageEditor.viewModeTabs')}>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={(panelModes[pageIdParam] ?? 'preview') === 'edit'}
+                          className={(panelModes[pageIdParam] ?? 'preview') === 'edit' ? 'active' : undefined}
+                          onClick={() => setPanelModes((m) => ({ ...m, [pageIdParam]: 'edit' }))}
+                        >
+                          {t('wiki.pageEditor.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={(panelModes[pageIdParam] ?? 'preview') === 'preview'}
+                          className={(panelModes[pageIdParam] ?? 'preview') === 'preview' ? 'active' : undefined}
+                          onClick={() => setPanelModes((m) => ({ ...m, [pageIdParam]: 'preview' }))}
+                        >
+                          {t('wiki.pageEditor.preview')}
+                        </button>
+                      </div>
+                      {(panelModes[pageIdParam] ?? 'preview') === 'edit' && (
+                        <button
+                          type="button"
+                          className="wiki-workspace-save-btn"
+                          disabled={saveBusy}
+                          onClick={handleToolbarSave}
+                        >
+                          <Save size={16} aria-hidden />
+                          {saveBusy ? t('wiki.pageEditor.saving') : t('wiki.pageEditor.save')}
+                        </button>
+                      )}
                     </div>
-                    {(panelModes[pageIdParam] ?? 'preview') === 'edit' && (
-                      <button
-                        type="button"
-                        className="wiki-workspace-save-btn"
-                        disabled={saveBusy}
-                        onClick={handleToolbarSave}
-                      >
-                        <Save size={16} aria-hidden />
-                        {saveBusy ? t('wiki.pageEditor.saving') : t('wiki.pageEditor.save')}
-                      </button>
-                    )}
-                  </div>
-                )}
+                  )}
+                  <Link
+                    to={`/wikis/${spaceId}/settings`}
+                    className="wiki-page-editor-back wiki-workspace-toolbar-icon-link"
+                    aria-label={t('wiki.pageEditor.backToSpace')}
+                    title={t('wiki.workspace.spaceSettingsHint')}
+                  >
+                    <Settings size={18} aria-hidden />
+                  </Link>
+                </div>
               </div>
             </div>
 

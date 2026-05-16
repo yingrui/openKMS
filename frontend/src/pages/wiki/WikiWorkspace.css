@@ -19,14 +19,30 @@
   gap: 0.5rem;
 }
 
+.wiki-workspace-toolbar-end {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  gap: 0.5rem;
+  padding-left: 0.65rem;
+  border-left: 1px solid var(--color-border);
+}
+
+.wiki-workspace-toolbar-icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-sm, 4px);
+  white-space: nowrap;
+}
+
 .wiki-workspace-toolbar-controls {
   display: inline-flex;
   align-items: stretch;
   gap: 0.5rem;
   flex-shrink: 0;
-  margin-left: auto;
-  padding-left: 0.65rem;
-  border-left: 1px solid var(--color-border);
 }
 
 .wiki-workspace-page-modes.wiki-page-editor-tabs {

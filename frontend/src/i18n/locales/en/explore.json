@@ -51,7 +51,10 @@
     },
     "workspace": {
       "openTabsLabel": "Open pages and graph",
-      "closeTab": "Close tab"
+      "closeTab": "Close tab",
+      "backToWikiList": "All wiki spaces",
+      "backToWikiListHint": "Leave this workspace and open the list of wiki spaces.",
+      "spaceSettingsHint": "Space settings: name and description, vault imports, linked library documents, page list, and Wiki Copilot."
     }
   },
   "glossary": {
