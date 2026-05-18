@@ -58,7 +58,12 @@
       "copilotToggle": "Wiki Copilot",
       "copilotToggleHint": "Show or hide Wiki Copilot to ask about this wiki, pages, and linked documents.",
       "copilotResize": "Resize Wiki Copilot",
-      "copilotResizeHint": "Drag to change width."
+      "copilotResizeHint": "Drag to change width.",
+      "pageTreeFilterPlaceholder": "Filter by title, path, or meaning…",
+      "pageTreeFilterAria": "Filter pages in this space",
+      "pageTreeMatchSearching": "Looking up matches in titles, paths, and meaning…",
+      "pageTreeBadgeString": "Matched in title or path",
+      "pageTreeBadgeSemantic": "Matched by similar meaning"
     }
   },
   "glossary": {

@@ -17,6 +17,14 @@ export interface WikiSpaceResponse {
   id: string;
   name: string;
   description?: string | null;
+  /** Minimum cosine similarity (0–1) for meaning-based page matches in the workspace tree. */
+  semantic_similarity_threshold: number;
+  /** Max semantic hits returned for the workspace tree (>= 1). */
+  semantic_match_top_k: number;
+  /** Embedding ApiModel id for this space; null uses global default embedding model. */
+  semantic_embedding_model_id?: string | null;
+  /** Last successful semantic index build for this space. */
+  last_semantic_index_at?: string | null;
   page_count: number;
   created_at: string;
   updated_at: string;
@@ -38,8 +46,19 @@ export interface WikiPageResponse {
   updated_at: string;
 }
 
+/** Row from `GET .../pages` — no `body`; fetch `GET .../pages/{id}` for markdown. */
+export interface WikiPageListItem {
+  id: string;
+  wiki_space_id: string;
+  path: string;
+  title: string;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WikiPageListResponse {
-  items: WikiPageResponse[];
+  items: WikiPageListItem[];
   total: number;
   limit?: number | null;
   offset?: number;
@@ -101,7 +120,13 @@ export async function createWikiSpace(data: { name: string; description?: string
 
 export async function updateWikiSpace(
   spaceId: string,
-  data: { name?: string; description?: string | null }
+  data: {
+    name?: string;
+    description?: string | null;
+    semantic_similarity_threshold?: number;
+    semantic_match_top_k?: number;
+    semantic_embedding_model_id?: string | null;
+  }
 ): Promise<WikiSpaceResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
@@ -127,6 +152,40 @@ export async function deleteWikiSpace(spaceId: string): Promise<void> {
 export async function fetchWikiSpace(spaceId: string): Promise<WikiSpaceResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, { headers, credentials: 'include' });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export interface WikiSemanticIndexResponse {
+  indexed: number;
+  failed: number;
+  embedding_model_id: string;
+  embedding_model_label: string;
+}
+
+export interface WikiSemanticMatchedPage {
+  page_id: string;
+  similarity: number;
+}
+
+export interface WikiSemanticMatchIdsResponse {
+  string_matched_page_ids: string[];
+  semantic_matched_pages: WikiSemanticMatchedPage[];
+  semantic_skipped?: boolean;
+}
+
+/** Offline: embed all pages in the space (default embedding ApiModel). */
+export async function postWikiSpaceSemanticIndex(spaceId: string): Promise<WikiSemanticIndexResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/wiki-spaces/${encodeURIComponent(spaceId)}/semantic-index`,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: '{}',
+    }
+  );
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
@@ -206,6 +265,25 @@ export async function fetchWikiPages(
     headers,
     credentials: 'include',
   });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+/** Page match: string (title/path) then semantic (embeddings). */
+export async function fetchWikiSemanticPageMatches(
+  spaceId: string,
+  q: string,
+  opts?: { top_k?: number; text_match_limit?: number; signal?: AbortSignal }
+): Promise<WikiSemanticMatchIdsResponse> {
+  const headers = await getAuthHeaders();
+  const params = new URLSearchParams();
+  params.set('q', q);
+  if (opts?.top_k != null) params.set('top_k', String(opts.top_k));
+  if (opts?.text_match_limit != null) params.set('text_match_limit', String(opts.text_match_limit));
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/wiki-spaces/${encodeURIComponent(spaceId)}/pages/semantic-matches?${params.toString()}`,
+    { headers, credentials: 'include', signal: opts?.signal }
+  );
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }

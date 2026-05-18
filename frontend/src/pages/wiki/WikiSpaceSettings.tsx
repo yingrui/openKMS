@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileStack, FileText, FolderUp, Network, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, FileStack, FileText, FolderUp, Network, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../../data/channelsApi';
 import { fetchDocuments } from '../../data/documentsApi';
+import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
 import {
   createWikiPage,
   deleteWikiPage,
@@ -16,13 +17,14 @@ import {
   importWikiVaultFolder,
   importWikiVaultZip,
   linkDocumentToWikiSpace,
+  postWikiSpaceSemanticIndex,
   unlinkDocumentFromWikiSpace,
   updateWikiSpace,
   type VaultImportSkipOptions,
   type VaultImportProgress,
   vaultSkipExtensionSet,
   WIKI_PAGES_LIST_PAGE_SIZE,
-  type WikiPageResponse,
+  type WikiPageListItem,
   type WikiSpaceResponse,
   type WikiVaultImportResponse,
 } from '../../data/wikiSpacesApi';
@@ -51,12 +53,22 @@ function formatRowUpdatedAt(iso: string, dash: string): string {
   return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** Single-line label for selects; skips redundant "(model_name)" when it equals display name. */
+function embeddingModelOneLineLabel(m: ApiModelResponse): string {
+  const name = (m.name || '').trim();
+  const modelName = (m.model_name || '').trim();
+  if (modelName && modelName !== name) {
+    return `${name} (${modelName})`;
+  }
+  return name || modelName || m.id;
+}
+
 export function WikiSpaceSettings() {
   const { t } = useTranslation('wikiSpace');
   const navigate = useNavigate();
   const { id: spaceId } = useParams<{ id: string }>();
   const [space, setSpace] = useState<WikiSpaceResponse | null>(null);
-  const [pages, setPages] = useState<WikiPageResponse[]>([]);
+  const [pages, setPages] = useState<WikiPageListItem[]>([]);
   const [pagesTotal, setPagesTotal] = useState(0);
   const [pageIndex, setPageIndex] = useState(0);
   const [listNonce, setListNonce] = useState(0);
@@ -77,6 +89,14 @@ export function WikiSpaceSettings() {
   const [spaceDraftName, setSpaceDraftName] = useState('');
   const [spaceDraftDesc, setSpaceDraftDesc] = useState('');
   const [spaceMetaSaving, setSpaceMetaSaving] = useState(false);
+  const [semanticIndexing, setSemanticIndexing] = useState(false);
+  const [semanticSettingsSaving, setSemanticSettingsSaving] = useState(false);
+  const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
+  const [embeddingModelsLoading, setEmbeddingModelsLoading] = useState(true);
+  const [semanticThresholdDraft, setSemanticThresholdDraft] = useState(0.4);
+  const [semanticTopKDraft, setSemanticTopKDraft] = useState(10);
+  /** Empty string = use global default embedding model (null on server). */
+  const [semanticEmbeddingDraft, setSemanticEmbeddingDraft] = useState('');
   const [docPickerOpen, setDocPickerOpen] = useState(false);
   const [docSearch, setDocSearch] = useState('');
   const [docChannelFilter, setDocChannelFilter] = useState('');
@@ -117,6 +137,24 @@ export function WikiSpaceSettings() {
   }, [docPickerOpen, spaceId, docSearch, docChannelFilter, t]);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setEmbeddingModelsLoading(true);
+      try {
+        const r = await fetchModels({ category: 'embedding' });
+        if (!cancelled) setEmbeddingModels(r.items);
+      } catch {
+        if (!cancelled) setEmbeddingModels([]);
+      } finally {
+        if (!cancelled) setEmbeddingModelsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!spaceId) return;
     let cancelled = false;
     (async () => {
@@ -135,6 +173,13 @@ export function WikiSpaceSettings() {
         setSpace(sp);
         setSpaceDraftName(sp.name);
         setSpaceDraftDesc(sp.description ?? '');
+        setSemanticThresholdDraft(
+          typeof sp.semantic_similarity_threshold === 'number' ? sp.semantic_similarity_threshold : 0.4
+        );
+        setSemanticTopKDraft(
+          typeof sp.semantic_match_top_k === 'number' && sp.semantic_match_top_k >= 1 ? sp.semantic_match_top_k : 10
+        );
+        setSemanticEmbeddingDraft(sp.semantic_embedding_model_id?.trim() ?? '');
         setLinkedDocs(
           linked.items.map((x) => ({
             id: x.document_id,
@@ -170,6 +215,25 @@ export function WikiSpaceSettings() {
     };
   }, [spaceId, pageIndex, listNonce, t]);
 
+  const hasEmbeddingCatalog = useMemo(
+    () => embeddingModels.some((m) => (m.base_url || '').trim().length > 0),
+    [embeddingModels]
+  );
+
+  const defaultEmbeddingLabel = useMemo(() => {
+    const d = embeddingModels.find((m) => m.is_default_in_category);
+    const pick = d ?? embeddingModels[0];
+    return pick ? embeddingModelOneLineLabel(pick) : '—';
+  }, [embeddingModels]);
+
+  const semanticSettingsDirty = useMemo(() => {
+    if (!space) return false;
+    const th = Math.abs(semanticThresholdDraft - space.semantic_similarity_threshold) > 1e-9;
+    const tk = semanticTopKDraft !== space.semantic_match_top_k;
+    const sid = (semanticEmbeddingDraft || '') !== (space.semantic_embedding_model_id ?? '');
+    return th || tk || sid;
+  }, [space, semanticThresholdDraft, semanticTopKDraft, semanticEmbeddingDraft]);
+
   const spaceMetaDirty = useMemo(() => {
     if (!space) return false;
     const descNorm = (v: string) => v.trim();
@@ -200,6 +264,70 @@ export function WikiSpaceSettings() {
       toast.error(e instanceof Error ? e.message : t('toastSpaceMetaFailed'));
     } finally {
       setSpaceMetaSaving(false);
+    }
+  };
+
+  const handleSemanticIndex = async () => {
+    if (!spaceId || !hasEmbeddingCatalog) return;
+    setSemanticIndexing(true);
+    try {
+      const r = await postWikiSpaceSemanticIndex(spaceId);
+      toast.success(t('toastSemanticIndexOk', { indexed: r.indexed, model: r.embedding_model_label }));
+      if (r.failed > 0) {
+        toast.warning(t('toastSemanticIndexPartial', { failed: r.failed }));
+      }
+      const sp = await fetchWikiSpace(spaceId);
+      setSpace(sp);
+      setSemanticThresholdDraft(
+        typeof sp.semantic_similarity_threshold === 'number' ? sp.semantic_similarity_threshold : 0.4
+      );
+      setSemanticTopKDraft(
+        typeof sp.semantic_match_top_k === 'number' && sp.semantic_match_top_k >= 1 ? sp.semantic_match_top_k : 10
+      );
+      setSemanticEmbeddingDraft(sp.semantic_embedding_model_id?.trim() ?? '');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('toastSemanticIndexFailed'));
+    } finally {
+      setSemanticIndexing(false);
+    }
+  };
+
+  const handleSaveSemanticSettings = async () => {
+    if (!spaceId || !space || !hasEmbeddingCatalog) return;
+    const v = Math.max(0, Math.min(1, Number(semanticThresholdDraft)));
+    if (!Number.isFinite(v)) {
+      toast.error(t('toastSemanticSettingsFailed'));
+      return;
+    }
+    const topK = Math.floor(Number(semanticTopKDraft));
+    if (!Number.isFinite(topK) || topK < 1) {
+      toast.error(t('toastSemanticTopKInvalid'));
+      return;
+    }
+    setSemanticSettingsSaving(true);
+    try {
+      const updated = await updateWikiSpace(spaceId, {
+        semantic_similarity_threshold: v,
+        semantic_match_top_k: topK,
+        semantic_embedding_model_id: semanticEmbeddingDraft.trim() || null,
+      });
+      setSpace(updated);
+      setSemanticThresholdDraft(
+        typeof updated.semantic_similarity_threshold === 'number'
+          ? updated.semantic_similarity_threshold
+          : 0.4
+      );
+      setSemanticTopKDraft(
+        typeof updated.semantic_match_top_k === 'number' && updated.semantic_match_top_k >= 1
+          ? updated.semantic_match_top_k
+          : 10
+      );
+      setSemanticEmbeddingDraft(updated.semantic_embedding_model_id?.trim() ?? '');
+      toast.success(t('toastSemanticSettingsSaved'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('toastSemanticSettingsFailed'));
+    } finally {
+      setSemanticSettingsSaving(false);
     }
   };
 
@@ -294,7 +422,7 @@ export function WikiSpaceSettings() {
     }
   };
 
-  const handleDeletePage = async (p: WikiPageResponse) => {
+  const handleDeletePage = async (p: WikiPageListItem) => {
     if (!spaceId || !confirm(t('confirmDeletePage', { path: p.path }))) return;
     try {
       await deleteWikiPage(spaceId, p.id);
@@ -415,6 +543,119 @@ export function WikiSpaceSettings() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            <section
+              className="wiki-space-settings-section wiki-space-settings-card"
+              aria-labelledby="wiki-settings-semantic-heading"
+            >
+              <div className="wiki-space-settings-card-head">
+                <h2 id="wiki-settings-semantic-heading" className="wiki-space-settings-section-title wiki-space-settings-section-title--inline-icon">
+                  <Sparkles size={20} strokeWidth={1.75} aria-hidden />
+                  {t('sectionSemantic')}
+                </h2>
+              </div>
+              <p className="wiki-space-settings-card-hint wiki-space-settings-muted">{t('sectionSemanticHint')}</p>
+              {embeddingModelsLoading ? (
+                <p className="wiki-space-settings-muted">{t('semanticModelsLoading')}</p>
+              ) : !hasEmbeddingCatalog ? (
+                <p className="wiki-space-settings-semantic-unavailable wiki-space-settings-muted">{t('semanticNoEmbedding')}</p>
+              ) : (
+                <div className="wiki-space-settings-semantic-form">
+                  <div className="wiki-space-settings-semantic-row">
+                    <span className="wiki-space-settings-semantic-label">{t('semanticEmbeddingModelLabel')}</span>
+                    <div className="wiki-space-settings-semantic-control">
+                      <select
+                        className="wiki-space-settings-select"
+                        value={semanticEmbeddingDraft}
+                        onChange={(e) => setSemanticEmbeddingDraft(e.target.value)}
+                        disabled={semanticSettingsSaving || vaultImporting || !spaceId || semanticIndexing}
+                        aria-label={t('semanticEmbeddingModelLabel')}
+                      >
+                        <option value="">{t('semanticEmbeddingDefaultOption', { name: defaultEmbeddingLabel })}</option>
+                        {embeddingModels
+                          .filter((m) => (m.base_url || '').trim().length > 0)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {embeddingModelOneLineLabel(m)}
+                              {m.is_default_in_category ? ` — ${t('semanticEmbeddingBadgeDefault')}` : ''}
+                            </option>
+                          ))}
+                      </select>
+                      <p className="wiki-space-settings-field-hint wiki-space-settings-muted">{t('semanticEmbeddingHint')}</p>
+                    </div>
+                  </div>
+                  <div className="wiki-space-settings-semantic-row">
+                    <span className="wiki-space-settings-semantic-label">{t('semanticTopKLabel')}</span>
+                    <div className="wiki-space-settings-semantic-control">
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        className="wiki-space-settings-input-narrow"
+                        value={semanticTopKDraft}
+                        onChange={(e) => setSemanticTopKDraft(Number(e.target.value))}
+                        disabled={semanticSettingsSaving || vaultImporting || !spaceId || semanticIndexing}
+                        aria-label={t('semanticTopKLabel')}
+                      />
+                      <p className="wiki-space-settings-field-hint wiki-space-settings-muted">{t('semanticTopKHint')}</p>
+                    </div>
+                  </div>
+                  <div className="wiki-space-settings-semantic-row">
+                    <span className="wiki-space-settings-semantic-label">{t('semanticSimilarityLabel')}</span>
+                    <div className="wiki-space-settings-semantic-control">
+                      <input
+                        type="number"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        className="wiki-space-settings-input-narrow"
+                        value={semanticThresholdDraft}
+                        onChange={(e) => setSemanticThresholdDraft(Number(e.target.value))}
+                        disabled={semanticSettingsSaving || vaultImporting || !spaceId || semanticIndexing}
+                        aria-valuemin={0}
+                        aria-valuemax={1}
+                        aria-label={t('semanticSimilarityLabel')}
+                      />
+                      <p className="wiki-space-settings-field-hint wiki-space-settings-muted">{t('semanticSimilarityHint')}</p>
+                    </div>
+                  </div>
+                  <div className="wiki-space-settings-semantic-row">
+                    <span className="wiki-space-settings-semantic-label">{t('semanticLastIndexLabel')}</span>
+                    <div className="wiki-space-settings-semantic-control">
+                      <p className="wiki-space-settings-semantic-last-index">
+                        {space?.last_semantic_index_at
+                          ? formatRowUpdatedAt(space.last_semantic_index_at, t('dashDate'))
+                          : t('semanticIndexNever')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="wiki-space-settings-semantic-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      disabled={
+                        !semanticSettingsDirty ||
+                        semanticSettingsSaving ||
+                        vaultImporting ||
+                        !spaceId ||
+                        semanticIndexing
+                      }
+                      onClick={() => void handleSaveSemanticSettings()}
+                    >
+                      {semanticSettingsSaving ? t('savingSemanticSettings') : t('saveSemanticSettings')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      disabled={semanticSettingsSaving || vaultImporting || !spaceId || semanticIndexing}
+                      onClick={() => void handleSemanticIndex()}
+                    >
+                      {semanticIndexing ? t('semanticIndexing') : t('semanticIndexBuild')}
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="wiki-space-settings-section wiki-space-settings-card" aria-labelledby="wiki-settings-imports-heading">

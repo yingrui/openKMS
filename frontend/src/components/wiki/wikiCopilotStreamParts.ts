@@ -101,7 +101,7 @@ export function assistantHistoryStreamParts(
   toolCalls: unknown
 ): AssistantStreamPart[] | undefined {
   const toolParts = streamPartsFromPersistedToolCalls(toolCalls);
-  const text = content ?? '';
+  const text = content;
   const parts: AssistantStreamPart[] = [];
   if (toolParts?.length) parts.push(...toolParts);
   if (text.length > 0) parts.push({ type: 'text', text });

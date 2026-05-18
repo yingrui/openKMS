@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,6 +23,31 @@ class WikiSpace(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    semantic_similarity_threshold: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        default=0.4,
+        server_default="0.4",
+        doc="Minimum cosine similarity (1 - pgvector cosine distance) for semantic page matches; 0–1.",
+    )
+    semantic_match_top_k: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=10,
+        server_default="10",
+        doc="Max semantic hits returned for the workspace tree API (>= 1).",
+    )
+    semantic_embedding_model_id: Mapped[str | None] = mapped_column(
+        String(64),
+        ForeignKey("api_models.id", ondelete="SET NULL"),
+        nullable=True,
+        doc="Embedding ApiModel for this space; null uses global default embedding model.",
+    )
+    last_semantic_index_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        doc="Last successful completion of POST .../semantic-index for this space.",
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -51,6 +77,11 @@ class WikiPage(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False, default="")
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
     page_index: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    embedding = mapped_column(Vector(None), nullable=True, deferred=True)
+    embedding_model_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("api_models.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    embedded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

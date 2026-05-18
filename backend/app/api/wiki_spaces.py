@@ -12,21 +12,28 @@ from urllib.parse import unquote
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, or_, select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from app.api.auth import require_permission
 from app.config import settings
 from app.database import get_db
+from app.models.api_model import ApiModel
 from app.models.document import Document
 from app.models.wiki_models import WikiFile, WikiPage, WikiSpace, WikiSpaceDocument
 from app.schemas.wiki import (
     WikiFileListResponse,
     WikiFileResponse,
     WikiPageCreate,
+    WikiPageListItem,
     WikiPageListResponse,
     WikiPageResponse,
     WikiPageUpdate,
     WikiPageUpsertBody,
+    WikiSemanticIndexResponse,
+    WikiSemanticMatchedPage,
+    WikiSemanticMatchIdsResponse,
     WikiSpaceCreate,
     WikiSpaceDocumentLinkCreate,
     WikiSpaceDocumentLinkResponse,
@@ -107,6 +114,18 @@ def _page_to_response(page: WikiPage) -> WikiPageResponse:
     )
 
 
+def _page_to_list_item(page: WikiPage) -> WikiPageListItem:
+    return WikiPageListItem(
+        id=page.id,
+        wiki_space_id=page.wiki_space_id,
+        path=page.path,
+        title=page.title,
+        metadata=page.metadata_,
+        created_at=page.created_at,
+        updated_at=page.updated_at,
+    )
+
+
 def _dt_to_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
@@ -155,6 +174,10 @@ def _space_to_response(ws: WikiSpace, page_count: int) -> WikiSpaceResponse:
         id=ws.id,
         name=ws.name,
         description=ws.description,
+        semantic_similarity_threshold=float(ws.semantic_similarity_threshold),
+        semantic_match_top_k=int(ws.semantic_match_top_k),
+        semantic_embedding_model_id=ws.semantic_embedding_model_id,
+        last_semantic_index_at=ws.last_semantic_index_at,
         created_at=ws.created_at,
         updated_at=ws.updated_at,
         page_count=page_count,
@@ -209,6 +232,53 @@ async def get_wiki_space(
     return _space_to_response(space, await _page_count(db, space.id))
 
 
+@router.post(
+    "/{space_id}/semantic-index",
+    response_model=WikiSemanticIndexResponse,
+    dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
+)
+async def post_wiki_space_semantic_index(
+    space: WikiSpace = Depends(get_wiki_space_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Build or refresh per-page embedding vectors for semantic search (offline).
+    Uses this wiki space's configured embedding model when set, otherwise the global default
+    embedding ApiModel (Models → category Embedding → set as default).
+    """
+    from app.services.wiki_semantic_index import is_pgvector_server_missing, reindex_wiki_space_embeddings
+
+    try:
+        r = await reindex_wiki_space_embeddings(db, space.id)
+        space.last_semantic_index_at = datetime.now(timezone.utc)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    try:
+        await db.commit()
+    except DBAPIError as e:
+        await db.rollback()
+        if is_pgvector_server_missing(e):
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "The database cannot store vector embeddings: the pgvector extension is not "
+                    "available on this PostgreSQL server. Install pgvector, ensure "
+                    "`CREATE EXTENSION vector` succeeds (run `python scripts/ensure_pgvector.py` "
+                    "from the `backend/` directory so it uses the same `.env` as the API), "
+                    "then run semantic index again. "
+                    f"This API uses PostgreSQL at {settings.database_host}:{settings.database_port}/"
+                    f"{settings.database_name} — the script must target that same instance."
+                ),
+            ) from e
+        raise
+    return WikiSemanticIndexResponse(
+        indexed=r.indexed,
+        failed=r.failed,
+        embedding_model_id=r.embedding_model_id,
+        embedding_model_label=r.embedding_model_label,
+    )
+
+
 @router.patch(
     "/{space_id}",
     response_model=WikiSpaceResponse,
@@ -223,6 +293,26 @@ async def patch_wiki_space(
         space.name = body.name.strip()
     if body.description is not None:
         space.description = body.description.strip() if body.description else None
+    patch = body.model_dump(exclude_unset=True)
+    if "semantic_similarity_threshold" in patch:
+        space.semantic_similarity_threshold = float(patch["semantic_similarity_threshold"])
+    if "semantic_match_top_k" in patch:
+        space.semantic_match_top_k = int(patch["semantic_match_top_k"])
+    if "semantic_embedding_model_id" in patch:
+        v = patch["semantic_embedding_model_id"]
+        if v is None:
+            space.semantic_embedding_model_id = None
+        else:
+            raw = str(v).strip() or None
+            if raw:
+                m = await db.get(ApiModel, raw)
+                if not m or m.category != "embedding":
+                    raise HTTPException(
+                        status_code=400, detail="semantic_embedding_model_id must be an embedding ApiModel."
+                    )
+                space.semantic_embedding_model_id = raw
+            else:
+                space.semantic_embedding_model_id = None
     await db.flush()
     await db.refresh(space)
     return _space_to_response(space, await _page_count(db, space.id))
@@ -360,16 +450,75 @@ async def list_pages(
         filters.append(or_(WikiPage.path == pfx, WikiPage.path.startswith(pfx + "/")))
     count_stmt = select(func.count()).select_from(WikiPage).where(*filters)
     total = int((await db.execute(count_stmt)).scalar_one())
-    q = select(WikiPage).where(*filters).order_by(WikiPage.path)
+    q = (
+        select(WikiPage)
+        .options(
+            load_only(
+                WikiPage.id,
+                WikiPage.wiki_space_id,
+                WikiPage.path,
+                WikiPage.title,
+                WikiPage.metadata_,
+                WikiPage.created_at,
+                WikiPage.updated_at,
+            )
+        )
+        .where(*filters)
+        .order_by(WikiPage.path)
+    )
     if limit is not None:
         q = q.offset(offset).limit(limit)
     result = await db.execute(q)
     pages = list(result.scalars().all())
     return WikiPageListResponse(
-        items=[_page_to_response(p) for p in pages],
+        items=[_page_to_list_item(p) for p in pages],
         total=total,
         limit=limit,
         offset=offset if limit is not None else 0,
+    )
+
+
+@router.get(
+    "/{space_id}/pages/semantic-matches",
+    response_model=WikiSemanticMatchIdsResponse,
+    dependencies=[Depends(require_permission(PERM_WIKIS_READ))],
+)
+async def wiki_pages_semantic_matches(
+    space: WikiSpace = Depends(get_wiki_space_scoped),
+    db: AsyncSession = Depends(get_db),
+    q: str = Query("", min_length=1, max_length=4000),
+    top_k: int | None = Query(None, ge=1, le=100),
+    text_match_limit: int = Query(200, ge=1, le=500),
+):
+    """
+    Page match for ``q`` with short-circuit: if **string** (title/path) matches are non-empty,
+    semantic search is not run. Otherwise **semantic** results are
+    ``semantic_matched_pages`` (``page_id``, ``similarity`` where ``similarity = 1 - (embedding <=> query)``),
+    filtered by the space's ``semantic_similarity_threshold`` and capped by ``semantic_match_top_k``
+    (unless ``top_k`` is passed as a query override).
+    When the space has no indexed embeddings, only string matching applies (empty semantic list, not skipped).
+    """
+    from app.services.wiki_semantic_index import semantic_match_pages, wiki_pages_string_match_ids
+
+    string_ids = await wiki_pages_string_match_ids(db, space.id, q, limit=text_match_limit)
+    if string_ids:
+        return WikiSemanticMatchIdsResponse(
+            string_matched_page_ids=string_ids,
+            semantic_matched_pages=[],
+            semantic_skipped=False,
+        )
+
+    semantic_rows, skipped = await semantic_match_pages(
+        db,
+        space,
+        q,
+        top_k=top_k,
+        similarity_threshold=None,
+    )
+    return WikiSemanticMatchIdsResponse(
+        string_matched_page_ids=[],
+        semantic_matched_pages=[WikiSemanticMatchedPage(page_id=pid, similarity=sim) for pid, sim in semantic_rows],
+        semantic_skipped=skipped,
     )
 
 

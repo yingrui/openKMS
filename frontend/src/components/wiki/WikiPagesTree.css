@@ -62,6 +62,12 @@
   color: var(--color-text-muted);
 }
 
+.wiki-pages-tree-semantic-hint {
+  padding: 4px 14px 8px;
+  margin: 0;
+  font-size: 0.75rem;
+}
+
 .wiki-pages-tree-node {
   user-select: none;
 }
@@ -119,6 +125,41 @@
   padding: 4px 8px;
   margin: 0;
   border-radius: 0;
+}
+
+.wiki-pages-tree-link-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wiki-pages-tree-match-badges {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 3px;
+}
+
+.wiki-pages-tree-match-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+
+.wiki-pages-tree-match-badge--string {
+  background: color-mix(in srgb, #2563eb 22%, transparent);
+  color: #1d4ed8;
+}
+
+.wiki-pages-tree-match-badge--semantic {
+  background: color-mix(in srgb, #7c3aed 22%, transparent);
+  color: #6d28d9;
 }
 
 .wiki-pages-tree-link:hover {

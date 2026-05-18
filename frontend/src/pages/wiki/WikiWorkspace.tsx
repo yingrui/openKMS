@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Bot, Network, Save, Settings, X } from 'lucide-react';
 import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
 import { WikiSpaceAgentPanel } from '../../components/wiki/WikiSpaceAgentPanel';
-import { fetchWikiPages, fetchWikiSpace } from '../../data/wikiSpacesApi';
-import type { WikiPageResponse } from '../../data/wikiSpacesApi';
+import { fetchWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from '../../data/wikiSpacesApi';
+import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
 import { WikiPagePanel, type WikiPagePanelHandle } from './WikiPagePanel';
 import './WikiPageEditor.css';
@@ -70,8 +70,14 @@ export function WikiWorkspace() {
   const [tabLabels, setTabLabels] = useState<Record<string, string>>({});
   const [panelModes, setPanelModes] = useState<Record<string, 'edit' | 'preview'>>({});
   const [saveBusy, setSaveBusy] = useState(false);
-  const [wikiPages, setWikiPages] = useState<WikiPageResponse[]>([]);
+  const [wikiPages, setWikiPages] = useState<WikiPageListItem[]>([]);
   const [pagesLoading, setPagesLoading] = useState(true);
+  const [pageTreeFilter, setPageTreeFilter] = useState('');
+  const [pageTreeHybridMatches, setPageTreeHybridMatches] = useState<{
+    stringIds: ReadonlySet<string>;
+    semanticIds: ReadonlySet<string>;
+  }>(() => ({ stringIds: new Set(), semanticIds: new Set() }));
+  const [pageTreeMatchPending, setPageTreeMatchPending] = useState(false);
   const lastPageIdRef = useRef<string | undefined>(undefined);
   const panelRefMap = useRef<Map<string, WikiPagePanelHandle | null>>(new Map());
 
@@ -225,6 +231,49 @@ export function WikiWorkspace() {
   }, [spaceId]);
 
   useEffect(() => {
+    if (!spaceId) return;
+    setPageTreeFilter('');
+    setPageTreeHybridMatches({ stringIds: new Set(), semanticIds: new Set() });
+    setPageTreeMatchPending(false);
+  }, [spaceId]);
+
+  useEffect(() => {
+    if (!spaceId) return;
+    const trimmed = pageTreeFilter.trim();
+    let ac: AbortController | null = null;
+
+    if (trimmed.length < 2) {
+      setPageTreeMatchPending(false);
+      setPageTreeHybridMatches({ stringIds: new Set(), semanticIds: new Set() });
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      ac = new AbortController();
+      setPageTreeMatchPending(true);
+      void fetchWikiSemanticPageMatches(spaceId, trimmed, { signal: ac.signal })
+        .then((res) => {
+          if (ac?.signal.aborted) return;
+          setPageTreeHybridMatches({
+            stringIds: new Set(res.string_matched_page_ids),
+            semanticIds: new Set(res.semantic_matched_pages.map((p) => p.page_id)),
+          });
+          setPageTreeMatchPending(false);
+        })
+        .catch(() => {
+          if (ac?.signal.aborted) return;
+          setPageTreeHybridMatches({ stringIds: new Set(), semanticIds: new Set() });
+          setPageTreeMatchPending(false);
+        });
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timer);
+      ac?.abort();
+    };
+  }, [spaceId, pageTreeFilter]);
+
+  useEffect(() => {
     if (!wikiPages.length) return;
     setTabLabels((prev) => {
       const next = { ...prev };
@@ -326,6 +375,11 @@ export function WikiWorkspace() {
             pages={wikiPages}
             currentPageId={treeCurrentId}
             loading={pagesLoading}
+            filterText={pageTreeFilter}
+            onFilterTextChange={setPageTreeFilter}
+            stringMatchIds={pageTreeHybridMatches.stringIds}
+            semanticMatchIds={pageTreeHybridMatches.semanticIds}
+            pageTreeMatchPending={pageTreeMatchPending}
           />
           <div className="wiki-page-editor-main wiki-workspace-main">
             <div className="wiki-page-editor-toolbar wiki-workspace-toolbar">

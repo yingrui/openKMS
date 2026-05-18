@@ -120,7 +120,7 @@ frontend/src/
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
     ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx (`/wikis/:id/settings`; sectioned settings UI; folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiWorkspace** graph tab), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; optional **WikiSpaceAgentPanel** Copilot rail toggled from the toolbar; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
+    ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx (`/wikis/:id/settings`; sectioned settings UI; **Build index** for offline wiki page embeddings (default embedding ApiModel); folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiWorkspace** graph tab), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; optional **WikiSpaceAgentPanel** Copilot rail toggled from the toolbar; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
@@ -161,7 +161,7 @@ backend/
 │   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
 │   │   ├── system_settings.py  # GET /api/public/system (no auth); GET/PUT /api/system/settings (`console:settings`)
 │   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── wiki_spaces.py      # /api/wiki-spaces: spaces, pages, **…/documents** (channel doc links: list includes `linked_at` + each linked **document** `updated_at`), files, page-index, **GET …/graph**; POST import/vault (zip/bulk), POST import/vault/markdown-file
+│   │   ├── wiki_spaces.py      # /api/wiki-spaces: spaces, pages, **…/documents** (channel doc links: list includes `linked_at` + each linked **document** `updated_at`), files, page-index, **GET …/graph**, **POST …/semantic-index** (offline pgvector embeddings per page); POST import/vault (zip/bulk), POST import/vault/markdown-file
 │   │   ├── agent.py            # /api/agent: **conversations** + **messages** (embedded LangGraph; Wiki Copilot in the wiki-space UI)
 │   │   ├── evaluation_datasets.py  # CRUD /api/evaluation-datasets, items, import (CSV), run (search_retrieval | qa_answer), runs list/get/delete/compare
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
@@ -227,6 +227,7 @@ backend/
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
 │       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
 │       ├── spreadsheet_preview.py      # openpyxl: XLSX grid preview + markdown for upload / spreadsheet job
+│       ├── wiki_semantic_index.py        # Offline: embed all wiki pages in a space (default **embedding** ApiModel → `wiki_pages.embedding`)
 │       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, upsert wiki_files on same path, markdown mirrors, link rewrite; strip NUL for PostgreSQL
 │       ├── agent/                        # Embedded LangGraph (wiki): `llm.py`, `wiki_tools.py`, `wiki_runner.py`, `prompts.py`
 │       ├── wiki_link_graph.py            # Parse `[[wikilinks]]` + relative `[text](href)` (skip fenced code); build directed graph JSON; path resolution aligned with vault import / frontend preview

@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner';
 import { config } from '../../config';
 import { fetchWikiPage, updateWikiPage } from '../../data/wikiSpacesApi';
-import type { WikiPageResponse } from '../../data/wikiSpacesApi';
+import type { WikiPageListItem, WikiPageResponse } from '../../data/wikiSpacesApi';
 import { findPageIdByWikilinkTarget, prepareWikiPreviewMarkdown } from './wikiPreviewMarkdown';
 import './WikiPageEditor.css';
 
@@ -39,7 +39,7 @@ export type WikiPagePanelHandle = {
 export type WikiPagePanelProps = {
   spaceId: string;
   pageId: string;
-  wikiPages: WikiPageResponse[];
+  wikiPages: readonly WikiPageListItem[];
   isActive: boolean;
   viewTab: 'edit' | 'preview';
   onSavingChange?: (saving: boolean) => void;

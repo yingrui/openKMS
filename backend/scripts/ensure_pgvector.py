@@ -1,13 +1,23 @@
 #!/usr/bin/env python3
 """Ensure pgvector extension is available (`CREATE EXTENSION IF NOT EXISTS vector`).
 
-Invoked by **`backend/dev.sh`** before `alembic upgrade head`. The FastAPI app does not
-create extensions or tables on startup.
+Uses **`app.config.settings`** (same database URL as the FastAPI app and ``backend/.env``).
+
+Invoked by **`backend/dev.sh`** before ``alembic upgrade head``. The FastAPI app does not
+create extensions or tables at startup.
+
+If ``CREATE EXTENSION`` succeeds but semantic indexing still fails with ``$libdir/vector``,
+you are almost certainly hitting a **different PostgreSQL instance** than this script
+(e.g. app points at Docker Postgres while this script hit localhost Homebrew). Check
+the printed host/port/database and match them to your running API.
 """
+from __future__ import annotations
+
 import asyncio
 import os
 import subprocess
 import sys
+import time
 
 # Add backend to path so we can import app.config
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,14 +26,16 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 
-def get_db_url() -> str:
-    """Build async PostgreSQL URL from env."""
-    host = os.getenv("OPENKMS_DATABASE_HOST", "localhost")
-    port = os.getenv("OPENKMS_DATABASE_PORT", "5432")
-    user = os.getenv("OPENKMS_DATABASE_USER", "postgres")
-    password = os.getenv("OPENKMS_DATABASE_PASSWORD", "")
-    name = os.getenv("OPENKMS_DATABASE_NAME", "openkms")
-    return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{name}?ssl=prefer"
+def _vector_related_error(exc: BaseException) -> bool:
+    e: BaseException | None = exc
+    while e is not None:
+        msg = str(e).lower()
+        if "$libdir/vector" in msg:
+            return True
+        if "vector" in msg and ("extension" in msg or "undefinedfile" in type(e).__name__.lower()):
+            return True
+        e = e.__cause__ or e.__context__
+    return False
 
 
 def try_install_in_docker() -> bool:
@@ -52,55 +64,82 @@ def try_install_in_docker() -> bool:
                 major = pg_major.stdout.strip() if pg_major.returncode == 0 else "15"
                 print(f"Installing postgresql-{major}-pgvector in container {cid[:12]}...")
                 install = subprocess.run(
-                    ["docker", "exec", cid, "sh", "-c",
-                     f"apt-get update -qq && apt-get install -y postgresql-{major}-pgvector"],
+                    [
+                        "docker",
+                        "exec",
+                        cid,
+                        "sh",
+                        "-c",
+                        f"apt-get update -qq && apt-get install -y postgresql-{major}-pgvector",
+                    ],
                     capture_output=True,
                     text=True,
                     timeout=120,
                 )
-                if install.returncode == 0:
-                    print("pgvector package installed.")
+                if install.returncode != 0:
+                    print(install.stderr or install.stdout, file=sys.stderr)
                     return True
-                print(install.stderr or install.stdout, file=sys.stderr)
-                return True  # we attempted
+                print("Restarting container so PostgreSQL loads the new pgvector library…")
+                rst = subprocess.run(
+                    ["docker", "restart", cid],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                )
+                if rst.returncode != 0:
+                    print(rst.stderr or rst.stdout, file=sys.stderr)
+                else:
+                    print("Waiting for PostgreSQL to come back after restart…")
+                    time.sleep(12)
+                print("pgvector package installed.")
+                return True
         return False
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
 
 
 async def main() -> int:
-    load_dotenv = None
-    try:
-        from dotenv import load_dotenv
-    except ImportError:
-        pass
-    if load_dotenv:
-        env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
-        load_dotenv(env_file)
+    from app.config import settings
 
-    url = get_db_url()
+    url = settings.database_url
+    print(
+        "PostgreSQL target for pgvector check:",
+        f"{settings.database_user}@{settings.database_host}:{settings.database_port}/{settings.database_name}",
+        flush=True,
+    )
+
     engine = create_async_engine(url)
 
+    last_exc: BaseException | None = None
     for attempt in range(2):
         try:
             async with engine.begin() as conn:
                 await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            print("pgvector extension OK")
+                # Prove the server can load vector ops (catches $libdir/vector after a bad CREATE).
+                await conn.execute(text("SELECT '[1,2,3]'::vector <=> '[1,2,3]'::vector AS d"))
+            print("pgvector OK: extension present and distance query succeeded.", flush=True)
             return 0
         except Exception as e:
-            err = str(e).lower()
-            if "vector" not in err and "libdir" not in err:
+            last_exc = e
+            if not _vector_related_error(e):
                 raise
             if attempt == 0 and try_install_in_docker():
                 continue
-            print("ERROR: pgvector is not installed in PostgreSQL.", file=sys.stderr)
+            print("ERROR: pgvector is not usable on this PostgreSQL server.", file=sys.stderr)
             print("", file=sys.stderr)
-            print("Install it first:", file=sys.stderr)
+            print("Common causes:", file=sys.stderr)
+            print("  • The pgvector package is not installed in the Postgres *server* (not only the Python client).", file=sys.stderr)
+            print("  • This script connected to a different instance than the API (compare host/port/db above).", file=sys.stderr)
+            print("  • After installing pgvector in Docker, the container must restart (this script tries that).", file=sys.stderr)
+            print("", file=sys.stderr)
+            if last_exc is not None:
+                print(f"Last error from database: {last_exc!r}", file=sys.stderr)
+                print("", file=sys.stderr)
+            print("Install examples:", file=sys.stderr)
             print("  Docker: docker exec <container> apt-get update && apt-get install -y postgresql-15-pgvector", file=sys.stderr)
-            print("  macOS:  brew install pgvector", file=sys.stderr)
+            print("  macOS:  brew install pgvector  (then use Postgres that loads that build)", file=sys.stderr)
             print("  Linux:  sudo apt install postgresql-15-pgvector", file=sys.stderr)
             print("", file=sys.stderr)
-            print("Then run: psql -U <user> -d openkms -c 'CREATE EXTENSION IF NOT EXISTS vector;'", file=sys.stderr)
             return 1
     return 1
 

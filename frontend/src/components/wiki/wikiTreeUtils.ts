@@ -1,13 +1,13 @@
-import type { WikiPageResponse } from '../../data/wikiSpacesApi';
+import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 
 export interface WikiTreeNode {
   segment: string;
   pathPrefix: string;
-  page: WikiPageResponse | undefined;
+  page: WikiPageListItem | undefined;
   children: Map<string, WikiTreeNode>;
 }
 
-export function buildWikiTree(pages: WikiPageResponse[]): WikiTreeNode {
+export function buildWikiTree(pages: readonly WikiPageListItem[]): WikiTreeNode {
   const root: WikiTreeNode = {
     segment: '',
     pathPrefix: '',

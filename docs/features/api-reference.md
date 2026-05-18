@@ -280,10 +280,12 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/wiki-spaces` | List wiki spaces |
 | POST | `/api/wiki-spaces` | Create wiki space |
 | GET | `/api/wiki-spaces/{id}` | Get wiki space |
-| PATCH | `/api/wiki-spaces/{id}` | Update wiki space (name, description) |
+| PATCH | `/api/wiki-spaces/{id}` | Update wiki space (`name`, `description`, optional `semantic_similarity_threshold` 0–1, `semantic_match_top_k` integer ≥ 1, `semantic_embedding_model_id` embedding ApiModel id or `null` to clear) |
+| POST | `/api/wiki-spaces/{id}/semantic-index` | Offline: embed all pages using the space’s configured embedding model when set, otherwise the **global default** embedding ApiModel (`wikis:write`); sets `last_semantic_index_at` on success; returns `{ indexed, failed, embedding_model_id, embedding_model_label }`; **503** if PostgreSQL cannot persist `vector` columns (pgvector not installed / `$libdir/vector` missing) |
 | DELETE | `/api/wiki-spaces/{id}` | Delete wiki space (cascades pages, files, document links) |
 | GET | `/api/wiki-spaces/{id}/graph` | Wiki page graph (nodes + edges) for the navigator |
-| GET | `/api/wiki-spaces/{id}/pages` | List pages (paginated) |
+| GET | `/api/wiki-spaces/{id}/pages` | List pages (paginated). Each item is metadata only (**no** `body` — avoids large payloads; use `GET .../pages/{page_id}` for markdown). Optional `path_prefix`, `limit` (1–500), `offset` (`wikis:read`) |
+| GET | `/api/wiki-spaces/{id}/pages/semantic-matches` | Match for `q` with **short-circuit**: if string (title/path) matches are non-empty, only those are returned; else **`semantic_matched_pages`** when the space has **indexed embeddings** (`{ page_id, similarity }`, ordered by similarity). Uses the space’s **`semantic_similarity_threshold`**, **`semantic_match_top_k`** (optional query `top_k` overrides the cap), and the same embedding model family as indexing (`WikiPage.embedding_model_id` matches the resolved model). If **no** pages in the space have embeddings, only string matching applies (empty semantic list, `semantic_skipped` false). Query params: `text_match_limit`, optional `top_k` (`wikis:read`) |
 | POST | `/api/wiki-spaces/{id}/pages` | Create page (`path`, `title`, optional `body`, `metadata`) |
 | GET | `/api/wiki-spaces/{id}/pages/{page_id}` | Get page (with body and metadata) |
 | PATCH | `/api/wiki-spaces/{id}/pages/{page_id}` | Update page (title, body, metadata) |

@@ -245,12 +245,13 @@ All junctions cascade on either side; no extra columns.
 
 ### WikiSpace
 
-- `id`, `name`, `description`, `created_at`, `updated_at`
+- `id`, `name`, `description`, `semantic_similarity_threshold` (float, 0–1, default **0.4** for new rows; minimum cosine similarity for semantic page matches), `semantic_match_top_k` (int ≥ 1, default **10**; max semantic hits for the tree API), `semantic_embedding_model_id` (nullable FK → `api_models`, **SET NULL**; null = use global default embedding model for index + search), `last_semantic_index_at` (nullable timestamptz; set when **POST …/semantic-index** completes successfully), `created_at`, `updated_at`
 
 ### WikiPage
 
-- `id`, `wiki_space_id` (FK → wiki_spaces, CASCADE), `path` (Obsidian-style; unique per space), `title`, `body` (markdown), `metadata` (JSONB), `page_index` (JSONB; PageIndex tree for in-page navigation), `created_at`, `updated_at`
+- `id`, `wiki_space_id` (FK → wiki_spaces, CASCADE), `path` (Obsidian-style; unique per space), `title`, `body` (markdown), `metadata` (JSONB), `page_index` (JSONB; PageIndex tree for in-page navigation), `embedding` (pgvector `vector`, nullable; filled by offline **Build semantic index** in space settings), `embedding_model_id` (FK → api_models, SET NULL), `embedded_at` (nullable), `created_at`, `updated_at`
 - Unique `(wiki_space_id, path)`
+- **HTTP:** `GET /api/wiki-spaces/{id}/pages` returns list items **without** `body` (smaller payloads); full markdown via `GET /api/wiki-spaces/{id}/pages/{page_id}`.
 
 ### WikiFile
 

@@ -57,6 +57,12 @@ sequenceDiagram
 | POST | `/api/wiki-spaces/{id}/documents` | `{ "document_id" }` |
 | DELETE | `/api/wiki-spaces/{id}/documents/{document_id}` | Unlink. |
 
+**Wiki page embeddings (offline semantic index)**
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST | `/api/wiki-spaces/{id}/semantic-index` | `wikis:write`. Embeds every **wiki_page** in the space (title + path + body, truncated per request) via the default **embedding** ApiModel (**Models** → category **Embedding** → **Set as default**). Writes `embedding`, `embedding_model_id`, `embedded_at` on each row. Does **not** run automatically on page save (v1). |
+
 **Agent**
 
 | Method | Path | Notes |

@@ -41,7 +41,11 @@ const CONV_KEY_PREFIX = 'openkms_wiki_agent_conversation_v1_';
 
 export function getStoredWikiAgentConversationId(spaceId: string): string | null {
   if (typeof sessionStorage === 'undefined') return null;
-  return sessionStorage.getItem(CONV_KEY_PREFIX + spaceId);
+  try {
+    return sessionStorage.getItem(CONV_KEY_PREFIX + spaceId);
+  } catch {
+    return null;
+  }
 }
 
 export function setStoredWikiAgentConversationId(spaceId: string, conversationId: string): void {
@@ -159,6 +163,14 @@ export type AgentMessageStreamEvent =
   | { type: 'done'; user: AgentMessageItem; message: AgentMessageItem }
   | { type: 'error'; detail: string; message: AgentMessageItem };
 
+function parseNdjsonStreamLine(line: string): AgentMessageStreamEvent {
+  try {
+    return JSON.parse(line) as AgentMessageStreamEvent;
+  } catch {
+    throw new Error('Agent stream contained invalid JSON');
+  }
+}
+
 /**
  * Stream one assistant turn: user line, then `delta` chunks, then `done` (or `error` with final assistant message).
  */
@@ -193,23 +205,11 @@ export async function postAgentMessageStream(
       const line = buf.slice(0, idx);
       buf = buf.slice(idx + 1);
       if (!line.trim()) continue;
-      let parsed: AgentMessageStreamEvent;
-      try {
-        parsed = JSON.parse(line) as AgentMessageStreamEvent;
-      } catch {
-        throw new Error('Agent stream contained invalid JSON');
-      }
-      onEvent(parsed);
+      onEvent(parseNdjsonStreamLine(line));
     }
   }
   const rest = buf.trim();
   if (rest) {
-    let parsed: AgentMessageStreamEvent;
-    try {
-      parsed = JSON.parse(rest) as AgentMessageStreamEvent;
-    } catch {
-      throw new Error('Agent stream contained invalid JSON');
-    }
-    onEvent(parsed);
+    onEvent(parseNdjsonStreamLine(rest));
   }
 }
