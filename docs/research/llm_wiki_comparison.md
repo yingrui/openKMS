@@ -117,8 +117,8 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 
 | Capability | llm_wiki | openKMS |
 |------------|----------|---------|
-| Query pipeline | Token search → optional vectors → graph expansion → budgeted context | **`search_wiki_pages`** (PostgreSQL FTS per space) + `list_wiki_pages` / `get_wiki_page` + optional maintainer context in system prompt |
-| Embeddings | Optional LanceDB | Optional future: wiki page embeddings in Postgres |
+| Query pipeline | Token search → optional vectors → graph expansion → budgeted context | **`search_wiki_pages`** agent tool (title/path substring, then **pgvector** semantic when the space is indexed) + `list_wiki_pages` / `get_wiki_page` + optional maintainer context in system prompt |
+| Embeddings | Optional LanceDB | **Yes** for wiki Copilot semantic branch: page vectors in Postgres after **Build semantic index** (space or default embedding model) |
 | Chat persistence | Per-project chat files on disk | **`/api/agent`** conversations + messages (DB-backed) |
 
 ---
@@ -128,7 +128,7 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 | llm_wiki area | In openKMS today (approx.) |
 |---------------|----------------------------|
 | purpose / schema as Copilot context | **Yes** — DB fields + injection |
-| FTS / keyword discovery in wiki | **Yes** — `search_wiki_pages` tool |
+| FTS / keyword discovery in wiki | **Yes** — `search_wiki_pages` tool (substring on title/path; semantic when indexed) |
 | Graph communities + insights UI | **Partial** — Louvain + simple insights; no weighted edges, no cohesion warnings, no dismiss-store |
 | Weighted relevance graph | **No** |
 | Context budget assembly | **No** (single system prompt + tools; no proportional packing) |

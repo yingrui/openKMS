@@ -10,6 +10,7 @@ from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from app.api.auth import jwt_payload_is_admin
 from app.config import settings
@@ -20,6 +21,11 @@ from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.permission_catalog import PERM_ALL, PERM_WIKIS_WRITE
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
+from app.services.wiki_semantic_index import (
+    semantic_match_pages,
+    wiki_pages_string_match_ids,
+    wiki_space_has_any_embedding,
+)
 from app.services.wiki_vault_import import upload_wiki_page_markdown_mirror
 
 
@@ -70,6 +76,27 @@ async def _wiki_space_readable(db: AsyncSession, space_id: str, jwt_payload: dic
 MAX_UPSERT_BODY = 500_000
 
 
+async def _page_labels_by_ids_in_order(
+    db: AsyncSession, space_id: str, ids_in_order: list[str]
+) -> list[tuple[str, str, str]]:
+    """Return ``(id, path, title)`` rows preserving ``ids_in_order``."""
+    if not ids_in_order:
+        return []
+    stmt = (
+        select(WikiPage)
+        .options(load_only(WikiPage.id, WikiPage.path, WikiPage.title))
+        .where(WikiPage.wiki_space_id == space_id, WikiPage.id.in_(ids_in_order))
+    )
+    rows = list((await db.execute(stmt)).scalars().all())
+    by_id = {str(p.id): p for p in rows}
+    out: list[tuple[str, str, str]] = []
+    for pid in ids_in_order:
+        p = by_id.get(pid)
+        if p:
+            out.append((str(p.id), p.path, p.title))
+    return out
+
+
 async def make_wiki_tools(
     db: AsyncSession, space_id: str, jwt_payload: dict[str, Any]
 ) -> tuple[list[StructuredTool], bool]:
@@ -87,8 +114,66 @@ async def make_wiki_tools(
         lines = [f"- `{p.path}` — {p.title} (page id: `{p.id}`)" for p in pages]
         return "Pages in this wiki space:\n" + "\n".join(lines)
 
+    class _SearchWiki(BaseModel):
+        query: str = Field(
+            min_length=2,
+            max_length=2000,
+            description="Topic or keywords; matches title/path substring first, then embedding similarity when indexed.",
+        )
+        max_results: int = Field(
+            default=15,
+            ge=1,
+            le=50,
+            description="Max pages to return per phase (string matches or semantic matches).",
+        )
+
+    async def search_wiki_pages(query: str, max_results: int = 15) -> str:
+        if not await _wiki_space_readable(db, space_id, jwt_payload):
+            return "Error: wiki space not found or not accessible."
+        ws = await db.get(WikiSpace, space_id)
+        if not ws:
+            return "Error: wiki space not found or not accessible."
+        q = query.strip()
+        if len(q) < 2:
+            return "Error: query must be at least 2 characters."
+        mr = max(1, min(50, int(max_results)))
+
+        string_ids = await wiki_pages_string_match_ids(db, space_id, q, limit=mr)
+        if string_ids:
+            labels = await _page_labels_by_ids_in_order(db, space_id, string_ids)
+            lines = [f"- `{path}` — {title} (page id: `{pid}`)" for pid, path, title in labels]
+            return "**String matches** (title or path contains the query):\n" + "\n".join(lines)
+
+        if not await wiki_space_has_any_embedding(db, space_id):
+            return (
+                "No title/path substring matches for this query, and the space has **no semantic index** yet "
+                "(no page embeddings). A maintainer can run **Build semantic index** in wiki space settings, "
+                "or use `list_wiki_pages` for the full catalog."
+            )
+
+        rows, skipped = await semantic_match_pages(db, ws, q, top_k=mr)
+        if skipped:
+            return (
+                "Semantic search failed or is unavailable (embedding model or provider issue). "
+                "Use `list_wiki_pages` to browse by path and title."
+            )
+        if not rows:
+            return (
+                "No pages matched semantically above this space's similarity threshold. "
+                "Try different wording, lower the threshold in space settings, or use `list_wiki_pages`."
+            )
+
+        ids_in_order = [pid for pid, _sim in rows]
+        labels = await _page_labels_by_ids_in_order(db, space_id, ids_in_order)
+        sim_by_id = dict(rows)
+        lines = [
+            f"- `{path}` — {title} (page id: `{pid}`, similarity **{sim_by_id.get(pid, 0.0):.3f}**)"
+            for pid, path, title in labels
+        ]
+        return "**Semantic matches** (by embedding similarity):\n" + "\n".join(lines)
+
     class _GetPage(BaseModel):
-        page_id: str = Field(description="Wiki page id from list_wiki_pages")
+        page_id: str = Field(description="Wiki page id from `list_wiki_pages` or `search_wiki_pages`.")
 
     async def get_wiki_page(page_id: str) -> str:
         if not await _wiki_space_readable(db, space_id, jwt_payload):
@@ -122,7 +207,7 @@ async def make_wiki_tools(
 
     class _UpsertPage(BaseModel):
         page_path: str = Field(
-            description="Wiki page path, e.g. `topics/my-topic` or `wiki/pages/ingest-foo` — from list_wiki_pages or a new path the user approved (no leading slash).",
+            description="Wiki page path, e.g. `topics/my-topic` or `wiki/pages/ingest-foo` — from list/search tools or a new path the user approved (no leading slash).",
         )
         title: str = Field(description="Page title to store.")
         body: str = Field(
@@ -177,9 +262,19 @@ async def make_wiki_tools(
         ),
         coroutine=list_wiki_pages,
     )
+    t_search = StructuredTool.from_function(
+        name="search_wiki_pages",
+        description=(
+            "Find pages by topic: **title/path substring** matches first; if none and the space has embeddings, "
+            "**semantic** similarity matches (with scores). Use before scanning the full catalog when the user asks "
+            "which page covers a subject. Then call `get_wiki_page` for bodies."
+        ),
+        coroutine=search_wiki_pages,
+        args_schema=_SearchWiki,
+    )
     t2 = StructuredTool.from_function(
         name="get_wiki_page",
-        description="Load markdown body of a page by `page_id` (uuid from list_wiki_pages).",
+        description="Load markdown body of a page by `page_id` (uuid from `list_wiki_pages` or `search_wiki_pages`).",
         coroutine=get_wiki_page,
         args_schema=_GetPage,
     )
@@ -188,7 +283,7 @@ async def make_wiki_tools(
         description="List channel documents linked to this wiki space (ids for cross-reference; body not loaded here).",
         coroutine=list_linked_channel_documents,
     )
-    tools: list[StructuredTool] = [t1, t2, t3]
+    tools: list[StructuredTool] = [t1, t_search, t2, t3]
     if can_write:
         t4 = StructuredTool.from_function(
             name="upsert_wiki_page",
