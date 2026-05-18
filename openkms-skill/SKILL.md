@@ -3,11 +3,11 @@ name: openkms
 description: >-
   Operates and queries an openKMS deployment over its HTTP API using a personal API key.
   Read paths: global search across documents/articles/wiki/KBs; list & fetch markdown for
-  documents and articles; list & get wiki pages by path; list wiki space stored files (vault .md, assets, uploads) and linked
+  documents and articles; list & get wiki pages by path; **wiki page substring/semantic search**; list wiki space stored files (vault .md, assets, uploads) and linked
   channel documents; KB semantic search and grounded
   Q&A; list glossaries and terms, export/import term payloads; knowledge map taxonomy tree and resource links; document lineage (relationships)
-  and policy lifecycle fields; article↔article relationship list/create/delete; run Cypher (or natural-language questions) against the ontology graph; list
-  evaluation datasets, items, and runs. Write paths: create channels, upload documents,
+  and policy lifecycle fields; article↔article relationship list/create/delete; list evaluations, items, and runs (including wiki content coverage when a wiki space is linked); run Cypher (or natural-language questions) against the ontology graph.
+  Write paths: create channels, upload documents,
   create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
   wiki↔documents, create KB FAQs and evaluations, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
   lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
@@ -92,6 +92,7 @@ Some practical guidance:
 | List article lineage (outgoing + incoming edges) | `python scripts/cli.py articles relationships list --id ART_ID` |
 | Get article markdown | `python scripts/cli.py articles markdown --id ART_ID` |
 | List wiki pages in a space | `python scripts/cli.py wiki list-pages --space-id SP_ID` |
+| Search wiki pages (substring or semantic when indexed) | `python scripts/cli.py wiki pages semantic-matches --space-id SP_ID --q "onboarding" --top-k 10` |
 | List wiki space stored files (vault .md, assets, uploads; not attachments-only) | `python scripts/cli.py wiki files list --space-id SP_ID` |
 | List channel documents linked to a wiki space (UI “linked documents”) | `python scripts/cli.py wiki-spaces documents list --space-id SP_ID` |
 | Get one wiki page by Obsidian path | `python scripts/cli.py wiki get-page --space-id SP_ID --path notes/onboarding` |
@@ -150,8 +151,8 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Delete one wiki stored file by id (vault .md or any stored path; DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluations | `python scripts/cli.py evaluations list` |
-| Create evaluation | `python scripts/cli.py evaluations create --name "..." --kb-id KB_ID --yes` |
-| Trigger an evaluation run | `python scripts/cli.py evaluations run --id DS_ID --type qa_answer --yes` |
+| Create evaluation | `python scripts/cli.py evaluations create --name "…" --kb-id KB_ID --wiki-space-id SP_ID --yes` |
+| Trigger an evaluation run | `python scripts/cli.py evaluations run --id EV_ID --type qa_answer --yes` (use `--type wiki_content_coverage` when the evaluation has a linked wiki space; `expected_answer` is the checklist text for the judge) |
 | Create glossary | `python scripts/cli.py glossaries create --name "Product terms" --yes` |
 | Update / delete glossary | `python scripts/cli.py glossaries update --id GL_ID --description "…" --yes` / `glossaries delete --id GL_ID --yes` |
 | Create / update / delete term | `python scripts/cli.py glossaries terms create --glossary-id GL_ID --primary-en "MI" --primary-cn "心梗" --yes` (and `terms update` / `terms delete`) |

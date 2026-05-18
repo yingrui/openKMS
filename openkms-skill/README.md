@@ -16,7 +16,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `search` | global cross-resource (documents/articles/wiki/KB) | — |
 | `documents` | `list`, `get`, `markdown`, **`relationships list`**, **`lifecycle patch`** | `upload`, **`relationships create`**, **`relationships delete`** |
 | `articles` | `list`, `get`, `markdown`, **`relationships list`** | `create`, `from-url`, **`relationships create`**, **`relationships delete`** |
-| `wiki` | `list-pages`, `get-page`, **`files list`** (vault `.md`/assets/uploads, not attachments-only) | `put-page`, **`files delete`** (same file store; can remove stored `.md`) |
+| `wiki` | `list-pages`, `get-page`, **`pages semantic-matches`**, **`files list`** (vault `.md`/assets/uploads, not attachments-only) | `put-page`, **`files delete`** (same file store; can remove stored `.md`) |
 | `wiki-spaces` | `list`, **`documents list`** | `create`, **`documents link`**, **`documents unlink`** |
 | `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
 | `kb` | `list`, `get`, `search`, `ask` | — |

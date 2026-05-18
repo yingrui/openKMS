@@ -72,6 +72,7 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `wiki-spaces documents link` | POST | `/api/wiki-spaces/{space_id}/documents` | Body `{document_id}`. 409 if already linked. Gated. |
 | `wiki-spaces documents unlink` | DELETE | `/api/wiki-spaces/{space_id}/documents/{document_id}` | Removes link only. Gated. |
 | `wiki list-pages` | GET | `/api/wiki-spaces/{space_id}/pages` | Paginated. |
+| `wiki pages semantic-matches` | GET | `/api/wiki-spaces/{space_id}/pages/semantic-matches` | Query `q` (required), optional `top_k`, `text_match_limit`. Substring title/path first; else semantic `semantic_matched_pages` when embeddings exist. |
 | `wiki get-page` | GET | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | `path` is Obsidian-style; CLI URL-encodes with `safe=""`. |
 | `wiki put-page` | PUT | `/api/wiki-spaces/{space_id}/pages/by-path/{path}` | Body `{title, body, metadata: null}`. Upserts. |
 | `wiki files list` | GET | `/api/wiki-spaces/{space_id}/files` | All **stored files** for the space: vault imports (including **`.md`** and assets), uploads, etc. — not “attachments only”. Response `{items:[{id,filename,content_type,size_bytes,wiki_page_id,created_at}], total}`. |
@@ -168,7 +169,7 @@ Requires **`taxonomy:read`** (tree, link list) and **`taxonomy:write`** (mutatio
 | CLI | Method | Path | Notes |
 |---|---|---|---|
 | `evaluations list` | GET | `/api/evaluations` | Optional query `knowledge_base_id`. |
-| `evaluations create` | POST | `/api/evaluations` | Body `{name, knowledge_base_id, description?}`. |
+| `evaluations create` | POST | `/api/evaluations` | Body `{name, knowledge_base_id, description?, wiki_space_id?}`. Optional wiki link enables **`wiki_content_coverage`** runs. |
 | `evaluations get` | GET | `/api/evaluations/{id}` | Includes stats. |
 | `evaluations items` | GET | `/api/evaluations/{id}/items` | Paginated. Each item is `{topic, query, expected_answer}`. |
 | `evaluations run` | POST | `/api/evaluations/{id}/run` | Body optionally `{evaluation_type: "search_retrieval"\|"qa_answer"\|"wiki_content_coverage"}` (default `search_retrieval`). `wiki_content_coverage` requires a linked `wiki_space_id`. |

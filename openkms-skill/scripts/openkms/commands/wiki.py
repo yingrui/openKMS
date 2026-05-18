@@ -43,6 +43,22 @@ def cmd_get_page(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_pages_semantic_matches(ns: argparse.Namespace) -> None:
+    """GET …/pages/semantic-matches — title/path substring first; else vector similarity when indexed."""
+    params: dict[str, str | int] = {"q": ns.q}
+    if ns.top_k:
+        params["top_k"] = ns.top_k
+    if ns.text_match_limit:
+        params["text_match_limit"] = ns.text_match_limit
+    with client() as s:
+        r = s.get(
+            f"/api/wiki-spaces/{ns.space_id}/pages/semantic-matches",
+            params=params,
+        )
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_files_list(ns: argparse.Namespace) -> None:
     with client() as s:
         r = s.get(f"/api/wiki-spaces/{ns.space_id}/files")
@@ -88,6 +104,29 @@ def add_subparser(sub) -> None:
     gp.add_argument("--space-id", required=True)
     gp.add_argument("--path", required=True, help="Obsidian-style path, e.g. notes/hello")
     gp.set_defaults(fn=cmd_get_page)
+
+    pg = sp.add_parser(
+        "pages",
+        help="Wiki page helpers (semantic discovery in a space)",
+    )
+    pgs = pg.add_subparsers(dest="wiki_pages_cmd", required=True)
+    sm = pgs.add_parser(
+        "semantic-matches",
+        help=(
+            "Search pages by query: title/path substring first; if none, semantic matches "
+            "(requires space semantic index in app)"
+        ),
+    )
+    sm.add_argument("--space-id", required=True)
+    sm.add_argument("--q", required=True, help="search query (1–4000 chars)")
+    sm.add_argument("--top-k", type=int, default=0, help="optional cap on semantic results (1–100)")
+    sm.add_argument(
+        "--text-match-limit",
+        type=int,
+        default=0,
+        help="max pages for substring pass (1–500; default from server)",
+    )
+    sm.set_defaults(fn=cmd_pages_semantic_matches)
 
     wf = sp.add_parser(
         "files",

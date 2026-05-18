@@ -23,6 +23,9 @@ def cmd_ds_create(ns: argparse.Namespace) -> None:
     body: dict[str, Any] = {"name": ns.name, "knowledge_base_id": ns.kb_id}
     if ns.description:
         body["description"] = ns.description
+    ws = (getattr(ns, "wiki_space_id", None) or "").strip()
+    if ws:
+        body["wiki_space_id"] = ws
     confirm_or_abort(
         "create evaluation",
         "POST",
@@ -102,7 +105,10 @@ def cmd_runs_compare(ns: argparse.Namespace) -> None:
 
 
 def add_subparser(sub) -> None:
-    ds = sub.add_parser("evaluations", help="Evaluations (KB QA)")
+    ds = sub.add_parser(
+        "evaluations",
+        help="Evaluations (KB search/QA + optional wiki content coverage)",
+    )
     ds_sub = ds.add_subparsers(dest="ev_cmd", required=True)
 
     ls = ds_sub.add_parser("list", help="List evaluations")
@@ -112,6 +118,11 @@ def add_subparser(sub) -> None:
     cr = ds_sub.add_parser("create", help="Create evaluation")
     cr.add_argument("--name", required=True)
     cr.add_argument("--kb-id", required=True)
+    cr.add_argument(
+        "--wiki-space-id",
+        default="",
+        help="optional wiki space id (required on server for wiki_content_coverage runs)",
+    )
     cr.add_argument("--description", default="")
     add_write_flags(cr)
     cr.set_defaults(fn=cmd_ds_create)
@@ -132,7 +143,10 @@ def add_subparser(sub) -> None:
         "--type",
         default="",
         choices=["", "search_retrieval", "qa_answer", "wiki_content_coverage"],
-        help="evaluation_type; default search_retrieval",
+        help=(
+            "evaluation_type: search_retrieval (default), qa_answer, or wiki_content_coverage "
+            "(wiki coverage needs evaluations linked to a wiki space via create --wiki-space-id or UI)"
+        ),
     )
     add_write_flags(rn)
     rn.set_defaults(fn=cmd_ds_run)

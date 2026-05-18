@@ -15,6 +15,7 @@ def test_ds_create_posts_body(mock_api):
         argparse.Namespace(
             name="Smoke DS",
             kb_id="kb1",
+            wiki_space_id="",
             description="d",
             yes=True,
             dry_run=False,
@@ -62,6 +63,21 @@ def test_ds_run_default_type(mock_api):
     assert req.content in (b"", b"null")
 
 
+def test_ds_run_wiki_content_coverage(mock_api):
+    recorded, _ = mock_api
+
+    from openkms.commands.evaluation import cmd_ds_run
+
+    cmd_ds_run(
+        argparse.Namespace(
+            id="ds1", type="wiki_content_coverage", yes=True, dry_run=False
+        )
+    )
+    assert json.loads(recorded[-1].content) == {
+        "evaluation_type": "wiki_content_coverage",
+    }
+
+
 def test_runs_compare(mock_api):
     recorded, _ = mock_api
 
@@ -72,3 +88,26 @@ def test_runs_compare(mock_api):
     assert req.url.path == "/api/evaluations/ds1/runs/compare"
     assert req.url.params["run_a"] == "ra"
     assert req.url.params["run_b"] == "rb"
+
+
+def test_ds_create_with_wiki_space_id(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/evaluations")] = (200, {"id": "ev-w"})
+
+    from openkms.commands.evaluation import cmd_ds_create
+
+    cmd_ds_create(
+        argparse.Namespace(
+            name="W",
+            kb_id="kb1",
+            wiki_space_id="ws9",
+            description="",
+            yes=True,
+            dry_run=False,
+        )
+    )
+    assert json.loads(recorded[-1].content) == {
+        "name": "W",
+        "knowledge_base_id": "kb1",
+        "wiki_space_id": "ws9",
+    }
