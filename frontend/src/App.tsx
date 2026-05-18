@@ -40,6 +40,7 @@ import { ConsoleGroupDataAccess } from './pages/console/ConsoleGroupDataAccess';
 import { ConsoleDataResources } from './pages/console/ConsoleDataResources';
 import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/evaluation/EvaluationDatasetDetail';
+import { EvaluationDatasetSettings } from './pages/evaluation/EvaluationDatasetSettings';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -152,6 +153,7 @@ function App() {
           <Route path="wikis/:id/settings" element={<FeatureGate feature="wikiSpaces"><WikiSpaceSettings /></FeatureGate>} />
           <Route path="wikis/:id" element={<FeatureGate feature="wikiSpaces"><WikiSpaceRootToGraph /></FeatureGate>} />
           <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />
+          <Route path="evaluation-datasets/:id/settings" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetSettings /></FeatureGate>} />
           <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />

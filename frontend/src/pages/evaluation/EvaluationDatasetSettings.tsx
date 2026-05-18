@@ -1,0 +1,193 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  fetchEvaluationDataset,
+  updateEvaluationDataset,
+  deleteEvaluationDataset,
+  type EvaluationDatasetResponse,
+} from '../../data/evaluationDatasetsApi';
+import '../documents/DocumentChannelSettings.css';
+import './EvaluationDatasetDetail.css';
+import './EvaluationDatasetSettings.css';
+
+export function EvaluationDatasetSettings() {
+  const { t } = useTranslation('workspace');
+  const navigate = useNavigate();
+  const { id: datasetId = '' } = useParams<{ id: string }>();
+
+  const [dataset, setDataset] = useState<EvaluationDatasetResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [nameField, setNameField] = useState('');
+  const [descriptionField, setDescriptionField] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!datasetId) return;
+    setLoading(true);
+    try {
+      const data = await fetchEvaluationDataset(datasetId);
+      setDataset(data);
+      setNameField(data.name);
+      setDescriptionField(data.description ?? '');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('evaluationSettings.loadFailed'));
+      setDataset(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [datasetId, t]);
+
+  useEffect(() => {
+    if (!datasetId) {
+      navigate('/evaluation-datasets');
+      return;
+    }
+    void load();
+  }, [datasetId, load, navigate]);
+
+  const handleSave = async () => {
+    if (!datasetId || !dataset) return;
+    const name = nameField.trim();
+    if (!name) {
+      toast.error(t('evaluationSettings.nameRequired'));
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateEvaluationDataset(datasetId, {
+        name,
+        description: descriptionField.trim() || null,
+      });
+      setDataset(updated);
+      toast.success(t('evaluation.updatedToast'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('evaluation.updateFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!dataset) return;
+    if (!window.confirm(t('evaluation.deleteConfirm', { name: dataset.name }))) return;
+    setDeleting(true);
+    try {
+      await deleteEvaluationDataset(dataset.id);
+      toast.success(t('evaluation.deletedToast'));
+      navigate('/evaluation-datasets');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('evaluationSettings.deleteFailed'));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (!datasetId) return null;
+
+  if (loading) {
+    return (
+      <div className="eval-dataset-settings document-channel-settings">
+        <p className="page-subtitle">{t('evaluationSettings.loading')}</p>
+      </div>
+    );
+  }
+
+  if (!dataset) {
+    return (
+      <div className="eval-dataset-settings document-channel-settings">
+        <Link to="/evaluation-datasets" className="document-channel-settings-back">
+          <ArrowLeft size={18} />
+          <span>{t('evaluationDetail.back')}</span>
+        </Link>
+        <div className="page-header">
+          <h1>{t('evaluationSettings.notFoundTitle')}</h1>
+          <p className="page-subtitle">{t('evaluationSettings.notFoundSubtitle')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const kbLabel = dataset.knowledge_base_name || dataset.knowledge_base_id;
+
+  return (
+    <div className="eval-dataset-settings">
+      <div className="eval-detail-header">
+        <Link to={`/evaluation-datasets/${datasetId}`} className="eval-back">
+          <ArrowLeft size={18} />
+          <span>{t('evaluationSettings.backToDataset')}</span>
+        </Link>
+        <div className="eval-detail-title-row">
+          <h1>{t('evaluationSettings.pageTitle')}</h1>
+        </div>
+        <p className="eval-detail-desc">{t('evaluationSettings.configureSubtitle', { name: dataset.name })}</p>
+      </div>
+
+      <div className="document-channel-settings-form">
+        <section className="document-channel-settings-section">
+          <h2>{t('evaluationSettings.general')}</h2>
+          <p className="document-channel-settings-hint">{t('evaluationSettings.generalHint')}</p>
+          <div className="document-channel-settings-field">
+            <label htmlFor="eval-settings-name">{t('shared.name')}</label>
+            <input
+              id="eval-settings-name"
+              type="text"
+              value={nameField}
+              onChange={(e) => setNameField(e.target.value)}
+              placeholder={t('evaluation.namePlaceholder')}
+            />
+          </div>
+          <div className="document-channel-settings-field">
+            <label htmlFor="eval-settings-description">{t('shared.description')}</label>
+            <textarea
+              id="eval-settings-description"
+              value={descriptionField}
+              onChange={(e) => setDescriptionField(e.target.value)}
+              placeholder={t('evaluation.descPlaceholder')}
+              rows={3}
+            />
+          </div>
+        </section>
+
+        <section className="document-channel-settings-section">
+          <h2>{t('evaluationSettings.knowledgeBase')}</h2>
+          <p className="document-channel-settings-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
+          <div className="document-channel-settings-field">
+            <span className="eval-dataset-settings-kb-value">{kbLabel}</span>
+            <Link
+              to={`/knowledge-bases/${dataset.knowledge_base_id}`}
+              className="eval-dataset-settings-kb-link"
+            >
+              {t('evaluationSettings.openKnowledgeBase')}
+            </Link>
+          </div>
+          <p className="document-channel-settings-hint eval-dataset-settings-kb-note">
+            {t('evaluationSettings.knowledgeBaseNote')}
+          </p>
+        </section>
+
+        <div className="document-channel-settings-actions">
+          <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+            {saving ? t('evaluation.saving') : t('shared.save')}
+          </button>
+        </div>
+      </div>
+
+      <section className="eval-dataset-settings-danger document-channel-settings-form">
+        <h2>{t('evaluationSettings.dangerZone')}</h2>
+        <p className="document-channel-settings-hint">{t('evaluationSettings.dangerHint')}</p>
+        <button
+          type="button"
+          className="btn eval-dataset-settings-delete"
+          onClick={() => void handleDelete()}
+          disabled={deleting}
+        >
+          {deleting ? t('evaluationSettings.deleting') : t('evaluationSettings.deleteDataset')}
+        </button>
+      </section>
+    </div>
+  );
+}

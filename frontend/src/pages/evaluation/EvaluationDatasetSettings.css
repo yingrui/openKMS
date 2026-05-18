@@ -1,0 +1,47 @@
+.eval-dataset-settings {
+  width: 100%;
+  max-width: 900px;
+}
+
+.eval-dataset-settings-kb-value {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.eval-dataset-settings-kb-link {
+  font-size: 0.9375rem;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.eval-dataset-settings-kb-link:hover {
+  text-decoration: underline;
+}
+
+.eval-dataset-settings-kb-note {
+  margin-top: 12px;
+}
+
+.eval-dataset-settings-danger {
+  margin-top: 24px;
+  border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
+}
+
+.eval-dataset-settings-danger h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: var(--color-error);
+}
+
+.eval-dataset-settings-delete {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid color-mix(in srgb, var(--color-error) 50%, var(--color-border));
+}
+
+.eval-dataset-settings-delete:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
