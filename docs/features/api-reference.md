@@ -157,16 +157,16 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/evaluation-datasets` | List evaluation datasets (optional ?knowledge_base_id=) |
-| POST | `/api/evaluation-datasets` | Create evaluation dataset |
+| POST | `/api/evaluation-datasets` | Create evaluation dataset (body: `name`, `knowledge_base_id`, optional `wiki_space_id`, optional `description`) |
 | GET | `/api/evaluation-datasets/{id}` | Get evaluation dataset |
-| PUT | `/api/evaluation-datasets/{id}` | Update evaluation dataset |
+| PUT | `/api/evaluation-datasets/{id}` | Update evaluation dataset (`name`, `description`, optional `wiki_space_id` to link or clear) |
 | DELETE | `/api/evaluation-datasets/{id}` | Delete evaluation dataset |
 | GET | `/api/evaluation-datasets/{id}/items` | List evaluation items (`offset`, `limit` default 10 max 200; response `{ items, total }`) |
-| POST | `/api/evaluation-datasets/{id}/items` | Add evaluation item |
+| POST | `/api/evaluation-datasets/{id}/items` | Add evaluation item (`query`, `expected_answer`, optional `topic`, optional `sort_order`) |
 | POST | `/api/evaluation-datasets/{id}/items/import` | Import items from CSV (multipart file; columns: topic, query, answer or expected_answer) |
 | PUT | `/api/evaluation-datasets/{id}/items/{item_id}` | Update evaluation item |
 | DELETE | `/api/evaluation-datasets/{id}/items/{item_id}` | Delete evaluation item |
-| POST | `/api/evaluation-datasets/{id}/run` | Run evaluation; body `{ evaluation_type?: "search_retrieval" \| "qa_answer" }`; persists run + per-item results |
+| POST | `/api/evaluation-datasets/{id}/run` | Run evaluation; body `{ evaluation_type?: "search_retrieval" \| "qa_answer" \| "wiki_content_coverage" }`; **`wiki_content_coverage`** requires dataset `wiki_space_id`; persists run + per-item results |
 | GET | `/api/evaluation-datasets/{id}/runs` | List saved runs (`offset`, `limit`) |
 | GET | `/api/evaluation-datasets/{id}/runs/{run_id}` | Full run with item results |
 | DELETE | `/api/evaluation-datasets/{id}/runs/{run_id}` | Remove a saved run (cascades `evaluation_run_items`) |

@@ -84,8 +84,8 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### EvaluationDataset
 
-- `id`, `name`, `knowledge_base_id` (FK → knowledge_bases), `description`, `created_at`, `updated_at`
-- Container for query + expected answer pairs to evaluate KB QA performance
+- `id`, `name`, `knowledge_base_id` (FK → knowledge_bases), optional `wiki_space_id` (FK → wiki_spaces, `ON DELETE SET NULL`), `description`, `created_at`, `updated_at`
+- Container for query + expected answer pairs; optional wiki space for wiki-side evaluation runs
 
 ### EvaluationDatasetItem
 
@@ -94,12 +94,12 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### EvaluationRun
 
-- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `knowledge_base_id`, `evaluation_type` (`search_retrieval` \| `qa_answer`), `status`, `error_message`, `item_count`, `pass_count`, `avg_score`, `config_snapshot` (JSONB), `created_at`, `finished_at`
-- One persisted evaluation execution (report); config snapshot records judge model and search params used
+- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `knowledge_base_id`, `evaluation_type` (`search_retrieval` \| `qa_answer` \| `wiki_content_coverage`), `status`, `error_message`, `item_count`, `pass_count`, `avg_score`, `config_snapshot` (JSONB), `created_at`, `finished_at`
+- One persisted evaluation execution (report); `config_snapshot` records judge model and, for KB search, search params; for **`wiki_content_coverage`**, wiki space id and wiki semantic settings (`semantic_match_top_k`, `semantic_similarity_threshold`)
 
 ### EvaluationRunItem
 
-- `id`, `evaluation_run_id` (FK → evaluation_runs, CASCADE), `evaluation_dataset_item_id` (FK → evaluation_dataset_items, CASCADE), `passed`, `score`, `reasoning`, `detail` (JSONB: search snippets or QA answer + sources)
+- `id`, `evaluation_run_id` (FK → evaluation_runs, CASCADE), `evaluation_dataset_item_id` (FK → evaluation_dataset_items, CASCADE), `passed`, `score`, `reasoning`, `detail` (JSONB: search snippets, QA answer + sources, or wiki judge snippets / recall metadata)
 - Per-item outcome for a run
 
 ## Glossaries

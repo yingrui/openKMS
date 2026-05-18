@@ -7,6 +7,8 @@ export interface EvaluationDatasetResponse {
   name: string;
   knowledge_base_id: string;
   knowledge_base_name?: string | null;
+  wiki_space_id?: string | null;
+  wiki_space_name?: string | null;
   description?: string | null;
   item_count: number;
   created_at: string;
@@ -125,6 +127,7 @@ export async function fetchEvaluationDataset(id: string): Promise<EvaluationData
 export async function createEvaluationDataset(data: {
   name: string;
   knowledge_base_id: string;
+  wiki_space_id?: string | null;
   description?: string | null;
 }): Promise<EvaluationDatasetResponse> {
   const headers = await getAuthHeaders();
@@ -143,7 +146,7 @@ export async function createEvaluationDataset(data: {
 
 export async function updateEvaluationDataset(
   id: string,
-  data: { name?: string; description?: string | null }
+  data: { name?: string; description?: string | null; wiki_space_id?: string | null }
 ): Promise<EvaluationDatasetResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
@@ -188,7 +191,12 @@ export async function fetchEvaluationDatasetItems(
 
 export async function createEvaluationDatasetItem(
   datasetId: string,
-  data: { query: string; expected_answer: string; topic?: string | null; sort_order?: number }
+  data: {
+    query: string;
+    expected_answer: string;
+    topic?: string | null;
+    sort_order?: number;
+  }
 ): Promise<EvaluationDatasetItemResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items`, {
@@ -207,7 +215,12 @@ export async function createEvaluationDatasetItem(
 export async function updateEvaluationDatasetItem(
   datasetId: string,
   itemId: string,
-  data: { query?: string; expected_answer?: string; topic?: string | null; sort_order?: number }
+  data: {
+    query?: string;
+    expected_answer?: string;
+    topic?: string | null;
+    sort_order?: number;
+  }
 ): Promise<EvaluationDatasetItemResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(

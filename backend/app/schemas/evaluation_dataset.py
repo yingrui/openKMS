@@ -10,12 +10,14 @@ from pydantic import BaseModel, Field
 class EvaluationDatasetCreate(BaseModel):
     name: str
     knowledge_base_id: str
+    wiki_space_id: str | None = None
     description: str | None = None
 
 
 class EvaluationDatasetUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    wiki_space_id: str | None = None
 
 
 class EvaluationDatasetResponse(BaseModel):
@@ -23,6 +25,8 @@ class EvaluationDatasetResponse(BaseModel):
     name: str
     knowledge_base_id: str
     knowledge_base_name: str | None = None
+    wiki_space_id: str | None = None
+    wiki_space_name: str | None = None
     description: str | None = None
     item_count: int = 0
     created_at: datetime

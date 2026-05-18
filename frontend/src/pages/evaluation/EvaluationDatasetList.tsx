@@ -11,25 +11,33 @@ import {
   type EvaluationDatasetResponse,
 } from '../../data/evaluationDatasetsApi';
 import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
+import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import './EvaluationDatasetList.css';
 
 export function EvaluationDatasetList() {
   const { t } = useTranslation('workspace');
   const [datasets, setDatasets] = useState<EvaluationDatasetResponse[]>([]);
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
+  const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editDs, setEditDs] = useState<EvaluationDatasetResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formKbId, setFormKbId] = useState('');
+  const [formWikiSpaceId, setFormWikiSpaceId] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     try {
-      const [dsData, kbData] = await Promise.all([fetchEvaluationDatasets(), fetchKnowledgeBases()]);
+      const [dsData, kbData, wikiData] = await Promise.all([
+        fetchEvaluationDatasets(),
+        fetchKnowledgeBases(),
+        fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
+      ]);
       setDatasets(dsData.items);
       setKbs(kbData.items);
+      setWikiSpaces(wikiData.items ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluation.loadFailed'));
     } finally {
@@ -48,11 +56,13 @@ export function EvaluationDatasetList() {
       await createEvaluationDataset({
         name: formName.trim(),
         knowledge_base_id: formKbId,
+        wiki_space_id: formWikiSpaceId.trim() || null,
         description: formDesc.trim() || undefined,
       });
       setShowCreate(false);
       setFormName('');
       setFormKbId('');
+      setFormWikiSpaceId('');
       setFormDesc('');
       toast.success(t('evaluation.createdToast'));
       void load();
@@ -109,6 +119,7 @@ export function EvaluationDatasetList() {
     setEditDs(null);
     setFormName('');
     setFormKbId('');
+    setFormWikiSpaceId('');
     setFormDesc('');
   };
 
@@ -126,6 +137,7 @@ export function EvaluationDatasetList() {
             setShowCreate(true);
             setFormName('');
             setFormKbId(kbs[0]?.id ?? '');
+            setFormWikiSpaceId('');
             setFormDesc('');
           }}
         >
@@ -163,6 +175,7 @@ export function EvaluationDatasetList() {
             <p className="eval-desc">{ds.description || t('evaluation.noDescription')}</p>
             <div className="eval-meta">
               <span>{ds.knowledge_base_name || ds.knowledge_base_id}</span>
+              {ds.wiki_space_name ? <span>{ds.wiki_space_name}</span> : null}
               <span>{t('evaluation.itemsCount', { count: ds.item_count })}</span>
             </div>
           </Link>
@@ -197,6 +210,22 @@ export function EvaluationDatasetList() {
                     {kbs.map((kb) => (
                       <option key={kb.id} value={kb.id}>
                         {kb.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {showCreate && (
+                <label>
+                  <span>{t('evaluation.wikiSpaceOptional')}</span>
+                  <select
+                    value={formWikiSpaceId}
+                    onChange={(e) => setFormWikiSpaceId(e.target.value)}
+                  >
+                    <option value="">{t('evaluation.noWikiSpace')}</option>
+                    {wikiSpaces.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
                       </option>
                     ))}
                   </select>

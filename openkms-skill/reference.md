@@ -171,7 +171,7 @@ Requires **`taxonomy:read`** (tree, link list) and **`taxonomy:write`** (mutatio
 | `evaluation-datasets create` | POST | `/api/evaluation-datasets` | Body `{name, knowledge_base_id, description?}`. |
 | `evaluation-datasets get` | GET | `/api/evaluation-datasets/{id}` | Includes stats. |
 | `evaluation-datasets items` | GET | `/api/evaluation-datasets/{id}/items` | Paginated. Each item is `{topic, query, expected_answer}`. |
-| `evaluation-datasets run` | POST | `/api/evaluation-datasets/{id}/run` | Body optionally `{evaluation_type: "search_retrieval"\|"qa_answer"}`; default runs both. |
+| `evaluation-datasets run` | POST | `/api/evaluation-datasets/{id}/run` | Body optionally `{evaluation_type: "search_retrieval"\|"qa_answer"\|"wiki_content_coverage"}` (default `search_retrieval`). `wiki_content_coverage` requires the dataset to have a linked `wiki_space_id`. |
 | `evaluation-runs list` | GET | `/api/evaluation-datasets/{dataset_id}/runs` | Paginated. |
 | `evaluation-runs get` | GET | `/api/evaluation-datasets/{dataset_id}/runs/{run_id}` | Full run with per-item results. |
 | `evaluation-runs compare` | GET | `/api/evaluation-datasets/{dataset_id}/runs/compare?run_a=&run_b=` | Returns per-metric diffs between two runs. |

@@ -37,6 +37,11 @@ import {
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
+const EVAL_TYPE_WIKI_COVERAGE = 'wiki_content_coverage';
+
+function evalShowsSearchSnippets(evaluationType: string): boolean {
+  return evaluationType === EVAL_TYPE_SEARCH || evaluationType === EVAL_TYPE_WIKI_COVERAGE;
+}
 
 const DEFAULT_ITEMS_PAGE_SIZE = 10;
 
@@ -131,6 +136,16 @@ export function EvaluationDatasetDetail() {
   useEffect(() => {
     loadRuns();
   }, [loadRuns]);
+
+  useEffect(() => {
+    if (
+      dataset &&
+      evaluationType === EVAL_TYPE_WIKI_COVERAGE &&
+      !dataset.wiki_space_id
+    ) {
+      setEvaluationType(EVAL_TYPE_SEARCH);
+    }
+  }, [dataset, evaluationType]);
 
   const handleAddItem = async () => {
     if (!datasetId || !itemQuery.trim() || !itemExpected.trim()) return;
@@ -357,12 +372,19 @@ export function EvaluationDatasetDetail() {
           </div>
         </div>
         <p className="eval-detail-meta">
-          {t('evaluationDetail.metaLine', {
-            kb: dataset.knowledge_base_name || dataset.knowledge_base_id,
-            count: itemsTotal,
-          })}
+          {dataset.wiki_space_name
+            ? t('evaluationDetail.metaLineWithWiki', {
+                kb: dataset.knowledge_base_name || dataset.knowledge_base_id,
+                wiki: dataset.wiki_space_name,
+                count: itemsTotal,
+              })
+            : t('evaluationDetail.metaLine', {
+                kb: dataset.knowledge_base_name || dataset.knowledge_base_id,
+                count: itemsTotal,
+              })}
         </p>
         {dataset.description && <p className="eval-detail-desc">{dataset.description}</p>}
+        <p className="eval-import-csv-hint">{t('evaluationDetail.importCsvHint')}</p>
       </div>
 
       <div className={`eval-items-table-wrapper${itemsLoading ? ' eval-items-table-wrapper--loading' : ''}`}>
@@ -492,8 +514,14 @@ export function EvaluationDatasetDetail() {
               >
                 <option value={EVAL_TYPE_SEARCH}>{t('evaluationDetail.evalTypeSearch')}</option>
                 <option value={EVAL_TYPE_QA}>{t('evaluationDetail.evalTypeQa')}</option>
+                <option value={EVAL_TYPE_WIKI_COVERAGE} disabled={!dataset.wiki_space_id}>
+                  {t('evaluationDetail.evalTypeWikiCoverage')}
+                </option>
               </select>
             </label>
+            {!dataset.wiki_space_id ? (
+              <p className="eval-wiki-link-hint">{t('evaluationDetail.wikiEvalSettingsHint')}</p>
+            ) : null}
             <button
               type="button"
               className="btn btn-primary"
@@ -723,7 +751,7 @@ export function EvaluationDatasetDetail() {
                   <strong>{t('evaluationDetail.judgeReasoning')}</strong>
                   <p>{r.reasoning}</p>
                 </div>
-                {runView.evaluation_type === EVAL_TYPE_SEARCH && r.search_results.length > 0 && (
+                {evalShowsSearchSnippets(runView.evaluation_type) && r.search_results.length > 0 && (
                   <div className="eval-result-snippets">
                     <strong>{t('evaluationDetail.topSearchResults')}</strong>
                     <ul>

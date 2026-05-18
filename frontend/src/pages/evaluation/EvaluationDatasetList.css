@@ -137,6 +137,7 @@
 
 .eval-meta {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   font-size: 0.8125rem;
   color: var(--color-text-muted);

@@ -661,3 +661,18 @@
   border-color: var(--color-accent);
   color: var(--color-accent);
 }
+
+.eval-import-csv-hint {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  max-width: 52rem;
+}
+
+.eval-wiki-link-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  max-width: 22rem;
+  line-height: 1.35;
+}

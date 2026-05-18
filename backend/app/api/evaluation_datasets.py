@@ -14,6 +14,7 @@ from app.services.data_resource_policy import evaluation_dataset_visible
 from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
+from app.models.wiki_models import WikiSpace
 from app.schemas.evaluation_dataset import (
     EvaluationCompareResponse,
     EvaluationCompareRow,
@@ -36,10 +37,13 @@ from app.services.evaluation.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
     EVALUATION_TYPE_SEARCH_RETRIEVAL,
+    EVALUATION_TYPE_WIKI_CONTENT_COVERAGE,
+    EVALUATION_TYPES_WITH_SEARCH_SNIPPETS,
     resolve_judge_config,
     run_qa_answer_evaluation,
     run_search_retrieval_evaluation,
 )
+from app.services.evaluation.wiki_execute import run_wiki_content_coverage_evaluation
 
 router = APIRouter(
     prefix="/evaluation-datasets",
@@ -72,13 +76,18 @@ async def _item_count(db: AsyncSession, dataset_id: str) -> int:
 
 
 def _dataset_to_response(
-    ds: EvaluationDataset, kb_name: str | None, item_count: int
+    ds: EvaluationDataset,
+    kb_name: str | None,
+    wiki_name: str | None,
+    item_count: int,
 ) -> EvaluationDatasetResponse:
     return EvaluationDatasetResponse(
         id=ds.id,
         name=ds.name,
         knowledge_base_id=ds.knowledge_base_id,
         knowledge_base_name=kb_name,
+        wiki_space_id=ds.wiki_space_id,
+        wiki_space_name=wiki_name,
         description=ds.description,
         item_count=item_count,
         created_at=ds.created_at,
@@ -109,12 +118,13 @@ def _result_dicts_to_schemas(evaluation_type: str, rows: list[dict]) -> list[Eva
         detail = r.get("detail") or {}
         srs = [_snippet_model_from_dict(s) for s in (detail.get("search_results") or [])]
         qas = [_snippet_model_from_dict(s) for s in (detail.get("sources") or [])]
+        show_search = evaluation_type in EVALUATION_TYPES_WITH_SEARCH_SNIPPETS
         out.append(
             EvaluationRunResult(
                 item_id=r["evaluation_dataset_item_id"],
                 query=r["query"],
                 expected_answer=r["expected_answer"],
-                search_results=srs if evaluation_type == EVALUATION_TYPE_SEARCH_RETRIEVAL else [],
+                search_results=srs if show_search else [],
                 generated_answer=detail.get("answer") if evaluation_type == EVALUATION_TYPE_QA_ANSWER else None,
                 qa_sources=qas if evaluation_type == EVALUATION_TYPE_QA_ANSWER else [],
                 pass_=bool(r.get("passed")),
@@ -131,11 +141,12 @@ def _run_item_to_result(
     detail = ri.detail or {}
     srs = [_snippet_model_from_dict(s) for s in (detail.get("search_results") or [])]
     qas = [_snippet_model_from_dict(s) for s in (detail.get("sources") or [])]
+    show_search = evaluation_type in EVALUATION_TYPES_WITH_SEARCH_SNIPPETS
     return EvaluationRunResult(
         item_id=item.id,
         query=item.query,
         expected_answer=item.expected_answer,
-        search_results=srs if evaluation_type == EVALUATION_TYPE_SEARCH_RETRIEVAL else [],
+        search_results=srs if show_search else [],
         generated_answer=detail.get("answer") if evaluation_type == EVALUATION_TYPE_QA_ANSWER else None,
         qa_sources=qas if evaluation_type == EVALUATION_TYPE_QA_ANSWER else [],
         pass_=ri.passed,
@@ -221,8 +232,11 @@ async def list_evaluation_datasets(
     items = []
     for ds in datasets:
         kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
+        wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
         count = await _item_count(db, ds.id)
-        items.append(_dataset_to_response(ds, kb.name if kb else None, count))
+        items.append(
+            _dataset_to_response(ds, kb.name if kb else None, wiki.name if wiki else None, count)
+        )
     return EvaluationDatasetListResponse(items=items, total=len(items))
 
 
@@ -234,16 +248,23 @@ async def create_evaluation_dataset(
     kb = await db.get(KnowledgeBase, body.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
+    wiki_name = None
+    if body.wiki_space_id:
+        ws = await db.get(WikiSpace, body.wiki_space_id)
+        if not ws:
+            raise HTTPException(status_code=404, detail="Wiki space not found")
+        wiki_name = ws.name
     ds = EvaluationDataset(
         id=str(uuid.uuid4()),
         name=body.name,
         knowledge_base_id=body.knowledge_base_id,
+        wiki_space_id=body.wiki_space_id,
         description=body.description,
     )
     db.add(ds)
     await db.flush()
     await db.refresh(ds)
-    return _dataset_to_response(ds, kb.name, 0)
+    return _dataset_to_response(ds, kb.name, wiki_name, 0)
 
 
 @router.get("/{dataset_id}", response_model=EvaluationDatasetResponse)
@@ -254,7 +275,8 @@ async def get_evaluation_dataset(
 ):
     kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
     count = await _item_count(db, ds.id)
-    return _dataset_to_response(ds, kb.name if kb else None, count)
+    wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
+    return _dataset_to_response(ds, kb.name if kb else None, wiki.name if wiki else None, count)
 
 
 @router.put("/{dataset_id}", response_model=EvaluationDatasetResponse)
@@ -264,13 +286,24 @@ async def update_evaluation_dataset(
     ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(ds, field, value)
+    data = body.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        if field == "wiki_space_id":
+            if value in (None, ""):
+                ds.wiki_space_id = None
+            else:
+                ws = await db.get(WikiSpace, value)
+                if not ws:
+                    raise HTTPException(status_code=404, detail="Wiki space not found")
+                ds.wiki_space_id = value
+        else:
+            setattr(ds, field, value)
     await db.flush()
     await db.refresh(ds)
     kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
     count = await _item_count(db, ds.id)
-    return _dataset_to_response(ds, kb.name if kb else None, count)
+    wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
+    return _dataset_to_response(ds, kb.name if kb else None, wiki.name if wiki else None, count)
 
 
 @router.delete("/{dataset_id}", status_code=204)
@@ -606,21 +639,47 @@ async def run_evaluation(
             detail="No embedding model configured for this knowledge base. Configure it in KB Settings.",
         )
 
+    if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
+        if not ds.wiki_space_id:
+            raise HTTPException(
+                status_code=400,
+                detail="This evaluation type requires a linked wiki space. Set it in dataset settings.",
+            )
+
     judge_model_id, judge_config = await resolve_judge_config(db, kb)
-    config_snapshot = {
-        "judge_model_id": judge_model_id,
-        "top_k": 10,
-        "search_type": "all",
-    }
+
+    wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
+    if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
+        config_snapshot = {
+            "judge_model_id": judge_model_id,
+            "wiki_space_id": ds.wiki_space_id,
+            "semantic_match_top_k": wiki.semantic_match_top_k if wiki else None,
+            "semantic_similarity_threshold": wiki.semantic_similarity_threshold if wiki else None,
+        }
+    else:
+        config_snapshot = {
+            "judge_model_id": judge_model_id,
+            "top_k": 10,
+            "search_type": "all",
+        }
 
     try:
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
                 db, ds.knowledge_base_id, dataset_id, judge_config
             )
-        else:
+        elif eval_type == EVALUATION_TYPE_QA_ANSWER:
             item_rows = await run_qa_answer_evaluation(
                 db, kb, dataset_id, judge_config, token
+            )
+        elif eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
+            item_rows = await run_wiki_content_coverage_evaluation(
+                db, ds.wiki_space_id, dataset_id, judge_config
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unhandled evaluation type: {eval_type}",
             )
     except HTTPException:
         raise

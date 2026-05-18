@@ -9,6 +9,7 @@ import {
   deleteEvaluationDataset,
   type EvaluationDatasetResponse,
 } from '../../data/evaluationDatasetsApi';
+import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import '../documents/DocumentChannelSettings.css';
 import './EvaluationDatasetDetail.css';
 import './EvaluationDatasetSettings.css';
@@ -24,15 +25,22 @@ export function EvaluationDatasetSettings() {
   const [descriptionField, setDescriptionField] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
+  const [wikiSpaceIdField, setWikiSpaceIdField] = useState('');
 
   const load = useCallback(async () => {
     if (!datasetId) return;
     setLoading(true);
     try {
-      const data = await fetchEvaluationDataset(datasetId);
+      const [data, wikiList] = await Promise.all([
+        fetchEvaluationDataset(datasetId),
+        fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
+      ]);
       setDataset(data);
       setNameField(data.name);
       setDescriptionField(data.description ?? '');
+      setWikiSpaceIdField(data.wiki_space_id ?? '');
+      setWikiSpaces(wikiList.items ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationSettings.loadFailed'));
       setDataset(null);
@@ -61,8 +69,10 @@ export function EvaluationDatasetSettings() {
       const updated = await updateEvaluationDataset(datasetId, {
         name,
         description: descriptionField.trim() || null,
+        wiki_space_id: wikiSpaceIdField.trim() || null,
       });
       setDataset(updated);
+      setWikiSpaceIdField(updated.wiki_space_id ?? '');
       toast.success(t('evaluation.updatedToast'));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluation.updateFailed'));
@@ -150,6 +160,35 @@ export function EvaluationDatasetSettings() {
               rows={3}
             />
           </div>
+        </section>
+
+        <section className="document-channel-settings-section">
+          <h2>{t('evaluationSettings.wikiSpace')}</h2>
+          <p className="document-channel-settings-hint">{t('evaluationSettings.wikiSpaceHint')}</p>
+          <div className="document-channel-settings-field">
+            <label htmlFor="eval-settings-wiki">{t('evaluationSettings.wikiSpaceLabel')}</label>
+            <select
+              id="eval-settings-wiki"
+              value={wikiSpaceIdField}
+              onChange={(e) => setWikiSpaceIdField(e.target.value)}
+            >
+              <option value="">{t('evaluationSettings.wikiSpaceNone')}</option>
+              {wikiSpaces.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="document-channel-settings-hint">{t('evaluationSettings.wikiSemanticIndexNote')}</p>
+          {wikiSpaceIdField.trim() ? (
+            <Link
+              to={`/wikis/${wikiSpaceIdField.trim()}/settings`}
+              className="eval-dataset-settings-kb-link"
+            >
+              {t('evaluationSettings.openWikiSpace')}
+            </Link>
+          ) : null}
         </section>
 
         <section className="document-channel-settings-section">
