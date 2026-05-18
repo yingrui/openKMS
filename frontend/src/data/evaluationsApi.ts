@@ -1,8 +1,8 @@
-/** API for evaluation datasets (KB search retrieval evaluation). */
+/** API for evaluations (KB search retrieval and QA evaluation). */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
-export interface EvaluationDatasetResponse {
+export interface EvaluationResponse {
   id: string;
   name: string;
   knowledge_base_id: string;
@@ -15,14 +15,14 @@ export interface EvaluationDatasetResponse {
   updated_at: string;
 }
 
-export interface EvaluationDatasetListResponse {
-  items: EvaluationDatasetResponse[];
+export interface EvaluationListResponse {
+  items: EvaluationResponse[];
   total: number;
 }
 
-export interface EvaluationDatasetItemResponse {
+export interface EvaluationItemResponse {
   id: string;
-  evaluation_dataset_id: string;
+  evaluation_id: string;
   query: string;
   expected_answer: string;
   topic?: string | null;
@@ -30,8 +30,8 @@ export interface EvaluationDatasetItemResponse {
   created_at: string;
 }
 
-export interface EvaluationDatasetItemListResponse {
-  items: EvaluationDatasetItemResponse[];
+export interface EvaluationItemListResponse {
+  items: EvaluationItemResponse[];
   total: number;
 }
 
@@ -80,7 +80,7 @@ export interface EvaluationRunListResponse {
 }
 
 export interface EvaluationCompareRow {
-  evaluation_dataset_item_id: string;
+  evaluation_item_id: string;
   query: string;
   expected_answer: string;
   pass_a: boolean;
@@ -99,39 +99,39 @@ export interface EvaluationCompareResponse {
   rows: EvaluationCompareRow[];
 }
 
-export async function fetchEvaluationDatasets(params?: {
+export async function fetchEvaluations(params?: {
   knowledge_base_id?: string;
-}): Promise<EvaluationDatasetListResponse> {
+}): Promise<EvaluationListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
   if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
   const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
-  if (!res.ok) throw new Error(`Failed to fetch evaluation datasets: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch evaluations: ${res.status}`);
   return res.json();
 }
 
-export async function fetchEvaluationDataset(id: string): Promise<EvaluationDatasetResponse> {
+export async function fetchEvaluation(id: string): Promise<EvaluationResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${id}`, {
     headers: { ...headers },
     credentials: 'include',
   });
-  if (!res.ok) throw new Error(`Failed to fetch evaluation dataset: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch evaluation: ${res.status}`);
   return res.json();
 }
 
-export async function createEvaluationDataset(data: {
+export async function createEvaluation(data: {
   name: string;
   knowledge_base_id: string;
   wiki_space_id?: string | null;
   description?: string | null;
-}): Promise<EvaluationDatasetResponse> {
+}): Promise<EvaluationResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -139,17 +139,17 @@ export async function createEvaluationDataset(data: {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create evaluation dataset');
+    throw new Error(err.detail || 'Failed to create evaluation');
   }
   return res.json();
 }
 
-export async function updateEvaluationDataset(
+export async function updateEvaluation(
   id: string,
   data: { name?: string; description?: string | null; wiki_space_id?: string | null }
-): Promise<EvaluationDatasetResponse> {
+): Promise<EvaluationResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -157,49 +157,49 @@ export async function updateEvaluationDataset(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update evaluation dataset');
+    throw new Error(err.detail || 'Failed to update evaluation');
   }
   return res.json();
 }
 
-export async function deleteEvaluationDataset(id: string): Promise<void> {
+export async function deleteEvaluation(id: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${id}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${id}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
   });
-  if (!res.ok) throw new Error(`Failed to delete evaluation dataset: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to delete evaluation: ${res.status}`);
 }
 
-export async function fetchEvaluationDatasetItems(
-  datasetId: string,
+export async function fetchEvaluationItems(
+  evaluationId: string,
   params?: { offset?: number; limit?: number }
-): Promise<EvaluationDatasetItemListResponse> {
+): Promise<EvaluationItemListResponse> {
   const headers = await getAuthHeaders();
   const q = new URLSearchParams();
   if (params?.offset != null) q.set('offset', String(params.offset));
   if (params?.limit != null) q.set('limit', String(params.limit));
   const qs = q.toString() ? `?${q.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${evaluationId}/items${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
-  if (!res.ok) throw new Error(`Failed to fetch evaluation dataset items: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch evaluation items: ${res.status}`);
   return res.json();
 }
 
-export async function createEvaluationDatasetItem(
-  datasetId: string,
+export async function createEvaluationItem(
+  evaluationId: string,
   data: {
     query: string;
     expected_answer: string;
     topic?: string | null;
     sort_order?: number;
   }
-): Promise<EvaluationDatasetItemResponse> {
+): Promise<EvaluationItemResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/items`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${evaluationId}/items`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
@@ -212,8 +212,8 @@ export async function createEvaluationDatasetItem(
   return res.json();
 }
 
-export async function updateEvaluationDatasetItem(
-  datasetId: string,
+export async function updateEvaluationItem(
+  evaluationId: string,
   itemId: string,
   data: {
     query?: string;
@@ -221,10 +221,10 @@ export async function updateEvaluationDatasetItem(
     topic?: string | null;
     sort_order?: number;
   }
-): Promise<EvaluationDatasetItemResponse> {
+): Promise<EvaluationItemResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
-    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/${itemId}`,
+    `${config.apiUrl}/api/evaluations/${evaluationId}/items/${itemId}`,
     {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...headers },
@@ -239,13 +239,10 @@ export async function updateEvaluationDatasetItem(
   return res.json();
 }
 
-export async function deleteEvaluationDatasetItem(
-  datasetId: string,
-  itemId: string
-): Promise<void> {
+export async function deleteEvaluationItem(evaluationId: string, itemId: string): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
-    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/${itemId}`,
+    `${config.apiUrl}/api/evaluations/${evaluationId}/items/${itemId}`,
     {
       method: 'DELETE',
       headers: { ...headers },
@@ -255,22 +252,19 @@ export async function deleteEvaluationDatasetItem(
   if (!res.ok) throw new Error(`Failed to delete evaluation item: ${res.status}`);
 }
 
-export async function importEvaluationDatasetItems(
-  datasetId: string,
+export async function importEvaluationItems(
+  evaluationId: string,
   file: File
 ): Promise<{ imported: number }> {
   const headers = await getAuthHeaders();
   const formData = new FormData();
   formData.append('file', file);
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/items/import`,
-    {
-      method: 'POST',
-      headers: { ...headers },
-      body: formData,
-      credentials: 'include',
-    }
-  );
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${evaluationId}/items/import`, {
+    method: 'POST',
+    headers: { ...headers },
+    body: formData,
+    credentials: 'include',
+  });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to import CSV');
@@ -279,11 +273,11 @@ export async function importEvaluationDatasetItems(
 }
 
 export async function runEvaluation(
-  datasetId: string,
+  evaluationId: string,
   body?: { evaluation_type?: string }
 ): Promise<EvaluationRunResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/run`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${evaluationId}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({
@@ -299,7 +293,7 @@ export async function runEvaluation(
 }
 
 export async function listEvaluationRuns(
-  datasetId: string,
+  evaluationId: string,
   params?: { offset?: number; limit?: number }
 ): Promise<EvaluationRunListResponse> {
   const headers = await getAuthHeaders();
@@ -307,7 +301,7 @@ export async function listEvaluationRuns(
   if (params?.offset != null) q.set('offset', String(params.offset));
   if (params?.limit != null) q.set('limit', String(params.limit));
   const qs = q.toString() ? `?${q.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs${qs}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${evaluationId}/runs${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -316,36 +310,36 @@ export async function listEvaluationRuns(
 }
 
 export async function getEvaluationRun(
-  datasetId: string,
+  evaluationId: string,
   runId: string
 ): Promise<EvaluationRunResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
-    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/${encodeURIComponent(runId)}`,
+    `${config.apiUrl}/api/evaluations/${evaluationId}/runs/${encodeURIComponent(runId)}`,
     { headers: { ...headers }, credentials: 'include' }
   );
   if (!res.ok) throw new Error(`Failed to load evaluation run: ${res.status}`);
   return res.json();
 }
 
-export async function deleteEvaluationRun(datasetId: string, runId: string): Promise<void> {
+export async function deleteEvaluationRun(evaluationId: string, runId: string): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
-    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/${encodeURIComponent(runId)}`,
+    `${config.apiUrl}/api/evaluations/${evaluationId}/runs/${encodeURIComponent(runId)}`,
     { method: 'DELETE', headers: { ...headers }, credentials: 'include' }
   );
   if (!res.ok) throw new Error(`Failed to delete evaluation run: ${res.status}`);
 }
 
 export async function compareEvaluationRuns(
-  datasetId: string,
+  evaluationId: string,
   runA: string,
   runB: string
 ): Promise<EvaluationCompareResponse> {
   const headers = await getAuthHeaders();
   const q = new URLSearchParams({ run_a: runA, run_b: runB });
   const res = await authAwareFetch(
-    `${config.apiUrl}/api/evaluation-datasets/${datasetId}/runs/compare?${q.toString()}`,
+    `${config.apiUrl}/api/evaluations/${evaluationId}/runs/compare?${q.toString()}`,
     { headers: { ...headers }, credentials: 'include' }
   );
   if (!res.ok) {

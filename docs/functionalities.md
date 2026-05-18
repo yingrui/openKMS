@@ -11,7 +11,7 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Articles](features/articles.md) | Article channels, CRUD, relationships, lifecycle, attachments, bulk import |
 | [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, QA proxy, kb-index |
 | [Wiki spaces](features/wiki-spaces.md) | Wiki pages/files, vault import, graph view, Wiki Copilot agent |
-| [Evaluation](features/evaluation.md) | Evaluation datasets, runs, compare |
+| [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare |
 | [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |
 | [Knowledge map & home](features/knowledge-map.md) | Taxonomy nodes, resource links, home hub graph |
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |

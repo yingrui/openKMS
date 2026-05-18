@@ -38,8 +38,8 @@ class AccessGroup(Base):
     wiki_links: Mapped[list["AccessGroupWikiSpace"]] = relationship(
         "AccessGroupWikiSpace", back_populates="group", cascade="all, delete-orphan"
     )
-    eval_links: Mapped[list["AccessGroupEvaluationDataset"]] = relationship(
-        "AccessGroupEvaluationDataset", back_populates="group", cascade="all, delete-orphan"
+    eval_links: Mapped[list["AccessGroupEvaluation"]] = relationship(
+        "AccessGroupEvaluation", back_populates="group", cascade="all, delete-orphan"
     )
     dataset_links: Mapped[list["AccessGroupDataset"]] = relationship(
         "AccessGroupDataset", back_populates="group", cascade="all, delete-orphan"
@@ -120,14 +120,14 @@ class AccessGroupWikiSpace(Base):
     group: Mapped["AccessGroup"] = relationship("AccessGroup", back_populates="wiki_links")
 
 
-class AccessGroupEvaluationDataset(Base):
-    __tablename__ = "access_group_evaluation_datasets"
+class AccessGroupEvaluation(Base):
+    __tablename__ = "access_group_evaluations"
 
     group_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("access_groups.id", ondelete="CASCADE"), primary_key=True
     )
-    evaluation_dataset_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("evaluation_datasets.id", ondelete="CASCADE"), primary_key=True
+    evaluation_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("evaluations.id", ondelete="CASCADE"), primary_key=True
     )
 
     group: Mapped["AccessGroup"] = relationship("AccessGroup", back_populates="eval_links")

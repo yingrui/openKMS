@@ -27,7 +27,7 @@ from app.api.ontology_explore import router as ontology_explore_router
 from app.api.providers import router as providers_router
 from app.api.data_sources import router as data_sources_router
 from app.api.datasets import router as datasets_router
-from app.api.evaluation_datasets import router as evaluation_datasets_router
+from app.api.evaluations import router as evaluations_router
 from app.api.users_admin import router as users_admin_router
 from app.api.admin.data_resources import router as admin_data_resources_router
 from app.api.admin.groups import router as admin_groups_router
@@ -125,7 +125,7 @@ app.include_router(link_types_router, prefix="/api")
 app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
-app.include_router(evaluation_datasets_router, prefix="/api")
+app.include_router(evaluations_router, prefix="/api")
 app.include_router(users_admin_router, prefix="/api")
 app.include_router(admin_groups_router, prefix="/api")
 app.include_router(admin_data_resources_router, prefix="/api")

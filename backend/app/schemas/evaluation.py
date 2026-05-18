@@ -1,26 +1,24 @@
-"""Pydantic schemas for evaluation dataset management."""
+"""Pydantic schemas for evaluation management."""
 from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-# --- Evaluation Dataset ---
-
-class EvaluationDatasetCreate(BaseModel):
+class EvaluationCreate(BaseModel):
     name: str
     knowledge_base_id: str
     wiki_space_id: str | None = None
     description: str | None = None
 
 
-class EvaluationDatasetUpdate(BaseModel):
+class EvaluationUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     wiki_space_id: str | None = None
 
 
-class EvaluationDatasetResponse(BaseModel):
+class EvaluationResponse(BaseModel):
     id: str
     name: str
     knowledge_base_id: str
@@ -35,30 +33,28 @@ class EvaluationDatasetResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class EvaluationDatasetListResponse(BaseModel):
-    items: list[EvaluationDatasetResponse]
+class EvaluationListResponse(BaseModel):
+    items: list[EvaluationResponse]
     total: int
 
 
-# --- Evaluation Dataset Item ---
-
-class EvaluationDatasetItemCreate(BaseModel):
+class EvaluationItemCreate(BaseModel):
     query: str
     expected_answer: str
     topic: str | None = None
     sort_order: int = 0
 
 
-class EvaluationDatasetItemUpdate(BaseModel):
+class EvaluationItemUpdate(BaseModel):
     query: str | None = None
     expected_answer: str | None = None
     topic: str | None = None
     sort_order: int | None = None
 
 
-class EvaluationDatasetItemResponse(BaseModel):
+class EvaluationItemResponse(BaseModel):
     id: str
-    evaluation_dataset_id: str
+    evaluation_id: str
     query: str
     expected_answer: str
     topic: str | None = None
@@ -68,12 +64,9 @@ class EvaluationDatasetItemResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class EvaluationDatasetItemListResponse(BaseModel):
-    items: list[EvaluationDatasetItemResponse]
+class EvaluationItemListResponse(BaseModel):
+    items: list[EvaluationItemResponse]
     total: int
-
-
-# --- Run Evaluation ---
 
 
 class SearchResultSnippet(BaseModel):
@@ -135,7 +128,7 @@ class EvaluationRunListResponse(BaseModel):
 
 
 class EvaluationCompareRow(BaseModel):
-    evaluation_dataset_item_id: str
+    evaluation_item_id: str
     query: str
     expected_answer: str
     pass_a: bool

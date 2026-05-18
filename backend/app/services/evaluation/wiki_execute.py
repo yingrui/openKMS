@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.evaluation_dataset import EvaluationDatasetItem
+from app.models.evaluation import EvaluationItem
 from app.models.wiki_models import WikiPage, WikiSpace
 from app.services.search_judge import judge_search_results
 from app.services.wiki_semantic_index import (
@@ -58,7 +58,7 @@ async def _ranked_page_ids_for_query(
 async def run_wiki_content_coverage_evaluation(
     db: AsyncSession,
     wiki_space_id: str,
-    dataset_id: str,
+    evaluation_id: str,
     judge_config: dict[str, Any],
 ) -> list[dict[str, Any]]:
     ws = await db.get(WikiSpace, wiki_space_id)
@@ -66,9 +66,9 @@ async def run_wiki_content_coverage_evaluation(
         raise ValueError("Wiki space not found.")
 
     items_result = await db.execute(
-        select(EvaluationDatasetItem)
-        .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
-        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+        select(EvaluationItem)
+        .where(EvaluationItem.evaluation_id == evaluation_id)
+        .order_by(EvaluationItem.sort_order, EvaluationItem.created_at)
     )
     items = list(items_result.scalars().all())
     out: list[dict[str, Any]] = []
@@ -81,7 +81,7 @@ async def run_wiki_content_coverage_evaluation(
             if not pages:
                 out.append(
                     {
-                        "evaluation_dataset_item_id": item.id,
+                        "evaluation_item_id": item.id,
                         "query": item.query,
                         "expected_answer": item.expected_answer,
                         "passed": False,
@@ -111,7 +111,7 @@ async def run_wiki_content_coverage_evaluation(
             ]
             out.append(
                 {
-                    "evaluation_dataset_item_id": item.id,
+                    "evaluation_item_id": item.id,
                     "query": item.query,
                     "expected_answer": item.expected_answer,
                     "passed": bool(verdict["pass"]),
@@ -124,7 +124,7 @@ async def run_wiki_content_coverage_evaluation(
             logger.exception("wiki_content_coverage item failed")
             out.append(
                 {
-                    "evaluation_dataset_item_id": item.id,
+                    "evaluation_item_id": item.id,
                     "query": item.query,
                     "expected_answer": item.expected_answer,
                     "passed": False,

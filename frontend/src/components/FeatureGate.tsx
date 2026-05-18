@@ -6,7 +6,7 @@ type FeatureId =
   | 'knowledgeBases'
   | 'wikiSpaces'
   | 'objectsAndLinks'
-  | 'evaluationDatasets'
+  | 'evaluations'
   | 'taxonomy';
 
 export function FeatureGate({

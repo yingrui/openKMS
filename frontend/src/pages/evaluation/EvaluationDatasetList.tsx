@@ -4,24 +4,24 @@ import { Link } from 'react-router-dom';
 import { ClipboardList, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  fetchEvaluationDatasets,
-  createEvaluationDataset,
-  deleteEvaluationDataset,
-  updateEvaluationDataset,
-  type EvaluationDatasetResponse,
-} from '../../data/evaluationDatasetsApi';
+  fetchEvaluations,
+  createEvaluation,
+  deleteEvaluation,
+  updateEvaluation,
+  type EvaluationResponse,
+} from '../../data/evaluationsApi';
 import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import './EvaluationDatasetList.css';
 
 export function EvaluationDatasetList() {
   const { t } = useTranslation('workspace');
-  const [datasets, setDatasets] = useState<EvaluationDatasetResponse[]>([]);
+  const [datasets, setDatasets] = useState<EvaluationResponse[]>([]);
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
   const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [editDs, setEditDs] = useState<EvaluationDatasetResponse | null>(null);
+  const [editDs, setEditDs] = useState<EvaluationResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formKbId, setFormKbId] = useState('');
   const [formWikiSpaceId, setFormWikiSpaceId] = useState('');
@@ -31,7 +31,7 @@ export function EvaluationDatasetList() {
   const load = async () => {
     try {
       const [dsData, kbData, wikiData] = await Promise.all([
-        fetchEvaluationDatasets(),
+        fetchEvaluations(),
         fetchKnowledgeBases(),
         fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
       ]);
@@ -53,7 +53,7 @@ export function EvaluationDatasetList() {
     if (!formName.trim() || !formKbId) return;
     setSaving(true);
     try {
-      await createEvaluationDataset({
+      await createEvaluation({
         name: formName.trim(),
         knowledge_base_id: formKbId,
         wiki_space_id: formWikiSpaceId.trim() || null,
@@ -77,7 +77,7 @@ export function EvaluationDatasetList() {
     if (!editDs || !formName.trim()) return;
     setSaving(true);
     try {
-      await updateEvaluationDataset(editDs.id, {
+      await updateEvaluation(editDs.id, {
         name: formName.trim(),
         description: formDesc.trim() || undefined,
       });
@@ -93,12 +93,12 @@ export function EvaluationDatasetList() {
     }
   };
 
-  const handleDelete = async (ds: EvaluationDatasetResponse, e: React.MouseEvent) => {
+  const handleDelete = async (ds: EvaluationResponse, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!confirm(t('evaluation.deleteConfirm', { name: ds.name }))) return;
     try {
-      await deleteEvaluationDataset(ds.id);
+      await deleteEvaluation(ds.id);
       toast.success(t('evaluation.deletedToast'));
       void load();
     } catch (err: unknown) {
@@ -106,7 +106,7 @@ export function EvaluationDatasetList() {
     }
   };
 
-  const openEdit = (ds: EvaluationDatasetResponse, e: React.MouseEvent) => {
+  const openEdit = (ds: EvaluationResponse, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setEditDs(ds);
@@ -142,7 +142,7 @@ export function EvaluationDatasetList() {
           }}
         >
           <Plus size={18} />
-          <span>{t('evaluation.newDataset')}</span>
+          <span>{t('evaluation.newEvaluation')}</span>
         </button>
       </div>
 
@@ -157,7 +157,7 @@ export function EvaluationDatasetList() {
 
       <div className="eval-grid">
         {datasets.map((ds) => (
-          <Link key={ds.id} to={`/evaluation-datasets/${ds.id}`} className="eval-card">
+          <Link key={ds.id} to={`/evaluations/${ds.id}`} className="eval-card">
             <div className="eval-card-top">
               <div className="eval-icon">
                 <ClipboardList size={28} strokeWidth={1.5} />

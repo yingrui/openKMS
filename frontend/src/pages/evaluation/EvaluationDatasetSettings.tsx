@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  fetchEvaluationDataset,
-  updateEvaluationDataset,
-  deleteEvaluationDataset,
-  type EvaluationDatasetResponse,
-} from '../../data/evaluationDatasetsApi';
+  fetchEvaluation,
+  updateEvaluation,
+  deleteEvaluation,
+  type EvaluationResponse,
+} from '../../data/evaluationsApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import '../documents/DocumentChannelSettings.css';
 import './EvaluationDatasetDetail.css';
@@ -17,9 +17,9 @@ import './EvaluationDatasetSettings.css';
 export function EvaluationDatasetSettings() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
-  const { id: datasetId = '' } = useParams<{ id: string }>();
+  const { id: evaluationId = '' } = useParams<{ id: string }>();
 
-  const [dataset, setDataset] = useState<EvaluationDatasetResponse | null>(null);
+  const [dataset, setDataset] = useState<EvaluationResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [nameField, setNameField] = useState('');
   const [descriptionField, setDescriptionField] = useState('');
@@ -29,11 +29,11 @@ export function EvaluationDatasetSettings() {
   const [wikiSpaceIdField, setWikiSpaceIdField] = useState('');
 
   const load = useCallback(async () => {
-    if (!datasetId) return;
+    if (!evaluationId) return;
     setLoading(true);
     try {
       const [data, wikiList] = await Promise.all([
-        fetchEvaluationDataset(datasetId),
+        fetchEvaluation(evaluationId),
         fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
       ]);
       setDataset(data);
@@ -47,18 +47,18 @@ export function EvaluationDatasetSettings() {
     } finally {
       setLoading(false);
     }
-  }, [datasetId, t]);
+  }, [evaluationId, t]);
 
   useEffect(() => {
-    if (!datasetId) {
-      navigate('/evaluation-datasets');
+    if (!evaluationId) {
+      navigate('/evaluations');
       return;
     }
     void load();
-  }, [datasetId, load, navigate]);
+  }, [evaluationId, load, navigate]);
 
   const handleSave = async () => {
-    if (!datasetId || !dataset) return;
+    if (!evaluationId || !dataset) return;
     const name = nameField.trim();
     if (!name) {
       toast.error(t('evaluationSettings.nameRequired'));
@@ -66,7 +66,7 @@ export function EvaluationDatasetSettings() {
     }
     setSaving(true);
     try {
-      const updated = await updateEvaluationDataset(datasetId, {
+      const updated = await updateEvaluation(evaluationId, {
         name,
         description: descriptionField.trim() || null,
         wiki_space_id: wikiSpaceIdField.trim() || null,
@@ -86,9 +86,9 @@ export function EvaluationDatasetSettings() {
     if (!window.confirm(t('evaluation.deleteConfirm', { name: dataset.name }))) return;
     setDeleting(true);
     try {
-      await deleteEvaluationDataset(dataset.id);
+      await deleteEvaluation(dataset.id);
       toast.success(t('evaluation.deletedToast'));
-      navigate('/evaluation-datasets');
+      navigate('/evaluations');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationSettings.deleteFailed'));
     } finally {
@@ -96,7 +96,7 @@ export function EvaluationDatasetSettings() {
     }
   };
 
-  if (!datasetId) return null;
+  if (!evaluationId) return null;
 
   if (loading) {
     return (
@@ -109,7 +109,7 @@ export function EvaluationDatasetSettings() {
   if (!dataset) {
     return (
       <div className="eval-dataset-settings document-channel-settings">
-        <Link to="/evaluation-datasets" className="document-channel-settings-back">
+        <Link to="/evaluations" className="document-channel-settings-back">
           <ArrowLeft size={18} />
           <span>{t('evaluationDetail.back')}</span>
         </Link>
@@ -126,7 +126,7 @@ export function EvaluationDatasetSettings() {
   return (
     <div className="eval-dataset-settings">
       <div className="eval-detail-header">
-        <Link to={`/evaluation-datasets/${datasetId}`} className="eval-back">
+        <Link to={`/evaluations/${evaluationId}`} className="eval-back">
           <ArrowLeft size={18} />
           <span>{t('evaluationSettings.backToDataset')}</span>
         </Link>

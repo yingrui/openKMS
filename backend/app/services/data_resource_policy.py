@@ -11,14 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.data_resource import AccessGroupDataResource, DataResource
 from app.models.dataset import Dataset
 from app.models.document import Document
-from app.models.evaluation_dataset import EvaluationDataset
+from app.models.evaluation import Evaluation
 from app.models.knowledge_base import KnowledgeBase
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.data_scope import (
     effective_channel_ids,
     effective_dataset_ids,
-    effective_evaluation_dataset_ids,
+    effective_evaluation_ids,
     effective_knowledge_base_ids,
     effective_link_type_ids,
     effective_object_type_ids,
@@ -29,7 +29,7 @@ from app.services.data_scope import (
 
 KIND_DOCUMENT = "document"
 KIND_KNOWLEDGE_BASE = "knowledge_base"
-KIND_EVALUATION_DATASET = "evaluation_dataset"
+KIND_EVALUATION = "evaluation"
 KIND_DATASET = "dataset"
 KIND_OBJECT_TYPE = "object_type"
 KIND_LINK_TYPE = "link_type"
@@ -38,7 +38,7 @@ ALLOWED_RESOURCE_KINDS = frozenset(
     {
         KIND_DOCUMENT,
         KIND_KNOWLEDGE_BASE,
-        KIND_EVALUATION_DATASET,
+        KIND_EVALUATION,
         KIND_DATASET,
         KIND_OBJECT_TYPE,
         KIND_LINK_TYPE,
@@ -97,9 +97,9 @@ def validate_data_resource_payload(
     elif resource_kind == KIND_KNOWLEDGE_BASE:
         if not anchor_knowledge_base_id and "kb_id" not in attributes and "name" not in attributes:
             _reject("knowledge_base resource needs anchor_knowledge_base_id or attributes kb_id / name")
-    elif resource_kind == KIND_EVALUATION_DATASET:
-        if "evaluation_dataset_id" not in attributes:
-            _reject("evaluation_dataset resource requires attributes.evaluation_dataset_id")
+    elif resource_kind == KIND_EVALUATION:
+        if "evaluation_id" not in attributes:
+            _reject("evaluation resource requires attributes.evaluation_id")
     elif resource_kind == KIND_DATASET:
         if "dataset_id" not in attributes:
             _reject("dataset resource requires attributes.dataset_id")
@@ -169,10 +169,10 @@ def knowledge_base_matches_resource(kb: KnowledgeBase, dr: DataResource) -> bool
     return False
 
 
-def evaluation_dataset_matches_resource(row: EvaluationDataset, dr: DataResource) -> bool:
-    if dr.resource_kind != KIND_EVALUATION_DATASET:
+def evaluation_matches_resource(row: Evaluation, dr: DataResource) -> bool:
+    if dr.resource_kind != KIND_EVALUATION:
         return False
-    return str(dr.attributes.get("evaluation_dataset_id", "")) == row.id
+    return str(dr.attributes.get("evaluation_id", "")) == row.id
 
 
 def dataset_matches_resource(row: Dataset, dr: DataResource) -> bool:
@@ -209,17 +209,17 @@ async def knowledge_base_visible(db: AsyncSession, jwt_payload: dict, sub: str, 
     )
 
 
-async def evaluation_dataset_visible(
-    db: AsyncSession, jwt_payload: dict, sub: str, row: EvaluationDataset
+async def evaluation_visible(
+    db: AsyncSession, jwt_payload: dict, sub: str, row: Evaluation
 ) -> bool:
     if not scope_applies(jwt_payload, sub):
         return True
-    allowed = await effective_evaluation_dataset_ids(db, sub)
+    allowed = await effective_evaluation_ids(db, sub)
     if allowed is None:
         return True
-    resources = await user_data_resources_of_kinds(db, sub, frozenset({KIND_EVALUATION_DATASET}))
+    resources = await user_data_resources_of_kinds(db, sub, frozenset({KIND_EVALUATION}))
     return (row.id in allowed) or entity_matches_any_resource(
-        row, resources, evaluation_dataset_matches_resource
+        row, resources, evaluation_matches_resource
     )
 
 

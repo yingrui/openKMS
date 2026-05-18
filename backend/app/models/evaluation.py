@@ -1,4 +1,4 @@
-"""Evaluation dataset model for KB QA performance evaluation."""
+"""Evaluation model: query + expected answer pairs for a knowledge base (and optional wiki space)."""
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
@@ -7,10 +7,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class EvaluationDataset(Base):
-    """Evaluation dataset: query + expected answer pairs for a knowledge base (and optional wiki space)."""
+class Evaluation(Base):
+    """Evaluation: query + expected answer pairs for a knowledge base (and optional wiki space)."""
 
-    __tablename__ = "evaluation_datasets"
+    __tablename__ = "evaluations"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(256), nullable=False)
@@ -27,15 +27,15 @@ class EvaluationDataset(Base):
     )
 
 
-class EvaluationDatasetItem(Base):
+class EvaluationItem(Base):
     """Single evaluation item: query + expected answer."""
 
-    __tablename__ = "evaluation_dataset_items"
+    __tablename__ = "evaluation_items"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    evaluation_dataset_id: Mapped[str] = mapped_column(
+    evaluation_id: Mapped[str] = mapped_column(
         String(64),
-        ForeignKey("evaluation_datasets.id", ondelete="CASCADE"),
+        ForeignKey("evaluations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

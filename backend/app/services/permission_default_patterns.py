@@ -222,16 +222,16 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_EVAL_READ: (
-        ["/evaluation-datasets", "/evaluation-datasets/*"],
-        ["GET /api/evaluation-datasets/*", "HEAD /api/evaluation-datasets/*"],
+        ["/evaluations", "/evaluations/*"],
+        ["GET /api/evaluations/*", "HEAD /api/evaluations/*"],
     ),
     PERM_EVAL_WRITE: (
-        ["/evaluation-datasets", "/evaluation-datasets/*"],
+        ["/evaluations", "/evaluations/*"],
         [
-            "POST /api/evaluation-datasets/*",
-            "PUT /api/evaluation-datasets/*",
-            "PATCH /api/evaluation-datasets/*",
-            "DELETE /api/evaluation-datasets/*",
+            "POST /api/evaluations/*",
+            "PUT /api/evaluations/*",
+            "PATCH /api/evaluations/*",
+            "DELETE /api/evaluations/*",
         ],
     ),
     PERM_ONTOLOGY_READ: (

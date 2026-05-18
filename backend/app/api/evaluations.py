@@ -1,4 +1,4 @@
-"""Evaluation dataset API for KB search retrieval evaluation."""
+"""Evaluation API for KB search retrieval and QA evaluation."""
 import csv
 import io
 import uuid
@@ -10,29 +10,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
-from app.services.data_resource_policy import evaluation_dataset_visible
-from app.models.evaluation_dataset import EvaluationDataset, EvaluationDatasetItem
+from app.models.evaluation import Evaluation, EvaluationItem
 from app.models.evaluation_run import EvaluationRun, EvaluationRunItem
 from app.models.knowledge_base import KnowledgeBase
 from app.models.wiki_models import WikiSpace
-from app.schemas.evaluation_dataset import (
+from app.schemas.evaluation import (
     EvaluationCompareResponse,
     EvaluationCompareRow,
-    EvaluationDatasetCreate,
-    EvaluationDatasetItemCreate,
-    EvaluationDatasetItemListResponse,
-    EvaluationDatasetItemResponse,
-    EvaluationDatasetItemUpdate,
-    EvaluationDatasetListResponse,
-    EvaluationDatasetResponse,
-    EvaluationDatasetUpdate,
+    EvaluationCreate,
+    EvaluationItemCreate,
+    EvaluationItemListResponse,
+    EvaluationItemResponse,
+    EvaluationItemUpdate,
+    EvaluationListResponse,
+    EvaluationResponse,
     EvaluationRunListItem,
     EvaluationRunListResponse,
     EvaluationRunRequestBody,
     EvaluationRunResponse,
     EvaluationRunResult,
+    EvaluationUpdate,
     SearchResultSnippet,
 )
+from app.services.data_resource_policy import evaluation_visible
 from app.services.evaluation.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
@@ -46,52 +46,52 @@ from app.services.evaluation.execute import (
 from app.services.evaluation.wiki_execute import run_wiki_content_coverage_evaluation
 
 router = APIRouter(
-    prefix="/evaluation-datasets",
-    tags=["evaluation-datasets"],
+    prefix="/evaluations",
+    tags=["evaluations"],
     dependencies=[Depends(require_auth)],
 )
 
 
-async def get_eval_dataset_scoped(
-    dataset_id: str,
+async def get_evaluation_scoped(
+    evaluation_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
-) -> EvaluationDataset:
-    ds = await db.get(EvaluationDataset, dataset_id)
-    if not ds:
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
+) -> Evaluation:
+    ev = await db.get(Evaluation, evaluation_id)
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evaluation not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and not await evaluation_dataset_visible(db, p, sub, ds):
-        raise HTTPException(status_code=404, detail="Evaluation dataset not found")
-    return ds
+    if isinstance(sub, str) and not await evaluation_visible(db, p, sub, ev):
+        raise HTTPException(status_code=404, detail="Evaluation not found")
+    return ev
 
 
-async def _item_count(db: AsyncSession, dataset_id: str) -> int:
-    return (await db.execute(
-        select(func.count()).select_from(EvaluationDatasetItem).where(
-            EvaluationDatasetItem.evaluation_dataset_id == dataset_id
+async def _item_count(db: AsyncSession, evaluation_id: str) -> int:
+    return (
+        await db.execute(
+            select(func.count()).select_from(EvaluationItem).where(EvaluationItem.evaluation_id == evaluation_id)
         )
-    )).scalar_one()
+    ).scalar_one()
 
 
-def _dataset_to_response(
-    ds: EvaluationDataset,
+def _evaluation_to_response(
+    ev: Evaluation,
     kb_name: str | None,
     wiki_name: str | None,
     item_count: int,
-) -> EvaluationDatasetResponse:
-    return EvaluationDatasetResponse(
-        id=ds.id,
-        name=ds.name,
-        knowledge_base_id=ds.knowledge_base_id,
+) -> EvaluationResponse:
+    return EvaluationResponse(
+        id=ev.id,
+        name=ev.name,
+        knowledge_base_id=ev.knowledge_base_id,
         knowledge_base_name=kb_name,
-        wiki_space_id=ds.wiki_space_id,
+        wiki_space_id=ev.wiki_space_id,
         wiki_space_name=wiki_name,
-        description=ds.description,
+        description=ev.description,
         item_count=item_count,
-        created_at=ds.created_at,
-        updated_at=ds.updated_at,
+        created_at=ev.created_at,
+        updated_at=ev.updated_at,
     )
 
 
@@ -121,7 +121,7 @@ def _result_dicts_to_schemas(evaluation_type: str, rows: list[dict]) -> list[Eva
         show_search = evaluation_type in EVALUATION_TYPES_WITH_SEARCH_SNIPPETS
         out.append(
             EvaluationRunResult(
-                item_id=r["evaluation_dataset_item_id"],
+                item_id=r["evaluation_item_id"],
                 query=r["query"],
                 expected_answer=r["expected_answer"],
                 search_results=srs if show_search else [],
@@ -136,7 +136,7 @@ def _result_dicts_to_schemas(evaluation_type: str, rows: list[dict]) -> list[Eva
 
 
 def _run_item_to_result(
-    ri: EvaluationRunItem, item: EvaluationDatasetItem, evaluation_type: str
+    ri: EvaluationRunItem, item: EvaluationItem, evaluation_type: str
 ) -> EvaluationRunResult:
     detail = ri.detail or {}
     srs = [_snippet_model_from_dict(s) for s in (detail.get("search_results") or [])]
@@ -158,7 +158,7 @@ def _run_item_to_result(
 async def _persist_run(
     db: AsyncSession,
     *,
-    dataset_id: str,
+    evaluation_id: str,
     knowledge_base_id: str,
     evaluation_type: str,
     config_snapshot: dict | None,
@@ -169,7 +169,7 @@ async def _persist_run(
     n, pc, avg = _aggregates(item_rows)
     run = EvaluationRun(
         id=str(uuid.uuid4()),
-        evaluation_dataset_id=dataset_id,
+        evaluation_id=evaluation_id,
         knowledge_base_id=knowledge_base_id,
         evaluation_type=evaluation_type,
         status=status,
@@ -187,7 +187,7 @@ async def _persist_run(
             EvaluationRunItem(
                 id=str(uuid.uuid4()),
                 evaluation_run_id=run.id,
-                evaluation_dataset_item_id=r["evaluation_dataset_item_id"],
+                evaluation_item_id=r["evaluation_item_id"],
                 passed=bool(r.get("passed")),
                 score=float(r.get("score", 0)),
                 reasoning=str(r.get("reasoning", "")),
@@ -214,35 +214,36 @@ def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> 
 
 # --- CRUD ---
 
-@router.get("", response_model=EvaluationDatasetListResponse)
-async def list_evaluation_datasets(
+
+@router.get("", response_model=EvaluationListResponse)
+async def list_evaluations(
     request: Request,
     knowledge_base_id: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(EvaluationDataset).order_by(EvaluationDataset.created_at.desc())
+    q = select(Evaluation).order_by(Evaluation.created_at.desc())
     if knowledge_base_id:
-        q = q.where(EvaluationDataset.knowledge_base_id == knowledge_base_id)
+        q = q.where(Evaluation.knowledge_base_id == knowledge_base_id)
     result = await db.execute(q)
-    datasets = list(result.scalars().all())
+    rows = list(result.scalars().all())
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str):
-        datasets = [ds for ds in datasets if await evaluation_dataset_visible(db, p, sub, ds)]
+        rows = [ev for ev in rows if await evaluation_visible(db, p, sub, ev)]
     items = []
-    for ds in datasets:
-        kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
-        wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
-        count = await _item_count(db, ds.id)
+    for ev in rows:
+        kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
+        wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
+        count = await _item_count(db, ev.id)
         items.append(
-            _dataset_to_response(ds, kb.name if kb else None, wiki.name if wiki else None, count)
+            _evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
         )
-    return EvaluationDatasetListResponse(items=items, total=len(items))
+    return EvaluationListResponse(items=items, total=len(items))
 
 
-@router.post("", response_model=EvaluationDatasetResponse, status_code=201)
-async def create_evaluation_dataset(
-    body: EvaluationDatasetCreate,
+@router.post("", response_model=EvaluationResponse, status_code=201)
+async def create_evaluation(
+    body: EvaluationCreate,
     db: AsyncSession = Depends(get_db),
 ):
     kb = await db.get(KnowledgeBase, body.knowledge_base_id)
@@ -254,107 +255,106 @@ async def create_evaluation_dataset(
         if not ws:
             raise HTTPException(status_code=404, detail="Wiki space not found")
         wiki_name = ws.name
-    ds = EvaluationDataset(
+    ev = Evaluation(
         id=str(uuid.uuid4()),
         name=body.name,
         knowledge_base_id=body.knowledge_base_id,
         wiki_space_id=body.wiki_space_id,
         description=body.description,
     )
-    db.add(ds)
+    db.add(ev)
     await db.flush()
-    await db.refresh(ds)
-    return _dataset_to_response(ds, kb.name, wiki_name, 0)
+    await db.refresh(ev)
+    return _evaluation_to_response(ev, kb.name, wiki_name, 0)
 
 
-@router.get("/{dataset_id}", response_model=EvaluationDatasetResponse)
-async def get_evaluation_dataset(
-    dataset_id: str,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+@router.get("/{evaluation_id}", response_model=EvaluationResponse)
+async def get_evaluation(
+    evaluation_id: str,
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
-    count = await _item_count(db, ds.id)
-    wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
-    return _dataset_to_response(ds, kb.name if kb else None, wiki.name if wiki else None, count)
+    kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
+    count = await _item_count(db, ev.id)
+    wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
+    return _evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
 
 
-@router.put("/{dataset_id}", response_model=EvaluationDatasetResponse)
-async def update_evaluation_dataset(
-    dataset_id: str,
-    body: EvaluationDatasetUpdate,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+@router.put("/{evaluation_id}", response_model=EvaluationResponse)
+async def update_evaluation(
+    evaluation_id: str,
+    body: EvaluationUpdate,
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump(exclude_unset=True)
     for field, value in data.items():
         if field == "wiki_space_id":
             if value in (None, ""):
-                ds.wiki_space_id = None
+                ev.wiki_space_id = None
             else:
                 ws = await db.get(WikiSpace, value)
                 if not ws:
                     raise HTTPException(status_code=404, detail="Wiki space not found")
-                ds.wiki_space_id = value
+                ev.wiki_space_id = value
         else:
-            setattr(ds, field, value)
+            setattr(ev, field, value)
     await db.flush()
-    await db.refresh(ds)
-    kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
-    count = await _item_count(db, ds.id)
-    wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
-    return _dataset_to_response(ds, kb.name if kb else None, wiki.name if wiki else None, count)
+    await db.refresh(ev)
+    kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
+    count = await _item_count(db, ev.id)
+    wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
+    return _evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
 
 
-@router.delete("/{dataset_id}", status_code=204)
-async def delete_evaluation_dataset(
-    dataset_id: str,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+@router.delete("/{evaluation_id}", status_code=204)
+async def delete_evaluation(
+    evaluation_id: str,
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    await db.delete(ds)
+    await db.delete(ev)
 
 
 # --- Items ---
 
-@router.get("/{dataset_id}/items", response_model=EvaluationDatasetItemListResponse)
-async def list_evaluation_dataset_items(
-    dataset_id: str,
+
+@router.get("/{evaluation_id}/items", response_model=EvaluationItemListResponse)
+async def list_evaluation_items(
+    evaluation_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=200),
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     count_q = await db.execute(
-        select(func.count()).select_from(EvaluationDatasetItem).where(
-            EvaluationDatasetItem.evaluation_dataset_id == dataset_id
-        )
+        select(func.count()).select_from(EvaluationItem).where(EvaluationItem.evaluation_id == evaluation_id)
     )
     total = count_q.scalar_one()
     result = await db.execute(
-        select(EvaluationDatasetItem)
-        .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
-        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+        select(EvaluationItem)
+        .where(EvaluationItem.evaluation_id == evaluation_id)
+        .order_by(EvaluationItem.sort_order, EvaluationItem.created_at)
         .offset(offset)
         .limit(limit)
     )
-    rows = result.scalars().all()
-    return EvaluationDatasetItemListResponse(
-        items=[EvaluationDatasetItemResponse.model_validate(i) for i in rows],
+    item_rows = result.scalars().all()
+    return EvaluationItemListResponse(
+        items=[EvaluationItemResponse.model_validate(i) for i in item_rows],
         total=total,
     )
 
 
-@router.post("/{dataset_id}/items", response_model=EvaluationDatasetItemResponse, status_code=201)
-async def create_evaluation_dataset_item(
-    dataset_id: str,
-    body: EvaluationDatasetItemCreate,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+@router.post("/{evaluation_id}/items", response_model=EvaluationItemResponse, status_code=201)
+async def create_evaluation_item(
+    evaluation_id: str,
+    body: EvaluationItemCreate,
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    item = EvaluationDatasetItem(
+    item = EvaluationItem(
         id=str(uuid.uuid4()),
-        evaluation_dataset_id=dataset_id,
+        evaluation_id=evaluation_id,
         query=body.query,
         expected_answer=body.expected_answer,
         topic=body.topic,
@@ -363,48 +363,32 @@ async def create_evaluation_dataset_item(
     db.add(item)
     await db.flush()
     await db.refresh(item)
-    return EvaluationDatasetItemResponse(
-        id=item.id,
-        evaluation_dataset_id=item.evaluation_dataset_id,
-        query=item.query,
-        expected_answer=item.expected_answer,
-        topic=item.topic,
-        sort_order=item.sort_order,
-        created_at=item.created_at,
-    )
+    return EvaluationItemResponse.model_validate(item)
 
 
-@router.put("/{dataset_id}/items/{item_id}", response_model=EvaluationDatasetItemResponse)
-async def update_evaluation_dataset_item(
-    dataset_id: str,
+@router.put("/{evaluation_id}/items/{item_id}", response_model=EvaluationItemResponse)
+async def update_evaluation_item(
+    evaluation_id: str,
     item_id: str,
-    body: EvaluationDatasetItemUpdate,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    body: EvaluationItemUpdate,
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    item = await db.get(EvaluationDatasetItem, item_id)
-    if not item or item.evaluation_dataset_id != dataset_id:
-        raise HTTPException(status_code=404, detail="Evaluation dataset item not found")
+    item = await db.get(EvaluationItem, item_id)
+    if not item or item.evaluation_id != evaluation_id:
+        raise HTTPException(status_code=404, detail="Evaluation item not found")
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     await db.flush()
     await db.refresh(item)
-    return EvaluationDatasetItemResponse(
-        id=item.id,
-        evaluation_dataset_id=item.evaluation_dataset_id,
-        query=item.query,
-        expected_answer=item.expected_answer,
-        topic=item.topic,
-        sort_order=item.sort_order,
-        created_at=item.created_at,
-    )
+    return EvaluationItemResponse.model_validate(item)
 
 
-@router.post("/{dataset_id}/items/import")
-async def import_evaluation_dataset_items(
-    dataset_id: str,
+@router.post("/{evaluation_id}/items/import")
+async def import_evaluation_items(
+    evaluation_id: str,
     file: UploadFile = File(...),
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Import evaluation items from a CSV file. Expected columns: topic (optional), query, answer or expected_answer."""
@@ -421,7 +405,6 @@ async def import_evaluation_dataset_items(
     if not reader.fieldnames:
         raise HTTPException(status_code=400, detail="CSV has no headers")
 
-    # Normalize column names (lowercase, strip)
     normalized = {h.strip().lower(): h for h in reader.fieldnames}
     query_col = normalized.get("query")
     answer_col = normalized.get("answer") or normalized.get("expected_answer")
@@ -442,9 +425,9 @@ async def import_evaluation_dataset_items(
         topic_val = (row.get(topic_col) or "").strip() if topic_col else None
         topic_val = topic_val or None
 
-        item = EvaluationDatasetItem(
+        item = EvaluationItem(
             id=str(uuid.uuid4()),
-            evaluation_dataset_id=dataset_id,
+            evaluation_id=evaluation_id,
             query=query,
             expected_answer=expected,
             topic=topic_val,
@@ -457,37 +440,37 @@ async def import_evaluation_dataset_items(
     return {"imported": created}
 
 
-@router.delete("/{dataset_id}/items/{item_id}", status_code=204)
-async def delete_evaluation_dataset_item(
-    dataset_id: str,
+@router.delete("/{evaluation_id}/items/{item_id}", status_code=204)
+async def delete_evaluation_item(
+    evaluation_id: str,
     item_id: str,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    item = await db.get(EvaluationDatasetItem, item_id)
-    if not item or item.evaluation_dataset_id != dataset_id:
-        raise HTTPException(status_code=404, detail="Evaluation dataset item not found")
+    item = await db.get(EvaluationItem, item_id)
+    if not item or item.evaluation_id != evaluation_id:
+        raise HTTPException(status_code=404, detail="Evaluation item not found")
     await db.delete(item)
 
 
 # --- Run evaluation & persisted reports ---
 
 
-@router.get("/{dataset_id}/runs/compare", response_model=EvaluationCompareResponse)
+@router.get("/{evaluation_id}/runs/compare", response_model=EvaluationCompareResponse)
 async def compare_evaluation_runs(
-    dataset_id: str,
+    evaluation_id: str,
     run_a: str = Query(..., description="First evaluation run id"),
     run_b: str = Query(..., description="Second evaluation run id"),
-    _: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    _: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Compare two runs item-by-item (pass/score deltas)."""
     ra = await db.get(EvaluationRun, run_a)
     rb = await db.get(EvaluationRun, run_b)
-    if not ra or ra.evaluation_dataset_id != dataset_id:
-        raise HTTPException(status_code=404, detail="Run A not found for this dataset")
-    if not rb or rb.evaluation_dataset_id != dataset_id:
-        raise HTTPException(status_code=404, detail="Run B not found for this dataset")
+    if not ra or ra.evaluation_id != evaluation_id:
+        raise HTTPException(status_code=404, detail="Run A not found for this evaluation")
+    if not rb or rb.evaluation_id != evaluation_id:
+        raise HTTPException(status_code=404, detail="Run B not found for this evaluation")
 
     res_a = await db.execute(
         select(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id == run_a)
@@ -495,29 +478,29 @@ async def compare_evaluation_runs(
     res_b = await db.execute(
         select(EvaluationRunItem).where(EvaluationRunItem.evaluation_run_id == run_b)
     )
-    map_a = {x.evaluation_dataset_item_id: x for x in res_a.scalars().all()}
-    map_b = {x.evaluation_dataset_item_id: x for x in res_b.scalars().all()}
+    map_a = {x.evaluation_item_id: x for x in res_a.scalars().all()}
+    map_b = {x.evaluation_item_id: x for x in res_b.scalars().all()}
 
     order_res = await db.execute(
-        select(EvaluationDatasetItem)
-        .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
-        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+        select(EvaluationItem)
+        .where(EvaluationItem.evaluation_id == evaluation_id)
+        .order_by(EvaluationItem.sort_order, EvaluationItem.created_at)
     )
     items_ordered = order_res.scalars().all()
 
-    rows: list[EvaluationCompareRow] = []
-    for item in items_ordered:
-        ia = map_a.get(item.id)
-        ib = map_b.get(item.id)
+    cmp_rows: list[EvaluationCompareRow] = []
+    for it in items_ordered:
+        ia = map_a.get(it.id)
+        ib = map_b.get(it.id)
         if not ia or not ib:
             continue
         pa, pb = ia.passed, ib.passed
         sa, sb = float(ia.score), float(ib.score)
-        rows.append(
+        cmp_rows.append(
             EvaluationCompareRow(
-                evaluation_dataset_item_id=item.id,
-                query=item.query,
-                expected_answer=item.expected_answer,
+                evaluation_item_id=it.id,
+                query=it.query,
+                expected_answer=it.expected_answer,
                 pass_a=pa,
                 score_a=sa,
                 pass_b=pb,
@@ -532,28 +515,26 @@ async def compare_evaluation_runs(
         run_b_id=run_b,
         evaluation_type_a=ra.evaluation_type,
         evaluation_type_b=rb.evaluation_type,
-        rows=rows,
+        rows=cmp_rows,
     )
 
 
-@router.get("/{dataset_id}/runs", response_model=EvaluationRunListResponse)
+@router.get("/{evaluation_id}/runs", response_model=EvaluationRunListResponse)
 async def list_evaluation_runs(
-    dataset_id: str,
+    evaluation_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     count_q = await db.execute(
-        select(func.count()).select_from(EvaluationRun).where(
-            EvaluationRun.evaluation_dataset_id == dataset_id
-        )
+        select(func.count()).select_from(EvaluationRun).where(EvaluationRun.evaluation_id == evaluation_id)
     )
     total = count_q.scalar_one()
 
     result = await db.execute(
         select(EvaluationRun)
-        .where(EvaluationRun.evaluation_dataset_id == dataset_id)
+        .where(EvaluationRun.evaluation_id == evaluation_id)
         .order_by(EvaluationRun.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -574,50 +555,50 @@ async def list_evaluation_runs(
     return EvaluationRunListResponse(items=items, total=total)
 
 
-@router.get("/{dataset_id}/runs/{run_id}", response_model=EvaluationRunResponse)
+@router.get("/{evaluation_id}/runs/{run_id}", response_model=EvaluationRunResponse)
 async def get_evaluation_run(
-    dataset_id: str,
+    evaluation_id: str,
     run_id: str,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     run = await db.get(EvaluationRun, run_id)
-    if not run or run.evaluation_dataset_id != dataset_id:
+    if not run or run.evaluation_id != evaluation_id:
         raise HTTPException(status_code=404, detail="Evaluation run not found")
 
     result = await db.execute(
-        select(EvaluationRunItem, EvaluationDatasetItem)
+        select(EvaluationRunItem, EvaluationItem)
         .join(
-            EvaluationDatasetItem,
-            EvaluationDatasetItem.id == EvaluationRunItem.evaluation_dataset_item_id,
+            EvaluationItem,
+            EvaluationItem.id == EvaluationRunItem.evaluation_item_id,
         )
         .where(EvaluationRunItem.evaluation_run_id == run_id)
-        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+        .order_by(EvaluationItem.sort_order, EvaluationItem.created_at)
     )
     pairs = result.all()
     results = [_run_item_to_result(ri, item, run.evaluation_type) for ri, item in pairs]
     return _run_to_response(run, results)
 
 
-@router.delete("/{dataset_id}/runs/{run_id}", status_code=204)
+@router.delete("/{evaluation_id}/runs/{run_id}", status_code=204)
 async def delete_evaluation_run(
-    dataset_id: str,
+    evaluation_id: str,
     run_id: str,
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     run = await db.get(EvaluationRun, run_id)
-    if not run or run.evaluation_dataset_id != dataset_id:
+    if not run or run.evaluation_id != evaluation_id:
         raise HTTPException(status_code=404, detail="Evaluation run not found")
     await db.delete(run)
 
 
-@router.post("/{dataset_id}/run", response_model=EvaluationRunResponse)
+@router.post("/{evaluation_id}/run", response_model=EvaluationRunResponse)
 async def run_evaluation(
-    dataset_id: str,
+    evaluation_id: str,
     body: EvaluationRunRequestBody = Body(default_factory=EvaluationRunRequestBody),
     token: str = Depends(require_auth),
-    ds: EvaluationDataset = Depends(get_eval_dataset_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Run evaluation (search retrieval or QA), persist report, return full results."""
@@ -629,7 +610,7 @@ async def run_evaluation(
             detail=f"Invalid evaluation_type. Allowed: {', '.join(sorted(ALLOWED_EVALUATION_TYPES))}",
         )
 
-    kb = await db.get(KnowledgeBase, ds.knowledge_base_id)
+    kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
 
@@ -640,19 +621,19 @@ async def run_evaluation(
         )
 
     if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
-        if not ds.wiki_space_id:
+        if not ev.wiki_space_id:
             raise HTTPException(
                 status_code=400,
-                detail="This evaluation type requires a linked wiki space. Set it in dataset settings.",
+                detail="This evaluation type requires a linked wiki space. Set it under evaluation settings.",
             )
 
     judge_model_id, judge_config = await resolve_judge_config(db, kb)
 
-    wiki = await db.get(WikiSpace, ds.wiki_space_id) if ds.wiki_space_id else None
+    wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
     if eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
         config_snapshot = {
             "judge_model_id": judge_model_id,
-            "wiki_space_id": ds.wiki_space_id,
+            "wiki_space_id": ev.wiki_space_id,
             "semantic_match_top_k": wiki.semantic_match_top_k if wiki else None,
             "semantic_similarity_threshold": wiki.semantic_similarity_threshold if wiki else None,
         }
@@ -666,15 +647,15 @@ async def run_evaluation(
     try:
         if eval_type == EVALUATION_TYPE_SEARCH_RETRIEVAL:
             item_rows = await run_search_retrieval_evaluation(
-                db, ds.knowledge_base_id, dataset_id, judge_config
+                db, ev.knowledge_base_id, evaluation_id, judge_config
             )
         elif eval_type == EVALUATION_TYPE_QA_ANSWER:
             item_rows = await run_qa_answer_evaluation(
-                db, kb, dataset_id, judge_config, token
+                db, kb, evaluation_id, judge_config, token
             )
         elif eval_type == EVALUATION_TYPE_WIKI_CONTENT_COVERAGE:
             item_rows = await run_wiki_content_coverage_evaluation(
-                db, ds.wiki_space_id, dataset_id, judge_config
+                db, ev.wiki_space_id, evaluation_id, judge_config
             )
         else:
             raise HTTPException(
@@ -686,8 +667,8 @@ async def run_evaluation(
     except Exception as e:
         run = await _persist_run(
             db,
-            dataset_id=dataset_id,
-            knowledge_base_id=ds.knowledge_base_id,
+            evaluation_id=evaluation_id,
+            knowledge_base_id=ev.knowledge_base_id,
             evaluation_type=eval_type,
             config_snapshot=config_snapshot,
             item_rows=[],
@@ -698,8 +679,8 @@ async def run_evaluation(
 
     run = await _persist_run(
         db,
-        dataset_id=dataset_id,
-        knowledge_base_id=ds.knowledge_base_id,
+        evaluation_id=evaluation_id,
+        knowledge_base_id=ev.knowledge_base_id,
         evaluation_type=eval_type,
         config_snapshot=config_snapshot,
         item_rows=item_rows,

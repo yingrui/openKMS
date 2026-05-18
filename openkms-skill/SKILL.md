@@ -9,8 +9,7 @@ description: >-
   and policy lifecycle fields; article↔article relationship list/create/delete; run Cypher (or natural-language questions) against the ontology graph; list
   evaluation datasets, items, and runs. Write paths: create channels, upload documents,
   create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
-  wiki↔documents, create KB FAQs and evaluation
-  datasets, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
+  wiki↔documents, create KB FAQs and evaluations, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
   lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
   Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
@@ -115,11 +114,11 @@ Some practical guidance:
 | List link types | `python scripts/cli.py ontology links list` |
 | Get one link type | `python scripts/cli.py ontology links get --id LT_ID` |
 | List instances of a link type | `python scripts/cli.py ontology links instances list --type-id LT_ID --limit 50` |
-| Get one evaluation dataset's metadata | `python scripts/cli.py evaluation-datasets get --id DS_ID` |
-| List items in a dataset | `python scripts/cli.py evaluation-datasets items --id DS_ID --limit 50` |
-| List runs for a dataset | `python scripts/cli.py evaluation-runs list --dataset-id DS_ID` |
-| Get one run with per-item results | `python scripts/cli.py evaluation-runs get --dataset-id DS_ID --run-id RUN_ID` |
-| Compare two runs | `python scripts/cli.py evaluation-runs compare --dataset-id DS_ID --run-a A --run-b B` |
+| Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
+| List items in an evaluation | `python scripts/cli.py evaluations items --id DS_ID --limit 50` |
+| List runs for an evaluation | `python scripts/cli.py evaluation-runs list --evaluation-id DS_ID` |
+| Get one run with per-item results | `python scripts/cli.py evaluation-runs get --evaluation-id DS_ID --run-id RUN_ID` |
+| Compare two runs | `python scripts/cli.py evaluation-runs compare --evaluation-id DS_ID --run-a A --run-b B` |
 | Get knowledge map taxonomy tree | `python scripts/cli.py knowledge-map nodes tree` |
 | List all knowledge map resource links | `python scripts/cli.py knowledge-map resource-links list` |
 
@@ -150,9 +149,9 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
 | Delete one wiki stored file by id (vault .md or any stored path; DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
-| List evaluation datasets | `python scripts/cli.py evaluation-datasets list` |
-| Create evaluation dataset | `python scripts/cli.py evaluation-datasets create --name "..." --kb-id KB_ID --yes` |
-| Trigger an evaluation run | `python scripts/cli.py evaluation-datasets run --id DS_ID --type qa_answer --yes` |
+| List evaluations | `python scripts/cli.py evaluations list` |
+| Create evaluation | `python scripts/cli.py evaluations create --name "..." --kb-id KB_ID --yes` |
+| Trigger an evaluation run | `python scripts/cli.py evaluations run --id DS_ID --type qa_answer --yes` |
 | Create glossary | `python scripts/cli.py glossaries create --name "Product terms" --yes` |
 | Update / delete glossary | `python scripts/cli.py glossaries update --id GL_ID --description "…" --yes` / `glossaries delete --id GL_ID --yes` |
 | Create / update / delete term | `python scripts/cli.py glossaries terms create --glossary-id GL_ID --primary-en "MI" --primary-cn "心梗" --yes` (and `terms update` / `terms delete`) |

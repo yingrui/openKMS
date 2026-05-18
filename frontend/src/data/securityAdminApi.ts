@@ -287,7 +287,7 @@ export type GroupScopesOut = {
   article_channel_ids: string[];
   knowledge_base_ids: string[];
   wiki_space_ids: string[];
-  evaluation_dataset_ids: string[];
+  evaluation_ids: string[];
   dataset_ids: string[];
   object_type_ids: string[];
   link_type_ids: string[];

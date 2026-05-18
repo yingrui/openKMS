@@ -152,9 +152,9 @@ function App() {
           <Route path="wikis/:id/pages/:pageId" element={<WikiSpacePagesGate />} />
           <Route path="wikis/:id/settings" element={<FeatureGate feature="wikiSpaces"><WikiSpaceSettings /></FeatureGate>} />
           <Route path="wikis/:id" element={<FeatureGate feature="wikiSpaces"><WikiSpaceRootToGraph /></FeatureGate>} />
-          <Route path="evaluation-datasets" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetList /></FeatureGate>} />
-          <Route path="evaluation-datasets/:id/settings" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetSettings /></FeatureGate>} />
-          <Route path="evaluation-datasets/:id" element={<FeatureGate feature="evaluationDatasets"><EvaluationDatasetDetailPage /></FeatureGate>} />
+          <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
+          <Route path="evaluations/:id/settings" element={<FeatureGate feature="evaluations"><EvaluationDatasetSettings /></FeatureGate>} />
+          <Route path="evaluations/:id" element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
           <Route path="profile" element={<Profile />} />

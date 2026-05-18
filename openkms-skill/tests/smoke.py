@@ -33,7 +33,7 @@ What it covers (each step is independent — failures don't abort the run):
    18.  ontology cypher    (QUESTIONS["cypher"])
    19.  ontology text-to-cypher (QUESTIONS["nl_cypher"])
    20.  ontology ask       (QUESTIONS["ontology_ask"])
-   21.  evaluation-datasets list
+   21.  evaluations list
 
 Outputs:
     - stdout: per-step PASS/FAIL + latency + 1-line summary
@@ -457,15 +457,15 @@ def main(selected: set[int] | None = None) -> int:
     else:
         s.mark(True, skipped=True)
 
-    # ---- 21 evaluation-datasets list -------------------------------------
-    s = Step(21, "evaluation-datasets list"); steps.append(s)
+    # ---- 21 evaluations list ---------------------------------------------
+    s = Step(21, "evaluations list"); steps.append(s)
     if need(21):
-        data = run_json(s, "evaluation-datasets", "list")
+        data = run_json(s, "evaluations", "list")
         if data is not None:
             items = (
                 data.get("items") or []
             ) if isinstance(data, dict) else (data if isinstance(data, list) else [])
-            s.mark(True, f"datasets={len(items)}")
+            s.mark(True, f"evaluations={len(items)}")
     else:
         s.mark(True, skipped=True)
 

@@ -10,7 +10,7 @@ from app.models.access_group import (
     AccessGroupArticleChannel,
     AccessGroupChannel,
     AccessGroupDataset,
-    AccessGroupEvaluationDataset,
+    AccessGroupEvaluation,
     AccessGroupKnowledgeBase,
     AccessGroupLinkType,
     AccessGroupObjectType,
@@ -125,9 +125,9 @@ async def effective_wiki_space_ids(db: AsyncSession, user_id: str) -> set[str] |
     return await _union_resource_ids(db, gids, AccessGroupWikiSpace, "wiki_space_id")
 
 
-async def effective_evaluation_dataset_ids(db: AsyncSession, user_id: str) -> set[str] | None:
+async def effective_evaluation_ids(db: AsyncSession, user_id: str) -> set[str] | None:
     gids = await user_group_ids(db, user_id)
-    return await _union_resource_ids(db, gids, AccessGroupEvaluationDataset, "evaluation_dataset_id")
+    return await _union_resource_ids(db, gids, AccessGroupEvaluation, "evaluation_id")
 
 
 async def effective_dataset_ids(db: AsyncSession, user_id: str) -> set[str] | None:

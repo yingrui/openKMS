@@ -17,23 +17,23 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  fetchEvaluationDataset,
-  fetchEvaluationDatasetItems,
-  createEvaluationDatasetItem,
-  updateEvaluationDatasetItem,
-  deleteEvaluationDatasetItem,
-  importEvaluationDatasetItems,
+  fetchEvaluation,
+  fetchEvaluationItems,
+  createEvaluationItem,
+  updateEvaluationItem,
+  deleteEvaluationItem,
+  importEvaluationItems,
   runEvaluation,
   listEvaluationRuns,
   getEvaluationRun,
   deleteEvaluationRun,
   compareEvaluationRuns,
-  type EvaluationDatasetResponse,
-  type EvaluationDatasetItemResponse,
+  type EvaluationResponse,
+  type EvaluationItemResponse,
   type EvaluationRunResponse,
   type EvaluationRunListItem,
   type EvaluationCompareResponse,
-} from '../../data/evaluationDatasetsApi';
+} from '../../data/evaluationsApi';
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
@@ -49,16 +49,16 @@ import './EvaluationDatasetDetail.css';
 
 export function EvaluationDatasetDetail() {
   const { t } = useTranslation('workspace');
-  const { id: datasetId } = useParams<{ id: string }>();
-  const [dataset, setDataset] = useState<EvaluationDatasetResponse | null>(null);
-  const [items, setItems] = useState<EvaluationDatasetItemResponse[]>([]);
+  const { id: evaluationId } = useParams<{ id: string }>();
+  const [dataset, setDataset] = useState<EvaluationResponse | null>(null);
+  const [items, setItems] = useState<EvaluationItemResponse[]>([]);
   const [itemsTotal, setItemsTotal] = useState(0);
   const [itemsPage, setItemsPage] = useState(0);
   const [itemsPageSize, setItemsPageSize] = useState(DEFAULT_ITEMS_PAGE_SIZE);
   const [itemsLoading, setItemsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showItemForm, setShowItemForm] = useState(false);
-  const [editItem, setEditItem] = useState<EvaluationDatasetItemResponse | null>(null);
+  const [editItem, setEditItem] = useState<EvaluationItemResponse | null>(null);
   const [itemQuery, setItemQuery] = useState('');
   const [itemExpected, setItemExpected] = useState('');
   const [itemTopic, setItemTopic] = useState('');
@@ -77,24 +77,24 @@ export function EvaluationDatasetDetail() {
   const [deletingRunId, setDeletingRunId] = useState<string | null>(null);
 
   const loadDataset = useCallback(async () => {
-    if (!datasetId) return;
+    if (!evaluationId) return;
     try {
-      const data = await fetchEvaluationDataset(datasetId);
+      const data = await fetchEvaluation(evaluationId);
       setDataset(data);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastLoadDatasetFailed'));
     } finally {
       setLoading(false);
     }
-  }, [datasetId, t]);
+  }, [evaluationId, t]);
 
   const fetchItemsForPage = useCallback(
     async (page: number) => {
-      if (!datasetId) return;
+      if (!evaluationId) return;
       setItemsLoading(true);
       try {
         const offset = page * itemsPageSize;
-        const res = await fetchEvaluationDatasetItems(datasetId, { offset, limit: itemsPageSize });
+        const res = await fetchEvaluationItems(evaluationId, { offset, limit: itemsPageSize });
         if (res.items.length === 0 && res.total > 0 && page > 0) {
           const lastPage = Math.max(0, Math.ceil(res.total / itemsPageSize) - 1);
           await fetchItemsForPage(lastPage);
@@ -109,7 +109,7 @@ export function EvaluationDatasetDetail() {
         setItemsLoading(false);
       }
     },
-    [datasetId, itemsPageSize, t]
+    [evaluationId, itemsPageSize, t]
   );
 
   useEffect(() => {
@@ -117,21 +117,21 @@ export function EvaluationDatasetDetail() {
   }, [loadDataset]);
 
   useEffect(() => {
-    if (datasetId) fetchItemsForPage(itemsPage);
-  }, [datasetId, itemsPage, itemsPageSize, fetchItemsForPage]);
+    if (evaluationId) fetchItemsForPage(itemsPage);
+  }, [evaluationId, itemsPage, itemsPageSize, fetchItemsForPage]);
 
   const loadRuns = useCallback(async () => {
-    if (!datasetId) return;
+    if (!evaluationId) return;
     setRunsLoading(true);
     try {
-      const res = await listEvaluationRuns(datasetId, { limit: 100 });
+      const res = await listEvaluationRuns(evaluationId, { limit: 100 });
       setRuns(res.items);
     } catch {
       setRuns([]);
     } finally {
       setRunsLoading(false);
     }
-  }, [datasetId]);
+  }, [evaluationId]);
 
   useEffect(() => {
     loadRuns();
@@ -148,10 +148,10 @@ export function EvaluationDatasetDetail() {
   }, [dataset, evaluationType]);
 
   const handleAddItem = async () => {
-    if (!datasetId || !itemQuery.trim() || !itemExpected.trim()) return;
+    if (!evaluationId || !itemQuery.trim() || !itemExpected.trim()) return;
     setItemSaving(true);
     try {
-      await createEvaluationDatasetItem(datasetId, {
+      await createEvaluationItem(evaluationId, {
         query: itemQuery.trim(),
         expected_answer: itemExpected.trim(),
         topic: itemTopic.trim() || undefined,
@@ -171,10 +171,10 @@ export function EvaluationDatasetDetail() {
   };
 
   const handleUpdateItem = async () => {
-    if (!datasetId || !editItem || !itemQuery.trim() || !itemExpected.trim()) return;
+    if (!evaluationId || !editItem || !itemQuery.trim() || !itemExpected.trim()) return;
     setItemSaving(true);
     try {
-      await updateEvaluationDatasetItem(datasetId, editItem.id, {
+      await updateEvaluationItem(evaluationId, editItem.id, {
         query: itemQuery.trim(),
         expected_answer: itemExpected.trim(),
         topic: itemTopic.trim() || undefined,
@@ -193,10 +193,10 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  const handleDeleteItem = async (item: EvaluationDatasetItemResponse) => {
-    if (!datasetId || !confirm(t('evaluationDetail.deleteItemConfirm'))) return;
+  const handleDeleteItem = async (item: EvaluationItemResponse) => {
+    if (!evaluationId || !confirm(t('evaluationDetail.deleteItemConfirm'))) return;
     try {
-      await deleteEvaluationDatasetItem(datasetId, item.id);
+      await deleteEvaluationItem(evaluationId, item.id);
       toast.success(t('evaluationDetail.toastItemDeleted'));
       await fetchItemsForPage(itemsPage);
       loadDataset();
@@ -205,7 +205,7 @@ export function EvaluationDatasetDetail() {
     }
   };
 
-  const openEditItem = (item: EvaluationDatasetItemResponse) => {
+  const openEditItem = (item: EvaluationItemResponse) => {
     setEditItem(item);
     setItemQuery(item.query);
     setItemExpected(item.expected_answer);
@@ -224,11 +224,11 @@ export function EvaluationDatasetDetail() {
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!datasetId || !file) return;
+    if (!evaluationId || !file) return;
     e.target.value = '';
     setImporting(true);
     try {
-      const res = await importEvaluationDatasetItems(datasetId, file);
+      const res = await importEvaluationItems(evaluationId, file);
       toast.success(t('evaluationDetail.toastImported', { count: res.imported }));
       loadDataset();
       await fetchItemsForPage(0);
@@ -240,11 +240,11 @@ export function EvaluationDatasetDetail() {
   };
 
   const handleRunEvaluation = async () => {
-    if (!datasetId) return;
+    if (!evaluationId) return;
     setRunning(true);
     setRunView(null);
     try {
-      const res = await runEvaluation(datasetId, { evaluation_type: evaluationType });
+      const res = await runEvaluation(evaluationId, { evaluation_type: evaluationType });
       setRunView(res);
       toast.success(
         t('evaluationDetail.toastRunSuccess', {
@@ -262,9 +262,9 @@ export function EvaluationDatasetDetail() {
   };
 
   const handleLoadRun = async (runId: string) => {
-    if (!datasetId) return;
+    if (!evaluationId) return;
     try {
-      const res = await getEvaluationRun(datasetId, runId);
+      const res = await getEvaluationRun(evaluationId, runId);
       setRunView(res);
       toast.success(t('evaluationDetail.toastLoadedRun'));
     } catch (e: unknown) {
@@ -273,10 +273,10 @@ export function EvaluationDatasetDetail() {
   };
 
   const handleDeleteRun = async (runId: string) => {
-    if (!datasetId || !confirm(t('evaluationDetail.deleteRunConfirm'))) return;
+    if (!evaluationId || !confirm(t('evaluationDetail.deleteRunConfirm'))) return;
     setDeletingRunId(runId);
     try {
-      await deleteEvaluationRun(datasetId, runId);
+      await deleteEvaluationRun(evaluationId, runId);
       if (runView?.run_id === runId) setRunView(null);
       if (compareRunA === runId) setCompareRunA('');
       if (compareRunB === runId) setCompareRunB('');
@@ -296,14 +296,14 @@ export function EvaluationDatasetDetail() {
   };
 
   const handleCompare = async () => {
-    if (!datasetId || !compareRunA || !compareRunB || compareRunA === compareRunB) {
+    if (!evaluationId || !compareRunA || !compareRunB || compareRunA === compareRunB) {
       toast.error(t('evaluationDetail.toastPickTwoRuns'));
       return;
     }
     setCompareLoading(true);
     setCompareData(null);
     try {
-      const res = await compareEvaluationRuns(datasetId, compareRunA, compareRunB);
+      const res = await compareEvaluationRuns(evaluationId, compareRunA, compareRunB);
       setCompareData(res);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationDetail.toastCompareFailed'));
@@ -323,7 +323,7 @@ export function EvaluationDatasetDetail() {
   return (
     <div className="eval-detail">
       <div className="eval-detail-header">
-        <Link to="/evaluation-datasets" className="eval-back">
+        <Link to="/evaluations" className="eval-back">
           <ArrowLeft size={18} />
           <span>{t('evaluationDetail.back')}</span>
         </Link>
@@ -339,7 +339,7 @@ export function EvaluationDatasetDetail() {
               aria-hidden
             />
             <Link
-              to={`/evaluation-datasets/${datasetId}/settings`}
+              to={`/evaluations/${evaluationId}/settings`}
               className="btn btn-secondary"
               title={t('evaluationDetail.settings')}
             >
@@ -667,7 +667,7 @@ export function EvaluationDatasetDetail() {
               </thead>
               <tbody>
                 {compareData.rows.map((row) => (
-                  <tr key={row.evaluation_dataset_item_id}>
+                  <tr key={row.evaluation_item_id}>
                     <td className="eval-table-query">{row.query.slice(0, 120)}{row.query.length > 120 ? '…' : ''}</td>
                     <td>{row.pass_a ? t('shared.yes') : t('shared.no')}</td>
                     <td>{row.score_a.toFixed(2)}</td>

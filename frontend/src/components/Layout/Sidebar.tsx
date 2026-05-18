@@ -512,9 +512,9 @@ export function Sidebar() {
             <span>{t('knowledgeBases')}</span>
           </NavLink>
         )}
-        {toggles.evaluationDatasets && canAccessPath('/evaluation-datasets') && (
+        {toggles.evaluations && canAccessPath('/evaluations') && (
           <NavLink
-            to="/evaluation-datasets"
+            to="/evaluations"
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }

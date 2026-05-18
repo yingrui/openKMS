@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.api_model import ApiModel
-from app.models.evaluation_dataset import EvaluationDatasetItem
+from app.models.evaluation import EvaluationItem
 from app.models.knowledge_base import KnowledgeBase
 from app.services.kb_search import search_knowledge_base
 from app.services.search_judge import judge_qa_answer, judge_search_results
@@ -75,11 +75,11 @@ async def resolve_judge_config(db: AsyncSession, kb: KnowledgeBase) -> tuple[str
     return judge_model_id, judge_config
 
 
-async def _load_dataset_items(db: AsyncSession, dataset_id: str) -> list[EvaluationDatasetItem]:
+async def _load_evaluation_items(db: AsyncSession, evaluation_id: str) -> list[EvaluationItem]:
     result = await db.execute(
-        select(EvaluationDatasetItem)
-        .where(EvaluationDatasetItem.evaluation_dataset_id == dataset_id)
-        .order_by(EvaluationDatasetItem.sort_order, EvaluationDatasetItem.created_at)
+        select(EvaluationItem)
+        .where(EvaluationItem.evaluation_id == evaluation_id)
+        .order_by(EvaluationItem.sort_order, EvaluationItem.created_at)
     )
     return list(result.scalars().all())
 
@@ -92,11 +92,11 @@ def _snippet(content: str, max_len: int = SNIPPET_MAX_LEN) -> str:
 async def run_search_retrieval_evaluation(
     db: AsyncSession,
     knowledge_base_id: str,
-    dataset_id: str,
+    evaluation_id: str,
     judge_config: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Return one dict per item: item_id, query, expected_answer, passed, score, reasoning, detail."""
-    items = await _load_dataset_items(db, dataset_id)
+    items = await _load_evaluation_items(db, evaluation_id)
     out: list[dict[str, Any]] = []
     for item in items:
         try:
@@ -112,7 +112,7 @@ async def run_search_retrieval_evaluation(
         except Exception as e:
             out.append(
                 {
-                    "evaluation_dataset_item_id": item.id,
+                    "evaluation_item_id": item.id,
                     "query": item.query,
                     "expected_answer": item.expected_answer,
                     "passed": False,
@@ -146,7 +146,7 @@ async def run_search_retrieval_evaluation(
 
         out.append(
             {
-                "evaluation_dataset_item_id": item.id,
+                "evaluation_item_id": item.id,
                 "query": item.query,
                 "expected_answer": item.expected_answer,
                 "passed": bool(verdict["pass"]),
@@ -161,7 +161,7 @@ async def run_search_retrieval_evaluation(
 async def run_qa_answer_evaluation(
     db: AsyncSession,
     kb: KnowledgeBase,
-    dataset_id: str,
+    evaluation_id: str,
     judge_config: dict[str, Any],
     access_token: str,
 ) -> list[dict[str, Any]]:
@@ -173,7 +173,7 @@ async def run_qa_answer_evaluation(
         )
 
     agent_url = kb.agent_url.rstrip("/")
-    items = await _load_dataset_items(db, dataset_id)
+    items = await _load_evaluation_items(db, evaluation_id)
     out: list[dict[str, Any]] = []
 
     async with httpx.AsyncClient(timeout=120.0) as client:
@@ -195,7 +195,7 @@ async def run_qa_answer_evaluation(
                 logger.warning("QA agent HTTP error: %s", err_text)
                 out.append(
                     {
-                        "evaluation_dataset_item_id": item.id,
+                        "evaluation_item_id": item.id,
                         "query": item.query,
                         "expected_answer": item.expected_answer,
                         "passed": False,
@@ -208,7 +208,7 @@ async def run_qa_answer_evaluation(
             except Exception as e:
                 out.append(
                     {
-                        "evaluation_dataset_item_id": item.id,
+                        "evaluation_item_id": item.id,
                         "query": item.query,
                         "expected_answer": item.expected_answer,
                         "passed": False,
@@ -251,7 +251,7 @@ async def run_qa_answer_evaluation(
 
             out.append(
                 {
-                    "evaluation_dataset_item_id": item.id,
+                    "evaluation_item_id": item.id,
                     "query": item.query,
                     "expected_answer": item.expected_answer,
                     "passed": bool(verdict["pass"]),

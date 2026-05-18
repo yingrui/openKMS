@@ -82,24 +82,24 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ## Evaluation
 
-### EvaluationDataset
+### Evaluations
 
 - `id`, `name`, `knowledge_base_id` (FK → knowledge_bases), optional `wiki_space_id` (FK → wiki_spaces, `ON DELETE SET NULL`), `description`, `created_at`, `updated_at`
 - Container for query + expected answer pairs; optional wiki space for wiki-side evaluation runs
 
-### EvaluationDatasetItem
+### EvaluationItem
 
-- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `query`, `expected_answer`, `topic` (optional), `sort_order`, `created_at`
+- `id`, `evaluation_id` (FK → evaluations, CASCADE), `query`, `expected_answer`, `topic` (optional), `sort_order`, `created_at`
 - Single evaluation item: question to ask and expected answer; topic for categorization
 
 ### EvaluationRun
 
-- `id`, `evaluation_dataset_id` (FK → evaluation_datasets, CASCADE), `knowledge_base_id`, `evaluation_type` (`search_retrieval` \| `qa_answer` \| `wiki_content_coverage`), `status`, `error_message`, `item_count`, `pass_count`, `avg_score`, `config_snapshot` (JSONB), `created_at`, `finished_at`
+- `id`, `evaluation_id` (FK → evaluations, CASCADE), `knowledge_base_id`, `evaluation_type` (`search_retrieval` \| `qa_answer` \| `wiki_content_coverage`), `status`, `error_message`, `item_count`, `pass_count`, `avg_score`, `config_snapshot` (JSONB), `created_at`, `finished_at`
 - One persisted evaluation execution (report); `config_snapshot` records judge model and, for KB search, search params; for **`wiki_content_coverage`**, wiki space id and wiki semantic settings (`semantic_match_top_k`, `semantic_similarity_threshold`)
 
 ### EvaluationRunItem
 
-- `id`, `evaluation_run_id` (FK → evaluation_runs, CASCADE), `evaluation_dataset_item_id` (FK → evaluation_dataset_items, CASCADE), `passed`, `score`, `reasoning`, `detail` (JSONB: search snippets, QA answer + sources, or wiki judge snippets / recall metadata)
+- `id`, `evaluation_run_id` (FK → evaluation_runs, CASCADE), `evaluation_item_id` (FK → evaluation_items, CASCADE), `passed`, `score`, `reasoning`, `detail` (JSONB: search snippets, QA answer + sources, or wiki judge snippets / recall metadata)
 - Per-item outcome for a run
 
 ## Glossaries
@@ -153,7 +153,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `taxonomy` (all enabled); `evaluationDatasets` (disabled by default, experimental)
+- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `taxonomy` (all enabled); `evaluations` (disabled by default, experimental)
 - Read by all authenticated users; write restricted to admins
 
 ### SystemSettings
@@ -224,7 +224,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### DataResource
 
-- `id`, `name` (unique), `description`, `resource_kind` (`document`, `knowledge_base`, `evaluation_dataset`, `dataset`, `object_type`, `link_type`), `attributes` (JSONB; whitelisted keys per kind, interpreted as scope predicates), `anchor_channel_id` (FK → document_channels), `anchor_knowledge_base_id` (FK → knowledge_bases), `created_at`, `updated_at`
+- `id`, `name` (unique), `description`, `resource_kind` (`document`, `knowledge_base`, `evaluation`, `dataset`, `object_type`, `link_type`), `attributes` (JSONB; whitelisted keys per kind, interpreted as scope predicates), `anchor_channel_id` (FK → document_channels), `anchor_knowledge_base_id` (FK → knowledge_bases), `created_at`, `updated_at`
 - Admin-defined access predicates. Used together with the legacy ID allow-lists when `OPENKMS_ENFORCE_GROUP_DATA_SCOPES=true`.
 
 ### Access-group ↔ resource junctions
@@ -233,7 +233,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `access_group_article_channels` — `(group_id, article_channel_id)`
 - `access_group_knowledge_bases` — `(group_id, knowledge_base_id)`
 - `access_group_wiki_spaces` — `(group_id, wiki_space_id)`
-- `access_group_evaluation_datasets` — `(group_id, evaluation_dataset_id)`
+- `access_group_evaluations` — `(group_id, evaluation_id)`
 - `access_group_datasets` — `(group_id, dataset_id)`
 - `access_group_object_types` — `(group_id, object_type_id)`
 - `access_group_link_types` — `(group_id, link_type_id)`

@@ -33,7 +33,7 @@
       },
       "dataSecurity": {
         "title": "Data security",
-        "description": "In local auth mode, create access groups and attach allow lists for channels, knowledge bases, evaluation datasets, datasets, and ontology types."
+        "description": "In local auth mode, create access groups and attach allow lists for channels, knowledge bases, evaluations, datasets, and ontology types."
       },
       "dataSources": {
         "title": "Data sources",
@@ -70,9 +70,9 @@
         "name": "Objects & links",
         "description": "Ontology: object types, link types, and instances. Schema lives under Object types and Link types."
       },
-      "evaluationDatasets": {
+      "evaluations": {
         "name": "Evaluation",
-        "description": "Evaluation datasets for KB QA (experimental). Query and expected-answer pairs to gauge RAG quality."
+        "description": "KB QA evaluations (experimental). Query and expected-answer pairs to gauge RAG quality."
       },
       "taxonomy": {
         "name": "Knowledge map",

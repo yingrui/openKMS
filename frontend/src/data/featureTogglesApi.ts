@@ -7,7 +7,7 @@ export interface FeatureToggles {
   knowledgeBases: boolean;
   wikiSpaces: boolean;
   objectsAndLinks: boolean;
-  evaluationDatasets: boolean;
+  evaluations: boolean;
   taxonomy: boolean;
   hasNeo4jDataSource?: boolean;
 }

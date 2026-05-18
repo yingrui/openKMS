@@ -7,7 +7,7 @@ const FEATURE_IDS = [
   'knowledgeBases',
   'wikiSpaces',
   'objectsAndLinks',
-  'evaluationDatasets',
+  'evaluations',
   'taxonomy',
 ] as const;
 

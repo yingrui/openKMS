@@ -15,9 +15,9 @@ class EvaluationRun(Base):
     __tablename__ = "evaluation_runs"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
-    evaluation_dataset_id: Mapped[str] = mapped_column(
+    evaluation_id: Mapped[str] = mapped_column(
         String(64),
-        ForeignKey("evaluation_datasets.id", ondelete="CASCADE"),
+        ForeignKey("evaluations.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -45,9 +45,9 @@ class EvaluationRunItem(Base):
         nullable=False,
         index=True,
     )
-    evaluation_dataset_item_id: Mapped[str] = mapped_column(
+    evaluation_item_id: Mapped[str] = mapped_column(
         String(64),
-        ForeignKey("evaluation_dataset_items.id", ondelete="CASCADE"),
+        ForeignKey("evaluation_items.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

@@ -4,15 +4,15 @@ import pytest
 from fastapi import HTTPException
 
 from app.models.data_resource import DataResource
-from app.models.evaluation_dataset import EvaluationDataset
+from app.models.evaluation import Evaluation
 from app.models.knowledge_base import KnowledgeBase
 from app.services.data_resource_policy import (
     KIND_DOCUMENT,
-    KIND_EVALUATION_DATASET,
+    KIND_EVALUATION,
     KIND_KNOWLEDGE_BASE,
     validate_data_resource_payload,
     knowledge_base_matches_resource,
-    evaluation_dataset_matches_resource,
+    evaluation_matches_resource,
 )
 
 
@@ -74,15 +74,15 @@ def test_kb_name_attr():
     assert knowledge_base_matches_resource(kb, dr) is True
 
 
-def test_eval_dataset_match():
-    row = EvaluationDataset(id="e1", name="e", knowledge_base_id="kb", description=None)  # type: ignore[arg-type]
+def test_evaluation_match():
+    row = Evaluation(id="e1", name="e", knowledge_base_id="kb", description=None)  # type: ignore[arg-type]
     dr = DataResource(
         id="r1",
         name="r",
         description=None,
-        resource_kind=KIND_EVALUATION_DATASET,
-        attributes={"evaluation_dataset_id": "e1"},
+        resource_kind=KIND_EVALUATION,
+        attributes={"evaluation_id": "e1"},
         anchor_channel_id=None,
         anchor_knowledge_base_id=None,
     )
-    assert evaluation_dataset_matches_resource(row, dr) is True
+    assert evaluation_matches_resource(row, dr) is True

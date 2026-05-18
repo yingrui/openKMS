@@ -169,10 +169,10 @@ echo "Q: $Q_ONTOLOGY_ASK"
 $CLI ontology ask --question "$Q_ONTOLOGY_ASK" \
   | jq '{cypher, row_count: ((.rows // []) | length), answer_head: (.answer[:400])}'
 
-# ---- 21 evaluation-datasets list -----------------------------------------
+# ---- 21 evaluations list --------------------------------------------------
 # Endpoint returns a top-level array, not {items:[]}.
-banner "21. evaluation-datasets list"
-$CLI evaluation-datasets list \
+banner "21. evaluations list"
+$CLI evaluations list \
   | jq '[.. | objects | select(has("id") and (has("name") or has("title")))] | {count: length, sample: (.[:5] | map({id, name: (.name // .title)}))}'
 
 # ---- 22 objects list -----------------------------------------------------

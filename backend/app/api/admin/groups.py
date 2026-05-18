@@ -14,7 +14,7 @@ from app.models.access_group import (
     AccessGroupArticleChannel,
     AccessGroupChannel,
     AccessGroupDataset,
-    AccessGroupEvaluationDataset,
+    AccessGroupEvaluation,
     AccessGroupKnowledgeBase,
     AccessGroupLinkType,
     AccessGroupObjectType,
@@ -54,7 +54,7 @@ class GroupScopesOut(BaseModel):
     article_channel_ids: list[str]
     knowledge_base_ids: list[str]
     wiki_space_ids: list[str]
-    evaluation_dataset_ids: list[str]
+    evaluation_ids: list[str]
     dataset_ids: list[str]
     object_type_ids: list[str]
     link_type_ids: list[str]
@@ -66,7 +66,7 @@ class GroupScopesPut(BaseModel):
     article_channel_ids: list[str] | None = None
     knowledge_base_ids: list[str] | None = None
     wiki_space_ids: list[str] | None = None
-    evaluation_dataset_ids: list[str] | None = None
+    evaluation_ids: list[str] | None = None
     dataset_ids: list[str] | None = None
     object_type_ids: list[str] | None = None
     link_type_ids: list[str] | None = None
@@ -110,7 +110,7 @@ async def _scopes_payload(db: AsyncSession, group_id: str) -> GroupScopesOut:
         article_channel_ids=await col(AccessGroupArticleChannel, "article_channel_id"),
         knowledge_base_ids=await col(AccessGroupKnowledgeBase, "knowledge_base_id"),
         wiki_space_ids=await col(AccessGroupWikiSpace, "wiki_space_id"),
-        evaluation_dataset_ids=await col(AccessGroupEvaluationDataset, "evaluation_dataset_id"),
+        evaluation_ids=await col(AccessGroupEvaluation, "evaluation_id"),
         dataset_ids=await col(AccessGroupDataset, "dataset_id"),
         object_type_ids=await col(AccessGroupObjectType, "object_type_id"),
         link_type_ids=await col(AccessGroupLinkType, "link_type_id"),
@@ -272,7 +272,7 @@ async def put_group_scopes(
     await replace(AccessGroupArticleChannel, body.article_channel_ids, "article_channel_id")
     await replace(AccessGroupKnowledgeBase, body.knowledge_base_ids, "knowledge_base_id")
     await replace(AccessGroupWikiSpace, body.wiki_space_ids, "wiki_space_id")
-    await replace(AccessGroupEvaluationDataset, body.evaluation_dataset_ids, "evaluation_dataset_id")
+    await replace(AccessGroupEvaluation, body.evaluation_ids, "evaluation_id")
     await replace(AccessGroupDataset, body.dataset_ids, "dataset_id")
     await replace(AccessGroupObjectType, body.object_type_ids, "object_type_id")
     await replace(AccessGroupLinkType, body.link_type_ids, "link_type_id")

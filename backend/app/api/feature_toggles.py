@@ -15,7 +15,7 @@ DEFAULTS = {
     "knowledgeBases": True,
     "wikiSpaces": True,
     "objectsAndLinks": True,
-    "evaluationDatasets": False,
+    "evaluations": False,
     "taxonomy": True,
 }
 
@@ -27,7 +27,7 @@ class FeatureTogglesResponse(BaseModel):
     knowledgeBases: bool = True
     wikiSpaces: bool = True
     objectsAndLinks: bool = True
-    evaluationDatasets: bool = False
+    evaluations: bool = False
     taxonomy: bool = True
     hasNeo4jDataSource: bool = False
 
@@ -37,7 +37,7 @@ class FeatureTogglesUpdate(BaseModel):
     knowledgeBases: bool | None = None
     wikiSpaces: bool | None = None
     objectsAndLinks: bool | None = None
-    evaluationDatasets: bool | None = None
+    evaluations: bool | None = None
     taxonomy: bool | None = None
 
 

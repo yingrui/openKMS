@@ -131,7 +131,7 @@ For implementers changing the workspace rail, NDJSON client, or wiki LangGraph p
 - [ ] Optional: Langfuse env in [config](https://github.com/yingrui/openKMS/blob/main/backend/app/config.py) + `invoke` hook
 - [x] Write tool: `upsert_wiki_page` (gated by `wikis:write`)
 - [ ] Read `Document.markdown` in tools (linked channel documents)
-- [ ] (Later) `evaluation_dataset` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)
+- [ ] (Later) `evaluation` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)
 - [ ] Server-side pagination for `GET .../agent/.../messages` if needed
 
 ## Out of scope (later)

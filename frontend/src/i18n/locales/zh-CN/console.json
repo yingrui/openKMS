@@ -33,7 +33,7 @@
       },
       "dataSecurity": {
         "title": "数据安全",
-        "description": "在本地认证模式下创建访问组，并为频道、知识库、评测数据集、数据集和本体类型配置允许列表。"
+        "description": "在本地认证模式下创建访问组，并为频道、知识库、评测、数据集和本体类型配置允许列表。"
       },
       "dataSources": {
         "title": "数据源",
@@ -70,9 +70,9 @@
         "name": "对象与关联",
         "description": "本体层：对象类型、关联类型及实例。架构在「对象类型」「关联类型」中维护。"
       },
-      "evaluationDatasets": {
+      "evaluations": {
         "name": "评测",
-        "description": "知识库问答评测数据集（实验）。通过「问题 + 期望答案」衡量 RAG 质量。"
+        "description": "知识库问答评测（实验）。通过「问题 + 期望答案」衡量 RAG 质量。"
       },
       "taxonomy": {
         "name": "知识地图",
