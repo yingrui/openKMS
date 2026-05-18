@@ -219,7 +219,7 @@
     "evalTypeSearch": "检索评测",
     "evalTypeQa": "问答评测（智能体）",
     "evalTypeWikiCoverage": "Wiki 正文覆盖",
-    "wikiEvalSettingsHint": "在数据集设置中关联 Wiki 空间后，可启用 Wiki 正文覆盖评测。",
+    "wikiEvalSettingsHint": "在评测设置中关联 Wiki 空间后可使用 Wiki 正文覆盖。期望答案中请用「每条一行」或列表标出要点，评判会逐条对照页面正文。",
     "running": "运行中…",
     "runEvaluation": "运行评测",
     "itemsHeading": "条目（{{count}}）",

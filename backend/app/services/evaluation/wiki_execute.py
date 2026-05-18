@@ -1,4 +1,4 @@
-"""Wiki space evaluation: content coverage on pages (LLM judge)."""
+"""Wiki space evaluation: wiki content coverage (LLM judge)."""
 from __future__ import annotations
 
 import logging
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.evaluation import EvaluationItem
 from app.models.wiki_models import WikiPage, WikiSpace
-from app.services.search_judge import judge_search_results
+from app.services.search_judge import judge_wiki_content_coverage
 from app.services.wiki_semantic_index import (
     semantic_match_pages,
     wiki_pages_string_match_ids,
@@ -95,7 +95,7 @@ async def run_wiki_content_coverage_evaluation(
                 )
                 continue
             search_list = [_page_to_passage(p, sim_by_id.get(str(p.id))) for p in pages]
-            verdict = await judge_search_results(
+            verdict = await judge_wiki_content_coverage(
                 item.query,
                 item.expected_answer,
                 search_list,
