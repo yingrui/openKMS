@@ -9,6 +9,7 @@ import {
   deleteEvaluation,
   type EvaluationResponse,
 } from '../../data/evaluationsApi';
+import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import '../documents/DocumentChannelSettings.css';
 import './EvaluationDatasetDetail.css';
@@ -27,20 +28,25 @@ export function EvaluationDatasetSettings() {
   const [deleting, setDeleting] = useState(false);
   const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
   const [wikiSpaceIdField, setWikiSpaceIdField] = useState('');
+  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseResponse[]>([]);
+  const [knowledgeBaseIdField, setKnowledgeBaseIdField] = useState('');
 
   const load = useCallback(async () => {
     if (!evaluationId) return;
     setLoading(true);
     try {
-      const [data, wikiList] = await Promise.all([
+      const [data, wikiList, kbList] = await Promise.all([
         fetchEvaluation(evaluationId),
         fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
+        fetchKnowledgeBases().catch(() => ({ items: [], total: 0 })),
       ]);
       setDataset(data);
       setNameField(data.name);
       setDescriptionField(data.description ?? '');
+      setKnowledgeBaseIdField(data.knowledge_base_id);
       setWikiSpaceIdField(data.wiki_space_id ?? '');
       setWikiSpaces(wikiList.items ?? []);
+      setKnowledgeBases(kbList.items ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationSettings.loadFailed'));
       setDataset(null);
@@ -64,14 +70,20 @@ export function EvaluationDatasetSettings() {
       toast.error(t('evaluationSettings.nameRequired'));
       return;
     }
+    if (!knowledgeBaseIdField.trim()) {
+      toast.error(t('evaluationSettings.knowledgeBaseRequired'));
+      return;
+    }
     setSaving(true);
     try {
       const updated = await updateEvaluation(evaluationId, {
         name,
         description: descriptionField.trim() || null,
+        knowledge_base_id: knowledgeBaseIdField.trim(),
         wiki_space_id: wikiSpaceIdField.trim() || null,
       });
       setDataset(updated);
+      setKnowledgeBaseIdField(updated.knowledge_base_id);
       setWikiSpaceIdField(updated.wiki_space_id ?? '');
       toast.success(t('evaluation.updatedToast'));
     } catch (e: unknown) {
@@ -121,7 +133,7 @@ export function EvaluationDatasetSettings() {
     );
   }
 
-  const kbLabel = dataset.knowledge_base_name || dataset.knowledge_base_id;
+  const kbInList = knowledgeBases.some((k) => k.id === knowledgeBaseIdField);
 
   return (
     <div className="eval-dataset-settings">
@@ -163,6 +175,41 @@ export function EvaluationDatasetSettings() {
         </section>
 
         <section className="document-channel-settings-section">
+          <h2>{t('evaluationSettings.knowledgeBase')}</h2>
+          <p className="document-channel-settings-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
+          <div className="document-channel-settings-field">
+            <label htmlFor="eval-settings-kb">{t('evaluationSettings.knowledgeBaseLabel')}</label>
+            <select
+              id="eval-settings-kb"
+              value={knowledgeBaseIdField}
+              onChange={(e) => setKnowledgeBaseIdField(e.target.value)}
+            >
+              {!kbInList && knowledgeBaseIdField ? (
+                <option value={knowledgeBaseIdField}>
+                  {dataset.knowledge_base_name || knowledgeBaseIdField}
+                </option>
+              ) : null}
+              {knowledgeBases.map((kb) => (
+                <option key={kb.id} value={kb.id}>
+                  {kb.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {knowledgeBaseIdField.trim() ? (
+            <Link
+              to={`/knowledge-bases/${knowledgeBaseIdField.trim()}`}
+              className="eval-dataset-settings-kb-link"
+            >
+              {t('evaluationSettings.openKnowledgeBase')}
+            </Link>
+          ) : null}
+          <p className="document-channel-settings-hint eval-dataset-settings-kb-note">
+            {t('evaluationSettings.knowledgeBaseNote')}
+          </p>
+        </section>
+
+        <section className="document-channel-settings-section">
           <h2>{t('evaluationSettings.wikiSpace')}</h2>
           <p className="document-channel-settings-hint">{t('evaluationSettings.wikiSpaceHint')}</p>
           <div className="document-channel-settings-field">
@@ -189,23 +236,6 @@ export function EvaluationDatasetSettings() {
               {t('evaluationSettings.openWikiSpace')}
             </Link>
           ) : null}
-        </section>
-
-        <section className="document-channel-settings-section">
-          <h2>{t('evaluationSettings.knowledgeBase')}</h2>
-          <p className="document-channel-settings-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
-          <div className="document-channel-settings-field">
-            <span className="eval-dataset-settings-kb-value">{kbLabel}</span>
-            <Link
-              to={`/knowledge-bases/${dataset.knowledge_base_id}`}
-              className="eval-dataset-settings-kb-link"
-            >
-              {t('evaluationSettings.openKnowledgeBase')}
-            </Link>
-          </div>
-          <p className="document-channel-settings-hint eval-dataset-settings-kb-note">
-            {t('evaluationSettings.knowledgeBaseNote')}
-          </p>
         </section>
 
         <div className="document-channel-settings-actions">

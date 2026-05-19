@@ -9,7 +9,7 @@ description: >-
   and policy lifecycle fields; article↔article relationship list/create/delete; list evaluations, items, and runs (including wiki content coverage when a wiki space is linked); run Cypher (or natural-language questions) against the ontology graph.
   Write paths: create channels, upload documents,
   create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
-  wiki↔documents, create KB FAQs and evaluations, trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
+  wiki↔documents, create KB FAQs and evaluations (update evaluation metadata and items in place), trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
   lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
   Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
@@ -24,6 +24,8 @@ description: >-
 Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [reference.md](reference.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
 
 **Every** read and write against this deployment must go through **`python scripts/cli.py …`** from this skill’s **`scripts/`** tree (after `pip install -r requirements.txt`). That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
+
+**Evaluations.** To change an evaluation’s name, description, or wiki link, use **`evaluations update`**. To add, edit, or remove question rows, use **`evaluations items add`**, **`evaluations items update`**, and **`evaluations items delete`**. Do **not** delete an evaluation and **`evaluations create`** a replacement just to “refresh” data—that drops **saved runs** and changes the evaluation id (bad for bookmarks, scripts, and comparisons). Reserve **`evaluations create`** for when the user explicitly wants a **new** evaluation.
 
 **Do not modify this skill’s shipped files.** Never edit, delete, or add files under this skill directory except **`config.yml`** — and **only** to set `api_base_url` and `api_key` when the user explicitly asks you to store them (see **Before you act** §2). Do not touch `SKILL.md`, `README.md`, `reference.md`, `scripts/`, `install.sh`, `requirements.txt`, tests, or any other path here; do not patch or extend the CLI inside the install tree. Changes belong in the **openKMS repository** with a normal human review, not in the agent’s copy of the skill.
 
@@ -116,7 +118,7 @@ Some practical guidance:
 | Get one link type | `python scripts/cli.py ontology links get --id LT_ID` |
 | List instances of a link type | `python scripts/cli.py ontology links instances list --type-id LT_ID --limit 50` |
 | Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
-| List items in an evaluation | `python scripts/cli.py evaluations items --id DS_ID --limit 50` |
+| List items in an evaluation | `python scripts/cli.py evaluations items list --id DS_ID --limit 50` |
 | List runs for an evaluation | `python scripts/cli.py evaluation-runs list --evaluation-id DS_ID` |
 | Get one run with per-item results | `python scripts/cli.py evaluation-runs get --evaluation-id DS_ID --run-id RUN_ID` |
 | Compare two runs | `python scripts/cli.py evaluation-runs compare --evaluation-id DS_ID --run-a A --run-b B` |
@@ -152,6 +154,10 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluations | `python scripts/cli.py evaluations list` |
 | Create evaluation | `python scripts/cli.py evaluations create --name "…" --kb-id KB_ID --wiki-space-id SP_ID --yes` |
+| Update evaluation (name / description / KB or wiki link; same id, keeps runs) | `python scripts/cli.py evaluations update --id EV_ID --name "…" --yes` (optional `--description`, `--knowledge-base-id ID`, `--wiki-space-id ID`, or `--clear-wiki-space`) |
+| Add one evaluation item | `python scripts/cli.py evaluations items add --id EV_ID --query "…" --expected-answer "…" --yes` (optional `--topic`, `--sort-order`) |
+| Update one evaluation item | `python scripts/cli.py evaluations items update --id EV_ID --item-id ITEM_ID --query "…" --yes` (any of `--query`, `--expected-answer`, `--topic`, `--sort-order`) |
+| Delete one evaluation item | `python scripts/cli.py evaluations items delete --id EV_ID --item-id ITEM_ID --yes` |
 | Trigger an evaluation run | `python scripts/cli.py evaluations run --id EV_ID --type qa_answer --yes` (use `--type wiki_content_coverage` when the evaluation has a linked wiki space; `expected_answer` is the checklist text for the judge) |
 | Create glossary | `python scripts/cli.py glossaries create --name "Product terms" --yes` |
 | Update / delete glossary | `python scripts/cli.py glossaries update --id GL_ID --description "…" --yes` / `glossaries delete --id GL_ID --yes` |

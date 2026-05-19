@@ -32,7 +32,7 @@ from app.schemas.evaluation import (
     EvaluationUpdate,
     SearchResultSnippet,
 )
-from app.services.data_resource_policy import evaluation_visible
+from app.services.data_resource_policy import evaluation_visible, knowledge_base_visible
 from app.services.evaluation.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
@@ -284,10 +284,13 @@ async def get_evaluation(
 async def update_evaluation(
     evaluation_id: str,
     body: EvaluationUpdate,
+    request: Request,
     ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump(exclude_unset=True)
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
     for field, value in data.items():
         if field == "wiki_space_id":
             if value in (None, ""):
@@ -297,6 +300,13 @@ async def update_evaluation(
                 if not ws:
                     raise HTTPException(status_code=404, detail="Wiki space not found")
                 ev.wiki_space_id = value
+        elif field == "knowledge_base_id":
+            kb = await db.get(KnowledgeBase, value)
+            if not kb:
+                raise HTTPException(status_code=404, detail="Knowledge base not found")
+            if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
+                raise HTTPException(status_code=404, detail="Knowledge base not found")
+            ev.knowledge_base_id = value
         else:
             setattr(ev, field, value)
     await db.flush()

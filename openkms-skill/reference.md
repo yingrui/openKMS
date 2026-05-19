@@ -170,8 +170,12 @@ Requires **`taxonomy:read`** (tree, link list) and **`taxonomy:write`** (mutatio
 |---|---|---|---|
 | `evaluations list` | GET | `/api/evaluations` | Optional query `knowledge_base_id`. |
 | `evaluations create` | POST | `/api/evaluations` | Body `{name, knowledge_base_id, description?, wiki_space_id?}`. Optional wiki link enables **`wiki_content_coverage`** runs. |
+| `evaluations update` | PUT | `/api/evaluations/{id}` | Partial body: `name`, `description`, `knowledge_base_id`, `wiki_space_id`, or clear wiki link (`wiki_space_id: null` via `--clear-wiki-space`). Keeps the same id and run history. |
 | `evaluations get` | GET | `/api/evaluations/{id}` | Includes stats. |
-| `evaluations items` | GET | `/api/evaluations/{id}/items` | Paginated. Each item is `{topic, query, expected_answer}`. |
+| `evaluations items list` | GET | `/api/evaluations/{id}/items` | Paginated. Each item is `{topic, query, expected_answer}`. |
+| `evaluations items add` | POST | `/api/evaluations/{id}/items` | Body `{query, expected_answer, topic?, sort_order?}`. |
+| `evaluations items update` | PUT | `/api/evaluations/{id}/items/{item_id}` | Partial: `query`, `expected_answer`, `topic`, `sort_order`. |
+| `evaluations items delete` | DELETE | `/api/evaluations/{id}/items/{item_id}` | 204. |
 | `evaluations run` | POST | `/api/evaluations/{id}/run` | Body optionally `{evaluation_type: "search_retrieval"\|"qa_answer"\|"wiki_content_coverage"}` (default `search_retrieval`). `wiki_content_coverage` requires a linked `wiki_space_id`. |
 | `evaluation-runs list` | GET | `/api/evaluations/{evaluation_id}/runs` | Paginated. |
 | `evaluation-runs get` | GET | `/api/evaluations/{evaluation_id}/runs/{run_id}` | Full run with per-item results. |

@@ -146,7 +146,12 @@ export async function createEvaluation(data: {
 
 export async function updateEvaluation(
   id: string,
-  data: { name?: string; description?: string | null; wiki_space_id?: string | null }
+  data: {
+    name?: string;
+    description?: string | null;
+    knowledge_base_id?: string;
+    wiki_space_id?: string | null;
+  }
 ): Promise<EvaluationResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/evaluations/${id}`, {

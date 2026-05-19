@@ -15,6 +15,7 @@ class EvaluationCreate(BaseModel):
 class EvaluationUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
+    knowledge_base_id: str | None = None
     wiki_space_id: str | None = None
 
 

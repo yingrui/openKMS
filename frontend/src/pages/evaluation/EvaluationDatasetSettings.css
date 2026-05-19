@@ -3,12 +3,6 @@
   max-width: 900px;
 }
 
-.eval-dataset-settings-kb-value {
-  display: block;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
 .eval-dataset-settings-kb-link {
   font-size: 0.9375rem;
   color: var(--color-accent);

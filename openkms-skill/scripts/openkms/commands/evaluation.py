@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from typing import Any
 
 from .._confirm import add_write_flags, confirm_or_abort
@@ -47,7 +48,7 @@ def cmd_ds_get(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
-def cmd_ds_items(ns: argparse.Namespace) -> None:
+def cmd_ds_items_list(ns: argparse.Namespace) -> None:
     params: dict[str, int] = {}
     if ns.limit:
         params["limit"] = ns.limit
@@ -57,6 +58,87 @@ def cmd_ds_items(ns: argparse.Namespace) -> None:
         r = s.get(f"/api/evaluations/{ns.id}/items", params=params or None)
     r.raise_for_status()
     print_json(r.json())
+
+
+def cmd_ds_update(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.name is not None:
+        body["name"] = ns.name
+    if ns.description is not None:
+        body["description"] = ns.description
+    if ns.clear_wiki_space:
+        body["wiki_space_id"] = None
+    elif ns.wiki_space_id is not None:
+        body["wiki_space_id"] = ns.wiki_space_id
+    kb = getattr(ns, "knowledge_base_id", None)
+    if kb is not None and str(kb).strip():
+        body["knowledge_base_id"] = str(kb).strip()
+    if not body:
+        print(
+            "evaluations update: pass at least one of --name, --description, "
+            "--knowledge-base-id, --wiki-space-id, or --clear-wiki-space",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    path = f"/api/evaluations/{ns.id}"
+    confirm_or_abort("update evaluation", "PUT", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_ds_item_add(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {
+        "query": ns.query,
+        "expected_answer": ns.expected_answer,
+        "sort_order": ns.sort_order,
+    }
+    if ns.topic is not None:
+        body["topic"] = ns.topic
+    path = f"/api/evaluations/{ns.id}/items"
+    confirm_or_abort("add evaluation item", "POST", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_ds_item_update(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.query is not None:
+        body["query"] = ns.query
+    if ns.expected_answer is not None:
+        body["expected_answer"] = ns.expected_answer
+    if ns.topic is not None:
+        body["topic"] = ns.topic
+    if ns.sort_order is not None:
+        body["sort_order"] = ns.sort_order
+    if not body:
+        print(
+            "evaluations items update: pass at least one of "
+            "--query, --expected-answer, --topic, --sort-order",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    path = f"/api/evaluations/{ns.id}/items/{ns.item_id}"
+    confirm_or_abort("update evaluation item", "PUT", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_ds_item_delete(ns: argparse.Namespace) -> None:
+    path = f"/api/evaluations/{ns.id}/items/{ns.item_id}"
+    confirm_or_abort("delete evaluation item", "DELETE", path, None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    if r.content:
+        print_json(r.json())
+    else:
+        print_json({"ok": True})
 
 
 def cmd_ds_run(ns: argparse.Namespace) -> None:
@@ -131,11 +213,67 @@ def add_subparser(sub) -> None:
     gt.add_argument("--id", required=True)
     gt.set_defaults(fn=cmd_ds_get)
 
-    it = ds_sub.add_parser("items", help="List evaluation items (paginated)")
-    it.add_argument("--id", required=True)
-    it.add_argument("--limit", type=int, default=0)
-    it.add_argument("--offset", type=int, default=0)
-    it.set_defaults(fn=cmd_ds_items)
+    it = ds_sub.add_parser("items", help="List or add/update/delete evaluation items")
+    it_sub = it.add_subparsers(dest="items_cmd", required=True)
+
+    it_ls = it_sub.add_parser("list", help="List items (paginated)")
+    it_ls.add_argument("--id", required=True, help="evaluation id")
+    it_ls.add_argument("--limit", type=int, default=0)
+    it_ls.add_argument("--offset", type=int, default=0)
+    it_ls.set_defaults(fn=cmd_ds_items_list)
+
+    it_add = it_sub.add_parser("add", help="Add one item (POST …/items)")
+    it_add.add_argument("--id", required=True, help="evaluation id")
+    it_add.add_argument("--query", required=True)
+    it_add.add_argument("--expected-answer", required=True)
+    it_add.add_argument("--topic", default=None, help="optional topic label")
+    it_add.add_argument("--sort-order", type=int, default=0)
+    add_write_flags(it_add)
+    it_add.set_defaults(fn=cmd_ds_item_add)
+
+    it_up = it_sub.add_parser("update", help="Update one item (PUT …/items/{item_id})")
+    it_up.add_argument("--id", required=True, help="evaluation id")
+    it_up.add_argument("--item-id", required=True, dest="item_id")
+    it_up.add_argument("--query", default=None)
+    it_up.add_argument("--expected-answer", default=None)
+    it_up.add_argument("--topic", default=None)
+    it_up.add_argument("--sort-order", type=int, default=None)
+    add_write_flags(it_up)
+    it_up.set_defaults(fn=cmd_ds_item_update)
+
+    it_del = it_sub.add_parser("delete", help="Delete one item (DELETE …/items/{item_id})")
+    it_del.add_argument("--id", required=True, help="evaluation id")
+    it_del.add_argument("--item-id", required=True, dest="item_id")
+    add_write_flags(it_del)
+    it_del.set_defaults(fn=cmd_ds_item_delete)
+
+    up = ds_sub.add_parser(
+        "update",
+        help="Update evaluation metadata (PUT /api/evaluations/{id}); keeps the same id and run history",
+    )
+    up.add_argument("--id", required=True)
+    up.add_argument("--name", default=None, help="new name (omit to leave unchanged)")
+    up.add_argument("--description", default=None, help="new description (omit to leave unchanged)")
+    up.add_argument(
+        "--knowledge-base-id",
+        default=None,
+        metavar="ID",
+        help="link this knowledge base for future runs (omit to leave unchanged)",
+    )
+    wiki_g = up.add_mutually_exclusive_group()
+    wiki_g.add_argument(
+        "--wiki-space-id",
+        default=None,
+        metavar="ID",
+        help="link this wiki space (omit to leave unchanged)",
+    )
+    wiki_g.add_argument(
+        "--clear-wiki-space",
+        action="store_true",
+        help="remove wiki space link from this evaluation",
+    )
+    add_write_flags(up)
+    up.set_defaults(fn=cmd_ds_update)
 
     rn = ds_sub.add_parser("run", help="Trigger an evaluation run")
     rn.add_argument("--id", required=True)
