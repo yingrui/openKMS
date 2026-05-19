@@ -519,9 +519,6 @@ export function EvaluationDatasetDetail() {
                 </option>
               </select>
             </label>
-            {!dataset.wiki_space_id ? (
-              <p className="eval-wiki-link-hint">{t('evaluationDetail.wikiEvalSettingsHint')}</p>
-            ) : null}
             <button
               type="button"
               className="btn btn-primary"
