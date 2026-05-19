@@ -102,6 +102,45 @@ def chunk_document(text: str, config: dict[str, Any] | None) -> list[dict[str, A
 # --- Embedding generation ---
 
 
+_INTERNAL_KB_EMBEDDING_CREDENTIALS = "/internal-api/models/kb-embedding-credentials"
+
+
+def _finalize_embedding_model_config(model_config: dict[str, Any]) -> dict[str, Any]:
+    """Merge CLI/env embedding overrides on top of internal-api (or embedding_override) values."""
+    from openkms_cli.settings import get_cli_settings
+
+    cfg = get_cli_settings()
+    out = dict(model_config)
+    if (cfg.embedding_model_base_url or "").strip():
+        out["base_url"] = (cfg.embedding_model_base_url or "").strip()
+    if (cfg.embedding_model_name or "").strip():
+        out["model_name"] = (cfg.embedding_model_name or "").strip()
+    cfg_key = (cfg.embedding_model_api_key or "").strip()
+    if cfg_key:
+        out["api_key"] = cfg_key
+    return out
+
+
+def _require_embedding_api_key(model_config: dict[str, Any]) -> None:
+    if (model_config.get("api_key") or "").strip():
+        return
+    raise RuntimeError(
+        "Embedding API key is missing after loading credentials. "
+        "Ensure the KB's embedding provider has an API key stored in openKMS, "
+        "or set OPENKMS_EMBEDDING_MODEL_API_KEY in openkms-cli/.env as an override. "
+        "See openkms-cli/.env.example."
+    )
+
+
+def _require_embedding_base_url(model_config: dict[str, Any]) -> None:
+    if (model_config.get("base_url") or "").strip():
+        return
+    raise RuntimeError(
+        "Embedding base URL is empty. Configure the embedding provider base URL in openKMS, "
+        "or set OPENKMS_EMBEDDING_MODEL_BASE_URL in openkms-cli/.env."
+    )
+
+
 def generate_embeddings(texts: list[str], model_config: dict[str, Any]) -> list[str]:
     """Generate embeddings using OpenAI-compatible API with base64 encoding. Returns list of base64 strings."""
     from openai import OpenAI
@@ -160,8 +199,9 @@ def run_indexer(
     """
     Run the full indexing pipeline for a knowledge base.
 
-    1. Fetch KB config and documents from API
-    2. Chunk documents
+    1. Fetch KB config from the API; load embedding **base_url**, **model_name**, and **api_key** via
+       ``GET /internal-api/models/kb-embedding-credentials`` (same authenticated pattern as VLM defaults).
+    2. Chunk documents and linked wiki pages
     3. Generate embeddings
     4. Store chunks in DB
     5. Index FAQ embeddings
@@ -187,26 +227,29 @@ def run_indexer(
     if embedding_override:
         model_config = embedding_override
     else:
-        embedding_model_id = kb_data.get("embedding_model_id")
-        if not embedding_model_id:
-            raise RuntimeError("No embedding model configured and no override provided")
-        model_resp = requests.get(
-            f"{base}/api/models/{embedding_model_id}", headers=headers, auth=basic, timeout=30
+        cred_resp = requests.get(
+            f"{base}{_INTERNAL_KB_EMBEDDING_CREDENTIALS}",
+            params={"knowledge_base_id": knowledge_base_id},
+            headers=headers,
+            auth=basic,
+            timeout=30,
         )
-        if not model_resp.ok:
-            raise RuntimeError(f"Failed to fetch embedding model: {model_resp.status_code}")
-        model_data = model_resp.json()
-        provider_resp = requests.get(
-            f"{base}/api/providers/{model_data['provider_id']}", headers=headers, auth=basic, timeout=30
-        )
-        if not provider_resp.ok:
-            raise RuntimeError(f"Failed to fetch provider: {provider_resp.status_code}")
-        provider_data = provider_resp.json()
+        if not cred_resp.ok:
+            raise RuntimeError(
+                "Failed to fetch embedding credentials "
+                f"(GET {_INTERNAL_KB_EMBEDDING_CREDENTIALS}): "
+                f"{cred_resp.status_code} {cred_resp.text[:400]}"
+            )
+        data = cred_resp.json()
         model_config = {
-            "base_url": provider_data["base_url"],
-            "api_key": provider_data.get("api_key", ""),
-            "model_name": model_data.get("model_name") or model_data["name"],
+            "base_url": (data.get("base_url") or "").strip(),
+            "api_key": (data.get("api_key") or "").strip(),
+            "model_name": (data.get("model_name") or "").strip(),
         }
+
+    model_config = _finalize_embedding_model_config(model_config)
+    _require_embedding_base_url(model_config)
+    _require_embedding_api_key(model_config)
 
     _update("Fetching documents...")
     docs_resp = requests.get(
