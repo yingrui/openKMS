@@ -208,7 +208,7 @@
 - [x] openkms-cli `pipeline run --pipeline-name kb-index`: chunk documents, generate embeddings, bulk insert to pgvector
 - [x] `run_kb_index` procrastinate task for background indexing
 - [x] Frontend: KnowledgeBaseList with real CRUD (create, edit, delete)
-- [x] Frontend: KnowledgeBaseDetail with Documents, FAQs, Chunks, Search, Q&A, Settings tabs
+- [x] Frontend: KnowledgeBaseDetail with Documents, FAQs, Chunks, Search, Settings tabs; full-page Q&A from header when agent URL is set
 - [x] QA Agent Service project (`qa-agent/`): FastAPI + LangGraph, retrieves via backend search API (no DB access)
 - [x] Batch document selection for FAQ generation in the UI (modal with doc picker, review generated FAQs, remove unqualified, save)
 - [ ] Re-index button triggers job via procrastinate (currently settings only saves config)

@@ -32,7 +32,6 @@
       "faqs": "FAQs",
       "chunks": "Chunks",
       "search": "Search",
-      "qa": "Q&A",
       "settings": "Settings"
     },
     "expandTree": "Expand",
@@ -99,6 +98,9 @@
     "noSearchResults": "No results found.",
     "searchEmptyPrompt": "Enter a search query above",
     "qaTitle": "Q&A",
+    "qaOpenChat": "Q&A",
+    "qaBackToKb": "Back",
+    "qaBackAria": "Return to knowledge base overview",
     "qaDesc": "Ask questions against this knowledge base. Requires an agent service to be configured in Settings.",
     "qaNoAgent": "No agent URL configured. Go to Settings to set up the QA agent service URL.",
     "qaEmpty": "Ask a question to get started",

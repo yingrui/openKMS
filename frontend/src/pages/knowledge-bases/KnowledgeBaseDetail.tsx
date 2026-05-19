@@ -64,9 +64,9 @@ import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
 import './KnowledgeBaseDetail.css';
 
-type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'qa' | 'settings';
+type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'settings';
 
-const TAB_ORDER: TabId[] = ['documents', 'wiki_spaces', 'faqs', 'chunks', 'search', 'qa', 'settings'];
+const TAB_ORDER: TabId[] = ['documents', 'wiki_spaces', 'faqs', 'chunks', 'search', 'settings'];
 
 const TAB_ICONS: Record<TabId, typeof FileStack> = {
   documents: FileStack,
@@ -74,7 +74,6 @@ const TAB_ICONS: Record<TabId, typeof FileStack> = {
   faqs: HelpCircle,
   chunks: Layers,
   search: SearchIcon,
-  qa: MessageSquare,
   settings: Settings,
 };
 
@@ -159,6 +158,7 @@ export function KnowledgeBaseDetail() {
   const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('documents');
+  const [qaFullPage, setQaFullPage] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Documents
@@ -324,12 +324,11 @@ export function KnowledgeBaseDetail() {
     if (activeTab === 'chunks') loadChunks();
   }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks]);
 
-  // Switch away from Q&A tab when agent_url is cleared
   useEffect(() => {
-    if (activeTab === 'qa' && !kb?.agent_url) {
-      setActiveTab('documents');
+    if (qaFullPage && kb && !kb.agent_url) {
+      setQaFullPage(false);
     }
-  }, [activeTab, kb?.agent_url]);
+  }, [qaFullPage, kb]);
 
   // --- Document picker ---
   const alreadyAddedIds = new Set(docs.map((d) => d.document_id));
@@ -826,6 +825,86 @@ export function KnowledgeBaseDetail() {
   if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
   if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
 
+  if (qaFullPage && kb.agent_url) {
+    return (
+      <div className="kb-detail kb-detail--qa-fullpage">
+        <div className="kb-qa-fullpage">
+          <header className="kb-qa-fullpage-header">
+            <button
+              type="button"
+              className="kb-qa-fullpage-back"
+              onClick={() => setQaFullPage(false)}
+              aria-label={t('detail.qaBackAria')}
+            >
+              <ArrowLeft size={20} />
+              <span>{t('detail.qaBackToKb')}</span>
+            </button>
+            <div className="kb-qa-fullpage-header-center">
+              <span className="kb-qa-fullpage-kb-name">{kb.name}</span>
+              <span className="kb-qa-fullpage-sub">{t('detail.qaTitle')}</span>
+            </div>
+            <span className="kb-qa-fullpage-header-spacer" aria-hidden />
+          </header>
+          <div className="kb-qa-fullpage-main">
+            <div className="kb-qa-fullpage-chat">
+              <div className="kb-qa-messages kb-qa-messages--fullpage">
+                {chatMessages.length === 0 && (
+                  <div className="kb-qa-empty">
+                    <MessageSquare size={40} strokeWidth={1} />
+                    <p>{t('detail.qaEmpty')}</p>
+                  </div>
+                )}
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
+                    <div className="kb-qa-msg-content">{msg.content}</div>
+                    {msg.sources && msg.sources.length > 0 && (
+                      <div className="kb-qa-sources">
+                        <span className="kb-qa-sources-label">{t('detail.sources')}</span>
+                        {msg.sources.map((s, j) => (
+                          <span key={j} className="kb-qa-source-tag">
+                            [{s.source_type}]{' '}
+                            {s.wiki_page_id && s.wiki_space_id ? (
+                              <Link to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
+                                {s.source_name || s.wiki_page_id}
+                              </Link>
+                            ) : s.document_id ? (
+                              <Link to={`/documents/view/${s.document_id}`}>{s.source_name || s.document_id}</Link>
+                            ) : (
+                              <span>{s.source_name || t('detail.faqSourceFallback')}</span>
+                            )}{' '}
+                            ({(s.score * 100).toFixed(0)}%)
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {qaLoading && (
+                  <div className="kb-qa-msg kb-qa-msg-assistant">
+                    <div className="kb-qa-msg-content kb-qa-typing">{t('detail.qaThinking')}</div>
+                  </div>
+                )}
+              </div>
+              <form className="kb-qa-input-form kb-qa-input-form--fullpage" onSubmit={handleAsk}>
+                <input
+                  type="text"
+                  placeholder={t('detail.qaPlaceholder')}
+                  value={qaInput}
+                  onChange={(e) => setQaInput(e.target.value)}
+                  disabled={qaLoading}
+                  autoComplete="off"
+                />
+                <button type="submit" disabled={qaLoading || !qaInput.trim()}>
+                  <Send size={18} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="kb-detail">
       <Link to="/knowledge-bases" className="kb-detail-back">
@@ -833,8 +912,8 @@ export function KnowledgeBaseDetail() {
         <span>{t('detail.backToList')}</span>
       </Link>
 
-      <header className="kb-detail-header">
-        <div>
+      <header className="kb-detail-header kb-detail-header--split">
+        <div className="kb-detail-header-text">
           <h1>{kb.name}</h1>
           <p className="kb-detail-desc">{kb.description || t('detail.noDescription')}</p>
           <div className="kb-detail-stats">
@@ -844,10 +923,20 @@ export function KnowledgeBaseDetail() {
             <span>{t('detail.statChunks', { count: kb.chunk_count })}</span>
           </div>
         </div>
+        {kb.agent_url ? (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm kb-detail-header-qa-btn"
+            onClick={() => setQaFullPage(true)}
+          >
+            <MessageSquare size={18} />
+            <span>{t('detail.qaOpenChat')}</span>
+          </button>
+        ) : null}
       </header>
 
       <div className="kb-detail-tabs">
-        {TAB_ORDER.filter((tabId) => tabId !== 'qa' || Boolean(kb?.agent_url)).map((tabId) => {
+        {TAB_ORDER.map((tabId) => {
           const Icon = TAB_ICONS[tabId];
           return (
             <button
@@ -1402,74 +1491,6 @@ export function KnowledgeBaseDetail() {
                 <p>{t('detail.searchEmptyPrompt')}</p>
               </div>
             )}
-          </section>
-        )}
-
-        {/* ===== QA TAB ===== */}
-        {activeTab === 'qa' && (
-          <section className="kb-section kb-qa-section">
-            <h2>{t('detail.qaTitle')}</h2>
-            <p className="kb-section-desc">
-              {t('detail.qaDesc')}
-            </p>
-            {!kb.agent_url && (
-              <div className="kb-qa-warning">
-                {t('detail.qaNoAgent')}
-              </div>
-            )}
-
-            <div className="kb-qa-chat">
-              <div className="kb-qa-messages">
-                {chatMessages.length === 0 && (
-                  <div className="kb-qa-empty">
-                    <MessageSquare size={40} strokeWidth={1} />
-                    <p>{t('detail.qaEmpty')}</p>
-                  </div>
-                )}
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
-                    <div className="kb-qa-msg-content">{msg.content}</div>
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="kb-qa-sources">
-                        <span className="kb-qa-sources-label">{t('detail.sources')}</span>
-                        {msg.sources.map((s, j) => (
-                          <span key={j} className="kb-qa-source-tag">
-                            [{s.source_type}]{' '}
-                            {s.wiki_page_id && s.wiki_space_id ? (
-                              <Link to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
-                                {s.source_name || s.wiki_page_id}
-                              </Link>
-                            ) : s.document_id ? (
-                              <Link to={`/documents/view/${s.document_id}`}>{s.source_name || s.document_id}</Link>
-                            ) : (
-                              <span>{s.source_name || t('detail.faqSourceFallback')}</span>
-                            )}{' '}
-                            ({(s.score * 100).toFixed(0)}%)
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {qaLoading && (
-                  <div className="kb-qa-msg kb-qa-msg-assistant">
-                    <div className="kb-qa-msg-content kb-qa-typing">{t('detail.qaThinking')}</div>
-                  </div>
-                )}
-              </div>
-              <form className="kb-qa-input-form" onSubmit={handleAsk}>
-                <input
-                  type="text"
-                  placeholder={t('detail.qaPlaceholder')}
-                  value={qaInput}
-                  onChange={(e) => setQaInput(e.target.value)}
-                  disabled={qaLoading || !kb.agent_url}
-                />
-                <button type="submit" disabled={qaLoading || !qaInput.trim() || !kb.agent_url}>
-                  <Send size={18} />
-                </button>
-              </form>
-            </div>
           </section>
         )}
 

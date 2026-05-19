@@ -17,7 +17,7 @@ Index documents into a knowledge base, generate FAQs and chunks, run hybrid sema
 | KB indexing (CLI) | ✅ | `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url <backend>` — chunks **linked documents** and pages from **linked wiki spaces** (via `GET …/wiki-pages-for-index`); embeddings via **`GET /internal-api/models/kb-embedding-credentials`** (same auth as VLM defaults; optional `OPENKMS_EMBEDDING_MODEL_*` in **`openkms-cli/.env`** overrides); bulk insert to pgvector. Requires API auth matching the backend (`OPENKMS_AUTH_MODE` + Basic or OIDC client credentials per `openkms-cli/.env`). See **Indexing with openkms-cli** below. |
 | KB indexing (job) | ✅ | **`run_kb_index`** procrastinate task (worker runs openkms-cli kb-index). **Settings** tab: **Queue indexing job** calls **`POST /api/knowledge-bases/{id}/index-job`** (no pipeline pick); same rows on **Jobs** as document jobs |
 | QA Agent service | ✅ | Separate FastAPI + LangGraph project (`qa-agent/`); RAG via backend search API; LangGraph skills: ontology (get schema, run Cypher), page_index (read TOC, select section, extract content, determine sufficient, generate answer) |
-| Q&A tab | ✅ | Chat-like interface in KB detail page for asking questions; hidden when agent URL is not configured |
+| Q&A | ✅ | **Q&A** button (top right on the knowledge base page when an agent URL is set) opens a **full-page** chat against this KB (same proxy as before); **Back** returns to documents / tabs. Without an agent URL, the button is hidden |
 
 ### Indexing with openkms-cli (documents + linked wiki spaces)
 

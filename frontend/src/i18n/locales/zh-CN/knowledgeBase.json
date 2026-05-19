@@ -32,7 +32,6 @@
       "faqs": "常见问题",
       "chunks": "分块",
       "search": "搜索",
-      "qa": "问答",
       "settings": "设置"
     },
     "expandTree": "展开",
@@ -99,6 +98,9 @@
     "noSearchResults": "未找到结果。",
     "searchEmptyPrompt": "在上方输入搜索词",
     "qaTitle": "问答",
+    "qaOpenChat": "问答",
+    "qaBackToKb": "返回",
+    "qaBackAria": "返回知识库概览",
     "qaDesc": "基于该知识库提问。需在「设置」中配置问答 Agent 服务。",
     "qaNoAgent": "未配置 Agent 地址。请前往「设置」填写问答 Agent 服务 URL。",
     "qaEmpty": "输入问题开始对话",
