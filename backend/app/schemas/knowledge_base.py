@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 
 # --- Knowledge Base ---
@@ -40,6 +40,7 @@ class KnowledgeBaseResponse(BaseModel):
     faq_prompt: str | None = None
     metadata_keys: list[str] | None = None
     document_count: int = 0
+    wiki_space_count: int = 0
     faq_count: int = 0
     chunk_count: int = 0
     created_at: datetime
@@ -69,6 +70,40 @@ class KBDocumentResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+# --- KB wiki spaces ---
+
+class KBWikiSpaceAdd(BaseModel):
+    wiki_space_id: str
+
+
+class KBWikiSpaceResponse(BaseModel):
+    id: str
+    knowledge_base_id: str
+    wiki_space_id: str
+    wiki_space_name: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class WikiPageForKbIndexItem(BaseModel):
+    """Wiki page row for offline KB indexing (includes body)."""
+
+    id: str
+    wiki_space_id: str
+    path: str
+    title: str
+    body: str
+    metadata: dict[str, Any] | None = None
+
+
+class WikiPageForKbIndexListResponse(BaseModel):
+    items: list[WikiPageForKbIndexItem]
+    total: int
+    offset: int
+    limit: int
 
 
 # --- FAQs ---
@@ -136,13 +171,22 @@ class FAQListResponse(BaseModel):
 
 class ChunkBatchItem(BaseModel):
     id: str
-    document_id: str
+    document_id: str | None = None
+    wiki_page_id: str | None = None
     content: str
     chunk_index: int
     token_count: int | None = None
     embedding: str  # base64-encoded float32 array
     chunk_metadata: dict[str, Any] | None = None
     doc_metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one_chunk_source(self) -> "ChunkBatchItem":
+        has_doc = self.document_id is not None and str(self.document_id).strip() != ""
+        has_wiki = self.wiki_page_id is not None and str(self.wiki_page_id).strip() != ""
+        if has_doc == has_wiki:
+            raise ValueError("Each chunk must set exactly one of document_id or wiki_page_id")
+        return self
 
 
 class ChunkBatchCreateRequest(BaseModel):
@@ -167,7 +211,9 @@ class FAQBatchEmbeddingsRequest(BaseModel):
 class ChunkResponse(BaseModel):
     id: str
     knowledge_base_id: str
-    document_id: str
+    document_id: str | None = None
+    wiki_page_id: str | None = None
+    wiki_space_id: str | None = None
     document_name: str | None = None
     content: str
     chunk_index: int
@@ -204,6 +250,8 @@ class SearchResult(BaseModel):
     score: float
     source_name: str | None = None
     document_id: str | None = None
+    wiki_page_id: str | None = None
+    wiki_space_id: str | None = None
     doc_metadata: dict[str, Any] | None = None
 
 

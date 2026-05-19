@@ -50,8 +50,15 @@ openkms-cli parse run ./inputs/ -o ./parsed
 
 ```bash
 openkms-cli pipeline list
+# Index a knowledge base (linked channel documents + linked wiki spaces).
+# Set OPENKMS_API_URL and auth in openkms-cli/.env (see openkms_cli/settings.py).
+openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <KB_UUID> --api-url http://127.0.0.1:8102
+```
+
+Wiki content is pulled only for **wiki spaces already linked** to that KB (`GET /api/knowledge-bases/{id}/wiki-spaces`). Re-run the same command after adding or removing links.
+
+```bash
 openkms-cli pipeline run --input ./doc.pdf --s3-prefix <prefix>
-openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id>
 ```
 
 **Wiki** — upsert markdown pages and upload assets (requires API auth: OIDC client credentials or local HTTP Basic, same as pipeline metadata sync):

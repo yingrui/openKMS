@@ -15,6 +15,7 @@ export interface KnowledgeBaseResponse {
   faq_prompt?: string | null;
   metadata_keys?: string[] | null;
   document_count: number;
+  wiki_space_count: number;
   faq_count: number;
   chunk_count: number;
   created_at: string;
@@ -24,6 +25,14 @@ export interface KnowledgeBaseResponse {
 export interface KnowledgeBaseListResponse {
   items: KnowledgeBaseResponse[];
   total: number;
+}
+
+export interface KBWikiSpaceResponse {
+  id: string;
+  knowledge_base_id: string;
+  wiki_space_id: string;
+  wiki_space_name?: string | null;
+  created_at: string;
 }
 
 export interface KBDocumentResponse {
@@ -66,7 +75,9 @@ export interface FAQGenerateResult {
 export interface ChunkResponse {
   id: string;
   knowledge_base_id: string;
-  document_id: string;
+  document_id?: string | null;
+  wiki_page_id?: string | null;
+  wiki_space_id?: string | null;
   document_name?: string | null;
   content: string;
   chunk_index: number;
@@ -89,6 +100,8 @@ export interface SearchResult {
   score: number;
   source_name?: string | null;
   document_id?: string | null;
+  wiki_page_id?: string | null;
+  wiki_space_id?: string | null;
   doc_metadata?: Record<string, unknown> | null;
 }
 
@@ -219,6 +232,49 @@ export async function removeKBDocument(kbId: string, documentId: string): Promis
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to remove document');
+  }
+}
+
+// --- KB wiki spaces ---
+
+export async function fetchKBWikiSpaces(kbId: string): Promise<KBWikiSpaceResponse[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Failed to fetch linked wiki spaces: ${res.status}`);
+  return res.json();
+}
+
+export async function addKBWikiSpace(kbId: string, wikiSpaceId: string): Promise<KBWikiSpaceResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ wiki_space_id: wikiSpaceId }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to link wiki space');
+  }
+  return res.json();
+}
+
+export async function removeKBWikiSpace(kbId: string, wikiSpaceId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to remove wiki space');
   }
 }
 

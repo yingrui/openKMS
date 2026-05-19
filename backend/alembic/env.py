@@ -24,6 +24,7 @@ import app.models.api_provider  # noqa: F401 - register models with Base.metadat
 import app.models.feature_toggle  # noqa: F401 - register models with Base.metadata
 import app.models.knowledge_base  # noqa: F401 - register models with Base.metadata
 import app.models.kb_document  # noqa: F401 - register models with Base.metadata
+import app.models.kb_wiki_space  # noqa: F401 - register models with Base.metadata
 import app.models.faq  # noqa: F401 - register models with Base.metadata
 import app.models.chunk  # noqa: F401 - register models with Base.metadata
 import app.models.glossary  # noqa: F401 - register models with Base.metadata

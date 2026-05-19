@@ -1,4 +1,4 @@
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home as HomeIcon,
   FileStack,
@@ -7,6 +7,7 @@ import {
   BookOpen,
   Folder,
   FolderOpen,
+  ChevronLeft,
   ChevronRight,
   GitBranch,
   ListTodo,
@@ -14,7 +15,7 @@ import {
   LayoutDashboard,
   Settings,
   Users,
-  ArrowLeft,
+  Menu,
   ToggleLeft,
   Box,
   Link2,
@@ -178,7 +179,12 @@ function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string
   );
 }
 
-export function Sidebar() {
+export type SidebarProps = {
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+};
+
+export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { t } = useTranslation('layout');
   const location = useLocation();
   const navigate = useNavigate();
@@ -289,21 +295,41 @@ export function Sidebar() {
     canAccessPath('/console/feature-toggles');
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">
+    <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`} aria-label={t('mainNavigation')}>
+      <div className={`sidebar-header${collapsed ? ' sidebar-header--collapsed' : ''}`}>
+        <div className={`sidebar-logo${collapsed ? ' sidebar-logo--collapsed' : ''}`}>
           <img src={logo} alt="" className="sidebar-logo-icon" />
-          <span className="sidebar-title" title={sidebarBrandName || undefined}>
-            {sidebarBrandName}
-          </span>
+          {!collapsed && (
+            <span className="sidebar-title" title={sidebarBrandName || undefined}>
+              {sidebarBrandName}
+            </span>
+          )}
         </div>
+        <button
+          type="button"
+          className="sidebar-collapse-toggle"
+          onClick={onToggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-controls="sidebar-primary-nav"
+          aria-label={collapsed ? t('expandSidebar') : t('collapseSidebar')}
+          title={collapsed ? t('expandSidebar') : t('collapseSidebar')}
+        >
+          {collapsed ? <Menu size={20} strokeWidth={2} /> : <ChevronLeft size={20} strokeWidth={2} />}
+        </button>
       </div>
-      <nav className={`sidebar-nav ${onConsole && canAccessConsole ? 'sidebar-nav--console' : ''}`}>
+      <nav
+        id="sidebar-primary-nav"
+        className={`sidebar-nav ${onConsole && canAccessConsole ? 'sidebar-nav--console' : ''}${collapsed ? ' sidebar-nav--collapsed' : ''}`}
+      >
         {onConsole && canAccessConsole ? (
-          <>
             <div className="sidebar-nav-console-scroll">
               {canAccessPath('/console') && (
-                <NavLink to="/console" end className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <NavLink
+                  to="/console"
+                  end
+                  title={t('overview')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
                   <LayoutDashboard size={18} strokeWidth={1.75} />
                   <span>{t('overview')}</span>
                 </NavLink>
@@ -313,6 +339,7 @@ export function Sidebar() {
                   <div className="sidebar-menu-label">{t('permissionManagement')}</div>
                   <NavLink
                     to="/console/permission-management"
+                    title={t('permissions')}
                     className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                   >
                     <KeyRound size={18} strokeWidth={1.75} />
@@ -327,6 +354,7 @@ export function Sidebar() {
                   {canAccessPath('/console/data-security/groups') && (
                     <NavLink
                       to="/console/data-security/groups"
+                      title={t('accessGroups')}
                       className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                     >
                       <Shield size={18} strokeWidth={1.75} />
@@ -336,6 +364,7 @@ export function Sidebar() {
                   {canAccessPath('/console/data-security/data-resources') && (
                     <NavLink
                       to="/console/data-security/data-resources"
+                      title={t('dataResources')}
                       className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                     >
                       <Tags size={18} strokeWidth={1.75} />
@@ -346,41 +375,51 @@ export function Sidebar() {
               )}
               {showConsoleDataLabel && <div className="sidebar-menu-label">{t('consoleSection')}</div>}
               {canAccessPath('/console/data-sources') && (
-                <NavLink to="/console/data-sources" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <NavLink
+                  to="/console/data-sources"
+                  title={t('dataSources')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
                   <Database size={18} strokeWidth={1.75} />
                   <span>{t('dataSources')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/settings') && (
-                <NavLink to="/console/settings" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <NavLink
+                  to="/console/settings"
+                  title={t('systemSettings')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
                   <Settings size={18} strokeWidth={1.75} />
                   <span>{t('systemSettings')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/users') && (
-                <NavLink to="/console/users" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <NavLink
+                  to="/console/users"
+                  title={t('usersAndRoles')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
                   <Users size={18} strokeWidth={1.75} />
                   <span>{t('usersAndRoles')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/feature-toggles') && (
-                <NavLink to="/console/feature-toggles" className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}>
+                <NavLink
+                  to="/console/feature-toggles"
+                  title={t('featureToggles')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
                   <ToggleLeft size={18} strokeWidth={1.75} />
                   <span>{t('featureToggles')}</span>
                 </NavLink>
               )}
             </div>
-            <div className="sidebar-nav-console-footer">
-              <Link to="/" className="sidebar-link sidebar-link-exit">
-                <ArrowLeft size={18} strokeWidth={1.75} />
-                <span>{t('exitConsole')}</span>
-              </Link>
-            </div>
-          </>
         ) : (
           <>
         <NavLink
           to="/"
+          title={t('home')}
           className={({ isActive }) =>
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }
@@ -392,6 +431,7 @@ export function Sidebar() {
         <div className="sidebar-menu-group">
           <NavLink
             to="/documents"
+            title={t('documents')}
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
@@ -416,6 +456,7 @@ export function Sidebar() {
           <div className="sidebar-menu-group">
             <NavLink
               to="/articles"
+              title={t('articles')}
               className={({ isActive }) =>
                 `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
               }
@@ -439,6 +480,7 @@ export function Sidebar() {
         {toggles.wikiSpaces && canAccessPath('/wikis') && (
           <NavLink
             to="/wikis"
+            title={t('wikiSpaces')}
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
@@ -451,6 +493,7 @@ export function Sidebar() {
           (canAccessPath('/knowledge-map') || canAccessPath('/taxonomy')) && (
           <NavLink
             to="/knowledge-map"
+            title={t('knowledgeMap')}
             className={({ isActive }) =>
               `sidebar-link ${
                 isActive ||
@@ -471,6 +514,7 @@ export function Sidebar() {
             {canAccessPath('/glossaries') && (
               <NavLink
                 to="/glossaries"
+                title={t('glossaries')}
                 className={({ isActive }) =>
                   `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
                 }
@@ -484,6 +528,7 @@ export function Sidebar() {
                 {canAccessPath('/ontology') && (
                   <NavLink
                     to="/ontology"
+                    title={t('ontology')}
                     className={({ isActive }) =>
                       `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
                     }
@@ -504,6 +549,7 @@ export function Sidebar() {
         {toggles.knowledgeBases && canAccessPath('/knowledge-bases') && (
           <NavLink
             to="/knowledge-bases"
+            title={t('knowledgeBases')}
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
@@ -515,6 +561,7 @@ export function Sidebar() {
         {toggles.evaluations && canAccessPath('/evaluations') && (
           <NavLink
             to="/evaluations"
+            title={t('evaluation')}
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
             }
@@ -526,6 +573,7 @@ export function Sidebar() {
         {canAccessPath('/pipelines') && (
         <NavLink
           to="/pipelines"
+          title={t('pipelines')}
           className={({ isActive }) =>
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }
@@ -537,6 +585,7 @@ export function Sidebar() {
         {canAccessPath('/jobs') && (
         <NavLink
           to="/jobs"
+          title={t('jobs')}
           className={({ isActive }) =>
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }
@@ -548,6 +597,7 @@ export function Sidebar() {
         {canAccessPath('/models') && (
         <NavLink
           to="/models"
+          title={t('models')}
           className={({ isActive }) =>
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
           }

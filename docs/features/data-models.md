@@ -70,6 +70,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `created_at`
 - Join table with unique constraint on (knowledge_base_id, document_id)
 
+### KBWikiSpace
+
+- `id`, `knowledge_base_id` (FK → knowledge_bases, CASCADE), `wiki_space_id` (FK → wiki_spaces, CASCADE), `created_at`
+- Join table with unique constraint on (knowledge_base_id, wiki_space_id); linking a space causes `kb-index` to chunk all wiki pages in that space into this KB’s `chunks` rows
+
 ### FAQ
 
 - `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents, nullable), `question`, `answer`, `embedding` (pgvector), `doc_metadata` (JSONB), `created_at`, `updated_at`
@@ -77,8 +82,8 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Chunk
 
-- `id`, `knowledge_base_id` (FK → knowledge_bases), `document_id` (FK → documents), `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.), `doc_metadata` (JSONB), `created_at`
-- Document segments with vector embeddings for semantic search; doc_metadata inherited from source document per metadata_keys; supports hybrid search (vector + metadata filters)
+- `id`, `knowledge_base_id` (FK → knowledge_bases), **`document_id`** (FK → documents, nullable) **or** **`wiki_page_id`** (FK → wiki_pages, nullable): exactly one is set (check constraint); `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.; wiki-sourced chunks may include `wiki_space_id`, `wiki_path`), `doc_metadata` (JSONB), `created_at`
+- Segments with vector embeddings for semantic search; doc_metadata from channel documents or wiki page `metadata` when `metadata_keys` is configured; supports hybrid search (vector + metadata filters)
 
 ## Evaluation
 

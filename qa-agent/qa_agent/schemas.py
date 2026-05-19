@@ -9,6 +9,8 @@ class SourceItem(BaseModel):
     score: float
     source_name: str | None = None
     document_id: str | None = None
+    wiki_page_id: str | None = None
+    wiki_space_id: str | None = None
 
 
 class AskRequest(BaseModel):

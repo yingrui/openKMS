@@ -150,6 +150,7 @@ export function KnowledgeBaseList() {
             <p className="kb-desc">{kb.description || ts('shared.noDescription')}</p>
             <div className="kb-meta">
               <span>{t('metaDocs', { count: kb.document_count })}</span>
+              <span>{t('metaWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
               <span>{t('metaFaqs', { count: kb.faq_count })}</span>
               <span>{t('metaChunks', { count: kb.chunk_count })}</span>
               {kb.agent_url && (

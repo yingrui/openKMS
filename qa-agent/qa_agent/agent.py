@@ -36,10 +36,18 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def _build_system_prompt(context: list[SourceItem]) -> str:
+    def _source_ref(s: SourceItem) -> str:
+        parts = []
+        if s.document_id:
+            parts.append(f"document_id={s.document_id}")
+        if s.wiki_page_id:
+            parts.append(f"wiki_page_id={s.wiki_page_id}")
+        if s.wiki_space_id:
+            parts.append(f"wiki_space_id={s.wiki_space_id}")
+        return f" [{' '.join(parts)}]" if parts else ""
+
     context_text = "\n\n---\n\n".join(
-        f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%})"
-        + (f" [document_id={s.document_id}]" if s.document_id else "")
-        + f":\n{s.content}"
+        f"[{s.source_type}] {s.source_name or 'FAQ'} (relevance: {s.score:.0%}){_source_ref(s)}:\n{s.content}"
         for s in context
     )
     skill_prompt = get_skill_prompt_fragments()

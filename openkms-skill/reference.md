@@ -83,9 +83,13 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | CLI | Method | Path | Notes |
 |---|---|---|---|
 | `kb list` | GET | `/api/knowledge-bases` | |
-| `kb get` | GET | `/api/knowledge-bases/{id}` | Includes counts (documents, chunks, FAQs) + embedding status. |
-| `kb search` | POST | `/api/knowledge-bases/{id}/search` | Body `{query, limit?}`. Returns ranked chunk + FAQ matches with confidence scores. |
+| `kb get` | GET | `/api/knowledge-bases/{id}` | Includes counts (documents, wiki spaces, chunks, FAQs) + embedding status. |
+| `kb search` | POST | `/api/knowledge-bases/{id}/search` | Body `{query, limit?}`. Returns ranked chunk + FAQ matches; chunk hits from wiki pages include `wiki_page_id` / `wiki_space_id`. |
 | `kb ask` | POST | `/api/knowledge-bases/{id}/ask` | Body `{question}`. Proxies to the QA agent — returns a grounded answer with source citations. Slower than `kb search` (LLM in the loop). |
+| *(HTTP)* | GET | `/api/knowledge-bases/{id}/wiki-spaces` | Linked wiki spaces whose pages are indexed into this KB on `kb-index`. |
+| *(HTTP)* | POST | `/api/knowledge-bases/{id}/wiki-spaces` | Body `{wiki_space_id}`. |
+| *(HTTP)* | DELETE | `/api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}` | Unlink; removes wiki-sourced chunks for that space from this KB. |
+| *(HTTP)* | GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated pages with body (used by `kb-index`). |
 | `kb-faq list` | GET | `/api/knowledge-bases/{id}/faqs` | Paginated. |
 | `kb-faq create` | POST | `/api/knowledge-bases/{id}/faqs` | Body `{question, answer}`. |
 

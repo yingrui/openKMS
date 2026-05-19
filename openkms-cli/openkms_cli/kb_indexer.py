@@ -239,10 +239,58 @@ def run_indexer(
             rc["id"] = str(uuid.uuid4())
             rc["knowledge_base_id"] = knowledge_base_id
             rc["document_id"] = doc_id
+            rc["wiki_page_id"] = None
             rc["chunk_metadata"] = rc.pop("metadata", None)
             rc["token_count"] = len(rc["content"].split())
             rc["doc_metadata"] = doc_meta
         all_chunks.extend(raw_chunks)
+
+    _update("Fetching wiki pages...")
+    wiki_offset = 0
+    wiki_limit = 100
+    while True:
+        wp_resp = requests.get(
+            f"{base}/api/knowledge-bases/{knowledge_base_id}/wiki-pages-for-index",
+            params={"offset": wiki_offset, "limit": wiki_limit},
+            headers=headers,
+            auth=basic,
+            timeout=120,
+        )
+        if not wp_resp.ok:
+            raise RuntimeError(
+                f"Failed to fetch wiki pages for KB index: {wp_resp.status_code} {wp_resp.text[:300]}"
+            )
+        wp_data = wp_resp.json()
+        witems = wp_data.get("items") or []
+        total_wp = int(wp_data.get("total") or 0)
+        for wp in witems:
+            page_id = wp["id"]
+            page_label = wp.get("path") or page_id
+            _update(f"Chunking wiki page {page_label}...")
+            markdown = (wp.get("body") or "").strip()
+            if not markdown:
+                continue
+            page_meta = _propagate_metadata(wp.get("metadata"), metadata_keys)
+            raw_chunks = chunk_document(markdown, chunk_config)
+            for rc in raw_chunks:
+                meta = rc.pop("metadata", None) or {}
+                if isinstance(meta, dict):
+                    meta = {
+                        **meta,
+                        "wiki_space_id": wp.get("wiki_space_id"),
+                        "wiki_path": wp.get("path"),
+                    }
+                rc["id"] = str(uuid.uuid4())
+                rc["knowledge_base_id"] = knowledge_base_id
+                rc["document_id"] = None
+                rc["wiki_page_id"] = page_id
+                rc["chunk_metadata"] = meta
+                rc["token_count"] = len(rc["content"].split())
+                rc["doc_metadata"] = page_meta
+            all_chunks.extend(raw_chunks)
+        if wiki_offset + len(witems) >= total_wp or not witems:
+            break
+        wiki_offset += wiki_limit
 
     _update("Fetching FAQs...")
     faqs: list[dict[str, Any]] = []
@@ -359,7 +407,8 @@ def run_indexer(
         batch_items = [
             {
                 "id": c["id"],
-                "document_id": c["document_id"],
+                "document_id": c.get("document_id"),
+                "wiki_page_id": c.get("wiki_page_id"),
                 "content": c["content"],
                 "chunk_index": c["chunk_index"],
                 "token_count": c.get("token_count"),

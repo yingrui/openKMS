@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
@@ -30,10 +31,13 @@ import { toast } from 'sonner';
 import {
   fetchKnowledgeBase,
   fetchKBDocuments,
+  fetchKBWikiSpaces,
   fetchFAQs,
   fetchChunks,
   addKBDocument,
   removeKBDocument,
+  addKBWikiSpace,
+  removeKBWikiSpace,
   createFAQ,
   updateFAQ,
   deleteFAQ,
@@ -45,24 +49,27 @@ import {
   updateChunk,
   type KnowledgeBaseResponse,
   type KBDocumentResponse,
+  type KBWikiSpaceResponse,
   type FAQResponse,
   type FAQGenerateResult,
   type ChunkResponse,
   type SearchResult,
 } from '../../data/knowledgeBasesApi';
 import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
+import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
 import './KnowledgeBaseDetail.css';
 
-type TabId = 'documents' | 'faqs' | 'chunks' | 'search' | 'qa' | 'settings';
+type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'qa' | 'settings';
 
-const TAB_ORDER: TabId[] = ['documents', 'faqs', 'chunks', 'search', 'qa', 'settings'];
+const TAB_ORDER: TabId[] = ['documents', 'wiki_spaces', 'faqs', 'chunks', 'search', 'qa', 'settings'];
 
 const TAB_ICONS: Record<TabId, typeof FileStack> = {
   documents: FileStack,
+  wiki_spaces: BookOpen,
   faqs: HelpCircle,
   chunks: Layers,
   search: SearchIcon,
@@ -168,6 +175,12 @@ export function KnowledgeBaseDetail() {
   const [pickerAdding, setPickerAdding] = useState(false);
   const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [kbWikiSpaces, setKbWikiSpaces] = useState<KBWikiSpaceResponse[]>([]);
+  const [showWikiSpacePicker, setShowWikiSpacePicker] = useState(false);
+  const [wikiSpacePickerItems, setWikiSpacePickerItems] = useState<WikiSpaceResponse[]>([]);
+  const [wikiSpacePickerLoading, setWikiSpacePickerLoading] = useState(false);
+  const [wikiSpaceBusyId, setWikiSpaceBusyId] = useState<string | null>(null);
+
   // FAQs
   const [faqs, setFaqs] = useState<FAQResponse[]>([]);
   const [faqTotal, setFaqTotal] = useState(0);
@@ -257,6 +270,13 @@ export function KnowledgeBaseDetail() {
     try { setDocs(await fetchKBDocuments(kbId)); } catch { /* noop */ }
   }, [kbId]);
 
+  const loadKbWikiSpaces = useCallback(async () => {
+    if (!kbId) return;
+    try {
+      setKbWikiSpaces(await fetchKBWikiSpaces(kbId));
+    } catch { /* noop */ }
+  }, [kbId]);
+
   const loadFaqs = useCallback(async () => {
     if (!kbId) return;
     try {
@@ -295,10 +315,11 @@ export function KnowledgeBaseDetail() {
   useEffect(() => { loadKb(); loadModels(); }, [loadKb, loadModels]);
 
   useEffect(() => {
-    if (activeTab === 'documents') loadDocs();
+    if (activeTab === 'documents') void loadDocs();
+    if (activeTab === 'wiki_spaces') void loadKbWikiSpaces();
     if (activeTab === 'faqs') loadFaqs();
     if (activeTab === 'chunks') loadChunks();
-  }, [activeTab, loadDocs, loadFaqs, loadChunks]);
+  }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks]);
 
   // Switch away from Q&A tab when agent_url is cleared
   useEffect(() => {
@@ -422,6 +443,55 @@ export function KnowledgeBaseDetail() {
       loadKb();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.toastRemoveDocFailed'));
+    }
+  };
+
+  const openWikiSpacePicker = async () => {
+    setShowWikiSpacePicker(true);
+    setWikiSpacePickerLoading(true);
+    setWikiSpacePickerItems([]);
+    try {
+      const res = await fetchWikiSpaces();
+      setWikiSpacePickerItems(res.items);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpacesLoadFailed'));
+    } finally {
+      setWikiSpacePickerLoading(false);
+    }
+  };
+
+  const closeWikiSpacePicker = () => {
+    if (!wikiSpaceBusyId) setShowWikiSpacePicker(false);
+  };
+
+  const handleAddWikiSpaceToKb = async (wikiSpaceId: string) => {
+    if (!kbId) return;
+    setWikiSpaceBusyId(wikiSpaceId);
+    try {
+      await addKBWikiSpace(kbId, wikiSpaceId);
+      toast.success(t('detail.toastWikiSpaceLinked'));
+      await loadKbWikiSpaces();
+      await loadKb();
+      setShowWikiSpacePicker(false);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpaceLinkFailed'));
+    } finally {
+      setWikiSpaceBusyId(null);
+    }
+  };
+
+  const handleRemoveWikiSpaceFromKb = async (wikiSpaceId: string) => {
+    if (!kbId) return;
+    setWikiSpaceBusyId(wikiSpaceId);
+    try {
+      await removeKBWikiSpace(kbId, wikiSpaceId);
+      toast.success(t('detail.toastWikiSpaceRemoved'));
+      await loadKbWikiSpaces();
+      await loadKb();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpaceRemoveFailed'));
+    } finally {
+      setWikiSpaceBusyId(null);
     }
   };
 
@@ -610,21 +680,23 @@ export function KnowledgeBaseDetail() {
     setChunkLabelsValues(metaValues);
     setChunkDocMetadataValues(metaValues);
     const metadataIsArray: Record<string, boolean> = {};
-    try {
-      const doc = await fetchDocumentById(chunk.document_id);
-      const channel = await fetchChannelById(doc.channel_id);
-      if (kb?.metadata_keys?.length) {
-        const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
-        const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
-        const lcMap = new Map(
-          (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
-        );
-        for (const k of kb.metadata_keys) {
-          metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
+    if (chunk.document_id) {
+      try {
+        const doc = await fetchDocumentById(chunk.document_id);
+        const channel = await fetchChannelById(doc.channel_id);
+        if (kb?.metadata_keys?.length) {
+          const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
+          const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
+          const lcMap = new Map(
+            (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
+          );
+          for (const k of kb.metadata_keys) {
+            metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
+          }
         }
+      } catch {
+        /* default to false */
       }
-    } catch {
-      /* default to false */
     }
     setChunkLabelAllowMultiple({});
     setChunkMetadataIsArray(metadataIsArray);
@@ -764,6 +836,7 @@ export function KnowledgeBaseDetail() {
           <p className="kb-detail-desc">{kb.description || t('detail.noDescription')}</p>
           <div className="kb-detail-stats">
             <span>{t('detail.statDocs', { count: kb.document_count })}</span>
+            <span>{t('detail.statWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
             <span>{t('detail.statFaqs', { count: kb.faq_count })}</span>
             <span>{t('detail.statChunks', { count: kb.chunk_count })}</span>
           </div>
@@ -828,6 +901,62 @@ export function KnowledgeBaseDetail() {
                               <Eye size={16} />
                             </Link>
                             <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleRemoveDocument(doc.document_id)}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ===== WIKI SPACES TAB ===== */}
+        {activeTab === 'wiki_spaces' && (
+          <section className="kb-section">
+            <div className="kb-section-header">
+              <h2>{t('detail.wikiSpacesTitle')}</h2>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => void openWikiSpacePicker()}>
+                <Plus size={16} />
+                <span>{t('detail.addWikiSpace')}</span>
+              </button>
+            </div>
+            <p className="kb-section-desc kb-wiki-index-hint">{t('detail.wikiIndexHint')}</p>
+            {kbWikiSpaces.length === 0 ? (
+              <p className="kb-empty-text">{t('detail.emptyWikiSpaces')}</p>
+            ) : (
+              <div className="kb-table-wrap">
+                <table className="kb-table">
+                  <thead>
+                    <tr>
+                      <th>{t('detail.colWikiSpace')}</th>
+                      <th className="kb-table-actions">{t('detail.actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kbWikiSpaces.map((ws) => (
+                      <tr key={ws.id}>
+                        <td>
+                          <div className="kb-table-name">
+                            <BookOpen size={18} />
+                            <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`}>{ws.wiki_space_name || ws.wiki_space_id}</Link>
+                          </div>
+                        </td>
+                        <td className="kb-table-actions">
+                          <div className="kb-table-btns">
+                            <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`} title={t('detail.view')} aria-label={t('detail.view')}>
+                              <Eye size={16} />
+                            </Link>
+                            <button
+                              type="button"
+                              title={t('detail.remove')}
+                              aria-label={t('detail.remove')}
+                              disabled={wikiSpaceBusyId === ws.wiki_space_id}
+                              onClick={() => void handleRemoveWikiSpaceFromKb(ws.wiki_space_id)}
+                            >
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -1043,7 +1172,15 @@ export function KnowledgeBaseDetail() {
                         <td>
                           <div className="kb-table-name">
                             <Layers size={18} />
-                            <span>{chunk.document_name || chunk.document_id}</span>
+                            {chunk.document_id ? (
+                              <Link to={`/documents/view/${chunk.document_id}`}>{chunk.document_name || chunk.document_id}</Link>
+                            ) : chunk.wiki_page_id && chunk.wiki_space_id ? (
+                              <Link to={`/wikis/${chunk.wiki_space_id}/pages/${chunk.wiki_page_id}`}>
+                                {chunk.document_name || chunk.wiki_page_id}
+                              </Link>
+                            ) : (
+                              <span>{chunk.document_name || chunk.document_id || chunk.wiki_page_id || t('detail.dash')}</span>
+                            )}
                           </div>
                         </td>
                         <td className="kb-table-excerpt">{chunk.content.slice(0, 150)}...</td>
@@ -1230,7 +1367,19 @@ export function KnowledgeBaseDetail() {
                   {searchResults.map((r) => (
                     <li key={r.id} className="kb-search-result-item">
                       <span className="kb-search-result-source">
-                        [{r.source_type}] {r.source_name || r.document_id || t('detail.faqSourceFallback')}
+                        [{r.source_type}]
+                        {r.source_type === 'chunk' && r.wiki_page_id && r.wiki_space_id && (
+                          <span className="kb-search-result-kind"> {t('detail.searchHitWiki')} </span>
+                        )}{' '}
+                        {r.wiki_page_id && r.wiki_space_id ? (
+                          <Link to={`/wikis/${r.wiki_space_id}/pages/${r.wiki_page_id}`}>
+                            {r.source_name || r.wiki_page_id}
+                          </Link>
+                        ) : r.document_id ? (
+                          <Link to={`/documents/view/${r.document_id}`}>{r.source_name || r.document_id}</Link>
+                        ) : (
+                          <span>{r.source_name || r.document_id || t('detail.faqSourceFallback')}</span>
+                        )}
                       </span>
                       <p className="kb-search-result-excerpt">{r.content.slice(0, 300)}</p>
                       <span className="kb-search-result-score">{t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}</span>
@@ -1282,7 +1431,17 @@ export function KnowledgeBaseDetail() {
                         <span className="kb-qa-sources-label">{t('detail.sources')}</span>
                         {msg.sources.map((s, j) => (
                           <span key={j} className="kb-qa-source-tag">
-                            [{s.source_type}] {s.source_name || t('detail.faqSourceFallback')} ({(s.score * 100).toFixed(0)}%)
+                            [{s.source_type}]{' '}
+                            {s.wiki_page_id && s.wiki_space_id ? (
+                              <Link to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
+                                {s.source_name || s.wiki_page_id}
+                              </Link>
+                            ) : s.document_id ? (
+                              <Link to={`/documents/view/${s.document_id}`}>{s.source_name || s.document_id}</Link>
+                            ) : (
+                              <span>{s.source_name || t('detail.faqSourceFallback')}</span>
+                            )}{' '}
+                            ({(s.score * 100).toFixed(0)}%)
                           </span>
                         ))}
                       </div>
@@ -1806,6 +1965,64 @@ export function KnowledgeBaseDetail() {
         </div>
       )}
 
+      {showWikiSpacePicker && (
+        <div
+          className="kb-doc-picker-overlay"
+          onClick={closeWikiSpacePicker}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="wiki-picker-title"
+        >
+          <div className="kb-doc-picker" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+            <div className="kb-doc-picker-header">
+              <h2 id="wiki-picker-title">{t('detail.wikiPickerTitle')}</h2>
+              <button
+                type="button"
+                className="kb-doc-picker-close"
+                onClick={closeWikiSpacePicker}
+                disabled={Boolean(wikiSpaceBusyId)}
+                aria-label={t('detail.closeAria')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="kb-doc-picker-body">
+              {wikiSpacePickerLoading ? (
+                <p className="kb-empty-text">{t('detail.loading')}</p>
+              ) : (
+                <>
+                  <ul className="kb-wiki-picker-list">
+                    {wikiSpacePickerItems
+                      .filter((w) => !kbWikiSpaces.some((k) => k.wiki_space_id === w.id))
+                      .map((w) => (
+                        <li key={w.id} className="kb-wiki-picker-row">
+                          <span className="kb-wiki-picker-name">{w.name}</span>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            disabled={wikiSpaceBusyId !== null}
+                            onClick={() => void handleAddWikiSpaceToKb(w.id)}
+                          >
+                            {wikiSpaceBusyId === w.id ? (
+                              <Loader2 size={16} className="kb-doc-picker-spinner" />
+                            ) : (
+                              <Plus size={16} />
+                            )}
+                            <span>{t('detail.linkWikiSpace')}</span>
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                  {wikiSpacePickerItems.filter((w) => !kbWikiSpaces.some((k) => k.wiki_space_id === w.id)).length === 0 && (
+                    <p className="kb-empty-text">{t('detail.wikiPickerEmpty')}</p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showChunkDialog && editChunk && (
         <div
           className="kb-doc-picker-overlay"
@@ -1830,7 +2047,13 @@ export function KnowledgeBaseDetail() {
             <div className="kb-faq-dialog-form">
               <label>
                 <span>{t('detail.chunkSource')}</span>
-                <input type="text" value={editChunk.document_name || editChunk.document_id} readOnly disabled className="kb-chunk-dialog-readonly" />
+                <input
+                  type="text"
+                  value={editChunk.document_name || editChunk.document_id || editChunk.wiki_page_id || ''}
+                  readOnly
+                  disabled
+                  className="kb-chunk-dialog-readonly"
+                />
               </label>
               <label>
                 <span>{t('detail.chunkContent')}</span>

@@ -8,14 +8,62 @@
   flex-direction: column;
   position: sticky;
   top: 0;
+  transition: width 0.18s ease, min-width 0.18s ease;
+}
+
+.sidebar--collapsed {
+  width: 56px;
+  min-width: 56px;
+}
+
+.sidebar-header--collapsed .sidebar-logo {
+  flex: 0 0 auto;
 }
 
 .sidebar-header {
   padding: 10px 14px;
-  border-bottom: 1px solid var(--color-border);
   min-height: 56px;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.sidebar-header:not(.sidebar-header--collapsed) {
+  justify-content: space-between;
+}
+
+.sidebar-header--collapsed {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 6px;
+  min-height: auto;
+  gap: 10px;
+}
+
+.sidebar-collapse-toggle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.sidebar-collapse-toggle:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.sidebar-logo--collapsed {
+  justify-content: center;
 }
 
 .sidebar-logo {
@@ -45,11 +93,41 @@
   white-space: nowrap;
 }
 
+.sidebar--collapsed .sidebar-link {
+  justify-content: center;
+  gap: 0;
+  padding: 10px 6px;
+}
+
+.sidebar--collapsed .sidebar-link span {
+  display: none;
+}
+
+.sidebar--collapsed .sidebar-menu-label {
+  display: none;
+}
+
+.sidebar--collapsed .sidebar-subnav {
+  display: none;
+}
+
+.sidebar--collapsed .sidebar-menu-group {
+  margin-bottom: 0;
+}
+
+.sidebar--collapsed .sidebar-link svg {
+  flex-shrink: 0;
+}
+
 .sidebar-nav {
   flex: 1;
   padding: 10px 8px;
   overflow-y: auto;
   min-height: 0;
+}
+
+.sidebar-nav.sidebar-nav--collapsed {
+  padding: 6px 4px;
 }
 
 .sidebar-nav--console {
@@ -66,13 +144,6 @@
   padding-bottom: 4px;
 }
 
-.sidebar-nav-console-footer {
-  flex-shrink: 0;
-  padding-top: 8px;
-  margin-top: 4px;
-  border-top: 1px solid var(--color-border);
-}
-
 .sidebar-link {
   display: flex;
   align-items: center;
@@ -84,15 +155,6 @@
   font-weight: 500;
   margin-bottom: 2px;
   transition: background 0.15s, color 0.15s;
-}
-
-.sidebar-link-exit {
-  color: var(--color-text-muted);
-  margin-bottom: 0;
-}
-
-.sidebar-link-exit:hover {
-  color: var(--color-accent);
 }
 
 .sidebar-link:hover {

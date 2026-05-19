@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy import cast
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,11 +18,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from app.api.auth import require_auth
 from app.database import get_db
 from app.services.data_resource_policy import knowledge_base_visible
+from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
 from app.models.kb_document import KBDocument
+from app.models.kb_wiki_space import KBWikiSpace
 from app.models.knowledge_base import KnowledgeBase
+from app.models.wiki_models import WikiPage, WikiSpace
 from app.schemas.knowledge_base import (
     AskRequest,
     AskResponse,
@@ -40,6 +43,8 @@ from app.schemas.knowledge_base import (
     FAQUpdate,
     KBDocumentAdd,
     KBDocumentResponse,
+    KBWikiSpaceAdd,
+    KBWikiSpaceResponse,
     KnowledgeBaseCreate,
     KnowledgeBaseListResponse,
     KnowledgeBaseResponse,
@@ -47,6 +52,8 @@ from app.schemas.knowledge_base import (
     SearchRequest,
     SearchResponse,
     SearchResult,
+    WikiPageForKbIndexItem,
+    WikiPageForKbIndexListResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,6 +80,36 @@ async def get_kb_scoped(
     return kb
 
 
+async def _require_wiki_space_readable(
+    wiki_space_id: str,
+    request: Request,
+    db: AsyncSession,
+) -> WikiSpace:
+    ws = await db.get(WikiSpace, wiki_space_id)
+    if not ws:
+        raise HTTPException(status_code=404, detail="Wiki space not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_wiki_space_ids(db, sub)
+        if allowed is not None and wiki_space_id not in allowed:
+            raise HTTPException(status_code=404, detail="Wiki space not found")
+    return ws
+
+
+async def _ensure_wiki_page_in_kb_wiki_spaces(db: AsyncSession, kb_id: str, wiki_page_id: str) -> None:
+    r = await db.execute(
+        select(WikiPage.id)
+        .join(KBWikiSpace, KBWikiSpace.wiki_space_id == WikiPage.wiki_space_id)
+        .where(KBWikiSpace.knowledge_base_id == kb_id, WikiPage.id == wiki_page_id)
+    )
+    if r.scalar_one_or_none() is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Wiki page is not in a wiki space linked to this knowledge base",
+        )
+
+
 def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -> dict | None:
     """Filter document metadata by KB config. Returns filtered doc_metadata."""
     if not metadata_keys:
@@ -85,13 +122,21 @@ async def _kb_stats(db: AsyncSession, kb_id: str) -> dict[str, int]:
     doc_count = (await db.execute(
         select(func.count()).select_from(KBDocument).where(KBDocument.knowledge_base_id == kb_id)
     )).scalar_one()
+    wiki_space_count = (await db.execute(
+        select(func.count()).select_from(KBWikiSpace).where(KBWikiSpace.knowledge_base_id == kb_id)
+    )).scalar_one()
     faq_count = (await db.execute(
         select(func.count()).select_from(FAQ).where(FAQ.knowledge_base_id == kb_id)
     )).scalar_one()
     chunk_count = (await db.execute(
         select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
     )).scalar_one()
-    return {"document_count": doc_count, "faq_count": faq_count, "chunk_count": chunk_count}
+    return {
+        "document_count": doc_count,
+        "wiki_space_count": wiki_space_count,
+        "faq_count": faq_count,
+        "chunk_count": chunk_count,
+    }
 
 
 def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseResponse:
@@ -267,6 +312,142 @@ async def remove_kb_document(
     if not kbd:
         raise HTTPException(status_code=404, detail="Document not in knowledge base")
     await db.delete(kbd)
+
+
+# --- KB wiki spaces (pages indexed into this KB via kb-index) ---
+
+@router.get("/{kb_id}/wiki-spaces", response_model=list[KBWikiSpaceResponse])
+async def list_kb_wiki_spaces(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(KBWikiSpace, WikiSpace.name)
+        .join(WikiSpace, KBWikiSpace.wiki_space_id == WikiSpace.id)
+        .where(KBWikiSpace.knowledge_base_id == kb_id)
+        .order_by(KBWikiSpace.created_at.desc())
+    )
+    return [
+        KBWikiSpaceResponse(
+            id=row.id,
+            knowledge_base_id=row.knowledge_base_id,
+            wiki_space_id=row.wiki_space_id,
+            wiki_space_name=ws_name,
+            created_at=row.created_at,
+        )
+        for row, ws_name in result.all()
+    ]
+
+
+@router.post("/{kb_id}/wiki-spaces", response_model=KBWikiSpaceResponse, status_code=201)
+async def add_kb_wiki_space(
+    kb_id: str,
+    body: KBWikiSpaceAdd,
+    request: Request,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    await _require_wiki_space_readable(body.wiki_space_id, request, db)
+    existing = await db.execute(
+        select(KBWikiSpace).where(
+            KBWikiSpace.knowledge_base_id == kb_id,
+            KBWikiSpace.wiki_space_id == body.wiki_space_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Wiki space already linked to this knowledge base")
+    ws = await db.get(WikiSpace, body.wiki_space_id)
+    assert ws is not None
+    row = KBWikiSpace(
+        id=str(uuid.uuid4()),
+        knowledge_base_id=kb_id,
+        wiki_space_id=body.wiki_space_id,
+    )
+    db.add(row)
+    await db.flush()
+    await db.refresh(row)
+    return KBWikiSpaceResponse(
+        id=row.id,
+        knowledge_base_id=row.knowledge_base_id,
+        wiki_space_id=row.wiki_space_id,
+        wiki_space_name=ws.name,
+        created_at=row.created_at,
+    )
+
+
+@router.delete("/{kb_id}/wiki-spaces/{wiki_space_id}", status_code=204)
+async def remove_kb_wiki_space(
+    kb_id: str,
+    wiki_space_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(KBWikiSpace).where(
+            KBWikiSpace.knowledge_base_id == kb_id,
+            KBWikiSpace.wiki_space_id == wiki_space_id,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
+    page_ids = select(WikiPage.id).where(WikiPage.wiki_space_id == wiki_space_id)
+    await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id, Chunk.wiki_page_id.in_(page_ids)))
+    await db.delete(row)
+
+
+@router.get("/{kb_id}/wiki-pages-for-index", response_model=WikiPageForKbIndexListResponse)
+async def list_wiki_pages_for_kb_index(
+    kb_id: str,
+    request: Request,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Paginated wiki pages (with body) from spaces linked to this KB. Used by the kb-index pipeline."""
+    filters = [KBWikiSpace.knowledge_base_id == kb_id]
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        allowed = await effective_wiki_space_ids(db, sub)
+        if allowed is not None:
+            if not allowed:
+                return WikiPageForKbIndexListResponse(items=[], total=0, offset=offset, limit=limit)
+            filters.append(KBWikiSpace.wiki_space_id.in_(allowed))
+    total = (await db.execute(
+        select(func.count())
+        .select_from(WikiPage)
+        .join(KBWikiSpace, KBWikiSpace.wiki_space_id == WikiPage.wiki_space_id)
+        .where(*filters)
+    )).scalar_one()
+    q = await db.execute(
+        select(WikiPage)
+        .join(KBWikiSpace, KBWikiSpace.wiki_space_id == WikiPage.wiki_space_id)
+        .where(*filters)
+        .order_by(WikiPage.wiki_space_id, WikiPage.path)
+        .offset(offset)
+        .limit(limit)
+    )
+    pages = list(q.scalars().all())
+    items = [
+        WikiPageForKbIndexItem(
+            id=p.id,
+            wiki_space_id=p.wiki_space_id,
+            path=p.path,
+            title=p.title,
+            body=p.body or "",
+            metadata=p.metadata_,
+        )
+        for p in pages
+    ]
+    return WikiPageForKbIndexListResponse(
+        items=items,
+        total=int(total),
+        offset=offset,
+        limit=limit,
+    )
 
 
 # --- FAQs ---
@@ -500,31 +681,36 @@ async def list_chunks(
     total = (await db.execute(
         select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
     )).scalar_one()
+    name_expr = func.coalesce(Document.name, WikiPage.title, WikiPage.path)
     # Exclude embedding column from load to avoid transferring vector data; check IS NOT NULL for has_embedding
     result = await db.execute(
         select(
             Chunk,
-            Document.name,
+            name_expr.label("source_name"),
+            WikiPage.wiki_space_id.label("wsid"),
             Chunk.embedding.isnot(None).label("has_embedding"),
         )
         .options(load_only(
-            Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.content,
+            Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.wiki_page_id, Chunk.content,
             Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata,
             Chunk.doc_metadata, Chunk.created_at
         ))
-        .join(Document, Chunk.document_id == Document.id)
+        .outerjoin(Document, Chunk.document_id == Document.id)
+        .outerjoin(WikiPage, Chunk.wiki_page_id == WikiPage.id)
         .where(Chunk.knowledge_base_id == kb_id)
-        .order_by(Chunk.document_id, Chunk.chunk_index)
+        .order_by(Chunk.document_id.asc().nulls_last(), Chunk.wiki_page_id, Chunk.chunk_index)
         .offset(offset)
         .limit(limit)
     )
     items = []
-    for chunk, doc_name, has_emb in result.all():
+    for chunk, source_name, wsid, has_emb in result.all():
         items.append(ChunkResponse(
             id=chunk.id,
             knowledge_base_id=chunk.knowledge_base_id,
             document_id=chunk.document_id,
-            document_name=doc_name,
+            wiki_page_id=chunk.wiki_page_id,
+            wiki_space_id=wsid,
+            document_name=source_name,
             content=chunk.content,
             chunk_index=chunk.chunk_index,
             token_count=chunk.token_count,
@@ -562,12 +748,25 @@ async def update_chunk(
         setattr(chunk, field, value)
     await db.flush()
     await db.refresh(chunk)
-    doc_result = await db.execute(select(Document.name).where(Document.id == chunk.document_id))
-    doc_name = doc_result.scalar_one_or_none()
+    doc_name = None
+    wsid = None
+    if chunk.document_id:
+        doc_result = await db.execute(select(Document.name).where(Document.id == chunk.document_id))
+        doc_name = doc_result.scalar_one_or_none()
+    elif chunk.wiki_page_id:
+        wp_result = await db.execute(
+            select(WikiPage.title, WikiPage.path, WikiPage.wiki_space_id).where(WikiPage.id == chunk.wiki_page_id)
+        )
+        row = wp_result.one_or_none()
+        if row:
+            title, path, wsid = row[0], row[1], row[2]
+            doc_name = title or path
     return ChunkResponse(
         id=chunk.id,
         knowledge_base_id=chunk.knowledge_base_id,
         document_id=chunk.document_id,
+        wiki_page_id=chunk.wiki_page_id,
+        wiki_space_id=wsid,
         document_name=doc_name,
         content=chunk.content,
         chunk_index=chunk.chunk_index,
@@ -597,24 +796,49 @@ async def create_chunks_batch(
     items = []
     for item in body.items:
         embedding_floats = _base64_to_floats(item.embedding)
-        chunk = Chunk(
-            id=item.id,
-            knowledge_base_id=kb_id,
-            document_id=item.document_id,
-            content=item.content,
-            chunk_index=item.chunk_index,
-            token_count=item.token_count,
-            embedding=embedding_floats,
-            chunk_metadata=item.chunk_metadata,
-            doc_metadata=item.doc_metadata,
-        )
+        wiki_pid = (item.wiki_page_id or "").strip() or None
+        doc_id = (item.document_id or "").strip() or None
+        if wiki_pid:
+            await _ensure_wiki_page_in_kb_wiki_spaces(db, kb_id, wiki_pid)
+            chunk = Chunk(
+                id=item.id,
+                knowledge_base_id=kb_id,
+                document_id=None,
+                wiki_page_id=wiki_pid,
+                content=item.content,
+                chunk_index=item.chunk_index,
+                token_count=item.token_count,
+                embedding=embedding_floats,
+                chunk_metadata=item.chunk_metadata,
+                doc_metadata=item.doc_metadata,
+            )
+        else:
+            chunk = Chunk(
+                id=item.id,
+                knowledge_base_id=kb_id,
+                document_id=doc_id,
+                wiki_page_id=None,
+                content=item.content,
+                chunk_index=item.chunk_index,
+                token_count=item.token_count,
+                embedding=embedding_floats,
+                chunk_metadata=item.chunk_metadata,
+                doc_metadata=item.doc_metadata,
+            )
         db.add(chunk)
         await db.flush()
         await db.refresh(chunk)
+        wsid = None
+        if chunk.wiki_page_id:
+            wsid = (
+                await db.execute(select(WikiPage.wiki_space_id).where(WikiPage.id == chunk.wiki_page_id))
+            ).scalar_one_or_none()
         items.append(ChunkResponse(
             id=chunk.id,
             knowledge_base_id=chunk.knowledge_base_id,
             document_id=chunk.document_id,
+            wiki_page_id=chunk.wiki_page_id,
+            wiki_space_id=wsid,
             content=chunk.content,
             chunk_index=chunk.chunk_index,
             token_count=chunk.token_count,

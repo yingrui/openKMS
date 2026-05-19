@@ -7,6 +7,7 @@ from app.models.api_provider import ApiProvider
 from app.models.feature_toggle import FeatureToggle
 from app.models.knowledge_base import KnowledgeBase
 from app.models.kb_document import KBDocument
+from app.models.kb_wiki_space import KBWikiSpace
 from app.models.faq import FAQ
 from app.models.chunk import Chunk
 from app.models.glossary import Glossary
@@ -16,6 +17,6 @@ from app.models.dataset import Dataset
 
 __all__ = [
     "Document", "DocumentChannel", "Pipeline", "ApiModel", "ApiProvider", "FeatureToggle",
-    "KnowledgeBase", "KBDocument", "FAQ", "Chunk", "Glossary", "GlossaryTerm",
+    "KnowledgeBase", "KBDocument", "KBWikiSpace", "FAQ", "Chunk", "Glossary", "GlossaryTerm",
     "DataSource", "Dataset",
 ]

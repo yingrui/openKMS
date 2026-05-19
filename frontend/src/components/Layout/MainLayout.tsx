@@ -1,3 +1,4 @@
+import { useCallback, useState, type CSSProperties } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X, LogIn, Home } from 'lucide-react';
@@ -5,6 +6,16 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../App.css';
+
+const SIDEBAR_COLLAPSED_KEY = 'openkms_nav_sidebar_collapsed';
+
+function readSidebarCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export function MainLayout() {
   const { t } = useTranslation('layout');
@@ -32,9 +43,34 @@ export function MainLayout() {
     location.pathname.startsWith('/wikis/');
   const isSearchPage = location.pathname === '/search';
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
+
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        if (next) {
+          window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, '1');
+        } else {
+          window.localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
+        }
+      } catch {
+        /* ignore quota / private mode */
+      }
+      return next;
+    });
+  }, []);
+
   return (
-    <div className="app-layout">
-      <Sidebar />
+    <div
+      className={`app-layout${sidebarCollapsed ? ' app-layout--sidebar-collapsed' : ''}`}
+      style={
+        sidebarCollapsed
+          ? ({ ['--sidebar-width' as string]: '56px' } as CSSProperties)
+          : undefined
+      }
+    >
+      <Sidebar collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebarCollapsed} />
       <main className="app-main">
         <Header />
         {showAuthRequired && (

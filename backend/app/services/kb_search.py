@@ -6,15 +6,15 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import func
 
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
+from app.models.wiki_models import WikiPage
 from app.services.document_lifecycle import document_current_sql
 from app.models.knowledge_base import KnowledgeBase
 from app.models.api_model import ApiModel
-from app.schemas.knowledge_base import SearchRequest, SearchResponse, SearchResult
+from app.schemas.knowledge_base import SearchResponse, SearchResult
 
 
 def _build_metadata_key_filter_conditions(column: Any, filters: dict[str, str | list[str]]) -> Any:
@@ -105,7 +105,7 @@ async def search_knowledge_base(
 
     if not include_historical_documents:
         at_expr = func.now()
-        chunk_where.append(document_current_sql(at_expr))
+        chunk_where.append(or_(Chunk.document_id.is_(None), document_current_sql(at_expr)))
         faq_where.append(or_(FAQ.document_id.is_(None), document_current_sql(at_expr)))
 
     try:
@@ -115,11 +115,14 @@ async def search_knowledge_base(
                     Chunk.id,
                     Chunk.content,
                     Chunk.document_id,
+                    Chunk.wiki_page_id,
+                    WikiPage.wiki_space_id.label("wiki_space_id"),
                     Chunk.doc_metadata,
-                    Document.name.label("doc_name"),
+                    func.coalesce(Document.name, WikiPage.title, WikiPage.path).label("source_name"),
                     Chunk.embedding.cosine_distance(query_embedding).label("distance"),
                 )
-                .join(Document, Chunk.document_id == Document.id)
+                .outerjoin(Document, Chunk.document_id == Document.id)
+                .outerjoin(WikiPage, Chunk.wiki_page_id == WikiPage.id)
                 .where(*chunk_where)
                 .order_by("distance")
                 .limit(top_k)
@@ -131,8 +134,10 @@ async def search_knowledge_base(
                     source_type="chunk",
                     content=row.content,
                     score=round(1.0 - row.distance, 4),
-                    source_name=row.doc_name,
+                    source_name=row.source_name,
                     document_id=row.document_id,
+                    wiki_page_id=row.wiki_page_id,
+                    wiki_space_id=row.wiki_space_id,
                     doc_metadata=row.doc_metadata,
                 ))
 

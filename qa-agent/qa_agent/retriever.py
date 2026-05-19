@@ -154,6 +154,8 @@ def retrieve(
             score=r.get("score") or 0.0,
             source_name=r.get("source_name"),
             document_id=r.get("document_id"),
+            wiki_page_id=r.get("wiki_page_id"),
+            wiki_space_id=r.get("wiki_space_id"),
         )
         for r in reranked
     ]

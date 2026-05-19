@@ -90,6 +90,8 @@ class BM25Cache:
                 "content": content,
                 "source_name": c.get("document_name"),
                 "document_id": c.get("document_id"),
+                "wiki_page_id": c.get("wiki_page_id"),
+                "wiki_space_id": c.get("wiki_space_id"),
             })
         for f in faqs:
             q = f.get("question") or ""

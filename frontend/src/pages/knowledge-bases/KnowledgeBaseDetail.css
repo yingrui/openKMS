@@ -1530,6 +1530,46 @@
   background: rgba(220, 38, 38, 0.08);
 }
 
+.kb-wiki-index-hint {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.kb-wiki-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+
+.kb-wiki-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.kb-wiki-picker-name {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-search-result-kind {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
 @media (max-width: 768px) {
   .kb-qa-chat {
     height: 400px;

@@ -138,6 +138,10 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/knowledge-bases/{id}/documents` | List documents in KB |
 | POST | `/api/knowledge-bases/{id}/documents` | Add document to KB |
 | DELETE | `/api/knowledge-bases/{id}/documents/{doc_id}` | Remove document from KB |
+| GET | `/api/knowledge-bases/{id}/wiki-spaces` | List wiki spaces linked to the KB (for RAG indexing) |
+| POST | `/api/knowledge-bases/{id}/wiki-spaces` | Link a wiki space (`{ "wiki_space_id": "…" }`); pages are included on next `kb-index` |
+| DELETE | `/api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}` | Unlink wiki space and delete KB chunks whose `wiki_page_id` belongs to that space |
+| GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated wiki pages with body from linked spaces (`?offset=`, `limit` 1–500); used by `kb-index` |
 | GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=) |
 | POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |
 | PUT | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Update FAQ |
@@ -147,9 +151,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated; ?offset=, ?limit=) |
 | PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (content, doc_metadata) |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
-| POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index pipeline) |
+| POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index); each item sets exactly one of `document_id` or `wiki_page_id` |
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
-| POST | `/api/knowledge-bases/{id}/search` | Semantic search over chunks and FAQs |
+| POST | `/api/knowledge-bases/{id}/search` | Semantic / hybrid search over chunks (documents + linked wiki pages) and FAQs; chunk hits may include `wiki_page_id`, `wiki_space_id` |
 | POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service |
 
 ## Evaluation
