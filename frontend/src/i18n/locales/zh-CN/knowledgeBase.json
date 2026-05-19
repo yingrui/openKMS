@@ -80,7 +80,7 @@
     "searchTitle": "语义搜索",
     "searchDesc": "使用向量相似度在已索引的分块（渠道文档与已关联的 wiki 页面）和常见问题中检索。请先在「Wiki 空间」中关联空间并运行知识库索引，再在此搜索。",
     "searchTypeAll": "全部",
-    "searchTypeChunks": "分块（文档与 wiki）",
+    "searchTypeChunks": "分块",
     "searchTypeFaqs": "常见问题",
     "searchAria": "搜索",
     "searchPlaceholder": "搜索分块（文档 + wiki）与常见问题…",

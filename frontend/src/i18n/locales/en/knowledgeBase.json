@@ -80,7 +80,7 @@
     "searchTitle": "Semantic Search",
     "searchDesc": "Search over indexed chunks (channel documents and linked wiki pages) and FAQs using vector similarity. Link wiki spaces on the Wiki spaces tab, run KB indexing, then search here.",
     "searchTypeAll": "All",
-    "searchTypeChunks": "Chunks (docs & wiki)",
+    "searchTypeChunks": "Chunks",
     "searchTypeFaqs": "FAQs",
     "searchAria": "Search",
     "searchPlaceholder": "Search chunks (documents + wiki) and FAQs…",
