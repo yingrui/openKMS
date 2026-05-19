@@ -39,12 +39,14 @@ export interface JobCreate {
 
 export async function fetchJobs(params?: {
   document_id?: string;
+  knowledge_base_id?: string;
   limit?: number;
   offset?: number;
 }): Promise<JobListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
   if (params?.document_id) query.set('document_id', params.document_id);
+  if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString() ? `?${query.toString()}` : '';

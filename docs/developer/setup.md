@@ -85,7 +85,7 @@ Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate j
 ### VLM URL and embedding configuration
 
 - **`OPENKMS_VLM_URL`** (backend **`.env`**) must point at the **mlx-vlm** HTTP server (default **`http://localhost:8101`**), i.e. document vision parsing — **not** an OpenAI-compatible **`/api/v1`** base URL used for chat/embeddings.
-- **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the FastAPI app. Put **`OPENKMS_VLM_API_KEY`** in **`openkms-cli/.env`** if your VLM endpoint requires a key. Put optional **`OPENKMS_EMBEDDING_MODEL_*`** there only to override CLI defaults; **knowledge base search and `kb-index`** normally use the KB’s **`embedding_model_id`** (**Console → Models** and **KB settings**).
+- **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the FastAPI app. Put **`OPENKMS_VLM_API_KEY`** in **`openkms-cli/.env`** if your VLM endpoint requires a key. **`OPENKMS_EMBEDDING_MODEL_*`** in **`openkms-cli/.env`** is optional: **`kb-index`** normally loads credentials from **`GET /internal-api/models/kb-embedding-credentials`** after API auth; set env overrides only if you need a different endpoint than the KB’s stored embedding model.
 
 **Full stack setup:**
 

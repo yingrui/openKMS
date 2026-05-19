@@ -786,12 +786,92 @@
   cursor: not-allowed;
 }
 
-/* Settings */
+/* Settings — header (title + save), two-column form, index fieldset at bottom */
+.kb-settings-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.kb-settings-header-row h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.kb-settings-header-save {
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .kb-settings-header-save {
+    width: 100%;
+  }
+}
+
+.kb-settings-index-fieldset {
+  margin-top: 4px;
+  padding: 12px 14px;
+  gap: 8px;
+}
+
+.kb-settings-index-help,
+.kb-settings-index-warn {
+  display: block;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.kb-settings-index-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.kb-settings-index-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kb-settings-index-jobs-link {
+  font-size: 0.8125rem;
+}
+
+.kb-settings-index-warn {
+  margin-top: 4px;
+}
+
 .kb-settings-form {
+  width: 100%;
+  max-width: none;
+}
+
+.kb-settings-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (min-width: 880px) {
+  .kb-settings-layout {
+    grid-template-columns: minmax(280px, 0.4fr) minmax(0, 1fr);
+    gap: 28px 36px;
+  }
+}
+
+.kb-settings-col {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-width: 600px;
+  min-width: 0;
 }
 
 .kb-settings-form label {
@@ -828,6 +908,10 @@
   min-height: 80px;
 }
 
+.kb-settings-col-text textarea {
+  min-height: 140px;
+}
+
 .kb-settings-form input:focus,
 .kb-settings-form select:focus,
 .kb-settings-form textarea:focus {
@@ -851,31 +935,14 @@
   color: var(--color-text-secondary);
 }
 
-.kb-settings-actions {
-  display: flex;
-  gap: 12px;
-  padding-top: 8px;
+.kb-spinner-inline {
+  animation: kb-settings-spin 0.8s linear infinite;
 }
 
-.kb-settings-actions .btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  border-radius: var(--radius-md);
-  transition: background 0.15s;
-}
-
-.kb-settings-actions .btn-primary {
-  background: var(--color-accent);
-  color: white;
-  border: none;
-}
-
-.kb-settings-actions .btn-primary:hover:not(:disabled) {
-  background: var(--color-accent-hover);
+@keyframes kb-settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Document Picker Modal – matches documents-upload-modal */

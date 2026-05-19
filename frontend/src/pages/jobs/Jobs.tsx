@@ -114,7 +114,12 @@ export function Jobs() {
     if (search) {
       const s = search.toLowerCase();
       const docId = String(j.args?.document_id || '');
-      if (!j.task_name.toLowerCase().includes(s) && !docId.toLowerCase().includes(s)) {
+      const kbId = String(j.args?.knowledge_base_id || '');
+      if (
+        !j.task_name.toLowerCase().includes(s) &&
+        !docId.toLowerCase().includes(s) &&
+        !kbId.toLowerCase().includes(s)
+      ) {
         return false;
       }
     }
@@ -188,7 +193,10 @@ export function Jobs() {
                   </tr>
                 ) : (
                   filtered.map((job) => {
-                    const docId = String(job.args?.document_id || dash);
+                    const docId = String(job.args?.document_id || '');
+                    const kbId = String(job.args?.knowledge_base_id || '');
+                    const targetId =
+                      job.task_name === 'run_kb_index' ? kbId || dash : docId || dash;
                     const pipelineId = String(job.args?.pipeline_id || '');
                     const pipeline = pipelineMap.get(pipelineId);
                     return (
@@ -204,8 +212,8 @@ export function Jobs() {
                             <span>{job.task_name}</span>
                           </div>
                         </td>
-                        <td className="jobs-table-docid" title={docId}>
-                          {docId.length > 12 ? `${docId.slice(0, 10)}…` : docId}
+                        <td className="jobs-table-docid" title={targetId}>
+                          {targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId}
                         </td>
                         <td>{pipeline?.name || pipelineId || dash}</td>
                         <td>

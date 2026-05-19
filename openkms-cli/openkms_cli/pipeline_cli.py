@@ -248,17 +248,6 @@ def pipeline_run(
         "--extraction-model-name",
         help="LLM model name (e.g. qwen3.5); fetches base_url/api_key from backend",
     ),
-    # KB index pipeline options
-    embedding_model_base_url: Optional[str] = typer.Option(
-        None,
-        "--embedding-model-base-url",
-        help="Embedding base URL (default: OPENKMS_EMBEDDING_MODEL_BASE_URL; kb-index)",
-    ),
-    embedding_model_name: Optional[str] = typer.Option(
-        None,
-        "--embedding-model-name",
-        help="Embedding model name (default: OPENKMS_EMBEDDING_MODEL_NAME; kb-index)",
-    ),
 ) -> None:
     """
     Run pipeline. Use `pipeline list` to see supported pipeline names.
@@ -310,24 +299,6 @@ def pipeline_run(
         except Exception:
             console.print("[yellow]No API auth (proceeding without auth)[/yellow]")
 
-        eff_base = (
-            embedding_model_base_url
-            if embedding_model_base_url not in (None, "")
-            else (cfg.embedding_model_base_url or None)
-        )
-        eff_name = (
-            embedding_model_name
-            if embedding_model_name not in (None, "")
-            else (cfg.embedding_model_name or None)
-        )
-        embedding_override = None
-        if eff_base:
-            embedding_override = {
-                "base_url": eff_base,
-                "api_key": cfg.embedding_model_api_key,
-                "model_name": eff_name or "text-embedding-ada-002",
-            }
-
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -340,7 +311,6 @@ def pipeline_run(
                     api_url=api_url,
                     auth_headers=auth_headers,
                     basic=basic_auth,
-                    embedding_override=embedding_override,
                     progress=progress,
                     task=task,
                     output_dir=output_dir,

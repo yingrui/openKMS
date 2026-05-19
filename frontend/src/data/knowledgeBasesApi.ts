@@ -1,6 +1,7 @@
 /** API for knowledge base management (backend). */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
+import type { JobResponse } from './jobsApi';
 
 // --- Types ---
 
@@ -493,6 +494,28 @@ export async function askQuestion(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || 'Failed to get answer');
+  }
+  return res.json();
+}
+
+/** Queue worker `run_kb_index` (openkms-cli kb-index). Same job row shape as `POST /api/jobs`. */
+export async function enqueueKnowledgeBaseIndexJob(kbId: string): Promise<JobResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/index-job`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = err.detail;
+    const msg =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object' && 'message' in detail
+          ? String((detail as { message?: string }).message)
+          : 'Failed to queue indexing job';
+    throw new Error(msg);
   }
   return res.json();
 }

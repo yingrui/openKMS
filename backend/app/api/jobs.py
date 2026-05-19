@@ -44,6 +44,34 @@ def _row_to_response(row) -> JobResponse:
     )
 
 
+async def read_job_response(
+    db: AsyncSession,
+    job_id: int,
+    *,
+    fallback_task_name: str,
+    fallback_args: dict,
+) -> JobResponse:
+    """Load a procrastinate job row as JobResponse, or a minimal placeholder if the row is missing."""
+    result = await db.execute(
+        text(
+            "SELECT id, queue_name, task_name, status, args, scheduled_at, attempts "
+            "FROM procrastinate_jobs WHERE id = :job_id"
+        ),
+        {"job_id": job_id},
+    )
+    row = result.first()
+    if not row:
+        return JobResponse(
+            id=job_id,
+            queue_name="default",
+            task_name=fallback_task_name,
+            status="pending",
+            args=fallback_args,
+            attempts=0,
+        )
+    return _row_to_response(row)
+
+
 async def _procrastinate_table_exists(db: AsyncSession) -> bool:
     result = await db.execute(
         text("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'procrastinate_jobs')")
@@ -54,6 +82,7 @@ async def _procrastinate_table_exists(db: AsyncSession) -> bool:
 @router.get("", response_model=JobListResponse)
 async def list_jobs(
     document_id: str | None = None,
+    knowledge_base_id: str | None = None,
     limit: int = 50,
     offset: int = 0,
     db: AsyncSession = Depends(get_db),
@@ -62,12 +91,17 @@ async def list_jobs(
     if not await _procrastinate_table_exists(db):
         return JobListResponse(items=[], total=0)
 
-    where = ""
+    where_clauses: list[str] = []
     params: dict = {"limit": limit, "offset": offset}
 
     if document_id:
-        where = "WHERE args->>'document_id' = :document_id"
+        where_clauses.append("args->>'document_id' = :document_id")
         params["document_id"] = document_id
+    if knowledge_base_id:
+        where_clauses.append("args->>'knowledge_base_id' = :knowledge_base_id")
+        params["knowledge_base_id"] = knowledge_base_id
+
+    where = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
     count_result = await db.execute(
         text(f"SELECT COUNT(*) FROM procrastinate_jobs {where}"), params
@@ -188,20 +222,12 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
     )
     await db.commit()
 
-    result = await db.execute(
-        text(
-            "SELECT id, queue_name, task_name, status, args, scheduled_at, attempts "
-            "FROM procrastinate_jobs WHERE id = :job_id"
-        ),
-        {"job_id": job_id},
+    return await read_job_response(
+        db,
+        job_id,
+        fallback_task_name="run_pipeline",
+        fallback_args={"document_id": doc.id},
     )
-    row = result.first()
-    if not row:
-        return JobResponse(
-            id=job_id, queue_name="default", task_name="run_pipeline",
-            status="pending", args={}, attempts=0,
-        )
-    return _row_to_response(row)
 
 
 @router.post("/{job_id}/retry", response_model=JobResponse)
@@ -223,10 +249,26 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
 
     args = row.args or {}
     document_id = args.get("document_id")
+    task_name = row.task_name or ""
+
+    if task_name == "run_kb_index":
+        kb_id = args.get("knowledge_base_id")
+        if not kb_id or not isinstance(kb_id, str):
+            raise HTTPException(status_code=400, detail="Job has no knowledge_base_id in args")
+        from app.jobs.tasks import run_kb_index
+
+        new_job_id = await run_kb_index.defer_async(knowledge_base_id=kb_id)
+        await db.commit()
+        return await read_job_response(
+            db,
+            new_job_id,
+            fallback_task_name="run_kb_index",
+            fallback_args={"knowledge_base_id": kb_id},
+        )
+
     if not document_id:
         raise HTTPException(status_code=400, detail="Job has no document_id in args")
 
-    task_name = row.task_name or ""
     if task_name == "run_spreadsheet_preview":
         from app.jobs.tasks import run_spreadsheet_preview
 
@@ -266,20 +308,12 @@ async def retry_job(job_id: int, db: AsyncSession = Depends(get_db)):
     )
     await db.commit()
 
-    new_result = await db.execute(
-        text(
-            "SELECT id, queue_name, task_name, status, args, scheduled_at, attempts "
-            "FROM procrastinate_jobs WHERE id = :job_id"
-        ),
-        {"job_id": new_job_id},
+    return await read_job_response(
+        db,
+        new_job_id,
+        fallback_task_name="run_pipeline",
+        fallback_args=dict(args),
     )
-    new_row = new_result.first()
-    if not new_row:
-        return JobResponse(
-            id=new_job_id, queue_name="default", task_name="run_pipeline",
-            status="pending", args=args, attempts=0,
-        )
-    return _row_to_response(new_row)
 
 
 @router.post("/{job_id}/mark-failed", response_model=JobResponse)

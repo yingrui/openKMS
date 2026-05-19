@@ -106,7 +106,7 @@ _INTERNAL_KB_EMBEDDING_CREDENTIALS = "/internal-api/models/kb-embedding-credenti
 
 
 def _finalize_embedding_model_config(model_config: dict[str, Any]) -> dict[str, Any]:
-    """Merge CLI/env embedding overrides on top of internal-api (or embedding_override) values."""
+    """Merge optional OPENKMS_EMBEDDING_MODEL_* env overrides on top of internal-api values."""
     from openkms_cli.settings import get_cli_settings
 
     cfg = get_cli_settings()
@@ -191,7 +191,6 @@ def run_indexer(
     api_url: str,
     auth_headers: Optional[dict[str, str]] = None,
     basic: Optional[tuple[str, str]] = None,
-    embedding_override: Optional[dict[str, Any]] = None,
     progress: Optional[Progress] = None,
     task: Optional[TaskID] = None,
     output_dir: Path | str | None = None,
@@ -224,28 +223,25 @@ def run_indexer(
     metadata_keys = kb_data.get("metadata_keys") or []
     lifecycle_index_mode = chunk_config.get("lifecycle_index_mode", "current_only")
 
-    if embedding_override:
-        model_config = embedding_override
-    else:
-        cred_resp = requests.get(
-            f"{base}{_INTERNAL_KB_EMBEDDING_CREDENTIALS}",
-            params={"knowledge_base_id": knowledge_base_id},
-            headers=headers,
-            auth=basic,
-            timeout=30,
+    cred_resp = requests.get(
+        f"{base}{_INTERNAL_KB_EMBEDDING_CREDENTIALS}",
+        params={"knowledge_base_id": knowledge_base_id},
+        headers=headers,
+        auth=basic,
+        timeout=30,
+    )
+    if not cred_resp.ok:
+        raise RuntimeError(
+            "Failed to fetch embedding credentials "
+            f"(GET {_INTERNAL_KB_EMBEDDING_CREDENTIALS}): "
+            f"{cred_resp.status_code} {cred_resp.text[:400]}"
         )
-        if not cred_resp.ok:
-            raise RuntimeError(
-                "Failed to fetch embedding credentials "
-                f"(GET {_INTERNAL_KB_EMBEDDING_CREDENTIALS}): "
-                f"{cred_resp.status_code} {cred_resp.text[:400]}"
-            )
-        data = cred_resp.json()
-        model_config = {
-            "base_url": (data.get("base_url") or "").strip(),
-            "api_key": (data.get("api_key") or "").strip(),
-            "model_name": (data.get("model_name") or "").strip(),
-        }
+    data = cred_resp.json()
+    model_config = {
+        "base_url": (data.get("base_url") or "").strip(),
+        "api_key": (data.get("api_key") or "").strip(),
+        "model_name": (data.get("model_name") or "").strip(),
+    }
 
     model_config = _finalize_embedding_model_config(model_config)
     _require_embedding_base_url(model_config)

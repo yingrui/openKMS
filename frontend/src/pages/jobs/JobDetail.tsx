@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu, Terminal, CircleX } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu, Terminal, CircleX, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchJobById, markJobFailed, retryJob, type JobResponse } from '../../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
@@ -131,10 +131,12 @@ export function JobDetail() {
   }
 
   const documentId = String(job.args?.document_id || '');
+  const knowledgeBaseId = String(job.args?.knowledge_base_id || '');
   const pipelineId = String(job.args?.pipeline_id || '');
   const commandTemplate = String(job.args?.command || '');
   const renderedCommand = String(job.args?.rendered_command || '');
   const defaultArgs = job.args?.default_args as Record<string, unknown> | null | undefined;
+  const isKbIndex = job.task_name === 'run_kb_index';
 
   return (
     <div className="job-detail">
@@ -197,26 +199,45 @@ export function JobDetail() {
 
         <section className="job-detail-card">
           <h2>
-            <FileText size={18} /> {t('jobDetail.document')}
+            {isKbIndex ? <BookOpen size={18} /> : <FileText size={18} />}{' '}
+            {isKbIndex ? t('jobDetail.knowledgeBase') : t('jobDetail.document')}
           </h2>
           <dl className="job-detail-dl">
-            <dt>{t('jobDetail.documentId')}</dt>
-            <dd>
-              {documentId ? (
-                <Link to={`/documents/view/${documentId}`} className="job-detail-link">
-                  {documentId}
-                </Link>
-              ) : (
-                dash
-              )}
-            </dd>
-            <dt>{t('jobDetail.fileHash')}</dt>
-            <dd className="job-detail-mono">{String(job.args?.file_hash || dash)}</dd>
-            <dt>{t('jobDetail.fileExtension')}</dt>
-            <dd>{String(job.args?.file_ext || dash)}</dd>
+            {isKbIndex ? (
+              <>
+                <dt>{t('jobDetail.knowledgeBaseId')}</dt>
+                <dd>
+                  {knowledgeBaseId ? (
+                    <Link to={`/knowledge-bases/${knowledgeBaseId}`} className="job-detail-link">
+                      {knowledgeBaseId}
+                    </Link>
+                  ) : (
+                    dash
+                  )}
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt>{t('jobDetail.documentId')}</dt>
+                <dd>
+                  {documentId ? (
+                    <Link to={`/documents/view/${documentId}`} className="job-detail-link">
+                      {documentId}
+                    </Link>
+                  ) : (
+                    dash
+                  )}
+                </dd>
+                <dt>{t('jobDetail.fileHash')}</dt>
+                <dd className="job-detail-mono">{String(job.args?.file_hash || dash)}</dd>
+                <dt>{t('jobDetail.fileExtension')}</dt>
+                <dd>{String(job.args?.file_ext || dash)}</dd>
+              </>
+            )}
           </dl>
         </section>
 
+        {!isKbIndex && (
         <section className="job-detail-card">
           <h2>
             <GitBranch size={18} /> {t('jobDetail.pipeline')}
@@ -254,6 +275,7 @@ export function JobDetail() {
             )}
           </dl>
         </section>
+        )}
 
         {model && (
           <section className="job-detail-card">

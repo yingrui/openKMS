@@ -446,16 +446,12 @@ async def run_kb_index(
     """
     from app.database import async_session_maker
     from app.models.knowledge_base import KnowledgeBase
-    from app.models.api_model import ApiModel
     from app.services.job_worker_log import persist_job_worker_log_best_effort
-    from sqlalchemy.orm import selectinload
 
     job_pk = context.job.id
     log_cmd: str | None = f"run_kb_index knowledge_base_id={knowledge_base_id}"
     log_out = ""
     log_err = ""
-
-    embedding_args = ""
 
     try:
         async with async_session_maker() as session:
@@ -465,25 +461,11 @@ async def run_kb_index(
                 log_err = f"Knowledge base {knowledge_base_id} not found"
                 raise RuntimeError(f"Knowledge base {knowledge_base_id} not found")
 
-            if kb.embedding_model_id:
-                from sqlalchemy import select as sa_select
-                result = await session.execute(
-                    sa_select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == kb.embedding_model_id)
-                )
-                model = result.scalar_one_or_none()
-                if model and model.provider_rel:
-                    embedding_args = (
-                        f" --embedding-model-base-url {shlex.quote(model.provider_rel.base_url)}"
-                        f" --embedding-model-api-key {shlex.quote(model.provider_rel.api_key or '')}"
-                        f" --embedding-model-name {shlex.quote(model.model_name or model.name)}"
-                    )
-
         base_api_url = settings.openkms_backend_url.rstrip("/")
         cmd_str = (
             f"openkms-cli pipeline run --pipeline-name kb-index"
             f" --knowledge-base-id {knowledge_base_id}"
             f" --api-url {base_api_url}"
-            f"{embedding_args}"
         )
 
         subprocess_env = {

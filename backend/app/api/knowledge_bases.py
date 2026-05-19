@@ -16,6 +16,7 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.api.auth import require_auth
+from app.api.jobs import read_job_response
 from app.database import get_db
 from app.services.data_resource_policy import knowledge_base_visible
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
@@ -26,6 +27,7 @@ from app.models.kb_document import KBDocument
 from app.models.kb_wiki_space import KBWikiSpace
 from app.models.knowledge_base import KnowledgeBase
 from app.models.wiki_models import WikiPage, WikiSpace
+from app.schemas.job import JobResponse
 from app.schemas.knowledge_base import (
     AskRequest,
     AskResponse,
@@ -216,6 +218,32 @@ async def update_knowledge_base(
     await db.refresh(kb)
     stats = await _kb_stats(db, kb.id)
     return _kb_to_response(kb, stats)
+
+
+@router.post("/{kb_id}/index-job", response_model=JobResponse, status_code=201)
+async def enqueue_knowledge_base_index_job(
+    kb_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Queue a worker job that runs openkms-cli kb-index for this knowledge base (same task as CLI)."""
+    if not (kb.embedding_model_id or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Configure an embedding model on this knowledge base before indexing",
+        )
+
+    from app.jobs.tasks import run_kb_index
+
+    job_id = await run_kb_index.defer_async(knowledge_base_id=kb.id)
+    await db.commit()
+
+    return await read_job_response(
+        db,
+        job_id,
+        fallback_task_name="run_kb_index",
+        fallback_args={"knowledge_base_id": kb.id},
+    )
 
 
 @router.delete("/{kb_id}", status_code=204)
