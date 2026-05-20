@@ -151,11 +151,12 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |
 | POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
 | GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated; ?offset=, ?limit=) |
-| PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (content, doc_metadata) |
+| GET | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Get one chunk (same shape as list rows; for deep links from Q&A / search) |
+| PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (`content`, `doc_metadata`). If **`content`** changes, the stored **embedding is cleared** until the next indexing job refreshes vectors |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |
 | POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index); each item sets exactly one of `document_id` or `wiki_page_id` |
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
-| POST | `/api/knowledge-bases/{id}/search` | Semantic / hybrid search over chunks (documents + linked wiki pages) and FAQs; chunk hits may include `wiki_page_id`, `wiki_space_id` |
+| POST | `/api/knowledge-bases/{id}/search` | Semantic / hybrid search over chunks (documents + linked wiki pages) and FAQs; chunk hits may include `wiki_page_id`, `wiki_space_id`. Response **`results[]`** items may include optional operator fields: **`chunk_index`** (ordinal within the source document or wiki page for chunk hits), **`retrieval_mode`** (`dense`, `hybrid`, `bm25_only`, `dense_fallback`), **`retrieval_debug`** (stage ranks/scores, e.g. `dense_rank`, `dense_similarity`, `bm25_rank`, `bm25_score`, `rrf_score`, `rerank_score`, `pipeline_stages`). **`force_dense`** in the body skips the hybrid QA-agent path when the KB has an agent URL |
 | POST | `/api/knowledge-bases/{id}/ask` | Proxy to QA agent (JSON: `question`, `conversation_history`, optional `session_id` opaque string forwarded as Langfuse **session** id) |
 | POST | `/api/knowledge-bases/{id}/ask/stream` | Same body; NDJSON stream then `done` with `sources`: hybrid hits unless Page Index **`document_section`** applies, or successful **`run_cypher_tool`** returned graph rows — then **`ontology`** rows (object type list + per-query Cypher summary). Optional `error` {`detail`, `answer?`} |
 | GET | `/api/knowledge-bases/{id}/agent-conversations` | List the current user's persisted KB Q&A chats (`agent_conversations` with `surface=knowledge_base` and matching `context.knowledge_base_id`; KB visibility rules) |

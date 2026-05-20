@@ -44,19 +44,12 @@ async def ask(request: AskRequest):
         session_id=request.session_id,
     )
 
-    sources = [
-        SourceItem(
-            id=s.id,
-            source_type=s.source_type,
-            content=s.content,
-            score=s.score,
-            source_name=s.source_name,
-            document_id=s.document_id,
-            wiki_page_id=getattr(s, "wiki_page_id", None),
-            wiki_space_id=getattr(s, "wiki_space_id", None),
-        )
-        for s in result.get("context", [])
-    ]
+    sources: list[SourceItem] = []
+    for s in result.get("context", []):
+        if isinstance(s, SourceItem):
+            sources.append(s)
+        else:
+            sources.append(SourceItem.model_validate(s))
 
     return AskResponse(
         answer=result.get("answer", ""),

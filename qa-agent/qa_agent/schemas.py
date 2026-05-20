@@ -1,4 +1,6 @@
 """Request/response schemas for the QA agent API."""
+from typing import Any
+
 from pydantic import BaseModel
 
 
@@ -11,6 +13,10 @@ class SourceItem(BaseModel):
     document_id: str | None = None
     wiki_page_id: str | None = None
     wiki_space_id: str | None = None
+    doc_metadata: dict[str, Any] | None = None
+    chunk_index: int | None = None
+    retrieval_mode: str | None = None
+    retrieval_debug: dict[str, Any] | None = None
 
 
 class AskRequest(BaseModel):

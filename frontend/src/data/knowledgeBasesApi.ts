@@ -105,6 +105,12 @@ export interface SearchResult {
   wiki_page_id?: string | null;
   wiki_space_id?: string | null;
   doc_metadata?: Record<string, unknown> | null;
+  /** Ordinal within the source document or wiki page (chunk hits only). */
+  chunk_index?: number | null;
+  /** e.g. dense, hybrid, bm25_only, dense_fallback */
+  retrieval_mode?: string | null;
+  /** Stage ranks/scores for operator debugging. */
+  retrieval_debug?: Record<string, unknown> | null;
 }
 
 export interface SearchResponse {
@@ -766,6 +772,20 @@ export async function fetchChunks(
   return res.json();
 }
 
+export async function fetchChunkById(kbId: string, chunkId: string): Promise<ChunkResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
+    method: 'GET',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to load chunk');
+  }
+  return res.json();
+}
+
 export async function updateChunk(
   kbId: string,
   chunkId: string,
@@ -808,6 +828,8 @@ export async function searchKnowledgeBase(
     search_type?: string;
     label_filters?: Record<string, string | string[]>;
     metadata_filters?: Record<string, unknown>;
+    include_historical_documents?: boolean;
+    force_dense?: boolean;
   }
 ): Promise<SearchResponse> {
   const headers = await getAuthHeaders();

@@ -82,7 +82,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Chunk
 
-- `id`, `knowledge_base_id` (FK → knowledge_bases), **`document_id`** (FK → documents, nullable) **or** **`wiki_page_id`** (FK → wiki_pages, nullable): exactly one is set (check constraint); `content`, `chunk_index`, `token_count`, `embedding` (pgvector), `chunk_metadata` (JSONB: strategy, char_start, etc.; wiki-sourced chunks may include `wiki_space_id`, `wiki_path`), `doc_metadata` (JSONB), `created_at`
+- `id`, `knowledge_base_id` (FK → knowledge_bases), **`document_id`** (FK → documents, nullable) **or** **`wiki_page_id`** (FK → wiki_pages, nullable): exactly one is set (check constraint); `content`, `chunk_index`, `token_count`, `embedding` (pgvector, nullable — cleared when **`PUT …/chunks/{id}`** changes **`content`** until the next indexing job recomputes it), `chunk_metadata` (JSONB: strategy, char_start, etc.; wiki-sourced chunks may include `wiki_space_id`, `wiki_path`), `doc_metadata` (JSONB), `created_at`
 - Segments with vector embeddings for semantic search; doc_metadata from channel documents or wiki page `metadata` when `metadata_keys` is configured; supports hybrid search (vector + metadata filters)
 
 ## Evaluation

@@ -92,6 +92,7 @@ class BM25Cache:
                 "document_id": c.get("document_id"),
                 "wiki_page_id": c.get("wiki_page_id"),
                 "wiki_space_id": c.get("wiki_space_id"),
+                "chunk_index": c.get("chunk_index"),
             })
         for f in faqs:
             q = f.get("question") or ""

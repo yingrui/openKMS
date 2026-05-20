@@ -253,6 +253,12 @@ class SearchResult(BaseModel):
     wiki_page_id: str | None = None
     wiki_space_id: str | None = None
     doc_metadata: dict[str, Any] | None = None
+    #: Ordinal within the source document or wiki page (chunks only).
+    chunk_index: int | None = None
+    #: How this hit was retrieved, e.g. ``dense``, ``hybrid``, ``bm25_only``, ``dense_fallback``.
+    retrieval_mode: str | None = None
+    #: Stage-level scores/ranks for operator debugging (keys may evolve).
+    retrieval_debug: dict[str, Any] | None = None
 
 
 class SearchResponse(BaseModel):

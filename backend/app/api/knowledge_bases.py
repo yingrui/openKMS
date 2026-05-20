@@ -751,6 +751,52 @@ async def list_chunks(
     return ChunkListResponse(items=items, total=total)
 
 
+@router.get("/{kb_id}/chunks/{chunk_id}", response_model=ChunkResponse)
+async def get_chunk(
+    kb_id: str,
+    chunk_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fetch a single chunk (for deep links from Q&A / search)."""
+    name_expr = func.coalesce(Document.name, WikiPage.title, WikiPage.path)
+    result = await db.execute(
+        select(
+            Chunk,
+            name_expr.label("source_name"),
+            WikiPage.wiki_space_id.label("wsid"),
+            Chunk.embedding.isnot(None).label("has_embedding"),
+        )
+        .options(load_only(
+            Chunk.id, Chunk.knowledge_base_id, Chunk.document_id, Chunk.wiki_page_id, Chunk.content,
+            Chunk.chunk_index, Chunk.token_count, Chunk.chunk_metadata,
+            Chunk.doc_metadata, Chunk.created_at
+        ))
+        .outerjoin(Document, Chunk.document_id == Document.id)
+        .outerjoin(WikiPage, Chunk.wiki_page_id == WikiPage.id)
+        .where(Chunk.id == chunk_id, Chunk.knowledge_base_id == kb_id)
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    chunk, source_name, wsid, has_emb = row[0], row[1], row[2], row[3]
+    return ChunkResponse(
+        id=chunk.id,
+        knowledge_base_id=chunk.knowledge_base_id,
+        document_id=chunk.document_id,
+        wiki_page_id=chunk.wiki_page_id,
+        wiki_space_id=wsid,
+        document_name=source_name,
+        content=chunk.content,
+        chunk_index=chunk.chunk_index,
+        token_count=chunk.token_count,
+        has_embedding=bool(has_emb),
+        chunk_metadata=chunk.chunk_metadata,
+        doc_metadata=chunk.doc_metadata,
+        created_at=chunk.created_at,
+    )
+
+
 @router.delete("/{kb_id}/chunks", status_code=204)
 async def delete_all_chunks(
     kb_id: str,
@@ -773,8 +819,11 @@ async def update_chunk(
     if not chunk or chunk.knowledge_base_id != kb_id:
         raise HTTPException(status_code=404, detail="Chunk not found")
     update_data = body.model_dump(exclude_unset=True)
+    content_changed = "content" in update_data and update_data["content"] != chunk.content
     for field, value in update_data.items():
         setattr(chunk, field, value)
+    if content_changed:
+        chunk.embedding = None
     await db.flush()
     await db.refresh(chunk)
     doc_name = None
@@ -931,6 +980,7 @@ async def semantic_search(
         label_filters=body.label_filters,
         metadata_filters=body.metadata_filters,
         include_historical_documents=body.include_historical_documents,
+        retrieval_mode="dense_fallback",
         db=db,
     )
 

@@ -37,6 +37,7 @@ import {
   fetchKBWikiSpaces,
   fetchFAQs,
   fetchChunks,
+  fetchChunkById,
   addKBDocument,
   removeKBDocument,
   addKBWikiSpace,
@@ -96,6 +97,113 @@ const TAB_ICONS: Record<TabId, typeof FileStack> = {
   search: SearchIcon,
   settings: Settings,
 };
+
+interface KbSearchSnapshot {
+  query: string;
+  searchType: string;
+  topK: number;
+  forceDense: boolean;
+  orderedIds: string[];
+  scores: Record<string, number>;
+}
+
+interface KbSearchRetrievalDiff {
+  added: string[];
+  removed: string[];
+  moved: { id: string; from: number; to: number }[];
+}
+
+function kbSnapshotFromResults(
+  query: string,
+  searchType: string,
+  topK: number,
+  forceDense: boolean,
+  results: SearchResult[]
+): KbSearchSnapshot {
+  const orderedIds = results.map((r) => r.id);
+  const scores: Record<string, number> = {};
+  for (const r of results) scores[r.id] = r.score;
+  return { query, searchType, topK, forceDense, orderedIds, scores };
+}
+
+function kbComputeSearchDiff(prev: KbSearchSnapshot, cur: KbSearchSnapshot): KbSearchRetrievalDiff {
+  const prevSet = new Set(prev.orderedIds);
+  const curSet = new Set(cur.orderedIds);
+  const added = cur.orderedIds.filter((id) => !prevSet.has(id));
+  const removed = prev.orderedIds.filter((id) => !curSet.has(id));
+  const moved: { id: string; from: number; to: number }[] = [];
+  cur.orderedIds.forEach((id, to) => {
+    const from = prev.orderedIds.indexOf(id);
+    if (from >= 0 && from !== to) moved.push({ id, from, to });
+  });
+  return { added, removed, moved };
+}
+
+function kbHasRetrievalProvenance(s: SearchResult): boolean {
+  if (s.chunk_index != null && s.chunk_index !== undefined) return true;
+  if (s.retrieval_mode) return true;
+  const d = s.retrieval_debug;
+  if (d && typeof d === 'object' && Object.keys(d).length > 0) return true;
+  return false;
+}
+
+interface KbRetrievalProvenanceProps {
+  s: SearchResult;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}
+
+function KbRetrievalProvenancePanel({ s, t }: KbRetrievalProvenanceProps) {
+  if (!kbHasRetrievalProvenance(s)) return null;
+  const dbg = s.retrieval_debug;
+  const num = (v: unknown): string | null => {
+    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+    if (typeof v === 'string' && v.trim() && !Number.isNaN(Number(v))) return v;
+    return null;
+  };
+  const stages = dbg?.pipeline_stages;
+  const stageLine =
+    Array.isArray(stages) && stages.length
+      ? (stages as unknown[])
+          .map((x) => (typeof x === 'string' ? t(`detail.retrieval.stage.${x}`, { defaultValue: String(x) }) : ''))
+          .filter(Boolean)
+          .join(' → ')
+      : null;
+  const modeLabel = s.retrieval_mode
+    ? t(`detail.retrieval.mode.${s.retrieval_mode}`, { defaultValue: s.retrieval_mode })
+    : null;
+  const rows: { label: string; value: string }[] = [];
+  if (s.chunk_index != null && s.chunk_index !== undefined) {
+    rows.push({ label: t('detail.retrieval.chunkIndex'), value: String(s.chunk_index) });
+  }
+  if (modeLabel) rows.push({ label: t('detail.retrieval.modeLabel'), value: modeLabel });
+  if (stageLine) rows.push({ label: t('detail.retrieval.pipelineLabel'), value: stageLine });
+  const dr = dbg?.dense_rank;
+  if (dr != null && num(dr) != null) rows.push({ label: t('detail.retrieval.denseRank'), value: num(dr)! });
+  const ds = dbg?.dense_similarity;
+  if (ds != null && num(ds) != null) rows.push({ label: t('detail.retrieval.denseSimilarity'), value: num(ds)! });
+  const br = dbg?.bm25_rank;
+  if (br != null && num(br) != null) rows.push({ label: t('detail.retrieval.bm25Rank'), value: num(br)! });
+  const bs = dbg?.bm25_score;
+  if (bs != null && num(bs) != null) rows.push({ label: t('detail.retrieval.bm25Score'), value: num(bs)! });
+  const rf = dbg?.rrf_score;
+  if (rf != null && num(rf) != null) rows.push({ label: t('detail.retrieval.rrfScore'), value: num(rf)! });
+  const rr = dbg?.rerank_score;
+  if (rr != null && num(rr) != null) rows.push({ label: t('detail.retrieval.rerankScore'), value: num(rr)! });
+  if (!rows.length && !stageLine && !modeLabel) return null;
+  return (
+    <div className="kb-retrieval-panel">
+      <div className="kb-retrieval-panel__title">{t('detail.retrieval.panelTitle')}</div>
+      <dl className="kb-retrieval-panel__dl">
+        {rows.map((row) => (
+          <div key={row.label} className="kb-retrieval-panel__row">
+            <dt>{row.label}</dt>
+            <dd>{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
 
 interface ChatMessage {
   id?: string;
@@ -359,6 +467,7 @@ export function KnowledgeBaseDetail() {
   const [, setChunkLabelAllowMultiple] = useState<Record<string, boolean>>({});
   const [chunkMetadataIsArray, setChunkMetadataIsArray] = useState<Record<string, boolean>>({});
   const [chunkSaving, setChunkSaving] = useState(false);
+  const [chunkDialogReadOnly, setChunkDialogReadOnly] = useState(false);
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -366,9 +475,13 @@ export function KnowledgeBaseDetail() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [searchFiltersExpanded, setSearchFiltersExpanded] = useState(false);
+  const [searchOptionsExpanded, setSearchOptionsExpanded] = useState(false);
   const [searchLabelFilters] = useState<Record<string, string>>({});
   const [searchMetadataFilters, setSearchMetadataFilters] = useState<Record<string, string>>({});
+  const [searchTopK, setSearchTopK] = useState(10);
+  const [searchForceDense, setSearchForceDense] = useState(false);
+  const searchPrevSnapshotRef = useRef<KbSearchSnapshot | null>(null);
+  const [searchRetrievalDiff, setSearchRetrievalDiff] = useState<KbSearchRetrievalDiff | null>(null);
 
   // QA
   const [qaInput, setQaInput] = useState('');
@@ -928,7 +1041,8 @@ export function KnowledgeBaseDetail() {
   };
 
   // --- Chunk edit ---
-  const openChunkEdit = async (chunk: ChunkResponse) => {
+  const openChunkEdit = async (chunk: ChunkResponse, options?: { readOnly?: boolean }) => {
+    setChunkDialogReadOnly(options?.readOnly ?? false);
     setEditChunk(chunk);
     setChunkContent(chunk.content);
     const metaValues = objToConfigValues(chunk.doc_metadata, kb?.metadata_keys ?? undefined);
@@ -958,9 +1072,30 @@ export function KnowledgeBaseDetail() {
     setShowChunkDialog(true);
   };
 
+  const openChunkViewFromId = async (chunkId: string) => {
+    if (!kbId) return;
+    try {
+      const c = await fetchChunkById(kbId, chunkId);
+      await openChunkEdit(c, { readOnly: true });
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastChunkFailed'));
+    }
+  };
+
+  const openChunkEditFromId = async (chunkId: string) => {
+    if (!kbId) return;
+    try {
+      const c = await fetchChunkById(kbId, chunkId);
+      await openChunkEdit(c);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastChunkFailed'));
+    }
+  };
+
   const closeChunkDialog = () => {
     setShowChunkDialog(false);
     setEditChunk(null);
+    setChunkDialogReadOnly(false);
   };
 
   const handleSaveChunk = async () => {
@@ -1011,10 +1146,21 @@ export function KnowledgeBaseDetail() {
       }
       const res = await searchKnowledgeBase(kbId, {
         query: searchQuery,
-        top_k: 10,
+        top_k: searchTopK,
         search_type: searchType,
+        force_dense: searchForceDense || undefined,
         metadata_filters: Object.keys(metadata_filters).length ? metadata_filters : undefined,
       });
+      const snap = kbSnapshotFromResults(
+        searchQuery,
+        searchType,
+        searchTopK,
+        searchForceDense,
+        res.results
+      );
+      const prev = searchPrevSnapshotRef.current;
+      setSearchRetrievalDiff(prev ? kbComputeSearchDiff(prev, snap) : null);
+      searchPrevSnapshotRef.current = snap;
       setSearchResults(res.results);
       setHasSearched(true);
     } catch (e: unknown) {
@@ -1635,6 +1781,7 @@ export function KnowledgeBaseDetail() {
                                       {detailPreview ? (
                                         <p className="kb-qa-source-card__preview">{detailPreview}</p>
                                       ) : null}
+                                      <KbRetrievalProvenancePanel s={s} t={t} />
                                     </div>
                                   );
                                 })}
@@ -2205,59 +2352,119 @@ export function KnowledgeBaseDetail() {
               </button>
             </form>
 
-            {kb?.metadata_keys?.length ? (
-              <div className="kb-search-filters">
-                <button
-                  type="button"
-                  className="kb-search-filters-toggle"
-                  onClick={() => setSearchFiltersExpanded((e) => !e)}
-                  aria-expanded={searchFiltersExpanded}
-                >
-                  {searchFiltersExpanded ? (
-                    <ChevronDown size={18} />
-                  ) : (
-                    <ChevronRight size={18} />
-                  )}
-                  <Filter size={18} />
-                  <span>{t('detail.filters')}</span>
-                  {(Object.values(searchLabelFilters).some(Boolean) || Object.values(searchMetadataFilters).some(Boolean)) && (
-                    <span className="kb-search-filters-badge">{t('detail.filtersActive')}</span>
-                  )}
-                </button>
-                {searchFiltersExpanded && (
-                  <div className="kb-search-filters-panel">
-                    <p className="kb-search-filters-hint">
-                      {t('detail.filtersHint')}
-                    </p>
-                    {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
-                      <div className="kb-search-filters-group">
-                        <span className="kb-search-filters-group-label">{t('detail.metadataLabel')}</span>
-                        {kb.metadata_keys.map((key) => (
-                          <div key={key} className="kb-search-filter-row">
-                            <label htmlFor={`search-meta-${key}`}>{key}</label>
-                            <input
-                              id={`search-meta-${key}`}
-                              type="text"
-                              placeholder={t('detail.placeholderMetaExample')}
-                              value={searchMetadataFilters[key] ?? ''}
-                              onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+            <div className="kb-search-options-wrap">
+              <button
+                type="button"
+                className="kb-search-options-toggle"
+                onClick={() => setSearchOptionsExpanded((o) => !o)}
+                aria-expanded={searchOptionsExpanded}
+              >
+                {searchOptionsExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                <Filter size={16} aria-hidden />
+                <span>{t('detail.searchOptionsToggle')}</span>
+                {(Object.values(searchLabelFilters).some(Boolean) ||
+                  Object.values(searchMetadataFilters).some(Boolean) ||
+                  searchForceDense ||
+                  searchTopK !== 10) && (
+                  <span className="kb-search-options-badge">{t('detail.filtersActive')}</span>
                 )}
-              </div>
-            ) : (
-              <p className="kb-search-filters-empty-hint">
-                {t('detail.metadataKeysEmptyHint')}
-              </p>
-            )}
+              </button>
+              {searchOptionsExpanded ? (
+                <div className="kb-search-options-panel">
+                  <div className="kb-search-options-block">
+                    <div className="kb-search-options-block-title">{t('detail.searchOptionsRankingTitle')}</div>
+                    <div className="kb-search-options-row">
+                      <label className="kb-search-advanced-field">
+                        <span>{t('detail.searchTopKLabel')}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={searchTopK}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            setSearchTopK(Number.isFinite(n) ? Math.min(50, Math.max(1, Math.trunc(n))) : 10);
+                          }}
+                        />
+                      </label>
+                      <label className="kb-search-advanced-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={searchForceDense}
+                          onChange={(e) => setSearchForceDense(e.target.checked)}
+                        />
+                        <span>{t('detail.searchForceDense')}</span>
+                      </label>
+                    </div>
+                    <p className="kb-search-advanced-hint">{t('detail.searchAdvancedHint')}</p>
+                  </div>
+
+                  {kb?.metadata_keys?.length ? (
+                    <>
+                      <hr className="kb-search-options-sep" />
+                      <div className="kb-search-options-block">
+                        <div className="kb-search-options-block-title">{t('detail.metadataLabel')}</div>
+                        <p className="kb-search-filters-hint">{t('detail.filtersHint')}</p>
+                        <div className="kb-search-filters-group">
+                          {kb.metadata_keys.map((key) => (
+                            <div key={key} className="kb-search-filter-row">
+                              <label htmlFor={`search-meta-${key}`}>{key}</label>
+                              <input
+                                id={`search-meta-${key}`}
+                                type="text"
+                                placeholder={t('detail.placeholderMetaExample')}
+                                value={searchMetadataFilters[key] ?? ''}
+                                onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <hr className="kb-search-options-sep" />
+                      <p className="kb-search-options-empty-hint">{t('detail.metadataKeysEmptyHint')}</p>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
 
             {hasSearched && searchResults.length > 0 && (
               <div className="kb-search-results-panel">
                 <h3>{t('detail.resultsTitle', { count: searchResults.length })}</h3>
+                {searchRetrievalDiff &&
+                (searchRetrievalDiff.added.length > 0 ||
+                  searchRetrievalDiff.removed.length > 0 ||
+                  searchRetrievalDiff.moved.length > 0) ? (
+                  <div className="kb-search-diff-panel" role="region" aria-label={t('detail.searchDiffAria')}>
+                    <h4 className="kb-search-diff-title">{t('detail.searchDiffTitle')}</h4>
+                    {searchRetrievalDiff.added.length > 0 ? (
+                      <p className="kb-search-diff-line">
+                        <strong>{t('detail.searchDiffAdded')}</strong> {searchRetrievalDiff.added.length}
+                      </p>
+                    ) : null}
+                    {searchRetrievalDiff.removed.length > 0 ? (
+                      <p className="kb-search-diff-line">
+                        <strong>{t('detail.searchDiffRemoved')}</strong> {searchRetrievalDiff.removed.length}
+                      </p>
+                    ) : null}
+                    {searchRetrievalDiff.moved.length > 0 ? (
+                      <ul className="kb-search-diff-moves">
+                        {searchRetrievalDiff.moved.slice(0, 20).map((m) => (
+                          <li key={m.id}>
+                            {t('detail.searchDiffMoved', {
+                              id: m.id.length > 24 ? `${m.id.slice(0, 20)}…` : m.id,
+                              from: m.from + 1,
+                              to: m.to + 1,
+                            })}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
                 <ul className="kb-search-results-list">
                   {searchResults.map((r) => (
                     <li key={r.id} className="kb-search-result-item">
@@ -2278,6 +2485,17 @@ export function KnowledgeBaseDetail() {
                       </span>
                       <p className="kb-search-result-excerpt">{r.content.slice(0, 300)}</p>
                       <span className="kb-search-result-score">{t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}</span>
+                      <KbRetrievalProvenancePanel s={r} t={t} />
+                      {r.source_type === 'chunk' ? (
+                        <div className="kb-search-result-chunk-actions">
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openChunkViewFromId(r.id)}>
+                            {t('detail.chunkView')}
+                          </button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openChunkEditFromId(r.id)}>
+                            {t('detail.chunkEdit')}
+                          </button>
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -2926,6 +3144,7 @@ export function KnowledgeBaseDetail() {
                   value={chunkContent}
                   onChange={(e) => setChunkContent(e.target.value)}
                   rows={8}
+                  readOnly={chunkDialogReadOnly}
                 />
               </label>
 
@@ -2943,6 +3162,7 @@ export function KnowledgeBaseDetail() {
                         placeholder={chunkMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
                         value={chunkDocMetadataValues[key] ?? ''}
                         onChange={(e) => setChunkDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                        disabled={chunkDialogReadOnly}
                       />
                     </div>
                   ))}
@@ -2951,12 +3171,20 @@ export function KnowledgeBaseDetail() {
               <div className="kb-doc-picker-footer">
                 <div />
                 <div className="kb-doc-picker-actions">
-                  <button type="button" className="btn btn-secondary" onClick={closeChunkDialog} disabled={chunkSaving}>
-                    {t('detail.cancel')}
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={handleSaveChunk} disabled={chunkSaving || !chunkContent.trim()}>
-                    {chunkSaving ? t('detail.saving') : t('detail.update')}
-                  </button>
+                  {chunkDialogReadOnly ? (
+                    <button type="button" className="btn btn-primary" onClick={closeChunkDialog}>
+                      {t('detail.chunkDialogClose')}
+                    </button>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn-secondary" onClick={closeChunkDialog} disabled={chunkSaving}>
+                        {t('detail.cancel')}
+                      </button>
+                      <button type="button" className="btn btn-primary" onClick={handleSaveChunk} disabled={chunkSaving || !chunkContent.trim()}>
+                        {chunkSaving ? t('detail.saving') : t('detail.update')}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

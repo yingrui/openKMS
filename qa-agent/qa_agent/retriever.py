@@ -87,9 +87,9 @@ def _rrf_fuse(
     return out
 
 
-def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> list[dict[str, Any]]:
+def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> tuple[list[dict[str, Any]], bool]:
     if not candidates or len(candidates) <= top_k or not settings.rerank_enabled:
-        return candidates[:top_k]
+        return candidates[:top_k], False
 
     base = openai_v1_base(settings.rerank_base_url or settings.llm_base_url)
     url = f"{base}/rerank"
@@ -119,14 +119,99 @@ def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> list[di
             cand = dict(candidates[idx])
             cand["score"] = round(float(item.get("relevance_score") or 0.0), 4)
             out.append(cand)
-        return out[:top_k] if out else candidates[:top_k]
+        if out:
+            return out[:top_k], True
+        return candidates[:top_k], False
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "rerank failed (%s); using fused ranking. Point OPENKMS_RERANK_BASE_URL at a /v1/rerank "
             "endpoint or set OPENKMS_RERANK_ENABLED=false.",
             exc,
         )
-        return candidates[:top_k]
+        return candidates[:top_k], False
+
+
+def _merge_recall_traces(
+    candidates: list[dict[str, Any]],
+    dense: list[dict[str, Any]],
+    bm25: list[dict[str, Any]],
+) -> None:
+    """RRF keeps the first list's row per id; copy missing BM25/dense traces from the other recall."""
+    by_d = {str(c["id"]): c for c in dense if c.get("id")}
+    by_b = {str(c["id"]): c for c in bm25 if c.get("id")}
+    for c in candidates:
+        cid = str(c.get("id") or "")
+        if not cid:
+            continue
+        if "_trace_dense_rank" not in c and cid in by_d:
+            d = by_d[cid]
+            c["_trace_dense_rank"] = d.get("_trace_dense_rank")
+            c["_trace_dense_similarity"] = d.get("_trace_dense_similarity")
+        if "_trace_bm25_rank" not in c and cid in by_b:
+            b = by_b[cid]
+            c["_trace_bm25_rank"] = b.get("_trace_bm25_rank")
+            c["_trace_bm25_score"] = b.get("_trace_bm25_score")
+
+
+def _annotate_recall_ranks(dense: list[dict[str, Any]], bm25: list[dict[str, Any]]) -> None:
+    for i, c in enumerate(dense):
+        c["_trace_dense_rank"] = i
+        c["_trace_dense_similarity"] = round(float(c.get("score") or 0.0), 4)
+    for i, c in enumerate(bm25):
+        c["_trace_bm25_rank"] = i
+        c["_trace_bm25_score"] = round(float(c.get("score") or 0.0), 6)
+
+
+def _pipeline_stages(retrieval_mode: str, rerank_applied: bool) -> list[str]:
+    if retrieval_mode == "hybrid":
+        stages = ["dense", "bm25", "rrf"]
+    elif retrieval_mode == "bm25_only":
+        stages = ["bm25"]
+    else:
+        stages = ["dense"]
+    if rerank_applied:
+        stages.append("rerank")
+    return stages
+
+
+def _retrieval_debug_from_trace(c: dict[str, Any], *, pipeline_stages: list[str]) -> dict[str, Any]:
+    dbg: dict[str, Any] = {"pipeline_stages": pipeline_stages}
+    if "_trace_dense_rank" in c:
+        dbg["dense_rank"] = c["_trace_dense_rank"]
+    if "_trace_dense_similarity" in c:
+        dbg["dense_similarity"] = c["_trace_dense_similarity"]
+    if "_trace_bm25_rank" in c:
+        dbg["bm25_rank"] = c["_trace_bm25_rank"]
+    if "_trace_bm25_score" in c:
+        dbg["bm25_score"] = c["_trace_bm25_score"]
+    if "_trace_rrf_score" in c:
+        dbg["rrf_score"] = c["_trace_rrf_score"]
+    if "rerank" in pipeline_stages:
+        dbg["rerank_score"] = round(float(c.get("score") or 0.0), 4)
+    return dbg
+
+
+def _row_to_source_item(
+    r: dict[str, Any],
+    *,
+    retrieval_mode: str,
+    pipeline_stages: list[str],
+) -> SourceItem:
+    dbg = _retrieval_debug_from_trace(r, pipeline_stages=pipeline_stages)
+    return SourceItem(
+        id=r["id"],
+        source_type=r["source_type"],
+        content=r["content"],
+        score=float(r.get("score") or 0.0),
+        source_name=r.get("source_name"),
+        document_id=r.get("document_id"),
+        wiki_page_id=r.get("wiki_page_id"),
+        wiki_space_id=r.get("wiki_space_id"),
+        doc_metadata=r.get("doc_metadata"),
+        chunk_index=r.get("chunk_index") if r.get("chunk_index") is not None else None,
+        retrieval_mode=retrieval_mode,
+        retrieval_debug=dbg,
+    )
 
 
 def retrieve(
@@ -141,24 +226,19 @@ def retrieve(
 
     dense = _dense_recall(knowledge_base_id, clean_query, access_token, recall_k)
     bm25 = _bm25_recall(knowledge_base_id, clean_query, access_token, recall_k)
+    _annotate_recall_ranks(dense, bm25)
 
     if dense and bm25:
+        retrieval_mode = "hybrid"
         fused_top_n = max(top_k, settings.rerank_recall_top_k)
         candidates = _rrf_fuse([dense, bm25], k=settings.rrf_k, top_n=fused_top_n)
+        _merge_recall_traces(candidates, dense, bm25)
+        for c in candidates:
+            c["_trace_rrf_score"] = round(float(c.get("score") or 0.0), 6)
     else:
         candidates = dense or bm25
+        retrieval_mode = "dense" if dense else "bm25_only"
 
-    reranked = _rerank(clean_query, candidates, top_k)
-    return [
-        SourceItem(
-            id=r["id"],
-            source_type=r["source_type"],
-            content=r["content"],
-            score=r.get("score") or 0.0,
-            source_name=r.get("source_name"),
-            document_id=r.get("document_id"),
-            wiki_page_id=r.get("wiki_page_id"),
-            wiki_space_id=r.get("wiki_space_id"),
-        )
-        for r in reranked
-    ]
+    reranked, rerank_applied = _rerank(clean_query, candidates, top_k)
+    stages = _pipeline_stages(retrieval_mode, rerank_applied)
+    return [_row_to_source_item(r, retrieval_mode=retrieval_mode, pipeline_stages=stages) for r in reranked]

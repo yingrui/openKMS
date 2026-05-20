@@ -56,6 +56,7 @@ async def search_knowledge_base(
     label_filters: dict[str, str | list[str]] | None = None,
     metadata_filters: dict[str, Any] | None = None,
     include_historical_documents: bool = False,
+    retrieval_mode: str | None = None,
     db: AsyncSession | None = None,
 ) -> SearchResponse:
     """Search chunks and FAQs using vector similarity. Caller must provide db session."""
@@ -117,6 +118,7 @@ async def search_knowledge_base(
                     Chunk.document_id,
                     Chunk.wiki_page_id,
                     WikiPage.wiki_space_id.label("wiki_space_id"),
+                    Chunk.chunk_index,
                     Chunk.doc_metadata,
                     func.coalesce(Document.name, WikiPage.title, WikiPage.path).label("source_name"),
                     Chunk.embedding.cosine_distance(query_embedding).label("distance"),
@@ -128,17 +130,26 @@ async def search_knowledge_base(
                 .limit(top_k)
             )
             chunk_rows = (await db.execute(chunk_query)).all()
-            for row in chunk_rows:
+            mode = retrieval_mode or "dense"
+            for rank, row in enumerate(chunk_rows):
+                sim = round(1.0 - row.distance, 4)
                 results.append(SearchResult(
                     id=row.id,
                     source_type="chunk",
                     content=row.content,
-                    score=round(1.0 - row.distance, 4),
+                    score=sim,
                     source_name=row.source_name,
                     document_id=row.document_id,
                     wiki_page_id=row.wiki_page_id,
                     wiki_space_id=row.wiki_space_id,
                     doc_metadata=row.doc_metadata,
+                    chunk_index=int(row.chunk_index),
+                    retrieval_mode=mode,
+                    retrieval_debug={
+                        "dense_rank": rank,
+                        "dense_similarity": sim,
+                        "pipeline_stages": ["dense"],
+                    },
                 ))
 
         if search_type in ("all", "faqs"):
@@ -157,14 +168,23 @@ async def search_knowledge_base(
                 .limit(top_k)
             )
             faq_rows = (await db.execute(faq_query)).all()
-            for row in faq_rows:
+            mode = retrieval_mode or "dense"
+            for rank, row in enumerate(faq_rows):
+                sim = round(1.0 - row.distance, 4)
                 results.append(SearchResult(
                     id=row.id,
                     source_type="faq",
                     content=f"Q: {row.question}\nA: {row.answer}",
-                    score=round(1.0 - row.distance, 4),
+                    score=sim,
                     document_id=row.document_id,
                     doc_metadata=row.doc_metadata,
+                    chunk_index=None,
+                    retrieval_mode=mode,
+                    retrieval_debug={
+                        "dense_rank": rank,
+                        "dense_similarity": sim,
+                        "pipeline_stages": ["dense"],
+                    },
                 ))
     except DBAPIError as e:
         msg = str(e.orig) if e.orig else str(e)
