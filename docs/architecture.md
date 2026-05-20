@@ -298,7 +298,7 @@ qa-agent/
 ├── pyproject.toml           # FastAPI, LangGraph, langchain-openai, httpx
 ├── qa_agent/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI app with /ask endpoint
+│   ├── main.py              # FastAPI app with /ask and /ask/stream (NDJSON)
 │   ├── config.py            # Settings (backend URL, LLM)
 │   ├── agent.py             # LangGraph agent: retrieve → generate (with tools) → tools
 │   ├── retriever.py         # Calls backend search API (no DB access)
@@ -312,7 +312,7 @@ qa-agent/
 - **Purpose**: Separate RAG + ontology service for Q&A against knowledge bases; configurable per KB via `agent_url`
 - **Architecture**: LangGraph state graph: `retrieve` (KB search) → `generate` (LLM with tools) ⇄ `tools` (ontology). RAG via `POST /api/knowledge-bases/{id}/search`; ontology via `GET /api/object-types`, `GET /api/link-types`, `POST /api/ontology/explore` (Cypher). Does not access the database directly.
 - **Ontology skills**: For coverage questions (e.g. "Which insurance products cover heart attack?"), the agent calls `get_ontology_schema_tool` to learn node labels and relationship types, then `run_cypher_tool` to query Neo4j.
-- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` to `{kb.agent_url}/ask`, passing the user's access token so the agent can call the backend APIs
+- **Integration**: Backend proxies `POST /api/knowledge-bases/{kb_id}/ask` and **`POST …/ask/stream`** to `{kb.agent_url}/ask` and **`/ask/stream`**, passing the user's access token so the agent can call the backend APIs. The SPA uses the stream route for NDJSON **`delta`**, optional **`tool_start` / `tool_end` / `tool_error`**, then **`done`** (same event shapes as wiki copilot); the KB Q&A UI renders markdown and tool rows like wiki copilot.
 - **Port**: 8103 by default
 
 ## Data Flow
@@ -441,7 +441,7 @@ flowchart LR
 
 ### Shared
 
-- **Invalid JWT on API calls**: Authenticated SPA requests use **`authAwareFetch`** (`frontend/src/data/apiClient.ts`) for backend `fetch`es. A **`401`** whose body is FastAPI **`Invalid or expired token`** or **`Invalid token`** runs a session-expired handler from **`AuthContext`**: clears OIDC user / local session state and **`POST /clear-session`**, and dismisses Sonner toasts. The fetch resolves to a **synthetic 401** JSON body with user-facing copy (`SESSION_EXPIRED_API_DETAIL`) so callers that surface `detail` in toasts or banners do not show the internal phrase. **`MainLayout`** then shows the same **Authentication Required** screen as for an unauthenticated visit.
+- **Invalid JWT on API calls**: Authenticated SPA requests use **`authAwareFetch`** (`frontend/src/data/apiClient.ts`) for backend `fetch`es. A **`401`** whose body indicates session/auth failure (legacy **`Invalid or expired token`** / **`Invalid token`**, localized **`detail.code`** values such as **`AUTHENTICATION_REQUIRED`**, **`BEARER_TOKEN_REQUIRED`**, **`INVALID_OR_EXPIRED_TOKEN`**, **`INVALID_TOKEN`**, or JWT parse phrases) first runs **one silent retry** registered from **`AuthContext`**: OIDC **`signinSilent`** + **`POST /sync-session`**; local mode checks **`GET /api/auth/me`** with the session cookie. The request is retried once with refreshed **`Authorization`** from **`getAuthHeaders()`**. If the response is still a session-type **`401`**, the session-expired handler clears OIDC user / local session state and **`POST /clear-session`**, shows a short **session ended** toast, then sends the user to sign-in again (**`/login`** in local mode, **interactive OIDC redirect** in OIDC mode). The fetch resolves to a **synthetic 401** JSON body with user-facing copy (`SESSION_EXPIRED_API_DETAIL`) so callers that surface `detail` in toasts or banners do not show raw status lines. **`MainLayout`** then shows the same **Authentication Required** screen as for an unauthenticated visit.
 - **Route protection**: **`/`** (home) is public for guests (static marketing shell); all other **`MainLayout`** pages require auth (and `/login`, `/signup` in local mode live outside that shell). **`/profile`** shows the current user from `GET /api/auth/me` (administrator flag, role list, header user menu).
 - **Console**: `admin` in `realm_access.roles` (OIDC) grants full permissions (all keys from `security_permissions`). Other OIDC users: each JWT realm role whose **name equals** a `security_roles.name` row contributes that role’s permission keys (union). Local: `is_admin` or `user_security_roles`.
 - `POST /clear-session` – clears backend session cookie.

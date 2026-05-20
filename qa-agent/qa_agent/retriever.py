@@ -20,7 +20,7 @@ from typing import Any
 import httpx
 
 from .bm25_index import cache as bm25_cache
-from .config import settings
+from .config import openai_v1_base, settings
 from .schemas import SourceItem
 
 logger = logging.getLogger(__name__)
@@ -91,9 +91,7 @@ def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> list[di
     if not candidates or len(candidates) <= top_k or not settings.rerank_enabled:
         return candidates[:top_k]
 
-    base = settings.llm_base_url.rstrip("/")
-    if not base.endswith("/v1"):
-        base = f"{base}/v1"
+    base = openai_v1_base(settings.rerank_base_url or settings.llm_base_url)
     url = f"{base}/rerank"
     headers = {
         "Authorization": f"Bearer {settings.llm_api_key}",
@@ -122,7 +120,12 @@ def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> list[di
             cand["score"] = round(float(item.get("relevance_score") or 0.0), 4)
             out.append(cand)
         return out[:top_k] if out else candidates[:top_k]
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "rerank failed (%s); using fused ranking. Point OPENKMS_RERANK_BASE_URL at a /v1/rerank "
+            "endpoint or set OPENKMS_RERANK_ENABLED=false.",
+            exc,
+        )
         return candidates[:top_k]
 
 

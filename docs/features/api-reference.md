@@ -156,7 +156,8 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/knowledge-bases/{id}/chunks/batch` | Bulk create chunks with embeddings (kb-index); each item sets exactly one of `document_id` or `wiki_page_id` |
 | PUT | `/api/knowledge-bases/{id}/faqs/batch-embeddings` | Bulk update FAQ embeddings (kb-index pipeline) |
 | POST | `/api/knowledge-bases/{id}/search` | Semantic / hybrid search over chunks (documents + linked wiki pages) and FAQs; chunk hits may include `wiki_page_id`, `wiki_space_id` |
-| POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service |
+| POST | `/api/knowledge-bases/{id}/ask` | Proxy question to QA agent service (JSON body: `question`, `conversation_history`) |
+| POST | `/api/knowledge-bases/{id}/ask/stream` | Same body; proxies NDJSON from the QA agent: `delta` {`t`}, `tool_start` / `tool_end` / `tool_error` (same shape as wiki agent stream), then `done` {`answer`, `sources`}; optional `error` {`detail`, `answer?`} |
 
 ## Evaluation
 

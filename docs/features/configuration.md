@@ -77,6 +77,15 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **extra_body** for the wiki agent (other provider flags only). **enable_thinking** is always forced to **false** after merge — Wiki Copilot does not support thinking / `reasoning_content` round-trip. |
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies). **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 
+## QA agent (standalone ``qa-agent/`` service)
+
+Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`** for the QA agent. **Alias:** **`OPENKMS_AGENT_LLM_EXTRA_BODY`**. After merge, **`enable_thinking`** is forced **`false`**. |
+| `OPENKMS_LLM_REASONING_CONTENT_SHIM` | unset | Same semantics as **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**. **Aliases:** **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**, **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
+
 ## App and operator behavior
 
 | Variable | Default | Purpose |

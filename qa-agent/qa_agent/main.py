@@ -3,6 +3,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from .config import settings
 from .schemas import AskRequest, AskResponse, RetrieveRequest, RetrieveResponse, SourceItem
@@ -59,6 +60,27 @@ async def ask(request: AskRequest):
     return AskResponse(
         answer=result.get("answer", ""),
         sources=sources,
+    )
+
+
+@app.post("/ask/stream")
+async def ask_stream(request: AskRequest):
+    """Stream answer as NDJSON: delta lines {type, t}, then done {type, answer, sources}."""
+    from .agent import astream_agent_ndjson
+
+    return StreamingResponse(
+        astream_agent_ndjson(
+            knowledge_base_id=request.knowledge_base_id,
+            question=request.question,
+            conversation_history=request.conversation_history,
+            access_token=request.access_token or "",
+        ),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

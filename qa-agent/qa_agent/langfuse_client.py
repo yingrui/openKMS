@@ -8,7 +8,12 @@ if TYPE_CHECKING:
 
 
 def get_langfuse_callback() -> "CallbackHandler | None":
-    """Return a Langfuse CallbackHandler when configured, else None. Use for agent.invoke(config={"callbacks": [...]})."""
+    """Return a Langfuse CallbackHandler when configured, else None.
+
+    Use with ``agent.invoke(config={"callbacks": [...]})``. For ``astream_events``,
+    attach only when ``LANGFUSE_TRACE_STREAMING=true`` (see ``agent.astream_agent_ndjson``):
+    the default avoids OpenTelemetry context detach errors with async streaming.
+    """
     if not settings.langfuse_enabled:
         return None
     try:

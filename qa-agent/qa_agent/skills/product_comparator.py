@@ -21,6 +21,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from ..config import settings
+from ..request_context import get_tool_access_token
 
 DEFAULT_KB_ID = "b1af9d71-092d-40fb-89b1-9fa5388f71fa"
 
@@ -36,10 +37,6 @@ DIMENSIONS: list[tuple[str, str]] = [
 MAX_PRODUCTS = 4
 SNIPPET_CHARS = 360
 TOP_EVIDENCE_PER_CELL = 2
-
-
-def _get_access_token(config: RunnableConfig) -> str:
-    return config.get("configurable", {}).get("access_token", "")
 
 
 def _kb_search(query: str, access_token: str, top_k: int = 3, kb_id: str = DEFAULT_KB_ID) -> list[dict[str, Any]]:
@@ -100,7 +97,7 @@ def compare_products_tool(
         if len(names) > MAX_PRODUCTS:
             names = names[:MAX_PRODUCTS]
 
-        token = _get_access_token(_config)
+        token = get_tool_access_token(_config)
 
         # Probe each product to see if KB has anything on it.
         product_found: dict[str, bool] = {}

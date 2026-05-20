@@ -810,28 +810,52 @@
 
 .kb-qa-msg {
   max-width: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kb-qa-msg-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
 }
 
 .kb-qa-msg-user {
   align-self: flex-end;
+  align-items: flex-end;
 }
 
-.kb-qa-msg-user .kb-qa-msg-content {
+.kb-qa-msg-assistant {
+  align-self: flex-start;
+}
+
+.kb-qa-msg-bubble--user {
   background: var(--color-accent);
   color: white;
   border-radius: var(--radius-md) var(--radius-md) 4px var(--radius-md);
   padding: 10px 14px;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  max-width: 100%;
 }
 
-.kb-qa-msg-assistant .kb-qa-msg-content {
+.kb-qa-msg-bubble--user .wiki-agent-md {
+  color: inherit;
+}
+
+.kb-qa-msg-bubble--user .wiki-agent-md__a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.kb-qa-msg-bubble--assistant {
   background: var(--color-bg-muted);
   border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 4px;
   padding: 10px 14px;
-  white-space: pre-wrap;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  max-width: 100%;
+}
+
+.kb-qa-assistant-stream {
+  max-width: 100%;
 }
 
 .kb-qa-typing {

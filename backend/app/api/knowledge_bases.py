@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy import cast
 from sqlalchemy.exc import DBAPIError
@@ -972,3 +973,58 @@ async def ask_question(
     except Exception as e:
         logger.error("Failed to reach agent at %s: %s", agent_url, e)
         raise HTTPException(status_code=502, detail="Could not reach agent service")
+
+
+@router.post("/{kb_id}/ask/stream")
+async def ask_question_stream(
+    kb_id: str,
+    body: AskRequest,
+    token: str = Depends(require_auth),
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+):
+    """Proxy streaming NDJSON from the QA agent (delta lines, then done)."""
+    if not kb.agent_url:
+        raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
+
+    agent_url = kb.agent_url.rstrip("/")
+
+    async def proxy_stream():
+        try:
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                async with client.stream(
+                    "POST",
+                    f"{agent_url}/ask/stream",
+                    json={
+                        "knowledge_base_id": kb_id,
+                        "question": body.question,
+                        "conversation_history": body.conversation_history,
+                        "access_token": token,
+                    },
+                ) as resp:
+                    if resp.status_code >= 400:
+                        err_body = (await resp.aread()).decode("utf-8", errors="replace")[:800]
+                        yield (
+                            '{"type":"error","detail":'
+                            + json.dumps(err_body or f"HTTP {resp.status_code}")
+                            + "}\n"
+                        ).encode("utf-8")
+                        return
+                    async for chunk in resp.aiter_bytes():
+                        yield chunk
+        except httpx.HTTPError as e:
+            logger.error("Agent stream failed at %s: %s", agent_url, e)
+            yield (
+                '{"type":"error","detail":'
+                + json.dumps("Could not reach agent service")
+                + "}\n"
+            ).encode("utf-8")
+
+    return StreamingResponse(
+        proxy_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

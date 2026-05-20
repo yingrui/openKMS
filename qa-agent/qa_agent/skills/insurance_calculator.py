@@ -20,15 +20,12 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from ..config import settings
+from ..request_context import get_tool_access_token
 
 DEFAULT_KB_ID = "b1af9d71-092d-40fb-89b1-9fa5388f71fa"
 
 SNIPPET_CHARS = 600
 TOP_EVIDENCE = 10
-
-
-def _get_access_token(config: RunnableConfig) -> str:
-    return config.get("configurable", {}).get("access_token", "")
 
 
 def _kb_search(query: str, access_token: str, top_k: int = 5, kb_id: str = DEFAULT_KB_ID) -> list[dict[str, Any]]:
@@ -87,7 +84,7 @@ def estimate_insurance_returns_tool(
     / total_premium / years_held). If KB has no relevant chunks, the tool returns
     `similar_products` + `note` instead of fabricating a number."""
     try:
-        token = _get_access_token(_config)
+        token = get_tool_access_token(_config)
 
         # Multi-query coverage of 费率表 + 现金价值表 + 利益演示 / IRR
         queries = [

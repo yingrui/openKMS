@@ -26,6 +26,7 @@ import {
   Loader2,
   Filter,
   ChevronDown,
+  Terminal,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -44,7 +45,7 @@ import {
   generateFAQs,
   saveFAQs,
   searchKnowledgeBase,
-  askQuestion,
+  askQuestionStream,
   updateKnowledgeBase,
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
@@ -62,6 +63,13 @@ import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
+import {
+  appendDeltaToStreamParts,
+  updateToolInParts,
+  type AssistantStreamPart,
+} from '../../components/wiki/wikiCopilotStreamParts';
+import '../../components/wiki/WikiSpaceAgentPanel.css';
 import './KnowledgeBaseDetail.css';
 
 type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'settings';
@@ -81,6 +89,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   sources?: SearchResult[];
+  streamParts?: AssistantStreamPart[];
 }
 
 function DocPickerChannelTree({
@@ -234,6 +243,7 @@ export function KnowledgeBaseDetail() {
   const [qaInput, setQaInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [qaLoading, setQaLoading] = useState(false);
+  const qaStreamAbortRef = useRef<AbortController | null>(null);
 
   // Settings
   const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
@@ -771,25 +781,175 @@ export function KnowledgeBaseDetail() {
     }
   };
 
-  // --- QA ---
+  // --- QA (streams NDJSON via backend → qa-agent, like wiki copilot) ---
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!kbId || !qaInput.trim()) return;
     const question = qaInput.trim();
+    const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
+
+    qaStreamAbortRef.current?.abort();
+    const ac = new AbortController();
+    qaStreamAbortRef.current = ac;
+
     setQaInput('');
-    setChatMessages((prev) => [...prev, { role: 'user', content: question }]);
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'user', content: question },
+      { role: 'assistant', content: '', streamParts: [] },
+    ]);
     setQaLoading(true);
     try {
-      const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
-      const res = await askQuestion(kbId, { question, conversation_history: history });
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: res.answer, sources: res.sources }]);
-    } catch (e: unknown) {
-      setChatMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: `${t('detail.qaErrorPrefix')} ${e instanceof Error ? e.message : t('detail.toastAnswerFailed')}`,
-      }]);
+      await askQuestionStream(
+        kbId,
+        { question, conversation_history: history },
+        (ev) => {
+          if (ev.type === 'tool_start') {
+            setChatMessages((prev) =>
+              prev.map((m, idx) => {
+                if (idx !== prev.length - 1 || m.role !== 'assistant') return m;
+                return {
+                  ...m,
+                  streamParts: [
+                    ...(m.streamParts || []),
+                    {
+                      type: 'tool' as const,
+                      step: {
+                        runId: ev.run_id,
+                        name: ev.name,
+                        input: ev.input,
+                        status: 'running' as const,
+                      },
+                    },
+                  ],
+                };
+              })
+            );
+            return;
+          }
+          if (ev.type === 'tool_end') {
+            setChatMessages((prev) =>
+              prev.map((m, idx) => {
+                if (idx !== prev.length - 1 || m.role !== 'assistant') return m;
+                const { next, updated } = updateToolInParts(m.streamParts, ev.run_id, (s) => ({
+                  ...s,
+                  name: ev.name,
+                  output: ev.output,
+                  status: 'ok' as const,
+                }));
+                const sp = updated
+                  ? next
+                  : [
+                      ...next,
+                      {
+                        type: 'tool' as const,
+                        step: {
+                          runId: ev.run_id,
+                          name: ev.name,
+                          output: ev.output,
+                          status: 'ok' as const,
+                        },
+                      },
+                    ];
+                return { ...m, streamParts: sp };
+              })
+            );
+            return;
+          }
+          if (ev.type === 'tool_error') {
+            setChatMessages((prev) =>
+              prev.map((m, idx) => {
+                if (idx !== prev.length - 1 || m.role !== 'assistant') return m;
+                const { next, updated } = updateToolInParts(m.streamParts, ev.run_id, (s) => ({
+                  ...s,
+                  name: ev.name,
+                  error: ev.error,
+                  status: 'err' as const,
+                }));
+                const sp = updated
+                  ? next
+                  : [
+                      ...next,
+                      {
+                        type: 'tool' as const,
+                        step: {
+                          runId: ev.run_id,
+                          name: ev.name,
+                          error: ev.error,
+                          status: 'err' as const,
+                        },
+                      },
+                    ];
+                return { ...m, streamParts: sp };
+              })
+            );
+            return;
+          }
+          if (ev.type === 'delta') {
+            setChatMessages((prev) => {
+              const next = [...prev];
+              for (let i = next.length - 1; i >= 0; i--) {
+                if (next[i].role === 'assistant') {
+                  const m = next[i];
+                  next[i] = {
+                    ...m,
+                    content: (m.content || '') + ev.t,
+                    streamParts: appendDeltaToStreamParts(m.streamParts, ev.t),
+                  };
+                  break;
+                }
+              }
+              return next;
+            });
+          } else if (ev.type === 'done') {
+            setChatMessages((prev) => {
+              const next = [...prev];
+              for (let i = next.length - 1; i >= 0; i--) {
+                if (next[i].role === 'assistant') {
+                  const m = next[i];
+                  next[i] = {
+                    ...m,
+                    content: ev.answer,
+                    sources: ev.sources,
+                    streamParts: m.streamParts && m.streamParts.length > 0 ? m.streamParts : undefined,
+                  };
+                  break;
+                }
+              }
+              return next;
+            });
+          } else {
+            const msg = `${t('detail.qaErrorPrefix')} ${ev.detail}${ev.answer ? ` ${ev.answer}` : ''}`;
+            setChatMessages((prev) => {
+              const next = [...prev];
+              for (let i = next.length - 1; i >= 0; i--) {
+                if (next[i].role === 'assistant') {
+                  next[i] = { role: 'assistant', content: msg };
+                  break;
+                }
+              }
+              return next;
+            });
+          }
+        },
+        { signal: ac.signal }
+      );
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      const msg = `${t('detail.qaErrorPrefix')} ${err instanceof Error ? err.message : t('detail.toastAnswerFailed')}`;
+      setChatMessages((prev) => {
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].role === 'assistant') {
+            next[i] = { role: 'assistant', content: msg };
+            break;
+          }
+        }
+        return next;
+      });
     } finally {
       setQaLoading(false);
+      if (qaStreamAbortRef.current === ac) qaStreamAbortRef.current = null;
     }
   };
 
@@ -854,36 +1014,124 @@ export function KnowledgeBaseDetail() {
                     <p>{t('detail.qaEmpty')}</p>
                   </div>
                 )}
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
-                    <div className="kb-qa-msg-content">{msg.content}</div>
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="kb-qa-sources">
-                        <span className="kb-qa-sources-label">{t('detail.sources')}</span>
-                        {msg.sources.map((s, j) => (
-                          <span key={j} className="kb-qa-source-tag">
-                            [{s.source_type}]{' '}
-                            {s.wiki_page_id && s.wiki_space_id ? (
-                              <Link to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
-                                {s.source_name || s.wiki_page_id}
-                              </Link>
-                            ) : s.document_id ? (
-                              <Link to={`/documents/view/${s.document_id}`}>{s.source_name || s.document_id}</Link>
+                {chatMessages.map((msg, i) => {
+                  const isLast = i === chatMessages.length - 1;
+                  return (
+                    <div key={i} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
+                      <span className="kb-qa-msg-label">
+                        {msg.role === 'user' ? t('detail.qaLabelYou') : t('detail.qaLabelAssistant')}
+                      </span>
+                      {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
+                        <div
+                          className="wiki-space-agent-panel__assistant-stream kb-qa-assistant-stream"
+                          aria-label={t('detail.qaReplyAria')}
+                        >
+                          {msg.streamParts.map((part, j) =>
+                            part.type === 'text' ? (
+                              <WikiAgentMessageBody
+                                key={`t-${i}-${j}`}
+                                text={part.text}
+                                variant="assistant"
+                              />
                             ) : (
-                              <span>{s.source_name || t('detail.faqSourceFallback')}</span>
-                            )}{' '}
-                            ({(s.score * 100).toFixed(0)}%)
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {qaLoading && (
-                  <div className="kb-qa-msg kb-qa-msg-assistant">
-                    <div className="kb-qa-msg-content kb-qa-typing">{t('detail.qaThinking')}</div>
-                  </div>
-                )}
+                              <div
+                                key={
+                                  part.step.runId
+                                    ? `tool-${part.step.runId}-${j}`
+                                    : `tool-${i}-${j}`
+                                }
+                                className="wiki-space-agent-panel__tool-pill"
+                              >
+                                <div className="wiki-space-agent-panel__tool-pill-line">
+                                  <Terminal
+                                    size={12}
+                                    strokeWidth={2}
+                                    className="wiki-space-agent-panel__tool-pill-ico"
+                                    aria-hidden
+                                  />
+                                  <span className="wiki-space-agent-panel__tool-pill-name">
+                                    {part.step.name}
+                                  </span>
+                                  {part.step.status === 'running' ? (
+                                    <span className="wiki-space-agent-panel__tool-pill-badge">…</span>
+                                  ) : null}
+                                  {part.step.status === 'ok' ? (
+                                    <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--ok">
+                                      {t('detail.qaToolDone')}
+                                    </span>
+                                  ) : null}
+                                  {part.step.status === 'err' ? (
+                                    <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--err">
+                                      {t('detail.qaToolError')}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {(part.step.input || part.step.output || part.step.error) &&
+                                (part.step.status !== 'running' || part.step.input) ? (
+                                  <details className="wiki-space-agent-panel__tool-details">
+                                    <summary>{t('detail.qaToolIoSummary')}</summary>
+                                    {part.step.input ? (
+                                      <pre className="wiki-space-agent-panel__tool-pre">{part.step.input}</pre>
+                                    ) : null}
+                                    {part.step.output ? (
+                                      <pre className="wiki-space-agent-panel__tool-pre">{part.step.output}</pre>
+                                    ) : null}
+                                    {part.step.error ? (
+                                      <pre className="wiki-space-agent-panel__tool-pre wiki-space-agent-panel__tool-pre--err">
+                                        {part.step.error}
+                                      </pre>
+                                    ) : null}
+                                  </details>
+                                ) : null}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      ) : msg.role === 'assistant' &&
+                        !msg.content &&
+                        !(msg.streamParts && msg.streamParts.length) &&
+                        qaLoading &&
+                        isLast ? (
+                        <div className="kb-qa-msg-bubble kb-qa-msg-bubble--assistant kb-qa-typing">
+                          {t('detail.qaThinking')}
+                        </div>
+                      ) : (
+                        <div
+                          className={
+                            msg.role === 'user' ? 'kb-qa-msg-bubble kb-qa-msg-bubble--user' : 'kb-qa-msg-bubble kb-qa-msg-bubble--assistant'
+                          }
+                        >
+                          <WikiAgentMessageBody
+                            text={msg.content}
+                            variant={msg.role === 'user' ? 'user' : 'assistant'}
+                          />
+                        </div>
+                      )}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="kb-qa-sources">
+                          <span className="kb-qa-sources-label">{t('detail.sources')}</span>
+                          {msg.sources.map((s, j) => (
+                            <span key={j} className="kb-qa-source-tag">
+                              [{s.source_type}]{' '}
+                              {s.wiki_page_id && s.wiki_space_id ? (
+                                <Link to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
+                                  {s.source_name || s.wiki_page_id}
+                                </Link>
+                              ) : s.document_id ? (
+                                <Link to={`/documents/view/${s.document_id}`}>
+                                  {s.source_name || s.document_id}
+                                </Link>
+                              ) : (
+                                <span>{s.source_name || t('detail.faqSourceFallback')}</span>
+                              )}{' '}
+                              ({(s.score * 100).toFixed(0)}%)
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <form className="kb-qa-input-form kb-qa-input-form--fullpage" onSubmit={handleAsk}>
                 <input

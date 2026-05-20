@@ -5,10 +5,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from ..page_index_client import flatten_toc, get_page_index, get_section
-
-
-def _get_access_token(config: RunnableConfig) -> str:
-    return config.get("configurable", {}).get("access_token", "")
+from ..request_context import get_tool_access_token
 
 
 @tool
@@ -21,7 +18,7 @@ def read_table_of_contents_tool(
     Returns a flattened list of sections with node_id, title, start_line, end_line.
     Use get_section_content_tool to fetch the content of a selected section."""
     try:
-        token = _get_access_token(_config)
+        token = get_tool_access_token(_config)
         data = get_page_index(document_id, token)
         structure = data.get("structure", [])
         if not structure:
@@ -49,7 +46,7 @@ def get_section_content_tool(
     if start_line < 1 or end_line < 1 or start_line > end_line:
         return "Error: start_line and end_line must be 1-based, start_line <= end_line"
     try:
-        token = _get_access_token(_config)
+        token = get_tool_access_token(_config)
         data = get_section(document_id, start_line, end_line, token)
         return data.get("content", "")
     except Exception as e:

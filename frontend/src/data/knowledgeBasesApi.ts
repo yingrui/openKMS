@@ -116,6 +116,105 @@ export interface AskResponse {
   sources: SearchResult[];
 }
 
+/** NDJSON events from ``POST .../ask/stream`` (aligned with wiki copilot stream shape). */
+export type KbAskStreamEvent =
+  | { type: 'delta'; t: string }
+  | { type: 'tool_start'; run_id: string; name: string; input: string }
+  | { type: 'tool_end'; run_id: string; name: string; output: string }
+  | { type: 'tool_error'; run_id: string; name: string; error: string }
+  | { type: 'done'; answer: string; sources: SearchResult[] }
+  | { type: 'error'; detail: string; answer?: string };
+
+function parseKbAskStreamLine(line: string): KbAskStreamEvent | null {
+  let o: Record<string, unknown>;
+  try {
+    o = JSON.parse(line) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  const typ = o.type;
+  if (typ === 'delta' && typeof o.t === 'string') {
+    return { type: 'delta', t: o.t };
+  }
+  if (typ === 'tool_start' && typeof o.name === 'string') {
+    return {
+      type: 'tool_start',
+      run_id: typeof o.run_id === 'string' ? o.run_id : '',
+      name: o.name,
+      input: typeof o.input === 'string' ? o.input : '',
+    };
+  }
+  if (typ === 'tool_end' && typeof o.name === 'string') {
+    return {
+      type: 'tool_end',
+      run_id: typeof o.run_id === 'string' ? o.run_id : '',
+      name: o.name,
+      output: typeof o.output === 'string' ? o.output : '',
+    };
+  }
+  if (typ === 'tool_error' && typeof o.name === 'string') {
+    return {
+      type: 'tool_error',
+      run_id: typeof o.run_id === 'string' ? o.run_id : '',
+      name: o.name,
+      error: typeof o.error === 'string' ? o.error : 'Tool error',
+    };
+  }
+  if (typ === 'done' && typeof o.answer === 'string' && Array.isArray(o.sources)) {
+    return { type: 'done', answer: o.answer, sources: o.sources as SearchResult[] };
+  }
+  if (typ === 'error' && typeof o.detail === 'string') {
+    return {
+      type: 'error',
+      detail: o.detail,
+      answer: typeof o.answer === 'string' ? o.answer : undefined,
+    };
+  }
+  return null;
+}
+
+export async function askQuestionStream(
+  kbId: string,
+  data: { question: string; conversation_history?: Array<{ role: string; content: string }> },
+  onEvent: (e: KbAskStreamEvent) => void,
+  options?: { signal?: AbortSignal }
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/ask/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+    signal: options?.signal,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to start answer stream');
+  }
+  if (!res.body) throw new Error('No response body');
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 1);
+      if (!line.trim()) continue;
+      const ev = parseKbAskStreamLine(line);
+      if (ev) onEvent(ev);
+    }
+  }
+  const rest = buf.trim();
+  if (rest) {
+    const ev = parseKbAskStreamLine(rest);
+    if (ev) onEvent(ev);
+  }
+}
+
 // --- Knowledge Base CRUD ---
 
 export async function fetchKnowledgeBases(): Promise<KnowledgeBaseListResponse> {

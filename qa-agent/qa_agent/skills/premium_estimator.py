@@ -20,16 +20,13 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from ..config import settings
+from ..request_context import get_tool_access_token
 
 DEFAULT_KB_ID = "b1af9d71-092d-40fb-89b1-9fa5388f71fa"
 
 # Snippet length tuned to capture full surrounding rate-table context.
 SNIPPET_CHARS = 600
 TOP_EVIDENCE = 8
-
-
-def _get_access_token(config: RunnableConfig) -> str:
-    return config.get("configurable", {}).get("access_token", "")
 
 
 def _kb_search(query: str, access_token: str, top_k: int = 5, kb_id: str = DEFAULT_KB_ID) -> list[dict[str, Any]]:
@@ -82,7 +79,7 @@ def estimate_annual_premium_tool(
     for this product, the tool returns `similar_products` + a `note` instead of
     fabricating a number."""
     try:
-        token = _get_access_token(_config)
+        token = get_tool_access_token(_config)
         # Multiple targeted queries to cover the various phrasings PDF tables use.
         queries = [
             f"{product_name} 费率表 {age}岁 {gender}",

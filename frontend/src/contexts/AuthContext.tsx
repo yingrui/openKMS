@@ -1,10 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { User } from 'oidc-client-ts';
 import { config, type AuthMode } from '../config';
 import { getUserManager } from '../oidc/userManager';
-import { authAwareFetch, setAuthTokenProvider, setSessionExpiredHandler } from '../data/apiClient';
+import {
+  authAwareFetch,
+  setAuthTokenProvider,
+  setSessionExpiredHandler,
+  setSessionRetryProvider,
+} from '../data/apiClient';
 import { applyLocaleFromAuthMe } from '../i18n/config';
 import {
   buildFrontendPatternUnion,
@@ -380,6 +386,16 @@ function LocalAuthProvider({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { t } = useTranslation('auth');
+
+  const sessionRetry = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${config.apiUrl}/api/auth/me`, { credentials: 'include' });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const loadSession = useCallback(async () => {
     try {
@@ -468,8 +484,8 @@ function LocalAuthProvider({
   }, [getToken]);
 
   const onApiSessionInvalid = useCallback(() => {
-    toast.dismiss();
     setAuthError(null);
+    toast.error(t('sessionExpired'));
     void (async () => {
       try {
         await fetch(`${config.apiUrl}/clear-session`, { method: 'POST', credentials: 'include' });
@@ -478,8 +494,14 @@ function LocalAuthProvider({
       }
       setUser(null);
       setIsAuthenticated(false);
+      navigate('/login', { replace: true });
     })();
-  }, []);
+  }, [navigate, t]);
+
+  useEffect(() => {
+    setSessionRetryProvider(sessionRetry);
+    return () => setSessionRetryProvider(null);
+  }, [sessionRetry]);
 
   useEffect(() => {
     setSessionExpiredHandler(onApiSessionInvalid);
@@ -539,6 +561,7 @@ function OidcAuthProvider({
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { t } = useTranslation('auth');
 
   const noopComplete = useCallback(async (accessToken: string) => {
     void accessToken;
@@ -639,7 +662,6 @@ function OidcAuthProvider({
   }, [runOidcInit]);
 
   const login = useCallback(() => {
-    toast.dismiss();
     setAuthError(null);
     void (async () => {
       const mgr = getUserManager();
@@ -663,6 +685,29 @@ function OidcAuthProvider({
       }
       await mgr.signinRedirect();
     })();
+  }, []);
+
+  const sessionRetry = useCallback(async (): Promise<boolean> => {
+    try {
+      const mgr = getUserManager();
+      const existing = await mgr.getUser();
+      if (!existing) {
+        return false;
+      }
+      let u: User | null = null;
+      try {
+        u = await mgr.signinSilent();
+      } catch {
+        return false;
+      }
+      if (!u?.access_token) {
+        return false;
+      }
+      await syncTokenToBackend(u.access_token);
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const logout = useCallback(async () => {
@@ -706,26 +751,15 @@ function OidcAuthProvider({
   }, [getToken]);
 
   const onApiSessionInvalid = useCallback(() => {
-    toast.dismiss();
     setAuthError(null);
-    void (async () => {
-      try {
-        await fetch(`${config.apiUrl}/clear-session`, {
-          method: 'POST',
-          credentials: 'include',
-        });
-      } catch {
-        /* ignore */
-      }
-      try {
-        await getUserManager().removeUser();
-      } catch {
-        /* ignore */
-      }
-      setUser(null);
-      setIsAuthenticated(false);
-    })();
-  }, []);
+    toast.error(t('sessionExpired'));
+    void login();
+  }, [login, t]);
+
+  useEffect(() => {
+    setSessionRetryProvider(sessionRetry);
+    return () => setSessionRetryProvider(null);
+  }, [sessionRetry]);
 
   useEffect(() => {
     setSessionExpiredHandler(onApiSessionInvalid);
