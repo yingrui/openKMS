@@ -68,10 +68,12 @@
   opacity: 0.5;
 }
 
+/* Fixed-ish column width so cards do not balloon when the nav rail is collapsed (wider main column). */
 .kb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
   gap: 20px;
+  justify-content: start;
 }
 
 .kb-card {
