@@ -126,6 +126,16 @@
   padding-right: clamp(16px, 2.5vw, 28px);
 }
 
+/* Object Explorer: fill main column height (no bottom dead band), tighter gutters */
+.app-content--object-explorer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 12px clamp(12px, 2vw, 24px) 12px;
+  overflow: hidden;
+}
+
 .app-content--compact {
   padding: 12px 16px;
 }

@@ -42,6 +42,7 @@ export function MainLayout() {
     location.pathname.startsWith('/knowledge-bases/') ||
     location.pathname.startsWith('/wikis/');
   const isSearchPage = location.pathname === '/search';
+  const isObjectExplorerPage = location.pathname === '/object-explorer';
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
 
@@ -113,7 +114,7 @@ export function MainLayout() {
         )}
         {!showAuthRequired && !showPathDenied && (
           <div
-            className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}`}
+            className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isObjectExplorerPage ? ' app-content--object-explorer' : ''}`}
           >
             <Outlet />
           </div>

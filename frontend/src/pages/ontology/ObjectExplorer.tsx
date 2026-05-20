@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ForceGraph2D, { type ForceGraphMethods } from 'react-force-graph-2d';
-import { Box, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
+import { Box, ChevronLeft, ChevronRight, Crosshair, Expand, Link2, Maximize2, Minimize2, Play, Loader2, List, Network, RotateCcw, Sparkles, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
@@ -24,6 +24,12 @@ function neo4jLabel(name: string): string {
 function neo4jRelType(name: string): string {
   const s = name.replace(/[^a-zA-Z0-9_]/g, '_');
   return s || 'relates_to';
+}
+
+function linkTypeRowTitle(lt: LinkTypeResponse): string {
+  const src = (lt.source_object_type_name ?? '').trim();
+  const tgt = (lt.target_object_type_name ?? '').trim();
+  return `${src} —[${lt.name}]→ ${tgt}`;
 }
 
 function buildCypher(
@@ -175,6 +181,8 @@ function resultToGraph(
   return { nodes, links };
 }
 
+type ObjectExplorerQueryTab = 'cypher' | 'natural';
+
 export function ObjectExplorer() {
   const { t } = useTranslation('objectExplorer');
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
@@ -186,12 +194,12 @@ export function ObjectExplorer() {
   const [mockedAnswer, setMockedAnswer] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [answerExpanded, setAnswerExpanded] = useState(false);
-  const [userQOpen, setUserQOpen] = useState(true);
+  const [queryTab, setQueryTab] = useState<ObjectExplorerQueryTab>('cypher');
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null);
   const [resultView, setResultView] = useState<'list' | 'graph'>('list');
-  const [stylePanelOpen, setStylePanelOpen] = useState(true);
+  const [stylePanelOpen, setStylePanelOpen] = useState(false);
   const [canvasFullscreen, setCanvasFullscreen] = useState(false);
   const [dagLayoutMode, setDagLayoutMode] = useState<'' | 'lr' | 'rl' | 'td' | 'bu' | 'radialout' | 'radialin'>('');
   const [objectTypeColors, setObjectTypeColors] = useState<Record<string, string>>({});
@@ -334,7 +342,7 @@ export function ObjectExplorer() {
   const handleAskQuestion = async () => {
     const q = userQuestion.trim();
     if (!q) {
-      toast.error('Type a question or pick one from the dropdown');
+      toast.error(t('toastQuestionEmpty'));
       return;
     }
     setGenerating(true);
@@ -428,8 +436,8 @@ export function ObjectExplorer() {
                       className="object-explorer-type-checkbox"
                     />
                     <Link2 size={16} aria-hidden />
-                    <span className="object-explorer-type-label" title={lt.name}>
-                      {lt.source_object_type_name} —[{lt.name}]→ {lt.target_object_type_name}
+                    <span className="object-explorer-type-label object-explorer-type-label--link" title={linkTypeRowTitle(lt)}>
+                      {linkTypeRowTitle(lt)}
                     </span>
                     <span className="object-explorer-type-count">{lt.link_count}</span>
                   </label>
@@ -439,96 +447,124 @@ export function ObjectExplorer() {
           )}
         </aside>
         <main className="object-explorer-main">
-          <div className="object-explorer-search-bar">
-            <div className={`object-explorer-userq-wrap${userQOpen ? '' : ' object-explorer-userq-collapsed'}`}>
-              <button
-                type="button"
-                className="object-explorer-userq-header"
-                onClick={() => setUserQOpen((v) => !v)}
-                aria-expanded={userQOpen}
-                aria-controls="object-explorer-userq-body"
-              >
-                <Sparkles size={14} aria-hidden />
-                <span className="object-explorer-userq-title">Ask in plain language</span>
-                <span className="object-explorer-userq-badge">text-to-cypher</span>
-                {!userQOpen && userQuestion.trim() && (
-                  <span className="object-explorer-userq-preview" title={userQuestion}>
-                    {userQuestion.length > 60 ? userQuestion.slice(0, 60) + '…' : userQuestion}
-                  </span>
-                )}
-                <span className="object-explorer-userq-chevron" aria-hidden>
-                  {userQOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </span>
-              </button>
-              {userQOpen && (
-                <div id="object-explorer-userq-body" className="object-explorer-userq-body">
-                  <textarea
-                    id="object-explorer-userq"
-                    className="object-explorer-userq-input"
-                    value={userQuestion}
-                    onChange={(e) => setUserQuestion(e.target.value)}
-                    placeholder="Ask a graph-shaped question in plain language; the LLM will translate it to Cypher against the current schema."
-                    rows={2}
-                  />
-                  <div className="object-explorer-userq-actions">
+          <div className="object-explorer-workspace">
+            <div className="object-explorer-query-stack">
+              <div className="object-explorer-search-bar">
+                <div className="object-explorer-query-tabs-row">
+                  <div className="object-explorer-query-tabs" role="tablist" aria-label={t('queryTabsAria')}>
                     <button
                       type="button"
-                      className="btn btn-primary"
-                      onClick={handleAskQuestion}
-                      disabled={generating || executing || !userQuestion.trim()}
-                      title="Translates the question to Cypher via the LLM, runs it against the graph, and summarises the rows back to natural language."
+                      role="tab"
+                      id="object-explorer-tab-cypher"
+                      aria-selected={queryTab === 'cypher'}
+                      aria-controls="object-explorer-panel-cypher"
+                      className={`object-explorer-query-tab${queryTab === 'cypher' ? ' object-explorer-query-tab--active' : ''}`}
+                      onClick={() => setQueryTab('cypher')}
                     >
-                      {generating ? (
+                      {t('tabCypher')}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      id="object-explorer-tab-natural"
+                      aria-selected={queryTab === 'natural'}
+                      aria-controls="object-explorer-panel-natural"
+                      className={`object-explorer-query-tab${queryTab === 'natural' ? ' object-explorer-query-tab--active' : ''}`}
+                      onClick={() => setQueryTab('natural')}
+                    >
+                      {t('tabNatural')}
+                    </button>
+                  </div>
+                </div>
+                <div
+                  id="object-explorer-panel-cypher"
+                  role="tabpanel"
+                  aria-labelledby="object-explorer-tab-cypher"
+                  hidden={queryTab !== 'cypher'}
+                  className="object-explorer-query-panel"
+                >
+                  <div className="object-explorer-cypher-wrap">
+                    <textarea
+                      id="object-explorer-cypher"
+                      className="object-explorer-cypher-input"
+                      value={cypherInput}
+                      onChange={(e) => setCypherInput(e.target.value)}
+                      placeholder={t('cypherPlaceholder')}
+                      aria-label={t('cypherLabel')}
+                      rows={2}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="object-explorer-query-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm object-explorer-query-run-btn"
+                      onClick={handleExecute}
+                      disabled={executing || !cypherInput.trim()}
+                    >
+                      {executing ? (
                         <>
-                          <Loader2 size={16} className="object-explorer-spinner" />
-                          Generating Cypher...
+                          <Loader2 size={16} className="object-explorer-spinner" aria-hidden />
+                          {t('running')}
                         </>
                       ) : (
                         <>
-                          <Sparkles size={16} />
-                          Generate Cypher & Run
+                          <Play size={16} aria-hidden />
+                          {t('execute')}
                         </>
                       )}
                     </button>
                   </div>
                 </div>
-              )}
+                <div
+                  id="object-explorer-panel-natural"
+                  role="tabpanel"
+                  aria-labelledby="object-explorer-tab-natural"
+                  hidden={queryTab !== 'natural'}
+                  className="object-explorer-query-panel"
+                >
+                  <div className="object-explorer-userq-body">
+                    <textarea
+                      id="object-explorer-userq"
+                      className="object-explorer-userq-input"
+                      value={userQuestion}
+                      onChange={(e) => setUserQuestion(e.target.value)}
+                      placeholder={t('naturalPlaceholder')}
+                      aria-label={t('tabNatural')}
+                      rows={2}
+                    />
+                  </div>
+                  <div className="object-explorer-query-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm object-explorer-query-run-btn"
+                      onClick={() => void handleAskQuestion()}
+                      disabled={generating || executing || !userQuestion.trim()}
+                      title={t('generateAndRunTitle')}
+                    >
+                      {generating ? (
+                        <>
+                          <Loader2 size={16} className="object-explorer-spinner" aria-hidden />
+                          {t('generatingCypher')}
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} aria-hidden />
+                          {t('generateAndRun')}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="object-explorer-cypher-wrap">
-              <label htmlFor="object-explorer-cypher" className="object-explorer-cypher-label">
-                {t('cypherLabel')}
-              </label>
-              <textarea
-                id="object-explorer-cypher"
-                className="object-explorer-cypher-input"
-                value={cypherInput}
-                onChange={(e) => setCypherInput(e.target.value)}
-                placeholder={t('cypherPlaceholder')}
-                rows={3}
-              />
-            </div>
-            <div className="object-explorer-search-actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleExecute}
-                disabled={executing || !cypherInput.trim()}
-              >
-                {executing ? (
-                  <>
-                    <Loader2 size={18} className="object-explorer-spinner" />
-                    {t('running')}
-                  </>
-                ) : (
-                  <>
-                    <Play size={18} />
-                    {t('execute')}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-          <div className="object-explorer-results">
+            <div
+              className={`object-explorer-results${
+                result && result.rows.length > 0 && resultView === 'graph'
+                  ? ' object-explorer-results--graph'
+                  : ''
+              }`}
+            >
             {mockedAnswer && (
               <div
                 className={`object-explorer-answer-card${answerExpanded ? ' object-explorer-answer-card-fullscreen' : ''}`}
@@ -854,6 +890,7 @@ export function ObjectExplorer() {
                 )}
               </>
             )}
+          </div>
           </div>
         </main>
       </div>
