@@ -183,6 +183,9 @@ function resultToGraph(
 
 type ObjectExplorerQueryTab = 'cypher' | 'natural';
 
+const LIST_PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
+const DEFAULT_LIST_PAGE_SIZE = 50;
+
 export function ObjectExplorer() {
   const { t } = useTranslation('objectExplorer');
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
@@ -198,6 +201,8 @@ export function ObjectExplorer() {
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(DEFAULT_LIST_PAGE_SIZE);
   const [resultView, setResultView] = useState<'list' | 'graph'>('list');
   const [stylePanelOpen, setStylePanelOpen] = useState(false);
   const [canvasFullscreen, setCanvasFullscreen] = useState(false);
@@ -236,6 +241,10 @@ export function ObjectExplorer() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    setListPage(0);
+  }, [result, listPageSize]);
+
   const selectedObjects = objectTypes.filter((t) => selectedObjectTypeIds.has(t.id));
   const selectedLinks = linkTypes.filter((t) => selectedLinkTypeIds.has(t.id));
 
@@ -268,6 +277,21 @@ export function ObjectExplorer() {
     if (!result || result.rows.length === 0) return null;
     return resultToGraph(result, selectedLinks, selectedObjects, t('nodeFallback'));
   }, [result, selectedLinks, selectedObjects, t]);
+
+  const listPagedRows = useMemo(() => {
+    if (!result) return [];
+    const start = listPage * listPageSize;
+    return result.rows.slice(start, start + listPageSize);
+  }, [result, listPage, listPageSize]);
+
+  const listPagination = useMemo(() => {
+    if (!result) return { total: 0, totalPages: 1, from: 0, to: 0 };
+    const total = result.rows.length;
+    const totalPages = Math.max(1, Math.ceil(total / listPageSize));
+    const from = total === 0 ? 0 : listPage * listPageSize + 1;
+    const to = Math.min((listPage + 1) * listPageSize, total);
+    return { total, totalPages, from, to };
+  }, [result, listPage, listPageSize]);
 
   const graphRef = useRef<ForceGraphMethods<GraphNode, GraphLink>>(undefined);
   const graphContainerRef = useRef<HTMLDivElement>(null);
@@ -625,34 +649,91 @@ export function ObjectExplorer() {
                   )}
                 </div>
                 {resultView === 'list' ? (
-              <div className="object-explorer-table-wrap">
-                <table className="object-explorer-table">
-                  <thead>
-                    <tr>
-                      {result.columns.map((col) => (
-                        <th key={col}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.rows.map((row, i) => (
-                      <tr key={i}>
-                        {result.columns.map((col) => (
-                          <td key={col}>
-                            {typeof row[col] === 'object' && row[col] !== null ? (
-                              <pre className="object-explorer-cell-json">
-                                {JSON.stringify(row[col], null, 2)}
-                              </pre>
-                            ) : (
-                              formatCellValue(row[col], t('dash'))
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  <>
+                    <div className="object-explorer-table-wrap">
+                      <table className="object-explorer-table">
+                        <thead>
+                          <tr>
+                            {result.columns.map((col) => (
+                              <th key={col}>{col}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {listPagedRows.map((row, i) => (
+                            <tr key={listPage * listPageSize + i}>
+                              {result.columns.map((col) => (
+                                <td key={col}>
+                                  {typeof row[col] === 'object' && row[col] !== null ? (
+                                    <pre className="object-explorer-cell-json">
+                                      {JSON.stringify(row[col], null, 2)}
+                                    </pre>
+                                  ) : (
+                                    formatCellValue(row[col], t('dash'))
+                                  )}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div
+                      className="object-explorer-list-pagination"
+                      role="navigation"
+                      aria-label={t('listPaginationAria')}
+                    >
+                      <div className="object-explorer-list-pagination__info">
+                        <span>
+                          {t('listPaginationRange', {
+                            from: listPagination.from,
+                            to: listPagination.to,
+                            total: listPagination.total,
+                          })}
+                        </span>
+                        <label className="object-explorer-list-pagination__size">
+                          <span>{t('listPerPage')}</span>
+                          <select
+                            value={listPageSize}
+                            onChange={(e) => setListPageSize(Number(e.target.value))}
+                            aria-label={t('listPerPage')}
+                          >
+                            {LIST_PAGE_SIZE_OPTIONS.map((n) => (
+                              <option key={n} value={n}>
+                                {n}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      {listPagination.totalPages > 1 && (
+                        <div className="object-explorer-list-pagination__nav">
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={listPage <= 0}
+                            onClick={() => setListPage((p) => Math.max(0, p - 1))}
+                          >
+                            {t('listPrev')}
+                          </button>
+                          <span className="object-explorer-list-pagination__status">
+                            {t('listPageStatus', {
+                              current: listPage + 1,
+                              total: listPagination.totalPages,
+                            })}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            disabled={listPage >= listPagination.totalPages - 1}
+                            onClick={() => setListPage((p) => Math.min(listPagination.totalPages - 1, p + 1))}
+                          >
+                            {t('listNext')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </>
                 ) : graphData ? (
                   <div
                     ref={graphContainerRef}
