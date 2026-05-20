@@ -158,6 +158,13 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/knowledge-bases/{id}/search` | Semantic / hybrid search over chunks (documents + linked wiki pages) and FAQs; chunk hits may include `wiki_page_id`, `wiki_space_id` |
 | POST | `/api/knowledge-bases/{id}/ask` | Proxy to QA agent (JSON: `question`, `conversation_history`, optional `session_id` opaque string forwarded as Langfuse **session** id) |
 | POST | `/api/knowledge-bases/{id}/ask/stream` | Same body; NDJSON stream then `done` with `sources`: hybrid hits unless Page Index **`document_section`** applies, or successful **`run_cypher_tool`** returned graph rows — then **`ontology`** rows (object type list + per-query Cypher summary). Optional `error` {`detail`, `answer?`} |
+| GET | `/api/knowledge-bases/{id}/agent-conversations` | List the current user's persisted KB Q&A chats (`agent_conversations` with `surface=knowledge_base` and matching `context.knowledge_base_id`; KB visibility rules) |
+| POST | `/api/knowledge-bases/{id}/agent-conversations` | Create chat (optional JSON `{ "title"?: string }`) |
+| DELETE | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}` | Delete chat (cascades messages) |
+| PATCH | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}` | Update chat title |
+| GET | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages` | List messages for that chat |
+| DELETE | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages/from/{message_id}` | Delete this message and all later messages (same semantics as wiki copilot regenerate) |
+| POST | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages` | Send a user turn: JSON `content`, `stream` (boolean), optional `session_id`. **`stream: true`** → **`application/x-ndjson`**: `user` (persisted row), forwarded `delta` / `tool_*`, then **`done`** with `answer`, `sources`, `user`, `message` (persisted assistant row). Persists tool transcripts (`wiki_tool_traces_v1`) and references (`kb_qa_sources_v1` on `tool_calls`) |
 
 ## Evaluation
 

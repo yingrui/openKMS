@@ -1030,3 +1030,9 @@ async def ask_question_stream(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# KB Q&A persisted chats: ``/api/knowledge-bases/{kb_id}/agent-conversations/…`` (same URL tree as other KB routes).
+from app.api.kb_agent_conversations import router as kb_agent_conversations_router
+
+router.include_router(kb_agent_conversations_router)

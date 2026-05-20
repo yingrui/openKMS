@@ -19,9 +19,11 @@ This document is the **single spec** for wiki–document associations, the wiki-
 
 1. **Wiki space**: **Pages** | **Documents**; documents are **linked** to the space (DB `wiki_space_documents`). Add/remove with **document in user scope** (enforced in API).
 2. **Wiki Copilot** (wiki **workspace** rail): Aligned with the [wiki-skills](https://github.com/kfchou/wiki-skills) *pattern* (init / ingest / query / lint / update) via system prompt + tools.
-3. **Multi-surface**: `agent_conversations.surface` (v1: `wiki_space`); other surfaces (evaluation, FAQ) later.
+3. **Multi-surface**: `agent_conversations.surface` — **`wiki_space`** (Wiki Copilot, embedded LangGraph in the backend); **`knowledge_base`** (KB full-page Q&A: same tables and NDJSON event shapes, but **`POST …/knowledge-bases/{id}/agent-conversations/{cid}/messages`** forwards the turn to the **qa-agent** at `{kb.agent_url}/ask` or **`/ask/stream`** and persists the final assistant row + **`kb_qa_sources_v1`** / tool traces on `tool_calls`). Later: **`evaluation`**, **`kb_faq`**, or other surfaces if needed.
 
 ## Request path (implemented, v1)
+
+### Wiki Copilot (embedded agent)
 
 ```mermaid
 sequenceDiagram
@@ -39,15 +41,45 @@ sequenceDiagram
   API->>FE: user + assistant JSON
 ```
 
+### KB Q&A (qa-agent proxy + persistence)
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant FE as KnowledgeBaseDetail
+  participant API as FastAPI_backend
+  participant QA as qa_agent_service
+  participant DB as PostgreSQL
+  U->>FE: Send message (stream)
+  FE->>API: POST /api/knowledge-bases/kb/cid/messages stream=true
+  API->>DB: Store user row + load history
+  API->>QA: POST …/ask/stream (token, history, question)
+  QA-->>API: NDJSON delta / tool_* (forwarded)
+  API-->>FE: Same line shapes + final done
+  API->>DB: Persist assistant + sources/tool_calls
+```
+
 ## Data model (implemented)
 
 | Table | Purpose |
 |-------|---------|
 | **wiki_space_documents** | `id`, `wiki_space_id`, `document_id`, `created_at`; unique pair; `ON DELETE CASCADE` on space or document. |
-| **agent_conversations** | `user_sub` (OIDC/ local JWT `sub`), `surface`, `context` JSONB (`wiki_space_id`), `title?`, timestamps. |
-| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content` (user-visible assistant text), `tool_calls?` JSONB — wiki Copilot stores `wiki_tool_traces_v1` (tool name + output) for **model replay** on later turns and for the **workspace rail** to rebuild tool rows when loading `GET …/messages` (order is approximate: completed tools, then final `content` as one text block—not the live interleaving). |
+| **agent_conversations** | `user_sub` (OIDC/ local JWT `sub`), `surface` (`wiki_space`, `knowledge_base`, …), `context` JSONB (`wiki_space_id` or `knowledge_base_id`), `title?`, timestamps. |
+| **agent_messages** | `role` (`user` \| `assistant` \| `tool` reserved), `content` (user-visible assistant text), `tool_calls?` JSONB — wiki Copilot stores **`wiki_tool_traces_v1`** (tool name + output) for **model replay** on later turns and for the **workspace rail** to rebuild tool rows when loading `GET …/messages` (order is approximate: completed tools, then final `content` as one text block—not the live interleaving). KB Q&A may add **`kb_qa_sources_v1`** (and optional **`wiki_tool_traces_v1`** when the qa-agent streams tool lines) on assistant rows for persisted references + tool rail after reload. |
 
 ## REST API (implemented, v1)
+
+**KB Q&A threads** (same `agent_conversations` / `agent_messages` model; `surface=knowledge_base`, `context.knowledge_base_id`)
+
+| Method | Path | Notes |
+|--------|------|--------|
+| GET | `/api/knowledge-bases/{id}/agent-conversations` | Current user, this KB, `updated_at` desc. |
+| POST | `/api/knowledge-bases/{id}/agent-conversations` | Optional `{ "title" }`. |
+| PATCH | `/api/knowledge-bases/{id}/agent-conversations/{cid}` | Title. |
+| DELETE | `/api/knowledge-bases/{id}/agent-conversations/{cid}` | 204. |
+| GET | `/api/knowledge-bases/{id}/agent-conversations/{cid}/messages` | Full list (v1, no offset). |
+| DELETE | `/api/knowledge-bases/{id}/agent-conversations/{cid}/messages/from/{mid}` | Truncate from message (regenerate). |
+| POST | `/api/knowledge-bases/{id}/agent-conversations/{cid}/messages` | `{ "content", "stream"?, "session_id"? }` — same streaming contract as wiki **`POST …/agent/…/messages`** when `stream: true` (proxied agent lines + terminal **`done`** / **`error`** with persisted ids). Requires **`agent_url`** on the KB. |
 
 **Wiki–document links**
 
@@ -63,7 +95,7 @@ sequenceDiagram
 |--------|------|--------|
 | POST | `/api/wiki-spaces/{id}/semantic-index` | `wikis:write`. Embeds every **wiki_page** in the space (title + path + body, truncated per request) via the default **embedding** ApiModel (**Models** → category **Embedding** → **Set as default**). Writes `embedding`, `embedding_model_id`, `embedded_at` on each row. Does **not** run automatically on page save (v1). |
 
-**Agent**
+**Agent (Wiki Copilot)**
 
 | Method | Path | Notes |
 |--------|------|--------|
@@ -130,9 +162,10 @@ For implementers changing the workspace rail, NDJSON client, or wiki LangGraph p
 - [x] Agent router + `create_react_agent` + read tools; FE [agentApi.ts](https://github.com/yingrui/openKMS/blob/main/frontend/src/data/agentApi.ts) + panel
 - [ ] Optional: Langfuse env in [config](https://github.com/yingrui/openKMS/blob/main/backend/app/config.py) + `invoke` hook
 - [x] Write tool: `upsert_wiki_page` (gated by `wikis:write`)
+- [x] **`knowledge_base` surface**: KB agent-conversations API + full-page Q&A UI (threads, stream persist, sources); see [knowledge-bases.md](./features/knowledge-bases.md)
 - [ ] Read `Document.markdown` in tools (linked channel documents)
 - [ ] (Later) `evaluation` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)
-- [ ] Server-side pagination for `GET .../agent/.../messages` if needed
+- [ ] Server-side pagination for `GET .../agent/.../messages` and **`GET …/knowledge-bases/.../agent-conversations/.../messages`** if threads grow large
 
 ## Out of scope (later)
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
@@ -27,6 +27,7 @@ import {
   Filter,
   ChevronDown,
   Terminal,
+  ArrowUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -45,10 +46,18 @@ import {
   generateFAQs,
   saveFAQs,
   searchKnowledgeBase,
-  askQuestionStream,
   updateKnowledgeBase,
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
+  listKbAgentConversations,
+  listKbAgentMessages,
+  createKbAgentConversation,
+  deleteKbAgentConversation,
+  postKbAgentMessageStream,
+  getStoredKbQaConversationId,
+  setStoredKbQaConversationId,
+  clearStoredKbQaConversationId,
+  KB_QA_SOURCES_V1,
   type KnowledgeBaseResponse,
   type KBDocumentResponse,
   type KBWikiSpaceResponse,
@@ -57,6 +66,7 @@ import {
   type ChunkResponse,
   type SearchResult,
 } from '../../data/knowledgeBasesApi';
+import type { AgentConversationResponse, AgentMessageItem } from '../../data/agentApi';
 import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
@@ -67,6 +77,7 @@ import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody
 import {
   appendDeltaToStreamParts,
   updateToolInParts,
+  assistantHistoryStreamParts,
   type AssistantStreamPart,
 } from '../../components/wiki/wikiCopilotStreamParts';
 import '../../components/wiki/WikiSpaceAgentPanel.css';
@@ -86,12 +97,75 @@ const TAB_ICONS: Record<TabId, typeof FileStack> = {
 };
 
 interface ChatMessage {
+  id?: string;
   role: 'user' | 'assistant';
   content: string;
   sources?: SearchResult[];
   streamParts?: AssistantStreamPart[];
   /** Stable id for this assistant turn (which reference rows are expanded). */
   replyKey?: string;
+}
+
+function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
+  const out: ChatMessage[] = [];
+  for (const m of items) {
+    if (m.role !== 'user' && m.role !== 'assistant') continue;
+    if (m.role === 'user') {
+      out.push({ id: m.id, role: 'user', content: m.content });
+      continue;
+    }
+    const tc = m.tool_calls as Record<string, unknown> | undefined;
+    const rawSources = tc?.[KB_QA_SOURCES_V1];
+    const sources = Array.isArray(rawSources) ? (rawSources as SearchResult[]) : undefined;
+    out.push({
+      id: m.id,
+      role: 'assistant',
+      content: m.content,
+      sources,
+      streamParts: assistantHistoryStreamParts(m.content, m.tool_calls),
+      replyKey: m.id,
+    });
+  }
+  return out;
+}
+
+function kbQaLineId(): string {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `line_${Date.now()}`;
+}
+
+function groupKbConversationsByMonth(
+  items: AgentConversationResponse[]
+): { key: string; items: AgentConversationResponse[] }[] {
+  const map = new Map<string, AgentConversationResponse[]>();
+  for (const c of items) {
+    const d = new Date(c.updated_at || c.created_at);
+    if (Number.isNaN(d.getTime())) continue;
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(c);
+  }
+  const keys = [...map.keys()].sort((a, b) => b.localeCompare(a));
+  return keys.map((key) => ({
+    key,
+    items: (map.get(key) || []).sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    ),
+  }));
+}
+
+function formatKbQaMonthGroupLabel(key: string, locale: string): string {
+  const [ys, ms] = key.split('-');
+  const y = Number(ys);
+  const m = Number(ms);
+  if (!y || !m || m < 1 || m > 12) return key;
+  try {
+    const loc = locale.startsWith('zh') ? 'zh-CN' : 'en-US';
+    return new Date(y, m - 1, 1).toLocaleDateString(loc, { year: 'numeric', month: 'long' });
+  } catch {
+    return key;
+  }
 }
 
 function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
@@ -220,7 +294,7 @@ export function KnowledgeBaseDetail() {
   const { id: kbId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { channels } = useDocumentChannels();
-  const { t } = useTranslation('knowledgeBase');
+  const { t, i18n } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('documents');
   const [qaFullPage, setQaFullPage] = useState(false);
@@ -304,6 +378,13 @@ export function KnowledgeBaseDetail() {
   const qaTraceSessionRef = useRef<string | null>(null);
   /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
   const [qaSourcesExpanded, setQaSourcesExpanded] = useState<Record<string, Set<number>>>({});
+  const kbIdRef = useRef(kbId);
+  kbIdRef.current = kbId;
+  const [kbQaConvId, setKbQaConvId] = useState<string | null>(null);
+  const [kbQaConversations, setKbQaConversations] = useState<AgentConversationResponse[]>([]);
+  const [kbQaConvsLoading, setKbQaConvsLoading] = useState(false);
+  const [kbQaConvReady, setKbQaConvReady] = useState(false);
+  const kbQaMainScrollRef = useRef<HTMLDivElement | null>(null);
 
   // Settings
   const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
@@ -399,6 +480,89 @@ export function KnowledgeBaseDetail() {
       setQaFullPage(false);
     }
   }, [qaFullPage, kb]);
+
+  useEffect(() => {
+    if (qaFullPage && kb?.agent_url) {
+      document.body.classList.add('openkms-kb-qa-fullpage');
+      return () => {
+        document.body.classList.remove('openkms-kb-qa-fullpage');
+      };
+    }
+    document.body.classList.remove('openkms-kb-qa-fullpage');
+    return undefined;
+  }, [qaFullPage, kb?.agent_url]);
+
+  useLayoutEffect(() => {
+    if (!qaFullPage || !kb?.agent_url) return;
+    const sc = kbQaMainScrollRef.current;
+    if (!sc) return;
+    sc.scrollTop = sc.scrollHeight;
+  }, [qaFullPage, kb?.agent_url, chatMessages, qaLoading]);
+
+  const loadKbQaMessagesForConversation = useCallback(
+    async (conversationId: string) => {
+      if (!kbId) return;
+      const msgs = await listKbAgentMessages(kbId, conversationId);
+      setChatMessages(kbAgentItemsToChatMessages(msgs));
+    },
+    [kbId]
+  );
+
+  const kbQaConvLabel = useCallback(
+    (c: AgentConversationResponse) => {
+      const t0 = (c.title || '').trim();
+      if (t0) return t0.length > 60 ? `${t0.slice(0, 59)}…` : t0;
+      return t('detail.qaChatUntitled', { snippet: `${c.id.slice(0, 8)}…` });
+    },
+    [t]
+  );
+
+  const kbQaConvMonthGroups = useMemo(
+    () => groupKbConversationsByMonth(kbQaConversations),
+    [kbQaConversations]
+  );
+
+  useEffect(() => {
+    if (!qaFullPage || !kbId) return;
+    let cancelled = false;
+    (async () => {
+      setKbQaConvReady(false);
+      setKbQaConvsLoading(true);
+      try {
+        const items = await listKbAgentConversations(kbId);
+        if (cancelled) return;
+        setKbQaConversations(items);
+        const stored = getStoredKbQaConversationId(kbId);
+        const validStored = stored && items.some((x) => x.id === stored) ? stored : null;
+        const nextId = validStored || items[0]?.id || null;
+        setKbQaConvId(nextId);
+        if (nextId) {
+          setStoredKbQaConversationId(kbId, nextId);
+          try {
+            await loadKbQaMessagesForConversation(nextId);
+          } catch {
+            if (!cancelled) {
+              setChatMessages([]);
+              toast.error(t('detail.qaToastLoadMessagesFailed'));
+            }
+          }
+        } else {
+          clearStoredKbQaConversationId(kbId);
+          if (!cancelled) setChatMessages([]);
+        }
+      } catch {
+        if (!cancelled) toast.error(t('detail.qaToastLoadConversationsFailed'));
+      } finally {
+        if (!cancelled) {
+          setKbQaConvsLoading(false);
+          setKbQaConvReady(true);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [qaFullPage, kbId, t, loadKbQaMessagesForConversation]);
 
   // --- Document picker ---
   const alreadyAddedIds = new Set(docs.map((d) => d.document_id));
@@ -841,41 +1005,106 @@ export function KnowledgeBaseDetail() {
     }
   };
 
-  // --- QA (streams NDJSON via backend → qa-agent, like wiki copilot) ---
+  // --- QA (persisted threads; NDJSON via backend → qa-agent, like wiki copilot) ---
+  const onSelectKbQaConversation = async (id: string) => {
+    if (!kbId || !id || id === kbQaConvId) return;
+    setKbQaConvId(id);
+    setStoredKbQaConversationId(kbId, id);
+    try {
+      await loadKbQaMessagesForConversation(id);
+    } catch {
+      toast.error(t('detail.qaToastLoadMessagesFailed'));
+    }
+  };
+
+  const onNewKbQaChat = async () => {
+    if (!kbId) return;
+    try {
+      const c = await createKbAgentConversation(kbId);
+      setKbQaConvId(c.id);
+      setStoredKbQaConversationId(kbId, c.id);
+      setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
+      setChatMessages([]);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.qaToastNewChatFailed'));
+    }
+  };
+
+  const onDeleteKbQaChat = async () => {
+    if (!kbId || !kbQaConvId) return;
+    if (!window.confirm(t('detail.qaConfirmDeleteChat'))) return;
+    try {
+      await deleteKbAgentConversation(kbId, kbQaConvId);
+      const items = await listKbAgentConversations(kbId);
+      setKbQaConversations(items);
+      const next = items[0]?.id || null;
+      setKbQaConvId(next);
+      if (next) {
+        setStoredKbQaConversationId(kbId, next);
+        await loadKbQaMessagesForConversation(next);
+      } else {
+        clearStoredKbQaConversationId(kbId);
+        setChatMessages([]);
+      }
+      toast.success(t('detail.qaToastChatDeleted'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.qaToastDeleteChatFailed'));
+    }
+  };
+
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!kbId || !qaInput.trim()) return;
-    const question = qaInput.trim();
-    const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
+    if (!kbId || !qaInput.trim() || !kbQaConvReady) return;
+    const startedKb = kbId;
+    const userText = qaInput.trim();
 
     qaStreamAbortRef.current?.abort();
     const ac = new AbortController();
     qaStreamAbortRef.current = ac;
 
     setQaInput('');
-    const assistantReplyKey =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `reply_${Date.now()}`;
+    const tempUserId = kbQaLineId();
+    const asstStreamId = kbQaLineId();
+    let streamPersistedUserId: string | null = null;
+
     setChatMessages((prev) => [
       ...prev,
-      { role: 'user', content: question },
-      { role: 'assistant', content: '', streamParts: [], replyKey: assistantReplyKey },
+      { id: tempUserId, role: 'user', content: userText },
+      { id: asstStreamId, role: 'assistant', content: '', streamParts: [], replyKey: asstStreamId },
     ]);
     setQaLoading(true);
     try {
-      await askQuestionStream(
+      let convId = kbQaConvId;
+      if (!convId) {
+        const c = await createKbAgentConversation(kbId);
+        if (startedKb !== kbIdRef.current) return;
+        convId = c.id;
+        setKbQaConvId(c.id);
+        setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
+        setStoredKbQaConversationId(kbId, c.id);
+      }
+
+      await postKbAgentMessageStream(
         kbId,
-        { question, conversation_history: history, session_id: qaTraceSessionRef.current ?? undefined },
+        convId,
+        userText,
         (ev) => {
+          if (startedKb !== kbIdRef.current) return;
+          if (ev.type === 'user') {
+            streamPersistedUserId = ev.message.id;
+            setChatMessages((prev) =>
+              prev.map((p) => (p.id === tempUserId ? { ...p, id: ev.message.id } : p))
+            );
+            return;
+          }
           if (ev.type === 'tool_start') {
             setChatMessages((prev) =>
-              prev.map((m, idx) => {
-                if (idx !== prev.length - 1 || m.role !== 'assistant') return m;
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
                 return {
-                  ...m,
+                  ...p,
                   streamParts: [
-                    ...(m.streamParts || []),
+                    ...(p.streamParts || []),
                     {
                       type: 'tool' as const,
                       step: {
@@ -893,9 +1122,9 @@ export function KnowledgeBaseDetail() {
           }
           if (ev.type === 'tool_end') {
             setChatMessages((prev) =>
-              prev.map((m, idx) => {
-                if (idx !== prev.length - 1 || m.role !== 'assistant') return m;
-                const { next, updated } = updateToolInParts(m.streamParts, ev.run_id, (s) => ({
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+                const { next, updated } = updateToolInParts(p.streamParts, ev.run_id, (s) => ({
                   ...s,
                   name: ev.name,
                   output: ev.output,
@@ -915,16 +1144,16 @@ export function KnowledgeBaseDetail() {
                         },
                       },
                     ];
-                return { ...m, streamParts: sp };
+                return { ...p, streamParts: sp };
               })
             );
             return;
           }
           if (ev.type === 'tool_error') {
             setChatMessages((prev) =>
-              prev.map((m, idx) => {
-                if (idx !== prev.length - 1 || m.role !== 'assistant') return m;
-                const { next, updated } = updateToolInParts(m.streamParts, ev.run_id, (s) => ({
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+                const { next, updated } = updateToolInParts(p.streamParts, ev.run_id, (s) => ({
                   ...s,
                   name: ev.name,
                   error: ev.error,
@@ -944,28 +1173,48 @@ export function KnowledgeBaseDetail() {
                         },
                       },
                     ];
-                return { ...m, streamParts: sp };
+                return { ...p, streamParts: sp };
               })
             );
             return;
           }
           if (ev.type === 'delta') {
+            if (!ev.t) return;
+            setChatMessages((prev) =>
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+                return {
+                  ...p,
+                  content: p.content + ev.t,
+                  streamParts: appendDeltaToStreamParts(p.streamParts, ev.t),
+                };
+              })
+            );
+            return;
+          }
+          if (ev.type === 'done' && 'message' in ev && 'user' in ev) {
             setChatMessages((prev) => {
-              const next = [...prev];
-              for (let i = next.length - 1; i >= 0; i--) {
-                if (next[i].role === 'assistant') {
-                  const m = next[i];
-                  next[i] = {
-                    ...m,
-                    content: (m.content || '') + ev.t,
-                    streamParts: appendDeltaToStreamParts(m.streamParts, ev.t),
-                  };
-                  break;
-                }
-              }
-              return next;
+              const without = prev.filter(
+                (p) => p.id !== asstStreamId && p.id !== ev.user.id && p.id !== tempUserId
+              );
+              const streamed = prev.find((p) => p.id === asstStreamId);
+              const parts = streamed?.role === 'assistant' ? streamed.streamParts : undefined;
+              return [
+                ...without,
+                { id: ev.user.id, role: 'user' as const, content: userText },
+                {
+                  id: ev.message.id,
+                  role: 'assistant' as const,
+                  content: ev.message.content,
+                  sources: ev.sources,
+                  streamParts: parts && parts.length > 0 ? parts : undefined,
+                  replyKey: ev.message.id,
+                },
+              ];
             });
-          } else if (ev.type === 'done') {
+            return;
+          }
+          if (ev.type === 'done') {
             setChatMessages((prev) => {
               const next = [...prev];
               for (let i = next.length - 1; i >= 0; i--) {
@@ -982,13 +1231,30 @@ export function KnowledgeBaseDetail() {
               }
               return next;
             });
-          } else {
+            return;
+          }
+          if (ev.type === 'error') {
+            if ('message' in ev && ev.message) {
+              setChatMessages((prev) =>
+                prev.map((p) =>
+                  p.id === asstStreamId
+                    ? {
+                        ...p,
+                        id: ev.message.id,
+                        content: ev.message.content,
+                        replyKey: ev.message.id,
+                      }
+                    : p
+                )
+              );
+              return;
+            }
             const msg = `${t('detail.qaErrorPrefix')} ${ev.detail}${ev.answer ? ` ${ev.answer}` : ''}`;
             setChatMessages((prev) => {
               const next = [...prev];
               for (let i = next.length - 1; i >= 0; i--) {
                 if (next[i].role === 'assistant') {
-                  next[i] = { role: 'assistant', content: msg };
+                  next[i] = { ...next[i], role: 'assistant', content: msg };
                   break;
                 }
               }
@@ -996,21 +1262,23 @@ export function KnowledgeBaseDetail() {
             });
           }
         },
-        { signal: ac.signal }
+        { signal: ac.signal, session_id: qaTraceSessionRef.current ?? undefined }
       );
+      if (startedKb === kbIdRef.current) {
+        void listKbAgentConversations(kbId).then((list) => setKbQaConversations(list));
+      }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (startedKb !== kbIdRef.current) return;
+      const persisted = streamPersistedUserId;
+      const stripIds = (p: ChatMessage) =>
+        p.id !== asstStreamId &&
+        p.id !== tempUserId &&
+        (persisted == null || p.id !== persisted);
       const msg = `${t('detail.qaErrorPrefix')} ${err instanceof Error ? err.message : t('detail.toastAnswerFailed')}`;
-      setChatMessages((prev) => {
-        const next = [...prev];
-        for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].role === 'assistant') {
-            next[i] = { role: 'assistant', content: msg };
-            break;
-          }
-        }
-        return next;
-      });
+      setQaInput(userText);
+      setChatMessages((prev) => prev.filter(stripIds));
+      toast.error(msg);
     } finally {
       setQaLoading(false);
       if (qaStreamAbortRef.current === ac) qaStreamAbortRef.current = null;
@@ -1052,39 +1320,95 @@ export function KnowledgeBaseDetail() {
   if (qaFullPage && kb.agent_url) {
     return (
       <div className="kb-detail kb-detail--qa-fullpage">
-        <div className="kb-qa-fullpage">
-          <header className="kb-qa-fullpage-header">
-            <button
-              type="button"
-              className="kb-qa-fullpage-back"
-              onClick={() => {
-                qaTraceSessionRef.current = null;
-                setQaFullPage(false);
-              }}
-              aria-label={t('detail.qaBackAria')}
-            >
-              <ArrowLeft size={20} />
-              <span>{t('detail.qaBackToKb')}</span>
-            </button>
-            <div className="kb-qa-fullpage-header-center">
-              <span className="kb-qa-fullpage-kb-name">{kb.name}</span>
-              <span className="kb-qa-fullpage-sub">{t('detail.qaTitle')}</span>
-            </div>
-            <span className="kb-qa-fullpage-header-spacer" aria-hidden />
-          </header>
-          <div className="kb-qa-fullpage-main">
-            <div className="kb-qa-fullpage-chat">
-              <div className="kb-qa-messages kb-qa-messages--fullpage">
-                {chatMessages.length === 0 && (
-                  <div className="kb-qa-empty">
-                    <MessageSquare size={40} strokeWidth={1} />
-                    <p>{t('detail.qaEmpty')}</p>
+        <div className="kb-qa-shell">
+          <div className="kb-qa-shell-body">
+            <aside className="kb-qa-sidebar" aria-label={t('detail.qaChatsAria')}>
+              <div className="kb-qa-sidebar-head">
+                <button
+                  type="button"
+                  className="kb-qa-sidebar-back"
+                  onClick={() => {
+                    qaTraceSessionRef.current = null;
+                    setQaFullPage(false);
+                  }}
+                  aria-label={t('detail.qaBackAria')}
+                  title={t('detail.qaBackToKb')}
+                >
+                  <ArrowLeft size={18} strokeWidth={2.25} aria-hidden />
+                </button>
+                <div className="kb-qa-sidebar-head-text">
+                  <span className="kb-qa-sidebar-kb-name">{kb.name}</span>
+                  <span className="kb-qa-sidebar-badge">{t('detail.qaTitle')}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="kb-qa-sidebar-newchat"
+                onClick={() => void onNewKbQaChat()}
+                disabled={kbQaConvsLoading || qaLoading}
+              >
+                <Plus size={18} strokeWidth={2.25} aria-hidden />
+                <span>{t('detail.qaNewChat')}</span>
+              </button>
+              <div className="kb-qa-sidebar-scroll">
+                {kbQaConvsLoading ? (
+                  <div className="kb-qa-sidebar-loading" role="status">
+                    <Loader2 className="kb-qa-sidebar-loading-ico" size={22} aria-hidden />
+                    <span>{t('detail.qaChatsLoading')}</span>
                   </div>
+                ) : kbQaConvMonthGroups.length === 0 ? (
+                  <p className="kb-qa-sidebar-empty">{t('detail.qaNoChatsYet')}</p>
+                ) : (
+                  kbQaConvMonthGroups.map((group) => (
+                    <section key={group.key} className="kb-qa-sidebar-group">
+                      <h2 className="kb-qa-sidebar-month">{formatKbQaMonthGroupLabel(group.key, i18n.language)}</h2>
+                      <ul className="kb-qa-sidebar-list">
+                        {group.items.map((c) => (
+                          <li key={c.id}>
+                            <button
+                              type="button"
+                              className={`kb-qa-sidebar-item${kbQaConvId === c.id ? ' kb-qa-sidebar-item--active' : ''}`}
+                              onClick={() => void onSelectKbQaConversation(c.id)}
+                              title={kbQaConvLabel(c)}
+                            >
+                              <span className="kb-qa-sidebar-item-text">{kbQaConvLabel(c)}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))
                 )}
+              </div>
+              {kbQaConvId ? (
+                <button
+                  type="button"
+                  className="kb-qa-sidebar-footdel"
+                  onClick={() => void onDeleteKbQaChat()}
+                  disabled={kbQaConvsLoading || qaLoading}
+                >
+                  <Trash2 size={16} aria-hidden />
+                  <span>{t('detail.qaDeleteChatAction')}</span>
+                </button>
+              ) : null}
+            </aside>
+            <main className="kb-qa-main">
+              <div className="kb-qa-main-scroll" ref={kbQaMainScrollRef}>
+                {chatMessages.length === 0 && !qaLoading ? (
+                  <div className="kb-qa-hero">
+                    <div className="kb-qa-hero-mark" aria-hidden>
+                      <Sparkles size={28} strokeWidth={1.75} />
+                    </div>
+                    <h1 className="kb-qa-hero-title">{t('detail.qaHeroTitle', { name: kb.name })}</h1>
+                    <p className="kb-qa-hero-sub">{t('detail.qaHeroSubtitle')}</p>
+                  </div>
+                ) : null}
+                {chatMessages.length > 0 ? (
+                  <div className="kb-qa-thread kb-qa-messages kb-qa-messages--fullpage">
                 {chatMessages.map((msg, i) => {
                   const isLast = i === chatMessages.length - 1;
                   return (
-                    <div key={i} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
+                    <div key={msg.id ?? `msg-fp-${i}`} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
                       <span className="kb-qa-msg-label">
                         {msg.role === 'user' ? t('detail.qaLabelYou') : t('detail.qaLabelAssistant')}
                       </span>
@@ -1303,21 +1627,41 @@ export function KnowledgeBaseDetail() {
                     </div>
                   );
                 })}
+                  </div>
+                ) : null}
               </div>
-              <form className="kb-qa-input-form kb-qa-input-form--fullpage" onSubmit={handleAsk}>
-                <input
-                  type="text"
-                  placeholder={t('detail.qaPlaceholder')}
-                  value={qaInput}
-                  onChange={(e) => setQaInput(e.target.value)}
-                  disabled={qaLoading}
-                  autoComplete="off"
-                />
-                <button type="submit" disabled={qaLoading || !qaInput.trim()}>
-                  <Send size={18} />
-                </button>
-              </form>
-            </div>
+              <div className="kb-qa-composer-outer">
+                <form className="kb-qa-composer" onSubmit={handleAsk}>
+                  <textarea
+                    className="kb-qa-composer-input"
+                    placeholder={t('detail.qaPlaceholder')}
+                    value={qaInput}
+                    onChange={(e) => setQaInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
+                      }
+                    }}
+                    disabled={qaLoading || !kbQaConvReady}
+                    rows={1}
+                    autoComplete="off"
+                    aria-label={t('detail.qaPlaceholder')}
+                  />
+                  <div className="kb-qa-composer-bar">
+                    <p className="kb-qa-composer-hint">{t('detail.qaComposerHint')}</p>
+                    <button
+                      type="submit"
+                      className="kb-qa-composer-send"
+                      disabled={qaLoading || !qaInput.trim() || !kbQaConvReady}
+                      aria-label={t('detail.qaSendAria')}
+                    >
+                      <ArrowUp size={20} strokeWidth={2.5} aria-hidden />
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </main>
           </div>
         </div>
       </div>

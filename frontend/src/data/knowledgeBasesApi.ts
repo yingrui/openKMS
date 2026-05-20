@@ -1,6 +1,7 @@
 /** API for knowledge base management (backend). */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
+import type { AgentConversationResponse, AgentMessageItem } from './agentApi';
 import type { JobResponse } from './jobsApi';
 
 // --- Types ---
@@ -215,6 +216,213 @@ export async function askQuestionStream(
   const rest = buf.trim();
   if (rest) {
     const ev = parseKbAskStreamLine(rest);
+    if (ev) onEvent(ev);
+  }
+}
+
+// --- KB Q&A conversations (persisted like wiki copilot; ``surface=knowledge_base``) ---
+
+const KB_QA_SOURCES_V1 = 'kb_qa_sources_v1';
+
+export { KB_QA_SOURCES_V1 };
+
+const KB_QA_CONV_KEY_PREFIX = 'openkms_kb_qa_conversation_v1_';
+
+export function getStoredKbQaConversationId(kbId: string): string | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    return sessionStorage.getItem(KB_QA_CONV_KEY_PREFIX + kbId);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredKbQaConversationId(kbId: string, conversationId: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem(KB_QA_CONV_KEY_PREFIX + kbId, conversationId);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearStoredKbQaConversationId(kbId: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.removeItem(KB_QA_CONV_KEY_PREFIX + kbId);
+  } catch {
+    /* ignore */
+  }
+}
+
+export type KbQaPersistedDone = {
+  type: 'done';
+  answer: string;
+  sources: SearchResult[];
+  user: AgentMessageItem;
+  message: AgentMessageItem;
+};
+
+export type KbQaPersistedError = {
+  type: 'error';
+  detail: string;
+  message: AgentMessageItem;
+  answer?: string;
+};
+
+export type KbQaPersistedStreamEvent =
+  | { type: 'user'; message: AgentMessageItem }
+  | KbAskStreamEvent
+  | KbQaPersistedDone
+  | KbQaPersistedError;
+
+function parseKbQaPersistedStreamLine(line: string): KbQaPersistedStreamEvent | null {
+  let o: Record<string, unknown>;
+  try {
+    o = JSON.parse(line) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  const typ = o.type;
+  if (typ === 'user' && o.message && typeof o.message === 'object') {
+    return { type: 'user', message: o.message as AgentMessageItem };
+  }
+  if (
+    typ === 'done' &&
+    typeof o.answer === 'string' &&
+    Array.isArray(o.sources) &&
+    o.user &&
+    typeof o.user === 'object' &&
+    o.message &&
+    typeof o.message === 'object'
+  ) {
+    return {
+      type: 'done',
+      answer: o.answer,
+      sources: o.sources as SearchResult[],
+      user: o.user as AgentMessageItem,
+      message: o.message as AgentMessageItem,
+    };
+  }
+  if (typ === 'error' && typeof o.detail === 'string' && o.message && typeof o.message === 'object') {
+    return {
+      type: 'error',
+      detail: o.detail,
+      message: o.message as AgentMessageItem,
+      answer: typeof o.answer === 'string' ? o.answer : undefined,
+    };
+  }
+  return parseKbAskStreamLine(line) as KbQaPersistedStreamEvent | null;
+}
+
+export async function listKbAgentConversations(
+  kbId: string,
+  options?: { limit?: number }
+): Promise<AgentConversationResponse[]> {
+  const headers = await getAuthHeaders();
+  const p = new URLSearchParams();
+  if (options?.limit) p.set('limit', String(options.limit));
+  const q = p.toString();
+  const url = `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations${
+    q ? `?${q}` : ''
+  }`;
+  const res = await authAwareFetch(url, { headers, credentials: 'include' });
+  if (!res.ok) throw new Error(`Failed to list conversations: ${res.status}`);
+  return res.json();
+}
+
+export async function createKbAgentConversation(
+  kbId: string,
+  body?: { title?: string | null }
+): Promise<AgentConversationResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations`,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body ?? {}),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to create conversation');
+  }
+  return res.json();
+}
+
+export async function deleteKbAgentConversation(kbId: string, conversationId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+      conversationId
+    )}`,
+    { method: 'DELETE', headers, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(`Failed to delete conversation: ${res.status}`);
+}
+
+export async function listKbAgentMessages(kbId: string, conversationId: string): Promise<AgentMessageItem[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+      conversationId
+    )}/messages`,
+    { headers, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(`Failed to load messages: ${res.status}`);
+  return res.json();
+}
+
+export async function postKbAgentMessageStream(
+  kbId: string,
+  conversationId: string,
+  content: string,
+  onEvent: (e: KbQaPersistedStreamEvent) => void,
+  options?: { session_id?: string | null; signal?: AbortSignal }
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+      conversationId
+    )}/messages`,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        content,
+        stream: true,
+        session_id: options?.session_id ?? undefined,
+      }),
+      signal: options?.signal,
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to start answer stream');
+  }
+  if (!res.body) throw new Error('No response body');
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 1);
+      if (!line.trim()) continue;
+      const ev = parseKbQaPersistedStreamLine(line);
+      if (ev) onEvent(ev);
+    }
+  }
+  const rest = buf.trim();
+  if (rest) {
+    const ev = parseKbQaPersistedStreamLine(rest);
     if (ev) onEvent(ev);
   }
 }

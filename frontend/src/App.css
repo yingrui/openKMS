@@ -147,12 +147,83 @@
   min-height: 0;
 }
 
+/* KB Q&A full-page: no outer padding band between nav rail and chat shell */
+.app-content--compact:has(.kb-detail--qa-fullpage) {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Keep scroll inside KB Q&A main column so the composer stays pinned to the viewport */
+  overflow: hidden;
+}
+
+.app-content--compact:has(.kb-detail--qa-fullpage) > .kb-detail.kb-detail--qa-fullpage {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+/* Immersive KB Q&A: reclaim header row for conversation (exit via sidebar back) */
+body.openkms-kb-qa-fullpage .header {
+  display: none;
+}
+
+body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-detail--qa-fullpage) > .kb-detail.kb-detail--qa-fullpage {
+  min-height: 0;
+}
+
+/* Same layout as :has() block above, but keyed off body — does not depend on :has() support */
+body.openkms-kb-qa-fullpage .app-content.app-content--compact {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Fill the main column; override generic compact kb-detail height (still subtracts header even when hidden) */
+body.openkms-kb-qa-fullpage .app-content--compact > .kb-detail.kb-detail--qa-fullpage {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+}
+
+body.openkms-kb-qa-fullpage {
+  height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body.openkms-kb-qa-fullpage #root {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.openkms-kb-qa-fullpage .app-layout {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.openkms-kb-qa-fullpage .app-main {
+  min-height: 0;
+  overflow: hidden;
+}
+
 @media (max-width: 768px) {
   .app-content {
     padding: 16px;
   }
   .app-content--compact {
     padding: 10px 12px;
+  }
+
+  .app-content--compact:has(.kb-detail--qa-fullpage) {
+    padding: 0;
   }
 
   .app-content--compact .wiki-page-editor-outer {

@@ -19,7 +19,7 @@
 - **UI languages**: SPA **i18next** ([`frontend/src/i18n/`](../frontend/src/i18n/)) — English + Chinese (`zh-CN`), locale in **`localStorage`** (`openkms_locale`), language switcher in the header; **`Accept-Language`** on API requests. Backend structured errors: **`backend/app/i18n/`** + **`Accept-Language`** for localized `detail.message` where migrated
 - **Knowledge Map & home hub**: SQLAlchemy **`app.models.knowledge_map`** (`KnowledgeMapNode`, `KnowledgeMapResourceLink` → `taxonomy_nodes` / `taxonomy_resource_links`); API **`app.api.knowledge_map`** at **`GET /api/taxonomy/nodes/tree`**, node PATCH (move/reorder/edit) + link CRUD; **`GET /api/home/hub`** (taxonomy summary field in JSON + scoped document relationship work items + placeholder share requests); SPA **`KnowledgeMap.tsx`** at **`/knowledge-map`** (legacy **`/taxonomy`** redirects; sidebar above Glossaries; **Tree** + **Node details** panels with scoped refer-tos; **New node** modal); signed-in **`Home.tsx`** with **taxonomy:read** centers **`KnowledgeMapForceGraph`** (`react-force-graph-2d`, wiki-style pan/zoom; tree + links APIs; term → **`/knowledge-map?node=`**, resource → channel/wiki/articles); **`MainLayout`** applies **`app-content--home`** on **`/`** for hub padding; permissions **`taxonomy:read`** / **`taxonomy:write`**; feature toggle key **`taxonomy`** (Console label: Knowledge Map)
 - **Articles**: Backend **`article_channels`**, **`articles`**, **`article_versions`**, **`article_attachments`**, **`access_group_article_channels`**; APIs **`/api/article-channels`**, **`/api/articles`** (list, CRUD, lifecycle, markdown, files redirect, attachments, versions); MinIO prefix **`articles/{article_id}/`**; Knowledge Map validates **`article_channel`** links; permissions **`articles:read`** / **`articles:write`**; SPA **`ArticleChannelsContext`**, **`/articles`**, **`/articles/channels`**, **`/articles/channels/:id`**, **`/articles/channels/:id/settings`**, detail + markdown asset URLs
-- Knowledge Bases: Full CRUD, documents, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters) and optional **include_historical_documents**, Q&A proxy, settings (chunk_config incl. lifecycle_index_mode, faq_prompt, metadata_keys); doc_metadata propagated from documents to FAQs/chunks per metadata_keys; openkms-cli pipeline run --pipeline-name kb-index; QA Agent service (FastAPI + LangGraph)
+- Knowledge Bases: Full CRUD, documents, linked wiki spaces, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters) and optional **include_historical_documents**, Q&A proxy (`POST …/ask`, `POST …/ask/stream`), **persisted Q&A chats** (`surface=knowledge_base` on `agent_conversations` + `GET/POST/PATCH/DELETE …/agent-conversations` and messages with NDJSON stream persist via **`kb_agent_conversations`**), settings (chunk_config incl. lifecycle_index_mode, faq_prompt, metadata_keys); doc_metadata propagated from documents/ wiki pages to FAQs/chunks per metadata_keys; **`POST …/index-job`** (`run_kb_index`); openkms-cli `pipeline run --pipeline-name kb-index`; QA Agent service (FastAPI + LangGraph)
 - **Wiki spaces**: `wiki_spaces`, `wiki_pages` (**`embedding`**, **`embedding_model_id`**, **`embedded_at`** for offline semantic index; **`POST /api/wiki-spaces/{id}/semantic-index`**), `wiki_files`, **`wiki_space_documents`** (+ `access_group_wiki_spaces`); API `/api/wiki-spaces` (scoped like KBs when `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`); PageIndex; **`GET /api/wiki-spaces/{id}/graph`**; vault mirror + **`POST .../import/vault`**; **paginated** page list (15); **`GET/POST/DELETE` `/api/wiki-spaces/{id}/documents`** for channel document links (GET list: `linked_at` + linked **document** `updated_at` for SPA “last updated”); **embedded agent** `POST/GET/DELETE/PATCH` **`/api/agent/conversations`**, `.../messages` (list by wiki space, conversation **delete**/**title** optional, GFM + auto-scroll in SPA; LangGraph tools including **`search_wiki_pages`** (substring + semantic when indexed), **`list_wiki_pages`**, **`get_wiki_page`**, linked docs; `OPENKMS_AGENT_MODEL_ID` or default **LLM** on **Models** `/models`) — [wiki_agent_prototype.md](./wiki_agent_prototype.md); **openkms-cli** `wiki put` / `sync` / `upload-file`
 - **openkms-cli tests:** `openkms-cli/tests/` — `pip install -e ".[dev]" && pytest tests/` (VLM defaults merge + mocked fetch; parser **`_restructure_pages_after_predict`** and layout/bbox helpers; no Paddle in test env)
 - Console: **System settings** (`/console/settings`) — **`system_settings`** table (`system_name`, `default_timezone`, `api_base_url_note`); **`GET /api/public/system`** (unauthenticated) returns trimmed **`system_name`** only; **`GET`/`PUT /api/system/settings`** with **`console:settings`**; **sidebar** title is blank until that public response, then shows **`openKMS`** when the name is empty or whitespace; users, feature toggles, object types, link types, data sources, datasets, permission management, data security (groups + resource scopes); entry gated by `console:*` permissions or JWT `admin`; per-page permissions (e.g. `console:feature_toggles`)
@@ -38,7 +38,13 @@
 - [x] **Wiki workspace** (`WikiWorkspace` + `WikiPagePanel`): `/wikis/:id` redirects to **`/wikis/:id/pages/graph`**; **`/wikis/:id/pages/:pageId`** and **`/wikis/:id/pages/graph`** share one shell (multi-page tabs, embedded graph, toolbar); full reload opens only the URL (no tab-strip persistence); **`GET /api/search`** wiki space hits use `url_path` **`/wikis/{id}/pages/graph`**
 - [x] Backend embedded agent (v1): LangGraph `create_react_agent` + `agent_conversations` / `agent_messages`; Copilot can call **`search_wiki_pages`** (title/path match, then semantic when the space has embeddings) before **`get_wiki_page`**
 - [x] **Tool visibility** while streaming: `astream_events` (v2) → NDJSON `tool_start` / `tool_end` / `tool_error` (paired by `run_id`); wiki panel shows compact terminal-style rows **interleaved with streamed text** (not all tools then all text) and expandable I/O
-- [ ] optional: Langfuse tracing; **write** tools for pages
+- [ ] optional: Langfuse tracing for the embedded wiki agent
+
+### KB Q&A threads and qa-agent (see [knowledge-bases.md](./features/knowledge-bases.md), [wiki_agent_prototype.md](./wiki_agent_prototype.md))
+
+- [x] **`surface=knowledge_base`** conversations scoped by `context.knowledge_base_id`; REST under **`/api/knowledge-bases/{id}/agent-conversations/…`**
+- [x] Stream path persists user + assistant, **`kb_qa_sources_v1`**, and forwarded **`wiki_tool_traces_v1`** when the qa-agent emits tool lines
+- [x] SPA full-page Q&A: thread sidebar, month grouping, delete chat, Wiki Copilot–style tool rail + GFM (`KnowledgeBaseDetail.tsx` + shared **`wikiCopilotStreamParts`**)
 
 ### 0. openkms-cli (document parsing CLI)
 
@@ -203,21 +209,21 @@
 - [x] Chunk model with pgvector embeddings
 - [x] pgvector extension enabled in database.py
 - [x] Semantic search over chunks and FAQs (`POST /search`)
-- [x] QA proxy to external agent service (`POST /ask`)
+- [x] QA proxy to external agent service (`POST /ask`, `POST /ask/stream`)
+- [x] Persisted Q&A threads (`GET/POST/PATCH/DELETE …/agent-conversations`, messages + truncate-from; **`kb_agent_conversations.py`**)
 - [x] KB settings: agent URL, embedding model (**`embedding_model_id`** → **Models** / `api_models`; not backend `OPENKMS_EMBEDDING_*`), chunking config, FAQ generation prompt
 - [x] openkms-cli `pipeline run --pipeline-name kb-index`: chunk documents, generate embeddings, bulk insert to pgvector
 - [x] `run_kb_index` procrastinate task for background indexing
 - [x] Frontend: KnowledgeBaseList with real CRUD (create, edit, delete)
-- [x] Frontend: KnowledgeBaseDetail with Documents, FAQs, Chunks, Search, Settings tabs; full-page Q&A from header when agent URL is set
+- [x] Frontend: KnowledgeBaseDetail with Documents, Wiki spaces, FAQs, Chunks, Search, Settings tabs; full-page Q&A from header when agent URL is set (sidebar threads, stream + reload, **`session_id`** for Langfuse when configured on qa-agent)
 - [x] QA Agent Service project (`qa-agent/`): FastAPI + LangGraph, retrieves via backend search API (no DB access)
 - [x] Batch document selection for FAQ generation in the UI (modal with doc picker, review generated FAQs, remove unqualified, save)
-- [ ] Re-index button triggers job via procrastinate (currently settings only saves config)
+- [x] Re-index from UI: **Queue indexing job** on Settings (`POST …/index-job` → `run_kb_index`); track on **Jobs**
+- [ ] Optional: dedicated **Re-index** control outside Settings copy, or job preflight when embedding model missing
 
-### 8. Articles Backend
+### 8. Articles (shipped)
 
-- [ ] Article model and API
-- [ ] Article channels (separate from document channels)
-- [ ] Rich text / Markdown editor
+Article channels, articles, versions, attachments, and SPA routes are implemented; see **Current State** (Articles bullet). Further work is polish and extensions (e.g. rich editor), not greenfield backend.
 
 ## Long-Term
 

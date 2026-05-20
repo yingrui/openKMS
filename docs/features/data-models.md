@@ -272,11 +272,11 @@ All junctions cascade on either side; no extra columns.
 
 ### AgentConversation
 
-- `id`, `user_sub` (owner; OIDC sub or local user id), `surface` (e.g. `wiki`), `context` (JSONB; e.g. wiki space id), `title`, `created_at`, `updated_at`
+- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base`), **`context`** (JSONB; e.g. `{ "wiki_space_id" }` or `{ "knowledge_base_id" }`), `title`, `created_at`, `updated_at`
 
 ### AgentMessage
 
-- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools), `created_at`
+- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools; **KB Q&A** may add `kb_qa_sources_v1` for persisted references), `created_at`
 
 ## Knowledge map (taxonomy)
 
