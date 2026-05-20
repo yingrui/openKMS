@@ -162,9 +162,16 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/knowledge-bases/{id}/agent-conversations` | Create chat (optional JSON `{ "title"?: string }`) |
 | DELETE | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}` | Delete chat (cascades messages) |
 | PATCH | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}` | Update chat title |
-| GET | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages` | List messages for that chat |
+| GET | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages` | Paginated messages: query **`limit`** (default 100, max 500), **`offset`**; JSON **`{ items, total, limit, offset }`**. Requires **`knowledge_bases:read`** and KB visibility (same as other KB routes). |
 | DELETE | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages/from/{message_id}` | Delete this message and all later messages (same semantics as wiki copilot regenerate) |
-| POST | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages` | Send a user turn: JSON `content`, `stream` (boolean), optional `session_id`. **`stream: true`** → **`application/x-ndjson`**: `user` (persisted row), forwarded `delta` / `tool_*`, then **`done`** with `answer`, `sources`, `user`, `message` (persisted assistant row). Persists tool transcripts (`wiki_tool_traces_v1`) and references (`kb_qa_sources_v1` on `tool_calls`) |
+| POST | `/api/knowledge-bases/{id}/agent-conversations/{conversation_id}/messages` | Send a user turn: JSON `content`, `stream` (boolean), optional `session_id`. **`stream: true`** → **`application/x-ndjson`**: `user` (persisted row), forwarded `delta` / `tool_*`, then **`done`** with `answer`, `sources`, `user`, `message` (persisted assistant row). If the upstream stream closes without a terminal **`done`** line but partial text or tool rows were received, the backend still persists a **`done`**-shaped reply with optional **`stream_ended_without_agent_done`: true**. Requires **`knowledge_bases:read`**. Persists tool transcripts (`wiki_tool_traces_v1`) and references (`kb_qa_sources_v1` on `tool_calls`) |
+| GET | `/api/knowledge-bases/{id}/faq-assist-conversations` | Same as **`…/agent-conversations`** but threads use **`surface=kb_faq`** (FAQ-assist / exploratory notes against the same qa-agent) |
+| POST | `/api/knowledge-bases/{id}/faq-assist-conversations` | Create FAQ-assist chat |
+| DELETE | `/api/knowledge-bases/{id}/faq-assist-conversations/{conversation_id}` | Delete FAQ-assist chat |
+| PATCH | `/api/knowledge-bases/{id}/faq-assist-conversations/{conversation_id}` | Update title |
+| GET | `/api/knowledge-bases/{id}/faq-assist-conversations/{conversation_id}/messages` | Paginated messages (same as KB Q&A list) |
+| DELETE | `/api/knowledge-bases/{id}/faq-assist-conversations/{conversation_id}/messages/from/{message_id}` | Truncate from message |
+| POST | `/api/knowledge-bases/{id}/faq-assist-conversations/{conversation_id}/messages` | Same streaming contract as KB **`agent-conversations`** POST |
 
 ## Evaluation
 
@@ -185,6 +192,13 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/evaluations/{id}/runs/{run_id}` | Full run with item results |
 | DELETE | `/api/evaluations/{id}/runs/{run_id}` | Remove a saved run (cascades `evaluation_run_items`) |
 | GET | `/api/evaluations/{id}/runs/compare` | Compare two runs (`run_a`, `run_b` query params) |
+| GET | `/api/evaluations/{id}/agent-conversations` | List persisted assistant chats for this evaluation (`surface=evaluation`; same message/stream contract as KB Q&A; requires auth + evaluation scope; linked KB must have **`agent_url`**) |
+| POST | `/api/evaluations/{id}/agent-conversations` | Create chat (optional `{ "title" }`) |
+| DELETE | `/api/evaluations/{id}/agent-conversations/{conversation_id}` | Delete chat |
+| PATCH | `/api/evaluations/{id}/agent-conversations/{conversation_id}` | Update title |
+| GET | `/api/evaluations/{id}/agent-conversations/{conversation_id}/messages` | Paginated messages (`limit` default 100 max 500, `offset`) → `{ items, total, limit, offset }` |
+| DELETE | `/api/evaluations/{id}/agent-conversations/{conversation_id}/messages/from/{message_id}` | Truncate from message |
+| POST | `/api/evaluations/{id}/agent-conversations/{conversation_id}/messages` | Same body/stream behavior as **`POST /api/knowledge-bases/.../agent-conversations/.../messages`** (proxies to that KB’s qa-agent) |
 
 ## Glossaries
 
@@ -329,8 +343,8 @@ Used by the Wiki agent surface (and any other in-app assistant). Uses `OPENKMS_A
 | GET | `/api/agent/conversations/{id}` | Get conversation header |
 | PATCH | `/api/agent/conversations/{id}` | Update conversation (title, context) |
 | DELETE | `/api/agent/conversations/{id}` | Delete conversation (cascades messages) |
-| GET | `/api/agent/conversations/{id}/messages` | List messages |
-| POST | `/api/agent/conversations/{id}/messages` | Send a user message (`stream: true` → **`application/x-ndjson`** lines: `user`, `delta`, `tool_*`, `done` / `error`; `stream: false` → JSON with user + assistant messages) |
+| GET | `/api/agent/conversations/{id}/messages` | Paginated messages: query **`limit`** (default 100, max 500), **`offset`**; JSON **`{ items, total, limit, offset }`**. Requires **`wikis:read`** and wiki space scope. |
+| POST | `/api/agent/conversations/{id}/messages` | Send a user message (`content`, optional `stream`, optional `session_id` for Langfuse grouping on the embedded wiki agent). **`stream: true`** → **`application/x-ndjson`** lines: `user`, `delta`, `tool_*`, `done` / `error`; **`stream: false`** → JSON with user + assistant messages |
 | DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this message and everything after it (used by "regenerate") |
 
 ## Knowledge map (taxonomy)

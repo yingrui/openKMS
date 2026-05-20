@@ -23,6 +23,7 @@ from app.schemas.agent import (
     AgentConversationUpdate,
     AgentMessageCreate,
     AgentMessageItem,
+    AgentMessageListResponse,
     AgentMessagePostResponse,
 )
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
@@ -240,25 +241,40 @@ async def get_conversation(
 
 @router.get(
     "/conversations/{conversation_id}/messages",
-    response_model=list[AgentMessageItem],
+    response_model=AgentMessageListResponse,
     dependencies=[Depends(require_permission(PERM_WIKIS_READ))],
 )
 async def list_conversation_messages(
     request: Request,
     conversation_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if isinstance(w_id, str) and w_id:
         await _ensure_wiki_in_context(request, db, w_id)
+    total = (
+        await db.execute(
+            select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation_id)
+        )
+    ).scalar_one()
+    total_i = int(total or 0)
     r = await db.execute(
         select(AgentMessage)
         .where(AgentMessage.conversation_id == conversation_id)
-        .order_by(AgentMessage.created_at)
+        .order_by(AgentMessage.created_at, AgentMessage.id)
+        .offset(offset)
+        .limit(limit)
     )
     rows = list(r.scalars().all())
-    return [_msg_to_out(m) for m in rows]
+    return AgentMessageListResponse(
+        items=[_msg_to_out(m) for m in rows],
+        total=total_i,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.delete(
@@ -308,6 +324,8 @@ async def _ndjson_wiki_message_response(
     c: AgentConversation,
     jwt_payload: dict[str, Any],
     user_m: AgentMessage,
+    *,
+    session_id: str | None = None,
 ) -> AsyncIterator[bytes]:
     user_out = _msg_to_out(user_m)
     yield _ndjson_line({"type": "user", "message": user_out.model_dump(mode="json")})
@@ -315,7 +333,7 @@ async def _ndjson_wiki_message_response(
     tool_traces: list[dict[str, str]] = []
     asst_m: AgentMessage
     try:
-        async for part in iter_wiki_conversation_stream_parts(db, c, jwt_payload):
+        async for part in iter_wiki_conversation_stream_parts(db, c, jwt_payload, session_id=session_id):
             ptype = part.get("type") if isinstance(part, dict) else None
             if ptype == "fatal":
                 err = (part.get("message") or "Error") if isinstance(part, dict) else "Error"
@@ -453,7 +471,7 @@ async def post_conversation_message(
 
     if body.stream:
         return StreamingResponse(
-            _ndjson_wiki_message_response(db, c, p, user_m),
+            _ndjson_wiki_message_response(db, c, p, user_m, session_id=body.session_id),
             media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
@@ -462,7 +480,9 @@ async def post_conversation_message(
             },
         )
 
-    assistant_text, tool_calls_payload = await run_wiki_conversation_turn(db, c, p)
+    assistant_text, tool_calls_payload = await run_wiki_conversation_turn(
+        db, c, p, session_id=body.session_id
+    )
     asst_m = AgentMessage(
         id=new_id(),
         conversation_id=c.id,

@@ -28,6 +28,8 @@ class AgentMessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=48000)
     # When true, the response is NDJSON (`application/x-ndjson`) instead of JSON: user row, then delta lines, then done.
     stream: bool = False
+    #: Opaque id for optional Langfuse **Session** grouping (embedded wiki agent); omit to use conversation id.
+    session_id: str | None = Field(default=None, max_length=256)
 
 
 class AgentMessageItem(BaseModel):
@@ -36,6 +38,15 @@ class AgentMessageItem(BaseModel):
     content: str
     tool_calls: list | dict | None = None
     created_at: datetime
+
+
+class AgentMessageListResponse(BaseModel):
+    """Paginated message list for long threads."""
+
+    items: list[AgentMessageItem]
+    total: int
+    limit: int
+    offset: int
 
 
 class AgentMessagePostResponse(BaseModel):

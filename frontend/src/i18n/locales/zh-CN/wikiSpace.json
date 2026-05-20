@@ -138,6 +138,7 @@
     "sendAria": "发送消息",
     "sending": "…",
     "toastLoadMessagesFailed": "无法加载此对话的消息",
+    "toastConversationStale": "该对话已不可用，已切换到最近的一个对话。",
     "toastLoadConvFailed": "加载失败",
     "toastRestartWait": "请等待该消息保存后再使用从此处重发。",
     "confirmRestart": "移除此条及之后的所有消息？你的文字会回到输入框以便编辑并重发。",

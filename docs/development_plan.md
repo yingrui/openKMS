@@ -38,13 +38,14 @@
 - [x] **Wiki workspace** (`WikiWorkspace` + `WikiPagePanel`): `/wikis/:id` redirects to **`/wikis/:id/pages/graph`**; **`/wikis/:id/pages/:pageId`** and **`/wikis/:id/pages/graph`** share one shell (multi-page tabs, embedded graph, toolbar); full reload opens only the URL (no tab-strip persistence); **`GET /api/search`** wiki space hits use `url_path` **`/wikis/{id}/pages/graph`**
 - [x] Backend embedded agent (v1): LangGraph `create_react_agent` + `agent_conversations` / `agent_messages`; Copilot can call **`search_wiki_pages`** (title/path match, then semantic when the space has embeddings) before **`get_wiki_page`**
 - [x] **Tool visibility** while streaming: `astream_events` (v2) → NDJSON `tool_start` / `tool_end` / `tool_error` (paired by `run_id`); wiki panel shows compact terminal-style rows **interleaved with streamed text** (not all tools then all text) and expandable I/O
-- [ ] optional: Langfuse tracing for the embedded wiki agent
+- [x] optional: Langfuse tracing for the embedded wiki agent (**`LANGFUSE_*`**, **`OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES`**)
 
 ### KB Q&A threads and qa-agent (see [knowledge-bases.md](./features/knowledge-bases.md), [wiki_agent_prototype.md](./wiki_agent_prototype.md))
 
 - [x] **`surface=knowledge_base`** conversations scoped by `context.knowledge_base_id`; REST under **`/api/knowledge-bases/{id}/agent-conversations/…`**
 - [x] Stream path persists user + assistant, **`kb_qa_sources_v1`**, and forwarded **`wiki_tool_traces_v1`** when the qa-agent emits tool lines
 - [x] SPA full-page Q&A: thread sidebar, month grouping, delete chat, Wiki Copilot–style tool rail + GFM (`KnowledgeBaseDetail.tsx` + shared **`wikiCopilotStreamParts`**)
+- [x] **`surface=evaluation`** and **`surface=kb_faq`** thread APIs (same qa-agent contract; paths under **`/api/evaluations/…/agent-conversations`** and **`/api/knowledge-bases/…/faq-assist-conversations`**)
 
 ### 0. openkms-cli (document parsing CLI)
 
@@ -219,11 +220,11 @@
 - [x] QA Agent Service project (`qa-agent/`): FastAPI + LangGraph, retrieves via backend search API (no DB access)
 - [x] Batch document selection for FAQ generation in the UI (modal with doc picker, review generated FAQs, remove unqualified, save)
 - [x] Re-index from UI: **Queue indexing job** on Settings (`POST …/index-job` → `run_kb_index`); track on **Jobs**
-- [ ] Optional: dedicated **Re-index** control outside Settings copy, or job preflight when embedding model missing
+- [x] Optional: dedicated **Re-index** control outside Settings copy, or job preflight when embedding model missing
 
 ### 8. Articles (shipped)
 
-Article channels, articles, versions, attachments, and SPA routes are implemented; see **Current State** (Articles bullet). Further work is polish and extensions (e.g. rich editor), not greenfield backend.
+Article channels, articles, versions, attachments, and SPA routes are implemented; see **Current State** (Articles bullet). Follow-up work is **UX polish** (for example a richer editor experience) rather than net-new article storage APIs.
 
 ## Long-Term
 

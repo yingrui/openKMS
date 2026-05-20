@@ -138,6 +138,7 @@
     "sendAria": "Send message",
     "sending": "…",
     "toastLoadMessagesFailed": "Failed to load messages for this chat",
+    "toastConversationStale": "That chat is no longer available; switched to your latest chat.",
     "toastLoadConvFailed": "Failed to load",
     "toastRestartWait": "Wait until this message is saved, then use restart.",
     "confirmRestart": "Remove this message and everything after it? Your text will reappear in the input so you can edit and resend.",

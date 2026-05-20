@@ -1,7 +1,7 @@
 /** API for knowledge base management (backend). */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
-import type { AgentConversationResponse, AgentMessageItem } from './agentApi';
+import { sortAgentMessagesByCreatedAt, type AgentConversationResponse, type AgentMessageItem } from './agentApi';
 import type { JobResponse } from './jobsApi';
 
 // --- Types ---
@@ -261,6 +261,7 @@ export type KbQaPersistedDone = {
   sources: SearchResult[];
   user: AgentMessageItem;
   message: AgentMessageItem;
+  stream_ended_without_agent_done?: boolean;
 };
 
 export type KbQaPersistedError = {
@@ -302,6 +303,7 @@ function parseKbQaPersistedStreamLine(line: string): KbQaPersistedStreamEvent | 
       sources: o.sources as SearchResult[],
       user: o.user as AgentMessageItem,
       message: o.message as AgentMessageItem,
+      stream_ended_without_agent_done: o.stream_ended_without_agent_done === true,
     };
   }
   if (typ === 'error' && typeof o.detail === 'string' && o.message && typeof o.message === 'object') {
@@ -363,16 +365,49 @@ export async function deleteKbAgentConversation(kbId: string, conversationId: st
   if (!res.ok) throw new Error(`Failed to delete conversation: ${res.status}`);
 }
 
-export async function listKbAgentMessages(kbId: string, conversationId: string): Promise<AgentMessageItem[]> {
+export interface AgentMessageListResponse {
+  items: AgentMessageItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function listKbAgentMessagesPage(
+  kbId: string,
+  conversationId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<AgentMessageListResponse> {
   const headers = await getAuthHeaders();
+  const p = new URLSearchParams();
+  if (options?.limit != null) p.set('limit', String(options.limit));
+  if (options?.offset != null) p.set('offset', String(options.offset));
+  const q = p.toString();
   const res = await authAwareFetch(
     `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
       conversationId
-    )}/messages`,
+    )}/messages${q ? `?${q}` : ''}`,
     { headers, credentials: 'include' }
   );
   if (!res.ok) throw new Error(`Failed to load messages: ${res.status}`);
-  return res.json();
+  return res.json() as Promise<AgentMessageListResponse>;
+}
+
+export async function listAllKbAgentMessages(kbId: string, conversationId: string): Promise<AgentMessageItem[]> {
+  const pageSize = 200;
+  let offset = 0;
+  const acc: AgentMessageItem[] = [];
+  for (;;) {
+    const page = await listKbAgentMessagesPage(kbId, conversationId, { limit: pageSize, offset });
+    acc.push(...page.items);
+    if (acc.length >= page.total || page.items.length === 0) break;
+    offset += page.items.length;
+  }
+  return sortAgentMessagesByCreatedAt(acc);
+}
+
+export async function listKbAgentMessages(kbId: string, conversationId: string): Promise<AgentMessageItem[]> {
+  const page = await listKbAgentMessagesPage(kbId, conversationId);
+  return page.items;
 }
 
 export async function postKbAgentMessageStream(

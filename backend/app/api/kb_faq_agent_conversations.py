@@ -1,4 +1,4 @@
-"""KB Q&A chat threads: reuse ``agent_conversations`` / ``agent_messages`` with ``surface=knowledge_base``."""
+"""FAQ assist chat threads: same qa-agent proxy as KB Q&A, ``surface=kb_faq`` (optional guided editing / notes)."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ from app.models.agent_models import AgentConversation, AgentMessage
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.agent import (
     AgentConversationResponse,
+    AgentMessageItem,
     AgentMessageListResponse,
     AgentMessagePostResponse,
 )
@@ -48,6 +49,7 @@ router = APIRouter(tags=["knowledge-bases"])
 KB_READ_DEPS = [Depends(require_permission(PERM_KB_READ))]
 
 KB_QA_SOURCES_KEY = "kb_qa_sources_v1"
+KB_FAQ_SURFACE = "kb_faq"
 
 
 def _get_sub(request: Request) -> str:
@@ -76,7 +78,7 @@ async def _get_kb_conversation(
     c = await db.get(AgentConversation, conversation_id)
     if not c or c.user_sub != sub:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    if c.surface != "knowledge_base":
+    if c.surface != KB_FAQ_SURFACE:
         raise HTTPException(status_code=404, detail="Conversation not found")
     ctx_kb = (c.context or {}).get("knowledge_base_id")
     if ctx_kb != kb_id:
@@ -132,7 +134,7 @@ def _parse_sources(raw: Any) -> list[SearchResult]:
 
 
 @router.get(
-    "/{kb_id}/agent-conversations",
+    "/{kb_id}/faq-assist-conversations",
     response_model=list[AgentConversationResponse],
     dependencies=KB_READ_DEPS,
 )
@@ -149,7 +151,7 @@ async def list_kb_agent_conversations(
         select(AgentConversation)
         .where(
             AgentConversation.user_sub == sub,
-            AgentConversation.surface == "knowledge_base",
+            AgentConversation.surface == KB_FAQ_SURFACE,
             AgentConversation.context.contains({"knowledge_base_id": kb_id}),
         )
         .order_by(AgentConversation.updated_at.desc())
@@ -159,7 +161,7 @@ async def list_kb_agent_conversations(
 
 
 @router.post(
-    "/{kb_id}/agent-conversations",
+    "/{kb_id}/faq-assist-conversations",
     response_model=AgentConversationResponse,
     status_code=201,
     dependencies=KB_READ_DEPS,
@@ -176,7 +178,7 @@ async def create_kb_agent_conversation(
     c = AgentConversation(
         id=str(uuid.uuid4()),
         user_sub=sub,
-        surface="knowledge_base",
+        surface=KB_FAQ_SURFACE,
         context={"knowledge_base_id": kb_id},
         title=body.title,
     )
@@ -187,7 +189,7 @@ async def create_kb_agent_conversation(
 
 
 @router.delete(
-    "/{kb_id}/agent-conversations/{conversation_id}",
+    "/{kb_id}/faq-assist-conversations/{conversation_id}",
     status_code=204,
     dependencies=KB_READ_DEPS,
 )
@@ -205,7 +207,7 @@ async def delete_kb_agent_conversation(
 
 
 @router.patch(
-    "/{kb_id}/agent-conversations/{conversation_id}",
+    "/{kb_id}/faq-assist-conversations/{conversation_id}",
     response_model=AgentConversationResponse,
     dependencies=KB_READ_DEPS,
 )
@@ -227,7 +229,7 @@ async def patch_kb_agent_conversation(
 
 
 @router.get(
-    "/{kb_id}/agent-conversations/{conversation_id}/messages",
+    "/{kb_id}/faq-assist-conversations/{conversation_id}/messages",
     response_model=AgentMessageListResponse,
     dependencies=KB_READ_DEPS,
 )
@@ -265,7 +267,7 @@ async def list_kb_agent_messages(
 
 
 @router.delete(
-    "/{kb_id}/agent-conversations/{conversation_id}/messages/from/{message_id}",
+    "/{kb_id}/faq-assist-conversations/{conversation_id}/messages/from/{message_id}",
     dependencies=KB_READ_DEPS,
 )
 async def delete_kb_agent_messages_from(
@@ -597,7 +599,7 @@ async def _ndjson_kb_qa_stream_persist(
 
 
 @router.post(
-    "/{kb_id}/agent-conversations/{conversation_id}/messages",
+    "/{kb_id}/faq-assist-conversations/{conversation_id}/messages",
     dependencies=KB_READ_DEPS,
 )
 async def post_kb_agent_message(

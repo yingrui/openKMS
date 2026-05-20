@@ -28,6 +28,7 @@ import {
   ChevronDown,
   Terminal,
   ArrowUp,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -50,7 +51,7 @@ import {
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
   listKbAgentConversations,
-  listKbAgentMessages,
+  listAllKbAgentMessages,
   createKbAgentConversation,
   deleteKbAgentConversation,
   postKbAgentMessageStream,
@@ -457,6 +458,24 @@ export function KnowledgeBaseDetail() {
     } catch { /* noop */ }
   }, [kbId, chunkPage, chunkPageSize]);
 
+  const enqueueIndexJob = useCallback(async () => {
+    if (!kbId) return;
+    if (!kb?.embedding_model_id) {
+      toast.error(t('detail.indexJobRequiresEmbedding'));
+      return;
+    }
+    setIndexJobSubmitting(true);
+    try {
+      const job = await enqueueKnowledgeBaseIndexJob(kbId);
+      toast.success(t('detail.indexJobToastQueued', { id: job.id }));
+      navigate(`/jobs/${job.id}`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.indexJobToastFailed'));
+    } finally {
+      setIndexJobSubmitting(false);
+    }
+  }, [kbId, kb?.embedding_model_id, navigate, t]);
+
   const loadModels = useCallback(async () => {
     try {
       const emb = await fetchModels({ category: 'embedding' });
@@ -502,7 +521,7 @@ export function KnowledgeBaseDetail() {
   const loadKbQaMessagesForConversation = useCallback(
     async (conversationId: string) => {
       if (!kbId) return;
-      const msgs = await listKbAgentMessages(kbId, conversationId);
+      const msgs = await listAllKbAgentMessages(kbId, conversationId);
       setChatMessages(kbAgentItemsToChatMessages(msgs));
     },
     [kbId]
@@ -1347,7 +1366,7 @@ export function KnowledgeBaseDetail() {
                 onClick={() => void onNewKbQaChat()}
                 disabled={kbQaConvsLoading || qaLoading}
               >
-                <Plus size={18} strokeWidth={2.25} aria-hidden />
+                  <Plus size={16} strokeWidth={2} aria-hidden />
                 <span>{t('detail.qaNewChat')}</span>
               </button>
               <div className="kb-qa-sidebar-scroll">
@@ -1387,7 +1406,7 @@ export function KnowledgeBaseDetail() {
                   onClick={() => void onDeleteKbQaChat()}
                   disabled={kbQaConvsLoading || qaLoading}
                 >
-                  <Trash2 size={16} aria-hidden />
+                  <Trash2 size={15} aria-hidden />
                   <span>{t('detail.qaDeleteChatAction')}</span>
                 </button>
               ) : null}
@@ -1656,7 +1675,7 @@ export function KnowledgeBaseDetail() {
                       disabled={qaLoading || !qaInput.trim() || !kbQaConvReady}
                       aria-label={t('detail.qaSendAria')}
                     >
-                      <ArrowUp size={20} strokeWidth={2.5} aria-hidden />
+                      <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
                     </button>
                   </div>
                 </form>
@@ -1686,6 +1705,23 @@ export function KnowledgeBaseDetail() {
             <span>{t('detail.statChunks', { count: kb.chunk_count })}</span>
           </div>
         </div>
+        <div className="kb-detail-header-actions">
+          {kb.embedding_model_id ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm kb-detail-header-index-btn"
+              onClick={() => void enqueueIndexJob()}
+              disabled={indexJobSubmitting}
+              title={t('detail.indexJobHeaderTitle')}
+            >
+              {indexJobSubmitting ? (
+                <Loader2 size={18} className="kb-spinner-inline" aria-hidden />
+              ) : (
+                <RefreshCw size={18} aria-hidden />
+              )}
+              <span>{t('detail.indexJobHeader')}</span>
+            </button>
+          ) : null}
         {kb.agent_url ? (
           <button
             type="button"
@@ -1699,6 +1735,7 @@ export function KnowledgeBaseDetail() {
             <span>{t('detail.qaOpenChat')}</span>
           </button>
         ) : null}
+        </div>
       </header>
 
       <div className="kb-detail-tabs">
@@ -2369,19 +2406,7 @@ export function KnowledgeBaseDetail() {
                     type="button"
                     className="btn btn-secondary btn-sm"
                     disabled={indexJobSubmitting || !kb?.embedding_model_id}
-                    onClick={async () => {
-                      if (!kbId) return;
-                      setIndexJobSubmitting(true);
-                      try {
-                        const job = await enqueueKnowledgeBaseIndexJob(kbId);
-                        toast.success(t('detail.indexJobToastQueued', { id: job.id }));
-                        navigate(`/jobs/${job.id}`);
-                      } catch (e) {
-                        toast.error(e instanceof Error ? e.message : t('detail.indexJobToastFailed'));
-                      } finally {
-                        setIndexJobSubmitting(false);
-                      }
-                    }}
+                    onClick={() => void enqueueIndexJob()}
                   >
                     {indexJobSubmitting ? (
                       <>

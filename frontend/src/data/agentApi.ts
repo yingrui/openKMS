@@ -32,6 +32,16 @@ export interface AgentMessageItem {
   created_at: string;
 }
 
+/** Thread replay order: timestamp, then id (matches list APIs; helps legacy rows with identical created_at). */
+export function sortAgentMessagesByCreatedAt(items: AgentMessageItem[]): AgentMessageItem[] {
+  return [...items].sort((a, b) => {
+    const ta = Date.parse(a.created_at);
+    const tb = Date.parse(b.created_at);
+    if (Number.isFinite(ta) && Number.isFinite(tb) && ta !== tb) return ta - tb;
+    return a.id.localeCompare(b.id);
+  });
+}
+
 export interface AgentMessagePostResponse {
   message: AgentMessageItem;
   assistant: AgentMessageItem;
@@ -107,14 +117,47 @@ export async function createAgentConversation(params: {
   return res.json();
 }
 
-export async function listAgentMessages(conversationId: string): Promise<AgentMessageItem[]> {
+export interface AgentMessageListResponse {
+  items: AgentMessageItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function listAgentMessagesPage(
+  conversationId: string,
+  options?: { limit?: number; offset?: number }
+): Promise<AgentMessageListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`, {
-    headers,
-    credentials: 'include',
-  });
+  const p = new URLSearchParams();
+  if (options?.limit != null) p.set('limit', String(options.limit));
+  if (options?.offset != null) p.set('offset', String(options.offset));
+  const q = p.toString();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(conversationId)}/messages${q ? `?${q}` : ''}`,
+    { headers, credentials: 'include' }
+  );
   if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return res.json() as Promise<AgentMessageListResponse>;
+}
+
+/** Loads all pages (bounded server max per page) for long threads. */
+export async function listAllAgentMessages(conversationId: string): Promise<AgentMessageItem[]> {
+  const pageSize = 200;
+  let offset = 0;
+  const acc: AgentMessageItem[] = [];
+  for (;;) {
+    const page = await listAgentMessagesPage(conversationId, { limit: pageSize, offset });
+    acc.push(...page.items);
+    if (acc.length >= page.total || page.items.length === 0) break;
+    offset += page.items.length;
+  }
+  return sortAgentMessagesByCreatedAt(acc);
+}
+
+export async function listAgentMessages(conversationId: string): Promise<AgentMessageItem[]> {
+  const page = await listAgentMessagesPage(conversationId);
+  return page.items;
 }
 
 /** Remove this message and all later messages; user can resend from the input. */
@@ -160,7 +203,7 @@ export type AgentMessageStreamEvent =
     }
   | { type: 'tool_end'; run_id: string; name: string; output: string }
   | { type: 'tool_error'; run_id: string; name: string; error: string }
-  | { type: 'done'; user: AgentMessageItem; message: AgentMessageItem }
+  | { type: 'done'; user: AgentMessageItem; message: AgentMessageItem; stream_ended_without_agent_done?: boolean }
   | { type: 'error'; detail: string; message: AgentMessageItem };
 
 function parseNdjsonStreamLine(line: string): AgentMessageStreamEvent {
@@ -178,7 +221,7 @@ export async function postAgentMessageStream(
   conversationId: string,
   content: string,
   onEvent: (e: AgentMessageStreamEvent) => void,
-  options?: { signal?: AbortSignal }
+  options?: { signal?: AbortSignal; session_id?: string | null }
 ): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
@@ -187,7 +230,11 @@ export async function postAgentMessageStream(
       method: 'POST',
       headers: { ...headers, 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ content, stream: true }),
+      body: JSON.stringify({
+        content,
+        stream: true,
+        session_id: options?.session_id ?? undefined,
+      }),
       signal: options?.signal,
     }
   );

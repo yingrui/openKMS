@@ -272,11 +272,11 @@ All junctions cascade on either side; no extra columns.
 
 ### AgentConversation
 
-- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base`), **`context`** (JSONB; e.g. `{ "wiki_space_id" }` or `{ "knowledge_base_id" }`), `title`, `created_at`, `updated_at`
+- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq`), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads), `title`, `created_at`, `updated_at`
 
 ### AgentMessage
 
-- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools; **KB Q&A** may add `kb_qa_sources_v1` for persisted references), `created_at`
+- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
 
 ## Knowledge map (taxonomy)
 

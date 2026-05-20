@@ -162,6 +162,8 @@
     "indexJobToastQueued": "已排队索引任务 #{{id}}。",
     "indexJobToastFailed": "无法排队索引任务",
     "indexJobRequiresEmbedding": "请先为知识库保存向量模型，再排队索引。",
+    "indexJobHeader": "刷新索引",
+    "indexJobHeaderTitle": "排队后台任务，重新分块并嵌入本知识库",
     "chunkingFieldset": "分块配置",
     "strategy": "策略",
     "strategyFixedSize": "固定长度",

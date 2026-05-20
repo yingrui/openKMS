@@ -19,7 +19,7 @@ from app.models.wiki_models import WikiPage, WikiSpace, WikiSpaceDocument
 from app.services.data_resource_policy import document_passes_scoped_predicate
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.page_index import md_to_tree_from_markdown
-from app.services.permission_catalog import PERM_ALL, PERM_WIKIS_WRITE
+from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_WIKIS_WRITE
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 from app.services.wiki_semantic_index import (
     semantic_match_pages,
@@ -41,6 +41,24 @@ def _normalize_wiki_path_for_tool(raw: str) -> tuple[str | None, str | None]:
         if not seg or seg in (".", ".."):
             return None, f"Invalid path segment: {seg!r}"
     return p, None
+
+
+async def user_can_read_linked_documents(db: AsyncSession, jwt_payload: dict[str, Any]) -> bool:
+    """True if this JWT may read ``Document.markdown`` for wiki-linked docs (``documents:read``)."""
+    if jwt_payload_is_admin(jwt_payload):
+        return True
+    sub = jwt_payload.get("sub")
+    if sub == "local-cli":
+        return True
+    if not isinstance(sub, str):
+        return False
+    if settings.auth_mode == "local":
+        perms = await resolve_user_permission_keys(db, sub)
+    else:
+        perms = await resolve_oidc_permission_keys(db, jwt_payload)
+    if PERM_ALL in perms or PERM_DOCUMENTS_READ in perms:
+        return True
+    return False
 
 
 async def user_can_upsert_wiki_pages(db: AsyncSession, jwt_payload: dict[str, Any]) -> bool:
@@ -101,6 +119,7 @@ async def make_wiki_tools(
     db: AsyncSession, space_id: str, jwt_payload: dict[str, Any]
 ) -> tuple[list[StructuredTool], bool]:
     can_write = await user_can_upsert_wiki_pages(db, jwt_payload)
+    can_read_docs = await user_can_read_linked_documents(db, jwt_payload)
 
     async def list_wiki_pages() -> str:
         if not await _wiki_space_readable(db, space_id, jwt_payload):
@@ -205,6 +224,49 @@ async def make_wiki_tools(
             return "No linked channel documents, or none visible with your data scope."
         return "Channel documents linked to this wiki space:\n" + "\n".join(out)
 
+    class _GetLinkedDocMd(BaseModel):
+        document_id: str = Field(
+            description="``document_id`` from ``list_linked_channel_documents`` for this wiki space.",
+        )
+
+    async def get_linked_document_markdown(document_id: str) -> str:
+        if not await _wiki_space_readable(db, space_id, jwt_payload):
+            return "Error: wiki space not found or not accessible."
+        if not can_read_docs:
+            return (
+                "Error: your account needs **documents:read** to load linked document markdown. "
+                "Use ``list_linked_channel_documents`` for ids only, or ask a user with document access."
+            )
+        did = (document_id or "").strip()
+        if not did:
+            return "Error: document_id is empty."
+        link = (
+            await db.execute(
+                select(WikiSpaceDocument).where(
+                    WikiSpaceDocument.wiki_space_id == space_id,
+                    WikiSpaceDocument.document_id == did,
+                )
+            )
+        ).scalar_one_or_none()
+        if link is None:
+            return f"Error: document `{did}` is not linked to this wiki space."
+        doc = await db.get(Document, did)
+        if not doc:
+            return "Error: document not found."
+        sub = jwt_payload.get("sub")
+        if isinstance(sub, str) and not await document_passes_scoped_predicate(db, jwt_payload, sub, doc):
+            return "Error: document not visible with your data scope."
+        md = (doc.markdown or "").strip()
+        if not md:
+            return (
+                f"Document **{doc.name}** (`{doc.id}`) has no markdown yet "
+                "(processing may still be running or the document has no extracted text)."
+            )
+        cap = 120_000
+        if len(md) > cap:
+            md = md[:cap] + "\n\n[…truncated for tool output length…]"
+        return f"## {doc.name}\n\n{md}"
+
     class _UpsertPage(BaseModel):
         page_path: str = Field(
             description="Wiki page path, e.g. `topics/my-topic` or `wiki/pages/ingest-foo` — from list/search tools or a new path the user approved (no leading slash).",
@@ -284,6 +346,17 @@ async def make_wiki_tools(
         coroutine=list_linked_channel_documents,
     )
     tools: list[StructuredTool] = [t1, t_search, t2, t3]
+    if can_read_docs:
+        t_md = StructuredTool.from_function(
+            name="get_linked_document_markdown",
+            description=(
+                "Load markdown for a **channel document** linked to this wiki space (requires **documents:read**). "
+                "Use ``list_linked_channel_documents`` first for ids."
+            ),
+            coroutine=get_linked_document_markdown,
+            args_schema=_GetLinkedDocMd,
+        )
+        tools.append(t_md)
     if can_write:
         t4 = StructuredTool.from_function(
             name="upsert_wiki_page",

@@ -93,6 +93,32 @@ class Settings(BaseSettings):
         ),
     )
 
+    agent_wiki_max_context_messages: int = Field(
+        default=120,
+        ge=20,
+        le=500,
+        validation_alias="OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES",
+        description="Max prior messages loaded into the embedded wiki agent LLM context (tail of thread; GET /messages can paginate beyond this).",
+    )
+
+    agent_kb_qa_max_context_messages: int = Field(
+        default=120,
+        ge=20,
+        le=500,
+        validation_alias="OPENKMS_AGENT_KB_QA_MAX_CONTEXT_MESSAGES",
+        description="Max prior messages sent as ``conversation_history`` to the external qa-agent for one KB turn (tail of thread).",
+    )
+
+    # --- Optional Langfuse (embedded wiki agent; same env names as qa-agent for shared .env) ---
+    langfuse_secret_key: str | None = Field(default=None, validation_alias="LANGFUSE_SECRET_KEY")
+    langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_base_url: str | None = Field(default=None, validation_alias="LANGFUSE_BASE_URL")
+    langfuse_trace_streaming: bool = Field(
+        default=True,
+        validation_alias="LANGFUSE_TRACE_STREAMING",
+        description="When Langfuse keys are set, attach callback to wiki **streaming** turns; set false to trace only non-streaming if OTel noise.",
+    )
+
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 

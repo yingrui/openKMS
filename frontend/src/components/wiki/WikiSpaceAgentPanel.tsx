@@ -8,7 +8,7 @@ import {
   clearStoredWikiAgentConversationId,
   getStoredWikiAgentConversationId,
   listAgentConversationsForWiki,
-  listAgentMessages,
+  listAllAgentMessages,
   postAgentMessageStream,
   setStoredWikiAgentConversationId,
   truncateAgentMessagesFromMessage,
@@ -162,7 +162,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
   }, [spaceId]);
 
   const loadMessages = useCallback(async (conversationId: string) => {
-    const items = await listAgentMessages(conversationId);
+    const items = await listAllAgentMessages(conversationId);
     const mapped: ChatLine[] = items
       .filter((m) => m.role === 'user' || m.role === 'assistant')
       .map((m) => {
@@ -179,6 +179,28 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
       });
     setLines(mapped.length > 0 ? mapped : [INTRO]);
   }, []);
+
+  const recoverIfConversationMissing = useCallback(
+    async (err: unknown): Promise<boolean> => {
+      if (!(err instanceof Error) || !/conversation not found/i.test(err.message)) return false;
+      clearStoredWikiAgentConversationId(spaceId);
+      const refreshed = await loadConversations();
+      const fid = refreshed[0]?.id ?? null;
+      setActiveConvId(fid);
+      if (fid) {
+        setStoredWikiAgentConversationId(spaceId, fid);
+        try {
+          await loadMessages(fid);
+        } catch {
+          setLines([INTRO]);
+        }
+      } else {
+        setLines([INTRO]);
+      }
+      return true;
+    },
+    [spaceId, loadConversations, loadMessages],
+  );
 
   useLayoutEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
@@ -200,10 +222,15 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         setStoredWikiAgentConversationId(spaceId, nextId);
         try {
           await loadMessages(nextId);
-        } catch {
+        } catch (e) {
           if (!cancelled) {
-            setLines([INTRO]);
-            toast.error(t('copilot.toastLoadMessagesFailed'));
+            const recovered = await recoverIfConversationMissing(e);
+            if (recovered) {
+              toast.error(t('copilot.toastConversationStale'));
+            } else {
+              setLines([INTRO]);
+              toast.error(t('copilot.toastLoadMessagesFailed'));
+            }
           }
         }
       } else {
@@ -214,7 +241,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
     return () => {
       cancelled = true;
     };
-  }, [spaceId, loadConversations, loadMessages, t]);
+  }, [spaceId, loadConversations, loadMessages, recoverIfConversationMissing, t]);
 
   const onSelectConversation = useCallback(
     (e: ChangeEvent<HTMLSelectElement>) => {
@@ -232,14 +259,19 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
         try {
           await loadMessages(v);
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : t('copilot.toastLoadConvFailed'));
-          setLines([INTRO]);
+          const recovered = await recoverIfConversationMissing(err);
+          if (recovered) {
+            toast.error(t('copilot.toastConversationStale'));
+          } else {
+            toast.error(err instanceof Error ? err.message : t('copilot.toastLoadConvFailed'));
+            setLines([INTRO]);
+          }
         } finally {
           setConvReady(true);
         }
       })();
     },
-    [spaceId, loadMessages, t]
+    [spaceId, loadMessages, loadConversations, recoverIfConversationMissing, t]
   );
 
   const startNewChat = useCallback(() => {

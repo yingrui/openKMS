@@ -162,6 +162,8 @@
     "indexJobToastQueued": "Indexing job #{{id}} queued.",
     "indexJobToastFailed": "Could not queue indexing job",
     "indexJobRequiresEmbedding": "Save an embedding model for this knowledge base before queueing indexing.",
+    "indexJobHeader": "Refresh index",
+    "indexJobHeaderTitle": "Queue a background job to re-chunk and re-embed this knowledge base",
     "chunkingFieldset": "Chunking Configuration",
     "strategy": "Strategy",
     "strategyFixedSize": "Fixed Size",

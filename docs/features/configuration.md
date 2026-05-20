@@ -76,6 +76,12 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per turn (each tool+model cycle uses steps; bulk get/upsert needs a high value) |
 | `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **extra_body** for the wiki agent (other provider flags only). **enable_thinking** is always forced to **false** after merge — Wiki Copilot does not support thinking / `reasoning_content` round-trip. |
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies). **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
+| `OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES` | `120` | Max prior `agent_messages` rows loaded into one embedded wiki agent turn (tail). |
+| `OPENKMS_AGENT_KB_QA_MAX_CONTEXT_MESSAGES` | `120` | Max prior messages included in **`conversation_history`** for one KB / evaluation / FAQ-assist qa-agent call. |
+| `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`**, also enables Langfuse on the **embedded wiki** agent (same keys as qa-agent). |
+| `LANGFUSE_PUBLIC_KEY` | unset | Langfuse public key (shared by wiki + qa-agent when both run in the same environment). |
+| `LANGFUSE_BASE_URL` / `LANGFUSE_HOST` | unset | Langfuse server URL. |
+| `LANGFUSE_TRACE_STREAMING` | `true` | Wiki agent: attach Langfuse callback to **streaming** turns when keys are set; set **false** to trace only non-streaming if OTel noise. |
 
 ## QA agent (standalone ``qa-agent/`` service)
 

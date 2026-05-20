@@ -5,7 +5,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 **Shipped (MVP v1)**
 
 - [WikiSpaceSettings](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/wiki/WikiSpaceSettings.tsx): sectioned **space settings** (space, imports, pages, linked documents); **15** per page on the admin list; **Linked documents** uses `GET/POST/DELETE` **`/api/wiki-spaces/{id}/documents`** (replaces `sessionStorage`). **Wiki Copilot** lives in [WikiWorkspace](https://github.com/yingrui/openKMS/blob/main/frontend/src/pages/wiki/WikiWorkspace.tsx) (toolbar toggle, **WikiSpaceAgentPanel**).
-- [WikiSpaceAgentPanel](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Uses **read-only** wiki tools: `list_wiki_pages`, **`search_wiki_pages`** (title/path substring, then semantic matches when the space is indexed), `get_wiki_page`, `list_linked_channel_documents`. First user message in a new chat can set **title** (server) when still empty.
+- [WikiSpaceAgentPanel](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiSpaceAgentPanel.tsx): **`/api/agent`** create conversation, post message, list messages, **list conversations** (per space), **delete** conversation, **new draft** (no conversation until first send). `sessionStorage` stores active `conversationId` per space. **GFM** rendering ([WikiAgentMessageBody](https://github.com/yingrui/openKMS/blob/main/frontend/src/components/wiki/WikiAgentMessageBody.tsx): `react-markdown` + `remark-gfm`); **auto-scroll** on new content while streaming. Wiki tools: `list_wiki_pages`, **`search_wiki_pages`** (title/path substring, then semantic matches when the space is indexed), `get_wiki_page`, `list_linked_channel_documents`, and with **`documents:read`**, **`get_linked_document_markdown`** for linked channel documents. First user message in a new chat can set **title** (server) when still empty.
 - **Backend** [app/api/agent.py](https://github.com/yingrui/openKMS/blob/main/backend/app/api/agent.py) + [app/services/agent/](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/): `langgraph` + `create_react_agent` + [wiki_runner.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/wiki_runner.py). LLM from [api_models](https://github.com/yingrui/openKMS/blob/main/backend/app/models/api_model.py) (`OPENKMS_AGENT_MODEL_ID` or the **default** `llm` model: **Models** in the app → category **LLM** → **Set as default**). The NDJSON “stream” response uses LangGraph **`astream_events` (v2)** with **`ChatOpenAI(streaming=True)`** so **`delta`** parts arrive as the model streams; **`tool_start` / `tool_end` / `tool_error`** are emitted from the same event loop. If no text deltas appear (rare), the server falls back to one **`ainvoke`** and sends a single **`delta`**. The **`_replay_wiki_invoke_to_stream`** helper remains for tests and any future replay path. **Wiki Copilot does not support** provider thinking / `reasoning_content` round-trip: every request sets **`extra_body.enable_thinking = false`** (after merging **`OPENKMS_AGENT_LLM_EXTRA_BODY`**); for **base_url** values other than **`api.openai.com`** (or when **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`** forces it), the wiki LLM client also sets **`reasoning_content`** on each outgoing assistant message so some OpenAI-compatible gateways do not return **400** in tool loops. A **pre-model hook** strips thinking-shaped blocks from in-memory history before each LLM call. Upstream [wiki-skills](https://github.com/kfchou/wiki-skills) is **vendored** at [third-party/wiki-skills/](https://github.com/yingrui/openKMS/tree/main/third-party/wiki-skills) (`git subtree`); [vendored_wiki_skills.py](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/vendored_wiki_skills.py) loads `skills/*/SKILL.md` into [build_wiki_space_system_prompt()](https://github.com/yingrui/openKMS/blob/main/backend/app/services/agent/prompts.py) with an **openKMS mapping** (tools vs on-disk `SCHEMA.md` / `wiki/…`).
 
 ## Two services (do not conflate)
@@ -13,7 +13,7 @@ This document is the **single spec** for wiki–document associations, the wiki-
 | Piece | Role |
 |-------|------|
 | **qa-agent** | Separate deployable: KB RAG over HTTP to openKMS; LangGraph + optional Langfuse. Unchanged by Wiki Copilot work. |
-| **Backend embedded agent** | Same FastAPI process as openKMS: `/api/agent/...`, LangGraph + tools with `AsyncSession` + JWT. Optional Langfuse **not** wired yet. |
+| **Backend embedded agent** | Same FastAPI process as openKMS: `/api/agent/...`, LangGraph + tools with `AsyncSession` + JWT. Optional **Langfuse** when **`LANGFUSE_SECRET_KEY`** + **`LANGFUSE_PUBLIC_KEY`** are set (same variables as qa-agent); **`LANGFUSE_TRACE_STREAMING`** controls whether streaming turns attach the callback. |
 
 ## Goals
 
@@ -104,7 +104,7 @@ sequenceDiagram
 | GET | `/api/agent/conversations/{id}` | |
 | PATCH | `/api/agent/conversations/{id}` | `{"title": "…"}` (optional; UI may not expose yet). |
 | DELETE | `/api/agent/conversations/{id}` | **204**; ownership + scope. |
-| GET | `/api/agent/conversations/{id}/messages` | Full list (v1, no offset—OK for small chats). |
+| GET | `/api/agent/conversations/{id}/messages` | Query **`limit`** (default 100, max 500), **`offset`**; JSON **`{ items, total, limit, offset }`**. |
 | DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this **message and all that follow** (order: `created_at`, `id`). Use to **restart from** a user turn; SPA puts the user text back in the composer. |
 | POST | `/api/agent/conversations/{id}/messages` | `{ "content", "stream"?: false }` → JSON `{ message, assistant }`. With `{ "content", "stream": true }` → **`application/x-ndjson`**: one `user` row, then `delta` rows (`t` = text chunk), then `done` (or `error` with the persisted assistant error). |
 
@@ -121,7 +121,9 @@ sequenceDiagram
 | Link / unlink | `wikis:write` + space in scope; document must pass [document scope rules](https://github.com/yingrui/openKMS/blob/main/backend/app/api/wiki_spaces.py) (same as document list). |
 | Agent chat, read tools | `wikis:read` + space in scope. |
 | Agent **upsert** (`upsert_wiki_page` tool) | `wikis:write` + space in scope; same transaction as the chat request (commit at end of `POST .../messages`). |
-| Read `Document.markdown` in tools | (Future) `documents:read` scope. |
+| Read linked **`Document.markdown`** (`get_linked_document_markdown` tool) | `documents:read` + document in scope + linked to the wiki space; tool omitted if the permission is missing. |
+| **KB / FAQ-assist agent threads** (`/api/knowledge-bases/{id}/agent-conversations/…`, `/faq-assist-conversations/…`) | **`knowledge_bases:read`** (enforced on each route) plus the same KB visibility rules as **`get_kb_scoped`** (group data scopes when enabled). |
+| **Evaluation-scoped agent threads** (`/api/evaluations/{id}/agent-conversations/…`) | Authenticated user + **evaluation** visibility (`evaluation_visible`); the linked knowledge base must be visible and have **`agent_url`** to create chats or send turns. |
 
 ## wiki-skills → openKMS (v1 tools)
 
@@ -140,7 +142,7 @@ sequenceDiagram
 ## LangGraph + Langfuse (status)
 
 - **v1** uses [langgraph.prebuilt.create_react_agent](https://github.com/langchain-ai/langgraph) with `langchain_openai.ChatOpenAI`.
-- **Langfuse**: not integrated yet; optional `CallbackHandler` as in backlog.
+- **Langfuse**: optional `CallbackHandler` when **`LANGFUSE_*`** env keys are set; wiki turns pass **`langfuse_session_id`** (request **`session_id`** or conversation id) and tags `wiki-copilot` / `wiki-stream` \| `wiki-sync`.
 - **Streaming**: `POST .../messages` with `stream: true` returns **NDJSON**; assistant completion bumps **`updated_at`** for conversation ordering.
 
 ## Implementation constraints (Copilot + agent)
@@ -160,12 +162,12 @@ For implementers changing the workspace rail, NDJSON client, or wiki LangGraph p
 - [x] Alembic + `wiki_space_documents`, `agent_conversations`, `agent_messages`
 - [x] Wiki link API; FE
 - [x] Agent router + `create_react_agent` + read tools; FE [agentApi.ts](https://github.com/yingrui/openKMS/blob/main/frontend/src/data/agentApi.ts) + panel
-- [ ] Optional: Langfuse env in [config](https://github.com/yingrui/openKMS/blob/main/backend/app/config.py) + `invoke` hook
+- [x] Optional: Langfuse env in [config](https://github.com/yingrui/openKMS/blob/main/backend/app/config.py) + wiki `ainvoke` / `astream_events` config
 - [x] Write tool: `upsert_wiki_page` (gated by `wikis:write`)
-- [x] **`knowledge_base` surface**: KB agent-conversations API + full-page Q&A UI (threads, stream persist, sources); see [knowledge-bases.md](./features/knowledge-bases.md)
-- [ ] Read `Document.markdown` in tools (linked channel documents)
-- [ ] (Later) `evaluation` and `kb_faq` **surfaces**; see [development_plan](./development_plan.md)
-- [ ] Server-side pagination for `GET .../agent/.../messages` and **`GET …/knowledge-bases/.../agent-conversations/.../messages`** if threads grow large
+- [x] Read linked document markdown: **`get_linked_document_markdown`** (gated by **`documents:read`**)
+- [x] **`knowledge_base` surface** (KB Q&A threads + SPA); see [knowledge-bases.md](./features/knowledge-bases.md)
+- [x] **`evaluation`** and **`kb_faq`** thread APIs (qa-agent proxy; evaluation UI can adopt the same client patterns as KB Q&A)
+- [x] Server-side pagination for `GET .../agent/.../messages` and **`GET …/knowledge-bases/.../agent-conversations/.../messages`** (and evaluation / FAQ-assist equivalents)
 
 ## Out of scope (later)
 

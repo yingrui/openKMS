@@ -15,11 +15,12 @@ from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, Huma
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
 from langgraph.prebuilt import create_react_agent
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.agent_models import AgentConversation, AgentMessage
+from app.services.agent.langfuse_wiki import build_wiki_langgraph_runnable_config
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.prompts import build_wiki_space_system_prompt
 from app.services.agent.wiki_tools import make_wiki_tools
@@ -229,9 +230,19 @@ def _wiki_pre_model_sanitize_llm_input(state: Mapping[str, Any]) -> dict[str, An
     return {"llm_input_messages": _wiki_sanitize_messages_for_wiki_llm(list(raw))}
 
 
-def _agent_runnable_config() -> dict[str, Any]:
-    """LangGraph stops after `recursion_limit` supersteps (default was 25; too low for bulk tool use)."""
-    return {"recursion_limit": settings.agent_recursion_limit}
+def _agent_runnable_config(
+    *,
+    conversation_id: str,
+    session_id: str | None,
+    streaming: bool,
+) -> dict[str, Any]:
+    """LangGraph config: recursion limit + optional Langfuse callback/metadata."""
+    return build_wiki_langgraph_runnable_config(
+        recursion_limit=settings.agent_recursion_limit,
+        conversation_id=conversation_id,
+        session_id=session_id,
+        streaming=streaming,
+    )
 
 
 def _recursion_limit_exceeded_message() -> str:
@@ -268,10 +279,17 @@ async def _load_wiki_run_context(
             [],
         )
 
+    cnt_q = await db.execute(
+        select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation.id)
+    )
+    total = int(cnt_q.scalar_one() or 0)
+    max_ctx = settings.agent_wiki_max_context_messages
+    offset = max(0, total - max_ctx) if total > max_ctx else 0
     result = await db.execute(
         select(AgentMessage)
         .where(AgentMessage.conversation_id == conversation.id)
         .order_by(AgentMessage.created_at)
+        .offset(offset)
     )
     history_rows = list(result.scalars().all())
     if not history_rows:
@@ -454,6 +472,8 @@ async def iter_wiki_conversation_stream_parts(
     db: AsyncSession,
     conversation: AgentConversation,
     jwt_payload: dict[str, Any],
+    *,
+    session_id: str | None = None,
 ) -> AsyncIterator[WikiStreamPart]:
     """
     Stream LLM output as ``delta`` parts (token/segment chunks) and tool lifecycle events.
@@ -472,9 +492,14 @@ async def iter_wiki_conversation_stream_parts(
 
     any_text = False
     try:
+        run_cfg = _agent_runnable_config(
+            conversation_id=conversation.id,
+            session_id=session_id,
+            streaming=True,
+        )
         async for ev in ctx.agent.astream_events(  # type: ignore[union-attr]
             {"messages": ctx.messages},
-            _agent_runnable_config(),
+            run_cfg,
             version="v2",
         ):
             ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
@@ -523,7 +548,14 @@ async def iter_wiki_conversation_stream_parts(
         return
     if not any_text:
         try:
-            out = await ctx.agent.ainvoke({"messages": ctx.messages}, _agent_runnable_config())
+            out = await ctx.agent.ainvoke(
+                {"messages": ctx.messages},
+                _agent_runnable_config(
+                    conversation_id=conversation.id,
+                    session_id=session_id,
+                    streaming=True,
+                ),
+            )
         except GraphRecursionError as e:
             yield {"type": "fatal", "message": f"{_recursion_limit_exceeded_message()} ({e!s})"}
             return
@@ -538,6 +570,8 @@ async def run_wiki_conversation_turn(
     db: AsyncSession,
     conversation: AgentConversation,
     jwt_payload: dict[str, Any],
+    *,
+    session_id: str | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     """Run the agent on the current DB message history (last turn must be user).
 
@@ -549,7 +583,14 @@ async def run_wiki_conversation_turn(
         return ctx.err or "Error: agent failed to initialize.", None
 
     try:
-        out = await ctx.agent.ainvoke({"messages": ctx.messages}, _agent_runnable_config())
+        out = await ctx.agent.ainvoke(
+            {"messages": ctx.messages},
+            _agent_runnable_config(
+                conversation_id=conversation.id,
+                session_id=session_id,
+                streaming=False,
+            ),
+        )
     except GraphRecursionError as e:
         return _recursion_limit_exceeded_message() + f" ({e!s})", None
     traces = wiki_tool_traces_from_lc_messages(out.get("messages") or [])

@@ -699,3 +699,8 @@ async def run_evaluation(
     )
     schemas = _result_dicts_to_schemas(eval_type, item_rows)
     return _run_to_response(run, schemas)
+
+
+from app.api.eval_agent_conversations import router as eval_agent_conversations_router
+
+router.include_router(eval_agent_conversations_router)
