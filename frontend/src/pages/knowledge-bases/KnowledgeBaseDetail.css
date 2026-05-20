@@ -864,25 +864,276 @@
 }
 
 .kb-qa-sources {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.kb-qa-sources-heading {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.kb-qa-sources-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.kb-qa-sources-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.kb-qa-sources-action-btn {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.kb-qa-sources-action-btn:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.kb-qa-sources-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: center;
 }
 
-.kb-qa-sources-label {
-  font-size: 0.75rem;
+.kb-qa-source-chip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  max-width: 100%;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  padding: 6px 12px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.kb-qa-source-chip:hover {
+  border-color: var(--color-accent);
+}
+
+.kb-qa-source-chip--open {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
+}
+
+.kb-qa-source-chip__kind {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
-.kb-qa-source-tag {
-  font-size: 0.6875rem;
-  padding: 2px 8px;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
+.kb-qa-source-chip__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.kb-qa-source-chip__score {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.kb-qa-source-chip--chunk {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 9px;
   border-radius: 10px;
+}
+
+.kb-qa-source-chip--faq {
+  border-left: 3px solid var(--color-warning);
+  padding-left: 9px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-bg-elevated));
+}
+
+.kb-qa-source-chip--section {
+  border-left: 3px solid var(--color-success);
+  padding-left: 9px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-bg-elevated));
+}
+
+.kb-qa-source-chip--ontology {
+  border-left: 3px solid #6d28d9;
+  padding-left: 9px;
+  border-radius: 10px;
+  background: color-mix(in srgb, #6d28d9 10%, var(--color-bg-elevated));
+}
+
+[data-theme="dark"] .kb-qa-source-chip--ontology {
+  border-left-color: #a78bfa;
+  background: color-mix(in srgb, #a78bfa 14%, var(--color-bg-elevated));
+}
+
+.kb-qa-sources-panels {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kb-qa-source-card {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  box-shadow: var(--shadow-sm);
+  padding: 0;
+  border-left: 4px solid var(--color-accent);
+}
+
+.kb-qa-source-card--static {
+  padding: 10px 12px 10px 14px;
+}
+
+.kb-qa-source-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.kb-qa-source-card__kind {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--color-text-secondary);
+}
+
+.kb-qa-source-card__score {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.kb-qa-source-card__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.35;
+}
+
+.kb-qa-source-card__title-text {
+  color: var(--color-text);
+}
+
+.kb-qa-source-card__link {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.kb-qa-source-card__link:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.kb-qa-source-card__preview {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Kind accents */
+.kb-qa-source-card--chunk {
+  border-left-color: var(--color-accent);
+}
+
+.kb-qa-source-card--faq {
+  border-left-color: var(--color-warning);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-warning) 12%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
+}
+
+.kb-qa-source-card--section {
+  border-left-color: var(--color-success);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-success) 12%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
+}
+
+.kb-qa-source-card--ontology {
+  border-left-color: #6d28d9;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, #6d28d9 14%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
+}
+
+.kb-qa-source-card--ontology .kb-qa-source-card__kind {
+  color: #5b21b6;
+}
+
+[data-theme="dark"] .kb-qa-source-card--ontology {
+  border-left-color: #a78bfa;
+  background: linear-gradient(
+    135deg,
+    rgba(167, 139, 250, 0.18),
+    var(--color-bg-elevated)
+  );
+}
+
+[data-theme="dark"] .kb-qa-source-card--ontology .kb-qa-source-card__kind {
+  color: #ddd6fe;
+}
+
+[data-theme="dark"] .kb-qa-source-card--faq {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-warning) 18%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
+}
+
+[data-theme="dark"] .kb-qa-source-card--section {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-success) 18%, var(--color-bg-elevated)),
+    var(--color-bg-elevated)
+  );
 }
 
 .kb-qa-input-form {

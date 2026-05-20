@@ -112,6 +112,18 @@
     "qaToolError": "Error",
     "qaToolIoSummary": "Input / output",
     "qaReplyAria": "Assistant reply",
+    "qaSourcesHeading": "References",
+    "qaSourcesAria": "References used in this answer",
+    "qaSourceScore": "{{pct}}% match",
+    "qaSourcesExpandAll": "Expand all",
+    "qaSourcesCollapseAll": "Collapse all",
+    "qaSourceChipAria": "{{kind}}: {{title}}. Toggle details.",
+    "qaSourceKind": {
+      "ontology": "Knowledge graph",
+      "chunk": "Semantic search",
+      "faq": "FAQ",
+      "document_section": "Document section"
+    },
     "sources": "Sources:",
     "qaErrorPrefix": "Error:",
     "settingsTitle": "Knowledge Base Settings",

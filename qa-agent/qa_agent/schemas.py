@@ -18,6 +18,8 @@ class AskRequest(BaseModel):
     question: str
     conversation_history: list[dict[str, str]] = []
     access_token: str = ""
+    #: Opaque id (e.g. UUID) so Langfuse groups turns under one **Session**; optional.
+    session_id: str | None = None
 
 
 class AskResponse(BaseModel):

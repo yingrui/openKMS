@@ -4,7 +4,7 @@ RAG-based question answering agent for openKMS knowledge bases, built with FastA
 
 ## Architecture
 
-- **FastAPI** web server with **`POST /ask`** (JSON answer) and **`POST /ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`)
+- **FastAPI** web server with **`POST /ask`** (JSON answer) and **`POST /ask/stream`** (NDJSON: `delta` {`t`}, optional **`tool_start` / `tool_end` / `tool_error`** like the wiki copilot stream, then `done` with `answer` and `sources`). Response **`sources`**: hybrid retrieval hits unless **Page Index** (`get_section_content_tool` → **`document_section`**) or **ontology** (successful **`run_cypher_tool`** → **`ontology`** rows listing object types + query summaries). Optional body field **`session_id`** is forwarded as Langfuse **`langfuse_session_id`** so multi-turn Q&A groups under one **Session**.
 - **LangGraph** agent with nodes: `retrieve` (KB search), `generate` (LLM with tools), `tools` (skill tools)
 - **RAG**: `POST /api/knowledge-bases/{id}/search` (semantic search over chunks and FAQs)
 - **LangGraph skills** (in `qa_agent/skills/`): ontology (Cypher/graph), page_index (document TOC navigation)
@@ -64,9 +64,9 @@ The server starts on port 8103 by default.
 | `LANGFUSE_SECRET_KEY` | - | Langfuse secret key (optional; enables tracing) |
 | `LANGFUSE_PUBLIC_KEY` | - | Langfuse public key |
 | `LANGFUSE_BASE_URL` | - | Langfuse host (e.g. https://cloud.langfuse.com or http://localhost:3002) |
-| `LANGFUSE_TRACE_STREAMING` | false | When Langfuse is enabled, set `true` to trace `POST /ask/stream` as well (default off: avoids OpenTelemetry “detach context” noise with async streaming) |
+| `LANGFUSE_TRACE_STREAMING` | true | When Langfuse is enabled, attach the callback to **`/ask/stream`** as well; set **`false`** to trace only **`/ask`** if OpenTelemetry logs noise |
 
-When Langfuse keys are set, **`POST /ask`** (and the non-streaming fallback inside streaming) are traced. Streaming traces are opt-in via `LANGFUSE_TRACE_STREAMING`. The access token is kept in a **context variable** for tools so it is not copied into Langfuse metadata.
+When Langfuse keys are set, **`/ask`** and (by default) **`/ask/stream`** are traced. Pass **`session_id`** on the ask body so traces share one Langfuse **Session**. The access token is kept in a **context variable** for tools so it is not copied into Langfuse metadata.
 
 ## API
 

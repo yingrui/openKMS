@@ -90,6 +90,62 @@ interface ChatMessage {
   content: string;
   sources?: SearchResult[];
   streamParts?: AssistantStreamPart[];
+  /** Stable id for this assistant turn (which reference rows are expanded). */
+  replyKey?: string;
+}
+
+function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
+  const k = (sourceType || 'chunk').toLowerCase();
+  if (k === 'ontology' || k === 'document_section' || k === 'faq' || k === 'chunk') return k;
+  return 'chunk';
+}
+
+function kbQaSourceCardModifierClass(sourceType: string | null | undefined): string {
+  const k = kbQaNormalizeSourceKind(sourceType);
+  if (k === 'ontology') return 'kb-qa-source-card--ontology';
+  if (k === 'document_section') return 'kb-qa-source-card--section';
+  if (k === 'faq') return 'kb-qa-source-card--faq';
+  return 'kb-qa-source-card--chunk';
+}
+
+function kbQaTruncatePreview(text: string, maxLen: number): string {
+  const n = text.replace(/\s+/g, ' ').trim();
+  if (!n) return '';
+  if (n.length <= maxLen) return n;
+  return `${n.slice(0, Math.max(0, maxLen - 1))}…`;
+}
+
+function kbQaShowRetrievalScore(sourceType: string | null | undefined, score: number): boolean {
+  const k = kbQaNormalizeSourceKind(sourceType);
+  if (k === 'ontology' || k === 'document_section') return false;
+  return score < 0.999;
+}
+
+function kbQaSourceChipModifierClass(sourceType: string | null | undefined): string {
+  const k = kbQaNormalizeSourceKind(sourceType);
+  if (k === 'ontology') return 'kb-qa-source-chip--ontology';
+  if (k === 'document_section') return 'kb-qa-source-chip--section';
+  if (k === 'faq') return 'kb-qa-source-chip--faq';
+  return 'kb-qa-source-chip--chunk';
+}
+
+function kbQaChipTitle(s: SearchResult, maxLen = 26): string {
+  const raw =
+    (s.source_name && s.source_name.trim()) ||
+    (s.wiki_page_id ? String(s.wiki_page_id) : '') ||
+    (s.document_id ? String(s.document_id) : '') ||
+    (s.id ? String(s.id) : '');
+  const x = raw.replace(/\s+/g, ' ').trim();
+  if (!x) return '…';
+  if (x.length <= maxLen) return x;
+  return `${x.slice(0, Math.max(0, maxLen - 1))}…`;
+}
+
+function kbQaExpandedDetailPreviewMaxLen(sourceType: string | null | undefined): number {
+  const k = kbQaNormalizeSourceKind(sourceType);
+  if (k === 'ontology') return 12_000;
+  if (k === 'document_section') return 4_000;
+  return 1_200;
 }
 
 function DocPickerChannelTree({
@@ -244,6 +300,10 @@ export function KnowledgeBaseDetail() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [qaLoading, setQaLoading] = useState(false);
   const qaStreamAbortRef = useRef<AbortController | null>(null);
+  /** Langfuse session id for KB Q&A turns while this full-page chat is open (opaque UUID). */
+  const qaTraceSessionRef = useRef<string | null>(null);
+  /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
+  const [qaSourcesExpanded, setQaSourcesExpanded] = useState<Record<string, Set<number>>>({});
 
   // Settings
   const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
@@ -793,16 +853,20 @@ export function KnowledgeBaseDetail() {
     qaStreamAbortRef.current = ac;
 
     setQaInput('');
+    const assistantReplyKey =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `reply_${Date.now()}`;
     setChatMessages((prev) => [
       ...prev,
       { role: 'user', content: question },
-      { role: 'assistant', content: '', streamParts: [] },
+      { role: 'assistant', content: '', streamParts: [], replyKey: assistantReplyKey },
     ]);
     setQaLoading(true);
     try {
       await askQuestionStream(
         kbId,
-        { question, conversation_history: history },
+        { question, conversation_history: history, session_id: qaTraceSessionRef.current ?? undefined },
         (ev) => {
           if (ev.type === 'tool_start') {
             setChatMessages((prev) =>
@@ -993,7 +1057,10 @@ export function KnowledgeBaseDetail() {
             <button
               type="button"
               className="kb-qa-fullpage-back"
-              onClick={() => setQaFullPage(false)}
+              onClick={() => {
+                qaTraceSessionRef.current = null;
+                setQaFullPage(false);
+              }}
               aria-label={t('detail.qaBackAria')}
             >
               <ArrowLeft size={20} />
@@ -1107,28 +1174,132 @@ export function KnowledgeBaseDetail() {
                           />
                         </div>
                       )}
-                      {msg.sources && msg.sources.length > 0 && (
-                        <div className="kb-qa-sources">
-                          <span className="kb-qa-sources-label">{t('detail.sources')}</span>
-                          {msg.sources.map((s, j) => (
-                            <span key={j} className="kb-qa-source-tag">
-                              [{s.source_type}]{' '}
-                              {s.wiki_page_id && s.wiki_space_id ? (
-                                <Link to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}>
-                                  {s.source_name || s.wiki_page_id}
-                                </Link>
-                              ) : s.document_id ? (
-                                <Link to={`/documents/view/${s.document_id}`}>
-                                  {s.source_name || s.document_id}
-                                </Link>
-                              ) : (
-                                <span>{s.source_name || t('detail.faqSourceFallback')}</span>
-                              )}{' '}
-                              ({(s.score * 100).toFixed(0)}%)
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {msg.sources && msg.sources.length > 0 && (() => {
+                        const rk = msg.replyKey ?? `legacy-${i}`;
+                        const expandedSet = qaSourcesExpanded[rk];
+                        const expandedList = expandedSet ? [...expandedSet].sort((a, b) => a - b) : [];
+                        return (
+                          <div className="kb-qa-sources" role="region" aria-label={t('detail.qaSourcesAria')}>
+                            <div className="kb-qa-sources-toolbar">
+                              <div className="kb-qa-sources-heading">{t('detail.qaSourcesHeading')}</div>
+                              <div className="kb-qa-sources-actions">
+                                <button
+                                  type="button"
+                                  className="kb-qa-sources-action-btn"
+                                  onClick={() =>
+                                    setQaSourcesExpanded((prev) => ({
+                                      ...prev,
+                                      [rk]: new Set(msg.sources!.map((_, ix) => ix)),
+                                    }))
+                                  }
+                                >
+                                  {t('detail.qaSourcesExpandAll')}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="kb-qa-sources-action-btn"
+                                  onClick={() => setQaSourcesExpanded((prev) => ({ ...prev, [rk]: new Set() }))}
+                                >
+                                  {t('detail.qaSourcesCollapseAll')}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="kb-qa-sources-chips" role="list">
+                              {msg.sources.map((s, j) => {
+                                const kind = kbQaNormalizeSourceKind(s.source_type);
+                                const chipMod = kbQaSourceChipModifierClass(s.source_type);
+                                const kindLabel = t(`detail.qaSourceKind.${kind}`, {
+                                  defaultValue: s.source_type || kind,
+                                });
+                                const showScore = kbQaShowRetrievalScore(s.source_type, s.score);
+                                const chipTitle = kbQaChipTitle(s);
+                                const isOpen = expandedSet?.has(j) ?? false;
+                                return (
+                                  <button
+                                    key={`${s.id}-${j}`}
+                                    type="button"
+                                    role="listitem"
+                                    className={`kb-qa-source-chip ${chipMod}${isOpen ? ' kb-qa-source-chip--open' : ''}`}
+                                    aria-expanded={isOpen}
+                                    aria-label={t('detail.qaSourceChipAria', { kind: kindLabel, title: chipTitle })}
+                                    onClick={() =>
+                                      setQaSourcesExpanded((prev) => {
+                                        const next = { ...prev };
+                                        const cur = new Set(next[rk] || []);
+                                        if (cur.has(j)) cur.delete(j);
+                                        else cur.add(j);
+                                        next[rk] = cur;
+                                        return next;
+                                      })
+                                    }
+                                  >
+                                    <span className="kb-qa-source-chip__kind">{kindLabel}</span>
+                                    <span className="kb-qa-source-chip__title">{chipTitle}</span>
+                                    {showScore ? (
+                                      <span className="kb-qa-source-chip__score">
+                                        {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {expandedList.length > 0 ? (
+                              <div className="kb-qa-sources-panels">
+                                {expandedList.map((j) => {
+                                  const s = msg.sources![j];
+                                  const kind = kbQaNormalizeSourceKind(s.source_type);
+                                  const mod = kbQaSourceCardModifierClass(s.source_type);
+                                  const kindLabel = t(`detail.qaSourceKind.${kind}`, {
+                                    defaultValue: s.source_type || kind,
+                                  });
+                                  const detailPreview = kbQaTruncatePreview(
+                                    s.content || '',
+                                    kbQaExpandedDetailPreviewMaxLen(s.source_type)
+                                  );
+                                  const showScore = kbQaShowRetrievalScore(s.source_type, s.score);
+                                  return (
+                                    <div
+                                      key={`panel-${rk}-${j}-${s.id}`}
+                                      className={`kb-qa-source-card kb-qa-source-card--static ${mod}`}
+                                    >
+                                      <div className="kb-qa-source-card__head">
+                                        <span className="kb-qa-source-card__kind">{kindLabel}</span>
+                                        {showScore ? (
+                                          <span className="kb-qa-source-card__score">
+                                            {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="kb-qa-source-card__title">
+                                        {s.wiki_page_id && s.wiki_space_id ? (
+                                          <Link
+                                            className="kb-qa-source-card__link"
+                                            to={`/wikis/${s.wiki_space_id}/pages/${s.wiki_page_id}`}
+                                          >
+                                            {s.source_name || s.wiki_page_id}
+                                          </Link>
+                                        ) : s.document_id ? (
+                                          <Link className="kb-qa-source-card__link" to={`/documents/view/${s.document_id}`}>
+                                            {s.source_name || s.document_id}
+                                          </Link>
+                                        ) : (
+                                          <span className="kb-qa-source-card__title-text">
+                                            {s.source_name || t('detail.faqSourceFallback')}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {detailPreview ? (
+                                        <p className="kb-qa-source-card__preview">{detailPreview}</p>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -1175,7 +1346,10 @@ export function KnowledgeBaseDetail() {
           <button
             type="button"
             className="btn btn-primary btn-sm kb-detail-header-qa-btn"
-            onClick={() => setQaFullPage(true)}
+            onClick={() => {
+              qaTraceSessionRef.current = crypto.randomUUID();
+              setQaFullPage(true);
+            }}
           >
             <MessageSquare size={18} />
             <span>{t('detail.qaOpenChat')}</span>

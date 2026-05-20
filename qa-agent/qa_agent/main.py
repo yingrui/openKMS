@@ -41,6 +41,7 @@ async def ask(request: AskRequest):
         question=request.question,
         conversation_history=request.conversation_history,
         access_token=request.access_token or "",
+        session_id=request.session_id,
     )
 
     sources = [
@@ -74,6 +75,7 @@ async def ask_stream(request: AskRequest):
             question=request.question,
             conversation_history=request.conversation_history,
             access_token=request.access_token or "",
+            session_id=request.session_id,
         ),
         media_type="application/x-ndjson",
         headers={

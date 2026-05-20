@@ -53,8 +53,8 @@ class Settings(BaseSettings):
     langfuse_secret_key: str | None = Field(default=None, validation_alias="LANGFUSE_SECRET_KEY")
     langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
     langfuse_base_url: str | None = Field(default=None, validation_alias="LANGFUSE_BASE_URL")
-    #: When Langfuse is enabled, still omit its callback from ``astream_events`` unless true (avoids OTEL context errors with async streaming).
-    langfuse_trace_streaming: bool = Field(default=False, validation_alias="LANGFUSE_TRACE_STREAMING")
+    #: When Langfuse is enabled, attach its callback to ``astream_events`` unless false (avoids rare OpenTelemetry context warnings on some setups).
+    langfuse_trace_streaming: bool = Field(default=True, validation_alias="LANGFUSE_TRACE_STREAMING")
 
     model_config = {"env_file": _ENV_FILE, "extra": "ignore"}
 

@@ -959,6 +959,7 @@ async def ask_question(
                     "question": body.question,
                     "conversation_history": body.conversation_history,
                     "access_token": token,
+                    "session_id": body.session_id,
                 },
             )
             resp.raise_for_status()
@@ -999,6 +1000,7 @@ async def ask_question_stream(
                         "question": body.question,
                         "conversation_history": body.conversation_history,
                         "access_token": token,
+                        "session_id": body.session_id,
                     },
                 ) as resp:
                     if resp.status_code >= 400:

@@ -12,6 +12,15 @@ from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
 from .config import openai_v1_base, settings
+from .kb_answer_sources import (
+    ONTOLOGY_SCHEMA_TOOL_NAME,
+    PAGE_SECTION_TOOL_NAME,
+    RUN_CYPHER_TOOL_NAME,
+    extract_cypher_run_from_tool,
+    extract_schema_names_from_tool_output,
+    select_display_sources,
+    source_from_page_section_tool,
+)
 from .llm_chat import build_messages_for_generate, make_qa_chat_openai, text_from_lc_content
 from .request_context import reset_request_access_token, set_request_access_token
 from .retriever import retrieve
@@ -157,17 +166,15 @@ def invoke_agent(
     question: str,
     conversation_history: list[dict[str, str]],
     access_token: str,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """Invoke the agent and return answer + sources."""
-    from .langfuse_client import get_langfuse_callback
+    from .langfuse_client import build_langgraph_trace_config
 
     h = set_request_access_token(access_token or "")
     try:
         agent = get_agent()
-        config: dict[str, Any] = {}
-        callback = get_langfuse_callback()
-        if callback:
-            config["callbacks"] = [callback]
+        config = build_langgraph_trace_config(session_id, streaming=False, include_callback=True)
         result = agent.invoke(
             {
                 "knowledge_base_id": knowledge_base_id,
@@ -180,10 +187,15 @@ def invoke_agent(
             },
             config=config,
         )
+        callback = (config.get("callbacks") or [None])[0]
         if callback and hasattr(callback, "flush"):
             callback.flush()
         answer = _extract_answer(result)
-        return {"answer": answer, "context": result.get("context", [])}
+        display = select_display_sources(
+            result.get("context", []),
+            messages=list(result.get("messages") or []),
+        )
+        return {"answer": answer, "context": display}
     finally:
         reset_request_access_token(h)
 
@@ -234,9 +246,10 @@ async def astream_agent_ndjson(
     question: str,
     conversation_history: list[dict[str, str]],
     access_token: str,
+    session_id: str | None = None,
 ) -> AsyncIterator[bytes]:
     """NDJSON stream: ``delta`` / ``tool_*`` events (wiki-copilot-compatible), then ``done`` or ``error``."""
-    from .langfuse_client import get_langfuse_callback
+    from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
 
     h = set_request_access_token(access_token or "")
     try:
@@ -256,12 +269,20 @@ async def astream_agent_ndjson(
             "answer": "",
         }
         agent = get_agent()
-        config: dict[str, Any] = {}
-        callback = get_langfuse_callback() if settings.langfuse_trace_streaming else None
-        if callback:
-            config["callbacks"] = [callback]
+        stream_cb = get_langfuse_callback() if settings.langfuse_trace_streaming else None
+        config = build_langgraph_trace_config(
+            session_id,
+            streaming=True,
+            include_callback=bool(stream_cb),
+        )
+        callback = (config.get("callbacks") or [None])[0]
 
         buf: list[str] = []
+        streamed_sections: list[SourceItem] = []
+        seen_section_ids: set[str] = set()
+        stream_schema_names: list[str] = []
+        stream_schema_seen: set[str] = set()
+        stream_cypher_runs: list[tuple[str, dict[str, Any]]] = []
         try:
             async for ev in agent.astream_events(state, config, version="v2"):  # type: ignore[union-attr]
                 ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
@@ -297,6 +318,20 @@ async def astream_agent_ndjson(
                             "output": _tool_io_preview(out, 10_000),
                         }
                     )
+                    if name == PAGE_SECTION_TOOL_NAME:
+                        src = source_from_page_section_tool(data.get("input"), out)
+                        if src is not None and src.id not in seen_section_ids:
+                            seen_section_ids.add(src.id)
+                            streamed_sections.append(src)
+                    elif name == ONTOLOGY_SCHEMA_TOOL_NAME:
+                        for n in extract_schema_names_from_tool_output(out):
+                            if n not in stream_schema_seen:
+                                stream_schema_seen.add(n)
+                                stream_schema_names.append(n)
+                    elif name == RUN_CYPHER_TOOL_NAME:
+                        pair = extract_cypher_run_from_tool(data.get("input"), out)
+                        if pair is not None:
+                            stream_cypher_runs.append(pair)
                 elif ename == "on_tool_error":
                     data = ev.get("data") or {}
                     err = data.get("error")
@@ -325,7 +360,13 @@ async def astream_agent_ndjson(
             return
 
         answer = "".join(buf)
-        sources_list: list[SourceItem] = list(ctx)
+        sources_list = select_display_sources(
+            ctx,
+            messages=None,
+            streamed_sections=streamed_sections if streamed_sections else None,
+            streamed_ontology_schema_names=stream_schema_names if stream_schema_names else None,
+            streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
+        )
         if not answer.strip():
             result = await asyncio.to_thread(
                 invoke_agent,
@@ -333,9 +374,16 @@ async def astream_agent_ndjson(
                 question,
                 conversation_history,
                 access_token,
+                session_id,
             )
             answer = result.get("answer", "") or ""
-            sources_list = list(result.get("context") or ctx)
+            sources_list = select_display_sources(
+                list(result.get("context") or ctx),
+                messages=list(result.get("messages") or []),
+                streamed_sections=streamed_sections if streamed_sections else None,
+                streamed_ontology_schema_names=stream_schema_names if stream_schema_names else None,
+                streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
+            )
             if answer:
                 yield _ndjson_line({"type": "delta", "t": answer})
 

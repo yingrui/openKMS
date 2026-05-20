@@ -85,6 +85,10 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 |---|---|---|
 | `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`** for the QA agent. **Alias:** **`OPENKMS_AGENT_LLM_EXTRA_BODY`**. After merge, **`enable_thinking`** is forced **`false`**. |
 | `OPENKMS_LLM_REASONING_CONTENT_SHIM` | unset | Same semantics as **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**. **Aliases:** **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**, **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
+| `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** (and optional **`LANGFUSE_BASE_URL`**), enables Langfuse tracing for **`/ask`** and (by default) **`/ask/stream`**. |
+| `LANGFUSE_PUBLIC_KEY` | unset | Public key for Langfuse SDK. |
+| `LANGFUSE_BASE_URL` | unset | Langfuse server URL (e.g. cloud or self-hosted). |
+| `LANGFUSE_TRACE_STREAMING` | `true` | When **true**, attach Langfuse callback to streaming runs; set **false** to trace only non-streaming **`/ask`** if async streaming causes OpenTelemetry warnings. |
 
 ## App and operator behavior
 

@@ -175,7 +175,11 @@ function parseKbAskStreamLine(line: string): KbAskStreamEvent | null {
 
 export async function askQuestionStream(
   kbId: string,
-  data: { question: string; conversation_history?: Array<{ role: string; content: string }> },
+  data: {
+    question: string;
+    conversation_history?: Array<{ role: string; content: string }>;
+    session_id?: string | null;
+  },
   onEvent: (e: KbAskStreamEvent) => void,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
@@ -581,7 +585,11 @@ export async function searchKnowledgeBase(
 
 export async function askQuestion(
   kbId: string,
-  data: { question: string; conversation_history?: Array<{ role: string; content: string }> }
+  data: {
+    question: string;
+    conversation_history?: Array<{ role: string; content: string }>;
+    session_id?: string | null;
+  }
 ): Promise<AskResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/ask`, {

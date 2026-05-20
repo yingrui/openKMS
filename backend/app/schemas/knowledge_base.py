@@ -265,6 +265,8 @@ class SearchResponse(BaseModel):
 class AskRequest(BaseModel):
     question: str
     conversation_history: list[dict[str, str]] = []
+    #: Sent to the QA agent as ``langfuse_session_id`` so traces group into one Langfuse **Session** (opaque string, e.g. UUID).
+    session_id: str | None = None
 
 
 class AskResponse(BaseModel):
