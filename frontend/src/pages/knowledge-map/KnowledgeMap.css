@@ -3,6 +3,60 @@
   max-width: 1280px;
 }
 
+.knowledge-map-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.knowledge-map-view-tab {
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.knowledge-map-view-tab:hover:not(:disabled) {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.knowledge-map-view-tab--active {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-elevated));
+  color: var(--color-text);
+}
+
+.knowledge-map-view-tab:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.knowledge-map-explore-3d {
+  min-height: min(560px, 72vh);
+  margin-bottom: 32px;
+}
+
+.knowledge-map-explore-3d .km-map-graph-scroll {
+  min-height: min(520px, 68vh);
+  max-height: min(78vh, 820px);
+}
+
+.knowledge-map-explore-3d-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 320px;
+  color: var(--color-text-muted);
+}
+
 .knowledge-map-back-row {
   display: inline-flex;
   align-items: center;

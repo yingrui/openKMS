@@ -81,6 +81,10 @@
   overflow: hidden;
 }
 
+.km-map-graph-canvas-wrap--3d {
+  min-height: min(520px, 70vh);
+}
+
 .km-map-graph-footer {
   margin: 0;
   padding: 0 4px 2px;

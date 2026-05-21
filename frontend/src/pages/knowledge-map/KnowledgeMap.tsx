@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -31,6 +31,10 @@ import {
 } from '../../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../../data/wikiSpacesApi';
 import './KnowledgeMap.css';
+
+const KnowledgeMapForceGraph3D = lazy(() =>
+  import('../../components/KnowledgeMapForceGraph3D').then((m) => ({ default: m.KnowledgeMapForceGraph3D })),
+);
 
 function flattenKnowledgeMapOptions(nodes: KnowledgeMapNode[], prefix = ''): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];
@@ -402,7 +406,7 @@ export function KnowledgeMap() {
   const { t } = useTranslation('knowledgeMap');
   const { hasPermission } = useAuth();
   const { channels } = useDocumentChannels();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const nodeFromUrl = searchParams.get('node');
   const canRead = hasPermission('taxonomy:read') || hasPermission('all');
   const canWrite = hasPermission('taxonomy:write') || hasPermission('all');
@@ -425,6 +429,8 @@ export function KnowledgeMap() {
 
   const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
   const lastAppliedNodeParam = useRef<string | undefined>(undefined);
+
+  const [mapUiTab, setMapUiTab] = useState<'edit' | 'explore3d'>('edit');
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -605,6 +611,25 @@ export function KnowledgeMap() {
     }
   };
 
+  useEffect(() => {
+    if (!tree.length && mapUiTab === 'explore3d') setMapUiTab('edit');
+  }, [tree.length, mapUiTab]);
+
+  const onSelectTaxonomyFromGraph = useCallback(
+    (id: string) => {
+      setSelectedNodeId(id);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('node', id);
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   if (!canRead) {
     return (
       <div className="knowledge-map-page">
@@ -641,6 +666,29 @@ export function KnowledgeMap() {
         </div>
       ) : (
         <>
+          <div className="knowledge-map-view-tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mapUiTab === 'edit'}
+              className={`knowledge-map-view-tab${mapUiTab === 'edit' ? ' knowledge-map-view-tab--active' : ''}`}
+              onClick={() => setMapUiTab('edit')}
+            >
+              {t('tabEditMap')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mapUiTab === 'explore3d'}
+              className={`knowledge-map-view-tab${mapUiTab === 'explore3d' ? ' knowledge-map-view-tab--active' : ''}`}
+              disabled={!tree.length}
+              onClick={() => setMapUiTab('explore3d')}
+            >
+              {t('tabExplore3d')}
+            </button>
+          </div>
+
+          {mapUiTab === 'edit' ? (
           <div className="knowledge-map-master-detail">
             <section className="knowledge-map-tree-panel" aria-label={t('treeAriaLabel')}>
               <div className="knowledge-map-tree-panel-header">
@@ -817,6 +865,30 @@ export function KnowledgeMap() {
               )}
             </section>
           </div>
+          ) : (
+            <section className="knowledge-map-explore-3d" aria-label={t('tabExplore3d')}>
+              {!tree.length ? (
+                <p className="knowledge-map-muted knowledge-map-detail-placeholder">{t('explore3dEmpty')}</p>
+              ) : (
+                <Suspense
+                  fallback={
+                    <div className="knowledge-map-explore-3d-loading">
+                      <Loader2 className="knowledge-map-spinner" size={28} aria-hidden />
+                      <span>{t('loading')}</span>
+                    </div>
+                  }
+                >
+                  <KnowledgeMapForceGraph3D
+                    tree={tree}
+                    links={links}
+                    selectedNodeId={selectedNodeId}
+                    onSelectNode={onSelectTaxonomyFromGraph}
+                    resolveResourceLabel={resolveResourceLabel}
+                  />
+                </Suspense>
+              )}
+            </section>
+          )}
 
           {showNewTermModal && (
             <div className="knowledge-map-dialog-overlay" role="presentation" onClick={closeNewTermModal}>

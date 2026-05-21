@@ -88,5 +88,8 @@
   },
   "optionDocumentChannel": "文档频道",
   "optionArticleChannel": "文章频道",
-  "optionWikiSpace": "Wiki 空间"
+  "optionWikiSpace": "Wiki 空间",
+  "tabEditMap": "编辑地图",
+  "tabExplore3d": "探索（3D）",
+  "explore3dEmpty": "请先在树中添加至少一个节点，再打开 3D 视图。"
 }

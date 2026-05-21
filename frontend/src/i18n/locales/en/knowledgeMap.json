@@ -88,5 +88,8 @@
   },
   "optionDocumentChannel": "Document channel",
   "optionArticleChannel": "Article channel",
-  "optionWikiSpace": "Wiki space"
+  "optionWikiSpace": "Wiki space",
+  "tabEditMap": "Edit map",
+  "tabExplore3d": "Explore (3D)",
+  "explore3dEmpty": "Add at least one node in the tree to open the 3D view."
 }
