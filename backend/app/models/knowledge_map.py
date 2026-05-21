@@ -60,3 +60,17 @@ class KnowledgeMapResourceLink(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     node: Mapped["KnowledgeMapNode"] = relationship("KnowledgeMapNode", back_populates="resource_links")
+
+
+DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID = "default"
+
+
+class TaxonomyMapHtmlArtifact(Base):
+    """Cached LLM-generated HTML snapshot for the Knowledge Map (single logical row, pk id)."""
+
+    __tablename__ = "taxonomy_map_html_artifact"
+
+    id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    html: Mapped[str] = mapped_column(Text, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

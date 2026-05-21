@@ -361,3 +361,10 @@ The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowl
 | GET | `/api/taxonomy/resource-links` | List all resource–node mappings (filter client-side if needed) |
 | PUT | `/api/taxonomy/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `taxonomy_node_id`) |
 | DELETE | `/api/taxonomy/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |
+| GET | `/api/taxonomy/map-html/status` | HTML overview snapshot: compares live semantic `content_hash` to stored artifact; `stale`, `has_artifact`, `nodes_modified_at` |
+| GET | `/api/taxonomy/map-html` | Cached HTML document (`text/html`) when a snapshot exists (`404` otherwise) |
+| POST | `/api/taxonomy/map-html/regenerate` | One-shot rebuild via LLM (`taxonomy:write`); hydrates placeholders |
+| POST | `/api/taxonomy/map-html/designer/chat` | Body `{ messages, working_html?, stream? }`. **`stream: false`** (default): JSON `{ content }` (full assistant text). **`stream: true`**: `application/x-ndjson` — lines are JSON objects: **`delta`** (`t` text chunk), optional **`tool_start`** / **`tool_end`**, then **`done`** (`content` full text) or **`error`** (`detail`). Same context as non-streaming; model may use **`apply_html_patches`** and/or a fenced `html` artifact |
+| POST | `/api/taxonomy/map-html/preview` | Hydrate + sanitize a draft HTML string for iframe preview (`taxonomy:write`) |
+| POST | `/api/taxonomy/map-html/publish` | Save draft as the live snapshot (`taxonomy:write`; same finalize rules as regenerate) |
+| DELETE | `/api/taxonomy/map-html` | Remove saved overview row (`taxonomy:write`) so the designer can start from scratch |

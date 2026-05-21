@@ -24,13 +24,16 @@ import {
   deleteKnowledgeMapNode,
   fetchResourceLinks,
   fetchKnowledgeMapTree,
+  fetchTaxonomyMapHtmlStatus,
   updateKnowledgeMapNode,
   upsertResourceLink,
   type ResourceLink,
   type KnowledgeMapNode,
+  type TaxonomyMapHtmlStatus,
 } from '../../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../../data/wikiSpacesApi';
 import './KnowledgeMap.css';
+import { KnowledgeMapHtmlCopilot } from './KnowledgeMapHtmlCopilot';
 
 const KnowledgeMapForceGraph3D = lazy(() =>
   import('../../components/KnowledgeMapForceGraph3D').then((m) => ({ default: m.KnowledgeMapForceGraph3D })),
@@ -430,7 +433,22 @@ export function KnowledgeMap() {
   const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
   const lastAppliedNodeParam = useRef<string | undefined>(undefined);
 
-  const [mapUiTab, setMapUiTab] = useState<'edit' | 'explore3d'>('edit');
+  const [mapUiTab, setMapUiTab] = useState<'edit' | 'explore3d' | 'mapHtml'>('edit');
+
+  const [mapHtmlStatus, setMapHtmlStatus] = useState<TaxonomyMapHtmlStatus | null>(null);
+  const [mapHtmlStatusLoading, setMapHtmlStatusLoading] = useState(false);
+
+  const refreshMapHtmlStatus = useCallback(async () => {
+    if (!canRead) return;
+    setMapHtmlStatusLoading(true);
+    try {
+      setMapHtmlStatus(await fetchTaxonomyMapHtmlStatus());
+    } catch {
+      setMapHtmlStatus(null);
+    } finally {
+      setMapHtmlStatusLoading(false);
+    }
+  }, [canRead]);
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -456,14 +474,19 @@ export function KnowledgeMap() {
         setLinks([]);
       } finally {
         if (!silent) setLoading(false);
+        void refreshMapHtmlStatus();
       }
     },
-    [canRead, t],
+    [canRead, t, refreshMapHtmlStatus],
   );
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (mapUiTab === 'mapHtml' && canRead) void refreshMapHtmlStatus();
+  }, [mapUiTab, canRead, refreshMapHtmlStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -686,6 +709,15 @@ export function KnowledgeMap() {
             >
               {t('tabExplore3d')}
             </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mapUiTab === 'mapHtml'}
+              className={`knowledge-map-view-tab${mapUiTab === 'mapHtml' ? ' knowledge-map-view-tab--active' : ''}`}
+              onClick={() => setMapUiTab('mapHtml')}
+            >
+              {t('tabHtmlOverview')}
+            </button>
           </div>
 
           {mapUiTab === 'edit' ? (
@@ -865,7 +897,7 @@ export function KnowledgeMap() {
               )}
             </section>
           </div>
-          ) : (
+          ) : mapUiTab === 'explore3d' ? (
             <section className="knowledge-map-explore-3d" aria-label={t('tabExplore3d')}>
               {!tree.length ? (
                 <p className="knowledge-map-muted knowledge-map-detail-placeholder">{t('explore3dEmpty')}</p>
@@ -887,6 +919,15 @@ export function KnowledgeMap() {
                   />
                 </Suspense>
               )}
+            </section>
+          ) : (
+            <section aria-label={t('tabHtmlOverview')}>
+              <KnowledgeMapHtmlCopilot
+                status={mapHtmlStatus}
+                statusLoading={mapHtmlStatusLoading}
+                canWrite={canWrite}
+                onRefreshStatus={refreshMapHtmlStatus}
+              />
             </section>
           )}
 

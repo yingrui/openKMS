@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/taxonomy), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/taxonomy, incl. map-html snapshot), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -51,7 +51,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), **user_api_keys** (hashed personal API tokens; Bearer `okms.{id}.{secret}` authenticates as owner), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_article_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluations**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **taxonomy_nodes** (self-referential tree of terms for the Knowledge Map) and **taxonomy_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | users (local auth), **user_api_keys** (hashed personal API tokens; Bearer `okms.{id}.{secret}` authenticates as owner), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups** and junction tables (**access_group_users**, **access_group_channels**, **access_group_article_channels**, **access_group_knowledge_bases**, **access_group_wiki_spaces**, **access_group_evaluations**, **access_group_datasets**, **access_group_object_types**, **access_group_link_types**, **access_group_data_resources** → **data_resources**) for data-security scopes and named ABAC-style resources, **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **taxonomy_nodes** (self-referential tree of terms for the Knowledge Map), **taxonomy_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **taxonomy_map_html_artifact** (singleton cached LLM HTML overview + semantic `content_hash`), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; **article bundles** `articles/{article_id}/content.md`, `articles/{article_id}/images/…`, `articles/{article_id}/attachments/…`, optional `origin.html` (served via authenticated `GET /api/articles/{id}/files/{path}` → presigned redirect); wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; **Graph View** cache JSON `wiki/{space_id}/link-graph.json` (invalidated when `max(wiki_pages.updated_at)` is newer than the object’s `LastModified`); ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -168,7 +168,7 @@ backend/
 │   │   ├── evaluations.py  # CRUD /api/evaluations, items, import (CSV), run (search_retrieval | qa_answer | wiki_content_coverage), runs list/get/delete/compare
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── home_hub.py         # GET /api/home/hub (signed-in knowledge operations hub aggregates)
-│   │   ├── knowledge_map.py    # `/api/taxonomy/*` — Knowledge Map node tree + CRUD + resource-links
+│   │   ├── knowledge_map.py    # `/api/taxonomy/*` — Knowledge Map node tree + CRUD + resource-links + map-html (status, get, regenerate, designer chat, preview, publish) via `knowledge_map_html`
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   ├── internal/           # package: internal/models.py — GET /internal-api/models/document-parse-defaults, GET /internal-api/models/kb-embedding-credentials
@@ -203,7 +203,7 @@ backend/
 │   │   ├── evaluation_run.py   # EvaluationRun, EvaluationRunItem (persisted run + per-item detail JSONB)
 │   │   ├── glossary.py        # Glossary (name, description)
 │   │   ├── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, definition, synonyms_en, synonyms_cn)
-│   │   └── knowledge_map.py   # KnowledgeMapNode, KnowledgeMapResourceLink → tables `taxonomy_nodes`, `taxonomy_resource_links`
+│   │   └── knowledge_map.py   # KnowledgeMapNode, KnowledgeMapResourceLink, TaxonomyMapHtmlArtifact → `taxonomy_nodes`, `taxonomy_resource_links`, `taxonomy_map_html_artifact`
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate, LabelConfigItem (label_config)
@@ -224,6 +224,7 @@ backend/
 │       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, object_type, list[object_type])
 │       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
 │       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
+│       ├── knowledge_map_html.py         # LLM-built Knowledge Map HTML overview: semantic content hash, placeholder hydration, nh3 sanitize
 │       ├── kb_search.py                  # Semantic search over chunks and FAQs (used by search route and evaluation)
 │       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
 │       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)

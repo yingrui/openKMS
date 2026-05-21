@@ -2,20 +2,42 @@
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
+from collections.abc import AsyncIterator
+from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_permission
+from app.config import settings
 from app.database import get_db
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
-from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
+from app.models.knowledge_map import (
+    DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID,
+    KnowledgeMapNode,
+    KnowledgeMapResourceLink,
+    TaxonomyMapHtmlArtifact,
+)
 from app.models.wiki_models import WikiSpace
+from app.services.agent.llm import resolve_agent_llm_config
+from app.services.knowledge_map_html import (
+    designer_chat_via_llm,
+    finalize_html_document,
+    generate_static_html_via_llm,
+    iter_designer_chat_llm_stream_events,
+    load_semantic_snapshot,
+    semantic_content_hash,
+    static_html_for_empty_taxonomy,
+    taxonomy_last_modified_at,
+)
 from app.services.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
 
 router = APIRouter(prefix="/taxonomy", tags=["knowledge-map"])
@@ -62,6 +84,45 @@ class ResourceLinkUpsert(BaseModel):
     taxonomy_node_id: str = Field(..., min_length=1, max_length=64)
     resource_type: str = Field(..., min_length=1, max_length=32)
     resource_id: str = Field(..., min_length=1, max_length=64)
+
+
+class TaxonomyMapHtmlStatusOut(BaseModel):
+    """Whether the stored HTML snapshot matches the current taxonomy (semantic hash)."""
+
+    current_content_hash: str
+    artifact_content_hash: str | None = None
+    stale: bool
+    has_artifact: bool
+    nodes_modified_at: datetime | None = None
+    generated_at: datetime | None = None
+
+
+class TaxonomyMapHtmlRegenerateOut(BaseModel):
+    content_hash: str
+    generated_at: datetime
+
+
+class MapHtmlDesignerChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=120_000)
+
+
+class MapHtmlDesignerChatIn(BaseModel):
+    messages: list[MapHtmlDesignerChatMessage] = Field(..., min_length=1, max_length=40)
+    working_html: str | None = Field(None, max_length=500_000)
+    stream: bool = False
+
+
+class MapHtmlDesignerChatOut(BaseModel):
+    content: str
+
+
+class MapHtmlBodyHtml(BaseModel):
+    html: str = Field(..., min_length=1, max_length=500_000)
+
+
+class MapHtmlPreviewOut(BaseModel):
+    html: str
 
 
 async def _validate_resource(db: AsyncSession, resource_type: str, resource_id: str) -> None:
@@ -292,3 +353,203 @@ async def delete_resource_link(
     row = result.scalar_one_or_none()
     if row:
         await db.delete(row)
+
+
+@router.get(
+    "/map-html/status",
+    response_model=TaxonomyMapHtmlStatusOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def get_taxonomy_map_html_status(db: AsyncSession = Depends(get_db)):
+    snapshot = await load_semantic_snapshot(db)
+    current_hash = semantic_content_hash(snapshot)
+    row = await db.get(TaxonomyMapHtmlArtifact, DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID)
+    artifact_hash = row.content_hash if row else None
+    stale = row is None or row.content_hash != current_hash
+    nodes_mod = await taxonomy_last_modified_at(db)
+    return TaxonomyMapHtmlStatusOut(
+        current_content_hash=current_hash,
+        artifact_content_hash=artifact_hash,
+        stale=stale,
+        has_artifact=row is not None and bool((row.html or "").strip()),
+        nodes_modified_at=nodes_mod,
+        generated_at=row.generated_at if row else None,
+    )
+
+
+@router.get(
+    "/map-html",
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def get_taxonomy_map_html(db: AsyncSession = Depends(get_db)):
+    row = await db.get(TaxonomyMapHtmlArtifact, DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID)
+    if not row or not (row.html or "").strip():
+        raise HTTPException(status_code=404, detail="No HTML snapshot yet. POST /taxonomy/map-html/regenerate first.")
+    return HTMLResponse(content=row.html, media_type="text/html; charset=utf-8")
+
+
+@router.delete(
+    "/map-html",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def delete_taxonomy_map_html(db: AsyncSession = Depends(get_db)):
+    row = await db.get(TaxonomyMapHtmlArtifact, DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID)
+    if row:
+        await db.delete(row)
+        await db.flush()
+
+
+@router.post(
+    "/map-html/regenerate",
+    response_model=TaxonomyMapHtmlRegenerateOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def regenerate_taxonomy_map_html(db: AsyncSession = Depends(get_db)):
+    snapshot = await load_semantic_snapshot(db)
+    content_hash = semantic_content_hash(snapshot)
+    if not snapshot["nodes"]:
+        final_html = static_html_for_empty_taxonomy()
+    else:
+        model_config = await resolve_agent_llm_config(db)
+        if not model_config:
+            raise HTTPException(
+                status_code=503,
+                detail="No LLM model configured. Add an LLM in Console > Models.",
+            )
+        try:
+            raw = await generate_static_html_via_llm(snapshot, model_config)
+            final_html = finalize_html_document(raw, snapshot, settings.frontend_url)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e)) from e
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"LLM or HTML processing failed: {e}") from e
+
+    now = datetime.now(timezone.utc)
+    row = await db.get(TaxonomyMapHtmlArtifact, DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID)
+    if row:
+        row.html = final_html
+        row.content_hash = content_hash
+        row.generated_at = now
+    else:
+        db.add(
+            TaxonomyMapHtmlArtifact(
+                id=DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID,
+                html=final_html,
+                content_hash=content_hash,
+                generated_at=now,
+            )
+        )
+    await db.flush()
+    return TaxonomyMapHtmlRegenerateOut(content_hash=content_hash, generated_at=now)
+
+
+@router.post(
+    "/map-html/designer/chat",
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def taxonomy_map_html_designer_chat(body: MapHtmlDesignerChatIn, db: AsyncSession = Depends(get_db)):
+    model_config = await resolve_agent_llm_config(db)
+    if not model_config:
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM model configured. Add an LLM in Console > Models.",
+        )
+    snapshot = await load_semantic_snapshot(db)
+    conv = [{"role": m.role, "content": m.content} for m in body.messages]
+    row = await db.get(TaxonomyMapHtmlArtifact, DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID)
+    published = (row.html or "").strip() if row else None
+    if not published:
+        published = None
+
+    if body.stream:
+
+        async def ndjson() -> AsyncIterator[bytes]:
+            try:
+                async for ev in iter_designer_chat_llm_stream_events(
+                    conv,
+                    snapshot,
+                    model_config,
+                    published_html=published,
+                    working_html=body.working_html,
+                ):
+                    yield (json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8")
+            except ValueError as e:
+                yield (json.dumps({"type": "error", "detail": str(e)}, ensure_ascii=False) + "\n").encode("utf-8")
+            except Exception as e:
+                yield (
+                    json.dumps({"type": "error", "detail": f"Designer LLM failed: {e}"}, ensure_ascii=False) + "\n"
+                ).encode("utf-8")
+
+        return StreamingResponse(
+            ndjson(),
+            media_type="application/x-ndjson",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    try:
+        raw_reply = await designer_chat_via_llm(
+            conv,
+            snapshot,
+            model_config,
+            published_html=published,
+            working_html=body.working_html,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Designer LLM failed: {e}") from e
+    return MapHtmlDesignerChatOut(content=raw_reply)
+
+
+@router.post(
+    "/map-html/preview",
+    response_model=MapHtmlPreviewOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def taxonomy_map_html_preview(body: MapHtmlBodyHtml, db: AsyncSession = Depends(get_db)):
+    snapshot = await load_semantic_snapshot(db)
+    try:
+        safe = finalize_html_document(body.html.strip(), snapshot, settings.frontend_url)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return MapHtmlPreviewOut(html=safe)
+
+
+@router.post(
+    "/map-html/publish",
+    response_model=TaxonomyMapHtmlRegenerateOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def taxonomy_map_html_publish(body: MapHtmlBodyHtml, db: AsyncSession = Depends(get_db)):
+    snapshot = await load_semantic_snapshot(db)
+    content_hash = semantic_content_hash(snapshot)
+    raw = body.html.strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="html is empty")
+    try:
+        final_html = finalize_html_document(raw, snapshot, settings.frontend_url)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+
+    now = datetime.now(timezone.utc)
+    row = await db.get(TaxonomyMapHtmlArtifact, DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID)
+    if row:
+        row.html = final_html
+        row.content_hash = content_hash
+        row.generated_at = now
+    else:
+        db.add(
+            TaxonomyMapHtmlArtifact(
+                id=DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID,
+                html=final_html,
+                content_hash=content_hash,
+                generated_at=now,
+            )
+        )
+    await db.flush()
+    return TaxonomyMapHtmlRegenerateOut(content_hash=content_hash, generated_at=now)

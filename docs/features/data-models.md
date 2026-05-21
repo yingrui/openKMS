@@ -290,6 +290,10 @@ All junctions cascade on either side; no extra columns.
 - `id`, `taxonomy_node_id` (FK → taxonomy_nodes, CASCADE), `resource_type` (`document_channel`, `article_channel`, `wiki_space`, …), `resource_id`; unique `(resource_type, resource_id)`
 - Maps each content surface to **at most one** Knowledge Map node.
 
+### TaxonomyMapHtmlArtifact (`taxonomy_map_html_artifact`)
+
+- Singleton row (`id` = `default`): `html` (sanitized document), `content_hash` (SHA-256 of canonical taxonomy + links JSON), `generated_at` — LLM-built **HTML overview** of the Knowledge Map; `GET /api/taxonomy/map-html/status` compares the live hash to `content_hash` to report **stale**.
+
 ## Provider details
 
 ### ApiProvider
