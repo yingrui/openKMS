@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import * as THREE from 'three';
 import ForceGraph3D, { type ForceGraphMethods } from 'react-force-graph-3d';
 import { Expand, Loader2, RotateCcw } from 'lucide-react';
 import type { KnowledgeMapNode, ResourceLink } from '../data/knowledgeMapApi';
@@ -37,6 +38,77 @@ const COLORS = {
 } as const;
 
 type Km3DPalette = (typeof COLORS)[keyof typeof COLORS];
+
+/** Sphere radius = cbrt(nodeVal) * nodeRelSize (three-forcegraph). */
+const NODE_REL_SIZE = 8.85;
+
+const LABEL_FONT_PX = 28;
+const LABEL_MAX_CHARS = 48;
+
+const spriteLabelMaterialCache = new Map<string, THREE.SpriteMaterial>();
+
+function truncateGraphLabel(s: string, max = LABEL_MAX_CHARS): string {
+  if (s.length <= max) return s;
+  return `${s.slice(0, max - 1)}…`;
+}
+
+function buildNodeLabelText(node: KMNode): string {
+  if (node.kind === 'resource') {
+    const { badge, title } = resourceBadgeAndTitle(node);
+    return badge ? `${badge}: ${title}` : title;
+  }
+  return node.name;
+}
+
+function getOrCreateLabelSpriteMaterial(textRaw: string, theme: 'light' | 'dark'): THREE.SpriteMaterial {
+  const text = truncateGraphLabel(textRaw);
+  const key = `${theme}|${LABEL_FONT_PX}|${text}`;
+  const hit = spriteLabelMaterialCache.get(key);
+  if (hit) return hit;
+
+  const fontPx = LABEL_FONT_PX;
+  const pad = 11;
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { alpha: true });
+  if (!ctx) {
+    const mat = new THREE.SpriteMaterial({ transparent: true, opacity: 0 });
+    spriteLabelMaterialCache.set(key, mat);
+    return mat;
+  }
+  ctx.font = `500 ${fontPx}px system-ui, sans-serif`;
+  const w = Math.min(Math.ceil(ctx.measureText(text).width + pad * 2), 900);
+  const h = fontPx + pad * 2;
+  canvas.width = w;
+  canvas.height = h;
+  ctx.font = `500 ${fontPx}px system-ui, sans-serif`;
+  ctx.clearRect(0, 0, w, h);
+  ctx.textBaseline = 'middle';
+  if (theme === 'dark') {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 1;
+    ctx.fillStyle = '#e7e5e4';
+  } else {
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+    ctx.shadowBlur = 4;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 1;
+    ctx.fillStyle = '#1c1917';
+  }
+  ctx.fillText(text, pad, h / 2);
+  ctx.shadowBlur = 0;
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+  });
+  spriteLabelMaterialCache.set(key, mat);
+  return mat;
+}
 
 function coreNodeIdsForSpatialZoom3d(
   nodes: Array<{ id: string; x?: number; y?: number; z?: number }>,
@@ -136,13 +208,13 @@ function nodeColor(n: KMNode, palette: Km3DPalette, selectedNodeId: string | nul
 
 function nodeVal(n: KMNode, maxDeg: number): number {
   if (n.kind === 'resource') {
-    if (n.resourceType === 'wiki_space') return 2.2;
-    if (n.resourceType === 'document_channel') return 1.9;
-    if (n.resourceType === 'articles' || n.name.startsWith('Articles: ')) return 2;
-    return 1.6;
+    if (n.resourceType === 'wiki_space') return 2.95;
+    if (n.resourceType === 'document_channel') return 2.65;
+    if (n.resourceType === 'articles' || n.name.startsWith('Articles: ')) return 2.75;
+    return 2.35;
   }
   const t = Math.log1p(n.deg) / Math.log1p(maxDeg);
-  return 3 + t * 5;
+  return 4.1 + t * 6.2;
 }
 
 export function KnowledgeMapForceGraph3D({
@@ -240,7 +312,7 @@ export function KnowledgeMapForceGraph3D({
     const g = graphRef.current;
     if (!g || typeof g.zoomToFit !== 'function' || zoomedRef.current) return;
     zoomedRef.current = true;
-    zoomToFitMainCluster3d(g, graphData.nodes, 520, 72, selectedNodeId);
+    zoomToFitMainCluster3d(g, graphData.nodes, 520, 48, selectedNodeId);
   }, [graphData.nodes, selectedNodeId]);
 
   const handleNodeClick = useCallback(
@@ -281,14 +353,29 @@ export function KnowledgeMapForceGraph3D({
     [palette.linkArrowRef, palette.linkArrowTree],
   );
 
-  const nodeLabel = useCallback((n: object) => {
-    const node = n as KMNode;
-    if (node.kind === 'resource') {
-      const { badge, title } = resourceBadgeAndTitle(node);
-      return badge ? `${badge}: ${title}` : title;
-    }
-    return node.name;
-  }, []);
+  const nodeLabel = useCallback((n: object) => buildNodeLabelText(n as KMNode), []);
+
+  const nodeThreeObjectCb = useCallback(
+    (obj: object) => {
+      const n = obj as KMNode;
+      const labelText = buildNodeLabelText(n);
+      const val = nodeVal(n, maxDeg);
+      const radius = Math.cbrt(val) * NODE_REL_SIZE;
+      const material = getOrCreateLabelSpriteMaterial(labelText, theme);
+      const img = material.map?.image;
+      const aspect =
+        img && typeof img === 'object' && 'width' in img && 'height' in img && (img as HTMLCanvasElement).height > 0
+          ? (img as HTMLCanvasElement).width / (img as HTMLCanvasElement).height
+          : 2;
+      const labelH = Math.max(radius * 1.58, 6.2);
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(labelH * aspect, labelH, 1);
+      sprite.position.y = radius + labelH * 0.48;
+      sprite.renderOrder = 2;
+      return sprite;
+    },
+    [maxDeg, theme],
+  );
 
   const scrollClass = ['km-map-graph-scroll', className].filter(Boolean).join(' ');
 
@@ -319,7 +406,7 @@ export function KnowledgeMapForceGraph3D({
             onClick={() => {
               const g = graphRef.current;
               if (!g) return;
-              zoomToFitMainCluster3d(g, graphData.nodes, 420, 64, selectedNodeId);
+              zoomToFitMainCluster3d(g, graphData.nodes, 420, 44, selectedNodeId);
             }}
             title="Fit main cluster"
             aria-label="Fit main cluster"
@@ -337,13 +424,16 @@ export function KnowledgeMapForceGraph3D({
               height={size.height}
               backgroundColor={palette.bg}
               nodeLabel={nodeLabel}
+              nodeThreeObjectExtend
+              nodeThreeObject={nodeThreeObjectCb}
               nodeColor={nodeColorCb}
               nodeVal={nodeValCb}
+              nodeRelSize={NODE_REL_SIZE}
               nodeOpacity={0.92}
-              nodeResolution={16}
+              nodeResolution={28}
               linkColor={linkColor}
-              linkWidth={(l) => ((l as KMLink).kind === 'tree' ? 0.9 : 0.55)}
-              linkDirectionalArrowLength={(l) => ((l as KMLink).kind === 'tree' ? 3.2 : 2.2)}
+              linkWidth={(l) => ((l as KMLink).kind === 'tree' ? 1.45 : 0.98)}
+              linkDirectionalArrowLength={(l) => ((l as KMLink).kind === 'tree' ? 5.2 : 3.5)}
               linkDirectionalArrowRelPos={1}
               linkDirectionalArrowColor={linkArrowColor}
               linkDirectionalParticles={0}
