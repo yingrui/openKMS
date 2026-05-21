@@ -5,7 +5,7 @@ import { config } from '../../config';
 import { getStoredLocale } from '../../i18n/config';
 import { formatApiErrorMessage } from '../../utils/apiError';
 import { useAuth } from '../../contexts/AuthContext';
-import './AuthLocal.css';
+import './AuthLocal.scss';
 
 export function Login() {
   const { t } = useTranslation('auth');
@@ -71,12 +71,12 @@ export function Login() {
         <h1>{t('signInTitle')}</h1>
         <p className="auth-local-sub">{t('signInSub')}</p>
         {notice === 'local_auth' && (
-          <p className="auth-local-sub" style={{ color: 'var(--color-accent, #3b82f6)' }}>
+          <p className="auth-local-sub page-subtitle--accent">
             {t('noticeOidcDisabled')}
           </p>
         )}
         {notice === 'signup_disabled' && (
-          <p className="auth-local-sub" style={{ color: 'var(--color-accent, #3b82f6)' }}>
+          <p className="auth-local-sub page-subtitle--accent">
             {t('noticeSignupDisabled')}
           </p>
         )}

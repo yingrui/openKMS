@@ -11,7 +11,7 @@ import {
   type ColumnMetadata,
   type DatasetRowsResponse,
 } from '../../data/datasetsApi';
-import './ConsoleDatasetDetail.css';
+import './ConsoleDatasetDetail.scss';
 
 type TabId = 'data' | 'metadata';
 

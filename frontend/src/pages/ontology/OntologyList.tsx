@@ -9,7 +9,7 @@ import {
   type ObjectTypeResponse,
   type LinkTypeResponse,
 } from '../../data/ontologyApi';
-import './OntologyList.css';
+import './OntologyList.scss';
 
 export function OntologyList() {
   const { t } = useTranslation('explore');

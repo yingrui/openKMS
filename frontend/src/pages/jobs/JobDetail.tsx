@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { fetchJobById, markJobFailed, retryJob, type JobResponse } from '../../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
-import './JobDetail.css';
+import './JobDetail.scss';
 
 function formatDateTime(iso: string | undefined | null, dash: string): string {
   if (!iso) return dash;

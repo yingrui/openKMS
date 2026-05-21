@@ -94,12 +94,14 @@ flowchart TB
 
 ```
 frontend/src/
-├── main.tsx                 # Entry
+├── main.tsx                 # Entry (`index.scss` → design-system variables, globals, utilities)
+├── index.scss               # `@use` design-system: `css-variables`, `global`, `utilities`
+├── styles/design-system/    # SCSS + CSS vars: `_css-variables` (palette, spacing, type, motion, z-index, status pills), `_tokens` (breakpoints + `$space-*` / `$z-*`), `_mixins`, `_global`, optional `_index` barrel, `knowledge-map/`
 ├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels → ArticleChannels), ErrorBoundary, Suspense + lazy routes
 ├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
 ├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
 ├── components/Layout/       # MainLayout (route gate; **`app-content--home`** padding on `/`), Sidebar (nav gated by canAccessPath + toggles; **Glossaries** and **Ontology** are sibling top-level links, ontology sub-routes indented under Ontology when active; **collapsible** left rail—when narrow, **icon-only** top-level links + labels hidden + channel/ontology subnavs hidden; preference in **`localStorage`**), Header
-├── components/KnowledgeMapForceGraph.tsx (+ `.css`)  # Home hub: **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from Knowledge Map tree + resource links; term nodes as teal circles; resource nodes differentiated in canvas (channel pill + accent bar, wiki hexagon, articles tall pill); term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
+├── components/KnowledgeMapForceGraph.tsx (+ `.scss`)  # Home hub: **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from Knowledge Map tree + resource links; term nodes as teal circles; resource nodes differentiated in canvas (channel pill + accent bar, wiki hexagon, articles tall pill); term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
 ├── components/KnowledgeMapForceGraph3D.tsx  # Optional 3D exploration: **`react-force-graph-3d`** (lazy-loaded from `/knowledge-map` **Explore (3D)** tab only); shared graph build via `src/graph/knowledgeMapGraphModel.ts`
 ├── graph/knowledgeMapGraphModel.ts  # `walkTree` + `KMNode` / `KMLink` types shared by 2D and 3D Knowledge Map force graphs
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
@@ -120,13 +122,13 @@ frontend/src/
     ├── ArticleChannel.tsx   # /articles/channels/:channelId – list in channel
     ├── ArticleChannels.tsx  # /articles/channels – manage tree
     ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
-    ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.css** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
+    ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.scss** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
     ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
     ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx (`/wikis/:id/settings`; sectioned settings UI; **Build index** for offline wiki page embeddings (default embedding ApiModel); folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiWorkspace** graph tab), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; optional **WikiSpaceAgentPanel** Copilot rail toggled from the toolbar; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.css; co-located CSS per page
+    ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.scss; co-located SCSS per page
     └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 

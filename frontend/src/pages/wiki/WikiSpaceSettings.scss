@@ -1,0 +1,745 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+.wiki-space-settings {
+  max-width: none;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem 1rem;
+}
+
+.wiki-space-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.wiki-space-settings-toolbar-span {
+  margin-bottom: 0.05rem;
+}
+
+.wiki-space-settings-body-loading {
+  margin: 0.2rem 0 0.35rem;
+}
+
+/* Main + agent: agent is position:fixed on desktop so this row’s height = main only (no dead band under the list). */
+.wiki-space-settings-content-row {
+  position: relative;
+  min-width: 0;
+}
+
+.wiki-space-settings-main {
+  min-width: 0;
+}
+
+.wiki-space-settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.45rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wiki-space-settings-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.65rem;
+  margin-bottom: -1px;
+  border: 1px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.wiki-space-settings-tab:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.wiki-space-settings-tab--active {
+  color: var(--color-text);
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-surface);
+  background: var(--color-surface);
+}
+
+.wiki-space-settings-section-title {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.wiki-space-settings-section-title--inline-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wiki-space-settings-documents-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.wiki-space-settings-documents-head .wiki-space-settings-section-title {
+  margin: 0;
+}
+
+.wiki-space-settings-code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.8em;
+  padding: 0.05rem 0.25rem;
+  border-radius: 4px;
+  background: var(--color-bg-muted);
+}
+
+.wiki-space-settings-doc-picker {
+  max-width: 520px;
+}
+
+.wiki-space-settings-doc-picker-hint {
+  margin: 0 0 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.wiki-space-settings-doc-picker-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.wiki-space-settings-doc-picker-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.wiki-space-settings-doc-picker-label--grow {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.wiki-space-settings-doc-picker-select,
+.wiki-space-settings-doc-picker-input {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.wiki-space-settings-doc-picker-list {
+  max-height: min(50vh, 320px);
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.wiki-space-settings-doc-picker-ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wiki-space-settings-doc-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.35rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wiki-space-settings-doc-picker-row:last-child {
+  border-bottom: none;
+}
+
+.wiki-space-settings-doc-picker-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+.wiki-space-settings-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.wiki-space-settings-back:hover {
+  color: var(--color-accent);
+}
+
+.wiki-space-settings-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.wiki-space-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Label wraps the control: real click targets the file input (programmatic .click() fails when input is 0×0 / pointer-events:none). */
+.wiki-space-settings-import-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  margin: 0;
+}
+
+.wiki-space-settings-import-label:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.wiki-space-settings-file-input-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+  font-size: 0.001px;
+}
+
+.wiki-space-settings-header h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.wiki-space-settings-desc {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-settings-muted {
+  color: var(--color-text-muted);
+}
+
+.wiki-space-settings-section {
+  margin-bottom: 1rem;
+}
+
+.wiki-space-settings-section--tight {
+  margin-bottom: 0.35rem;
+}
+
+.wiki-space-settings-section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+
+.wiki-space-settings-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+
+.wiki-space-settings-section--tight .wiki-space-settings-pagination {
+  margin-top: 0.3rem;
+}
+
+.wiki-space-settings-pagination-status {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+/* Match channel document list: .documents-table-wrap + .documents-table body rows */
+.wiki-space-settings-pages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.wiki-space-settings-page-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.15s;
+}
+
+.wiki-space-settings-page-row:hover {
+  background: var(--color-bg-muted);
+}
+
+.wiki-space-settings-page-row:last-child {
+  border-bottom: none;
+}
+
+.wiki-space-settings-page-icon {
+  flex-shrink: 0;
+  color: var(--color-accent);
+}
+
+.wiki-space-settings-page-link {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.wiki-space-settings-page-row:hover .wiki-space-settings-page-path {
+  color: var(--color-text);
+}
+
+.wiki-space-settings-page-path {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-space-settings-page-updated {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  max-width: 12.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.wiki-space-settings-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: background 0.15s, color 0.15s;
+}
+
+.wiki-space-settings-icon-btn:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.wiki-space-settings-icon-btn[aria-label='Delete page']:hover,
+.wiki-space-settings-icon-btn[aria-label='Remove link']:hover {
+  color: var(--color-error);
+}
+
+.wiki-space-settings-import-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 1rem;
+}
+
+.wiki-space-settings-import-dialog {
+  width: 100%;
+  max-width: 420px;
+  padding: 1.25rem 1.35rem;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+.wiki-space-settings-import-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.wiki-space-settings-import-phase {
+  margin: 0 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-settings-import-path {
+  margin: 0 0 0.85rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+  color: var(--color-text);
+  max-height: 4.5em;
+  overflow: auto;
+}
+
+.wiki-space-settings-import-count,
+.wiki-space-settings-import-bytes {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-settings-import-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+
+.wiki-space-settings-import-bar--overall {
+  margin-top: 0.25rem;
+}
+
+.wiki-space-settings-import-bar + .wiki-space-settings-import-count {
+  margin-top: 0.65rem;
+}
+
+.wiki-space-settings-import-bar-fill {
+  height: 100%;
+  background: var(--color-accent);
+  border-radius: 3px;
+  transition: width 0.12s ease-out;
+}
+
+.wiki-space-settings-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+/* Above import progress overlay (z-index 60) so folder options stay visible. */
+.wiki-space-settings-vault-options-overlay {
+  z-index: 100;
+}
+
+.wiki-space-settings-import-folder-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wiki-space-settings-modal-folder-label {
+  position: relative;
+  margin: 0;
+  min-height: 2.25rem;
+  min-width: 11rem;
+  justify-content: center;
+}
+
+.wiki-space-settings-vault-modal-actions {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.wiki-space-settings-modal {
+  background: var(--color-surface);
+  border-radius: 12px;
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+.wiki-space-settings-modal h3 {
+  margin: 0 0 1rem;
+}
+
+.wiki-space-settings-modal label {
+  display: block;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.wiki-space-settings-modal input {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.wiki-space-settings-req {
+  color: #dc2626;
+}
+
+.wiki-space-settings-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.wiki-space-settings-vault-options-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+
+.wiki-space-settings-vault-options-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiki-space-settings-vault-options-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.wiki-space-settings-vault-options-row input[type='checkbox'] {
+  width: auto;
+  margin: 0.15rem 0 0;
+  flex-shrink: 0;
+}
+
+.wiki-space-settings-vault-options-row span {
+  flex: 1;
+  line-height: 1.35;
+}
+
+/* Settings layout (hero + section cards) */
+.wiki-space-settings-hero {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wiki-space-settings-eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-settings-page-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.65rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.wiki-space-settings-page-subtitle {
+  margin: 0;
+  max-width: 52rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-settings-cta {
+  margin-bottom: 1.25rem;
+}
+
+.wiki-space-settings-open-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.wiki-space-settings-card {
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-surface);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.wiki-space-settings-card-head {
+  margin-bottom: 0.65rem;
+}
+
+.wiki-space-settings-card-head--split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wiki-space-settings-card-head--split .wiki-space-settings-section-title {
+  margin: 0;
+}
+
+.wiki-space-settings-card-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.wiki-space-settings-space-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.wiki-space-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.wiki-space-settings-field input,
+.wiki-space-settings-field textarea {
+  width: 100%;
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 400;
+  font-family: inherit;
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+}
+
+.wiki-space-settings-field textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.wiki-space-settings-space-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.wiki-space-settings-import-actions {
+  margin-top: 0.25rem;
+}
+
+.wiki-space-settings-semantic-unavailable {
+  margin: 0.35rem 0 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.wiki-space-settings-semantic-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.35rem;
+}
+
+.wiki-space-settings-semantic-row {
+  display: grid;
+  grid-template-columns: minmax(9rem, 11rem) 1fr;
+  gap: 0.35rem 1rem;
+  align-items: start;
+}
+
+@include max-width(ds.$bp-comfort-max) {
+  .wiki-space-settings-semantic-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wiki-space-settings-semantic-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding-top: 0.35rem;
+  color: var(--color-text);
+}
+
+.wiki-space-settings-semantic-control {
+  min-width: 0;
+}
+
+.wiki-space-settings-select {
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.wiki-space-settings-input-narrow {
+  max-width: 8rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+}
+
+.wiki-space-settings-field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.wiki-space-settings-semantic-last-index {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+}
+
+.wiki-space-settings-semantic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}

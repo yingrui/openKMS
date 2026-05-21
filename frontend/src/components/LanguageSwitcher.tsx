@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Languages } from 'lucide-react';
 import i18n, { OPENKMS_LOCALE_STORAGE_KEY } from '../i18n/config';
-import './LanguageSwitcher.css';
+import './LanguageSwitcher.scss';
 
 const OPTIONS: { value: string; labelKey: string }[] = [
   { value: 'en', labelKey: 'languageEnglish' },

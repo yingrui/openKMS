@@ -3,7 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { UserCircle } from 'lucide-react';
 import { fetchAuthMe, type AuthMeResponse } from '../data/authApi';
-import './Profile.css';
+import './Profile.scss';
 
 export function Profile() {
   const { t } = useTranslation('profile');
@@ -49,9 +49,7 @@ export function Profile() {
 
       {loading && (
         <div className="profile-card">
-          <p className="page-subtitle" style={{ margin: 0 }}>
-            {t('loading')}
-          </p>
+          <p className="page-subtitle openkms-mt-0">{t('loading')}</p>
         </div>
       )}
 
@@ -104,7 +102,7 @@ export function Profile() {
             <div>
               <dt>{t('accountId')}</dt>
               <dd>
-                <code style={{ fontSize: '0.9em' }}>{me.id}</code>
+                <code className="openkms-inline-code">{me.id}</code>
               </dd>
             </div>
           </dl>

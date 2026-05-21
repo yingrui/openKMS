@@ -19,7 +19,7 @@ import {
   deleteProvider,
   type ApiProviderResponse,
 } from '../../data/providersApi';
-import './Models.css';
+import './Models.scss';
 
 type ModalMode = 'provider' | 'model' | null;
 
@@ -340,7 +340,7 @@ export function Models() {
                 <tbody>
                   {models.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                      <td colSpan={6} className="table-empty">
                         {providers.length === 0
                           ? t('models.emptyNoProviders')
                           : t('models.emptyNoModels')}

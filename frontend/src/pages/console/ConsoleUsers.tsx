@@ -10,7 +10,7 @@ import {
   type AdminUsersPage,
   type LocalUserRow,
 } from '../../data/adminUsersApi';
-import './ConsoleUsers.css';
+import './ConsoleUsers.scss';
 
 export function ConsoleUsers() {
   const { t } = useTranslation('console');

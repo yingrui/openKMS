@@ -45,7 +45,7 @@ function evalShowsSearchSnippets(evaluationType: string): boolean {
 
 const DEFAULT_ITEMS_PAGE_SIZE = 10;
 
-import './EvaluationDatasetDetail.css';
+import './EvaluationDatasetDetail.scss';
 
 export function EvaluationDatasetDetail() {
   const { t } = useTranslation('workspace');
@@ -335,7 +335,7 @@ export function EvaluationDatasetDetail() {
               type="file"
               accept=".csv"
               onChange={handleImportFile}
-              style={{ display: 'none' }}
+              className="openkms-hidden"
               aria-hidden
             />
             <Link

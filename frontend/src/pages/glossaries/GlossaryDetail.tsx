@@ -26,7 +26,7 @@ import {
   type GlossaryResponse,
   type GlossaryTermResponse,
 } from '../../data/glossariesApi';
-import './GlossaryDetail.css';
+import './GlossaryDetail.scss';
 
 function TagInput({
   tags,

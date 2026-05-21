@@ -16,7 +16,7 @@ import {
 } from '../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../data/wikiSpacesApi';
 import type { ChannelNode } from '../data/channelUtils';
-import './Home.css';
+import './Home.scss';
 
 function flattenDocChannels(nodes: ChannelNode[], prefix = ''): { id: string; label: string }[] {
   const out: { id: string; label: string }[] = [];

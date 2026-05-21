@@ -45,8 +45,8 @@ import {
   type ArticleOut,
   type ArticleRelationshipsResponse,
 } from '../../data/articlesApi';
-import '../documents/DocumentDetail.css';
-import './ArticleDetail.css';
+import '../documents/DocumentDetail.scss';
+import './ArticleDetail.scss';
 
 function resolveMarkdownSrc(articleId: string, src: string | undefined): string | undefined {
   if (!src) return undefined;
@@ -1077,14 +1077,14 @@ export function ArticleDetail() {
                         type="file"
                         accept="image/*"
                         multiple
-                        style={{ display: 'none' }}
+                        className="openkms-hidden"
                         onChange={(e) => void handleImagePick(e)}
                       />
                       <input
                         ref={attachmentInputRef}
                         type="file"
                         multiple
-                        style={{ display: 'none' }}
+                        className="openkms-hidden"
                         onChange={(e) => void handleAttachmentPick(e)}
                       />
                     </div>

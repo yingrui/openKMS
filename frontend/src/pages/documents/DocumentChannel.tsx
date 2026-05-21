@@ -36,7 +36,7 @@ import {
 } from '../../data/documentsApi';
 import { toast } from 'sonner';
 import { createJob } from '../../data/jobsApi';
-import './DocumentChannel.css';
+import './DocumentChannel.scss';
 
 const fileTypeIcons: Record<string, typeof FileText> = {
   PDF: FileText,
@@ -239,7 +239,7 @@ export function DocumentChannel() {
     return (
       <div className="documents">
         <div className="page-header">
-          <p className="page-subtitle" style={{ color: 'var(--color-error)' }}>{error}</p>
+          <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
       </div>
     );

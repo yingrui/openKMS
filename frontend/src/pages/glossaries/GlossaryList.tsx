@@ -10,7 +10,7 @@ import {
   updateGlossary,
   type GlossaryResponse,
 } from '../../data/glossariesApi';
-import './GlossaryList.css';
+import './GlossaryList.scss';
 
 export function GlossaryList() {
   const { t } = useTranslation('explore');

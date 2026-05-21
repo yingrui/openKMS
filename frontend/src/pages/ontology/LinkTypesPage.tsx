@@ -15,7 +15,7 @@ import {
 } from '../../data/ontologyApi';
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import './ontology-admin.css';
+import './ontology-admin.scss';
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
 function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTypeResponse[]): boolean {
@@ -411,7 +411,7 @@ export function LinkTypesPage() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                <span className="console-modal-hint console-modal-hint--block">
                   One-to-one: indicator only (not enforced). Many-to-many: link to junction table dataset.
                 </span>
               </label>
@@ -498,7 +498,7 @@ export function LinkTypesPage() {
                     </select>
                   </label>
                 </div>
-                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                <span className="console-modal-hint console-modal-hint--block">
                   {formCardinality === 'many-to-many' && formDatasetId
                     ? 'Which property/column maps source → target through the junction table.'
                     : 'Which property in source/target object types forms the link (e.g. id, icd_code).'}

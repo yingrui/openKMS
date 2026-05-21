@@ -9,7 +9,7 @@ import {
   type SystemSettingsResponse,
 } from '../../data/systemApi';
 import { notifySystemSettingsUpdated } from '../../utils/systemSettingsStorage';
-import './ConsoleSettings.css';
+import './ConsoleSettings.scss';
 
 type FormState = {
   systemName: string;

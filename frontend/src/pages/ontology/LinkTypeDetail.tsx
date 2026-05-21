@@ -13,7 +13,7 @@ import {
   type LinkTypeResponse,
   type LinkInstanceResponse,
 } from '../../data/ontologyApi';
-import './LinkTypeDetail.css';
+import './LinkTypeDetail.scss';
 
 function objectLabel(
   data: Record<string, unknown> | null | undefined,

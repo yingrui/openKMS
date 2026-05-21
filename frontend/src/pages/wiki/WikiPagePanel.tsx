@@ -21,7 +21,7 @@ import { config } from '../../config';
 import { fetchWikiPage, updateWikiPage } from '../../data/wikiSpacesApi';
 import type { WikiPageListItem, WikiPageResponse } from '../../data/wikiSpacesApi';
 import { findPageIdByWikilinkTarget, prepareWikiPreviewMarkdown } from './wikiPreviewMarkdown';
-import './WikiPageEditor.css';
+import './WikiPageEditor.scss';
 
 function previewUrlTransform(url: string): string {
   if (url.startsWith('wiki:')) return url;

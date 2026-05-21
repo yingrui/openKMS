@@ -11,7 +11,7 @@ import {
   resourceBadgeAndTitle,
   walkTree,
 } from '../graph/knowledgeMapGraphModel';
-import './KnowledgeMapForceGraph.css';
+import './KnowledgeMapForceGraph.scss';
 
 const COLORS = {
   light: {
@@ -603,7 +603,7 @@ export function KnowledgeMapForceGraph({
               onEngineStop={handleEngineStop}
             />
           ) : (
-            <p className="km-map-graph-hint km-map-graph-loading" style={{ padding: '2rem', justifyContent: 'center' }}>
+            <p className="km-map-graph-hint km-map-graph-loading km-map-graph-loading--padded">
               <Loader2 className="km-map-graph-spin" size={20} aria-hidden />
               Preparing graph…
             </p>

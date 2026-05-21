@@ -6,7 +6,7 @@ import { Expand, Loader2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchWikiSpaceGraph } from '../../data/wikiSpacesApi';
 import type { WikiLinkGraphResponse } from '../../data/wikiSpacesApi';
-import './WikiSpaceGraph.css';
+import './WikiSpaceGraph.scss';
 
 /** Reusable graph canvas + controls (wiki workspace **Graph** tab / embedded pane). */
 export type WikiSpaceGraphPanelProps = {

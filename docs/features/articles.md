@@ -32,7 +32,7 @@ Design goal: the **main column** scrolls like a normal page; the article **infor
 |--------|----------------|------|
 | Main column | `app-content` (`overflow-y: auto`) | Always — primary page scroll. |
 | Article information, relationships, attachments | Same as page | Always — no `max-height` + inner `overflow: auto` on those sections. |
-| Markdown — read | Main column only | Not editing — article overrides `DocumentDetail` so the markdown **panel** is not `max-height`-capped with a scrolling body; long content extends the page (`frontend/src/pages/ArticleDetail.css`). |
+| Markdown — read | Main column only | Not editing — article overrides `DocumentDetail` so the markdown **panel** is not `max-height`-capped with a scrolling body; long content extends the page (`frontend/src/pages/articles/ArticleDetail.scss`). |
 | Markdown — edit, preview off | Main column only | Editing, preview hidden — markdown body `overflow-y: visible` so the draft grows with the page (textarea uses `field-sizing: content` where supported). |
 | Markdown — edit, preview on | **Two:** editor column (`overflow-y: auto`) **and** `.article-detail-markdown-preview-scroll` (`overflow-y: auto`) | Editing with split preview — **two** scrollbars (markdown source vs preview); the markdown **body** uses `overflow: hidden` so scroll is not duplicated on a third surface. Opening **Preview** while editing **collapses Article information** and **scrolls the Markdown panel to the top of the view** so more vertical space is available; you can still expand Article information from the chevron. Scroll the **page** if needed, then use each column’s scrollbar for long source or long preview. |
 
@@ -40,7 +40,7 @@ Design goal: the **main column** scrolls like a normal page; the article **infor
 
 **Browsers:** Edit without preview uses `field-sizing: content` on the textarea so the draft height follows the text while the **page** scrolls; very old engines without it may fall back to textarea-internal scrolling for long drafts.
 
-**Implementation notes:** Split vs non-split is keyed in CSS with `:has(.article-detail-markdown-edit-layout--split)` on the markdown body. Split layout uses `grid-template-rows: minmax(0, 1fr)` plus the fixed-height panel so grid rows do not grow unbounded with content. Resizable editor/preview columns use `ArticleDetail.tsx` + `ArticleDetail.css` (splitter + `fr` grid). The split preview column has no title bar; use **Hide preview** in the Markdown toolbar.
+**Implementation notes:** Split vs non-split is keyed in CSS with `:has(.article-detail-markdown-edit-layout--split)` on the markdown body. Split layout uses `grid-template-rows: minmax(0, 1fr)` plus the fixed-height panel so grid rows do not grow unbounded with content. Resizable editor/preview columns use `ArticleDetail.tsx` + `ArticleDetail.scss` (splitter + `fr` grid). The split preview column has no title bar; use **Hide preview** in the Markdown toolbar.
 
 ## Bulk import API
 

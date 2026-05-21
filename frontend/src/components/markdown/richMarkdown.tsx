@@ -9,7 +9,7 @@ import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import mermaid from 'mermaid';
 import 'katex/dist/katex.min.css';
-import './richMarkdown.css';
+import './richMarkdown.scss';
 
 export const richMarkdownRemarkPlugins = [remarkGfm, remarkMath];
 export const richMarkdownRehypePlugins = [rehypeRaw, rehypeKatex];

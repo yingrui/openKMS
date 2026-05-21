@@ -2,7 +2,7 @@ import { useCallback, useDeferredValue, useLayoutEffect, useMemo, useState, star
 import { Link } from 'react-router-dom';
 import { ChevronRight, Link2, Search, X } from 'lucide-react';
 import type { KnowledgeMapNode } from '../data/knowledgeMapApi';
-import './HomeKnowledgeMapPreview.css';
+import './HomeKnowledgeMapPreview.scss';
 
 /** Every node id that has children — used for “expand all” and when syncing expand state to the visible tree. */
 function collectExpandableNodeIds(nodes: KnowledgeMapNode[]): Set<string> {

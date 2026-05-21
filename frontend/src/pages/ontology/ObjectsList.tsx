@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Box } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
-import './ObjectsList.css';
+import './ObjectsList.scss';
 
 export function ObjectsList() {
   const { t } = useTranslation('explore');

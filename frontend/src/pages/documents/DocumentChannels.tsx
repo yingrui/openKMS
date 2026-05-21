@@ -13,7 +13,7 @@ import {
 } from '../../data/channelsApi';
 import { getDescendantIds } from '../../data/channelUtils';
 import { toast } from 'sonner';
-import './DocumentChannels.css';
+import './DocumentChannels.scss';
 
 /** Flatten tree for parent dropdown (id, name, depth for indent) */
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {

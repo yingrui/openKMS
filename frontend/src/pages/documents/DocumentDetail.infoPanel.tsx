@@ -641,9 +641,9 @@ export function DocumentDetailInfoPanel({
                   </dl>
                 )}
                 {extractWarnings.length > 0 && (
-                  <div className="document-detail-extract-warnings" style={{ marginTop: 8 }}>
+                  <div className="document-detail-extract-warnings">
                     {extractWarnings.map((w, i) => (
-                      <p key={i} className="document-detail-warning" style={{ color: 'var(--color-warning, #b45309)', fontSize: '0.9em' }}>
+                      <p key={i} className="document-detail-warning">
                         {w}
                       </p>
                     ))}

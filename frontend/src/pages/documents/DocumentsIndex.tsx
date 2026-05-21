@@ -5,7 +5,7 @@ import { FileStack, Folder, Upload } from 'lucide-react';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../../data/channelUtils';
 import { fetchDocumentStats } from '../../data/documentsApi';
-import './DocumentsIndex.css';
+import './DocumentsIndex.scss';
 
 export function DocumentsIndex() {
   const { t } = useTranslation('documents');
@@ -34,7 +34,7 @@ export function DocumentsIndex() {
     return (
       <div className="documents-index">
         <div className="page-header">
-          <p className="page-subtitle" style={{ color: 'var(--color-error)' }}>{error}</p>
+          <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
       </div>
     );

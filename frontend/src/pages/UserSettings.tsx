@@ -11,8 +11,8 @@ import {
 import { patchAuthUiLocale } from '../data/authApi';
 import { useAuth } from '../contexts/AuthContext';
 import i18n from '../i18n/config';
-import '../components/LanguageSwitcher.css';
-import './UserSettings.css';
+import '../components/LanguageSwitcher.scss';
+import './UserSettings.scss';
 
 export function UserSettings() {
   const { t } = useTranslation('settings');

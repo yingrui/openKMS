@@ -8,8 +8,8 @@ import { fetchWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from '..
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
 import { WikiPagePanel, type WikiPagePanelHandle } from './WikiPagePanel';
-import './WikiPageEditor.css';
-import './WikiWorkspace.css';
+import './WikiPageEditor.scss';
+import './WikiWorkspace.scss';
 
 const GRAPH_KEY = 'graph';
 

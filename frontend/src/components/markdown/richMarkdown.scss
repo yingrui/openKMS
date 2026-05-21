@@ -1,0 +1,31 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+/* Shared by wiki preview, document markdown, agent messages */
+.openkms-mermaid {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.openkms-mermaid svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.openkms-mermaid-error {
+  margin: 0;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--color-surface-muted);
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+[data-theme='dark'] .openkms-mermaid-error {
+  background: #27272a;
+  border-color: #3f3f46;
+}

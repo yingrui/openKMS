@@ -5,7 +5,7 @@ import { FileText, Folder } from 'lucide-react';
 import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../../data/channelUtils';
 import { fetchArticleStats } from '../../data/articlesApi';
-import '../documents/DocumentsIndex.css';
+import '../documents/DocumentsIndex.scss';
 
 export function ArticlesIndex() {
   const { t } = useTranslation('documents');
@@ -44,7 +44,7 @@ export function ArticlesIndex() {
     return (
       <div className="documents-index">
         <div className="page-header">
-          <p className="page-subtitle" style={{ color: 'var(--color-error)' }}>{error}</p>
+          <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
       </div>
     );

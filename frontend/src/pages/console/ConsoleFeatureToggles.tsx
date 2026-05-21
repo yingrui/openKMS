@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
-import './ConsoleFeatureToggles.css';
+import './ConsoleFeatureToggles.scss';
 
 const FEATURE_IDS = [
   'articles',

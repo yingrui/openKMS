@@ -28,7 +28,7 @@ import {
   type WikiSpaceResponse,
   type WikiVaultImportResponse,
 } from '../../data/wikiSpacesApi';
-import './WikiSpaceSettings.css';
+import './WikiSpaceSettings.scss';
 
 export type WikiLinkedDoc = { id: string; name: string; channel_id: string; updated_at: string };
 

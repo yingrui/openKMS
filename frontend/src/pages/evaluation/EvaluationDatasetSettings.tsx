@@ -11,9 +11,9 @@ import {
 } from '../../data/evaluationsApi';
 import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
-import '../documents/DocumentChannelSettings.css';
-import './EvaluationDatasetDetail.css';
-import './EvaluationDatasetSettings.css';
+import '../documents/DocumentChannelSettings.scss';
+import './EvaluationDatasetDetail.scss';
+import './EvaluationDatasetSettings.scss';
 
 export function EvaluationDatasetSettings() {
   const { t } = useTranslation('workspace');

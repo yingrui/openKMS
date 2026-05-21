@@ -4,7 +4,7 @@ import { NavLink } from 'react-router-dom';
 import { ChevronDown, ChevronRight, FileText, Folder, Search, Sparkles, Type } from 'lucide-react';
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { buildWikiTree, type WikiTreeNode } from './wikiTreeUtils';
-import './WikiPagesTree.css';
+import './WikiPagesTree.scss';
 
 function sortedChildEntries(node: WikiTreeNode): [string, WikiTreeNode][] {
   return [...node.children.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: 'base' }));

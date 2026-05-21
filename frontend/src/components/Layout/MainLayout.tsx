@@ -5,7 +5,7 @@ import { X, LogIn, Home } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
-import '../../App.css';
+import '../../App.scss';
 
 const SIDEBAR_COLLAPSED_KEY = 'openkms_nav_sidebar_collapsed';
 

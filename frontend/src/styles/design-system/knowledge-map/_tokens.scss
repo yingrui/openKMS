@@ -1,0 +1,8 @@
+// Knowledge Map–specific compile-time tokens (panels, museum/building UIs).
+// Prefer CSS variables (`var(--color-*)`) in rules when values already exist on :root.
+
+$km-page-max-width: 1280px;
+$km-html-copilot-sidebar-max: 380px;
+$km-html-copilot-sidebar-min: 280px;
+$km-explore-3d-min-height: 560px;
+$km-graph-min-height: 420px;

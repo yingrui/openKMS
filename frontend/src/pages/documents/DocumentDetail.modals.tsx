@@ -298,7 +298,7 @@ export function DocumentDetailVersionModals({
               </button>
             </div>
             <div className="document-detail-pageindex-dialog-body document-detail-versions-form">
-              <p className="document-detail-muted" style={{ marginTop: 0 }}>
+              <p className="document-detail-muted document-detail-muted--flush">
                 {t('detail.restoreReplacesHint')}
               </p>
               <label className="document-detail-versions-check">
@@ -324,11 +324,10 @@ export function DocumentDetailVersionModals({
                   <label className="document-detail-versions-label">
                     {t('detail.restoreNoteOptional')}
                     <textarea
-                      className="document-detail-markdown-textarea"
+                      className="document-detail-markdown-textarea openkms-min-h-14"
                       rows={2}
                       value={restoreNote}
                       onChange={(e) => onRestoreNoteChange(e.target.value)}
-                      style={{ minHeight: 56 }}
                     />
                   </label>
                 </>

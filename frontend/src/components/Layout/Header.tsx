@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import './Header.css';
+import './Header.scss';
 
 export function Header() {
   const { t } = useTranslation('layout');

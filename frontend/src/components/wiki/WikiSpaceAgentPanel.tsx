@@ -26,7 +26,7 @@ import {
   updateToolInParts,
   type AssistantStreamPart,
 } from './wikiCopilotStreamParts';
-import './WikiSpaceAgentPanel.css';
+import './WikiSpaceAgentPanel.scss';
 
 export type { AgentToolCallStep, AssistantStreamPart } from './wikiCopilotStreamParts';
 

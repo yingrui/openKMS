@@ -3,7 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { config } from '../../config';
 import { useAuth } from '../../contexts/AuthContext';
-import './AuthLocal.css';
+import './AuthLocal.scss';
 
 export function Signup() {
   const { t } = useTranslation('auth');

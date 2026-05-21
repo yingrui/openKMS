@@ -1,0 +1,246 @@
+@use './styles/design-system/mixins' as *;
+@use './styles/design-system/tokens' as ds;
+
+/* App-level styles - component-specific in modules */
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.auth-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 14px;
+}
+
+.auth-error-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-error-banner-retry {
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-error);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.auth-error-banner-retry:hover {
+  background: white;
+}
+
+.auth-error-banner-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.auth-error-banner-dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.auth-required-message {
+  flex: 1;
+  min-height: calc(100vh - var(--header-height, 56px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  padding-top: 0;
+  margin-top: -48px;
+  text-align: center;
+}
+
+.auth-required-title {
+  margin: 0 0 12px;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.auth-required-text {
+  margin: 0 0 24px;
+  max-width: 360px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.auth-required-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: white;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.auth-required-btn:hover {
+  background: var(--color-primary-hover);
+}
+
+.app-content {
+  flex: 1;
+  min-height: 0;
+  padding: 24px 32px;
+  overflow-y: auto;
+}
+
+/* Home hub: give the centered Knowledge Map more horizontal room */
+.app-content--home {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* Global search: wider usable width for results */
+.app-content--search {
+  padding-left: clamp(16px, 2.5vw, 28px);
+  padding-right: clamp(16px, 2.5vw, 28px);
+}
+
+/* Object Explorer: fill main column height (no bottom dead band), tighter gutters */
+.app-content--object-explorer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 12px clamp(12px, 2vw, 24px) 12px;
+  overflow: hidden;
+}
+
+.app-content--compact {
+  padding: 12px 16px;
+}
+
+/* Article page uses natural document height; do not force document-detail min-height there */
+.app-content--compact .document-detail:not(.article-detail-page) {
+  min-height: calc(100vh - var(--header-height, 56px) - 24px);
+}
+
+.app-content--compact .kb-detail {
+  height: calc(100vh - var(--header-height, 56px) - 24px);
+}
+
+/* Wiki editor: use full main column height; cancel compact padding so no “dead” band */
+.app-content--compact .wiki-page-editor-outer {
+  margin: -12px -16px;
+  width: calc(100% + 32px);
+  height: calc(100vh - var(--header-height, 56px));
+  min-height: 0;
+}
+
+/* KB Q&A full-page: no outer padding band between nav rail and chat shell */
+.app-content--compact:has(.kb-detail--qa-fullpage) {
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Keep scroll inside KB Q&A main column so the composer stays pinned to the viewport */
+  overflow: hidden;
+}
+
+.app-content--compact:has(.kb-detail--qa-fullpage) > .kb-detail.kb-detail--qa-fullpage {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+/* Immersive KB Q&A: reclaim header row for conversation (exit via sidebar back) */
+body.openkms-kb-qa-fullpage .header {
+  display: none;
+}
+
+body.openkms-kb-qa-fullpage .app-content--compact:has(.kb-detail--qa-fullpage) > .kb-detail.kb-detail--qa-fullpage {
+  min-height: 0;
+}
+
+/* Same layout as :has() block above, but keyed off body — does not depend on :has() support */
+body.openkms-kb-qa-fullpage .app-content.app-content--compact {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Fill the main column; override generic compact kb-detail height (still subtracts header even when hidden) */
+body.openkms-kb-qa-fullpage .app-content--compact > .kb-detail.kb-detail--qa-fullpage {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+}
+
+body.openkms-kb-qa-fullpage {
+  height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body.openkms-kb-qa-fullpage #root {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.openkms-kb-qa-fullpage .app-layout {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body.openkms-kb-qa-fullpage .app-main {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@include max-width(ds.$bp-md-min) {
+  .app-content {
+    padding: 16px;
+  }
+  .app-content--compact {
+    padding: 10px 12px;
+  }
+
+  .app-content--compact:has(.kb-detail--qa-fullpage) {
+    padding: 0;
+  }
+
+  .app-content--compact .wiki-page-editor-outer {
+    margin: -10px -12px;
+    width: calc(100% + 24px);
+  }
+}

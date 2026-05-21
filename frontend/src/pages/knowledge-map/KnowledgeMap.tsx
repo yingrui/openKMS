@@ -32,7 +32,7 @@ import {
   type ResourceLink,
 } from '../../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../../data/wikiSpacesApi';
-import './KnowledgeMap.css';
+import './KnowledgeMap.scss';
 import { KnowledgeMapHtmlCopilot } from './KnowledgeMapHtmlCopilot';
 
 const KnowledgeMapForceGraph3D = lazy(() =>

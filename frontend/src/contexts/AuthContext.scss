@@ -1,0 +1,12 @@
+@use '../styles/design-system/mixins' as *;
+@use '../styles/design-system/tokens' as ds;
+
+.auth-mode-compat-banner {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  text-align: center;
+  background: color-mix(in srgb, var(--color-warning) 22%, transparent);
+  color: var(--color-text, inherit);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-warning) 40%, transparent);
+}

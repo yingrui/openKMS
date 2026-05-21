@@ -18,7 +18,7 @@ import {
   pathnameAllowedByPatterns,
   type PermissionCatalogEntry,
 } from '../utils/permissionPatterns';
-import './AuthContext.css';
+import './AuthContext.scss';
 
 const ADMIN_ROLE = 'admin';
 

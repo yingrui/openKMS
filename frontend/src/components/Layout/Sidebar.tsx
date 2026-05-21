@@ -41,7 +41,7 @@ import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
-import './Sidebar.css';
+import './Sidebar.scss';
 
 function SidebarChannelTree({
   channels,

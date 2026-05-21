@@ -12,7 +12,7 @@ import {
 } from '../../data/articleChannelsApi';
 import { getDescendantIds, type ChannelNode } from '../../data/channelUtils';
 import { toast } from 'sonner';
-import '../documents/DocumentChannels.css';
+import '../documents/DocumentChannels.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
   const out: { id: string; name: string; depth: number }[] = [];

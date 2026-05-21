@@ -14,7 +14,7 @@ import {
   type ObjectInstanceResponse,
   type PropertyDef,
 } from '../../data/ontologyApi';
-import './ObjectTypeDetail.css';
+import './ObjectTypeDetail.scss';
 
 export function ObjectTypeDetail() {
   const { t } = useTranslation('explore');

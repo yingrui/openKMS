@@ -12,7 +12,7 @@ import {
   type ObjectTypeResponse,
   type LinkTypeResponse,
 } from '../../data/ontologyApi';
-import './ObjectExplorer.css';
+import './ObjectExplorer.scss';
 
 /** Convert object type name to Neo4j label (alphanumeric, underscore) */
 function neo4jLabel(name: string): string {

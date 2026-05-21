@@ -16,7 +16,7 @@ import {
   extractArtifactRaw,
   extractStreamingHtmlFenceInner,
 } from './knowledgeMapHtmlArtifact';
-import './KnowledgeMapHtmlCopilot.css';
+import './KnowledgeMapHtmlCopilot.scss';
 
 type KnowledgeMapHtmlCopilotProps = {
   status: KnowledgeMapHtmlStatus | null;

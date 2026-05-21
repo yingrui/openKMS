@@ -10,7 +10,7 @@ import {
   updateWikiSpace,
   type WikiSpaceResponse,
 } from '../../data/wikiSpacesApi';
-import '../knowledge-bases/KnowledgeBaseList.css';
+import '../knowledge-bases/KnowledgeBaseList.scss';
 
 export function WikiSpaceList() {
   const { t } = useTranslation('explore');

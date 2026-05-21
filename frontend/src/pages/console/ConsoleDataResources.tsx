@@ -11,8 +11,8 @@ import {
   patchDataResource,
   type DataResourceOut,
 } from '../../data/securityAdminApi';
-import './ConsoleDataSecurityGroups.css';
-import './ConsoleDataResources.css';
+import './ConsoleDataSecurityGroups.scss';
+import './ConsoleDataResources.scss';
 
 export function ConsoleDataResources() {
   const { hasPermission } = useAuth();

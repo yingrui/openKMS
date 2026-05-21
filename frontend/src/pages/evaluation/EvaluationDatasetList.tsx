@@ -12,7 +12,7 @@ import {
 } from '../../data/evaluationsApi';
 import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
-import './EvaluationDatasetList.css';
+import './EvaluationDatasetList.scss';
 
 export function EvaluationDatasetList() {
   const { t } = useTranslation('workspace');

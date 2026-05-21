@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getDocumentChannelDescription, getDocumentChannelName } from '../../data/channelUtils';
 import { createArticle, fetchArticles, type ArticleOut } from '../../data/articlesApi';
-import '../documents/DocumentChannel.css';
-import './Articles.css';
+import '../documents/DocumentChannel.scss';
+import './Articles.scss';
 
 function formatUpdated(iso: string): string {
   try {
@@ -122,7 +122,7 @@ export function ArticleChannel() {
     return (
       <div className="documents">
         <div className="page-header">
-          <p className="page-subtitle" style={{ color: 'var(--color-error)' }}>{error}</p>
+          <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
       </div>
     );
@@ -150,7 +150,7 @@ export function ArticleChannel() {
         <div className="page-header">
           <h1>{t('channel.notFoundTitle')}</h1>
           <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
-          <Link to="/articles" className="btn btn-secondary" style={{ marginTop: 16, display: 'inline-flex' }}>
+          <Link to="/articles" className="btn btn-secondary openkms-link-spaced">
             {t('channel.backToArticles')}
           </Link>
         </div>

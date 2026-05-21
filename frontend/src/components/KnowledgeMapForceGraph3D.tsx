@@ -6,7 +6,7 @@ import ForceGraph3D, { type ForceGraphMethods } from 'react-force-graph-3d';
 import { Expand, Loader2, RotateCcw } from 'lucide-react';
 import type { KnowledgeMapNode, ResourceLink } from '../data/knowledgeMapApi';
 import { type KMNode, type KMLink, resourceBadgeAndTitle, walkTree } from '../graph/knowledgeMapGraphModel';
-import './KnowledgeMapForceGraph.css';
+import './KnowledgeMapForceGraph.scss';
 
 const COLORS = {
   light: {
@@ -446,7 +446,7 @@ export function KnowledgeMapForceGraph3D({
               onEngineStop={handleEngineStop}
             />
           ) : (
-            <p className="km-map-graph-hint km-map-graph-loading" style={{ padding: '2rem', justifyContent: 'center' }}>
+            <p className="km-map-graph-hint km-map-graph-loading km-map-graph-loading--padded">
               <Loader2 className="km-map-graph-spin" size={20} aria-hidden />
               Preparing graph…
             </p>

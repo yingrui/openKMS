@@ -82,8 +82,8 @@ import {
   assistantHistoryStreamParts,
   type AssistantStreamPart,
 } from '../../components/wiki/wikiCopilotStreamParts';
-import '../../components/wiki/WikiSpaceAgentPanel.css';
-import './KnowledgeBaseDetail.css';
+import '../../components/wiki/WikiSpaceAgentPanel.scss';
+import './KnowledgeBaseDetail.scss';
 
 type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'settings';
 
@@ -381,7 +381,7 @@ function DocPickerChannelTree({
         </button>
       </div>
       {hasChildren && isExpanded && (
-        <ul className="kb-doc-picker-channel-tree" style={{ paddingLeft: 0 }}>
+        <ul className="kb-doc-picker-channel-tree kb-doc-picker-channel-tree--root">
           {node.children!.map((ch) => (
             <DocPickerChannelTree
               key={ch.id}
@@ -3056,7 +3056,7 @@ export function KnowledgeBaseDetail() {
           aria-modal="true"
           aria-labelledby="wiki-picker-title"
         >
-          <div className="kb-doc-picker" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+          <div className="kb-doc-picker kb-doc-picker--narrow" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
               <h2 id="wiki-picker-title">{t('detail.wikiPickerTitle')}</h2>
               <button

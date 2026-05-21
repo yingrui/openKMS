@@ -12,7 +12,7 @@ import {
   type ChannelNode,
 } from '../../data/channelUtils';
 import { updateArticleChannel } from '../../data/articleChannelsApi';
-import '../documents/DocumentChannelSettings.css';
+import '../documents/DocumentChannelSettings.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
   const out: { id: string; name: string; depth: number }[] = [];
@@ -104,7 +104,7 @@ export function ArticleChannelSettings() {
   if (error) {
     return (
       <div className="document-channel-settings">
-        <p className="page-subtitle" style={{ color: 'var(--color-error)' }}>{error}</p>
+        <p className="page-subtitle page-subtitle--error">{error}</p>
       </div>
     );
   }

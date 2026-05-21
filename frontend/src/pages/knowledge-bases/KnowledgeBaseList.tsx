@@ -10,7 +10,7 @@ import {
   updateKnowledgeBase,
   type KnowledgeBaseResponse,
 } from '../../data/knowledgeBasesApi';
-import './KnowledgeBaseList.css';
+import './KnowledgeBaseList.scss';
 
 export function KnowledgeBaseList() {
   const { t } = useTranslation('knowledgeBase');

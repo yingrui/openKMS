@@ -13,7 +13,7 @@ import {
   type TableInfo,
 } from '../../data/datasetsApi';
 import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import '../ontology/ontology-admin.css';
+import '../ontology/ontology-admin.scss';
 
 export function ConsoleDatasets() {
   const { t } = useTranslation('console');
@@ -289,7 +289,7 @@ export function ConsoleDatasets() {
               </label>
               <label>
                 <span>{t('datasets.fieldTableFromSource')}</span>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="openkms-table-picker-row">
                   <select
                     value={tables.length ? `${formSchema}.${formTable}` : ''}
                     onChange={(e) => {
@@ -301,7 +301,7 @@ export function ConsoleDatasets() {
                       }
                     }}
                     disabled={!formDataSourceId || loadingTables || tables.length === 0}
-                    style={{ flex: 1 }}
+                    className="openkms-flex-1"
                   >
                     <option value="">{loadingTables ? t('datasets.loadingTables') : t('datasets.selectTable')}</option>
                     {tables.map((t) => (

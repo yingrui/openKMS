@@ -5,7 +5,7 @@ import { Shield, KeyRound, Database, Box, Settings, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_ALL, PERM_CONSOLE_GROUPS, PERM_CONSOLE_PERMISSIONS } from '../../config/permissions';
 import { fetchSecurityPermissions } from '../../data/securityAdminApi';
-import './ConsoleOverview.css';
+import './ConsoleOverview.scss';
 
 const PERMS_ONBOARDING_KEY = 'openkms_permissions_onboarding_dismissed';
 

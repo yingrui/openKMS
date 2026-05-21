@@ -4,7 +4,7 @@ import { DocumentDetailSplitPanel } from './DocumentDetail.splitPanel';
 import { DocumentDetailInfoPanel } from './DocumentDetail.infoPanel';
 import { DocumentDetailVersionModals } from './DocumentDetail.modals';
 import { useDocumentDetail } from './useDocumentDetail';
-import './DocumentDetail.css';
+import './DocumentDetail.scss';
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();

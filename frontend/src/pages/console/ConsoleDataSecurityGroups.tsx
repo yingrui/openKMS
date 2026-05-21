@@ -11,7 +11,7 @@ import {
   patchAccessGroup,
   type AccessGroupOut,
 } from '../../data/securityAdminApi';
-import './ConsoleDataSecurityGroups.css';
+import './ConsoleDataSecurityGroups.scss';
 
 export function ConsoleDataSecurityGroups() {
   const { t } = useTranslation('console');

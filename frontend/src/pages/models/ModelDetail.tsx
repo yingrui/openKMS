@@ -9,7 +9,7 @@ import {
   type ApiModelResponse,
   type ModelTestResponse,
 } from '../../data/modelsApi';
-import './ModelDetail.css';
+import './ModelDetail.scss';
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'error';

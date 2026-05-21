@@ -11,7 +11,7 @@ import {
   neo4jDeleteAll,
   type DataSourceResponse,
 } from '../../data/dataSourcesApi';
-import '../ontology/ontology-admin.css';
+import '../ontology/ontology-admin.scss';
 
 const KINDS = ['postgresql', 'neo4j'] as const;
 

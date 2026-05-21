@@ -15,7 +15,7 @@ import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { toast } from 'sonner';
 import { updateChannel, type LabelConfigItem } from '../../data/channelsApi';
-import './DocumentChannelSettings.css';
+import './DocumentChannelSettings.scss';
 
 const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
   academic: [
@@ -312,7 +312,7 @@ export function DocumentChannelSettings() {
           <div className="document-channel-settings-field">
             <label htmlFor="pipeline">{t('settings.pipelineLabel')}</label>
             {pipelinesLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="dcs-inline-loading">
                 <Loader2 size={16} className="dcs-spinner" />
                 <span>{t('settings.loadingPipelines')}</span>
               </div>
@@ -358,7 +358,7 @@ export function DocumentChannelSettings() {
           <div className="document-channel-settings-field">
             <label htmlFor="extraction-model">{t('settings.extractionModel')}</label>
             {modelsLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div className="dcs-inline-loading">
                 <Loader2 size={16} className="dcs-spinner" />
                 <span>{t('settings.loadingModels')}</span>
               </div>
@@ -488,8 +488,7 @@ export function DocumentChannelSettings() {
                     <select
                       value={field.object_type_id ?? ''}
                       onChange={(e) => updateSchemaField(i, { object_type_id: e.target.value || undefined })}
-                      className="dcs-schema-select dcs-schema-object-type"
-                      style={{ marginTop: 4 }}
+                      className="dcs-schema-select dcs-schema-object-type dcs-schema-select--stacked"
                     >
                       <option value="">{t('settings.selectObjectType')}</option>
                       {masterDataObjectTypes.map((ot) => (
@@ -522,7 +521,7 @@ export function DocumentChannelSettings() {
                   : '{\n  "type": "object",\n  "properties": {},\n  "required": []\n}'}
               </pre>
             )}
-            <div className="document-channel-settings-field" style={{ marginTop: 16 }}>
+            <div className="document-channel-settings-field document-channel-settings-field--spaced">
               <label htmlFor="extraction-max-instances">{t('settings.maxInstancesLabel')}</label>
               <input
                 id="extraction-max-instances"
@@ -531,8 +530,7 @@ export function DocumentChannelSettings() {
                 placeholder={t('settings.maxInstancesPlaceholder')}
                 value={objectTypeExtractionMaxInstances}
                 onChange={(e) => setObjectTypeExtractionMaxInstances(e.target.value === '' ? '' : Number(e.target.value))}
-                className="dcs-schema-input"
-                style={{ width: 120 }}
+                className="dcs-schema-input dcs-input-w-120"
               />
               <p className="document-channel-settings-hint">
                 {t('settings.maxInstancesHint')}
@@ -583,14 +581,12 @@ export function DocumentChannelSettings() {
                       placeholder={t('settings.displayLabelPlaceholder')}
                       value={item.display_label ?? ''}
                       onChange={(e) => updateLabelConfig(i, { display_label: e.target.value })}
-                      className="dcs-schema-input"
-                      style={{ minWidth: 120 }}
+                      className="dcs-schema-input dcs-min-w-120"
                     />
                     <select
                       value={item.type === 'list[object_type]' ? 'list[object_type]' : 'object_type'}
                       onChange={(e) => updateLabelConfig(i, { type: e.target.value as 'object_type' | 'list[object_type]' })}
-                      className="dcs-schema-select"
-                      style={{ minWidth: 140 }}
+                      className="dcs-schema-select dcs-min-w-140"
                     >
                       <option value="object_type">object_type</option>
                       <option value="list[object_type]">list[object_type]</option>
@@ -608,7 +604,7 @@ export function DocumentChannelSettings() {
               ))}
             </div>
             {objectTypesLoading ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <div className="dcs-inline-loading--mt">
                 <Loader2 size={16} className="dcs-spinner" />
                 <span>{t('settings.loadingObjectTypes')}</span>
               </div>
@@ -617,7 +613,7 @@ export function DocumentChannelSettings() {
                 {t('settings.noMasterDataTypes')}
               </p>
             ) : null}
-            <button type="button" className="btn btn-secondary dcs-add-field" onClick={addLabelConfig} style={{ marginTop: 8 }}>
+            <button type="button" className="btn btn-secondary dcs-add-field dcs-add-field--mt" onClick={addLabelConfig}>
               <Plus size={14} />
               <span>{t('settings.addManualLabel')}</span>
             </button>

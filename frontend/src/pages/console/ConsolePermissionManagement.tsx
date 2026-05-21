@@ -29,8 +29,8 @@ import {
   type SecurityPermissionRowOut,
   type SecurityRoleOut,
 } from '../../data/securityAdminApi';
-import '../ontology/ontology-admin.css';
-import './ConsolePermissionManagement.css';
+import '../ontology/ontology-admin.scss';
+import './ConsolePermissionManagement.scss';
 
 const ONBOARDING_DISMISSED_KEY = 'openkms_permissions_onboarding_dismissed';
 

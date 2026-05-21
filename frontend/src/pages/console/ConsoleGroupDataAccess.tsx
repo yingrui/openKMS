@@ -15,7 +15,7 @@ import {
   type DataResourceOut,
   type GroupScopesOut,
 } from '../../data/securityAdminApi';
-import './ConsoleGroupDataAccess.css';
+import './ConsoleGroupDataAccess.scss';
 
 type ChannelNode = { id: string; name: string; children?: ChannelNode[] };
 

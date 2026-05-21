@@ -6,7 +6,7 @@ import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { useArticleChannels } from '../contexts/ArticleChannelsContext';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import { fetchGlobalSearch, type GlobalSearchHit, type GlobalSearchResponse } from '../data/globalSearchApi';
-import './GlobalSearch.css';
+import './GlobalSearch.scss';
 
 type SearchTab = 'all' | 'documents' | 'articles' | 'wiki_spaces' | 'knowledge_bases';
 

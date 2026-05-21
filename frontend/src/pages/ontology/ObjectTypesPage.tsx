@@ -18,7 +18,7 @@ import {
   type ColumnMetadata,
 } from '../../data/datasetsApi';
 import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
-import './ontology-admin.css';
+import './ontology-admin.scss';
 
 const PROPERTY_TYPES = ['string', 'number', 'boolean'];
 
@@ -497,7 +497,7 @@ export function ObjectTypesPage() {
                   onChange={(e) => setFormIsMasterData(e.target.checked)}
                 />
                 <span>Master Data</span>
-                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                <span className="console-modal-hint console-modal-hint--block">
                   Only master data object types can be used for document labels in channel settings.
                 </span>
               </label>
@@ -516,7 +516,7 @@ export function ObjectTypesPage() {
                       </option>
                     ))}
                 </select>
-                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                <span className="console-modal-hint console-modal-hint--block">
                   Property used to display object instances in document label pickers.
                 </span>
               </label>
@@ -533,7 +533,7 @@ export function ObjectTypesPage() {
                     </option>
                   ))}
                 </select>
-                <span className="console-modal-hint" style={{ marginTop: 4, display: 'block' }}>
+                <span className="console-modal-hint console-modal-hint--block">
                   Select a dataset to auto-fill properties from columns. Check/uncheck to include or exclude.
                 </span>
               </label>

@@ -5,7 +5,7 @@ import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'luc
 import { toast } from 'sonner';
 import { fetchJobs, createJob, retryJob, deleteJob, markJobFailed, type JobResponse } from '../../data/jobsApi';
 import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
-import './Jobs.css';
+import './Jobs.scss';
 
 function formatDate(iso: string | undefined | null, dash: string): string {
   if (!iso) return dash;
@@ -187,7 +187,7 @@ export function Jobs() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                    <td colSpan={8} className="table-empty">
                       {jobs.length === 0 ? t('jobs.empty') : t('jobs.noMatches')}
                     </td>
                   </tr>

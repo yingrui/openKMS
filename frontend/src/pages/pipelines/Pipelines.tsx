@@ -12,7 +12,7 @@ import {
   type PipelineResponse,
 } from '../../data/pipelinesApi';
 import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
-import './Pipelines.css';
+import './Pipelines.scss';
 
 export function Pipelines() {
   const { t } = useTranslation('workspace');
@@ -191,7 +191,7 @@ export function Pipelines() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                    <td colSpan={6} className="table-empty">
                       {pipelines.length === 0 ? t('pipelines.empty') : t('pipelines.noMatches')}
                     </td>
                   </tr>
