@@ -49,7 +49,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/api/auth/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | POST | `/api/auth/clear-session` | Clear backend session (called before logout) |
 | GET | `/api/auth/logout` | Clear session; OIDC: redirect to IdP logout; local: redirect to frontend |
-| GET | `/api/home/hub` | Authenticated landing-screen payload: per-section quick links the user is permitted to see |
+| GET | `/api/home/hub` | Authenticated landing-screen payload: optional **`knowledge_map`** `{ node_count, link_count }` when the user has **knowledge_map:read**; **`work_items`** (document relationship queue); **`share_requests`** (placeholder) |
 | GET | `/api/search` | Authenticated unified metadata search: query `q`, `types` (`all` or comma-list: `documents`, `articles`, `wiki_spaces`, `knowledge_bases`), optional `document_channel_id`, `article_channel_id`, `updated_after` / `updated_before` (ISO 8601), `limit` (1–100, default 30). Returns sections with `items` (`id`, `name`, `title`, `kind`, `url_path`, `channel_id`, `channel_name`, `updated_at`) and `total` per type; types the user cannot read are empty; **403** if none of the requested types are allowed; **404** if a channel id is unknown. Scoped like list APIs (documents, articles, wiki spaces, KB visibility). **`wiki_spaces`** items use **`url_path`** **`/wikis/{id}/pages/graph`**. |
 | HEAD | `/api/search` | Same auth / permission overlap check as GET; no JSON body |
 | GET | `/api/providers/{id}/models` | Authenticated: list models registered under this provider |
@@ -266,7 +266,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/feature-toggles` | Get feature toggle state (includes hasNeo4jDataSource; authenticated) |
+| GET | `/api/feature-toggles` | Get feature toggle state (includes `knowledge_map`, `hasNeo4jDataSource`; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ## Articles
@@ -348,23 +348,23 @@ Used by the Wiki agent surface (and any other in-app assistant). Uses `OPENKMS_A
 | POST | `/api/agent/conversations/{id}/messages` | Send a user message (`content`, optional `stream`, optional `session_id` for Langfuse grouping on the embedded wiki agent). **`stream: true`** → **`application/x-ndjson`** lines: `user`, `delta`, `tool_*`, `done` / `error`; **`stream: false`** → JSON with user + assistant messages |
 | DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this message and everything after it (used by "regenerate") |
 
-## Knowledge map (taxonomy)
+## Knowledge map
 
 The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowledge Map**: `knowledge-map nodes …` and `knowledge-map resource-links …` (see `openkms-skill/reference.md`).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/taxonomy/nodes/tree` | Full Knowledge Map tree for the navigator |
-| POST | `/api/taxonomy/nodes` | Create node (`name`, optional `parent_id`, `description`, `sort_order`) |
-| PATCH | `/api/taxonomy/nodes/{id}` | Update node (rename, move, reorder) |
-| DELETE | `/api/taxonomy/nodes/{id}` | Delete node and its subtree |
-| GET | `/api/taxonomy/resource-links` | List all resource–node mappings (filter client-side if needed) |
-| PUT | `/api/taxonomy/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `taxonomy_node_id`) |
-| DELETE | `/api/taxonomy/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |
-| GET | `/api/taxonomy/map-html/status` | HTML overview snapshot: compares live semantic `content_hash` to stored artifact; `stale`, `has_artifact`, `nodes_modified_at` |
-| GET | `/api/taxonomy/map-html` | Cached HTML document (`text/html`) when a snapshot exists (`404` otherwise) |
-| POST | `/api/taxonomy/map-html/regenerate` | One-shot rebuild via LLM (`taxonomy:write`); hydrates placeholders |
-| POST | `/api/taxonomy/map-html/designer/chat` | Body `{ messages, working_html?, stream? }`. **`stream: false`** (default): JSON `{ content }` (full assistant text). **`stream: true`**: `application/x-ndjson` — lines are JSON objects: **`delta`** (`t` text chunk), optional **`tool_start`** / **`tool_end`**, then **`done`** (`content` full text) or **`error`** (`detail`). Same context as non-streaming; model may use **`apply_html_patches`** and/or a fenced `html` artifact |
-| POST | `/api/taxonomy/map-html/preview` | Hydrate + sanitize a draft HTML string for iframe preview (`taxonomy:write`) |
-| POST | `/api/taxonomy/map-html/publish` | Save draft as the live snapshot (`taxonomy:write`; same finalize rules as regenerate) |
-| DELETE | `/api/taxonomy/map-html` | Remove saved overview row (`taxonomy:write`) so the designer can start from scratch |
+| GET | `/api/knowledge-map/nodes/tree` | Full Knowledge Map tree for the navigator |
+| POST | `/api/knowledge-map/nodes` | Create node (`name`, optional `parent_id`, `description`, `sort_order`) |
+| PATCH | `/api/knowledge-map/nodes/{id}` | Update node (rename, move, reorder) |
+| DELETE | `/api/knowledge-map/nodes/{id}` | Delete node and its subtree |
+| GET | `/api/knowledge-map/resource-links` | List all resource–node mappings (filter client-side if needed) |
+| PUT | `/api/knowledge-map/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `knowledge_map_node_id`) |
+| DELETE | `/api/knowledge-map/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |
+| GET | `/api/knowledge-map/map-html/status` | HTML overview snapshot: compares live semantic `content_hash` to stored artifact; `stale`, `has_artifact`, `nodes_modified_at` |
+| GET | `/api/knowledge-map/map-html` | Cached HTML document (`text/html`) when a snapshot exists (`404` otherwise) |
+| POST | `/api/knowledge-map/map-html/regenerate` | One-shot rebuild via LLM (`knowledge_map:write`); hydrates placeholders |
+| POST | `/api/knowledge-map/map-html/designer/chat` | Body `{ messages, working_html?, stream? }`. **`stream: false`** (default): JSON `{ content }` (full assistant text). **`stream: true`**: `application/x-ndjson` — lines are JSON objects: **`delta`** (`t` text chunk), optional **`tool_start`** / **`tool_end`**, then **`done`** (`content` full text) or **`error`** (`detail`). Same context as non-streaming; model may use **`apply_html_patches`** and/or a fenced `html` artifact |
+| POST | `/api/knowledge-map/map-html/preview` | Hydrate + sanitize a draft HTML string for iframe preview (`knowledge_map:write`) |
+| POST | `/api/knowledge-map/map-html/publish` | Save draft as the live snapshot (`knowledge_map:write`; same finalize rules as regenerate) |
+| DELETE | `/api/knowledge-map/map-html` | Remove saved overview row (`knowledge_map:write`) so the designer can start from scratch |

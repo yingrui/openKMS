@@ -209,7 +209,7 @@
   font-size: 0.9rem;
 }
 
-/* Signed-in hub without taxonomy: work items + shortcuts centered */
+/* Signed-in hub without Knowledge Map read: work items + shortcuts centered */
 .home-hub-split {
   display: flex;
   flex-direction: column;
@@ -247,7 +247,7 @@
   }
 }
 
-/* Signed-in hub with taxonomy: Knowledge Map graph is the visual center */
+/* Signed-in hub with Knowledge Map: graph is the visual center */
 .home--hub-map-center {
   max-width: 1480px;
   margin: 0 auto;

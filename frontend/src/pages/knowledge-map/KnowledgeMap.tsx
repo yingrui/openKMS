@@ -24,12 +24,12 @@ import {
   deleteKnowledgeMapNode,
   fetchResourceLinks,
   fetchKnowledgeMapTree,
-  fetchTaxonomyMapHtmlStatus,
+  fetchKnowledgeMapHtmlStatus,
   updateKnowledgeMapNode,
   upsertResourceLink,
-  type ResourceLink,
+  type KnowledgeMapHtmlStatus,
   type KnowledgeMapNode,
-  type TaxonomyMapHtmlStatus,
+  type ResourceLink,
 } from '../../data/knowledgeMapApi';
 import { fetchWikiSpaces } from '../../data/wikiSpacesApi';
 import './KnowledgeMap.css';
@@ -411,8 +411,8 @@ export function KnowledgeMap() {
   const { channels } = useDocumentChannels();
   const [searchParams, setSearchParams] = useSearchParams();
   const nodeFromUrl = searchParams.get('node');
-  const canRead = hasPermission('taxonomy:read') || hasPermission('all');
-  const canWrite = hasPermission('taxonomy:write') || hasPermission('all');
+  const canRead = hasPermission('knowledge_map:read') || hasPermission('all');
+  const canWrite = hasPermission('knowledge_map:write') || hasPermission('all');
 
   const [tree, setTree] = useState<KnowledgeMapNode[]>([]);
   const [links, setLinks] = useState<ResourceLink[]>([]);
@@ -435,14 +435,14 @@ export function KnowledgeMap() {
 
   const [mapUiTab, setMapUiTab] = useState<'edit' | 'explore3d' | 'mapHtml'>('edit');
 
-  const [mapHtmlStatus, setMapHtmlStatus] = useState<TaxonomyMapHtmlStatus | null>(null);
+  const [mapHtmlStatus, setMapHtmlStatus] = useState<KnowledgeMapHtmlStatus | null>(null);
   const [mapHtmlStatusLoading, setMapHtmlStatusLoading] = useState(false);
 
   const refreshMapHtmlStatus = useCallback(async () => {
     if (!canRead) return;
     setMapHtmlStatusLoading(true);
     try {
-      setMapHtmlStatus(await fetchTaxonomyMapHtmlStatus());
+      setMapHtmlStatus(await fetchKnowledgeMapHtmlStatus());
     } catch {
       setMapHtmlStatus(null);
     } finally {
@@ -518,7 +518,7 @@ export function KnowledgeMap() {
   );
 
   const linksForSelected = useMemo(
-    () => (selectedNodeId ? links.filter((r) => r.taxonomy_node_id === selectedNodeId) : []),
+    () => (selectedNodeId ? links.filter((r) => r.knowledge_map_node_id === selectedNodeId) : []),
     [links, selectedNodeId],
   );
 
@@ -611,7 +611,7 @@ export function KnowledgeMap() {
     }
     try {
       await upsertResourceLink({
-        taxonomy_node_id: selectedNodeId,
+        knowledge_map_node_id: selectedNodeId,
         resource_type: linkType,
         resource_id: linkResourceId.trim(),
       });
@@ -638,7 +638,7 @@ export function KnowledgeMap() {
     if (!tree.length && mapUiTab === 'explore3d') setMapUiTab('edit');
   }, [tree.length, mapUiTab]);
 
-  const onSelectTaxonomyFromGraph = useCallback(
+  const onSelectTermFromGraph = useCallback(
     (id: string) => {
       setSelectedNodeId(id);
       setSearchParams(
@@ -914,7 +914,7 @@ export function KnowledgeMap() {
                     tree={tree}
                     links={links}
                     selectedNodeId={selectedNodeId}
-                    onSelectNode={onSelectTaxonomyFromGraph}
+                    onSelectNode={onSelectTermFromGraph}
                     resolveResourceLabel={resolveResourceLabel}
                   />
                 </Suspense>

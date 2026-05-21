@@ -128,8 +128,8 @@ function App() {
         <Route path="/auth/silent-renew" element={<OidcSilentRenew />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
-          <Route path="knowledge-map" element={<FeatureGate feature="taxonomy"><KnowledgeMap /></FeatureGate>} />
-          <Route path="taxonomy" element={<FeatureGate feature="taxonomy"><LegacyKnowledgeMapPathRedirect /></FeatureGate>} />
+          <Route path="knowledge-map" element={<FeatureGate feature="knowledge_map"><KnowledgeMap /></FeatureGate>} />
+          <Route path="taxonomy" element={<FeatureGate feature="knowledge_map"><LegacyKnowledgeMapPathRedirect /></FeatureGate>} />
           <Route path="search" element={<GlobalSearch />} />
           <Route path="documents" element={<Outlet />}>
             <Route index element={<DocumentsIndex />} />

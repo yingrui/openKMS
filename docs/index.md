@@ -17,7 +17,7 @@ openKMS organizes content in **channel trees** (similar to Google Drive folders)
 
 A **Wiki workspace** offers free-form notes with vault import, a graph view, and an embedded Wiki Copilot.
 
-A unified **Knowledge Map** ties terms (taxonomy) to channels, wiki spaces, and article channels.
+A unified **Knowledge Map** ties terms to channels, wiki spaces, and article channels.
 
 ## Where to start
 

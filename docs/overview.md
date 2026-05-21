@@ -34,7 +34,7 @@ A short, high-level tour of openKMS. For the full system design see [Architectur
 ## Supporting surfaces
 
 - **Wiki spaces** — free-form notes with vault import, page graph view, and a **Wiki Copilot** that can read pages and (with `wikis:write`) upsert them.
-- **Knowledge Map** — taxonomy of terms with links to channels / wiki spaces / article channels; rendered as a force graph on the home page.
+- **Knowledge Map** — hierarchical terms with links to channels / wiki spaces / article channels; rendered as a force graph on the home page.
 - **Glossaries** — bilingual (EN/CN) term definitions with AI-suggested translations.
 - **Ontology (objects & links)** — typed object instances and link types stored in the same Postgres database.
 - **Pipelines, Jobs, Models, Data sources, Datasets, Evaluations** — operator-facing surfaces under the **Console** and the Ontology sidebar.

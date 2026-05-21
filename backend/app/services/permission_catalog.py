@@ -36,8 +36,8 @@ PERM_EVAL_READ = "evaluation:read"
 PERM_EVAL_WRITE = "evaluation:write"
 PERM_ONTOLOGY_READ = "ontology:read"
 PERM_ONTOLOGY_WRITE = "ontology:write"
-PERM_KNOWLEDGE_MAP_READ = "taxonomy:read"
-PERM_KNOWLEDGE_MAP_WRITE = "taxonomy:write"
+PERM_KNOWLEDGE_MAP_READ = "knowledge_map:read"
+PERM_KNOWLEDGE_MAP_WRITE = "knowledge_map:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 

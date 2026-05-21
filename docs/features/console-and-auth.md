@@ -11,7 +11,7 @@ Operator surface (`/console/*`), permission catalog and roles, data security (gr
 - **Data Sources** (`/console/data-sources`): `console:data_sources` (or admin). **Datasets and schema** (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`): `console:datasets` / `console:object_types` / `console:link_types` **or** `ontology:read` / `ontology:write` as applicable (API uses `require_any_permission`); System Settings, Users & Roles, Feature Toggles remain `console:*` (or admin).
 - **Users & Roles** (`/console/users`): requires `console:users`. **Local auth**: list users, toggle `is_admin` (syncs security role links), delete/add users. **OIDC auth**: read-only notice.
 - **System settings** (`/console/settings`): `console:settings` (or admin). **`GET /api/public/settings`** / **`PUT /api/public/settings`** load and persist **`system_settings`** (Postgres singleton row): `system_name`, `default_timezone`, `api_base_url_note` (optional note only; SPA API URL remains build-time). A **`PUT`** whose trimmed `system_name` would be empty is stored as **`openKMS`**. **`GET /api/public/system`** returns `{ "system_name" }` **without authentication** (strict middleware allowlist); the value is the trimmed DB field and may be **`""`**. The **sidebar** title stays **blank** until that response arrives, then shows **`openKMS`** when the name is empty or whitespace (otherwise the returned name); on fetch failure it shows **`openKMS`**. After saves, **`notifySystemSettingsUpdated`** triggers the same fetch (custom event). Migration seeds row `id=1` and attaches `GET`/`PUT` patterns to **`console:settings`** for strict API enforcement.
-- Feature toggles: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `taxonomy` (default-enabled) and `evaluations` (default-disabled, experimental) – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
+- Feature toggles: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `knowledge_map` (default-enabled) and `evaluations` (default-disabled, experimental) – persisted in PostgreSQL (`feature_toggles` table), shared across all users/devices
 - `GET /api/feature-toggles` (authenticated) returns current toggle state
 - `PUT /api/feature-toggles` requires `console:feature_toggles` (or JWT admin)
 
@@ -29,7 +29,7 @@ Defined in [`backend/app/services/permission_catalog.py`](https://github.com/yin
 | Evaluation | `evaluation:read`, `evaluation:write` |
 | Wiki | `wikis:read`, `wikis:write` |
 | Ontology | `ontology:read`, `ontology:write` |
-| Knowledge map | `taxonomy:read`, `taxonomy:write` |
+| Knowledge map | `knowledge_map:read`, `knowledge_map:write` |
 | Catch-all | `all` (built-in admin key; cannot be edited or deleted) |
 
 ## Authentication

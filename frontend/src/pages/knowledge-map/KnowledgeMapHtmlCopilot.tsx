@@ -4,12 +4,12 @@ import { Bot, ExternalLink, Loader2, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '../../config';
 import {
-  deleteTaxonomyMapHtml,
-  postTaxonomyMapHtmlDesignerChatStream,
-  postTaxonomyMapHtmlPreview,
-  postTaxonomyMapHtmlPublish,
+  deleteKnowledgeMapHtml,
+  postKnowledgeMapHtmlDesignerChatStream,
+  postKnowledgeMapHtmlPreview,
+  postKnowledgeMapHtmlPublish,
+  type KnowledgeMapHtmlStatus,
   type MapHtmlDesignerMessage,
-  type TaxonomyMapHtmlStatus,
 } from '../../data/knowledgeMapApi';
 import {
   chatDisplayOmitHtmlFenceBody,
@@ -19,7 +19,7 @@ import {
 import './KnowledgeMapHtmlCopilot.css';
 
 type KnowledgeMapHtmlCopilotProps = {
-  status: TaxonomyMapHtmlStatus | null;
+  status: KnowledgeMapHtmlStatus | null;
   statusLoading: boolean;
   canWrite: boolean;
   onRefreshStatus: () => Promise<void>;
@@ -55,7 +55,7 @@ export function KnowledgeMapHtmlCopilot({
   const streamAbortRef = useRef<AbortController | null>(null);
   const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const mapHtmlPath = '/api/taxonomy/map-html';
+  const mapHtmlPath = '/api/knowledge-map/map-html';
   const previewSrc = useMemo(() => {
     const base = config.apiUrl.replace(/\/$/, '');
     return base ? `${base}${mapHtmlPath}` : mapHtmlPath;
@@ -114,7 +114,7 @@ export function KnowledgeMapHtmlCopilot({
     let cancelled = false;
     void (async () => {
       try {
-        const { html } = await postTaxonomyMapHtmlPreview(draftRaw);
+        const { html } = await postKnowledgeMapHtmlPreview(draftRaw);
         if (!cancelled) {
           setPreviewSafe(html);
           setPreviewError(null);
@@ -163,7 +163,7 @@ export function KnowledgeMapHtmlCopilot({
 
     let acc = '';
     try {
-      await postTaxonomyMapHtmlDesignerChatStream(
+      await postKnowledgeMapHtmlDesignerChatStream(
         toPayload(historyForPayload),
         (e) => {
           if (e.type === 'delta' && e.t) {
@@ -226,7 +226,7 @@ export function KnowledgeMapHtmlCopilot({
     if (!draftRaw?.trim() || !canWrite || publishBusy) return;
     setPublishBusy(true);
     try {
-      await postTaxonomyMapHtmlPublish(draftRaw);
+      await postKnowledgeMapHtmlPublish(draftRaw);
       toast.success(t('mapHtmlDesignerPublished'));
       setDraftRaw(null);
       setDirectPreviewHtml(null);
@@ -245,7 +245,7 @@ export function KnowledgeMapHtmlCopilot({
     if (!canWrite) return;
     if (!window.confirm(t('mapHtmlDesignerDeleteConfirm'))) return;
     try {
-      await deleteTaxonomyMapHtml();
+      await deleteKnowledgeMapHtml();
       toast.success(t('mapHtmlDesignerDeleted'));
       setLines([]);
       setDraftRaw(null);

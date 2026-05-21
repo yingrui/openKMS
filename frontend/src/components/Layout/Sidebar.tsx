@@ -489,7 +489,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             <span>{t('wikiSpaces')}</span>
           </NavLink>
         )}
-        {toggles.taxonomy !== false &&
+        {toggles.knowledge_map !== false &&
           (canAccessPath('/knowledge-map') || canAccessPath('/taxonomy')) && (
           <NavLink
             to="/knowledge-map"

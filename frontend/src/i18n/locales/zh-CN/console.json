@@ -74,7 +74,7 @@
         "name": "评测",
         "description": "知识库问答评测（实验）。通过「问题 + 期望答案」衡量 RAG 质量。"
       },
-      "taxonomy": {
+      "knowledge_map": {
         "name": "知识地图",
         "description": "来自频道与 Wiki 空间的层级导航，便于浏览内容组织方式。"
       }

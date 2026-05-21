@@ -62,10 +62,10 @@ class KnowledgeMapResourceLink(Base):
     node: Mapped["KnowledgeMapNode"] = relationship("KnowledgeMapNode", back_populates="resource_links")
 
 
-DEFAULT_TAXONOMY_MAP_HTML_ARTIFACT_ID = "default"
+DEFAULT_KNOWLEDGE_MAP_HTML_ARTIFACT_ID = "default"
 
 
-class TaxonomyMapHtmlArtifact(Base):
+class KnowledgeMapHtmlArtifact(Base):
     """Cached LLM-generated HTML snapshot for the Knowledge Map (single logical row, pk id)."""
 
     __tablename__ = "taxonomy_map_html_artifact"

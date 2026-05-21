@@ -9,21 +9,21 @@ import pytest
 
 def test_nodes_tree(mock_api):
     recorded, responses = mock_api
-    responses[("GET", "/api/taxonomy/nodes/tree")] = (200, [])
+    responses[("GET", "/api/knowledge-map/nodes/tree")] = (200, [])
 
     from openkms.commands.knowledge_map import cmd_nodes_tree
 
     cmd_nodes_tree(argparse.Namespace())
-    assert recorded[-1].url.path == "/api/taxonomy/nodes/tree"
+    assert recorded[-1].url.path == "/api/knowledge-map/nodes/tree"
 
 
 def test_resource_links_put_yes(mock_api):
     recorded, responses = mock_api
-    responses[("PUT", "/api/taxonomy/resource-links")] = (
+    responses[("PUT", "/api/knowledge-map/resource-links")] = (
         200,
         {
             "id": "lnk1",
-            "taxonomy_node_id": "n1",
+            "knowledge_map_node_id": "n1",
             "resource_type": "wiki_space",
             "resource_id": "ws1",
         },
@@ -33,7 +33,7 @@ def test_resource_links_put_yes(mock_api):
 
     cmd_resource_links_put(
         argparse.Namespace(
-            taxonomy_node_id="n1",
+            knowledge_map_node_id="n1",
             resource_type="wiki_space",
             resource_id="ws1",
             yes=True,
@@ -41,7 +41,7 @@ def test_resource_links_put_yes(mock_api):
         )
     )
     assert json.loads(recorded[-1].content) == {
-        "taxonomy_node_id": "n1",
+        "knowledge_map_node_id": "n1",
         "resource_type": "wiki_space",
         "resource_id": "ws1",
     }

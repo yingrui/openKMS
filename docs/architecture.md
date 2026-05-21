@@ -7,11 +7,11 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home (Knowledge Map force graph when taxonomy:read), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Jobs, Models"]
+    FE["Home (Knowledge Map force graph when knowledge_map:read), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Jobs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/taxonomy, incl. map-html snapshot), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/knowledge-map, incl. map-html snapshot), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -99,14 +99,14 @@ frontend/src/
 ├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
 ├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
 ├── components/Layout/       # MainLayout (route gate; **`app-content--home`** padding on `/`), Sidebar (nav gated by canAccessPath + toggles; **Glossaries** and **Ontology** are sibling top-level links, ontology sub-routes indented under Ontology when active; **collapsible** left rail—when narrow, **icon-only** top-level links + labels hidden + channel/ontology subnavs hidden; preference in **`localStorage`**), Header
-├── components/KnowledgeMapForceGraph.tsx (+ `.css`)  # Home hub: **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from taxonomy tree + resource links; taxonomy nodes as teal circles; resource nodes differentiated in canvas (channel pill + accent bar, wiki hexagon, articles tall pill); term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
+├── components/KnowledgeMapForceGraph.tsx (+ `.css`)  # Home hub: **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from Knowledge Map tree + resource links; term nodes as teal circles; resource nodes differentiated in canvas (channel pill + accent bar, wiki hexagon, articles tall pill); term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
 ├── components/KnowledgeMapForceGraph3D.tsx  # Optional 3D exploration: **`react-force-graph-3d`** (lazy-loaded from `/knowledge-map` **Explore (3D)** tab only); shared graph build via `src/graph/knowledgeMapGraphModel.ts`
 ├── graph/knowledgeMapGraphModel.ts  # `walkTree` + `KMNode` / `KMLink` types shared by 2D and 3D Knowledge Map force graphs
 ├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
 ├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
 ├── components/markdown/     # `richMarkdown.tsx`: GFM + KaTeX + `rehype-raw` + **Mermaid** fenced blocks; **WikiWorkspace** / **WikiPagePanel** preview, **WikiAgentMessageBody**, **DocumentDetail** markdown
 ├── contexts/                # DocumentChannelsContext, ArticleChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/taxonomy/*`), …, featureTogglesApi, securityAdminApi, channelUtils, **userApiKeysApi** (`/api/auth/api-keys`)
+├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/knowledge-map/*`), …, featureTogglesApi, securityAdminApi, channelUtils, **userApiKeysApi** (`/api/auth/api-keys`)
 └── pages/
     ├── Home.tsx
     ├── Profile.tsx            # /profile — `GET /api/auth/me`
@@ -168,7 +168,7 @@ backend/
 │   │   ├── evaluations.py  # CRUD /api/evaluations, items, import (CSV), run (search_retrieval | qa_answer | wiki_content_coverage), runs list/get/delete/compare
 │   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
 │   │   ├── home_hub.py         # GET /api/home/hub (signed-in knowledge operations hub aggregates)
-│   │   ├── knowledge_map.py    # `/api/taxonomy/*` — Knowledge Map node tree + CRUD + resource-links + map-html (status, get, regenerate, designer chat, preview, publish) via `knowledge_map_html`
+│   │   ├── knowledge_map.py    # `/api/knowledge-map/*` — Knowledge Map node tree + CRUD + resource-links + map-html (status, get, regenerate, designer chat, preview, publish) via `knowledge_map_html`
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
 │   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
 │   │   ├── internal/           # package: internal/models.py — GET /internal-api/models/document-parse-defaults, GET /internal-api/models/kb-embedding-credentials
@@ -203,7 +203,7 @@ backend/
 │   │   ├── evaluation_run.py   # EvaluationRun, EvaluationRunItem (persisted run + per-item detail JSONB)
 │   │   ├── glossary.py        # Glossary (name, description)
 │   │   ├── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, definition, synonyms_en, synonyms_cn)
-│   │   └── knowledge_map.py   # KnowledgeMapNode, KnowledgeMapResourceLink, TaxonomyMapHtmlArtifact → `taxonomy_nodes`, `taxonomy_resource_links`, `taxonomy_map_html_artifact`
+│   │   └── knowledge_map.py   # KnowledgeMapNode, KnowledgeMapResourceLink, KnowledgeMapHtmlArtifact → `taxonomy_nodes`, `taxonomy_resource_links`, `taxonomy_map_html_artifact`
 │   ├── schemas/
 │   │   ├── document.py
 │   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate, LabelConfigItem (label_config)

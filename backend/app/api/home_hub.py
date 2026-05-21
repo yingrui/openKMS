@@ -39,7 +39,7 @@ class WorkItem(BaseModel):
 
 
 class HomeHubResponse(BaseModel):
-    taxonomy: KnowledgeMapSummary | None = None
+    knowledge_map: KnowledgeMapSummary | None = None
     work_items: list[WorkItem] = Field(default_factory=list)
     share_requests: list[dict] = Field(default_factory=list)
 
@@ -63,11 +63,11 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
     has_tax = PERM_ALL in perms or PERM_KNOWLEDGE_MAP_READ in perms
     has_docs = PERM_ALL in perms or PERM_DOCUMENTS_READ in perms
 
-    taxonomy_summary: KnowledgeMapSummary | None = None
+    km_summary: KnowledgeMapSummary | None = None
     if has_tax:
         node_count = await db.scalar(select(sa_func.count()).select_from(KnowledgeMapNode)) or 0
         link_count = await db.scalar(select(sa_func.count()).select_from(KnowledgeMapResourceLink)) or 0
-        taxonomy_summary = KnowledgeMapSummary(node_count=int(node_count), link_count=int(link_count))
+        km_summary = KnowledgeMapSummary(node_count=int(node_count), link_count=int(link_count))
 
     work_items: list[WorkItem] = []
     if has_docs and sub:
@@ -108,7 +108,7 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
                 break
 
     return HomeHubResponse(
-        taxonomy=taxonomy_summary,
+        knowledge_map=km_summary,
         work_items=work_items,
         share_requests=[],
     )

@@ -1,11 +1,11 @@
 import type { KnowledgeMapNode, ResourceLink } from '../data/knowledgeMapApi';
 
-/** Force-graph node: taxonomy term or synthetic resource vertex. */
+/** Force-graph node: Knowledge Map term or synthetic resource vertex. */
 export type KMNode = {
   id: string;
   name: string;
   deg: number;
-  kind: 'taxonomy' | 'resource';
+  kind: 'map_node' | 'resource';
   resourceType?: string;
   resourceId?: string;
 };
@@ -25,7 +25,7 @@ export function walkTree(
   const treeLinks: KMLink[] = [];
 
   function visit(n: KnowledgeMapNode, parentId: string | null) {
-    nodeById.set(n.id, { id: n.id, name: n.name, deg: 0, kind: 'taxonomy' });
+    nodeById.set(n.id, { id: n.id, name: n.name, deg: 0, kind: 'map_node' });
     if (parentId) {
       treeLinks.push({ source: parentId, target: n.id, kind: 'tree' });
     }
@@ -57,7 +57,7 @@ export function walkTree(
         resourceId: r.resource_id,
       });
     }
-    refLinks.push({ source: r.taxonomy_node_id, target: rid, kind: 'ref' });
+    refLinks.push({ source: r.knowledge_map_node_id, target: rid, kind: 'ref' });
   }
 
   const allLinks = [...treeLinks, ...refLinks];

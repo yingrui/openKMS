@@ -1,4 +1,4 @@
-"""LLM-generated static HTML snapshot for the Knowledge Map (taxonomy + resource links)."""
+"""LLM-generated static HTML snapshot for the Knowledge Map (term tree + resource links)."""
 
 from __future__ import annotations
 
@@ -116,7 +116,11 @@ async def load_semantic_snapshot(db: AsyncSession) -> dict[str, Any]:
         for n in sorted(nodes, key=lambda x: x.id)
     ]
     flat_links = [
-        {"taxonomy_node_id": r.taxonomy_node_id, "resource_type": r.resource_type, "resource_id": r.resource_id}
+        {
+            "knowledge_map_node_id": r.taxonomy_node_id,
+            "resource_type": r.resource_type,
+            "resource_id": r.resource_id,
+        }
         for r in links
     ]
     return {"tree": tree, "nodes": flat_nodes, "links": flat_links}
@@ -131,8 +135,8 @@ def semantic_content_hash(snapshot: dict[str, Any]) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
-async def taxonomy_last_modified_at(db: AsyncSession) -> datetime | None:
-    """Latest taxonomy node edit (resource link rows have no updated_at; content_hash covers link changes)."""
+async def knowledge_map_nodes_last_modified_at(db: AsyncSession) -> datetime | None:
+    """Latest Knowledge Map node edit (resource link rows have no updated_at; content_hash covers link changes)."""
     t = await db.scalar(select(sa_func.max(KnowledgeMapNode.updated_at)))
     return t
 
@@ -237,17 +241,17 @@ def sanitize_html_document(raw: str) -> str:
     )
 
 
-_EMPTY_TAXONOMY_DOC = """<!DOCTYPE html>
+_EMPTY_KM_DOC = """<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Knowledge Map</title>
 <style>body{font-family:system-ui,sans-serif;margin:2rem;max-width:960px;line-height:1.5}</style></head>
-<body><main><p>No taxonomy terms yet. Add terms on the Knowledge Map page, then regenerate this HTML snapshot.</p></main></body></html>"""
+<body><main><p>No terms yet. Add terms on the Knowledge Map page, then regenerate this HTML snapshot.</p></main></body></html>"""
 
 
-def static_html_for_empty_taxonomy() -> str:
-    return sanitize_html_document(_EMPTY_TAXONOMY_DOC)
+def static_html_for_empty_knowledge_map() -> str:
+    return sanitize_html_document(_EMPTY_KM_DOC)
 
 
-_KM_HTML_SYSTEM = """You write a single self-contained HTML5 page for an internal "Knowledge Map" (taxonomy tree + links to content).
+_KM_HTML_SYSTEM = """You write a single self-contained HTML5 page for an internal "Knowledge Map" (hierarchical terms + links to content).
 
 Output rules (strict):
 - Return ONLY the HTML document (no markdown fences, no commentary).
@@ -255,7 +259,7 @@ Output rules (strict):
 - Include <head><meta charset="utf-8"><title>…</title> and a compact <style> for readability (system fonts, max-width ~960px, sensible spacing). No @import.
 - No <script>, <iframe>, <object>, <embed>, <form>, <input>, <button>, SVG, or inline event handlers (onclick=, etc.).
 - Use placeholders exactly as given for links — do not invent ids or resource pairs:
-  - Taxonomy term: {{TAXONOMY_NODE:<id>}} (use the exact id strings from PLACEHOLDERS).
+  - Knowledge Map term: {{TAXONOMY_NODE:<id>}} (use the exact id strings from PLACEHOLDERS).
   - Resource: {{RESOURCE:<resource_type>:<resource_id>}} (use exact tuples from PLACEHOLDERS).
 - Reflect the tree structure from JSON.tree (parent/child). Summarize long descriptions briefly in prose; do not dump raw JSON.
 
@@ -272,7 +276,7 @@ def _placeholder_cheatsheet(snapshot: dict[str, Any]) -> str:
     for link in snapshot["links"]:
         rt = link["resource_type"]
         rid = link["resource_id"]
-        tn = link["taxonomy_node_id"]
+        tn = link["knowledge_map_node_id"]
         res_token = "{{RESOURCE:" + rt + ":" + rid + "}}"
         lines.append(f'- Linked resource ({rt} {rid}) under node {tn} → {res_token}')
     return "\n".join(lines[:400])
@@ -396,7 +400,7 @@ def _designer_context_appendix(published_html: str | None, working_html: str | N
     return "\n\n".join(parts)
 
 
-_KM_HTML_DESIGNER_SYSTEM = """You are **Knowledge Map Designer**, helping the user iterate on one static HTML overview page for their Knowledge Map (taxonomy tree + links to channels and wiki spaces).
+_KM_HTML_DESIGNER_SYSTEM = """You are **Knowledge Map Designer**, helping the user iterate on one static HTML overview page for their Knowledge Map (hierarchical terms + links to channels and wiki spaces).
 
 You will receive:
 - KNOWLEDGE_SNAPSHOT (JSON) with `tree`, `links`, and `PLACEHOLDERS` (authoritative ids).

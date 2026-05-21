@@ -17,7 +17,7 @@ export type HomeHubWorkItem = {
 };
 
 export type HomeHubResponse = {
-  taxonomy: HomeHubKnowledgeMapCounts | null;
+  knowledge_map: HomeHubKnowledgeMapCounts | null;
   work_items: HomeHubWorkItem[];
   share_requests: unknown[];
 };

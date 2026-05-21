@@ -67,7 +67,7 @@ export function Home() {
   }, [isAuthenticated, loadHub]);
 
   const showKnowledgeMapHub =
-    toggles.taxonomy !== false && (hasPermission('taxonomy:read') || hasPermission('all'));
+    toggles.knowledge_map !== false && (hasPermission('knowledge_map:read') || hasPermission('all'));
 
   useEffect(() => {
     if (!isAuthenticated || !showKnowledgeMapHub) {
@@ -142,12 +142,12 @@ export function Home() {
     return <HomeStaticLanding onSignIn={login} />;
   }
 
-  const showKnowledgeMapWrite = hasPermission('taxonomy:write') || hasPermission('all');
+  const showKnowledgeMapWrite = hasPermission('knowledge_map:write') || hasPermission('all');
   const showDocsWork = hasPermission('documents:read') || hasPermission('all');
   const mapLoaded = knowledgeMapTree !== null;
   const mapHasTerms = Boolean(knowledgeMapTree?.length);
-  const nodeCount = hub?.taxonomy?.node_count ?? null;
-  const linkCount = hub?.taxonomy?.link_count ?? null;
+  const nodeCount = hub?.knowledge_map?.node_count ?? null;
+  const linkCount = hub?.knowledge_map?.link_count ?? null;
 
   return (
     <div className={`home home--hub${showKnowledgeMapHub ? ' home--hub-map-center' : ''}`}>

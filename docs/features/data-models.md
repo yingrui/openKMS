@@ -158,7 +158,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `taxonomy` (all enabled); `evaluations` (disabled by default, experimental)
+- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `knowledge_map` (all enabled); `evaluations` (disabled by default, experimental)
 - Read by all authenticated users; write restricted to admins
 
 ### SystemSettings
@@ -278,7 +278,7 @@ All junctions cascade on either side; no extra columns.
 
 - `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
 
-## Knowledge map (taxonomy)
+## Knowledge map
 
 ### KnowledgeMapNode (`taxonomy_nodes`)
 
@@ -290,9 +290,9 @@ All junctions cascade on either side; no extra columns.
 - `id`, `taxonomy_node_id` (FK → taxonomy_nodes, CASCADE), `resource_type` (`document_channel`, `article_channel`, `wiki_space`, …), `resource_id`; unique `(resource_type, resource_id)`
 - Maps each content surface to **at most one** Knowledge Map node.
 
-### TaxonomyMapHtmlArtifact (`taxonomy_map_html_artifact`)
+### KnowledgeMapHtmlArtifact (`taxonomy_map_html_artifact`)
 
-- Singleton row (`id` = `default`): `html` (sanitized document), `content_hash` (SHA-256 of canonical taxonomy + links JSON), `generated_at` — LLM-built **HTML overview** of the Knowledge Map; `GET /api/taxonomy/map-html/status` compares the live hash to `content_hash` to report **stale**.
+- Singleton row (`id` = `default`): `html` (sanitized document), `content_hash` (SHA-256 of canonical map terms + links JSON), `generated_at` — LLM-built **HTML overview** of the Knowledge Map; `GET /api/knowledge-map/map-html/status` compares the live hash to `content_hash` to report **stale**.
 
 ## Provider details
 

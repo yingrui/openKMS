@@ -196,7 +196,7 @@ function useDataTheme(): 'light' | 'dark' {
 }
 
 function nodeColor(n: KMNode, palette: Km3DPalette, selectedNodeId: string | null): string {
-  if (n.kind === 'taxonomy') {
+  if (n.kind === 'map_node') {
     return n.id === selectedNodeId ? palette.nodeTaxFocus : palette.nodeTax;
   }
   const rt = n.resourceType ?? '';
@@ -317,7 +317,7 @@ export function KnowledgeMapForceGraph3D({
 
   const handleNodeClick = useCallback(
     (node: KMNode) => {
-      if (node.kind === 'taxonomy') {
+      if (node.kind === 'map_node') {
         onSelectNode(node.id);
         return;
       }

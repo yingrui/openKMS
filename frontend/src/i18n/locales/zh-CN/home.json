@@ -11,7 +11,7 @@
   "loadingGraph": "正在加载图…",
   "noNodesTitle": "暂无节点",
   "noNodesEditor": "在知识地图页面添加节点后，将在此显示与频道和 Wiki 空间的关联。",
-  "noNodesViewer": "拥有 taxonomy:write 权限的编辑者可以向地图添加节点。",
+  "noNodesViewer": "拥有 knowledge_map:write 权限的编辑者可以向地图添加节点。",
   "goToKnowledgeMap": "前往知识地图",
   "mapHint": "浏览知识地图，点击节点可前往频道或 Wiki 空间。",
   "workItems": "工作项",
@@ -23,7 +23,7 @@
   "linkDocuments": "文档",
   "linkArticles": "文章",
   "linkWikis": "Wiki 空间",
-  "subtitleNoTaxonomy": "知识运维：文档生命周期信号与快捷入口。当您拥有术语/taxonomy 访问权限时，知识地图将显示在此处。",
+  "subtitleNoTaxonomy": "知识运维：文档生命周期信号与快捷入口。当您拥有知识地图访问权限时，知识地图将显示在此处。",
   "loading": "加载中…",
   "hubLoadError": "无法加载首页数据",
   "mapLoadError": "无法加载知识地图"

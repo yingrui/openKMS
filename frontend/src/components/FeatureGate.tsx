@@ -7,7 +7,7 @@ type FeatureId =
   | 'wikiSpaces'
   | 'objectsAndLinks'
   | 'evaluations'
-  | 'taxonomy';
+  | 'knowledge_map';
 
 export function FeatureGate({
   feature,
@@ -20,8 +20,8 @@ export function FeatureGate({
   const enabled =
     feature === 'objectsAndLinks'
       ? toggles.objectsAndLinks || !!toggles.hasNeo4jDataSource
-      : feature === 'taxonomy'
-        ? toggles.taxonomy !== false
+      : feature === 'knowledge_map'
+        ? toggles.knowledge_map !== false
         : (toggles[feature] ?? false);
 
   if (!enabled) {

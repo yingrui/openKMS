@@ -8,7 +8,7 @@ const FEATURE_IDS = [
   'wikiSpaces',
   'objectsAndLinks',
   'evaluations',
-  'taxonomy',
+  'knowledge_map',
 ] as const;
 
 export function ConsoleFeatureToggles() {
@@ -33,7 +33,7 @@ export function ConsoleFeatureToggles() {
               <label className="console-feature-toggle-switch">
                 <input
                   type="checkbox"
-                  checked={id === 'taxonomy' ? toggles.taxonomy !== false : Boolean(toggles[id])}
+                  checked={id === 'knowledge_map' ? toggles.knowledge_map !== false : Boolean(toggles[id])}
                   onChange={(e) => setToggle(id, e.target.checked)}
                   aria-label={t('featureToggles.enableAria', { feature: name })}
                 />

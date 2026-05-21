@@ -13,14 +13,14 @@ export type KnowledgeMapNode = {
 
 export type ResourceLink = {
   id: string;
-  taxonomy_node_id: string;
+  knowledge_map_node_id: string;
   resource_type: string;
   resource_id: string;
 };
 
 export async function fetchKnowledgeMapTree(): Promise<KnowledgeMapNode[]> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes/tree`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/nodes/tree`, {
     headers,
     credentials: 'include',
     cache: 'no-store',
@@ -39,7 +39,7 @@ export async function createKnowledgeMapNode(body: {
   sort_order?: number;
 }): Promise<KnowledgeMapNode> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/nodes`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -54,7 +54,7 @@ export async function createKnowledgeMapNode(body: {
 
 export async function deleteKnowledgeMapNode(nodeId: string): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes/${encodeURIComponent(nodeId)}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/nodes/${encodeURIComponent(nodeId)}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -75,7 +75,7 @@ export async function updateKnowledgeMapNode(
   },
 ): Promise<KnowledgeMapNode> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/nodes/${encodeURIComponent(nodeId)}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/nodes/${encodeURIComponent(nodeId)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -90,7 +90,7 @@ export async function updateKnowledgeMapNode(
 
 export async function fetchResourceLinks(): Promise<ResourceLink[]> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/resource-links`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/resource-links`, {
     headers,
     credentials: 'include',
     cache: 'no-store',
@@ -102,7 +102,7 @@ export async function fetchResourceLinks(): Promise<ResourceLink[]> {
   return res.json() as Promise<ResourceLink[]>;
 }
 
-export type TaxonomyMapHtmlStatus = {
+export type KnowledgeMapHtmlStatus = {
   current_content_hash: string;
   artifact_content_hash: string | null;
   stale: boolean;
@@ -111,9 +111,9 @@ export type TaxonomyMapHtmlStatus = {
   generated_at: string | null;
 };
 
-export async function fetchTaxonomyMapHtmlStatus(): Promise<TaxonomyMapHtmlStatus> {
+export async function fetchKnowledgeMapHtmlStatus(): Promise<KnowledgeMapHtmlStatus> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html/status`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/status`, {
     headers,
     credentials: 'include',
     cache: 'no-store',
@@ -122,12 +122,12 @@ export async function fetchTaxonomyMapHtmlStatus(): Promise<TaxonomyMapHtmlStatu
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || `Map HTML status failed (${res.status})`);
   }
-  return res.json() as Promise<TaxonomyMapHtmlStatus>;
+  return res.json() as Promise<KnowledgeMapHtmlStatus>;
 }
 
-export async function regenerateTaxonomyMapHtml(): Promise<{ content_hash: string; generated_at: string }> {
+export async function regenerateKnowledgeMapHtml(): Promise<{ content_hash: string; generated_at: string }> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html/regenerate`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/regenerate`, {
     method: 'POST',
     headers: { ...headers },
     credentials: 'include',
@@ -141,7 +141,7 @@ export async function regenerateTaxonomyMapHtml(): Promise<{ content_hash: strin
 
 export type MapHtmlDesignerMessage = { role: 'user' | 'assistant'; content: string };
 
-export async function postTaxonomyMapHtmlDesignerChat(
+export async function postKnowledgeMapHtmlDesignerChat(
   messages: MapHtmlDesignerMessage[],
   workingHtml?: string | null,
 ): Promise<{ content: string }> {
@@ -153,7 +153,7 @@ export async function postTaxonomyMapHtmlDesignerChat(
   if (workingHtml != null && workingHtml.trim()) {
     body.working_html = workingHtml;
   }
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html/designer/chat`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -178,7 +178,7 @@ function parseMapHtmlDesignerStreamLine(line: string): MapHtmlDesignerStreamEven
 }
 
 /** NDJSON stream: ``delta`` text chunks, optional ``tool_*``, then ``done`` or ``error``. */
-export async function postTaxonomyMapHtmlDesignerChatStream(
+export async function postKnowledgeMapHtmlDesignerChatStream(
   messages: MapHtmlDesignerMessage[],
   onEvent: (e: MapHtmlDesignerStreamEvent) => void,
   options?: { workingHtml?: string | null; signal?: AbortSignal },
@@ -193,7 +193,7 @@ export async function postTaxonomyMapHtmlDesignerChatStream(
   if (wh != null && wh.trim()) {
     body.working_html = wh;
   }
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html/designer/chat`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -228,9 +228,9 @@ export async function postTaxonomyMapHtmlDesignerChatStream(
   }
 }
 
-export async function postTaxonomyMapHtmlPreview(html: string): Promise<{ html: string }> {
+export async function postKnowledgeMapHtmlPreview(html: string): Promise<{ html: string }> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html/preview`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/preview`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -243,9 +243,9 @@ export async function postTaxonomyMapHtmlPreview(html: string): Promise<{ html: 
   return res.json() as Promise<{ html: string }>;
 }
 
-export async function postTaxonomyMapHtmlPublish(html: string): Promise<{ content_hash: string; generated_at: string }> {
+export async function postKnowledgeMapHtmlPublish(html: string): Promise<{ content_hash: string; generated_at: string }> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html/publish`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/publish`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -258,9 +258,9 @@ export async function postTaxonomyMapHtmlPublish(html: string): Promise<{ conten
   return res.json() as Promise<{ content_hash: string; generated_at: string }>;
 }
 
-export async function deleteTaxonomyMapHtml(): Promise<void> {
+export async function deleteKnowledgeMapHtml(): Promise<void> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/map-html`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',
@@ -272,12 +272,12 @@ export async function deleteTaxonomyMapHtml(): Promise<void> {
 }
 
 export async function upsertResourceLink(body: {
-  taxonomy_node_id: string;
+  knowledge_map_node_id: string;
   resource_type: string;
   resource_id: string;
 }): Promise<ResourceLink> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/resource-links`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/resource-links`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     credentials: 'include',
@@ -293,7 +293,7 @@ export async function upsertResourceLink(body: {
 export async function deleteResourceLink(resourceType: string, resourceId: string): Promise<void> {
   const headers = await getAuthHeaders();
   const q = new URLSearchParams({ resource_type: resourceType, resource_id: resourceId });
-  const res = await authAwareFetch(`${config.apiUrl}/api/taxonomy/resource-links?${q}`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/resource-links?${q}`, {
     method: 'DELETE',
     headers: { ...headers },
     credentials: 'include',

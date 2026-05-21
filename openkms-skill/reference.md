@@ -156,17 +156,17 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 
 ### Knowledge map (`knowledge-map`)
 
-Requires **`taxonomy:read`** (tree, link list) and **`taxonomy:write`** (mutations) when the server enforces permissions.
+Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`** (mutations) when the server enforces permissions.
 
 | CLI | Method | Path | Body / params |
 |---|---|---|---|
-| `knowledge-map nodes tree` | GET | `/api/taxonomy/nodes/tree` | Nested nodes with `link_count` per node. |
-| `knowledge-map nodes create` *(write)* | POST | `/api/taxonomy/nodes` | Body `{name, parent_id?, description?, sort_order?}`. |
-| `knowledge-map nodes patch` *(write)* | PATCH | `/api/taxonomy/nodes/{id}` | Partial: `name`, `description`, `sort_order`, `parent_id`; `--clear-parent` sends `parent_id: null`. Empty patch exits 2. |
-| `knowledge-map nodes delete` *(write)* | DELETE | `/api/taxonomy/nodes/{id}` | 204. |
-| `knowledge-map resource-links list` | GET | `/api/taxonomy/resource-links` | All mappings; filter with `jq` if needed. |
-| `knowledge-map resource-links put` *(write)* | PUT | `/api/taxonomy/resource-links` | Body `{taxonomy_node_id, resource_type, resource_id}`. `resource_type ∈ {document_channel, article_channel, wiki_space}`. |
-| `knowledge-map resource-links delete` *(write)* | DELETE | `/api/taxonomy/resource-links` | Query `resource_type`, `resource_id`. 204. |
+| `knowledge-map nodes tree` | GET | `/api/knowledge-map/nodes/tree` | Nested nodes with `link_count` per node. |
+| `knowledge-map nodes create` *(write)* | POST | `/api/knowledge-map/nodes` | Body `{name, parent_id?, description?, sort_order?}`. |
+| `knowledge-map nodes patch` *(write)* | PATCH | `/api/knowledge-map/nodes/{id}` | Partial: `name`, `description`, `sort_order`, `parent_id`; `--clear-parent` sends `parent_id: null`. Empty patch exits 2. |
+| `knowledge-map nodes delete` *(write)* | DELETE | `/api/knowledge-map/nodes/{id}` | 204. |
+| `knowledge-map resource-links list` | GET | `/api/knowledge-map/resource-links` | All mappings; filter with `jq` if needed. |
+| `knowledge-map resource-links put` *(write)* | PUT | `/api/knowledge-map/resource-links` | Body `{knowledge_map_node_id, resource_type, resource_id}`. `resource_type ∈ {document_channel, article_channel, wiki_space}`. |
+| `knowledge-map resource-links delete` *(write)* | DELETE | `/api/knowledge-map/resource-links` | Query `resource_type`, `resource_id`. 204. |
 
 ### Evaluation
 

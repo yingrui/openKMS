@@ -1,4 +1,4 @@
-"""knowledge-map — taxonomy tree, nodes CRUD, resource link map/unmap (Console Knowledge Map)."""
+"""knowledge-map — Knowledge Map tree, nodes CRUD, resource link map/unmap (Console Knowledge Map)."""
 from __future__ import annotations
 
 import argparse
@@ -14,7 +14,7 @@ _RESOURCE_TYPES = frozenset({"document_channel", "article_channel", "wiki_space"
 
 def cmd_nodes_tree(_: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get("/api/taxonomy/nodes/tree")
+        r = s.get("/api/knowledge-map/nodes/tree")
     r.raise_for_status()
     print_json(r.json())
 
@@ -28,9 +28,9 @@ def cmd_nodes_create(ns: argparse.Namespace) -> None:
         body["parent_id"] = ns.parent_id.strip()
     if ns.description:
         body["description"] = ns.description.strip()
-    confirm_or_abort("create knowledge map node", "POST", "/api/taxonomy/nodes", body, ns.yes, ns.dry_run)
+    confirm_or_abort("create knowledge map node", "POST", "/api/knowledge-map/nodes", body, ns.yes, ns.dry_run)
     with client() as s:
-        r = s.post("/api/taxonomy/nodes", json=body)
+        r = s.post("/api/knowledge-map/nodes", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -54,7 +54,7 @@ def cmd_nodes_patch(ns: argparse.Namespace) -> None:
             file=sys.stderr,
         )
         sys.exit(2)
-    path = f"/api/taxonomy/nodes/{ns.id}"
+    path = f"/api/knowledge-map/nodes/{ns.id}"
     confirm_or_abort("patch knowledge map node", "PATCH", path, body, ns.yes, ns.dry_run)
     with client() as s:
         r = s.patch(path, json=body)
@@ -63,7 +63,7 @@ def cmd_nodes_patch(ns: argparse.Namespace) -> None:
 
 
 def cmd_nodes_delete(ns: argparse.Namespace) -> None:
-    path = f"/api/taxonomy/nodes/{ns.id}"
+    path = f"/api/knowledge-map/nodes/{ns.id}"
     confirm_or_abort("delete knowledge map node", "DELETE", path, None, ns.yes, ns.dry_run)
     with client() as s:
         r = s.delete(path)
@@ -73,7 +73,7 @@ def cmd_nodes_delete(ns: argparse.Namespace) -> None:
 
 def cmd_resource_links_list(_: argparse.Namespace) -> None:
     with client() as s:
-        r = s.get("/api/taxonomy/resource-links")
+        r = s.get("/api/knowledge-map/resource-links")
     r.raise_for_status()
     print_json(r.json())
 
@@ -87,20 +87,20 @@ def cmd_resource_links_put(ns: argparse.Namespace) -> None:
         )
         sys.exit(2)
     body = {
-        "taxonomy_node_id": ns.taxonomy_node_id.strip(),
+        "knowledge_map_node_id": ns.knowledge_map_node_id.strip(),
         "resource_type": rt,
         "resource_id": ns.resource_id.strip(),
     }
     confirm_or_abort(
         "upsert knowledge map resource link",
         "PUT",
-        "/api/taxonomy/resource-links",
+        "/api/knowledge-map/resource-links",
         body,
         ns.yes,
         ns.dry_run,
     )
     with client() as s:
-        r = s.put("/api/taxonomy/resource-links", json=body)
+        r = s.put("/api/knowledge-map/resource-links", json=body)
     r.raise_for_status()
     print_json(r.json())
 
@@ -114,7 +114,7 @@ def cmd_resource_links_delete(ns: argparse.Namespace) -> None:
         )
         sys.exit(2)
     rid = ns.resource_id.strip()
-    path = "/api/taxonomy/resource-links"
+    path = "/api/knowledge-map/resource-links"
     params = {"resource_type": rt, "resource_id": rid}
     confirm_or_abort(
         "delete knowledge map resource link",
@@ -133,25 +133,25 @@ def cmd_resource_links_delete(ns: argparse.Namespace) -> None:
 def add_subparser(sub) -> None:
     p = sub.add_parser(
         "knowledge-map",
-        help="Knowledge map (taxonomy tree + channel/wiki links; same as Console)",
+        help="Knowledge map (term tree + channel/wiki links; same as Console)",
     )
     sp = p.add_subparsers(dest="km_cmd", required=True)
 
-    nodes = sp.add_parser("nodes", help="Taxonomy nodes")
+    nodes = sp.add_parser("nodes", help="Knowledge Map terms (nodes)")
     nsp = nodes.add_subparsers(dest="km_nodes_cmd", required=True)
 
-    nsp.add_parser("tree", help="Get full tree (GET /api/taxonomy/nodes/tree)").set_defaults(fn=cmd_nodes_tree)
+    nsp.add_parser("tree", help="Get full tree (GET /api/knowledge-map/nodes/tree)").set_defaults(fn=cmd_nodes_tree)
 
     nc = nsp.add_parser("create", help="Create node under optional parent")
     nc.add_argument("--name", required=True)
-    nc.add_argument("--parent-id", default="", help="parent taxonomy node id; omit for root")
+    nc.add_argument("--parent-id", default="", help="parent map node id; omit for root")
     nc.add_argument("--description", default="")
     nc.add_argument("--sort-order", type=int, default=0)
     add_write_flags(nc)
     nc.set_defaults(fn=cmd_nodes_create)
 
     np = nsp.add_parser("patch", help="Update node (partial)")
-    np.add_argument("--id", required=True, dest="id", help="taxonomy node id")
+    np.add_argument("--id", required=True, dest="id", help="map node id")
     np.add_argument("--name", default=None)
     np.add_argument("--description", default=None)
     np.add_argument("--sort-order", type=int, default=None)
@@ -173,19 +173,19 @@ def add_subparser(sub) -> None:
     add_write_flags(nd)
     nd.set_defaults(fn=cmd_nodes_delete)
 
-    rl = sp.add_parser("resource-links", help="Map channels / wiki spaces to taxonomy nodes")
+    rl = sp.add_parser("resource-links", help="Map channels / wiki spaces to map nodes")
     rlsp = rl.add_subparsers(dest="km_rl_cmd", required=True)
 
     rlsp.add_parser(
         "list",
-        help="List all resource links (GET /api/taxonomy/resource-links)",
+        help="List all resource links (GET /api/knowledge-map/resource-links)",
     ).set_defaults(fn=cmd_resource_links_list)
 
     rlp = rlsp.add_parser(
         "put",
-        help="Attach or move a resource to a taxonomy node (one resource → one node)",
+        help="Attach or move a resource to a map node (one resource → one node)",
     )
-    rlp.add_argument("--taxonomy-node-id", required=True)
+    rlp.add_argument("--knowledge-map-node-id", required=True, dest="knowledge_map_node_id")
     rlp.add_argument(
         "--resource-type",
         required=True,

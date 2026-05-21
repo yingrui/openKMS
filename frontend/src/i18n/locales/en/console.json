@@ -74,7 +74,7 @@
         "name": "Evaluation",
         "description": "KB QA evaluations (experimental). Query and expected-answer pairs to gauge RAG quality."
       },
-      "taxonomy": {
+      "knowledge_map": {
         "name": "Knowledge map",
         "description": "Sitemap-style hierarchy from channels and wiki spaces so people can browse how content is organized."
       }

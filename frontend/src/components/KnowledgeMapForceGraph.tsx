@@ -359,7 +359,7 @@ export function KnowledgeMapForceGraph({
 
   const handleNodeClick = useCallback(
     (node: KMNode) => {
-      if (node.kind === 'taxonomy') {
+      if (node.kind === 'map_node') {
         onSelectNode(node.id);
         return;
       }
@@ -383,7 +383,7 @@ export function KnowledgeMapForceGraph({
       const n = node as KMNode & { x?: number; y?: number };
       const x = n.x ?? 0;
       const y = n.y ?? 0;
-      const isFocus = n.kind === 'taxonomy' && n.id === selectedNodeId;
+      const isFocus = n.kind === 'map_node' && n.id === selectedNodeId;
       const fontSize = Math.max(8.5, 10.5 / globalScale);
       ctx.font = `${fontSize}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`;
       ctx.textAlign = 'center';
