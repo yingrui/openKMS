@@ -10,7 +10,7 @@ import re
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlparse
 
 from openai import AsyncOpenAI
 from sqlalchemy import func as sa_func, select
@@ -58,6 +58,78 @@ _KM_PATCH_TOOL: dict[str, Any] = {
 
 _KM_NODE_TOKEN = re.compile(r"\{\{KNOWLEDGE_MAP_NODE:([a-zA-Z0-9_]+)\}\}")
 _KM_RES_TOKEN = re.compile(r"\{\{RESOURCE:([^:}]+):([^}]+)\}\}")
+
+_SPA_PATH_PREFIXES = (
+    "/knowledge-map",
+    "/documents",
+    "/wikis",
+    "/articles",
+    "/search",
+    "/knowledge-bases",
+    "/object-explorer",
+    "/console",
+    "/pipelines",
+    "/jobs",
+    "/models",
+    "/glossaries",
+    "/ontology",
+    "/login",
+)
+
+_A_TAG_OPEN = re.compile(r"<a\s([^>]*?)>", re.IGNORECASE)
+
+
+def _href_points_to_spa(href: str, frontend_base: str) -> bool:
+    """True if link resolves to the configured SPA origin and in-app path (not mailto, etc.)."""
+    fe = (frontend_base or "").strip().rstrip("/")
+    if not fe:
+        return False
+    h = (href or "").strip()
+    if not h or h.startswith("#") or h.lower().startswith(("mailto:", "javascript:", "data:")):
+        return False
+    if "://" in h and not h.lower().startswith(("http://", "https://")):
+        return False
+    try:
+        resolved = urljoin(fe + "/", h)
+    except ValueError:
+        return False
+    p = urlparse(resolved)
+    if p.scheme not in ("http", "https"):
+        return False
+    base_p = urlparse(fe if "://" in fe else f"https://{fe}")
+    if (p.scheme, p.netloc) != (base_p.scheme, base_p.netloc):
+        return False
+    path = p.path or "/"
+    if path == "/":
+        return True
+    return any(path == pref or path.startswith(pref + "/") for pref in _SPA_PATH_PREFIXES)
+
+
+def ensure_spa_link_targets(html: str, frontend_base: str) -> str:
+    """Ensure in-app anchors open the top browsing context (sandboxed iframes have no allow-scripts).
+
+    Hydration only replaces ``{{KNOWLEDGE_MAP_NODE:…}}`` tokens; the model may emit raw ``<a href>``
+    tags (e.g. abbreviated classes) without ``target``, which leaves navigation inside the iframe and
+    shows a blank SPA shell.
+    """
+    if not (frontend_base or "").strip():
+        return html
+
+    def repl(m: re.Match[str]) -> str:
+        attrs = m.group(1)
+        if re.search(r"""\btarget\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)""", attrs, re.I):
+            return m.group(0)
+        hm = re.search(r"""href\s*=\s*("([^"]*)"|'([^']*)')""", attrs, re.I)
+        if not hm:
+            return m.group(0)
+        raw_href = (hm.group(2) or hm.group(3) or "").strip()
+        if not _href_points_to_spa(raw_href, frontend_base):
+            return m.group(0)
+        if re.search(r"\brel\s*=", attrs, re.I):
+            return f"<a {attrs} target=\"_top\">"
+        return f"<a {attrs} target=\"_top\" rel=\"noopener noreferrer\">"
+
+    return _A_TAG_OPEN.sub(repl, html)
 
 
 def _build_tree_payload(
@@ -164,7 +236,12 @@ def hydrate_placeholder_links(raw_html: str, snapshot: dict[str, Any], frontend_
         if token not in out:
             continue
         href = f"{frontend_base.rstrip('/')}/knowledge-map?node={quote(nid, safe='')}"
-        repl = f'<a class="km-node" href="{html_stdlib.escape(href, quote=True)}">{html_stdlib.escape(name)}</a>'
+        # target=_top: map HTML is shown in sandboxed iframes without allow-scripts; _self loads the SPA
+        # inside the iframe with scripts disabled (blank). _top matches ensure_spa_link_targets + sandbox.
+        repl = (
+            f'<a class="km-node" href="{html_stdlib.escape(href, quote=True)}" '
+            f'target="_top" rel="noopener noreferrer">{html_stdlib.escape(name)}</a>'
+        )
         out = out.replace(token, repl)
     for link in snapshot["links"]:
         rt = link["resource_type"]
@@ -174,7 +251,10 @@ def hydrate_placeholder_links(raw_html: str, snapshot: dict[str, Any], frontend_
             continue
         href = _resource_href(frontend_base, rt, rid)
         label = f"{rt}: {rid}"
-        repl = f'<a class="km-res" href="{html_stdlib.escape(href, quote=True)}">{html_stdlib.escape(label)}</a>'
+        repl = (
+            f'<a class="km-res" href="{html_stdlib.escape(href, quote=True)}" '
+            f'target="_top" rel="noopener noreferrer">{html_stdlib.escape(label)}</a>'
+        )
         out = out.replace(token, repl)
     return out
 
@@ -258,7 +338,7 @@ Mirror the SPA palette in `frontend/src/styles/design-system/_css-variables.scss
 
 - **Surfaces:** page background `#faf9f7`; elevated cards/panels `#ffffff`; muted bands `#f3f2ef`. Borders `#e8e6e1`, stronger dividers `#d4d1c9`.
 - **Typography:** `'DM Sans','Noto Sans SC',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei UI','Microsoft YaHei',system-ui,sans-serif`; body `#2c2925`; secondary `#5c5750`; muted/meta `#8a8379`; comfortable line-height (~1.45–1.55).
-- **Accent:** `#0d9488` (hover `#0f766e`); use for primary emphasis. Hydrated term links use **`a.km-node`**; resource links use **`a.km-res`** — style them distinctly (e.g. stronger teal + weight for `.km-node`, calmer secondary or pill for `.km-res`); avoid default browser link blue.
+- **Accent:** `#0d9488` (hover `#0f766e`); use for primary emphasis. Hydrated term links use **`a.km-node`**; resource links use **`a.km-res`** — style them distinctly (e.g. stronger teal + weight for `.km-node`, calmer secondary or pill for `.km-res`); avoid default browser link blue. If you add any other absolute links to this SPA, use **`target="_top"`** so they work when the document is shown inside a sandboxed iframe (navigate the top browsing context).
 - **Layout:** `max-width: min(960px, 100%); margin-inline: auto;` for the main column; padding and gaps on an **8/12/16/20/24px** rhythm.
 - **Shape:** rounded sections ~**10px** (`border-radius: 10px`); optional soft shadow `0 4px 12px rgba(44, 41, 37, 0.08)`.
 - **Dark (optional):** `@media (prefers-color-scheme: dark)` with body `#1a1816`, text `#f5f3f0`, elevated `#242220`, muted `#2d2a27`, borders `#3d3935` — keep accent readable on dark backgrounds.
@@ -823,4 +903,5 @@ def assert_no_unresolved_placeholders(document: str) -> None:
 def finalize_html_document(raw_llm: str, snapshot: dict[str, Any], frontend_base: str) -> str:
     hydrated = hydrate_placeholder_links(raw_llm, snapshot, frontend_base)
     assert_no_unresolved_placeholders(hydrated)
-    return sanitize_html_document(hydrated)
+    cleaned = sanitize_html_document(hydrated)
+    return ensure_spa_link_targets(cleaned, frontend_base)

@@ -34,6 +34,7 @@ import {
 import { fetchWikiSpaces } from '../../data/wikiSpacesApi';
 import './KnowledgeMap.scss';
 import { KnowledgeMapHtmlCopilot } from './KnowledgeMapHtmlCopilot';
+import { KnowledgeMapForceGraph } from '../../components/KnowledgeMapForceGraph';
 
 const KnowledgeMapForceGraph3D = lazy(() =>
   import('../../components/KnowledgeMapForceGraph3D').then((m) => ({ default: m.KnowledgeMapForceGraph3D })),
@@ -433,7 +434,7 @@ export function KnowledgeMap() {
   const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
   const lastAppliedNodeParam = useRef<string | undefined>(undefined);
 
-  const [mapUiTab, setMapUiTab] = useState<'edit' | 'explore3d' | 'mapHtml'>('edit');
+  const [mapUiTab, setMapUiTab] = useState<'edit' | 'exploreGraph' | 'explore3d' | 'mapHtml'>('edit');
 
   const [mapHtmlStatus, setMapHtmlStatus] = useState<KnowledgeMapHtmlStatus | null>(null);
   const [mapHtmlStatusLoading, setMapHtmlStatusLoading] = useState(false);
@@ -635,7 +636,7 @@ export function KnowledgeMap() {
   };
 
   useEffect(() => {
-    if (!tree.length && mapUiTab === 'explore3d') setMapUiTab('edit');
+    if (!tree.length && (mapUiTab === 'explore3d' || mapUiTab === 'exploreGraph')) setMapUiTab('edit');
   }, [tree.length, mapUiTab]);
 
   const onSelectTermFromGraph = useCallback(
@@ -665,7 +666,15 @@ export function KnowledgeMap() {
   }
 
   return (
-    <div className={`knowledge-map-page${mapUiTab === 'mapHtml' ? ' knowledge-map-page--map-html-wide' : ''}`}>
+    <div
+      className={[
+        'knowledge-map-page',
+        mapUiTab === 'mapHtml' && !loading ? 'knowledge-map-page--map-html-wide knowledge-map-page--html-designer-full-height' : '',
+        (mapUiTab === 'exploreGraph' || mapUiTab === 'explore3d') && !loading ? 'knowledge-map-page--explore-view-fill' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <Link to="/" className="knowledge-map-back-row">
         <ArrowLeft size={18} />
         <span>{t('back')}</span>
@@ -698,6 +707,16 @@ export function KnowledgeMap() {
               onClick={() => setMapUiTab('edit')}
             >
               {t('tabEditMap')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mapUiTab === 'exploreGraph'}
+              className={`knowledge-map-view-tab${mapUiTab === 'exploreGraph' ? ' knowledge-map-view-tab--active' : ''}`}
+              disabled={!tree.length}
+              onClick={() => setMapUiTab('exploreGraph')}
+            >
+              {t('tabExploreGraph')}
             </button>
             <button
               type="button"
@@ -897,6 +916,24 @@ export function KnowledgeMap() {
               )}
             </section>
           </div>
+          ) : mapUiTab === 'exploreGraph' ? (
+            <section className="knowledge-map-explore-graph" aria-label={t('tabExploreGraph')}>
+              {!tree.length ? (
+                <p className="knowledge-map-muted knowledge-map-detail-placeholder">{t('exploreGraphEmpty')}</p>
+              ) : (
+                <>
+                  <KnowledgeMapForceGraph
+                    tree={tree}
+                    links={links}
+                    selectedNodeId={selectedNodeId}
+                    onSelectNode={onSelectTermFromGraph}
+                    resolveResourceLabel={resolveResourceLabel}
+                    className="km-map-graph--explore-fill"
+                  />
+                  <p className="knowledge-map-muted knowledge-map-explore-graph-hint">{t('exploreGraphHint')}</p>
+                </>
+              )}
+            </section>
           ) : mapUiTab === 'explore3d' ? (
             <section className="knowledge-map-explore-3d" aria-label={t('tabExplore3d')}>
               {!tree.length ? (
@@ -916,12 +953,13 @@ export function KnowledgeMap() {
                     selectedNodeId={selectedNodeId}
                     onSelectNode={onSelectTermFromGraph}
                     resolveResourceLabel={resolveResourceLabel}
+                    className="km-map-graph--explore-fill"
                   />
                 </Suspense>
               )}
             </section>
           ) : (
-            <section aria-label={t('tabHtmlOverview')}>
+            <section className="knowledge-map-html-overview" aria-label={t('tabHtmlOverview')}>
               <KnowledgeMapHtmlCopilot
                 status={mapHtmlStatus}
                 statusLoading={mapHtmlStatusLoading}

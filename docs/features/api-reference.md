@@ -362,7 +362,7 @@ The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowl
 | PUT | `/api/knowledge-map/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `knowledge_map_node_id`) |
 | DELETE | `/api/knowledge-map/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |
 | GET | `/api/knowledge-map/map-html/status` | HTML overview snapshot: compares live semantic `content_hash` to stored artifact; `stale`, `has_artifact`, `nodes_modified_at` |
-| GET | `/api/knowledge-map/map-html` | Cached HTML document (`text/html`) when a snapshot exists (`404` otherwise) |
+| GET | `/api/knowledge-map/map-html` | Cached HTML document (`text/html`) when a snapshot exists (`404` otherwise). Response applies **`ensure_spa_link_targets`** so in-app anchors get **`target="_top"`** for sandboxed Home/designer iframes (does not rewrite the stored row) |
 | POST | `/api/knowledge-map/map-html/regenerate` | One-shot rebuild via LLM (`knowledge_map:write`); hydrates placeholders |
 | GET | `/api/knowledge-map/map-html/designer/conversations` | List designer chats for the signed-in user (`knowledge_map:read`): `{ conversations: [{ id, title, created_at, updated_at }] }` (newest first) |
 | POST | `/api/knowledge-map/map-html/designer/conversations` | Create an empty designer chat (`knowledge_map:write`; `201`, same object shape as list items) |

@@ -199,6 +199,65 @@
   overflow: hidden;
 }
 
+.documents-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--color-accent-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.documents-bulk-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.documents-bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.documents-bulk-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.documents-bulk-delete:hover:not(:disabled) {
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.documents-table-select-col {
+  width: 40px;
+  padding-left: 12px !important;
+  padding-right: 8px !important;
+  vertical-align: middle;
+}
+
+.documents-table-select-col input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.documents-table-row-selected {
+  background: var(--color-accent-subtle);
+}
+
+.documents-table-row-selected:hover {
+  background: var(--color-accent-subtle);
+}
+
 .documents-table {
   width: 100%;
   border-collapse: collapse;
@@ -254,42 +313,6 @@
 
 .documents-table-muted {
   color: var(--color-text-muted);
-}
-
-.documents-table-actions {
-  width: 1%;
-  white-space: nowrap;
-}
-
-.documents-table-btns {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.documents-table-btns button,
-.documents-table-btns a {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  transition: background 0.15s, color 0.15s;
-}
-
-.documents-table-btns a:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.documents-table-btns button:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.documents-table-btns button[aria-label="Delete"]:hover {
-  color: var(--color-error);
 }
 
 .documents-empty {

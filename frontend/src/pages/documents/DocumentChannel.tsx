@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FileText,
@@ -35,6 +35,12 @@ import {
   type DocumentListItemResponse,
 } from '../../data/documentsApi';
 import { toast } from 'sonner';
+import {
+  TableRowActionButton,
+  TableRowActionCell,
+  TableRowActions,
+  tableRowActionCellClass,
+} from '../../styles/design-system';
 import { createJob } from '../../data/jobsApi';
 import './DocumentChannel.scss';
 
@@ -89,9 +95,11 @@ export function DocumentChannel() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [moveDoc, setMoveDoc] = useState<DocumentListItemResponse | null>(null);
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(() => new Set());
+  const [moveModalDocIds, setMoveModalDocIds] = useState<string[] | null>(null);
   const [moveTargetChannelId, setMoveTargetChannelId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState<'delete' | 'process' | 'move' | null>(null);
 
   const channelName = getDocumentChannelName(channels, channelId);
   const channelOptions = flattenChannels(channels);
@@ -115,6 +123,59 @@ export function DocumentChannel() {
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
+
+  useEffect(() => {
+    setSelectedDocIds(new Set());
+  }, [channelId]);
+
+  useEffect(() => {
+    const ids = new Set(documents.map((d) => d.id));
+    setSelectedDocIds((prev) => {
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [documents]);
+
+  const selectedCount = selectedDocIds.size;
+  const allDocsSelected = documents.length > 0 && documents.every((d) => selectedDocIds.has(d.id));
+  const someDocsSelected = selectedCount > 0 && !allDocsSelected;
+
+  const selectedDocs = useMemo(
+    () => documents.filter((d) => selectedDocIds.has(d.id)),
+    [documents, selectedDocIds],
+  );
+
+  const selectedProcessableDocs = useMemo(
+    () => selectedDocs.filter((d) => d.status === 'uploaded' || d.status === 'failed'),
+    [selectedDocs],
+  );
+
+  const moveModalDocs = useMemo(() => {
+    if (!moveModalDocIds?.length) return [];
+    const idSet = new Set(moveModalDocIds);
+    return documents.filter((d) => idSet.has(d.id));
+  }, [documents, moveModalDocIds]);
+
+  const toggleDocSelection = useCallback((docId: string) => {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId);
+      else next.add(docId);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (allDocsSelected) {
+      setSelectedDocIds(new Set());
+      return;
+    }
+    setSelectedDocIds(new Set(documents.map((d) => d.id)));
+  }, [allDocsSelected, documents]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedDocIds(new Set());
+  }, []);
 
   const handleUploadClick = () => {
     setUploadError(null);
@@ -193,28 +254,61 @@ export function DocumentChannel() {
     }
   };
 
+  const openMoveModal = useCallback(
+    (docIds: string[]) => {
+      if (docIds.length === 0) return;
+      const first = documents.find((d) => d.id === docIds[0]);
+      setMoveModalDocIds(docIds);
+      setMoveTargetChannelId(first?.channel_id ?? channelId);
+    },
+    [documents, channelId],
+  );
+
   const handleMoveClick = (e: React.MouseEvent, doc: DocumentListItemResponse) => {
     e.stopPropagation();
-    setMoveDoc(doc);
-    setMoveTargetChannelId(doc.channel_id);
+    openMoveModal([doc.id]);
   };
 
   const closeMoveModal = () => {
-    if (!moveLoading) {
-      setMoveDoc(null);
+    if (!moveLoading && !bulkBusy) {
+      setMoveModalDocIds(null);
       setMoveTargetChannelId('');
     }
   };
 
   const handleMoveConfirm = async () => {
-    if (!moveDoc || !moveTargetChannelId || moveTargetChannelId === moveDoc.channel_id) {
+    if (!moveModalDocIds?.length || !moveTargetChannelId) {
       closeMoveModal();
       return;
     }
+    const toMove = moveModalDocs.filter((d) => d.channel_id !== moveTargetChannelId);
+    if (toMove.length === 0) {
+      closeMoveModal();
+      return;
+    }
+    const isBulk = moveModalDocIds.length > 1;
     setMoveLoading(true);
+    if (isBulk) setBulkBusy('move');
     try {
-      await updateDocument(moveDoc.id, { channel_id: moveTargetChannelId });
-      toast.success(t('channel.movedToast', { name: moveDoc.name }));
+      let ok = 0;
+      for (const doc of toMove) {
+        await updateDocument(doc.id, { channel_id: moveTargetChannelId });
+        ok += 1;
+      }
+      if (ok === toMove.length) {
+        toast.success(
+          isBulk && ok > 1
+            ? t('channel.movedBulkToast', { count: ok })
+            : t('channel.movedToast', { name: toMove[0].name }),
+        );
+      } else {
+        toast.success(t('channel.moveBulkPartial', { ok, total: toMove.length }));
+      }
+      setSelectedDocIds((prev) => {
+        const next = new Set(prev);
+        toMove.forEach((d) => next.delete(d.id));
+        return next;
+      });
       await loadDocuments();
       if (refetchChannels) await refetchChannels();
       closeMoveModal();
@@ -222,8 +316,75 @@ export function DocumentChannel() {
       toast.error(err instanceof Error ? err.message : t('channel.moveFailed'));
     } finally {
       setMoveLoading(false);
+      setBulkBusy(null);
     }
   };
+
+  const handleBulkDelete = async () => {
+    const ids = [...selectedDocIds];
+    if (ids.length === 0) return;
+    if (!window.confirm(t('channel.deleteBulkConfirm', { count: ids.length }))) return;
+    setBulkBusy('delete');
+    let ok = 0;
+    try {
+      for (const docId of ids) {
+        try {
+          await deleteDocument(docId);
+          ok += 1;
+        } catch {
+          /* continue with remaining */
+        }
+      }
+      if (ok === ids.length) {
+        toast.success(t('channel.deletedBulkToast', { count: ok }));
+      } else if (ok > 0) {
+        toast.success(t('channel.deleteBulkPartial', { ok, total: ids.length }));
+      } else {
+        toast.error(t('channel.deleteFailed'));
+      }
+      clearSelection();
+      await loadDocuments();
+    } finally {
+      setBulkBusy(null);
+    }
+  };
+
+  const handleBulkProcess = async () => {
+    const docs = selectedProcessableDocs;
+    if (docs.length === 0) {
+      toast.error(t('channel.processBulkNone'));
+      return;
+    }
+    setBulkBusy('process');
+    let ok = 0;
+    try {
+      for (const doc of docs) {
+        try {
+          await createJob({ document_id: doc.id });
+          ok += 1;
+        } catch {
+          /* continue */
+        }
+      }
+      const skipped = selectedCount - docs.length;
+      if (ok === docs.length && skipped === 0) {
+        toast.success(t('channel.processBulkToast', { count: ok }));
+      } else if (ok > 0) {
+        toast.success(t('channel.processBulkPartial', { ok, skipped }));
+      } else {
+        toast.error(t('channel.processJobFailed'));
+      }
+      await loadDocuments();
+    } finally {
+      setBulkBusy(null);
+    }
+  };
+
+  const handleBulkMoveClick = () => {
+    openMoveModal([...selectedDocIds]);
+  };
+
+  const bulkActionsDisabled = bulkBusy !== null || moveLoading;
 
   if (loading) {
     return (
@@ -305,6 +466,66 @@ export function DocumentChannel() {
             <option>{t('channel.filterImage')}</option>
           </select>
         </div>
+        {selectedCount > 0 && (
+          <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
+            <span className="documents-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
+            <div className="documents-bulk-actions">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void handleBulkProcess()}
+                disabled={bulkActionsDisabled || selectedProcessableDocs.length === 0}
+                title={
+                  selectedProcessableDocs.length === 0
+                    ? t('channel.processBulkNone')
+                    : t('channel.bulkProcess')
+                }
+              >
+                {bulkBusy === 'process' ? (
+                  <Loader2 size={16} className="documents-loading-spinner" />
+                ) : (
+                  <Play size={16} />
+                )}
+                <span>{t('channel.bulkProcess')}</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleBulkMoveClick}
+                disabled={bulkActionsDisabled}
+              >
+                {bulkBusy === 'move' ? (
+                  <Loader2 size={16} className="documents-loading-spinner" />
+                ) : (
+                  <FolderInput size={16} />
+                )}
+                <span>{t('channel.bulkMove')}</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm documents-bulk-delete"
+                onClick={() => void handleBulkDelete()}
+                disabled={bulkActionsDisabled}
+              >
+                {bulkBusy === 'delete' ? (
+                  <Loader2 size={16} className="documents-loading-spinner" />
+                ) : (
+                  <Trash2 size={16} />
+                )}
+                <span>{t('channel.bulkDelete')}</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={clearSelection}
+                disabled={bulkActionsDisabled}
+              >
+                <X size={16} />
+                <span>{t('channel.clearSelection')}</span>
+              </button>
+            </div>
+          </div>
+        )}
         <div className="documents-table-wrap">
           {docsLoading ? (
             <div className="documents-loading">
@@ -319,26 +540,48 @@ export function DocumentChannel() {
             <table className="documents-table">
               <thead>
                 <tr>
+                  <th className="documents-table-select-col">
+                    <input
+                      type="checkbox"
+                      checked={allDocsSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someDocsSelected;
+                      }}
+                      onChange={toggleSelectAll}
+                      aria-label={t('channel.selectAllAria')}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </th>
                   <th>{t('channel.tableName')}</th>
                   <th>{t('channel.tableType')}</th>
                   <th>{t('channel.tableSize')}</th>
                   <th>{t('channel.tableStatus')}</th>
                   <th>{t('channel.tableUploaded')}</th>
-                  <th className="documents-table-actions">{t('channel.tableActions')}</th>
+                  <th className={tableRowActionCellClass}>{t('channel.tableActions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {documents.map((doc) => {
                   const Icon = fileTypeIcons[doc.file_type] || FileText;
+                  const isSelected = selectedDocIds.has(doc.id);
                   return (
                     <tr
                       key={doc.id}
-                      className="documents-table-row-clickable"
+                      className={`documents-table-row-clickable${isSelected ? ' documents-table-row-selected' : ''}`}
                       onClick={() => navigate(`/documents/view/${doc.id}`)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && navigate(`/documents/view/${doc.id}`)}
                     >
+                      <td className="documents-table-select-col" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleDocSelection(doc.id)}
+                          aria-label={t('channel.selectDocAria', { name: doc.name })}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </td>
                       <td>
                         <div className="documents-table-name">
                           <Icon size={18} strokeWidth={1.5} />
@@ -353,52 +596,43 @@ export function DocumentChannel() {
                         </span>
                       </td>
                       <td>{formatDate(doc.created_at)}</td>
-                      <td className="documents-table-actions" onClick={(e) => e.stopPropagation()}>
-                        <div className="documents-table-btns">
+                      <TableRowActionCell>
+                        <TableRowActions>
                           {(doc.status === 'uploaded' || doc.status === 'failed') && (
-                            <button
-                              type="button"
+                            <TableRowActionButton
                               title={t('common.process')}
                               aria-label={t('channel.ariaProcess', { name: doc.name })}
-                              onClick={(e) => handleProcessClick(e, doc)}
-                              disabled={processingId === doc.id}
-                            >
-                              {processingId === doc.id ? (
-                                <Loader2 size={16} className="documents-loading-spinner" />
-                              ) : (
-                                <Play size={16} />
-                              )}
-                            </button>
+                              onClick={(e) => void handleProcessClick(e, doc)}
+                              loading={processingId === doc.id}
+                              icon={<Play size={16} />}
+                            />
                           )}
-                          <button type="button" title={t('common.edit')} aria-label={t('channel.ariaEdit')}>
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            type="button"
+                          <TableRowActionButton
+                            title={t('common.edit')}
+                            aria-label={t('channel.ariaEdit')}
+                            icon={<Pencil size={16} />}
+                          />
+                          <TableRowActionButton
                             title={t('common.move')}
                             aria-label={t('channel.ariaMoveDoc', { name: doc.name })}
                             onClick={(e) => handleMoveClick(e, doc)}
-                          >
-                            <FolderInput size={16} />
-                          </button>
-                          <button type="button" title={t('common.download')} aria-label={t('channel.ariaDownload')}>
-                            <Download size={16} />
-                          </button>
-                          <button
-                            type="button"
+                            icon={<FolderInput size={16} />}
+                          />
+                          <TableRowActionButton
+                            title={t('common.download')}
+                            aria-label={t('channel.ariaDownload')}
+                            icon={<Download size={16} />}
+                          />
+                          <TableRowActionButton
                             title={t('common.delete')}
                             aria-label={t('channel.ariaDeleteDoc', { name: doc.name })}
-                            onClick={(e) => handleDeleteClick(e, doc)}
-                            disabled={deletingId === doc.id}
-                          >
-                            {deletingId === doc.id ? (
-                              <Loader2 size={16} className="documents-loading-spinner" />
-                            ) : (
-                              <Trash2 size={16} />
-                            )}
-                          </button>
-                        </div>
-                      </td>
+                            variant="danger"
+                            onClick={(e) => void handleDeleteClick(e, doc)}
+                            loading={deletingId === doc.id}
+                            icon={<Trash2 size={16} />}
+                          />
+                        </TableRowActions>
+                      </TableRowActionCell>
                     </tr>
                   );
                 })}
@@ -528,7 +762,7 @@ export function DocumentChannel() {
         </div>
       )}
 
-      {moveDoc && (
+      {moveModalDocIds && moveModalDocIds.length > 0 && (
         <div
           className="documents-upload-modal-overlay"
           onClick={closeMoveModal}
@@ -542,7 +776,11 @@ export function DocumentChannel() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="documents-upload-modal-header">
-              <h2 id="move-modal-title">{t('channel.moveModalTitle')}</h2>
+              <h2 id="move-modal-title">
+                {moveModalDocIds.length > 1
+                  ? t('channel.moveModalTitleBulk')
+                  : t('channel.moveModalTitle')}
+              </h2>
               <button
                 type="button"
                 className="documents-upload-modal-close"
@@ -554,7 +792,9 @@ export function DocumentChannel() {
               </button>
             </div>
             <p className="documents-upload-modal-hint">
-              {t('channel.moveModalHint', { name: moveDoc.name })}
+              {moveModalDocIds.length > 1
+                ? t('channel.moveModalHintBulk', { count: moveModalDocIds.length })
+                : t('channel.moveModalHint', { name: moveModalDocs[0]?.name ?? '' })}
             </p>
             <div className="documents-move-form">
               <label htmlFor="move-target-channel">{t('common.targetChannel')}</label>
@@ -583,8 +823,12 @@ export function DocumentChannel() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={handleMoveConfirm}
-                disabled={moveLoading || moveTargetChannelId === moveDoc.channel_id}
+                onClick={() => void handleMoveConfirm()}
+                disabled={
+                  moveLoading ||
+                  !moveTargetChannelId ||
+                  moveModalDocs.every((d) => d.channel_id === moveTargetChannelId)
+                }
               >
                 {moveLoading ? (
                   <>

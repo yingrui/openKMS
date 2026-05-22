@@ -7,10 +7,13 @@ import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
 import { KnowledgeMapForceGraph } from '../components/KnowledgeMapForceGraph';
+import { config } from '../config';
 import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
 import {
+  fetchKnowledgeMapHtmlStatus,
   fetchKnowledgeMapTree,
   fetchResourceLinks,
+  type KnowledgeMapHtmlStatus,
   type KnowledgeMapNode,
   type ResourceLink,
 } from '../data/knowledgeMapApi';
@@ -40,6 +43,7 @@ export function Home() {
   const [hubLoading, setHubLoading] = useState(false);
   const [knowledgeMapTree, setKnowledgeMapTree] = useState<KnowledgeMapNode[] | null>(null);
   const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
+  const [mapHtmlStatus, setMapHtmlStatus] = useState<KnowledgeMapHtmlStatus | null>(null);
   const [knowledgeMapTreeLoading, setKnowledgeMapTreeLoading] = useState(false);
   const [knowledgeMapTreeError, setKnowledgeMapTreeError] = useState<string | null>(null);
   const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
@@ -73,6 +77,7 @@ export function Home() {
     if (!isAuthenticated || !showKnowledgeMapHub) {
       setKnowledgeMapTree(null);
       setResourceLinks([]);
+      setMapHtmlStatus(null);
       setKnowledgeMapTreeError(null);
       setKnowledgeMapTreeLoading(false);
       return;
@@ -81,6 +86,14 @@ export function Home() {
     setKnowledgeMapTreeLoading(true);
     setKnowledgeMapTreeError(null);
     void (async () => {
+      let st: KnowledgeMapHtmlStatus | null = null;
+      try {
+        st = await fetchKnowledgeMapHtmlStatus();
+      } catch {
+        st = null;
+      }
+      if (cancelled) return;
+      setMapHtmlStatus(st);
       try {
         const [tree, links] = await Promise.all([fetchKnowledgeMapTree(), fetchResourceLinks()]);
         if (!cancelled) {
@@ -138,6 +151,12 @@ export function Home() {
     [navigate],
   );
 
+  const mapHtmlIframeSrc = useMemo(() => {
+    const base = config.apiUrl.replace(/\/$/, '');
+    const path = '/api/knowledge-map/map-html';
+    return base ? `${base}${path}` : path;
+  }, []);
+
   if (!isAuthenticated) {
     return <HomeStaticLanding onSignIn={login} />;
   }
@@ -146,6 +165,7 @@ export function Home() {
   const showDocsWork = hasPermission('documents:read') || hasPermission('all');
   const mapLoaded = knowledgeMapTree !== null;
   const mapHasTerms = Boolean(knowledgeMapTree?.length);
+  const showHtmlHome = mapHtmlStatus?.has_artifact === true;
   const nodeCount = hub?.knowledge_map?.node_count ?? null;
   const linkCount = hub?.knowledge_map?.link_count ?? null;
 
@@ -191,17 +211,25 @@ export function Home() {
           <section className="home-map-stage" aria-label={t('sectionKnowledgeMap')}>
             <div className="home-map-stage-title">
               <Waypoints size={22} aria-hidden />
-              <span>{t('knowledgeMapHeading')}</span>
+              <span>{showHtmlHome ? t('knowledgeMapPublishedHeading') : t('knowledgeMapHeading')}</span>
             </div>
             {knowledgeMapTreeLoading && !mapLoaded ? (
               <div className="home-map-stage-loading">
                 <Loader2 className="home-map-stage-spinner" size={32} aria-hidden />
                 <span>{t('loadingGraph')}</span>
               </div>
-            ) : knowledgeMapTreeError ? (
+            ) : knowledgeMapTreeError && !showHtmlHome ? (
               <p className="home-error home-map-stage-error" role="alert">
                 {knowledgeMapTreeError}
               </p>
+            ) : showHtmlHome ? (
+              <iframe
+                title={t('knowledgeMapPublishedHeading')}
+                className="home-map-stage__html-frame"
+                src={mapHtmlIframeSrc}
+                sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
+                referrerPolicy="no-referrer"
+              />
             ) : !mapHasTerms ? (
               <div className="home-map-stage-empty">
                 <p className="home-map-stage-empty-title">{t('noNodesTitle')}</p>
@@ -224,10 +252,10 @@ export function Home() {
                 className="km-map-graph--home"
               />
             ) : null}
-            {mapHasTerms ? (
-              <p className="home-muted home-map-stage-hint">
-                {t('mapHint')}
-              </p>
+            {showHtmlHome ? (
+              <p className="home-muted home-map-stage-hint">{t('mapHtmlHint')}</p>
+            ) : mapHasTerms ? (
+              <p className="home-muted home-map-stage-hint">{t('mapHint')}</p>
             ) : null}
           </section>
 

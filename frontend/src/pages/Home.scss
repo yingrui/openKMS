@@ -367,6 +367,16 @@
   max-height: min(78vh, 860px);
 }
 
+.home-map-stage__html-frame {
+  display: block;
+  width: 100%;
+  min-height: min(68vh, 760px);
+  max-height: min(78vh, 860px);
+  border: 0;
+  border-radius: var(--radius-md, 10px);
+  background: #fff;
+}
+
 .home-map-stage-hint {
   margin: 0;
   text-align: center;

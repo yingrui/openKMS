@@ -139,6 +139,16 @@
   overflow: hidden;
 }
 
+/* Knowledge Map → HTML overview or Explore graph/3D: fill main column under header */
+.app-content:has(.knowledge-map-page--html-designer-full-height),
+.app-content:has(.knowledge-map-page--explore-view-fill) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .app-content--compact {
   padding: var(--space-3) var(--space-4);
 }

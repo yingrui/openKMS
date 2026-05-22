@@ -1,5 +1,6 @@
 // Barrel: `@use '…/styles/design-system' as *` imports breakpoints + mixins into one namespace.
 // CSS variables + global base styles are still loaded from `src/index.scss` (not forwarded here).
+// React primitives: import from `styles/design-system` (`index.ts`); component SCSS partials are @use'd in `src/index.scss`.
 
 @forward 'tokens';
 @forward 'mixins';

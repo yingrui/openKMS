@@ -12,6 +12,69 @@
   max-width: 1920px;
 }
 
+/** HTML overview tab: stretch to the main column height (see App.scss `app-content:has(...)`). */
+.knowledge-map-page--html-designer-full-height {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* In-page chrome below the app header (back link, title, tabs). Tweak if copy/layout shifts. */
+  --km-html-designer-chrome-below-header: 10.75rem;
+}
+
+.knowledge-map-page--html-designer-full-height > .knowledge-map-back-row {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+.knowledge-map-page--html-designer-full-height > .page-header.knowledge-map-header {
+  margin-bottom: 0.25rem;
+}
+
+.knowledge-map-page--html-designer-full-height > .page-header.knowledge-map-header .page-subtitle {
+  margin-bottom: 0;
+}
+
+.knowledge-map-page--html-designer-full-height > .knowledge-map-view-tabs {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.knowledge-map-page--html-designer-full-height > .page-header.knowledge-map-header,
+.knowledge-map-page--html-designer-full-height > .knowledge-map-error-banner {
+  flex-shrink: 0;
+}
+
+.knowledge-map-html-overview {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* Match Wiki Copilot rail: viewport height minus global header, app padding, and local tab chrome. */
+  height: calc(
+    100dvh - var(--header-height, 56px) - 2 * var(--space-6) - var(--km-html-designer-chrome-below-header)
+  );
+  max-height: calc(
+    100dvh - var(--header-height, 56px) - 2 * var(--space-6) - var(--km-html-designer-chrome-below-header)
+  );
+}
+
+@include max-width(ds.$km-layout-max) {
+  .knowledge-map-page--html-designer-full-height {
+    --km-html-designer-chrome-below-header: 12rem;
+  }
+
+  .knowledge-map-html-overview {
+    height: auto;
+    min-height: min(72dvh, 560px);
+    max-height: min(90dvh, 900px);
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 .knowledge-map-view-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -47,14 +110,75 @@
   cursor: not-allowed;
 }
 
-.knowledge-map-explore-3d {
-  min-height: min(#{km.$km-explore-3d-min-height}, 72vh);
-  margin-bottom: 32px;
+.knowledge-map-explore-graph-hint {
+  margin-top: 0.5rem;
+  margin-bottom: 0;
+  font-size: 0.875rem;
+  flex-shrink: 0;
 }
 
-.knowledge-map-explore-3d .km-map-graph-scroll {
-  min-height: min(520px, 68vh);
-  max-height: min(78vh, 820px);
+/** Explore graph / 3D: fill main column under header (`App.scss` `app-content:has(...)`). */
+.knowledge-map-page--explore-view-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.knowledge-map-page--explore-view-fill > .knowledge-map-back-row {
+  flex-shrink: 0;
+  margin-bottom: 0.5rem;
+}
+
+.knowledge-map-page--explore-view-fill > .page-header.knowledge-map-header {
+  margin-bottom: 0.25rem;
+}
+
+.knowledge-map-page--explore-view-fill > .page-header.knowledge-map-header .page-subtitle {
+  margin-bottom: 0;
+}
+
+.knowledge-map-page--explore-view-fill > .knowledge-map-view-tabs {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.knowledge-map-page--explore-view-fill > .page-header.knowledge-map-header,
+.knowledge-map-page--explore-view-fill > .knowledge-map-error-banner {
+  flex-shrink: 0;
+}
+
+.knowledge-map-page--explore-view-fill .knowledge-map-explore-graph,
+.knowledge-map-page--explore-view-fill .knowledge-map-explore-3d {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.knowledge-map-page--explore-view-fill .knowledge-map-explore-graph .km-map-graph-scroll,
+.knowledge-map-page--explore-view-fill .knowledge-map-explore-3d .km-map-graph-scroll {
+  min-height: 0;
+  max-height: none;
+}
+
+.knowledge-map-page--explore-view-fill .km-map-graph-canvas-wrap {
+  min-height: 0;
+}
+
+.knowledge-map-page--explore-view-fill .km-map-graph-canvas-wrap--3d {
+  min-height: 0;
+}
+
+.knowledge-map-page--explore-view-fill .knowledge-map-explore-3d > * {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .knowledge-map-explore-3d-loading {

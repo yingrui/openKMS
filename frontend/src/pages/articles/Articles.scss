@@ -123,37 +123,6 @@
   flex-shrink: 0;
 }
 
-.articles-table-actions {
-  width: 1%;
-  white-space: nowrap;
-}
-
-.articles-table-btns {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.articles-table-btns button,
-.articles-table-btns a {
-  display: inline-flex;
-  padding: 6px;
-  border-radius: var(--radius-sm);
-  color: var(--color-text-muted);
-  transition: background 0.15s, color 0.15s;
-  text-decoration: none;
-}
-
-.articles-table-btns button:hover,
-.articles-table-btns a:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.articles-table-btns button[aria-label="Delete"]:hover {
-  color: var(--color-error);
-}
-
 .articles-empty {
   display: flex;
   flex-direction: column;

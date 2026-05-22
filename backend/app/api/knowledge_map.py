@@ -32,6 +32,7 @@ from app.models.wiki_models import WikiSpace
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.knowledge_map_html import (
     designer_chat_via_llm,
+    ensure_spa_link_targets,
     finalize_html_document,
     generate_static_html_via_llm,
     iter_designer_chat_llm_stream_events,
@@ -450,7 +451,10 @@ async def get_map_html(db: AsyncSession = Depends(get_db)):
     row = await db.get(KnowledgeMapHtmlArtifact, DEFAULT_KNOWLEDGE_MAP_HTML_ARTIFACT_ID)
     if not row or not (row.html or "").strip():
         raise HTTPException(status_code=404, detail="No HTML snapshot yet. POST /knowledge-map/map-html/regenerate first.")
-    return HTMLResponse(content=row.html, media_type="text/html; charset=utf-8")
+    return HTMLResponse(
+        content=ensure_spa_link_targets(row.html, settings.frontend_url),
+        media_type="text/html; charset=utf-8",
+    )
 
 
 @router.delete(

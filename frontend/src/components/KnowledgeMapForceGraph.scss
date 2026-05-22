@@ -25,6 +25,13 @@
   max-height: none;
 }
 
+/* Knowledge Map → Explore graph / 3D tab (flex parent from `.knowledge-map-page--explore-view-fill`) */
+.km-map-graph-scroll.km-map-graph--explore-fill {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
 .km-map-graph-hint {
   margin: 0;
   padding: 0 4px;
