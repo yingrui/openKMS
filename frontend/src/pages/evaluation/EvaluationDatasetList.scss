@@ -73,7 +73,7 @@
 
 .eval-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(#{ds.$grid-min-eval-card}, 1fr));
   gap: 20px;
 }
 
@@ -91,7 +91,7 @@
 
 .eval-card:hover {
   border-color: var(--color-accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .eval-card-top {
@@ -111,7 +111,7 @@
 }
 
 .eval-card-actions button {
-  padding: 6px;
+  padding: var(--gap-compact);
   background: none;
   border: none;
   color: var(--color-text-muted);
@@ -149,19 +149,19 @@
 .eval-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
 }
 
 .eval-dialog {
   background: var(--color-bg-elevated);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-elevated);
   width: 100%;
-  max-width: 440px;
+  max-width: #{ds.$bp-dialog-sm};
 }
 
 .eval-dialog-header {

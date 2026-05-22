@@ -8,8 +8,8 @@
 
 | File | Role |
 |------|------|
-| **`_css-variables.scss`** | **Source of truth for theming:** palette, semantic surfaces (error/warning/success/info), document status pill tokens, typography scale, **spacing** (`--space-*`), radius, shadows, **z-index** layers, **motion**, focus ring vars, **`--color-surface` / `--color-bg-subtle` / `--color-muted` / `--color-fg`** aliases. `:root` + **`[data-theme='dark']`** overrides. |
-| **`_tokens.scss`** | **Compile-time** mirrors: breakpoints (`$bp-*`), spacing (`$space-*` for `calc` / Sass), z-index (`$z-*`), `$km-layout-max`. Use with `@use '…/tokens' as ds`. |
+| **`_css-variables.scss`** | **Source of truth for theming:** palette, semantic surfaces (error/warning/success/info), document status pill tokens, typography scale, **spacing** (`--space-*`, **`--gap-compact`** / **`--padding-compact-*`** for half-step rhythm), radius, shadows (**incl. `--shadow-elevated`**, modal scrim **`--overlay-backdrop`**), **z-index** layers, **motion**, focus ring vars, **`--color-surface` / `--color-bg-subtle` / `--color-muted` / `--color-fg`** aliases, **`@media print`** vars (**`--print-paper-bg`** / **`--print-ink`** / border + muted surfaces). `:root` + **`[data-theme='dark']`** overrides. |
+| **`_tokens.scss`** | **Compile-time** mirrors: breakpoints (`$bp-*`), **`$grid-min-*`**, **`$playground-messages-*`**, **`$bp-dialog-sm`**, spacing (`$space-*` for `calc` / Sass), z-index (`$z-*`), `$km-layout-max`. Use with `@use '…/tokens' as ds`. |
 | **`_mixins.scss`** | **`max-width` / `min-width`**, **`focus-ring-accent`**, **`text-truncate`**, **`motion-tokens`** (duration + easing; set `transition-property` yourself). `@use '…/mixins' as *` for bare `@include`. |
 | **`_global.scss`** | Global reset, `body` / links, buttons (uses spacing + type + motion tokens). |
 | **`_utilities.scss`** | Cross-route helpers (`.page-subtitle--error`, `.table-empty`, `.error-banner`, `.openkms-error-boundary*`, flex/spacing modifiers). Loaded once from `index.scss`. |

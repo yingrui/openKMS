@@ -501,8 +501,8 @@
 }
 
 .eval-result-fail {
-  background: rgba(239, 68, 68, 0.15);
-  color: #dc2626;
+  background: color-mix(in srgb, var(--color-error) 15%, transparent);
+  color: var(--color-error);
 }
 
 .eval-result-score {
@@ -564,19 +564,19 @@
 .eval-dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
 }
 
 .eval-dialog {
   background: var(--color-bg-elevated);
   border-radius: var(--radius-lg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-elevated);
   width: 100%;
-  max-width: 520px;
+  max-width: #{ds.$bp-tight-max};
 }
 
 .eval-dialog-header {

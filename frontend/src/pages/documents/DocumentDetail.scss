@@ -1434,7 +1434,7 @@
 }
 
 .document-detail-print-subtitle {
-  margin: 6px 0 0;
+  margin: var(--gap-compact) 0 0;
   font-size: 0.95rem;
   color: var(--color-text-secondary);
 }
@@ -1459,8 +1459,8 @@
   .app-main,
   .app-content,
   .document-detail {
-    background: #fff !important;
-    color: #000 !important;
+    background: var(--print-paper-bg) !important;
+    color: var(--print-ink) !important;
     height: auto !important;
     min-height: 0 !important;
     overflow: visible !important;
@@ -1520,9 +1520,9 @@
 
   .document-detail-print-header {
     display: block !important;
-    margin: 0 0 18px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #d7d7d7;
+    margin: 0 0 var(--space-5);
+    padding-bottom: var(--space-3);
+    border-bottom: 1px solid var(--print-border-muted);
   }
 
   .document-detail-markdown-body,
@@ -1548,8 +1548,8 @@
   .document-detail-markdown-body pre {
     white-space: pre-wrap;
     overflow: visible !important;
-    border: 1px solid #d7d7d7;
-    background: #f7f7f7 !important;
+    border: 1px solid var(--print-border-muted);
+    background: var(--print-surface-muted) !important;
   }
 
   .document-detail-markdown-body table {
@@ -1565,9 +1565,9 @@
 .document-detail-process-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 10px;
-  padding: 5px 12px;
+  gap: var(--gap-compact);
+  margin-left: var(--padding-compact-y);
+  padding: calc(var(--space-1) + var(--space-1) / 4) var(--space-3);
   font-size: 0.8rem;
   font-weight: 500;
   border: 1px solid var(--color-border);
@@ -1591,8 +1591,8 @@
 .document-detail-force-reparse {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 12px;
+  gap: var(--gap-compact);
+  margin-left: var(--space-3);
   font-size: 0.78rem;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -1606,9 +1606,9 @@
 .document-detail-reset-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 10px;
-  padding: 5px 12px;
+  gap: var(--gap-compact);
+  margin-left: var(--padding-compact-y);
+  padding: calc(var(--space-1) + var(--space-1) / 4) var(--space-3);
   font-size: 0.8rem;
   font-weight: 500;
   border: 1px solid var(--color-border);
