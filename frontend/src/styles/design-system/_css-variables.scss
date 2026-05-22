@@ -21,6 +21,12 @@
   --color-accent-muted: #ccfbf1;
   --color-accent-subtle: #f0fdfa;
   --color-on-accent: #ffffff;
+
+  /* KB Q&A ontology / graph source accent (violet; distinct from teal accent) */
+  --color-ontology-source: #6d28d9;
+  --color-ontology-source-soft: #a78bfa;
+  --color-ontology-fg: #5b21b6;
+  --color-ontology-fg-muted: #ddd6fe;
   --color-error-contrast: #ffffff;
 
   --color-warning: #d97706;
@@ -148,6 +154,11 @@
 
   --color-accent-muted: #134e4a;
   --color-accent-subtle: #0d3d3a;
+
+  --color-ontology-source: #a78bfa;
+  --color-ontology-source-soft: #c4b5fd;
+  --color-ontology-fg: #e9d5ff;
+  --color-ontology-fg-muted: #f5f3ff;
 
   --color-error-bg: #450a0a;
   --color-error-border: #7f1d1d;

@@ -50,7 +50,7 @@
 .global-search-tab--active {
   color: var(--color-text);
   font-weight: 500;
-  border-bottom-color: var(--color-primary);
+  border-bottom-color: var(--color-accent);
   background: transparent;
 }
 
@@ -64,7 +64,7 @@
 }
 
 .global-search-tab--active .global-search-tab-count {
-  color: var(--color-primary);
+  color: var(--color-accent);
 }
 
 .global-search-filters {

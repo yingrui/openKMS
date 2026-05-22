@@ -468,7 +468,7 @@
 .object-explorer-answer-card-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--z-modal);
   margin: 0;
   border-radius: 0;
   border-left: none;
@@ -680,7 +680,7 @@
   width: 100vw !important;
   height: 100vh !important;
   min-height: 0 !important;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   border-radius: 0;
 }
 

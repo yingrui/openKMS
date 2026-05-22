@@ -458,7 +458,7 @@
 
 /* Above import progress overlay (z-index 60) so folder options stay visible. */
 .wiki-space-settings-vault-options-overlay {
-  z-index: 100;
+  z-index: var(--z-dropdown);
 }
 
 .wiki-space-settings-import-folder-btn {

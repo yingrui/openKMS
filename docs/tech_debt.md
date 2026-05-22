@@ -1,6 +1,6 @@
 # Technical Debt
 
-Last updated: 2026-05-06
+Last updated: 2026-05-22
 
 This file lists **remaining** debt. Items that are done stay in [Resolved (historical)](#resolved-historical) only so the body does not contradict the codebase.
 
@@ -23,6 +23,7 @@ These were previously called out as problems; they are **addressed** in the curr
 - **Knowledge bases (SPA):** list and detail use real KB APIs (no mock-only KB UI).
 - **Article channel list:** row opens detail; no separate mock row actions in the table.
 - **Document channel list:** channel tree + document list are batched queries (not per-document N+1); further SQL consolidation is optional polish.
+- **SPA / SCSS design system (incremental):** Shared tokens and conventions under `frontend/src/styles/design-system/` + **`frontend/src/styles/README.md`**; waves of route SCSS moved off ad hoc modal **`z-index`**, raw literals in jobs/models, GlobalSearch, evaluation dialogs, document print, KB Q&A (incl. **`--color-ontology-*`**), **`App.scss`** shell, and **`richMarkdown`** Mermaid error surfaces.
 
 ---
 
@@ -77,6 +78,15 @@ Incremental typing backlog (examples): `get_categories` in `backend/app/api/mode
 - CRUD list pages (`Models.tsx`, `Pipelines.tsx`, `Jobs.tsx`) repeat load / modal / table patterns — candidate for a small hook.
 - Repeated search inputs — optional shared component.
 - `KnowledgeBaseDetail.tsx` remains very large — split tabs into subcomponents or hooks over time.
+
+### SPA / SCSS (remaining style debt)
+
+| Area | Notes |
+|------|--------|
+| **Hex / `rgba` / magic `px` outside `design-system/`** | Many `frontend/src/pages/**/*.scss` and some `components/**/*.scss` still use raw colors or ad hoc spacing. Prefer **`var(--color-*)`**, **`var(--space-*)`**, **`color-mix`**, and **`@use '…/tokens' as ds`** for breakpoints / grid mins (`README.md` conventions). |
+| **`z-index` outliers** | Bulk `1000` / `100` sweeps are done for listed routes; re-audit any remaining numeric stacks (e.g. `50`, `200`, chart overlays) when something hides under the shell. |
+| **`style={{}}` in TSX** | Keep for data-driven geometry only; move static chrome to colocated SCSS or **`_utilities.scss`**. |
+| **Redundant `[data-theme='dark']` blocks** | Some files still repeat rules that only mirror `:root` semantic vars — safe to delete when next editing that stylesheet. |
 
 ### Security and operations (ongoing)
 

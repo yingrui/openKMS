@@ -258,7 +258,7 @@
 
 .kb-section-header .btn-primary {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   border: none;
 }
 
@@ -270,7 +270,7 @@
 .kb-inline-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--padding-compact-y);
   padding: 16px;
   margin-bottom: 16px;
   background: var(--color-bg-muted);
@@ -281,7 +281,7 @@
 .kb-inline-form input,
 .kb-inline-form textarea,
 .kb-inline-form select {
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
@@ -500,7 +500,7 @@
   gap: 8px;
   padding: 10px 16px;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   border: none;
   border-radius: var(--radius-md);
   font-size: 0.875rem;
@@ -546,7 +546,7 @@
   font-size: 0.75rem;
   padding: 2px 6px;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   border-radius: var(--radius-sm);
   margin-left: 4px;
 }
@@ -619,7 +619,7 @@
   font-size: 0.75rem;
   padding: 2px 6px;
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   border-radius: var(--radius-sm);
   margin-left: 4px;
 }
@@ -960,7 +960,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #fff;
+  color: var(--color-on-accent);
   background: var(--color-accent);
   border: none;
   border-radius: 8px;
@@ -1201,7 +1201,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   border-radius: 14px;
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-elevated);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-md);
 }
 
 .kb-detail--qa-fullpage .kb-qa-composer {
@@ -1209,7 +1209,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 [data-theme='dark'] .kb-qa-composer {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-elevated);
 }
 
 .kb-qa-composer-input {
@@ -1264,7 +1264,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   border: none;
   border-radius: 999px;
   background: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
   cursor: pointer;
   transition: opacity 0.15s, transform 0.12s;
 }
@@ -1307,16 +1307,11 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 /* QA Chat (message bubbles & sources — shared) */
 .kb-qa-warning {
   padding: 12px 16px;
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-warning-bg);
+  color: var(--color-warning-fg);
   border-radius: var(--radius-md);
   font-size: 0.875rem;
   margin-bottom: 16px;
-}
-
-[data-theme="dark"] .kb-qa-warning {
-  background: #422006;
-  color: #fcd34d;
 }
 
 .kb-qa-messages {
@@ -1366,9 +1361,9 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-qa-msg-bubble--user {
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   border-radius: var(--radius-md) var(--radius-md) 4px var(--radius-md);
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   max-width: 100%;
 }
 
@@ -1384,7 +1379,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 .kb-qa-msg-bubble--assistant {
   background: var(--color-bg-muted);
   border-radius: var(--radius-md) var(--radius-md) var(--radius-md) 4px;
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   max-width: 100%;
 }
 
@@ -1541,15 +1536,10 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-qa-source-chip--ontology {
-  border-left: 2px solid #6d28d9;
+  border-left: 2px solid var(--color-ontology-source);
   padding-left: 7px;
   border-radius: 8px;
-  background: color-mix(in srgb, #6d28d9 10%, var(--color-bg-elevated));
-}
-
-[data-theme="dark"] .kb-qa-source-chip--ontology {
-  border-left-color: #a78bfa;
-  background: color-mix(in srgb, #a78bfa 14%, var(--color-bg-elevated));
+  background: color-mix(in srgb, var(--color-ontology-source) 10%, var(--color-bg-elevated));
 }
 
 .kb-qa-sources-panels {
@@ -1652,29 +1642,29 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-qa-source-card--ontology {
-  border-left-color: #6d28d9;
+  border-left-color: var(--color-ontology-source);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, #6d28d9 14%, var(--color-bg-elevated)),
+    color-mix(in srgb, var(--color-ontology-source) 14%, var(--color-bg-elevated)),
     var(--color-bg-elevated)
   );
 }
 
 .kb-qa-source-card--ontology .kb-qa-source-card__kind {
-  color: #5b21b6;
+  color: var(--color-ontology-fg);
 }
 
 [data-theme="dark"] .kb-qa-source-card--ontology {
-  border-left-color: #a78bfa;
+  border-left-color: var(--color-ontology-source-soft);
   background: linear-gradient(
     135deg,
-    rgba(167, 139, 250, 0.18),
+    color-mix(in srgb, var(--color-ontology-source-soft) 18%, var(--color-bg-elevated)),
     var(--color-bg-elevated)
   );
 }
 
 [data-theme="dark"] .kb-qa-source-card--ontology .kb-qa-source-card__kind {
-  color: #ddd6fe;
+  color: var(--color-ontology-fg-muted);
 }
 
 [data-theme="dark"] .kb-qa-source-card--faq {
@@ -1703,7 +1693,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-qa-input-form input {
   flex: 1;
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
@@ -1719,9 +1709,9 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 .kb-qa-input-form button {
   display: inline-flex;
   align-items: center;
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   background: var(--color-accent);
-  color: white;
+  color: var(--color-on-accent);
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -1845,7 +1835,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 .kb-settings-form input,
 .kb-settings-form select,
 .kb-settings-form textarea {
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
@@ -1900,11 +1890,11 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 .kb-doc-picker-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-backdrop);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   padding: 24px;
 }
 
@@ -1912,7 +1902,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-elevated);
   max-width: 600px;
   width: 100%;
   display: flex;
@@ -2116,7 +2106,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-faq-dialog-form input,
 .kb-faq-dialog-form textarea {
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   font-size: 0.9375rem;
@@ -2248,7 +2238,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   align-items: center;
   gap: 10px;
   margin: 0 0 12px;
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -2450,7 +2440,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-gen-model-select select,
 .kb-gen-model-select textarea {
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) var(--padding-compact-x);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
@@ -2553,7 +2543,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 
 .kb-gen-review-remove:hover {
   color: var(--color-error);
-  background: rgba(220, 38, 38, 0.08);
+  background: color-mix(in srgb, var(--color-error) 8%, transparent);
 }
 
 .kb-wiki-index-hint {
