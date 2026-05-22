@@ -7,6 +7,11 @@
   max-width: km.$km-page-max-width;
 }
 
+/** HTML overview: allow a wider cap so designer + preview + snapshot fill the main column. */
+.knowledge-map-page--map-html-wide {
+  max-width: 1920px;
+}
+
 .knowledge-map-view-tabs {
   display: flex;
   flex-wrap: wrap;

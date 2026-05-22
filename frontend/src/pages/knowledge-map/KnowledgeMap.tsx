@@ -665,7 +665,7 @@ export function KnowledgeMap() {
   }
 
   return (
-    <div className="knowledge-map-page">
+    <div className={`knowledge-map-page${mapUiTab === 'mapHtml' ? ' knowledge-map-page--map-html-wide' : ''}`}>
       <Link to="/" className="knowledge-map-back-row">
         <ArrowLeft size={18} />
         <span>{t('back')}</span>

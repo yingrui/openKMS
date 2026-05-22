@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, Eraser, ExternalLink, Loader2, Plus, Send, Trash2 } from 'lucide-react';
+import { Bot, ExternalLink, Loader2, MessageCirclePlus, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '../../config';
 import {
@@ -214,6 +214,11 @@ export function KnowledgeMapHtmlCopilot({
   const openInNewTab = () => {
     window.open(previewSrc, '_blank', 'noopener,noreferrer');
   };
+
+  const convSelectValue =
+    activeConversationId && conversations.some((c) => c.id === activeConversationId)
+      ? activeConversationId
+      : '';
 
   const formatConversationOption = (c: MapHtmlDesignerConversation) => {
     const title = (c.title?.trim() || t('mapHtmlDesignerUntitled')).slice(0, 48);
@@ -456,128 +461,142 @@ export function KnowledgeMapHtmlCopilot({
     <div className="km-html-copilot-layout" aria-label={t('mapHtmlCopilotLayoutAria')}>
       <div className="km-html-copilot">
         <div className="km-html-copilot__head">
-          <Bot className="km-html-copilot__head-icon" size={22} strokeWidth={2} aria-hidden />
+          <Bot className="km-html-copilot__head-icon" size={20} strokeWidth={2} aria-hidden />
           <div className="km-html-copilot__head-text">
             <h2 className="km-html-copilot__title">{t('mapHtmlCopilotTitle')}</h2>
-            {canRead ? (
-              <div className="km-html-copilot__toolbar">
-                {convBootstrapBusy ? (
-                  <Loader2 className="knowledge-map-spinner km-html-copilot__toolbar-spinner" size={16} aria-hidden />
-                ) : null}
-                {conversations.length > 0 ? (
-                  <select
-                    id="km-html-designer-conversations"
-                    className="km-html-copilot__conv-select"
-                    aria-label={t('mapHtmlDesignerChatsAria')}
-                    disabled={sending || convBootstrapBusy}
-                    value={activeConversationId ?? ''}
-                    onChange={(e) => void handleSelectConversation(e.target.value)}
-                  >
-                    {conversations.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {formatConversationOption(c)}
-                      </option>
-                    ))}
-                  </select>
-                ) : null}
-                {canWrite ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    disabled={sending || convBootstrapBusy}
-                    onClick={() => void handleNewChat()}
-                  >
-                    <Plus size={16} aria-hidden />
-                    {t('mapHtmlDesignerNewChat')}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+            <p className="km-html-copilot__sub">{t('mapHtmlCopilotSubtitle')}</p>
           </div>
         </div>
 
-        <div className="km-html-copilot__thread" role="log">
-          {lines.map((ln, i) => (
-            <div
-              key={ln.id}
-              className={`km-html-copilot__msg-line km-html-copilot__msg-line--${ln.role}`}
+        {canRead ? (
+          <div className="km-html-copilot__chats" aria-label={t('mapHtmlDesignerChatsAria')}>
+            <label className="km-html-copilot__chats-label" htmlFor="km-html-designer-conversations">
+              {t('mapHtmlDesignerChatsLabel')}
+            </label>
+            {convBootstrapBusy && conversations.length === 0 ? (
+              <Loader2 className="knowledge-map-spinner km-html-copilot__chats-spinner" size={16} aria-hidden />
+            ) : null}
+            <select
+              id="km-html-designer-conversations"
+              className="km-html-copilot__chats-select"
+              disabled={sending || convBootstrapBusy}
+              value={convSelectValue}
+              onChange={(e) => void handleSelectConversation(e.target.value)}
             >
-              <div className="km-html-copilot__msg-label">
-                {ln.role === 'user' ? t('mapHtmlDesignerYou') : t('mapHtmlDesignerReply')}
-              </div>
-              <div className="km-html-copilot__msg-body">
-                {ln.content ? <span className="km-html-copilot__msg-text">{ln.content}</span> : null}
-                {sending && ln.role === 'assistant' && i === lines.length - 1 && !ln.content.trim() ? (
-                  <Loader2 className="knowledge-map-spinner km-html-copilot__msg-pending" size={16} aria-hidden />
+              {convBootstrapBusy && conversations.length === 0 ? (
+                <option value="" disabled>
+                  {t('mapHtmlDesignerChatsLoading')}
+                </option>
+              ) : null}
+              {!convBootstrapBusy && conversations.length === 0 ? (
+                <option value="" disabled>
+                  {t('mapHtmlDesignerChatsEmpty')}
+                </option>
+              ) : null}
+              {conversations.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {formatConversationOption(c)}
+                </option>
+              ))}
+            </select>
+            {canWrite ? (
+              <>
+                <button
+                  type="button"
+                  className="km-html-copilot__chats-icon-btn"
+                  disabled={sending || convBootstrapBusy}
+                  title={t('mapHtmlDesignerNewChatTitle')}
+                  aria-label={t('mapHtmlDesignerNewChatAria')}
+                  onClick={() => void handleNewChat()}
+                >
+                  <MessageCirclePlus size={18} strokeWidth={2} aria-hidden />
+                </button>
+                {activeConversationId ? (
+                  <button
+                    type="button"
+                    className="km-html-copilot__chats-icon-btn km-html-copilot__chats-icon-btn--danger"
+                    disabled={sending || convBootstrapBusy}
+                    title={t('mapHtmlDesignerDeleteChatTitle')}
+                    aria-label={t('mapHtmlDesignerDeleteChatAria')}
+                    onClick={() => void handleDeleteConversation()}
+                  >
+                    <Trash2 size={18} strokeWidth={2} aria-hidden />
+                  </button>
                 ) : null}
+              </>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="km-html-copilot__thread" role="log" aria-live="polite">
+          {lines.map((ln, i) => {
+            const isThinking =
+              sending && ln.role === 'assistant' && i === lines.length - 1 && !ln.content.trim();
+            return (
+              <div
+                key={ln.id}
+                className={`km-html-copilot__msg km-html-copilot__msg--${ln.role}${isThinking ? ' km-html-copilot__msg--thinking' : ''}`}
+              >
+                <span className="km-html-copilot__msg-label">
+                  {ln.role === 'user' ? t('mapHtmlDesignerYou') : t('mapHtmlDesignerReply')}
+                </span>
+                <div className="km-html-copilot__msg-body">
+                  {ln.content ? <span className="km-html-copilot__msg-text">{ln.content}</span> : null}
+                  {isThinking ? (
+                    <Loader2 className="knowledge-map-spinner km-html-copilot__msg-pending" size={16} aria-hidden />
+                  ) : null}
+                </div>
               </div>
-            </div>
-          ))}
-          <div ref={threadEndRef} />
+            );
+          })}
+          <div ref={threadEndRef} className="km-html-copilot__thread-end" aria-hidden />
         </div>
 
         <div className="km-html-copilot__composer">
-          <textarea
-            id="km-html-designer-input"
-            className="km-html-copilot__textarea"
-            rows={2}
-            value={draftInput}
-            onChange={(e) => setDraftInput(e.target.value)}
-            placeholder={t('mapHtmlDesignerPlaceholder')}
-            disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId}
-            aria-label={t('mapHtmlDesignerComposerLabel')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                if (e.nativeEvent.isComposing || e.key === 'Process' || e.nativeEvent.keyCode === 229) {
-                  return;
+          <label htmlFor="km-html-designer-input" className="sr-only">
+            {t('mapHtmlDesignerComposerLabel')}
+          </label>
+          <div className="km-html-copilot__input-wrap">
+            <textarea
+              id="km-html-designer-input"
+              className="km-html-copilot__input"
+              rows={3}
+              value={draftInput}
+              onChange={(e) => setDraftInput(e.target.value)}
+              placeholder={t('mapHtmlDesignerPlaceholder')}
+              disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.nativeEvent.isComposing || e.key === 'Process' || e.nativeEvent.keyCode === 229) {
+                    return;
+                  }
+                  e.preventDefault();
+                  void handleSend();
                 }
-                e.preventDefault();
-                void handleSend();
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="btn btn-primary km-html-copilot__send"
-            disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId || !draftInput.trim()}
-            aria-label={t('mapHtmlDesignerSendAria')}
-            onClick={() => void handleSend()}
-          >
-            {sending ? <Loader2 className="knowledge-map-spinner" size={18} aria-hidden /> : <Send size={18} aria-hidden />}
-            <span>{t('mapHtmlDesignerSend')}</span>
-          </button>
-        </div>
-
-        <div className="km-html-copilot__foot">
-          <div className="km-html-copilot__status-row">
-            {statusLoading ? <Loader2 className="knowledge-map-spinner" size={16} aria-hidden /> : null}
-            <span className="km-html-copilot__status-strong">{t('mapHtmlCopilotStatusLabel')}</span>
-            <span>{statusLabel}</span>
+              }}
+            />
           </div>
-          <div className="km-html-copilot__actions">
-            {hasArtifact ? (
-              <button type="button" className="btn btn-secondary btn-sm" onClick={openInNewTab}>
-                <ExternalLink size={16} aria-hidden />
-                {t('mapHtmlSnapshotOpen')}
-              </button>
-            ) : null}
-            {canWrite && activeConversationId ? (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void handleDeleteConversation()}>
-                <Eraser size={16} aria-hidden />
-                {t('mapHtmlDesignerDeleteChat')}
-              </button>
-            ) : null}
-            {canWrite && hasArtifact ? (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void handleDeleteSavedOverview()}>
-                <Trash2 size={16} aria-hidden />
-                {t('mapHtmlDesignerDeleteSaved')}
-              </button>
-            ) : null}
-            {canWrite && draftRaw?.trim() && previewSafe ? (
-              <button type="button" className="btn btn-primary btn-sm" disabled={publishBusy} onClick={() => void handlePublish()}>
-                {publishBusy ? t('mapHtmlDesignerPublishing') : t('mapHtmlDesignerPublish')}
-              </button>
-            ) : null}
+          <div className="km-html-copilot__composer-footer">
+            <p className="km-html-copilot__composer-hint">{t('mapHtmlDesignerComposerHint')}</p>
+            <button
+              type="button"
+              className="btn btn-primary km-html-copilot__send"
+              disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId || !draftInput.trim()}
+              aria-label={t('mapHtmlDesignerSendAria')}
+              onClick={() => void handleSend()}
+            >
+              {sending ? (
+                <>
+                  <Loader2 className="knowledge-map-spinner" size={18} strokeWidth={2} aria-hidden />
+                  {t('mapHtmlDesignerSending')}
+                </>
+              ) : (
+                <>
+                  <Send size={18} strokeWidth={2} aria-hidden />
+                  {t('mapHtmlDesignerSend')}
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -629,6 +648,37 @@ export function KnowledgeMapHtmlCopilot({
           ) : null}
         </div>
       </div>
+
+      <aside className="km-html-copilot-rail" aria-label={t('mapHtmlSnapshotAria')}>
+        <div className="km-html-copilot-rail__head">
+          <span>{t('mapHtmlCopilotStatusLabel')}</span>
+        </div>
+        <div className="km-html-copilot-rail__body">
+          <div className="km-html-copilot-rail__status">
+            {statusLoading ? <Loader2 className="knowledge-map-spinner" size={16} aria-hidden /> : null}
+            <span>{statusLabel}</span>
+          </div>
+          <div className="km-html-copilot__actions km-html-copilot-rail__actions">
+            {hasArtifact ? (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={openInNewTab}>
+                <ExternalLink size={16} aria-hidden />
+                {t('mapHtmlSnapshotOpen')}
+              </button>
+            ) : null}
+            {canWrite && hasArtifact ? (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void handleDeleteSavedOverview()}>
+                <Trash2 size={16} aria-hidden />
+                {t('mapHtmlDesignerDeleteSaved')}
+              </button>
+            ) : null}
+            {canWrite && draftRaw?.trim() && previewSafe ? (
+              <button type="button" className="btn btn-primary btn-sm" disabled={publishBusy} onClick={() => void handlePublish()}>
+                {publishBusy ? t('mapHtmlDesignerPublishing') : t('mapHtmlDesignerPublish')}
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }
