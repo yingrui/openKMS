@@ -272,7 +272,7 @@ All junctions cascade on either side; no extra columns.
 
 ### AgentConversation
 
-- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq`), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads), `title`, `created_at`, `updated_at`
+- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html`), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads), `title`, `created_at`, `updated_at`
 
 ### AgentMessage
 
@@ -280,17 +280,17 @@ All junctions cascade on either side; no extra columns.
 
 ## Knowledge map
 
-### KnowledgeMapNode (`taxonomy_nodes`)
+### KnowledgeMapNode (`knowledge_map_nodes`)
 
-- `id`, `parent_id` (FK → taxonomy_nodes, CASCADE), `name`, `description`, `sort_order`, `created_at`, `updated_at`
+- `id`, `parent_id` (FK → knowledge_map_nodes, CASCADE), `name`, `description`, `sort_order`, `created_at`, `updated_at`
 - Hierarchical knowledge map shown in the navigator; many nodes per workspace.
 
-### KnowledgeMapResourceLink (`taxonomy_resource_links`)
+### KnowledgeMapResourceLink (`knowledge_map_resource_links`)
 
-- `id`, `taxonomy_node_id` (FK → taxonomy_nodes, CASCADE), `resource_type` (`document_channel`, `article_channel`, `wiki_space`, …), `resource_id`; unique `(resource_type, resource_id)`
+- `id`, `knowledge_map_node_id` (FK → knowledge_map_nodes, CASCADE), `resource_type` (`document_channel`, `article_channel`, `wiki_space`, …), `resource_id`; unique `(resource_type, resource_id)`
 - Maps each content surface to **at most one** Knowledge Map node.
 
-### KnowledgeMapHtmlArtifact (`taxonomy_map_html_artifact`)
+### KnowledgeMapHtmlArtifact (`knowledge_map_html_artifact`)
 
 - Singleton row (`id` = `default`): `html` (sanitized document), `content_hash` (SHA-256 of canonical map terms + links JSON), `generated_at` — LLM-built **HTML overview** of the Knowledge Map; `GET /api/knowledge-map/map-html/status` compares the live hash to `content_hash` to report **stale**.
 

@@ -489,17 +489,13 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             <span>{t('wikiSpaces')}</span>
           </NavLink>
         )}
-        {toggles.knowledge_map !== false &&
-          (canAccessPath('/knowledge-map') || canAccessPath('/taxonomy')) && (
+        {toggles.knowledge_map !== false && canAccessPath('/knowledge-map') && (
           <NavLink
             to="/knowledge-map"
             title={t('knowledgeMap')}
             className={({ isActive }) =>
               `sidebar-link ${
-                isActive ||
-                location.pathname === '/taxonomy' ||
-                location.pathname.startsWith('/taxonomy/') ||
-                location.pathname.startsWith('/knowledge-map/')
+                isActive || location.pathname.startsWith('/knowledge-map/')
                   ? 'sidebar-link-active'
                   : ''
               }`

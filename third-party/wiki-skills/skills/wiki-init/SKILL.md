@@ -69,7 +69,7 @@ Example: `[[transformer-architecture]]` → `wiki/pages/transformer-architecture
 Operations: init, ingest, query, update, lint
 
 ## Index Categories
-<one per line, matching the user's chosen taxonomy>
+<one per line, matching the user's chosen index categories>
 
 ## Conventions
 - raw/ is immutable — skills never modify it

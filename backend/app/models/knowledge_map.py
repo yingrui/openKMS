@@ -16,11 +16,11 @@ def _id() -> str:
 
 
 class KnowledgeMapNode(Base):
-    __tablename__ = "taxonomy_nodes"
+    __tablename__ = "knowledge_map_nodes"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
     parent_id: Mapped[str | None] = mapped_column(
-        String(64), ForeignKey("taxonomy_nodes.id", ondelete="CASCADE"), nullable=True, index=True
+        String(64), ForeignKey("knowledge_map_nodes.id", ondelete="CASCADE"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -48,12 +48,12 @@ class KnowledgeMapNode(Base):
 class KnowledgeMapResourceLink(Base):
     """Maps one content surface (channel or wiki space) to exactly one Knowledge Map node."""
 
-    __tablename__ = "taxonomy_resource_links"
-    __table_args__ = (UniqueConstraint("resource_type", "resource_id", name="uq_taxonomy_resource_links_type_id"),)
+    __tablename__ = "knowledge_map_resource_links"
+    __table_args__ = (UniqueConstraint("resource_type", "resource_id", name="uq_knowledge_map_resource_links_type_id"),)
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=_id)
-    taxonomy_node_id: Mapped[str] = mapped_column(
-        String(64), ForeignKey("taxonomy_nodes.id", ondelete="CASCADE"), nullable=False, index=True
+    knowledge_map_node_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("knowledge_map_nodes.id", ondelete="CASCADE"), nullable=False, index=True
     )
     resource_type: Mapped[str] = mapped_column(String(32), nullable=False)
     resource_id: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -68,7 +68,7 @@ DEFAULT_KNOWLEDGE_MAP_HTML_ARTIFACT_ID = "default"
 class KnowledgeMapHtmlArtifact(Base):
     """Cached LLM-generated HTML snapshot for the Knowledge Map (single logical row, pk id)."""
 
-    __tablename__ = "taxonomy_map_html_artifact"
+    __tablename__ = "knowledge_map_html_artifact"
 
     id: Mapped[str] = mapped_column(String(16), primary_key=True)
     html: Mapped[str] = mapped_column(Text, nullable=False)

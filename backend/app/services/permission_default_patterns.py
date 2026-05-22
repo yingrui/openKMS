@@ -295,7 +295,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_KNOWLEDGE_MAP_READ: (
-        ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
+        ["/knowledge-map", "/knowledge-map/*"],
         [
             "GET /api/knowledge-map/*",
             "HEAD /api/knowledge-map/*",
@@ -304,7 +304,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_KNOWLEDGE_MAP_WRITE: (
-        ["/knowledge-map", "/knowledge-map/*", "/taxonomy", "/taxonomy/*"],
+        ["/knowledge-map", "/knowledge-map/*"],
         [
             "POST /api/knowledge-map/*",
             "PUT /api/knowledge-map/*",

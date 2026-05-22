@@ -23,7 +23,7 @@
   "linkDocuments": "Documents",
   "linkArticles": "Articles",
   "linkWikis": "Wiki spaces",
-  "subtitleNoTaxonomy": "Knowledge operations: document lifecycle signals and shortcuts. The Knowledge Map appears here when you have access to it.",
+  "subtitleHomeWithoutKnowledgeMap": "Knowledge operations: document lifecycle signals and shortcuts. The Knowledge Map appears here when you have access to it.",
   "loading": "Loading…",
   "hubLoadError": "Could not load home data",
   "mapLoadError": "Could not load Knowledge Map"

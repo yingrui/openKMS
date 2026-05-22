@@ -299,7 +299,7 @@ export function Home() {
             <div>
               <h1>{t('title')}</h1>
               <p className="page-subtitle">
-                {t('subtitleNoTaxonomy')}
+                {t('subtitleHomeWithoutKnowledgeMap')}
               </p>
             </div>
           </div>

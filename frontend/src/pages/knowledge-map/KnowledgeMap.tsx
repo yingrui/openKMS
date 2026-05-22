@@ -925,6 +925,7 @@ export function KnowledgeMap() {
               <KnowledgeMapHtmlCopilot
                 status={mapHtmlStatus}
                 statusLoading={mapHtmlStatusLoading}
+                canRead={canRead}
                 canWrite={canWrite}
                 onRefreshStatus={refreshMapHtmlStatus}
               />

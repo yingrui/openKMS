@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, ExternalLink, Loader2, Send, Trash2 } from 'lucide-react';
+import { Bot, Eraser, ExternalLink, Loader2, Plus, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { config } from '../../config';
 import {
+  createKnowledgeMapHtmlDesignerConversation,
   deleteKnowledgeMapHtml,
+  deleteKnowledgeMapHtmlDesignerConversation,
+  fetchKnowledgeMapHtmlDesignerConversations,
+  fetchKnowledgeMapHtmlDesignerSession,
   postKnowledgeMapHtmlDesignerChatStream,
   postKnowledgeMapHtmlPreview,
   postKnowledgeMapHtmlPublish,
   type KnowledgeMapHtmlStatus,
+  type MapHtmlDesignerConversation,
   type MapHtmlDesignerMessage,
+  type MapHtmlDesignerSessionMessage,
 } from '../../data/knowledgeMapApi';
 import {
   chatDisplayOmitHtmlFenceBody,
@@ -21,6 +27,7 @@ import './KnowledgeMapHtmlCopilot.scss';
 type KnowledgeMapHtmlCopilotProps = {
   status: KnowledgeMapHtmlStatus | null;
   statusLoading: boolean;
+  canRead: boolean;
   canWrite: boolean;
   onRefreshStatus: () => Promise<void>;
 };
@@ -34,11 +41,15 @@ function lineId(prefix: string) {
 export function KnowledgeMapHtmlCopilot({
   status,
   statusLoading,
+  canRead,
   canWrite,
   onRefreshStatus,
 }: KnowledgeMapHtmlCopilotProps) {
   const { t } = useTranslation('knowledgeMap');
   const [lines, setLines] = useState<ChatLine[]>([]);
+  const [conversations, setConversations] = useState<MapHtmlDesignerConversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [convBootstrapBusy, setConvBootstrapBusy] = useState(false);
   const [draftInput, setDraftInput] = useState('');
   const [draftRaw, setDraftRaw] = useState<string | null>(null);
   /** Raw HTML inside ```html … ``` shown in iframe immediately (no round-trip). Cleared when hydrated preview replaces it. */
@@ -73,6 +84,70 @@ export function KnowledgeMapHtmlCopilot({
       if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
     };
   }, []);
+
+  const loadMessagesIntoState = useCallback((messages: MapHtmlDesignerSessionMessage[]) => {
+    setLines(
+      messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.role === 'assistant' ? chatDisplayOmitHtmlFenceBody(m.content) : m.content,
+      })),
+    );
+    const lastAsst = [...messages].reverse().find((m) => m.role === 'assistant');
+    const art = lastAsst ? extractArtifactRaw(lastAsst.content) : null;
+    if (art) {
+      setDraftRaw(art);
+    } else {
+      setDraftRaw(null);
+    }
+    setDirectPreviewHtml(null);
+    setPreviewSafe(null);
+    setPreviewError(null);
+  }, []);
+
+  useEffect(() => {
+    if (!canRead) return;
+    let cancelled = false;
+    void (async () => {
+      setConvBootstrapBusy(true);
+      try {
+        const list = await fetchKnowledgeMapHtmlDesignerConversations();
+        if (cancelled) return;
+        let nextList = list;
+        let activeId: string | null = list[0]?.id ?? null;
+        if (!activeId && canWrite) {
+          const created = await createKnowledgeMapHtmlDesignerConversation();
+          if (cancelled) return;
+          nextList = [created];
+          activeId = created.id;
+        }
+        setConversations(nextList);
+        setActiveConversationId(activeId);
+        if (activeId) {
+          const { messages } = await fetchKnowledgeMapHtmlDesignerSession(activeId);
+          if (cancelled) return;
+          loadMessagesIntoState(messages);
+        } else {
+          setLines([]);
+          setDraftRaw(null);
+          setDirectPreviewHtml(null);
+          setPreviewSafe(null);
+          setPreviewError(null);
+        }
+      } catch {
+        if (!cancelled) {
+          toast.error(t('mapHtmlDesignerConversationsLoadFailed'));
+        }
+      } finally {
+        if (!cancelled) {
+          setConvBootstrapBusy(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [canRead, canWrite, t, loadMessagesIntoState]);
 
   const scheduleStreamDraftPreview = useCallback(
     (inner: string | null, fenceClosed: boolean, fenceOpened: boolean) => {
@@ -140,13 +215,63 @@ export function KnowledgeMapHtmlCopilot({
     window.open(previewSrc, '_blank', 'noopener,noreferrer');
   };
 
+  const formatConversationOption = (c: MapHtmlDesignerConversation) => {
+    const title = (c.title?.trim() || t('mapHtmlDesignerUntitled')).slice(0, 48);
+    const d = new Date(c.updated_at);
+    const ds = !Number.isNaN(d.getTime())
+      ? d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+      : '';
+    return ds ? `${title} · ${ds}` : title;
+  };
+
+  const handleSelectConversation = async (nextId: string) => {
+    if (!nextId || nextId === activeConversationId || sending || convBootstrapBusy) return;
+    streamAbortRef.current?.abort();
+    setConvBootstrapBusy(true);
+    try {
+      setActiveConversationId(nextId);
+      const { messages } = await fetchKnowledgeMapHtmlDesignerSession(nextId);
+      loadMessagesIntoState(messages);
+      setDraftInput('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('mapHtmlDesignerChatSwitchFailed'));
+    } finally {
+      setConvBootstrapBusy(false);
+    }
+  };
+
+  const handleNewChat = async () => {
+    if (!canWrite || sending || convBootstrapBusy) return;
+    streamAbortRef.current?.abort();
+    setConvBootstrapBusy(true);
+    try {
+      const c = await createKnowledgeMapHtmlDesignerConversation();
+      setConversations((prev) => [c, ...prev]);
+      setActiveConversationId(c.id);
+      setLines([]);
+      setDraftRaw(null);
+      setDirectPreviewHtml(null);
+      setPreviewSafe(null);
+      setPreviewError(null);
+      setDraftInput('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('mapHtmlDesignerNewChatFailed'));
+    } finally {
+      setConvBootstrapBusy(false);
+    }
+  };
+
   const toPayload = useCallback((history: ChatLine[]): MapHtmlDesignerMessage[] => {
     return history.map(({ role, content }) => ({ role, content }));
   }, []);
 
   const handleSend = async () => {
     const text = draftInput.trim();
-    if (!text || !canWrite || sending) return;
+    if (!text || !canWrite || sending || convBootstrapBusy) return;
+    if (!activeConversationId) {
+      toast.error(t('mapHtmlDesignerNoConversation'));
+      return;
+    }
     streamAbortRef.current?.abort();
     const ac = new AbortController();
     streamAbortRef.current = ac;
@@ -204,7 +329,7 @@ export function KnowledgeMapHtmlCopilot({
             throw new Error(e.detail);
           }
         },
-        { workingHtml: draftRaw, signal: ac.signal },
+        { workingHtml: draftRaw, signal: ac.signal, conversationId: activeConversationId },
       );
     } catch (e) {
       const aborted =
@@ -247,7 +372,6 @@ export function KnowledgeMapHtmlCopilot({
     try {
       await deleteKnowledgeMapHtml();
       toast.success(t('mapHtmlDesignerDeleted'));
-      setLines([]);
       setDraftRaw(null);
       setDirectPreviewHtml(null);
       setPreviewSafe(null);
@@ -256,6 +380,46 @@ export function KnowledgeMapHtmlCopilot({
       await onRefreshStatus();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('mapHtmlDesignerDeleteFailed'));
+    }
+  };
+
+  const handleDeleteConversation = async () => {
+    if (!canWrite || !activeConversationId || convBootstrapBusy) return;
+    if (!window.confirm(t('mapHtmlDesignerDeleteChatConfirm'))) return;
+    streamAbortRef.current?.abort();
+    setConvBootstrapBusy(true);
+    try {
+      const idToRemove = activeConversationId;
+      await deleteKnowledgeMapHtmlDesignerConversation(idToRemove);
+      const remaining = conversations.filter((x) => x.id !== idToRemove);
+      setConversations(remaining);
+      if (remaining.length > 0) {
+        const pick = remaining[0]!;
+        setActiveConversationId(pick.id);
+        const { messages } = await fetchKnowledgeMapHtmlDesignerSession(pick.id);
+        loadMessagesIntoState(messages);
+      } else if (canWrite) {
+        const c = await createKnowledgeMapHtmlDesignerConversation();
+        setConversations([c]);
+        setActiveConversationId(c.id);
+        setLines([]);
+        setDraftRaw(null);
+        setDirectPreviewHtml(null);
+        setPreviewSafe(null);
+        setPreviewError(null);
+      } else {
+        setActiveConversationId(null);
+        setLines([]);
+        setDraftRaw(null);
+        setDirectPreviewHtml(null);
+        setPreviewSafe(null);
+        setPreviewError(null);
+      }
+      setDraftInput('');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('mapHtmlDesignerDeleteChatFailed'));
+    } finally {
+      setConvBootstrapBusy(false);
     }
   };
 
@@ -293,8 +457,42 @@ export function KnowledgeMapHtmlCopilot({
       <div className="km-html-copilot">
         <div className="km-html-copilot__head">
           <Bot className="km-html-copilot__head-icon" size={22} strokeWidth={2} aria-hidden />
-          <div>
+          <div className="km-html-copilot__head-text">
             <h2 className="km-html-copilot__title">{t('mapHtmlCopilotTitle')}</h2>
+            {canRead ? (
+              <div className="km-html-copilot__toolbar">
+                {convBootstrapBusy ? (
+                  <Loader2 className="knowledge-map-spinner km-html-copilot__toolbar-spinner" size={16} aria-hidden />
+                ) : null}
+                {conversations.length > 0 ? (
+                  <select
+                    id="km-html-designer-conversations"
+                    className="km-html-copilot__conv-select"
+                    aria-label={t('mapHtmlDesignerChatsAria')}
+                    disabled={sending || convBootstrapBusy}
+                    value={activeConversationId ?? ''}
+                    onChange={(e) => void handleSelectConversation(e.target.value)}
+                  >
+                    {conversations.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {formatConversationOption(c)}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                {canWrite ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={sending || convBootstrapBusy}
+                    onClick={() => void handleNewChat()}
+                  >
+                    <Plus size={16} aria-hidden />
+                    {t('mapHtmlDesignerNewChat')}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -326,10 +524,13 @@ export function KnowledgeMapHtmlCopilot({
             value={draftInput}
             onChange={(e) => setDraftInput(e.target.value)}
             placeholder={t('mapHtmlDesignerPlaceholder')}
-            disabled={!canWrite || sending}
+            disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId}
             aria-label={t('mapHtmlDesignerComposerLabel')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.nativeEvent.isComposing || e.key === 'Process' || e.nativeEvent.keyCode === 229) {
+                  return;
+                }
                 e.preventDefault();
                 void handleSend();
               }
@@ -338,7 +539,7 @@ export function KnowledgeMapHtmlCopilot({
           <button
             type="button"
             className="btn btn-primary km-html-copilot__send"
-            disabled={!canWrite || sending || !draftInput.trim()}
+            disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId || !draftInput.trim()}
             aria-label={t('mapHtmlDesignerSendAria')}
             onClick={() => void handleSend()}
           >
@@ -358,6 +559,12 @@ export function KnowledgeMapHtmlCopilot({
               <button type="button" className="btn btn-secondary btn-sm" onClick={openInNewTab}>
                 <ExternalLink size={16} aria-hidden />
                 {t('mapHtmlSnapshotOpen')}
+              </button>
+            ) : null}
+            {canWrite && activeConversationId ? (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => void handleDeleteConversation()}>
+                <Eraser size={16} aria-hidden />
+                {t('mapHtmlDesignerDeleteChat')}
               </button>
             ) : null}
             {canWrite && hasArtifact ? (

@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
@@ -91,12 +91,6 @@ function LegacyConsoleDatasetRedirect() {
   return <Navigate to={`/ontology/datasets/${id ?? ''}`} replace />;
 }
 
-function LegacyKnowledgeMapPathRedirect() {
-  const location = useLocation();
-  const tail = `${location.search ?? ''}${location.hash ?? ''}`;
-  return <Navigate to={`/knowledge-map${tail}`} replace />;
-}
-
 function WikiSpacePagesGate() {
   const { id } = useParams();
   return (
@@ -129,7 +123,6 @@ function App() {
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
           <Route path="knowledge-map" element={<FeatureGate feature="knowledge_map"><KnowledgeMap /></FeatureGate>} />
-          <Route path="taxonomy" element={<FeatureGate feature="knowledge_map"><LegacyKnowledgeMapPathRedirect /></FeatureGate>} />
           <Route path="search" element={<GlobalSearch />} />
           <Route path="documents" element={<Outlet />}>
             <Route index element={<DocumentsIndex />} />

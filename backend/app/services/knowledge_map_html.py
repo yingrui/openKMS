@@ -56,7 +56,7 @@ _KM_PATCH_TOOL: dict[str, Any] = {
     },
 }
 
-_KM_NODE_TOKEN = re.compile(r"\{\{TAXONOMY_NODE:([a-zA-Z0-9_]+)\}\}")
+_KM_NODE_TOKEN = re.compile(r"\{\{KNOWLEDGE_MAP_NODE:([a-zA-Z0-9_]+)\}\}")
 _KM_RES_TOKEN = re.compile(r"\{\{RESOURCE:([^:}]+):([^}]+)\}\}")
 
 
@@ -90,14 +90,16 @@ async def load_semantic_snapshot(db: AsyncSession) -> dict[str, Any]:
     if nodes:
         ids = [n.id for n in nodes]
         lc_result = await db.execute(
-            select(KnowledgeMapResourceLink.taxonomy_node_id).where(KnowledgeMapResourceLink.taxonomy_node_id.in_(ids))
+            select(KnowledgeMapResourceLink.knowledge_map_node_id).where(
+                KnowledgeMapResourceLink.knowledge_map_node_id.in_(ids)
+            )
         )
         for (nid,) in lc_result.all():
             link_counts[nid] = link_counts.get(nid, 0) + 1
 
     l_result = await db.execute(
         select(KnowledgeMapResourceLink).order_by(
-            KnowledgeMapResourceLink.taxonomy_node_id,
+            KnowledgeMapResourceLink.knowledge_map_node_id,
             KnowledgeMapResourceLink.resource_type,
             KnowledgeMapResourceLink.resource_id,
         )
@@ -117,7 +119,7 @@ async def load_semantic_snapshot(db: AsyncSession) -> dict[str, Any]:
     ]
     flat_links = [
         {
-            "knowledge_map_node_id": r.taxonomy_node_id,
+            "knowledge_map_node_id": r.knowledge_map_node_id,
             "resource_type": r.resource_type,
             "resource_id": r.resource_id,
         }
@@ -154,11 +156,11 @@ def _resource_href(frontend_base: str, resource_type: str, resource_id: str) -> 
 
 
 def hydrate_placeholder_links(raw_html: str, snapshot: dict[str, Any], frontend_base: str) -> str:
-    """Replace {{TAXONOMY_NODE:id}} and {{RESOURCE:type:id}} with safe anchor tags."""
+    """Replace {{KNOWLEDGE_MAP_NODE:id}} and {{RESOURCE:type:id}} with safe anchor tags."""
     node_names = {n["id"]: n["name"] for n in snapshot["nodes"]}
     out = raw_html
     for nid, name in node_names.items():
-        token = f"{{{{TAXONOMY_NODE:{nid}}}}}"
+        token = f"{{{{KNOWLEDGE_MAP_NODE:{nid}}}}}"
         if token not in out:
             continue
         href = f"{frontend_base.rstrip('/')}/knowledge-map?node={quote(nid, safe='')}"
@@ -251,7 +253,21 @@ def static_html_for_empty_knowledge_map() -> str:
     return sanitize_html_document(_EMPTY_KM_DOC)
 
 
-_KM_HTML_SYSTEM = """You write a single self-contained HTML5 page for an internal "Knowledge Map" (hierarchical terms + links to content).
+_MAP_HTML_VISUAL_DESIGN_APPENDIX = """**openKMS visual design (embed in your `<style>`; no `@import` — the iframe cannot load SPA bundles):**
+Mirror the SPA palette in `frontend/src/styles/design-system/_css-variables.scss` (warm stone + teal accent).
+
+- **Surfaces:** page background `#faf9f7`; elevated cards/panels `#ffffff`; muted bands `#f3f2ef`. Borders `#e8e6e1`, stronger dividers `#d4d1c9`.
+- **Typography:** `'DM Sans','Noto Sans SC',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei UI','Microsoft YaHei',system-ui,sans-serif`; body `#2c2925`; secondary `#5c5750`; muted/meta `#8a8379`; comfortable line-height (~1.45–1.55).
+- **Accent:** `#0d9488` (hover `#0f766e`); use for primary emphasis. Hydrated term links use **`a.km-node`**; resource links use **`a.km-res`** — style them distinctly (e.g. stronger teal + weight for `.km-node`, calmer secondary or pill for `.km-res`); avoid default browser link blue.
+- **Layout:** `max-width: min(960px, 100%); margin-inline: auto;` for the main column; padding and gaps on an **8/12/16/20/24px** rhythm.
+- **Shape:** rounded sections ~**10px** (`border-radius: 10px`); optional soft shadow `0 4px 12px rgba(44, 41, 37, 0.08)`.
+- **Dark (optional):** `@media (prefers-color-scheme: dark)` with body `#1a1816`, text `#f5f3f0`, elevated `#242220`, muted `#2d2a27`, borders `#3d3935` — keep accent readable on dark backgrounds.
+
+Keep CSS compact; prefer semantic regions (`main`, `section`, headings)."""
+
+
+_KM_HTML_SYSTEM = (
+    """You write a single self-contained HTML5 page for an internal "Knowledge Map" (hierarchical terms + links to content).
 
 Output rules (strict):
 - Return ONLY the HTML document (no markdown fences, no commentary).
@@ -259,11 +275,17 @@ Output rules (strict):
 - Include <head><meta charset="utf-8"><title>…</title> and a compact <style> for readability (system fonts, max-width ~960px, sensible spacing). No @import.
 - No <script>, <iframe>, <object>, <embed>, <form>, <input>, <button>, SVG, or inline event handlers (onclick=, etc.).
 - Use placeholders exactly as given for links — do not invent ids or resource pairs:
-  - Knowledge Map term: {{TAXONOMY_NODE:<id>}} (use the exact id strings from PLACEHOLDERS).
+  - Knowledge Map term: {{KNOWLEDGE_MAP_NODE:<id>}} (use the exact id strings from PLACEHOLDERS).
   - Resource: {{RESOURCE:<resource_type>:<resource_id>}} (use exact tuples from PLACEHOLDERS).
+- **User-visible wording:** In `<title>`, headings, intro, nav, captions, and body copy, use **Knowledge Map** and **terms** (or natural equivalents in the page language). The `{{KNOWLEDGE_MAP_NODE:…}}` pattern is a fixed machine token for links only — do not surface it or its spelling as a product label.
 - Reflect the tree structure from JSON.tree (parent/child). Summarize long descriptions briefly in prose; do not dump raw JSON.
 
+"""
+    + _MAP_HTML_VISUAL_DESIGN_APPENDIX
+    + """
+
 LANGUAGE: Write concise section headings and short intro copy in the same language as the majority of term names (Chinese if most names contain CJK, otherwise English)."""
+)
 
 
 def _placeholder_cheatsheet(snapshot: dict[str, Any]) -> str:
@@ -271,7 +293,7 @@ def _placeholder_cheatsheet(snapshot: dict[str, Any]) -> str:
     for n in snapshot["nodes"]:
         nid = n["id"]
         name = n["name"]
-        token = "{{TAXONOMY_NODE:" + nid + "}}"
+        token = "{{KNOWLEDGE_MAP_NODE:" + nid + "}}"
         lines.append(f'- Term "{name}" → {token}')
     for link in snapshot["links"]:
         rt = link["resource_type"]
@@ -400,7 +422,8 @@ def _designer_context_appendix(published_html: str | None, working_html: str | N
     return "\n\n".join(parts)
 
 
-_KM_HTML_DESIGNER_SYSTEM = """You are **Knowledge Map Designer**, helping the user iterate on one static HTML overview page for their Knowledge Map (hierarchical terms + links to channels and wiki spaces).
+_KM_HTML_DESIGNER_SYSTEM = (
+    """You are **Knowledge Map Designer**, helping the user iterate on one static HTML overview page for their Knowledge Map (hierarchical terms + links to channels and wiki spaces).
 
 You will receive:
 - KNOWLEDGE_SNAPSHOT (JSON) with `tree`, `links`, and `PLACEHOLDERS` (authoritative ids).
@@ -418,9 +441,15 @@ You will receive:
 **HTML rules (production):**
 - `<!DOCTYPE html>`, `<head><meta charset="utf-8"><title>…</title>`, compact `<style>` (no `@import`).
 - No `<script>`, `<iframe>`, `<form>`, `<input>`, `<button>`, SVG, or inline event handlers.
-- Links: only placeholders from PLACEHOLDERS: `{{TAXONOMY_NODE:<id>}}` and `{{RESOURCE:<type>:<id>}}` (for new drafts). Saved pages in the database may already contain real `href` values — keep those when editing.
+- Links: only placeholders from PLACEHOLDERS: `{{KNOWLEDGE_MAP_NODE:<id>}}` and `{{RESOURCE:<type>:<id>}}` (for new drafts). Saved pages in the database may already contain real `href` values — keep those when editing.
+- **User-visible wording:** Same as one-shot generation: use **Knowledge Map** / **terms** in titles and headings. Keep the literal `{{KNOWLEDGE_MAP_NODE:…}}` token spelling unchanged in HTML (required for hydration); do not use internal token spellings as section titles or product names.
+
+"""
+    + _MAP_HTML_VISUAL_DESIGN_APPENDIX
+    + """
 
 LANGUAGE: Match the dominant language of term names (CJK-heavy → Chinese; else English) unless the user asks otherwise."""
+)
 
 
 def _snapshot_json_for_designer(snapshot: dict[str, Any]) -> str:
@@ -788,7 +817,7 @@ async def iter_designer_chat_llm_stream_events(
 
 def assert_no_unresolved_placeholders(document: str) -> None:
     if _KM_NODE_TOKEN.search(document) or _KM_RES_TOKEN.search(document):
-        raise ValueError("Generated HTML still contains unresolved {{TAXONOMY_NODE:…}} or {{RESOURCE:…}} placeholders")
+        raise ValueError("Generated HTML still contains unresolved {{KNOWLEDGE_MAP_NODE:…}} or {{RESOURCE:…}} placeholders")
 
 
 def finalize_html_document(raw_llm: str, snapshot: dict[str, Any], frontend_base: str) -> str:

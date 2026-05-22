@@ -21,18 +21,6 @@ FRONTEND_FEATURES: list[dict[str, Any]] = [
         "section": "Main",
         "note": "Feature toggle: knowledge_map",
     },
-    {
-        "path_pattern": "/taxonomy",
-        "label": "Knowledge Map (legacy URL)",
-        "section": "Main",
-        "note": "Redirects to /knowledge-map; same toggle and knowledge_map:read/write",
-    },
-    {
-        "path_pattern": "/taxonomy/*",
-        "label": "Knowledge Map legacy subtree",
-        "section": "Main",
-        "note": "Redirects to /knowledge-map; feature toggle: knowledge_map",
-    },
     {"path_pattern": "/profile", "label": "User profile", "section": "Main", "note": None},
     {"path_pattern": "/documents", "label": "Documents index", "section": "Documents", "note": None},
     {"path_pattern": "/documents/*", "label": "Documents subtree (channels, view)", "section": "Documents", "note": "Covers channels, channel settings, document view"},

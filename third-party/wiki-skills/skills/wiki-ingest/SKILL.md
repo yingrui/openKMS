@@ -11,7 +11,7 @@ Add a source to the wiki. Read it, discuss with the user, write a summary page, 
 
 Search for `SCHEMA.md` starting from the current directory and upward, or in common wiki locations (`~/wikis/`). If not found, tell the user to run `wiki-init` first.
 
-Read `SCHEMA.md` to learn: wiki root path, page frontmatter format, cross-reference convention, log entry format, index category taxonomy.
+Read `SCHEMA.md` to learn: wiki root path, page frontmatter format, cross-reference convention, log entry format, index category layout.
 
 ## Process
 

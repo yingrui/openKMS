@@ -23,7 +23,7 @@
   "linkDocuments": "文档",
   "linkArticles": "文章",
   "linkWikis": "Wiki 空间",
-  "subtitleNoTaxonomy": "知识运维：文档生命周期信号与快捷入口。当您拥有知识地图访问权限时，知识地图将显示在此处。",
+  "subtitleHomeWithoutKnowledgeMap": "知识运维：文档生命周期信号与快捷入口。当您拥有知识地图访问权限时，知识地图将显示在此处。",
   "loading": "加载中…",
   "hubLoadError": "无法加载首页数据",
   "mapLoadError": "无法加载知识地图"

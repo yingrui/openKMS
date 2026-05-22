@@ -141,17 +141,110 @@ export async function regenerateKnowledgeMapHtml(): Promise<{ content_hash: stri
 
 export type MapHtmlDesignerMessage = { role: 'user' | 'assistant'; content: string };
 
+export type MapHtmlDesignerSessionMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+};
+
+export type MapHtmlDesignerConversation = {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export async function fetchKnowledgeMapHtmlDesignerConversations(): Promise<MapHtmlDesignerConversation[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/conversations`, {
+    headers,
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Designer conversations failed (${res.status})`);
+  }
+  const data = (await res.json()) as { conversations: MapHtmlDesignerConversation[] };
+  return data.conversations ?? [];
+}
+
+export async function createKnowledgeMapHtmlDesignerConversation(): Promise<MapHtmlDesignerConversation> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/conversations`, {
+    method: 'POST',
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Create designer chat failed (${res.status})`);
+  }
+  return res.json() as Promise<MapHtmlDesignerConversation>;
+}
+
+export async function fetchKnowledgeMapHtmlDesignerSession(
+  conversationId?: string | null,
+): Promise<{
+  conversation_id: string | null;
+  messages: MapHtmlDesignerSessionMessage[];
+}> {
+  const headers = await getAuthHeaders();
+  const q = conversationId?.trim()
+    ? `?${new URLSearchParams({ conversation_id: conversationId.trim() })}`
+    : '';
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/session${q}`, {
+    headers,
+    credentials: 'include',
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Designer session failed (${res.status})`);
+  }
+  return res.json() as Promise<{
+    conversation_id: string | null;
+    messages: MapHtmlDesignerSessionMessage[];
+  }>;
+}
+
+export async function deleteKnowledgeMapHtmlDesignerConversation(conversationId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-map/map-html/designer/conversations/${encodeURIComponent(conversationId)}`,
+    {
+      method: 'DELETE',
+      headers: { ...headers },
+      credentials: 'include',
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Delete designer chat failed (${res.status})`);
+  }
+}
+
 export async function postKnowledgeMapHtmlDesignerChat(
   messages: MapHtmlDesignerMessage[],
   workingHtml?: string | null,
+  conversationId?: string | null,
 ): Promise<{ content: string }> {
   const headers = await getAuthHeaders();
-  const body: { messages: MapHtmlDesignerMessage[]; working_html?: string; stream?: boolean } = {
+  const body: {
+    messages: MapHtmlDesignerMessage[];
+    working_html?: string;
+    stream?: boolean;
+    conversation_id?: string;
+  } = {
     messages,
     stream: false,
   };
   if (workingHtml != null && workingHtml.trim()) {
     body.working_html = workingHtml;
+  }
+  if (conversationId != null && conversationId.trim()) {
+    body.conversation_id = conversationId.trim();
   }
   const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/chat`, {
     method: 'POST',
@@ -181,17 +274,22 @@ function parseMapHtmlDesignerStreamLine(line: string): MapHtmlDesignerStreamEven
 export async function postKnowledgeMapHtmlDesignerChatStream(
   messages: MapHtmlDesignerMessage[],
   onEvent: (e: MapHtmlDesignerStreamEvent) => void,
-  options?: { workingHtml?: string | null; signal?: AbortSignal },
+  options?: { workingHtml?: string | null; signal?: AbortSignal; conversationId?: string | null },
 ): Promise<void> {
   const headers = await getAuthHeaders();
   const body: {
     messages: MapHtmlDesignerMessage[];
     working_html?: string;
     stream: boolean;
+    conversation_id?: string;
   } = { messages, stream: true };
   const wh = options?.workingHtml;
   if (wh != null && wh.trim()) {
     body.working_html = wh;
+  }
+  const cid = options?.conversationId;
+  if (cid != null && cid.trim()) {
+    body.conversation_id = cid.trim();
   }
   const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-map/map-html/designer/chat`, {
     method: 'POST',

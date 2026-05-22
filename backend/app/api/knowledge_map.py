@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import re
 import uuid
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func as sa_func, select
@@ -38,11 +40,48 @@ from app.services.knowledge_map_html import (
     knowledge_map_nodes_last_modified_at,
     static_html_for_empty_knowledge_map,
 )
+from app.services.knowledge_map_html_designer_session import (
+    append_designer_turn,
+    create_designer_conversation,
+    delete_designer_conversation,
+    get_designer_conversation_owned,
+    get_designer_session_messages,
+    list_designer_conversations,
+    persist_designer_turn_safe,
+)
 from app.services.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
 
 router = APIRouter(prefix="/knowledge-map", tags=["knowledge-map"])
+logger = logging.getLogger(__name__)
 
 RESOURCE_TYPES: frozenset[str] = frozenset({"document_channel", "article_channel", "wiki_space"})
+
+
+def _auth_sub(request: Request) -> str:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if not isinstance(sub, str) or not sub.strip():
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return sub
+
+
+def _last_user_message_content(messages: list[MapHtmlDesignerChatMessage]) -> str | None:
+    for m in reversed(messages):
+        if m.role == "user":
+            return m.content
+    return None
+
+
+async def _designer_persist_conversation_id(
+    db: AsyncSession, user_sub: str, body_conversation_id: str | None
+) -> str | None:
+    if not body_conversation_id or not str(body_conversation_id).strip():
+        return None
+    cid = str(body_conversation_id).strip()
+    c = await get_designer_conversation_owned(db, user_sub, cid)
+    if not c:
+        raise HTTPException(status_code=404, detail="Designer conversation not found")
+    return c.id
 
 
 def _nid() -> str:
@@ -111,10 +150,34 @@ class MapHtmlDesignerChatIn(BaseModel):
     messages: list[MapHtmlDesignerChatMessage] = Field(..., min_length=1, max_length=40)
     working_html: str | None = Field(None, max_length=500_000)
     stream: bool = False
+    conversation_id: str | None = Field(None, max_length=64)
 
 
 class MapHtmlDesignerChatOut(BaseModel):
     content: str
+
+
+class MapHtmlDesignerSessionMessageOut(BaseModel):
+    id: str
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+
+
+class MapHtmlDesignerSessionOut(BaseModel):
+    conversation_id: str | None = None
+    messages: list[MapHtmlDesignerSessionMessageOut] = Field(default_factory=list)
+
+
+class MapHtmlDesignerConversationOut(BaseModel):
+    id: str
+    title: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MapHtmlDesignerConversationListOut(BaseModel):
+    conversations: list[MapHtmlDesignerConversationOut] = Field(default_factory=list)
 
 
 class MapHtmlBodyHtml(BaseModel):
@@ -177,7 +240,9 @@ async def get_knowledge_map_tree(db: AsyncSession = Depends(get_db)):
     if nodes:
         ids = [n.id for n in nodes]
         lc_result = await db.execute(
-            select(KnowledgeMapResourceLink.taxonomy_node_id).where(KnowledgeMapResourceLink.taxonomy_node_id.in_(ids))
+            select(KnowledgeMapResourceLink.knowledge_map_node_id).where(
+                KnowledgeMapResourceLink.knowledge_map_node_id.in_(ids)
+            )
         )
         for (nid,) in lc_result.all():
             link_counts[nid] = link_counts.get(nid, 0) + 1
@@ -254,7 +319,7 @@ async def update_knowledge_map_node(
     cnt2 = await db.scalar(
         select(sa_func.count())
         .select_from(KnowledgeMapResourceLink)
-        .where(KnowledgeMapResourceLink.taxonomy_node_id == node_id)
+        .where(KnowledgeMapResourceLink.knowledge_map_node_id == node_id)
     )
     return KnowledgeMapNodeOut(
         id=node.id,
@@ -290,7 +355,7 @@ async def list_resource_links(db: AsyncSession = Depends(get_db)):
     return [
         ResourceLinkOut(
             id=r.id,
-            knowledge_map_node_id=r.taxonomy_node_id,
+            knowledge_map_node_id=r.knowledge_map_node_id,
             resource_type=r.resource_type,
             resource_id=r.resource_id,
         )
@@ -316,11 +381,11 @@ async def upsert_resource_link(body: ResourceLinkUpsert, db: AsyncSession = Depe
     )
     row = existing.scalar_one_or_none()
     if row:
-        row.taxonomy_node_id = body.knowledge_map_node_id
+        row.knowledge_map_node_id = body.knowledge_map_node_id
     else:
         row = KnowledgeMapResourceLink(
             id=_nid(),
-            taxonomy_node_id=body.knowledge_map_node_id,
+            knowledge_map_node_id=body.knowledge_map_node_id,
             resource_type=body.resource_type,
             resource_id=body.resource_id,
         )
@@ -328,7 +393,7 @@ async def upsert_resource_link(body: ResourceLinkUpsert, db: AsyncSession = Depe
     await db.flush()
     return ResourceLinkOut(
         id=row.id,
-        knowledge_map_node_id=row.taxonomy_node_id,
+        knowledge_map_node_id=row.knowledge_map_node_id,
         resource_type=row.resource_type,
         resource_id=row.resource_id,
     )
@@ -444,11 +509,102 @@ async def regenerate_map_html(db: AsyncSession = Depends(get_db)):
     return KnowledgeMapHtmlRegenerateOut(content_hash=content_hash, generated_at=now)
 
 
+@router.get(
+    "/map-html/designer/conversations",
+    response_model=MapHtmlDesignerConversationListOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def list_map_html_designer_conversations(request: Request, db: AsyncSession = Depends(get_db)):
+    sub = _auth_sub(request)
+    rows = await list_designer_conversations(db, sub, limit=50)
+    return MapHtmlDesignerConversationListOut(
+        conversations=[
+            MapHtmlDesignerConversationOut(
+                id=c.id,
+                title=c.title,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+            )
+            for c in rows
+        ],
+    )
+
+
+@router.post(
+    "/map-html/designer/conversations",
+    response_model=MapHtmlDesignerConversationOut,
+    status_code=201,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def create_map_html_designer_conversation(request: Request, db: AsyncSession = Depends(get_db)):
+    sub = _auth_sub(request)
+    c = await create_designer_conversation(db, sub)
+    return MapHtmlDesignerConversationOut(
+        id=c.id,
+        title=c.title,
+        created_at=c.created_at,
+        updated_at=c.updated_at,
+    )
+
+
+@router.get(
+    "/map-html/designer/session",
+    response_model=MapHtmlDesignerSessionOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def get_map_html_designer_session(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    conversation_id: str | None = Query(None, max_length=64),
+):
+    sub = _auth_sub(request)
+    if conversation_id and conversation_id.strip():
+        cid = conversation_id.strip()
+        if not await get_designer_conversation_owned(db, sub, cid):
+            raise HTTPException(status_code=404, detail="Designer conversation not found")
+        conv_id, rows = await get_designer_session_messages(db, sub, cid)
+    else:
+        conv_id, rows = await get_designer_session_messages(db, sub, None)
+    return MapHtmlDesignerSessionOut(
+        conversation_id=conv_id,
+        messages=[
+            MapHtmlDesignerSessionMessageOut(
+                id=m.id,
+                role=cast(Literal["user", "assistant"], m.role),
+                content=m.content,
+                created_at=m.created_at,
+            )
+            for m in rows
+            if m.role in ("user", "assistant")
+        ],
+    )
+
+
+@router.delete(
+    "/map-html/designer/conversations/{conversation_id}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def delete_map_html_designer_conversation(
+    conversation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = _auth_sub(request)
+    ok = await delete_designer_conversation(db, sub, conversation_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Designer conversation not found")
+
+
 @router.post(
     "/map-html/designer/chat",
     dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
 )
-async def map_html_designer_chat(body: MapHtmlDesignerChatIn, db: AsyncSession = Depends(get_db)):
+async def map_html_designer_chat(
+    request: Request,
+    body: MapHtmlDesignerChatIn,
+    db: AsyncSession = Depends(get_db),
+):
     model_config = await resolve_agent_llm_config(db)
     if not model_config:
         raise HTTPException(
@@ -462,6 +618,10 @@ async def map_html_designer_chat(body: MapHtmlDesignerChatIn, db: AsyncSession =
     if not published:
         published = None
 
+    sub = _auth_sub(request)
+    last_user_content = _last_user_message_content(body.messages)
+    persist_cid = await _designer_persist_conversation_id(db, sub, body.conversation_id)
+
     if body.stream:
 
         async def ndjson() -> AsyncIterator[bytes]:
@@ -473,6 +633,12 @@ async def map_html_designer_chat(body: MapHtmlDesignerChatIn, db: AsyncSession =
                     published_html=published,
                     working_html=body.working_html,
                 ):
+                    if ev.get("type") == "done" and last_user_content is not None:
+                        asst = ev.get("content")
+                        if isinstance(asst, str):
+                            asyncio.create_task(
+                                persist_designer_turn_safe(sub, last_user_content, asst, persist_cid),
+                            )
                     yield (json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8")
             except ValueError as e:
                 yield (json.dumps({"type": "error", "detail": str(e)}, ensure_ascii=False) + "\n").encode("utf-8")
@@ -503,6 +669,11 @@ async def map_html_designer_chat(body: MapHtmlDesignerChatIn, db: AsyncSession =
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Designer LLM failed: {e}") from e
+    if last_user_content is not None:
+        try:
+            await append_designer_turn(db, sub, last_user_content, raw_reply, persist_cid)
+        except Exception:
+            logger.exception("Map HTML designer session persist failed (non-stream)")
     return MapHtmlDesignerChatOut(content=raw_reply)
 
 
