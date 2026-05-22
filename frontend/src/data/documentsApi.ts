@@ -137,12 +137,19 @@ export async function fetchDocuments(params?: {
   return res.json();
 }
 
-export async function fetchDocumentsByChannel(channelId: string): Promise<DocumentListResponse> {
+export async function fetchDocumentsByChannel(
+  channelId: string,
+  params?: { search?: string; offset?: number; limit?: number },
+): Promise<DocumentListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/documents?channel_id=${encodeURIComponent(channelId)}`,
-    { headers: { ...headers }, credentials: 'include' }
-  );
+  const query = new URLSearchParams({ channel_id: channelId });
+  if (params?.search) query.set('search', params.search);
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  const res = await authAwareFetch(`${config.apiUrl}/api/documents?${query.toString()}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
   if (!res.ok) {
     const msg = await res.text();
     throw new Error(msg || `Failed to fetch documents: ${res.status}`);

@@ -100,17 +100,26 @@ export function DocumentChannel() {
   const [moveTargetChannelId, setMoveTargetChannelId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
   const [bulkBusy, setBulkBusy] = useState<'delete' | 'process' | 'move' | null>(null);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const channelName = getDocumentChannelName(channels, channelId);
   const channelOptions = flattenChannels(channels);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(id);
+  }, [search]);
 
   const loadDocuments = useCallback(async () => {
     if (!channelId) return;
     setDocsLoading(true);
     setDocsError(null);
     try {
-      const res = await fetchDocumentsByChannel(channelId);
+      const res = await fetchDocumentsByChannel(channelId, {
+        search: debouncedSearch || undefined,
+      });
       setDocuments(res.items);
     } catch (e) {
       setDocsError(e instanceof Error ? e.message : t('channel.loadDocsFailed'));
@@ -118,7 +127,7 @@ export function DocumentChannel() {
     } finally {
       setDocsLoading(false);
     }
-  }, [channelId, t]);
+  }, [channelId, debouncedSearch, t]);
 
   useEffect(() => {
     loadDocuments();
@@ -126,7 +135,7 @@ export function DocumentChannel() {
 
   useEffect(() => {
     setSelectedDocIds(new Set());
-  }, [channelId]);
+  }, [channelId, debouncedSearch]);
 
   useEffect(() => {
     const ids = new Set(documents.map((d) => d.id));
@@ -456,7 +465,13 @@ export function DocumentChannel() {
         <div className="documents-toolbar">
           <div className="documents-search">
             <Search size={18} />
-            <input type="search" aria-label={t('channel.searchAria')} placeholder={t('channel.searchPlaceholder')} />
+            <input
+              type="search"
+              aria-label={t('channel.searchAria')}
+              placeholder={t('channel.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
           <select aria-label={t('channel.filterTypeAria')}>
             <option>{t('channel.filterAll')}</option>
