@@ -6,7 +6,11 @@ FROM python:3.12-slim-bookworm AS base
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Upgrade Debian packages (e.g. gnupg2 CVE fixes) before adding app packages.
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
+    ca-certificates \
     libpq5 \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -38,7 +42,9 @@ CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0
 FROM base AS worker
 
 # opencv-contrib-python (paddlex) needs libGL at import time even for headless parse.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
     libgl1 \
     libgomp1 \
     libglib2.0-0 \

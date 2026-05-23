@@ -818,7 +818,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                   return;
                 }
                 if (e.key === 'Enter' && !e.shiftKey) {
-                  if (e.nativeEvent.isComposing || e.key === 'Process' || e.nativeEvent.keyCode === 229) {
+                  if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
                     return;
                   }
                   e.preventDefault();
@@ -832,7 +832,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                 }
               }
               if (e.key === 'Enter' && !e.shiftKey) {
-                if (e.nativeEvent.isComposing || e.key === 'Process' || e.nativeEvent.keyCode === 229) {
+                if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
                   return;
                 }
                 e.preventDefault();

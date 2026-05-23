@@ -567,7 +567,7 @@ export function KnowledgeMapHtmlCopilot({
               disabled={!canWrite || sending || convBootstrapBusy || !activeConversationId}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                  if (e.nativeEvent.isComposing || e.key === 'Process' || e.nativeEvent.keyCode === 229) {
+                  if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
                     return;
                   }
                   e.preventDefault();
