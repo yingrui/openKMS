@@ -38,3 +38,15 @@ docker compose -f docker/docker-compose.yml down
 | `docker-compose.yml` | Stack |
 
 Repo **`.dockerignore`** shrinks build context.
+
+## Base image CVE warnings vs build time
+
+IDE scanners may report HIGH CVEs on **`FROM python:…-slim-bookworm`** or **`FROM node:…-bookworm-slim`** — those come from the **upstream tag snapshot**, not your app layers. We **do not** run **`apt-get upgrade`** in the Dockerfiles: on slow or mirror-restricted hosts it adds many minutes and often **times out or fails** mid-build.
+
+Refresh bases instead:
+
+```bash
+docker compose -f docker-compose.yml build --pull
+```
+
+Use a **registry mirror** for Docker Hub / `ghcr.io` if pulls fail (see your cloud’s container mirror docs). Rebuild after official `python` / `node` images are republished with newer Debian packages.
