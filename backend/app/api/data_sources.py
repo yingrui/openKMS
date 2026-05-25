@@ -17,6 +17,7 @@ from app.schemas.data_source import (
     DataSourceUpdate,
 )
 from app.services.credential_encryption import decrypt, encrypt
+from app.services.data_source_connection import test_data_source_connection
 
 router = APIRouter(
     prefix="/data-sources",
@@ -131,45 +132,15 @@ async def test_data_source_connection(data_source_id: str, db: AsyncSession = De
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
 
-    if ds.kind == "postgresql":
-        try:
-            from urllib.parse import quote_plus
-
-            username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
-            password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
-            host = ds.host
-            port = ds.port or 5432
-            database = ds.database or "postgres"
-            password_escaped = quote_plus(password) if password else ""
-            url = f"postgresql://{username}:{password_escaped}@{host}:{port}/{database}"
-            from sqlalchemy import create_engine, text
-
-            engine = create_engine(url, pool_pre_ping=True, pool_recycle=10)
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            engine.dispose()
-            return {"ok": True, "message": "Connection successful"}
-        except Exception as e:
-            return {"ok": False, "message": str(e)}
-    elif ds.kind == "neo4j":
-        try:
-            from neo4j import GraphDatabase
-            username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
-            password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
-            uri = f"bolt://{ds.host}:{ds.port or 7687}"
-            driver = GraphDatabase.driver(uri, auth=(username, password))
-            driver.verify_connectivity()
-            driver.close()
-            return {"ok": True, "message": "Connection successful"}
-        except ImportError:
-            raise HTTPException(
-                status_code=501,
-                detail="Neo4j driver not installed. pip install neo4j",
-            )
-        except Exception as e:
-            return {"ok": False, "message": str(e)}
-    else:
-        raise HTTPException(status_code=400, detail=f"Unsupported data source kind: {ds.kind}")
+    ok, message = test_data_source_connection(ds)
+    if message == "Neo4j driver not installed":
+        raise HTTPException(
+            status_code=501,
+            detail="Neo4j driver not installed. pip install neo4j",
+        )
+    if not ok and message.startswith("Unsupported data source kind:"):
+        raise HTTPException(status_code=400, detail=message)
+    return {"ok": ok, "message": message}
 
 
 @router.post("/{data_source_id}/neo4j-delete-all", dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])

@@ -33,6 +33,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/api/admin/security-roles` | `console:permissions`: create role; reserved names `admin` / `member` rejected |
 | DELETE | `/api/admin/security-roles/{role_id}` | `console:permissions`: delete role (**admin** role rejected) |
 | PUT | `/api/admin/security-roles/{role_id}/permissions` | `console:permissions`: replace keys (each must exist in `security_permissions`); cannot drop sole `all` without adding another permission first (see Permissions page) |
+| GET | `/api/admin/health-status` | `console:access`: dependency checks (API, database, object storage, job queue); probes registered data sources when caller has `console:data_sources` |
 | GET | `/api/admin/permission-reference` | `console:permissions`: frontend feature path patterns + full OpenAPI operation list (method, path, summary, tags) to help configure `security_permissions` |
 | GET | `/api/admin/security-permissions` | `console:permissions`: list permission catalog rows (id, key, label, patterns, sort_order) |
 | POST | `/api/admin/security-permissions` | `console:permissions`: create catalog row |

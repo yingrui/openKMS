@@ -44,6 +44,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_CONSOLE_ACCESS: (
         [
             "/console",
+            "/console/health",
             "/pipelines",
             "/pipelines/*",
             "/jobs",
@@ -52,6 +53,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/models/*",
         ],
         [
+            "GET /api/admin/health-status",
             "/api/models/*",
             "/api/pipelines/*",
             "/api/jobs/*",

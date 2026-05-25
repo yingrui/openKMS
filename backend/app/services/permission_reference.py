@@ -63,6 +63,7 @@ FRONTEND_FEATURES: list[dict[str, Any]] = [
     {"path_pattern": "/console/feature-toggles", "label": "Console · Feature toggles", "section": "Console", "note": "console:feature_toggles"},
     {"path_pattern": "/console/data-sources", "label": "Console · Data sources", "section": "Console", "note": "console:data_sources"},
     {"path_pattern": "/console/settings", "label": "Console · Settings", "section": "Console", "note": "console:settings"},
+    {"path_pattern": "/console/health", "label": "Console · Health", "section": "Console", "note": "console:access"},
 ]
 
 

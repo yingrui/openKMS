@@ -30,6 +30,7 @@ import { ConsoleOverview } from './pages/console/ConsoleOverview';
 import { ConsoleSettings } from './pages/console/ConsoleSettings';
 import { ConsoleUsers } from './pages/console/ConsoleUsers';
 import { ConsoleFeatureToggles } from './pages/console/ConsoleFeatureToggles';
+import { ConsoleHealth } from './pages/console/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
@@ -175,6 +176,7 @@ function App() {
           <Route path="console/link-types" element={<Navigate to="/ontology/link-types" replace />} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />
+            <Route path="health" element={<ConsoleHealth />} />
             <Route path="permission-management" element={<ConsolePermissionManagement />} />
             <Route path="data-security/groups" element={<ConsoleDataSecurityGroups />} />
             <Route path="data-security/groups/:groupId/access" element={<ConsoleGroupDataAccess />} />

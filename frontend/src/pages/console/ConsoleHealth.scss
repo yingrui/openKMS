@@ -1,0 +1,158 @@
+@use '../../styles/design-system/tokens' as ds;
+
+.console-health {
+  width: 100%;
+}
+
+.console-health .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin-bottom: 1.5rem;
+}
+
+.console-health .page-header-main {
+  flex: 1;
+  min-width: min(100%, 16rem);
+}
+
+.console-health .page-header-main .page-subtitle {
+  margin-bottom: 0;
+}
+
+.console-health .page-header-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.console-health-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  font-weight: 600;
+}
+
+.console-health-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 0.75rem;
+}
+
+.console-health-overall {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.console-health-overall--ok {
+  background: color-mix(in srgb, var(--color-success, #16a34a) 12%, transparent);
+  color: var(--color-success, #16a34a);
+}
+
+.console-health-overall--error {
+  background: color-mix(in srgb, var(--color-danger, #dc2626) 12%, transparent);
+  color: var(--color-danger, #dc2626);
+}
+
+.console-health-overall--degraded,
+.console-health-overall--skipped {
+  background: color-mix(in srgb, var(--color-warning, #ca8a04) 12%, transparent);
+  color: var(--color-warning, #ca8a04);
+}
+
+.console-health-checked {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.console-health-section {
+  margin-bottom: 2rem;
+}
+
+.console-health-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+}
+
+.console-health-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.console-health-table th,
+.console-health-table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.console-health-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: 0.8125rem;
+}
+
+.console-health-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.console-health-status--ok {
+  color: var(--color-success, #16a34a);
+}
+
+.console-health-status--error {
+  color: var(--color-danger, #dc2626);
+}
+
+.console-health-status--skipped {
+  color: var(--color-text-muted);
+}
+
+.console-health-message {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  max-width: 28rem;
+  word-break: break-word;
+}
+
+.console-health-empty-ds {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.console-health-hint {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.console-health-hint a {
+  color: var(--color-accent);
+}
+
+.console-health-refresh-spin {
+  animation: console-health-spin 0.8s linear infinite;
+}
+
+@keyframes console-health-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

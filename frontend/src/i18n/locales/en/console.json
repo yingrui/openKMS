@@ -18,6 +18,35 @@
   "saving": "Saving…",
   "saveChanges": "Save changes",
   "resetForm": "Reset form to defaults",
+  "health": {
+    "pageTitle": "System health",
+    "subtitle": "Check whether the API, database, object storage, background jobs, and registered data sources are reachable.",
+    "toastLoadFailed": "Failed to load health status",
+    "loading": "Loading health checks…",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "overall": "Overall: {{status}}",
+    "checkedAt": "Last checked {{time}}",
+    "coreHeading": "Core services",
+    "dataSourcesHeading": "Registered data sources",
+    "dataSourcesEmpty": "No data sources to check, or you need console:data_sources to see connection tests here.",
+    "dataSourcesHint": "Manage connections on",
+    "dataSourcesLink": "Data sources",
+    "colComponent": "Component",
+    "colName": "Name",
+    "colKind": "Kind",
+    "colHost": "Host",
+    "colStatus": "Status",
+    "colLatency": "Latency",
+    "colDetails": "Details",
+    "latencyMs": "{{ms}} ms",
+    "status": {
+      "ok": "Healthy",
+      "error": "Unhealthy",
+      "skipped": "Not configured",
+      "degraded": "Degraded"
+    }
+  },
   "overview": {
     "pageTitle": "Console Overview",
     "subtitle": "Security, access, database connections, local users, feature toggles, and console settings—everything available from the console sidebar.",
@@ -27,6 +56,10 @@
     "introHeading": "What you can do",
     "introLead": "Each card links to a console page when your role allows it; paths are under <codePath>/console/…</codePath>.",
     "features": {
+      "health": {
+        "title": "System health",
+        "description": "Verify API, database, storage, job queue, and data source connectivity in one place."
+      },
       "permissions": {
         "title": "Permissions & roles",
         "description": "Define operation keys in the catalog, assign them to roles, and map IdP realm roles (OIDC) or local users to those roles."

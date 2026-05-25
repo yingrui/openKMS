@@ -13,6 +13,7 @@ import {
   ListTodo,
   Cpu,
   LayoutDashboard,
+  HeartPulse,
   Settings,
   Users,
   Menu,
@@ -332,6 +333,16 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                 >
                   <LayoutDashboard size={18} strokeWidth={1.75} />
                   <span>{t('overview')}</span>
+                </NavLink>
+              )}
+              {canAccessPath('/console/health') && (
+                <NavLink
+                  to="/console/health"
+                  title={t('health')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
+                  <HeartPulse size={18} strokeWidth={1.75} />
+                  <span>{t('health')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/permission-management') && (

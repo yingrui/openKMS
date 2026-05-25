@@ -18,6 +18,35 @@
   "saving": "保存中…",
   "saveChanges": "保存更改",
   "resetForm": "重置表单为默认值",
+  "health": {
+    "pageTitle": "系统健康",
+    "subtitle": "检查 API、数据库、对象存储、后台任务与已登记数据源是否可用。",
+    "toastLoadFailed": "无法加载健康状态",
+    "loading": "正在加载健康检查…",
+    "refresh": "刷新",
+    "refreshing": "刷新中…",
+    "overall": "总体：{{status}}",
+    "checkedAt": "上次检查 {{time}}",
+    "coreHeading": "核心服务",
+    "dataSourcesHeading": "已登记数据源",
+    "dataSourcesEmpty": "没有可检查的数据源，或需要 console:data_sources 权限才能在此测试连接。",
+    "dataSourcesHint": "在以下页面管理连接：",
+    "dataSourcesLink": "数据源",
+    "colComponent": "组件",
+    "colName": "名称",
+    "colKind": "类型",
+    "colHost": "主机",
+    "colStatus": "状态",
+    "colLatency": "延迟",
+    "colDetails": "详情",
+    "latencyMs": "{{ms}} 毫秒",
+    "status": {
+      "ok": "正常",
+      "error": "异常",
+      "skipped": "未配置",
+      "degraded": "降级"
+    }
+  },
   "overview": {
     "pageTitle": "控制台概览",
     "subtitle": "安全与访问、数据库连接、本地用户、功能开关与控制台设置——侧边栏中的控制台功能入口均汇总于此。",
@@ -27,6 +56,10 @@
     "introHeading": "您可以做什么",
     "introLead": "当您的角色允许时，每张卡片会链接到对应控制台页面；路径位于 <codePath>/console/…</codePath> 下。",
     "features": {
+      "health": {
+        "title": "系统健康",
+        "description": "在一处查看 API、数据库、存储、任务队列与数据源连接是否正常。"
+      },
       "permissions": {
         "title": "权限与角色",
         "description": "在目录中定义操作键，分配给角色，并将 IdP 领域角色（OIDC）或本地用户映射到这些角色。"
