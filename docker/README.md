@@ -2,7 +2,7 @@
 
 ## Full stack (`docker-compose.yml`)
 
-Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), frontend (nginx), Postgres (pgvector), MinIO.
+Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
 
 **Worker** is `platform: linux/amd64` so Paddle wheels install on Apple Silicon (QEMU). Needs **`libgl1`** in the image for OpenCV/PaddleX.
 
@@ -17,12 +17,43 @@ Or from **`docker/`**: `docker compose -f docker-compose.yml up -d --build`.
 
 - **UI:** http://localhost:8082 — nginx → `/api`, `/internal-api`, `/login`, sessions, MinIO bucket path. Backend is **not** on the host; use this origin for API calls.
 - **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
+- **Neo4j:** Host maps use **7476** (Browser) and **7689** (Bolt)—Neo4j defaults **7474** / **7687** plus **2** when those ports are already in use on the machine. **Inside the stack** (Console data source, backend) use hostname **`neo4j`** and port **`7687`** (container port, not 7689). Default auth: user **`neo4j`**, password **`openkms-neo4j-dev`**.
 
 Compose sets DB host, MinIO URL, `OPENKMS_FRONTEND_URL=http://localhost:8082`, `OPENKMS_DEBUG=true`, `OPENKMS_BACKEND_URL=http://backend:8102`. Rest from `backend/.env`. Match **`OPENKMS_AUTH_MODE=local`** in `.env` to the frontend build (`VITE_AUTH_MODE=local`) to avoid a mode banner.
 
 **VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. The worker usually uses **`OPENKMS_VLM_URL=http://host.docker.internal:8101`** (compose `extra_hosts: host-gateway`); override in `backend/.env` if your VLM runs elsewhere.
 
 Local auth + metadata extraction: set **`OPENKMS_CLI_BASIC_*`** in `backend/.env` for worker → `openkms-cli` API calls.
+
+### Neo4j (Console data source)
+
+The API does not auto-register Neo4j. After the stack is up, sign in at **http://localhost:8082**, open **Console → Data sources**, and create a **Neo4j** source:
+
+| Field | Docker compose value |
+|--------|----------------------|
+| Kind | `neo4j` |
+| Host | `neo4j` |
+| Port | `7687` |
+| Username | `neo4j` |
+| Password | `openkms-neo4j-dev` |
+
+Use **Test connection**, then save. **Object types** / **Link types** can index to Neo4j; **Objects & links** explorer and feature toggles will show Neo4j as available.
+
+Infra without app services: `docker compose -f docker-compose.yml up -d postgres minio neo4j`
+
+### Neo4j exits with code 3 right after “Changed password…”
+
+That usually means the **`neo4j_data` volume** was created on an earlier run with a different `NEO4J_AUTH` or a failed first boot. Neo4j then shuts down before **Starting…** appears in the logs.
+
+From **`docker/`** (compose project name is often `docker`):
+
+```bash
+docker compose -f docker-compose.yml down
+docker volume rm docker_neo4j_data
+docker compose -f docker-compose.yml up -d
+```
+
+Use `docker volume ls | grep neo4j` if the volume name differs. **Do not** remove `docker_neo4j_data` if you need to keep graph data.
 
 ```bash
 docker compose -f docker/docker-compose.yml down

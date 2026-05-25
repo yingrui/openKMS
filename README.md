@@ -18,7 +18,7 @@ Open Knowledge Management System — document channels, parsing, knowledge bases
 
 1. **Recommended:** start **mlx-vlm** separately (see above and **`vlm-server/README.md`**).
 2. `cp backend/.env.example backend/.env` and edit (secrets, auth, optional LLM URLs).
-3. `docker compose -f docker/docker-compose.yml up -d --build` — builds images and starts Postgres (pgvector), MinIO, backend, worker, and frontend (nginx).
+3. `docker compose -f docker/docker-compose.yml up -d --build` — builds images and starts Postgres (pgvector), MinIO, Neo4j, backend, worker, and frontend (nginx).
 4. Open **http://localhost:8082**.
 
 See **`docker/README.md`** for ports, env overrides, and how the worker reaches a host VLM.
@@ -27,7 +27,7 @@ See **`docker/README.md`** for ports, env overrides, and how the worker reaches 
 
 1. **Recommended:** start **mlx-vlm** separately for parsing (**`vlm-server/README.md`**).
 2. `cp backend/.env.example backend/.env` and `cp frontend/.env.example frontend/.env`.
-3. Start Postgres and MinIO: `cd docker && docker compose -f docker-compose.yml up -d postgres minio`
+3. Start Postgres, MinIO, and Neo4j (optional for ontology): `cd docker && docker compose -f docker-compose.yml up -d postgres minio neo4j`
 4. `cd backend && uv sync && alembic upgrade head`
 5. Run **`uvicorn app.main:app --reload --port 8102`** in `backend/` and **`npm install && npm run dev`** in `frontend/` (two terminals).
 6. Open **http://localhost:5173** (Vite proxies `/api` to the backend).

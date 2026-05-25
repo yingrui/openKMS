@@ -10,6 +10,8 @@
 # MinIO URL, frontend URL for Docker networking.
 #
 # UI (and /api, /internal-api via nginx): http://localhost:8082 — backend is not published on the host.
+# Neo4j on host (defaults +2 if 7474/7687 busy): Browser http://localhost:7476 — Bolt localhost:7689.
+# Inside Docker / Console data source: host neo4j, port 7687 (container port, not the host map).
 # Document parsing in the worker calls VLM on the host: set OPENKMS_VLM_URL or use defaults below.
 
 x-backend-env: &backend_env
@@ -63,6 +65,27 @@ services:
       timeout: 5s
       retries: 3
 
+  neo4j:
+    # Pin tag for reproducible pulls; do not set NEO4J_PLUGINS=[] (can break startup on some images).
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/openkms-neo4j-dev
+    volumes:
+      - neo4j_data:/data
+    ports:
+      - "7476:7474"
+      - "7689:7687"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "cypher-shell -u neo4j -p openkms-neo4j-dev 'RETURN 1' || exit 1",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
   backend:
     build:
       context: ..
@@ -76,6 +99,8 @@ services:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
 
   # PaddleOCR / paddlepaddle PyPI wheels are linux/amd64 (and macOS arm64), not linux/arm64.
@@ -94,6 +119,8 @@ services:
       postgres:
         condition: service_healthy
       minio:
+        condition: service_healthy
+      neo4j:
         condition: service_healthy
       backend:
         condition: service_healthy
@@ -116,3 +143,4 @@ services:
 volumes:
   openkms_postgres_pg16: {}
   minio_data: {}
+  neo4j_data: {}
