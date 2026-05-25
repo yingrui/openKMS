@@ -66,7 +66,7 @@ docker compose -f docker/docker-compose.yml down
 | Build-arg | Default in compose | Used in |
 |-----------|-------------------|---------|
 | `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile` (`backend`, `worker`) — Debian apt |
-| `UV_INDEX_URL` | `https://pypi.tuna.tsinghua.edu.cn/simple` | **清华大学 TUNA** PyPI — `uv sync`, worker `uv pip` |
+| `UV_INDEX_URL` | `https://mirrors.aliyun.com/pypi/simple/` | **Aliyun** PyPI — `uv sync`, worker `uv pip` |
 | `UV_EXTRA_INDEX_URL` | `https://pypi.org/simple` | Official PyPI fallback (e.g. Paddle wheels) |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | **npmmirror** (原淘宝 npm 镜像) — `npm ci` / build |
 
@@ -88,7 +88,7 @@ Or with explicit build-args:
 ```bash
 docker compose -f docker/docker-compose.yml build \
   --build-arg APT_MIRROR=mirrors.aliyun.com \
-  --build-arg UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  --build-arg UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
   --build-arg UV_EXTRA_INDEX_URL=https://pypi.org/simple \
   --build-arg NPM_REGISTRY=https://registry.npmmirror.com
 ```
