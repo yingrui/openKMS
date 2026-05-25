@@ -93,6 +93,7 @@ nav:
   - Architecture: architecture.md
   - Features:
       - Index: functionalities.md
+      - Knowledge types: features/knowledge-types.md
       - Infrastructure & quality: features/infrastructure.md
       - Documents: features/documents.md
       - Articles: features/articles.md
