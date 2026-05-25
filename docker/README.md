@@ -59,12 +59,49 @@ Use `docker volume ls | grep neo4j` if the volume name differs. **Do not** remov
 docker compose -f docker/docker-compose.yml down
 ```
 
+## Faster builds (China / slow networks)
+
+**`docker-compose.yml`** defaults to common **mainland China** mirrors. Override in **`docker/.env`** or disable with empty values (e.g. `UV_INDEX_URL=`).
+
+| Build-arg | Default in compose | Used in |
+|-----------|-------------------|---------|
+| `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile` (`backend`, `worker`) — Debian apt |
+| `UV_INDEX_URL` | `https://pypi.tuna.tsinghua.edu.cn/simple` | **清华大学 TUNA** PyPI — `uv sync`, worker `uv pip` |
+| `UV_EXTRA_INDEX_URL` | `https://pypi.org/simple` | Official PyPI fallback (e.g. Paddle wheels) |
+| `NPM_REGISTRY` | `https://registry.npmmirror.com` | **npmmirror** (原淘宝 npm 镜像) — `npm ci` / build |
+
+To override defaults, create **`docker/.env`** (optional) with e.g. `UV_INDEX_URL=` for upstream PyPI, then build from **`docker/`**:
+
+```bash
+cd docker
+docker compose -f docker-compose.yml build
+```
+
+From **repo root** (optional `docker/.env` overrides):
+
+```bash
+docker compose -f docker/docker-compose.yml --env-file docker/.env build
+```
+
+Or with explicit build-args:
+
+```bash
+docker compose -f docker/docker-compose.yml build \
+  --build-arg APT_MIRROR=mirrors.aliyun.com \
+  --build-arg UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+  --build-arg UV_EXTRA_INDEX_URL=https://pypi.org/simple \
+  --build-arg NPM_REGISTRY=https://registry.npmmirror.com
+```
+
+**Docker image pulls** (`FROM python:…`, `FROM node:…`, `ghcr.io/astral-sh/uv`) still use your Docker **registry** mirror in `daemon.json` if Hub/ghcr.io is slow—that is separate from apt/PyPI/npm.
+
 ## Files
 
 | File | Role |
 |------|------|
 | `Dockerfile` | `backend` + `worker` targets |
 | `Dockerfile.frontend` | Vite build + nginx |
+| `apt-set-mirror.sh` | Rewrites Debian apt sources when `APT_MIRROR` is set |
 | `nginx-frontend.conf` | Reverse proxy |
 | `docker-compose.yml` | Stack |
 

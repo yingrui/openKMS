@@ -1,12 +1,25 @@
 # Multi-target image: backend API and procrastinate worker (worker includes openkms-cli).
 # Build: docker compose build
 # Context: repository root (.. when invoked from docker/)
+#
+# Optional faster builds on slow networks (e.g. China): pass build-args — see docker/README.md
+#   APT_MIRROR=mirrors.aliyun.com
+#   UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+#   UV_EXTRA_INDEX_URL=https://pypi.org/simple
+#   NPM_REGISTRY=https://registry.npmmirror.com  (frontend Dockerfile only)
 
 FROM python:3.12-slim-bookworm AS base
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+ARG APT_MIRROR=
+ARG UV_INDEX_URL=
+ARG UV_EXTRA_INDEX_URL=
+COPY docker/apt-set-mirror.sh /usr/local/bin/apt-set-mirror.sh
+RUN chmod +x /usr/local/bin/apt-set-mirror.sh \
+    && APT_MIRROR="${APT_MIRROR}" apt-set-mirror.sh \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -18,6 +31,9 @@ COPY backend/app ./app
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini .
 COPY backend/worker.py .
+
+ENV UV_INDEX_URL=${UV_INDEX_URL} \
+    UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
 RUN uv sync --frozen --no-dev
 
@@ -38,6 +54,7 @@ CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0
 FROM base AS worker
 
 # opencv-contrib-python (paddlex) needs libGL at import time even for headless parse.
+# Apt sources already mirrored in `base` when APT_MIRROR was set at build time.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libgomp1 \
