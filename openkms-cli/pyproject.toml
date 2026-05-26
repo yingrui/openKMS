@@ -53,3 +53,10 @@ include = ["openkms_cli*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+# Default PyPI index for lock/install (China mirror). Regenerate lock after dependency edits:
+#   cd openkms-cli && uv lock
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true

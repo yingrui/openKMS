@@ -28,3 +28,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["qa_agent*"]
+
+# Default PyPI index for lock/install (China mirror). Regenerate lock after dependency edits:
+#   cd qa-agent && uv lock
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
