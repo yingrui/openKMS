@@ -84,32 +84,16 @@
   },
   "featureToggles": {
     "pageTitle": "功能开关",
-    "subtitle": "为所有用户开启或关闭功能。关闭后对应入口将从侧栏与导航中隐藏。",
+    "subtitle": "为所有用户开启或关闭「评测」与「连接器」。关闭后对应入口将从侧栏与导航中隐藏。",
     "enableAria": "启用{{feature}}",
     "features": {
-      "articles": {
-        "name": "文章",
-        "description": "类 CMS 文章与字段。相对低频区域。"
-      },
-      "knowledgeBases": {
-        "name": "知识库",
-        "description": "带 RAG 问答的知识库。相对低频区域。"
-      },
-      "wikiSpaces": {
-        "name": "Wiki 空间",
-        "description": "按空间的 Markdown Wiki；支持 CLI 与浏览器编辑；可选图片上传。"
-      },
-      "objectsAndLinks": {
-        "name": "对象与关联",
-        "description": "本体层：对象类型、关联类型及实例。架构在「对象类型」「关联类型」中维护。"
-      },
       "evaluations": {
         "name": "评测",
         "description": "知识库问答评测（实验）。通过「问题 + 期望答案」衡量 RAG 质量。"
       },
-      "knowledge_map": {
-        "name": "知识地图",
-        "description": "来自频道与 Wiki 空间的层级导航，便于浏览内容组织方式。"
+      "connectors": {
+        "name": "连接器",
+        "description": "外部数据集成：加密凭据与用于同步任务的数据集绑定。"
       }
     }
   },
@@ -233,6 +217,66 @@
     "neo4jDeleteAllBody": "将删除此 Neo4j 库中的全部节点与关系？此操作不可撤销。",
     "deleting": "删除中…",
     "confirmDeleteAll": "确认并全部删除"
+  },
+  "connectors": {
+    "toastLoadFailed": "无法加载连接器",
+    "toastRequiredFields": "请填写名称并选择类型",
+    "toastSecretsRequired": "请填写该连接器类型所需的 API 令牌等密钥",
+    "toastDuplicateKey": "额外设置或密钥中的每个键名不能重复。",
+    "toastOutputsRequired": "请为每个输出目标选择一个数据集。",
+    "toastDatasetsLoadFailed": "无法加载数据集列表（可能需要本体或数据集相关权限）。",
+    "toastUpdated": "连接器已更新",
+    "toastCreated": "连接器已创建",
+    "toastOperationFailed": "操作失败",
+    "deleteConfirm": "删除此连接器？已保存的凭据将一并删除。",
+    "toastDeleted": "连接器已删除",
+    "toastDeleteFailed": "删除失败",
+    "pageTitle": "连接器",
+    "subtitle": "每种连接器类型会声明输入（例如 API 地址）和同步写入的数据集；下方可再加可选键值设置。密钥区与数据源密码同样加密保存。",
+    "newConnector": "新建连接器",
+    "loading": "加载中…",
+    "colName": "名称",
+    "colKind": "类型",
+    "colSecrets": "密钥",
+    "colEnabled": "启用",
+    "colActions": "操作",
+    "empty": "尚无连接器。添加后可保存受支持集成的凭据。",
+    "secretsNone": "—",
+    "secretSet": "已配置",
+    "secretUnset": "未配置",
+    "yes": "是",
+    "no": "否",
+    "editTitle": "编辑",
+    "deleteTitle": "删除",
+    "modalEditTitle": "编辑连接器",
+    "modalNewTitle": "新建连接器",
+    "closeAria": "关闭",
+    "fieldName": "名称",
+    "fieldKind": "类型",
+    "fieldEnabled": "启用",
+    "secretLeaveBlank": "留空则保留当前值",
+    "sectionInputs": "输入",
+    "sectionOutputs": "输出",
+    "sectionExtraSettings": "附加设置",
+    "inputsHint": "由连接器类型声明（例如服务根 URL）。",
+    "outputsHint": "为每个目标选择已有数据集；请先在「本体 → 数据集」中登记表。",
+    "outputDatasetPlaceholder": "选择数据集…",
+    "sectionSecrets": "密钥",
+    "settingsKvHint": "键不能重复。值可以是文字、数字、true/false，或 JSON 对象/数组。",
+    "secretsKvHintCreate": "每行一对密钥名与值；值会加密保存。",
+    "secretsKvHintEdit": "值留空表示保留已保存的该项；填写新值则替换。",
+    "secretsExpectedKeys": "此连接器类型需要的键名：{{keys}}。",
+    "kvKeyPlaceholder": "键",
+    "kvValuePlaceholder": "值",
+    "kvSecretKeyPlaceholder": "密钥名称",
+    "kvSecretValuePlaceholder": "密钥值",
+    "addSettingRow": "添加设置行",
+    "addSecretRow": "添加密钥行",
+    "removeRow": "删除此行",
+    "cancel": "取消",
+    "saving": "保存中…",
+    "update": "更新",
+    "create": "创建"
   },
   "datasets": {
     "toastLoadFailed": "加载失败",

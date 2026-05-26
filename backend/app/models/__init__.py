@@ -14,9 +14,10 @@ from app.models.glossary import Glossary
 from app.models.glossary_term import GlossaryTerm
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
+from app.models.connector import Connector
 
 __all__ = [
     "Document", "DocumentChannel", "Pipeline", "ApiModel", "ApiProvider", "FeatureToggle",
     "KnowledgeBase", "KBDocument", "KBWikiSpace", "FAQ", "Chunk", "Glossary", "GlossaryTerm",
-    "DataSource", "Dataset",
+    "DataSource", "Dataset", "Connector",
 ]

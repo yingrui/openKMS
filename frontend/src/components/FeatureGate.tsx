@@ -1,13 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 
-type FeatureId =
-  | 'articles'
-  | 'knowledgeBases'
-  | 'wikiSpaces'
-  | 'objectsAndLinks'
-  | 'evaluations'
-  | 'knowledge_map';
+type FeatureId = 'evaluations' | 'connectors';
 
 export function FeatureGate({
   feature,
@@ -17,14 +11,7 @@ export function FeatureGate({
   children: React.ReactNode;
 }) {
   const { toggles } = useFeatureToggles();
-  const enabled =
-    feature === 'objectsAndLinks'
-      ? toggles.objectsAndLinks || !!toggles.hasNeo4jDataSource
-      : feature === 'knowledge_map'
-        ? toggles.knowledge_map !== false
-        : (toggles[feature] ?? false);
-
-  if (!enabled) {
+  if (!toggles[feature]) {
     return <Navigate to="/" replace />;
   }
 

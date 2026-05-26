@@ -1,6 +1,6 @@
 # Ontology — objects, links, datasets
 
-Object types and link types model an entity-relationship layer that can be backed by PostgreSQL datasets and optionally indexed into Neo4j for graph exploration. Toggle: `objectsAndLinks` (sidebar also auto-shows when a Neo4j data source exists).
+Object types and link types model an entity-relationship layer that can be backed by PostgreSQL datasets and optionally indexed into Neo4j for graph exploration. The **Objects & links** sidebar group is shown when route patterns allow; a **Neo4j** data source still drives graph counts and Object Explorer behavior where applicable.
 
 ## Objects and links
 
@@ -14,9 +14,8 @@ Object types and link types model an entity-relationship layer that can be backe
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
 | Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; checkbox selection for object/link types (compact sidebar rows; link labels clamp to two lines with full text on hover); **tabs** switch between manual Cypher and plain-language text-to-Cypher (**Execute** / generate-and-run under the active input); query stack sits above results and the graph uses remaining main-column height; **list view** paginates rows client-side (page size 25–200) to limit DOM size; **node/link color legend** slides in from the right (collapsed by default so the graph uses full width); layout modes (force, left-to-right, top-to-bottom, radial); zoom in/out/fit, fullscreen; main column uses **flex height** (`app-content--object-explorer`) so the graph fills the viewport without a bottom dead band |
 | Ontology overview | ✅ | Single page at `/ontology` showing all object types and link types with links to detail pages |
-| Ontology sidebar | ✅ | **Ontology** is a top-level item **next to Glossaries** (same menu group); links to `/ontology`; indented subnav for Datasets, Object types, Link types, Objects, Links, Object Explorer when on those routes; shown when Neo4j exists or objectsAndLinks toggle |
+| Ontology sidebar | ✅ | **Ontology** is a top-level item **next to Glossaries** (same menu group); links to `/ontology`; indented subnav for Datasets, Object types, Link types, Objects, Links, Object Explorer when on those routes; visibility follows permission patterns (Neo4j presence still affects graph-backed counts) |
 | Search | ✅ | Optional search filter on object instances |
-| Feature toggle | ✅ | `objectsAndLinks` toggle; sidebar also shows Objects & Links when Neo4j data source exists (`hasNeo4jDataSource`) |
 | Schema admin counts | ✅ | Ontology Object types / Link types pages: instance_count and link_count from datasets (PostgreSQL) |
 
 ## Data sources and datasets

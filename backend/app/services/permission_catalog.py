@@ -38,6 +38,8 @@ PERM_ONTOLOGY_READ = "ontology:read"
 PERM_ONTOLOGY_WRITE = "ontology:write"
 PERM_KNOWLEDGE_MAP_READ = "knowledge_map:read"
 PERM_KNOWLEDGE_MAP_WRITE = "knowledge_map:write"
+PERM_CONNECTORS_READ = "connectors:read"
+PERM_CONNECTORS_WRITE = "connectors:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -157,6 +159,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_CHANNELS_WRITE,
         "Manage channels",
         "Create channels and channel settings.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_CONNECTORS_READ,
+        "View connectors",
+        "List connector kinds and configured integrations (read-only).",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_CONNECTORS_WRITE,
+        "Manage connectors",
+        "Create, update, and delete integrations; set inputs, outputs, extra settings, and encrypted secrets.",
         "content",
     ),
     OperationKeyHint(

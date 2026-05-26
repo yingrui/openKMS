@@ -29,6 +29,7 @@ import {
   Library,
   Tags,
   FolderTree,
+  Plug,
 } from 'lucide-react';
 import { useCallback, useEffect, useState, startTransition } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -280,14 +281,13 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { toggles } = useFeatureToggles();
 
   const showOntologySection =
-    (toggles.objectsAndLinks || toggles.hasNeo4jDataSource) &&
-    (canAccessPath('/ontology') ||
-      canAccessPath('/ontology/datasets') ||
-      canAccessPath('/ontology/object-types') ||
-      canAccessPath('/ontology/link-types') ||
-      canAccessPath('/objects') ||
-      canAccessPath('/links') ||
-      canAccessPath('/object-explorer'));
+    canAccessPath('/ontology') ||
+    canAccessPath('/ontology/datasets') ||
+    canAccessPath('/ontology/object-types') ||
+    canAccessPath('/ontology/link-types') ||
+    canAccessPath('/objects') ||
+    canAccessPath('/links') ||
+    canAccessPath('/object-explorer');
 
   const showConsoleDataLabel =
     canAccessPath('/console/data-sources') ||
@@ -463,7 +463,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           )}
         </div>
         )}
-        {toggles.articles && canAccessPath('/articles') && (
+        {canAccessPath('/articles') && (
           <div className="sidebar-menu-group">
             <NavLink
               to="/articles"
@@ -488,7 +488,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             )}
           </div>
         )}
-        {toggles.wikiSpaces && canAccessPath('/wikis') && (
+        {canAccessPath('/wikis') && (
           <NavLink
             to="/wikis"
             title={t('wikiSpaces')}
@@ -500,7 +500,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             <span>{t('wikiSpaces')}</span>
           </NavLink>
         )}
-        {toggles.knowledge_map !== false && canAccessPath('/knowledge-map') && (
+        {canAccessPath('/knowledge-map') && (
           <NavLink
             to="/knowledge-map"
             title={t('knowledgeMap')}
@@ -553,7 +553,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             )}
           </div>
         )}
-        {toggles.knowledgeBases && canAccessPath('/knowledge-bases') && (
+        {canAccessPath('/knowledge-bases') && (
           <NavLink
             to="/knowledge-bases"
             title={t('knowledgeBases')}
@@ -575,6 +575,16 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           >
             <ClipboardList size={18} strokeWidth={1.75} />
             <span>{t('evaluation')}</span>
+          </NavLink>
+        )}
+        {toggles.connectors && canAccessPath('/connectors') && (
+          <NavLink
+            to="/connectors"
+            title={t('connectors')}
+            className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+          >
+            <Plug size={18} strokeWidth={1.75} />
+            <span>{t('connectors')}</span>
           </NavLink>
         )}
         {canAccessPath('/pipelines') && (

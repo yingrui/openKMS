@@ -1,6 +1,6 @@
 # Knowledge bases
 
-Index documents into a knowledge base, generate FAQs and chunks, run hybrid semantic search, and proxy questions to a separate **QA Agent** service. Visibility toggles via Console → Feature Toggles.
+Index documents into a knowledge base, generate FAQs and chunks, run hybrid semantic search, and proxy questions to a separate **QA Agent** service. Access is controlled by **`knowledge_bases:read`** / **`knowledge_bases:write`** (and data scopes when enforced).
 
 | Feature | Status | Description |
 |---------|--------|-------------|

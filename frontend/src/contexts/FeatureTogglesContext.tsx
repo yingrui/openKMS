@@ -1,24 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from './AuthContext';
-import { fetchToggles, updateToggles, type FeatureToggles } from '../data/featureTogglesApi';
+import {
+  fetchToggles,
+  updateToggles,
+  type FeatureToggles,
+  type FeatureToggleKey,
+} from '../data/featureTogglesApi';
 
-export type { FeatureToggles } from '../data/featureTogglesApi';
+export type { FeatureToggles, FeatureToggleKey } from '../data/featureTogglesApi';
 
 const defaults: FeatureToggles = {
-  articles: true,
-  knowledgeBases: true,
-  wikiSpaces: true,
-  objectsAndLinks: true,
   evaluations: false,
-  knowledge_map: true,
+  connectors: true,
   hasNeo4jDataSource: false,
 };
 
 interface FeatureTogglesContextValue {
   toggles: FeatureToggles;
-  setToggle: (key: keyof FeatureToggles, enabled: boolean) => void;
-  isEnabled: (key: keyof FeatureToggles) => boolean;
+  setToggle: (key: FeatureToggleKey, enabled: boolean) => void;
+  isEnabled: (key: FeatureToggleKey) => boolean;
 }
 
 const FeatureTogglesContext = createContext<FeatureTogglesContextValue | null>(null);
@@ -31,14 +32,18 @@ export function FeatureTogglesProvider({ children }: { children: React.ReactNode
     if (isLoading || !isAuthenticated) return;
     let cancelled = false;
     fetchToggles()
-      .then((data) => { if (!cancelled) setToggles(data); })
+      .then((data) => {
+        if (!cancelled) setToggles(data);
+      })
       .catch((e) => {
         if (!cancelled) toast.error(e instanceof Error ? e.message : 'Failed to load feature toggles');
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, isLoading]);
 
-  const setToggle = useCallback((key: keyof FeatureToggles, enabled: boolean) => {
+  const setToggle = useCallback((key: FeatureToggleKey, enabled: boolean) => {
     setToggles((prev) => {
       const next = { ...prev, [key]: enabled };
       updateToggles({ [key]: enabled }).catch((e) => {
@@ -50,8 +55,8 @@ export function FeatureTogglesProvider({ children }: { children: React.ReactNode
   }, []);
 
   const isEnabled = useCallback(
-    (key: keyof FeatureToggles) => Boolean(toggles[key]),
-    [toggles]
+    (key: FeatureToggleKey) => Boolean(toggles[key]),
+    [toggles],
   );
 
   return (

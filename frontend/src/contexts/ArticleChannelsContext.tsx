@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { fetchArticleChannels } from '../data/articleChannelsApi';
 import type { ChannelNode } from '../data/channelUtils';
 import { useAuth } from './AuthContext';
-import { useFeatureToggles } from './FeatureTogglesContext';
 
 interface ArticleChannelsContextValue {
   channels: ChannelNode[];
@@ -15,7 +14,6 @@ const ArticleChannelsContext = createContext<ArticleChannelsContextValue | null>
 
 export function ArticleChannelsProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { toggles } = useFeatureToggles();
   const [channels, setChannels] = useState<ChannelNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,18 +33,14 @@ export function ArticleChannelsProvider({ children }: { children: React.ReactNod
   }, []);
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated && toggles.articles) {
+    if (!authLoading && isAuthenticated) {
       void refetch();
     } else if (!authLoading && !isAuthenticated) {
       setChannels([]);
       setError(null);
       setLoading(false);
-    } else if (!authLoading && !toggles.articles) {
-      setChannels([]);
-      setError(null);
-      setLoading(false);
     }
-  }, [isAuthenticated, authLoading, toggles.articles, refetch]);
+  }, [isAuthenticated, authLoading, refetch]);
 
   return (
     <ArticleChannelsContext.Provider value={{ channels, loading, error, refetch }}>

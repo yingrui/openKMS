@@ -11,34 +11,22 @@ from app.models.data_source import DataSource
 from app.models.feature_toggle import FeatureToggle
 
 DEFAULTS = {
-    "articles": True,
-    "knowledgeBases": True,
-    "wikiSpaces": True,
-    "objectsAndLinks": True,
     "evaluations": False,
-    "knowledge_map": True,
+    "connectors": True,
 }
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 
 
 class FeatureTogglesResponse(BaseModel):
-    articles: bool = True
-    knowledgeBases: bool = True
-    wikiSpaces: bool = True
-    objectsAndLinks: bool = True
     evaluations: bool = False
-    knowledge_map: bool = True
+    connectors: bool = True
     hasNeo4jDataSource: bool = False
 
 
 class FeatureTogglesUpdate(BaseModel):
-    articles: bool | None = None
-    knowledgeBases: bool | None = None
-    wikiSpaces: bool | None = None
-    objectsAndLinks: bool | None = None
     evaluations: bool | None = None
-    knowledge_map: bool | None = None
+    connectors: bool | None = None
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:

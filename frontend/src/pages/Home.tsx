@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileStack, Inbox, Loader2, Share2, Waypoints } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
 import { KnowledgeMapForceGraph } from '../components/KnowledgeMapForceGraph';
@@ -35,7 +34,6 @@ function flattenDocChannels(nodes: ChannelNode[], prefix = ''): { id: string; la
 export function Home() {
   const { t } = useTranslation('home');
   const { isAuthenticated, login, hasPermission } = useAuth();
-  const { toggles } = useFeatureToggles();
   const { channels } = useDocumentChannels();
   const navigate = useNavigate();
   const [hub, setHub] = useState<HomeHubResponse | null>(null);
@@ -70,8 +68,7 @@ export function Home() {
     }
   }, [isAuthenticated, loadHub]);
 
-  const showKnowledgeMapHub =
-    toggles.knowledge_map !== false && (hasPermission('knowledge_map:read') || hasPermission('all'));
+  const showKnowledgeMapHub = hasPermission('knowledge_map:read') || hasPermission('all');
 
   useEffect(() => {
     if (!isAuthenticated || !showKnowledgeMapHub) {

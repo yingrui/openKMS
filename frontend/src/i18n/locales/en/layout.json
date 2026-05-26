@@ -28,6 +28,7 @@
   "dataResources": "Data resources",
   "consoleSection": "Console",
   "dataSources": "Data Sources",
+  "connectors": "Connectors",
   "systemSettings": "System Settings",
   "usersAndRoles": "Users & roles",
   "featureToggles": "Feature Toggles",

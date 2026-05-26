@@ -28,6 +28,7 @@
   "dataResources": "数据资源",
   "consoleSection": "控制台",
   "dataSources": "数据源",
+  "connectors": "连接器",
   "systemSettings": "系统设置",
   "usersAndRoles": "用户与角色",
   "featureToggles": "功能开关",

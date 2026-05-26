@@ -2,13 +2,12 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
+/** Keys operators may flip in Console → Feature toggles (not derived fields). */
+export type FeatureToggleKey = 'evaluations' | 'connectors';
+
 export interface FeatureToggles {
-  articles: boolean;
-  knowledgeBases: boolean;
-  wikiSpaces: boolean;
-  objectsAndLinks: boolean;
   evaluations: boolean;
-  knowledge_map: boolean;
+  connectors: boolean;
   hasNeo4jDataSource?: boolean;
 }
 
@@ -25,7 +24,7 @@ export async function fetchToggles(): Promise<FeatureToggles> {
   return res.json();
 }
 
-export async function updateToggles(toggles: Partial<FeatureToggles>): Promise<FeatureToggles> {
+export async function updateToggles(toggles: Partial<Record<FeatureToggleKey, boolean>>): Promise<FeatureToggles> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/feature-toggles`, {
     method: 'PUT',

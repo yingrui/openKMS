@@ -12,6 +12,8 @@ from app.services.permission_catalog import (
     PERM_CONSOLE_ACCESS,
     PERM_CONSOLE_DATASETS,
     PERM_CONSOLE_DATA_SOURCES,
+    PERM_CONNECTORS_READ,
+    PERM_CONNECTORS_WRITE,
     PERM_CONSOLE_FEATURE_TOGGLES,
     PERM_CONSOLE_GROUPS,
     PERM_CONSOLE_LINK_TYPES,
@@ -71,6 +73,24 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_CONSOLE_DATA_SOURCES: (
         ["/console", "/console/data-sources"],
         ["/api/data-sources/*"],
+    ),
+    PERM_CONNECTORS_READ: (
+        ["/connectors", "/connectors/*"],
+        [
+            "GET /api/connectors",
+            "HEAD /api/connectors",
+            "GET /api/connectors/*",
+            "HEAD /api/connectors/*",
+        ],
+    ),
+    PERM_CONNECTORS_WRITE: (
+        ["/connectors", "/connectors/*"],
+        [
+            "POST /api/connectors",
+            "PUT /api/connectors/*",
+            "DELETE /api/connectors/*",
+            "PATCH /api/connectors/*",
+        ],
     ),
     PERM_CONSOLE_DATASETS: (
         ["/console", "/ontology/datasets", "/ontology/datasets/*"],

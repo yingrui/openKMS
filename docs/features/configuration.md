@@ -114,7 +114,7 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 | `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` | `false` | When `true`, every authenticated `/api` request must match a catalog `backend_api_pattern` and the user must hold that key |
 | `OPENKMS_PERMISSION_PATTERN_CACHE_TTL_SECONDS` | `60` | TTL for compiled permission patterns loaded from `security_permissions` |
 | `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` | `false` | When `true`, non-admin local users with access-group membership see only allowed resources (legacy ID lists ∪ `DataResource` rows) |
-| `OPENKMS_DATASOURCE_ENCRYPTION_KEY` | unset | Fernet key (base64) used to encrypt `data_sources.username/password`; required for adding data sources |
+| `OPENKMS_DATASOURCE_ENCRYPTION_KEY` | unset | Fernet key (base64) used to encrypt `data_sources` credentials and **connector** secrets (`connectors.secrets_encrypted`); required before storing those values |
 
 ## Cursor / contributor rules
 

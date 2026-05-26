@@ -1,15 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
+import type { FeatureToggleKey } from '../../data/featureTogglesApi';
 import './ConsoleFeatureToggles.scss';
 
-const FEATURE_IDS = [
-  'articles',
-  'knowledgeBases',
-  'wikiSpaces',
-  'objectsAndLinks',
-  'evaluations',
-  'knowledge_map',
-] as const;
+const FEATURE_IDS: FeatureToggleKey[] = ['evaluations', 'connectors'];
 
 export function ConsoleFeatureToggles() {
   const { t } = useTranslation('console');
@@ -33,7 +27,7 @@ export function ConsoleFeatureToggles() {
               <label className="console-feature-toggle-switch">
                 <input
                   type="checkbox"
-                  checked={id === 'knowledge_map' ? toggles.knowledge_map !== false : Boolean(toggles[id])}
+                  checked={Boolean(toggles[id])}
                   onChange={(e) => setToggle(id, e.target.checked)}
                   aria-label={t('featureToggles.enableAria', { feature: name })}
                 />

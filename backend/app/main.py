@@ -25,6 +25,7 @@ from app.api.object_types import router as object_types_router
 from app.api.link_types import router as link_types_router
 from app.api.ontology_explore import router as ontology_explore_router
 from app.api.providers import router as providers_router
+from app.api.connectors import router as connectors_router
 from app.api.data_sources import router as data_sources_router
 from app.api.datasets import router as datasets_router
 from app.api.evaluations import router as evaluations_router
@@ -124,6 +125,7 @@ app.include_router(glossaries_router, prefix="/api")
 app.include_router(object_types_router, prefix="/api")
 app.include_router(link_types_router, prefix="/api")
 app.include_router(ontology_explore_router, prefix="/api")
+app.include_router(connectors_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")

@@ -84,32 +84,16 @@
   },
   "featureToggles": {
     "pageTitle": "Feature toggles",
-    "subtitle": "Enable or disable features for everyone. Disabled areas are hidden from the sidebar and navigation.",
+    "subtitle": "Enable or disable the Evaluation and Connectors areas for everyone. Disabled areas are hidden from the sidebar and navigation.",
     "enableAria": "Enable {{feature}}",
     "features": {
-      "articles": {
-        "name": "Articles",
-        "description": "CMS-style articles with rich fields. Lower-traffic area."
-      },
-      "knowledgeBases": {
-        "name": "Knowledge bases",
-        "description": "Knowledge bases with RAG Q&A. Lower-traffic area."
-      },
-      "wikiSpaces": {
-        "name": "Wiki spaces",
-        "description": "Markdown wiki per space; CLI and browser editing; optional image uploads."
-      },
-      "objectsAndLinks": {
-        "name": "Objects & links",
-        "description": "Ontology: object types, link types, and instances. Schema lives under Object types and Link types."
-      },
       "evaluations": {
         "name": "Evaluation",
         "description": "KB QA evaluations (experimental). Query and expected-answer pairs to gauge RAG quality."
       },
-      "knowledge_map": {
-        "name": "Knowledge map",
-        "description": "Sitemap-style hierarchy from channels and wiki spaces so people can browse how content is organized."
+      "connectors": {
+        "name": "Connectors",
+        "description": "External integrations with encrypted credentials and dataset targets for sync jobs."
       }
     }
   },
@@ -233,6 +217,66 @@
     "neo4jDeleteAllBody": "Delete all nodes and relationships in this Neo4j database? This cannot be undone.",
     "deleting": "Deleting…",
     "confirmDeleteAll": "Confirm & delete all"
+  },
+  "connectors": {
+    "toastLoadFailed": "Failed to load connectors",
+    "toastRequiredFields": "Name and kind are required",
+    "toastSecretsRequired": "Enter the required API token (or other secrets) for this connector kind",
+    "toastDuplicateKey": "Each key must be unique (in extra settings or secrets).",
+    "toastOutputsRequired": "Choose a dataset for every output target.",
+    "toastDatasetsLoadFailed": "Could not load datasets for the pickers. You may need ontology or dataset console access.",
+    "toastUpdated": "Connector updated",
+    "toastCreated": "Connector created",
+    "toastOperationFailed": "Operation failed",
+    "deleteConfirm": "Delete this connector? Stored credentials will be removed.",
+    "toastDeleted": "Connector deleted",
+    "toastDeleteFailed": "Delete failed",
+    "pageTitle": "Connectors",
+    "subtitle": "Each kind defines inputs (for example an API URL) and dataset targets for sync jobs. Optional extra settings are key–value pairs. Secrets are encrypted like data source passwords.",
+    "newConnector": "New connector",
+    "loading": "Loading…",
+    "colName": "Name",
+    "colKind": "Kind",
+    "colSecrets": "Secrets",
+    "colEnabled": "Enabled",
+    "colActions": "Actions",
+    "empty": "No connectors yet. Add one to store credentials for a supported integration.",
+    "secretsNone": "—",
+    "secretSet": "set",
+    "secretUnset": "not set",
+    "yes": "Yes",
+    "no": "No",
+    "editTitle": "Edit",
+    "deleteTitle": "Delete",
+    "modalEditTitle": "Edit connector",
+    "modalNewTitle": "New connector",
+    "closeAria": "Close",
+    "fieldName": "Name",
+    "fieldKind": "Kind",
+    "fieldEnabled": "Enabled",
+    "secretLeaveBlank": "leave blank to keep current value",
+    "sectionInputs": "Inputs",
+    "sectionOutputs": "Outputs",
+    "sectionExtraSettings": "Extra settings",
+    "inputsHint": "Declared by the connector type (for example the service base URL).",
+    "outputsHint": "Pick an existing dataset row for each target. Create datasets under Ontology → Datasets if needed.",
+    "outputDatasetPlaceholder": "Select dataset…",
+    "sectionSecrets": "Secrets",
+    "settingsKvHint": "Keys must be unique. Values can be text, numbers, true/false, or JSON objects/arrays.",
+    "secretsKvHintCreate": "Add one row per secret. Values are stored encrypted.",
+    "secretsKvHintEdit": "Leave a value blank to keep the current stored secret. Enter a new value to replace it.",
+    "secretsExpectedKeys": "This connector type expects these keys: {{keys}}.",
+    "kvKeyPlaceholder": "Key",
+    "kvValuePlaceholder": "Value",
+    "kvSecretKeyPlaceholder": "Secret name",
+    "kvSecretValuePlaceholder": "Secret value",
+    "addSettingRow": "Add setting",
+    "addSecretRow": "Add secret row",
+    "removeRow": "Remove row",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "update": "Update",
+    "create": "Create"
   },
   "datasets": {
     "toastLoadFailed": "Failed to load",

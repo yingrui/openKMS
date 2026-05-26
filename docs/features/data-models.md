@@ -148,6 +148,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `name`, `kind` (postgresql | neo4j), `host`, `port`, `database`, `username_encrypted`, `password_encrypted`, `options` (JSONB), `created_at`, `updated_at`
 - Connection config; credentials encrypted with Fernet
 
+### Connector
+
+- `id`, `name`, `kind` (e.g. `tushare` — see `GET /api/connectors/kinds`), **`inputs`** (JSONB: kind-defined non-secret fields, e.g. `api_base_url`), **`outputs`** (JSONB: slot → `dataset_id` for sync targets), `settings` (JSONB, optional extra key–value), `secrets_encrypted` (Fernet ciphertext of a JSON object whose keys are kind-specific, e.g. `TUSHARE_TOKEN`), `enabled`, `created_at`, `updated_at`
+- One row per configured integration; workers read secrets via the same decrypt helper as data sources
+
 ### Dataset
 
 - `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `created_at`, `updated_at`
@@ -158,7 +163,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: `articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `knowledge_map` (all enabled); `evaluations` (disabled by default, experimental)
+- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: **`evaluations`** (disabled by default), **`connectors`** (enabled by default). Migration **`v4w5x6y7z8a0`** removes legacy keys (`articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `knowledge_map`) and adds **`connectors`**
 - Read by all authenticated users; write restricted to admins
 
 ### SystemSettings

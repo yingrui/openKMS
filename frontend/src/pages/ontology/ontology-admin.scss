@@ -154,6 +154,11 @@
   padding: 48px 20px !important;
 }
 
+.console-table-muted {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 .console-loading {
   display: flex;
   flex-direction: column;
@@ -241,6 +246,7 @@
 }
 
 .console-modal-body input[type='text'],
+.console-modal-body input[type='password'],
 .console-modal-body select {
   width: 100%;
   padding: 8px 12px;
@@ -249,10 +255,75 @@
   font-size: 0.9375rem;
 }
 
+.console-modal-body label.console-modal-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.console-modal-body label.console-modal-checkbox-row span {
+  display: inline;
+  margin-bottom: 0;
+}
+
+.console-modal-body label.console-modal-checkbox-row input[type='checkbox'] {
+  width: auto;
+}
+
 .console-modal-section {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--color-border);
+}
+
+.console-modal-subheading {
+  margin: 0 0 8px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.console-kv-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.console-kv-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.console-kv-key {
+  flex: 1 1 120px;
+  min-width: 100px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+
+.console-kv-value {
+  flex: 2 1 180px;
+  min-width: 140px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.9375rem;
+}
+
+.console-kv-remove {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  min-width: auto;
+}
+
+.console-kv-add {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .console-modal-fk-section {

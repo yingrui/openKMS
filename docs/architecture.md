@@ -85,7 +85,7 @@ flowchart TB
     Jobs[Jobs, JobDetail]
     Models[Models, ModelDetail]
     Ontology[OntologyList; Datasets, DatasetDetail, ObjectTypesPage, LinkTypesPage; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer] — SPA sources under **`frontend/src/pages/ontology/`**
-    Console[Console: Overview, Permission management, Data security, DataSources, Settings, Users, FeatureToggles]
+    Console[Console: Overview, Permission management, Data security, DataSources, Connectors, Settings, Users, FeatureToggles]
     UserSettings[Profile, UserSettings /settings API keys]
   end
 
@@ -129,7 +129,7 @@ frontend/src/
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.scss; co-located SCSS per page
-    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
+    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Connectors, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 
 ### Internationalization (SPA)

@@ -4,7 +4,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
 import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { useArticleChannels } from '../contexts/ArticleChannelsContext';
-import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import { fetchGlobalSearch, type GlobalSearchHit, type GlobalSearchResponse } from '../data/globalSearchApi';
 import './GlobalSearch.scss';
 
@@ -33,36 +32,25 @@ function localDatetimeInputToIso(local: string): string | undefined {
   return d.toISOString();
 }
 
-function normalizeTab(raw: string | null, isEnabled: (k: 'articles' | 'wikiSpaces' | 'knowledgeBases') => boolean): SearchTab {
+function normalizeTab(raw: string | null): SearchTab {
   const t = (raw ?? 'all').trim().toLowerCase();
   if (t === 'documents') return 'documents';
-  if (t === 'articles' && isEnabled('articles')) return 'articles';
-  if (t === 'wiki_spaces' && isEnabled('wikiSpaces')) return 'wiki_spaces';
-  if (t === 'knowledge_bases' && isEnabled('knowledgeBases')) return 'knowledge_bases';
+  if (t === 'articles') return 'articles';
+  if (t === 'wiki_spaces') return 'wiki_spaces';
+  if (t === 'knowledge_bases') return 'knowledge_bases';
   if (t === 'all' || t === '') return 'all';
   return 'all';
 }
 
-function sumEnabledTotals(
-  d: GlobalSearchResponse,
-  isEnabled: (k: 'articles' | 'wikiSpaces' | 'knowledgeBases') => boolean,
-): number {
-  let n = d.documents.total;
-  if (isEnabled('articles')) n += d.articles.total;
-  if (isEnabled('wikiSpaces')) n += d.wiki_spaces.total;
-  if (isEnabled('knowledgeBases')) n += d.knowledge_bases.total;
-  return n;
+function sumAllTotals(d: GlobalSearchResponse): number {
+  return d.documents.total + d.articles.total + d.wiki_spaces.total + d.knowledge_bases.total;
 }
 
-function tabResultCount(
-  d: GlobalSearchResponse | null,
-  id: SearchTab,
-  isEnabled: (k: 'articles' | 'wikiSpaces' | 'knowledgeBases') => boolean,
-): number | null {
+function tabResultCount(d: GlobalSearchResponse | null, id: SearchTab): number | null {
   if (!d) return null;
   switch (id) {
     case 'all':
-      return sumEnabledTotals(d, isEnabled);
+      return sumAllTotals(d);
     case 'documents':
       return d.documents.total;
     case 'articles':
@@ -132,23 +120,18 @@ export function GlobalSearch() {
   const qParam = searchParams.get('q') ?? '';
   const { channels: docChannels } = useDocumentChannels();
   const { channels: artChannels } = useArticleChannels();
-  const { isEnabled } = useFeatureToggles();
+  const activeTab = useMemo(() => normalizeTab(searchParams.get('tab')), [searchParams]);
 
-  const activeTab = useMemo(
-    () => normalizeTab(searchParams.get('tab'), isEnabled),
-    [searchParams, isEnabled],
+  const tabDefs = useMemo(
+    () => [
+      { id: 'all' as const, label: t('tabAll') },
+      { id: 'documents' as const, label: t('tabDocuments') },
+      { id: 'articles' as const, label: t('tabArticles') },
+      { id: 'wiki_spaces' as const, label: t('tabWikiSpaces') },
+      { id: 'knowledge_bases' as const, label: t('tabKnowledgeBases') },
+    ],
+    [t],
   );
-
-  const tabDefs = useMemo(() => {
-    const rows: { id: SearchTab; label: string }[] = [
-      { id: 'all', label: t('tabAll') },
-      { id: 'documents', label: t('tabDocuments') },
-    ];
-    if (isEnabled('articles')) rows.push({ id: 'articles', label: t('tabArticles') });
-    if (isEnabled('wikiSpaces')) rows.push({ id: 'wiki_spaces', label: t('tabWikiSpaces') });
-    if (isEnabled('knowledgeBases')) rows.push({ id: 'knowledge_bases', label: t('tabKnowledgeBases') });
-    return rows;
-  }, [isEnabled, t]);
 
   const [docChannel, setDocChannel] = useState(searchParams.get('document_channel_id') ?? '');
   const [artChannel, setArtChannel] = useState(searchParams.get('article_channel_id') ?? '');
@@ -162,13 +145,13 @@ export function GlobalSearch() {
   useEffect(() => {
     const raw = searchParams.get('tab');
     if (!raw || raw.trim().toLowerCase() === 'all') return;
-    const coerced = normalizeTab(raw, isEnabled);
+    const coerced = normalizeTab(raw);
     if (coerced === 'all') {
       const next = new URLSearchParams(searchParams);
       next.delete('tab');
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, isEnabled, setSearchParams]);
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     setDocChannel(searchParams.get('document_channel_id') ?? '');
@@ -179,15 +162,8 @@ export function GlobalSearch() {
     setUpdatedBefore(ub ? isoToDatetimeLocalValue(ub) : '');
   }, [searchParams]);
 
-  /** Always request every enabled type so tab badges show correct totals for all tabs. */
-  const typesParam = useMemo(() => {
-    const parts: string[] = ['documents'];
-    if (isEnabled('articles')) parts.push('articles');
-    if (isEnabled('wikiSpaces')) parts.push('wiki_spaces');
-    if (isEnabled('knowledgeBases')) parts.push('knowledge_bases');
-    if (parts.length === 4) return 'all';
-    return parts.join(',');
-  }, [isEnabled]);
+  /** Request all entity kinds so tab badges match section totals. */
+  const typesParam = 'all';
 
   const runSearch = useCallback(() => {
     setLoading(true);
@@ -276,7 +252,7 @@ export function GlobalSearch() {
       <div className="global-search-results-shell">
         <nav className="global-search-tabs" aria-label={t('resultTypeNav')}>
           {tabDefs.map(({ id, label }) => {
-            const count = tabResultCount(data, id, isEnabled);
+            const count = tabResultCount(data, id);
             const aria = count === null ? label : t('tabAria', { label, count });
             return (
               <button
@@ -311,19 +287,17 @@ export function GlobalSearch() {
                 ))}
               </select>
             </label>
-            {isEnabled('articles') && (
-              <label>
-                {t('articleChannel')}
-                <select value={artChannel} onChange={(e) => setArtChannel(e.target.value)} aria-label={t('articleChannel')}>
-                  <option value="">{t('channelAny')}</option>
-                  {artOptions.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
+            <label>
+              {t('articleChannel')}
+              <select value={artChannel} onChange={(e) => setArtChannel(e.target.value)} aria-label={t('articleChannel')}>
+                <option value="">{t('channelAny')}</option>
+                {artOptions.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               {t('updatedAfter')}
               <input
@@ -361,13 +335,13 @@ export function GlobalSearch() {
               emptyHint={t('emptyDocuments')}
             />
           )}
-          {isEnabled('articles') && show('articles') && (
+          {show('articles') && (
             <Section title={t('sectionArticles')} section={data.articles} emptyHint={t('emptyArticles')} />
           )}
-          {isEnabled('wikiSpaces') && show('wiki_spaces') && (
+          {show('wiki_spaces') && (
             <Section title={t('sectionWikiSpaces')} section={data.wiki_spaces} emptyHint={t('emptyWikiSpaces')} />
           )}
-          {isEnabled('knowledgeBases') && show('knowledge_bases') && (
+          {show('knowledge_bases') && (
             <Section
               title={t('sectionKnowledgeBases')}
               section={data.knowledge_bases}

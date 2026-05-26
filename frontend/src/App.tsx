@@ -34,6 +34,7 @@ import { ConsoleHealth } from './pages/console/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
+import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
 import { ConsoleDataSecurityGroups } from './pages/console/ConsoleDataSecurityGroups';
@@ -94,11 +95,7 @@ function LegacyConsoleDatasetRedirect() {
 
 function WikiSpacePagesGate() {
   const { id } = useParams();
-  return (
-    <FeatureGate feature="wikiSpaces">
-      <WikiWorkspace key={id ?? ''} />
-    </FeatureGate>
-  );
+  return <WikiWorkspace key={id ?? ''} />;
 }
 
 function WikiSpaceRootToGraph() {
@@ -123,7 +120,7 @@ function App() {
         <Route path="/auth/silent-renew" element={<OidcSilentRenew />} />
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
-          <Route path="knowledge-map" element={<FeatureGate feature="knowledge_map"><KnowledgeMap /></FeatureGate>} />
+          <Route path="knowledge-map" element={<KnowledgeMap />} />
           <Route path="search" element={<GlobalSearch />} />
           <Route path="documents" element={<Outlet />}>
             <Route index element={<DocumentsIndex />} />
@@ -132,25 +129,26 @@ function App() {
             <Route path="channels" element={<DocumentChannels />} />
             <Route path="view/:id" element={<DocumentDetail />} />
           </Route>
-          <Route path="articles" element={<FeatureGate feature="articles"><Outlet /></FeatureGate>}>
+          <Route path="articles" element={<Outlet />}>
             <Route index element={<ArticlesIndex />} />
             <Route path="channels/:channelId/settings" element={<ArticleChannelSettings />} />
             <Route path="channels/:channelId" element={<ArticleChannel />} />
             <Route path="channels" element={<ArticleChannels />} />
             <Route path="view/:id" element={<ArticleDetail />} />
           </Route>
-          <Route path="knowledge-bases" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseList /></FeatureGate>} />
-          <Route path="knowledge-bases/:id" element={<FeatureGate feature="knowledgeBases"><KnowledgeBaseDetail /></FeatureGate>} />
-          <Route path="wikis" element={<FeatureGate feature="wikiSpaces"><WikiSpaceList /></FeatureGate>} />
+          <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
+          <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
+          <Route path="wikis" element={<WikiSpaceList />} />
           <Route path="wikis/:id/pages/graph" element={<WikiSpacePagesGate />} />
           <Route path="wikis/:id/pages/:pageId" element={<WikiSpacePagesGate />} />
-          <Route path="wikis/:id/settings" element={<FeatureGate feature="wikiSpaces"><WikiSpaceSettings /></FeatureGate>} />
-          <Route path="wikis/:id" element={<FeatureGate feature="wikiSpaces"><WikiSpaceRootToGraph /></FeatureGate>} />
+          <Route path="wikis/:id/settings" element={<WikiSpaceSettings />} />
+          <Route path="wikis/:id" element={<WikiSpaceRootToGraph />} />
           <Route path="evaluations" element={<FeatureGate feature="evaluations"><EvaluationDatasetList /></FeatureGate>} />
           <Route path="evaluations/:id/settings" element={<FeatureGate feature="evaluations"><EvaluationDatasetSettings /></FeatureGate>} />
           <Route path="evaluations/:id" element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
+          <Route path="connectors" element={<FeatureGate feature="connectors"><ConnectorsPage /></FeatureGate>} />
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="pipelines" element={<Pipelines />} />
@@ -158,22 +156,23 @@ function App() {
           <Route path="jobs/:jobId" element={<JobDetail />} />
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
-          <Route path="ontology" element={<FeatureGate feature="objectsAndLinks"><Outlet /></FeatureGate>}>
+          <Route path="ontology" element={<Outlet />}>
             <Route index element={<OntologyList />} />
             <Route path="datasets" element={<ConsoleDatasets />} />
             <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
             <Route path="object-types" element={<ObjectTypesPage />} />
             <Route path="link-types" element={<LinkTypesPage />} />
           </Route>
-          <Route path="objects" element={<FeatureGate feature="objectsAndLinks"><ObjectsList /></FeatureGate>} />
-          <Route path="objects/:typeId" element={<FeatureGate feature="objectsAndLinks"><ObjectTypeDetail /></FeatureGate>} />
-          <Route path="links" element={<FeatureGate feature="objectsAndLinks"><LinksList /></FeatureGate>} />
-          <Route path="links/:typeId" element={<FeatureGate feature="objectsAndLinks"><LinkTypeDetail /></FeatureGate>} />
-          <Route path="object-explorer" element={<FeatureGate feature="objectsAndLinks"><ObjectExplorer /></FeatureGate>} />
+          <Route path="objects" element={<ObjectsList />} />
+          <Route path="objects/:typeId" element={<ObjectTypeDetail />} />
+          <Route path="links" element={<LinksList />} />
+          <Route path="links/:typeId" element={<LinkTypeDetail />} />
+          <Route path="object-explorer" element={<ObjectExplorer />} />
           <Route path="console/datasets" element={<Navigate to="/ontology/datasets" replace />} />
           <Route path="console/datasets/:id" element={<LegacyConsoleDatasetRedirect />} />
           <Route path="console/object-types" element={<Navigate to="/ontology/object-types" replace />} />
           <Route path="console/link-types" element={<Navigate to="/ontology/link-types" replace />} />
+          <Route path="console/connectors" element={<Navigate to="/connectors" replace />} />
           <Route path="console" element={<ConsoleLayout />}>
             <Route index element={<ConsoleOverview />} />
             <Route path="health" element={<ConsoleHealth />} />

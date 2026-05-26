@@ -254,6 +254,19 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | DELETE | `/api/data-sources/{id}` | Delete data source (`console:data_sources`) |
 | POST | `/api/data-sources/{id}/test` | Test connection (`console:data_sources`) |
 | POST | `/api/data-sources/{id}/neo4j-delete-all` | Delete all nodes and relationships in Neo4j (`console:data_sources`, Neo4j only) |
+
+### Connectors (`connectors:read` / `connectors:write`)
+
+**Auth:** `GET` / `HEAD` on `/api/connectors` and `/api/connectors/*` require **`connectors:read`** or **`connectors:write`**. `POST`, `PUT`, and `DELETE` require **`connectors:write`**.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/connectors/kinds` | List connector kinds with **input field** and **output slot** metadata (for forms), plus secret key names |
+| GET | `/api/connectors` | List connector instances (`inputs`, `outputs`, `settings`, `secrets_configured`) |
+| POST | `/api/connectors` | Create connector: body may include `inputs`, `outputs` (slot → dataset id), `settings`, `secrets`; **Tushare** requires token, API URL input, and two dataset outputs |
+| GET | `/api/connectors/{id}` | Get one connector |
+| PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided; merge `secrets` or send `{}` to clear secrets |
+| DELETE | `/api/connectors/{id}` | Delete connector |
 | GET | `/api/datasets` | List datasets (`console:datasets`, optional ?data_source_id=) |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |
 | POST | `/api/datasets` | Create dataset (`console:datasets`) |
@@ -267,7 +280,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/feature-toggles` | Get feature toggle state (includes `knowledge_map`, `hasNeo4jDataSource`; authenticated) |
+| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `hasNeo4jDataSource`; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ## Articles
