@@ -2,6 +2,8 @@
 
 A short, high-level tour of openKMS. For the full system design see [Architecture](architecture.md); for individual features see [Functionalities](functionalities.md). For a concise taxonomy of **documents, articles, wiki, KB chunks, ontology**, and related layers, see [Knowledge types](features/knowledge-types.md).
 
+For product **goals and the business problems** openKMS is aimed at (中文), see [Goals & vision](goals.md).
+
 ## What problems does it solve?
 
 - A single place to **collect**, **parse**, and **search** mixed content (PDF/HTML/ZIP/images, articles, wiki notes).

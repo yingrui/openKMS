@@ -23,6 +23,7 @@ A unified **Knowledge Map** ties terms to channels, wiki spaces, and article cha
 
 | If you want to… | Read |
 |---|---|
+| Understand **why** openKMS exists (goals & business problems, 中文) | [Goals & vision](goals.md) |
 | Try it locally with Docker or on the host | [Quickstart](quickstart.md) |
 | Understand the system | [Overview](overview.md) → [Architecture](architecture.md) |
 | Find a specific feature or API | [Functionalities](functionalities.md) |
