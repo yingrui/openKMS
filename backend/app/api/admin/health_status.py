@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -95,6 +97,54 @@ async def _check_job_queue(db: AsyncSession) -> tuple[HealthStatusKind, str | No
         return "error", str(e), ms
 
 
+def _langfuse_tracing_keys_ok() -> bool:
+    return bool(
+        (settings.langfuse_secret_key or "").strip()
+        and (settings.langfuse_public_key or "").strip()
+    )
+
+
+async def _check_langfuse() -> tuple[HealthStatusKind, str | None, int | None]:
+    """Probe Langfuse public health when base URL is set (same host as wiki / shared .env with qa-agent)."""
+    base = (settings.langfuse_base_url or "").strip().rstrip("/")
+    if not base:
+        return (
+            "skipped",
+            "Tracing host not set. Set LANGFUSE_BASE_URL on the server to enable checks and tracing.",
+            None,
+        )
+    if not settings.langfuse_healthcheck:
+        return (
+            "skipped",
+            "Checks disabled (LANGFUSE_HEALTHCHECK is false).",
+            None,
+        )
+
+    host = urlparse(base).hostname or base
+    creds = "Tracing credentials look complete." if _langfuse_tracing_keys_ok() else "Set LANGFUSE_SECRET_KEY and LANGFUSE_PUBLIC_KEY for tracing callbacks."
+
+    start = time.perf_counter()
+    url = f"{base}/api/public/health"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, follow_redirects=True)
+        ms = int((time.perf_counter() - start) * 1000)
+        if r.status_code < 500:
+            return (
+                "ok",
+                f"Host {host}: public health returned HTTP {r.status_code}. {creds}",
+                ms,
+            )
+        return (
+            "error",
+            f"Host {host}: public health returned HTTP {r.status_code}. {creds}",
+            ms,
+        )
+    except Exception as e:
+        ms = int((time.perf_counter() - start) * 1000)
+        return "error", f"Host {host}: {e}. {creds}", ms
+
+
 @router.get(
     "/health-status",
     response_model=HealthStatusResponse,
@@ -104,7 +154,7 @@ async def get_health_status(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Check API, database, storage, job queue, and optionally registered data sources."""
+    """Check API, database, storage, job queue, Langfuse (when configured), and optionally data sources."""
     components: list[HealthComponent] = [
         HealthComponent(id="api", label="API", status="ok", message="Responding"),
     ]
@@ -133,6 +183,17 @@ async def get_health_status(
             status=queue_status,
             message=queue_msg,
             latency_ms=queue_ms,
+        )
+    )
+
+    lf_status, lf_msg, lf_ms = await _check_langfuse()
+    components.append(
+        HealthComponent(
+            id="langfuse",
+            label="Langfuse (tracing)",
+            status=lf_status,
+            message=lf_msg,
+            latency_ms=lf_ms,
         )
     )
 

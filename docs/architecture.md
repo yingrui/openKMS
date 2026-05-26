@@ -151,6 +151,7 @@ backend/
 │   ├── api/
 │   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me, permission-catalog, **api-keys** CRUD, sync-session)
 │   │   ├── admin/
+│   │   │   ├── health_status.py   # GET /api/admin/health-status (console:access): core deps + optional Langfuse public health when LANGFUSE_BASE_URL set
 │   │   │   ├── groups.py        # CRUD /api/admin/groups, scopes PUT (any auth); members PUT local-only (OIDC: GET empty, PUT 403)
 │   │   │   ├── security_roles.py  # GET /api/admin/security-roles, PUT …/permissions
 │   │   │   ├── security_permissions.py  # CRUD /api/admin/security-permissions (catalog rows)

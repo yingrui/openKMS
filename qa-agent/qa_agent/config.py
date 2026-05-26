@@ -37,7 +37,8 @@ class Settings(BaseSettings):
         ),
     )
 
-    rerank_enabled: bool = Field(default=True, validation_alias="OPENKMS_RERANK_ENABLED")
+    #: Default off: many OpenAI-compatible gateways have no ``POST …/v1/rerank`` (404). Set true when you have a rerank endpoint.
+    rerank_enabled: bool = Field(default=False, validation_alias="OPENKMS_RERANK_ENABLED")
     rerank_base_url: str | None = Field(default=None, validation_alias="OPENKMS_RERANK_BASE_URL")
     rerank_model_name: str = Field(default="BAAI/bge-reranker-v2-m3", validation_alias="OPENKMS_RERANK_MODEL_NAME")
     rerank_recall_top_k: int = Field(default=25, validation_alias="OPENKMS_RERANK_RECALL_TOP_K")
@@ -55,12 +56,26 @@ class Settings(BaseSettings):
     langfuse_base_url: str | None = Field(default=None, validation_alias="LANGFUSE_BASE_URL")
     #: When Langfuse is enabled, attach its callback to ``astream_events`` unless false (avoids rare OpenTelemetry context warnings on some setups).
     langfuse_trace_streaming: bool = Field(default=True, validation_alias="LANGFUSE_TRACE_STREAMING")
+    #: If true (default), probe ``{LANGFUSE_BASE_URL}/api/public/health`` before attaching callbacks; on failure back off and retry on that interval until the host recovers.
+    langfuse_healthcheck: bool = Field(default=True, validation_alias="LANGFUSE_HEALTHCHECK")
+    #: Seconds between health probes while Langfuse is considered down (circuit open).
+    langfuse_healthcheck_retry_seconds: int = Field(
+        default=60,
+        ge=5,
+        le=86400,
+        validation_alias="LANGFUSE_HEALTHCHECK_RETRY_SECONDS",
+    )
 
     model_config = {"env_file": _ENV_FILE, "extra": "ignore"}
 
     @property
     def langfuse_enabled(self) -> bool:
-        return bool(self.langfuse_secret_key and self.langfuse_public_key)
+        """Tracing keys plus an explicit host; without ``LANGFUSE_BASE_URL`` we do not use Langfuse."""
+        return bool(
+            (self.langfuse_secret_key or "").strip()
+            and (self.langfuse_public_key or "").strip()
+            and (self.langfuse_base_url or "").strip()
+        )
 
 
 settings = Settings()

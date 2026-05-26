@@ -58,15 +58,17 @@ The server starts on port 8103 by default.
 | `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`**. **Alias:** `OPENKMS_AGENT_LLM_EXTRA_BODY`. After merge, **`enable_thinking`** is forced **`false`** (same as wiki copilot). |
 | `OPENKMS_LLM_REASONING_CONTENT_SHIM` | unset | **auto** when unset: inject empty **`reasoning_content`** on assistant rows for non-`api.openai.com` bases. **Aliases:** `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`, `OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`. |
 | `OPENKMS_RERANK_BASE_URL` | (same as LLM base) | Optional separate OpenAI-compatible root for `POST …/v1/rerank` when the LLM host has no rerank route |
-| `OPENKMS_RERANK_ENABLED` | true | Set `false` to skip rerank and use fused BM25+dense order only |
+| `OPENKMS_RERANK_ENABLED` | false | Set **`true`** when your `OPENKMS_RERANK_BASE_URL` (or LLM base) implements `POST …/v1/rerank`; otherwise fused BM25+dense order only (no extra HTTP) |
 | `HOST` | 0.0.0.0 | Server bind host |
 | `PORT` | 8103 | Server port |
-| `LANGFUSE_SECRET_KEY` | - | Langfuse secret key (optional; enables tracing) |
+| `LANGFUSE_SECRET_KEY` | - | Langfuse secret key (optional; enables tracing **only** with public key + **`LANGFUSE_BASE_URL`**) |
 | `LANGFUSE_PUBLIC_KEY` | - | Langfuse public key |
-| `LANGFUSE_BASE_URL` | - | Langfuse host (e.g. https://cloud.langfuse.com or http://localhost:3002) |
-| `LANGFUSE_TRACE_STREAMING` | true | When Langfuse is enabled, attach the callback to **`/ask/stream`** as well; set **`false`** to trace only **`/ask`** if OpenTelemetry logs noise |
+| `LANGFUSE_BASE_URL` | - | **Required** for tracing (e.g. `https://cloud.langfuse.com` or `http://localhost:3002`). If unset, Langfuse is not used. |
+| `LANGFUSE_HEALTHCHECK` | true | If **true**, probe ``GET {base}/api/public/health`` before attaching callbacks; while down, all requests skip Langfuse until the next retry. Set **false** to always attach callbacks (no probe). |
+| `LANGFUSE_HEALTHCHECK_RETRY_SECONDS` | 60 | When the host is down, wait this many seconds before probing again (5–86400). |
+| `LANGFUSE_TRACE_STREAMING` | true | When Langfuse is enabled, attach the callback to **`/ask/stream`** as well; set **`false`** to trace only **`/ask`** (avoids some OpenTelemetry **context detach** warnings on async streams) |
 
-When Langfuse keys are set, **`/ask`** and (by default) **`/ask/stream`** are traced. Pass **`session_id`** on the ask body so traces share one Langfuse **Session**. The access token is kept in a **context variable** for tools so it is not copied into Langfuse metadata.
+When **all three** Langfuse variables (secret, public, **base URL**) are set, **`/ask`** and (by default) **`/ask/stream`** are traced. Pass **`session_id`** on the ask body so traces share one Langfuse **Session**. The access token is kept in a **context variable** for tools so it is not copied into Langfuse metadata.
 
 ## API
 

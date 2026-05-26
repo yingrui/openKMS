@@ -20,7 +20,7 @@
   "resetForm": "Reset form to defaults",
   "health": {
     "pageTitle": "System health",
-    "subtitle": "Check whether the API, database, object storage, background jobs, and registered data sources are reachable.",
+    "subtitle": "Check whether the API, database, object storage, background jobs, Langfuse tracing host (when configured on the server), and registered data sources are reachable.",
     "toastLoadFailed": "Failed to load health status",
     "loading": "Loading health checks…",
     "refresh": "Refresh",
@@ -45,6 +45,13 @@
       "error": "Unhealthy",
       "skipped": "Not configured",
       "degraded": "Degraded"
+    },
+    "componentLabels": {
+      "api": "API",
+      "database": "Database",
+      "storage": "Object storage",
+      "job_queue": "Background jobs",
+      "langfuse": "Langfuse (tracing)"
     }
   },
   "overview": {

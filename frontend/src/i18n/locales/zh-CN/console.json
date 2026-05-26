@@ -20,7 +20,7 @@
   "resetForm": "重置表单为默认值",
   "health": {
     "pageTitle": "系统健康",
-    "subtitle": "检查 API、数据库、对象存储、后台任务与已登记数据源是否可用。",
+    "subtitle": "检查 API、数据库、对象存储、后台任务、Langfuse 追踪服务（在服务器上配置时）与已登记数据源是否可用。",
     "toastLoadFailed": "无法加载健康状态",
     "loading": "正在加载健康检查…",
     "refresh": "刷新",
@@ -45,6 +45,13 @@
       "error": "异常",
       "skipped": "未配置",
       "degraded": "降级"
+    },
+    "componentLabels": {
+      "api": "API",
+      "database": "数据库",
+      "storage": "对象存储",
+      "job_queue": "后台任务",
+      "langfuse": "Langfuse（追踪）"
     }
   },
   "overview": {

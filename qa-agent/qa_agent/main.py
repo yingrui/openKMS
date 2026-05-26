@@ -6,9 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 from .config import settings
+from .langfuse_client import silence_otel_export_loggers
 from .schemas import AskRequest, AskResponse, RetrieveRequest, RetrieveResponse, SourceItem
 
 logging.basicConfig(level=logging.INFO)
+silence_otel_export_loggers()
 logger = logging.getLogger(__name__)
 
 app = FastAPI(

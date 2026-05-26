@@ -48,6 +48,7 @@
 - [x] Stream path persists user + assistant, **`kb_qa_sources_v1`**, and forwarded **`wiki_tool_traces_v1`** when the qa-agent emits tool lines
 - [x] SPA full-page Q&A: thread sidebar, month grouping, delete chat, Wiki Copilot–style tool rail + GFM (`KnowledgeBaseDetail.tsx` + shared **`wikiCopilotStreamParts`**)
 - [x] **`surface=evaluation`** and **`surface=kb_faq`** thread APIs (same qa-agent contract; paths under **`/api/evaluations/…/agent-conversations`** and **`/api/knowledge-bases/…/faq-assist-conversations`**)
+- [x] qa-agent Langfuse: require **`LANGFUSE_BASE_URL`** with keys; optional **`LANGFUSE_HEALTHCHECK`** circuit + **`LANGFUSE_HEALTHCHECK_RETRY_SECONDS`**; rerank **`OPENKMS_RERANK_ENABLED`** defaults **false**; Console **`GET /api/admin/health-status`** probes Langfuse when backend **`LANGFUSE_BASE_URL`** is set (**`LANGFUSE_HEALTHCHECK`**)
 
 ### 0. openkms-cli (document parsing CLI)
 

@@ -118,6 +118,11 @@ class Settings(BaseSettings):
         validation_alias="LANGFUSE_TRACE_STREAMING",
         description="When Langfuse keys are set, attach callback to wiki **streaming** turns; set false to trace only non-streaming if OTel noise.",
     )
+    langfuse_healthcheck: bool = Field(
+        default=True,
+        validation_alias="LANGFUSE_HEALTHCHECK",
+        description="When true and LANGFUSE_BASE_URL is set, GET /api/admin/health-status probes {base}/api/public/health for the Console.",
+    )
 
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")

@@ -23,9 +23,10 @@ function statusLabel(t: (key: string) => string, status: HealthStatusKind): stri
 
 function ComponentRow({ row }: { row: HealthComponent }) {
   const { t } = useTranslation('console');
+  const label = t(`health.componentLabels.${row.id}`, { defaultValue: row.label });
   return (
     <tr>
-      <td>{row.label}</td>
+      <td>{label}</td>
       <td>
         <span className={`console-health-status console-health-status--${row.status}`}>
           <StatusIcon status={row.status} />
