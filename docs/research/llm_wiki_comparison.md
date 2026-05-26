@@ -100,7 +100,7 @@ Upstream stays aligned with [Karpathy’s llm-wiki pattern](https://gist.github.
 | Channel docs | Local `raw/sources/` | Linked `documents` via `wiki_space_documents` |
 | Graph edges | Weighted undirected + Louvain + cohesion | Directed wikilinks from markdown; server adds Louvain + heuristic **insights** on each graph response |
 | Vector search | Optional LanceDB embeddings | Not wired for wiki pages (KB uses pgvector elsewhere; optional future) |
-| Ingest queue | Persistent disk queue, SHA cache | Outline only: [Wiki ingest jobs (outline)](../features/wiki-ingest-jobs.md) |
+| Ingest queue | Persistent disk queue, SHA cache | Outline only: [Development plan — wiki / pipelines](../development_plan.md) (no separate ingest-jobs doc yet) |
 | Deep Research / clipper | Tavily + Chrome extension | Out of scope unless product asks |
 
 ---
@@ -155,8 +155,8 @@ A short-lived change added optional columns on **`wiki_spaces`** for Wiki Copilo
 
 | Situation | What to know |
 |-----------|----------------|
-| You **never** ran that migration | Your DB matches the current ORM: `wiki_spaces` has `id`, `name`, `description`, `created_at`, `updated_at` (see [`w7x8y9z0a1b2_add_wiki_spaces_tables.py`](../../backend/alembic/versions/w7x8y9z0a1b2_add_wiki_spaces_tables.py)). |
-| You **did** run `alembic upgrade` when that revision existed | PostgreSQL may still have `copilot_purpose` and/or `copilot_schema_notes` even though [WikiSpace](../../backend/app/models/wiki_models.py) no longer maps them. SQLAlchemy usually **ignores** extra columns on load, but the DB is **ahead** of the migration history in git. The `alembic_version` table may still point at the **removed** revision id `h8i9j0k1l2m3`, which makes every `alembic` command fail with *Can't locate revision*. |
+| You **never** ran that migration | Your DB matches the current ORM: `wiki_spaces` has `id`, `name`, `description`, `created_at`, `updated_at` (see [`w7x8y9z0a1b2_add_wiki_spaces_tables.py`](https://github.com/yingrui/openKMS/blob/main/backend/alembic/versions/w7x8y9z0a1b2_add_wiki_spaces_tables.py)). |
+| You **did** run `alembic upgrade` when that revision existed | PostgreSQL may still have `copilot_purpose` and/or `copilot_schema_notes` even though [WikiSpace](https://github.com/yingrui/openKMS/blob/main/backend/app/models/wiki_models.py) no longer maps them. SQLAlchemy usually **ignores** extra columns on load, but the DB is **ahead** of the migration history in git. The `alembic_version` table may still point at the **removed** revision id `h8i9j0k1l2m3`, which makes every `alembic` command fail with *Can't locate revision*. |
 
 **Fix the broken revision pointer first** (current repo head is `p9q0r1s2t3u4` — run `alembic heads` in `backend/` to confirm). Connect with the same database URL your app uses, then:
 

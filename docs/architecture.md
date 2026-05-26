@@ -134,7 +134,7 @@ frontend/src/
 
 ### Internationalization (SPA)
 
-The SPA uses **i18next** + **react-i18next** ([`frontend/src/i18n/`](../frontend/src/i18n/)): locales **`en`** and **`zh-CN`**, with namespaces per surface (e.g. **`layout`**, **`knowledgeBase`**, **`wikiSpace`**) registered in **`frontend/src/i18n/config.ts`**. When signed in, the chosen language is persisted in **`user_preferences`** (JWT `sub`) via **`PATCH /api/auth/me`** and reapplied on **`GET /api/auth/me`**; **`localStorage`** (`openkms_locale`) still caches the active locale for **`Accept-Language`** ([`getAuthHeaders`](../frontend/src/data/apiClient.ts)) and first paint before profile loads. Core shell strings use translation keys.
+The SPA uses **i18next** + **react-i18next** ([`frontend/src/i18n/`](https://github.com/yingrui/openKMS/tree/main/frontend/src/i18n)): locales **`en`** and **`zh-CN`**, with namespaces per surface (e.g. **`layout`**, **`knowledgeBase`**, **`wikiSpace`**) registered in **`frontend/src/i18n/config.ts`**. When signed in, the chosen language is persisted in **`user_preferences`** (JWT `sub`) via **`PATCH /api/auth/me`** and reapplied on **`GET /api/auth/me`**; **`localStorage`** (`openkms_locale`) still caches the active locale for **`Accept-Language`** ([`getAuthHeaders`](https://github.com/yingrui/openKMS/blob/main/frontend/src/data/apiClient.ts)) and first paint before profile loads. Core shell strings use translation keys.
 
 ## Backend Structure
 

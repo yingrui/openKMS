@@ -121,3 +121,5 @@ nav:
       - Development plan: development_plan.md
       - Tech debt: tech_debt.md
       - Wiki agent prototype: wiki_agent_prototype.md
+  - Research:
+      - LLM wiki vs openKMS: research/llm_wiki_comparison.md
