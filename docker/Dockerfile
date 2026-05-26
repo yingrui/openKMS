@@ -5,7 +5,7 @@
 # Optional faster builds on slow networks (e.g. China): pass build-args — see docker/README.md
 #   APT_MIRROR=mirrors.aliyun.com
 #   UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
-#   UV_EXTRA_INDEX_URL=https://pypi.org/simple
+#   UV_EXTRA_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 #   NPM_REGISTRY=https://registry.npmmirror.com  (frontend Dockerfile only)
 
 FROM python:3.12-slim-bookworm AS base

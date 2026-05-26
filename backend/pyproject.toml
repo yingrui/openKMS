@@ -43,6 +43,14 @@ test = ["pytest>=8.0.0", "pytest-asyncio>=0.24.0", "httpx>=0.28.0"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+# Default PyPI indexes for lock/install (China mirrors). Replaces pypi.org so uv.lock
+# records mirror registry URLs instead of files.pythonhosted.org. Regenerate lock after edits:
+#   cd backend && uv lock
+[[tool.uv.index]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+default = true
+
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"

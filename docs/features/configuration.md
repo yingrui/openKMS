@@ -4,7 +4,7 @@ Cross-cutting configuration that doesn't belong to one feature page. Canonical s
 
 ## Backend dependencies
 
-- `pyproject.toml` + `uv.lock`; install with `uv sync` or `pip install -e .`
+- `pyproject.toml` + `uv.lock`; install with `uv sync` or `pip install -e .`. Default PyPI index is **Aliyun** (`[[tool.uv.index]]` in `pyproject.toml`); `uv.lock` pins `mirrors.aliyun.com` URLs. Regenerate after dependency edits: `cd backend && uv lock`. Docker builds also pass `UV_INDEX_URL` / `UV_EXTRA_INDEX_URL` (see `docker/README.md`).
 - **pgvector**: FAQ/chunk list excludes `embedding` when pgvector is not installed (`has_embedding=false`). Semantic search returns 503 with install instructions. `backend/dev.sh` runs `scripts/ensure_pgvector.py` on start to check / create the extension and optionally auto-install in Docker.
 
 ## Storage (S3 / MinIO, required for upload)

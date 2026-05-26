@@ -67,7 +67,7 @@ docker compose -f docker/docker-compose.yml down
 |-----------|-------------------|---------|
 | `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile` (`backend`, `worker`) — Debian apt |
 | `UV_INDEX_URL` | `https://mirrors.aliyun.com/pypi/simple/` | **Aliyun** PyPI — `uv sync`, worker `uv pip` |
-| `UV_EXTRA_INDEX_URL` | `https://pypi.org/simple` | Official PyPI fallback (e.g. Paddle wheels) |
+| `UV_EXTRA_INDEX_URL` | `https://pypi.tuna.tsinghua.edu.cn/simple` | Second China mirror for worker `openkms-cli` installs (set to `https://pypi.org/simple` only if a wheel is missing) |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | **npmmirror** (原淘宝 npm 镜像) — `npm ci` / build |
 
 To override defaults, create **`docker/.env`** (optional) with e.g. `UV_INDEX_URL=` for upstream PyPI, then build from **`docker/`**:
@@ -89,9 +89,11 @@ Or with explicit build-args:
 docker compose -f docker/docker-compose.yml build \
   --build-arg APT_MIRROR=mirrors.aliyun.com \
   --build-arg UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ \
-  --build-arg UV_EXTRA_INDEX_URL=https://pypi.org/simple \
+  --build-arg UV_EXTRA_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
   --build-arg NPM_REGISTRY=https://registry.npmmirror.com
 ```
+
+**Backend `uv.lock`:** wheel URLs are pinned to **Aliyun** (`mirrors.aliyun.com/pypi/packages/…`) via `[[tool.uv.index]]` in `backend/pyproject.toml`. After dependency changes run `cd backend && uv lock` on a machine that can reach the mirror. `uv sync --frozen` in Docker then downloads from China, not `files.pythonhosted.org`.
 
 **Docker image pulls** (`FROM python:…`, `FROM node:…`, `ghcr.io/astral-sh/uv`) still use your Docker **registry** mirror in `daemon.json` if Hub/ghcr.io is slow—that is separate from apt/PyPI/npm.
 
