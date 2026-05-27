@@ -11,7 +11,8 @@ from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
 from typing_extensions import TypedDict
 
-from .config import openai_v1_base, settings
+from .config import settings
+from .llm_config import get_effective_llm_config
 from .kb_answer_sources import (
     ONTOLOGY_SCHEMA_TOOL_NAME,
     PAGE_SECTION_TOOL_NAME,
@@ -82,12 +83,13 @@ def _build_system_prompt(context: list[SourceItem]) -> str:
 
 def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     """Generate answer using LLM with RAG context and ontology tools."""
-    base_url = openai_v1_base(settings.llm_base_url)
+    llm_cfg = get_effective_llm_config()
+    base_url = llm_cfg.openai_v1_base_url
 
     llm = make_qa_chat_openai(
         base_url=base_url,
-        api_key=settings.llm_api_key,
-        model_name=settings.llm_model_name,
+        api_key=llm_cfg.api_key,
+        model_name=llm_cfg.model_name,
         temperature=0.3,
         streaming=True,
     )

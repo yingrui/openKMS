@@ -39,7 +39,8 @@ pip install -e .
 
 # Copy and edit configuration
 cp .env.example .env
-# Edit .env with backend URL and LLM settings
+# Set OPENKMS_BACKEND_URL and service auth (OPENKMS_QA_AGENT_* preferred; OPENKMS_CLI_* / OPENKMS_OIDC_* are compatibility aliases).
+# LLM URL/model/key come from Console → Models default unless OPENKMS_LLM_MODEL_* overrides are set.
 
 # Run the server
 python -m qa_agent.main
@@ -52,9 +53,12 @@ The server starts on port 8103 by default.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENKMS_BACKEND_URL` | http://localhost:8102 | openKMS backend API base URL |
-| `OPENKMS_LLM_MODEL_BASE_URL` | http://localhost:11434/v1 | LLM API base URL (normalized to a `.../v1` root for chat and rerank) |
-| `OPENKMS_LLM_MODEL_API_KEY` | no-key | LLM API key |
-| `OPENKMS_LLM_MODEL_NAME` | qwen2.5 | LLM model name |
+| `OPENKMS_QA_AGENT_AUTH_MODE` | (unset) | **`local`** or **`oidc`** — should match backend auth mode |
+| `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | (unset) | Local mode: HTTP Basic for backend model/config routes |
+| `OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_SECRET` | (unset) | OIDC client credentials when not in local mode |
+| `OPENKMS_LLM_MODEL_BASE_URL` | (from backend) | Optional override; when unset, qa-agent resolves via existing APIs: **`GET /api/models?category=llm`** + **`GET /api/models/{id}/config`** |
+| `OPENKMS_LLM_MODEL_API_KEY` | (from backend) | Optional override |
+| `OPENKMS_LLM_MODEL_NAME` | (from backend) | Optional override |
 | `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`**. **Alias:** `OPENKMS_AGENT_LLM_EXTRA_BODY`. After merge, **`enable_thinking`** is forced **`false`** (same as wiki copilot). |
 | `OPENKMS_LLM_REASONING_CONTENT_SHIM` | unset | **auto** when unset: inject empty **`reasoning_content`** on assistant rows for non-`api.openai.com` bases. **Aliases:** `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`, `OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`. |
 | `OPENKMS_RERANK_BASE_URL` | (same as LLM base) | Optional separate OpenAI-compatible root for `POST …/v1/rerank` when the LLM host has no rerank route |

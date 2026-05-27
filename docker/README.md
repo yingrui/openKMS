@@ -2,7 +2,7 @@
 
 ## Full stack (`docker-compose.yml`)
 
-Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
+Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), **qa-agent** (KB Q&A / hybrid retrieve), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
 
 **Worker** is `platform: linux/amd64` so Paddle wheels install on Apple Silicon (QEMU). Needs **`libgl1`** in the image for OpenCV/PaddleX.
 
@@ -22,6 +22,10 @@ Or from **`docker/`**: `docker compose -f docker-compose.yml up -d --build`.
 Compose sets DB host, MinIO URL, `OPENKMS_FRONTEND_URL=http://localhost:8082`, `OPENKMS_DEBUG=true`, `OPENKMS_BACKEND_URL=http://backend:8102`. Rest from `backend/.env`. Match **`OPENKMS_AUTH_MODE=local`** in `.env` to the frontend build (`VITE_AUTH_MODE=local`) to avoid a mode banner.
 
 **VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. The worker usually uses **`OPENKMS_VLM_URL=http://host.docker.internal:8101`** (compose `extra_hosts: host-gateway`); override in `backend/.env` if your VLM runs elsewhere.
+
+**QA agent:** Service **`qa-agent`** listens on **http://localhost:8103** on the host. It calls the backend at **`http://backend:8102`** and resolves the default **LLM** from existing model APIs (`GET /api/models?category=llm` + `GET /api/models/{id}/config`). Service auth supports qa-agent-specific vars (`OPENKMS_QA_AGENT_*`) and compatibility aliases (`OPENKMS_CLI_BASIC_*` / `OPENKMS_OIDC_SERVICE_CLIENT_*`) from **`backend/.env`**. Optional **`OPENKMS_LLM_MODEL_*`** in **`backend/.env`** override individual fields. Optional Langfuse keys use the same names as **`qa-agent/.env.example`**.
+
+For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
 
 Local auth + metadata extraction: set **`OPENKMS_CLI_BASIC_*`** in `backend/.env` for worker → `openkms-cli` API calls.
 
@@ -65,7 +69,7 @@ docker compose -f docker/docker-compose.yml down
 
 | Build-arg | Default in compose | Used in |
 |-----------|-------------------|---------|
-| `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile` (`backend`, `worker`) — Debian apt |
+| `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile` (`backend`, `worker`), `Dockerfile.qa-agent` — Debian apt |
 | `UV_INDEX_URL` | `https://mirrors.aliyun.com/pypi/simple/` | **Aliyun** PyPI — `uv sync`, worker `uv pip` |
 | `UV_EXTRA_INDEX_URL` | `https://pypi.tuna.tsinghua.edu.cn/simple` | Second China mirror for worker `openkms-cli` installs (set to `https://pypi.org/simple` only if a wheel is missing) |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | **npmmirror** (原淘宝 npm 镜像) — `npm ci` / build |

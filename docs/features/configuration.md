@@ -85,10 +85,19 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 
 ## QA agent (standalone ``qa-agent/`` service)
 
+**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent resolves the category default **LLM** using existing backend routes: **`GET /api/models?category=llm`** then **`GET /api/models/{id}/config`**. Service auth can use qa-agent-specific vars (**`OPENKMS_QA_AGENT_*`**) or compatibility aliases (**`OPENKMS_CLI_BASIC_*`** / **`OPENKMS_OIDC_SERVICE_CLIENT_*`**). Docker Compose passes **`backend/.env`** to the **`qa-agent`** service.
+
 Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `OPENKMS_BACKEND_URL` | `http://localhost:8102` | Backend base URL for search APIs and LLM default fetch |
+| `OPENKMS_QA_AGENT_AUTH_MODE` | unset | **`local`** or **`oidc`** — must match backend |
+| `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | unset | Local mode service auth (compatibility aliases: **`OPENKMS_CLI_BASIC_*`**) |
+| `OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_SECRET` | unset | OIDC client credentials (compatibility aliases: **`OPENKMS_OIDC_SERVICE_CLIENT_*`**) |
+| `OPENKMS_LLM_MODEL_BASE_URL` | unset | Override LLM base URL (skip backend fetch for this field) |
+| `OPENKMS_LLM_MODEL_NAME` | unset | Override model name |
+| `OPENKMS_LLM_MODEL_API_KEY` | unset | Override API key |
 | `OPENKMS_LLM_EXTRA_BODY` | unset | Optional JSON merged into ChatOpenAI **`extra_body`** for the QA agent. **Alias:** **`OPENKMS_AGENT_LLM_EXTRA_BODY`**. After merge, **`enable_thinking`** is forced **`false`**. |
 | `OPENKMS_LLM_REASONING_CONTENT_SHIM` | unset | Same semantics as **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**. **Aliases:** **`OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM`**, **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 | `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** (and optional **`LANGFUSE_BASE_URL`**), enables Langfuse tracing for **`/ask`** and (by default) **`/ask/stream`**. |

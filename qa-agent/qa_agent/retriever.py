@@ -21,6 +21,7 @@ import httpx
 
 from .bm25_index import cache as bm25_cache
 from .config import openai_v1_base, settings
+from .llm_config import get_effective_llm_config
 from .schemas import SourceItem
 
 logger = logging.getLogger(__name__)
@@ -91,10 +92,11 @@ def _rerank(query: str, candidates: list[dict[str, Any]], top_k: int) -> tuple[l
     if not candidates or len(candidates) <= top_k or not settings.rerank_enabled:
         return candidates[:top_k], False
 
-    base = openai_v1_base(settings.rerank_base_url or settings.llm_base_url)
+    llm_cfg = get_effective_llm_config()
+    base = openai_v1_base(settings.rerank_base_url or llm_cfg.base_url)
     url = f"{base}/rerank"
     headers = {
-        "Authorization": f"Bearer {settings.llm_api_key}",
+        "Authorization": f"Bearer {llm_cfg.api_key}",
         "Content-Type": "application/json",
     }
     documents = [c.get("content") or "" for c in candidates]

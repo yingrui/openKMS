@@ -1,0 +1,37 @@
+# QA agent: hybrid retrieval + LangGraph Q&A (no Paddle / openkms-cli).
+# Build context: repository root (.. when invoked from docker/)
+#
+# Optional build mirrors: same args as docker/Dockerfile — see docker/README.md
+
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+ARG APT_MIRROR=
+ARG UV_INDEX_URL=
+ARG UV_EXTRA_INDEX_URL=
+COPY docker/apt-set-mirror.sh /usr/local/bin/apt-set-mirror.sh
+RUN chmod +x /usr/local/bin/apt-set-mirror.sh \
+    && APT_MIRROR="${APT_MIRROR}" apt-set-mirror.sh \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+COPY qa-agent/pyproject.toml qa-agent/uv.lock ./
+COPY qa-agent/qa_agent ./qa_agent
+
+ENV UV_INDEX_URL=${UV_INDEX_URL} \
+    UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
+
+RUN uv sync --frozen --no-dev
+
+ENV PATH="/app/.venv/bin:$PATH"
+
+EXPOSE 8103
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
+    CMD curl -sf http://127.0.0.1:8103/health > /dev/null || exit 1
+
+CMD ["uvicorn", "qa_agent.main:app", "--host", "0.0.0.0", "--port", "8103"]
