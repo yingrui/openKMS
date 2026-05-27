@@ -40,7 +40,7 @@ x-backend-env: &backend_env
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
   AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-openkms}
   AWS_REGION: ${AWS_REGION:-us-east-1}
-  OPENKMS_FRONTEND_URL: http://localhost:8082
+  OPENKMS_FRONTEND_URL: ${OPENKMS_FRONTEND_URL:-http://localhost:8082}
   OPENKMS_DEBUG: ${OPENKMS_DEBUG:-true}
   OPENKMS_BACKEND_URL: http://backend:8102
   OPENKMS_CLI_BASIC_USER: ${OPENKMS_CLI_BASIC_USER:-openkms-cli}
