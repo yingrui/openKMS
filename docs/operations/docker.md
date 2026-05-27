@@ -45,7 +45,7 @@ Override via `--env-file backend/.env` or edit `x-backend-env` in `docker-compos
 
 ## Auth mode must match the build
 
-The frontend image is built with `VITE_AUTH_MODE` baked in. Compose defaults use **`OPENKMS_AUTH_MODE=local`**; for OIDC, pass **`--env-file backend/.env`** (or edit compose) so **`OPENKMS_AUTH_MODE=oidc`** matches **`VITE_AUTH_MODE=oidc`** on rebuild.
+The frontend image is built with `VITE_AUTH_MODE` baked in. Compose defaults are **local auth only** (no OIDC env in `docker-compose.yml`). For OIDC, set **`OPENKMS_AUTH_MODE=oidc`**, all **`OPENKMS_OIDC_*`** vars, and **`VITE_AUTH_MODE=oidc`** via **`--env-file backend/.env`**, then rebuild the frontend image.
 
 CLI basic credentials for worker → `openkms-cli` default to **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`).
 

@@ -14,7 +14,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 Or from **`docker/`**: `docker compose -f docker-compose.yml up -d --build`.
 
-Optional overrides (OIDC secrets, Langfuse, custom CLI password): copy `backend/.env.example` to `backend/.env`, edit, then:
+Optional overrides (Langfuse, custom passwords, OIDC if not using local auth): copy `backend/.env.example` to `backend/.env`, edit, then:
 
 ```bash
 docker compose -f docker/docker-compose.yml --env-file backend/.env up -d --build

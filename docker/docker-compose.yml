@@ -6,8 +6,9 @@
 #   docker compose -f docker/docker-compose.yml down
 # Plain `docker compose up` without --build reuses cached images and can miss new migrations.
 #
-# App services use compose ``environment`` only (no env_file, no .env in images). Defaults are in *backend_env;
-# override via ``docker compose --env-file backend/.env`` for ${OPENKMS_*} substitution when parsing this file.
+# App services use compose ``environment`` only (no env_file, no .env in images). Defaults: local auth + HTTP Basic
+# for CLI/qa-agent. Override via ``docker compose --env-file backend/.env`` (${OPENKMS_*} substitution only).
+# OIDC is not listed here; add OPENKMS_OIDC_* and OPENKMS_AUTH_MODE=oidc in backend/.env if needed.
 #
 # UI (and /api, /internal-api via nginx): http://localhost:8082 — backend is not published on the host.
 # QA agent on host: http://localhost:8103 — set each KB Agent URL to http://qa-agent:8103 (backend resolves this name).
@@ -48,30 +49,19 @@ x-backend-env: &backend_env
   OPENKMS_QA_AGENT_BASIC_PASSWORD: ${OPENKMS_QA_AGENT_BASIC_PASSWORD:-change-me}
   OPENKMS_VLM_URL: ${OPENKMS_VLM_URL:-http://host.docker.internal:8101}
   OPENKMS_PIPELINE_TIMEOUT_SECONDS: ${OPENKMS_PIPELINE_TIMEOUT_SECONDS:-7200}
-  OPENKMS_OIDC_ISSUER: ${OPENKMS_OIDC_ISSUER:-}
-  OPENKMS_OIDC_AUTH_SERVER_BASE_URL: ${OPENKMS_OIDC_AUTH_SERVER_BASE_URL:-http://localhost:8081}
-  OPENKMS_OIDC_REALM: ${OPENKMS_OIDC_REALM:-openkms}
-  OPENKMS_OIDC_CLIENT_ID: ${OPENKMS_OIDC_CLIENT_ID:-openkms-backend}
-  OPENKMS_OIDC_CLIENT_SECRET: ${OPENKMS_OIDC_CLIENT_SECRET:-}
-  OPENKMS_OIDC_REDIRECT_URI: ${OPENKMS_OIDC_REDIRECT_URI:-http://localhost:8102/login/oauth2/code/oidc}
-  OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID: ${OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID:-openkms-frontend}
   OPENKMS_INTERNAL_SERVICE_CLIENT_IDS: ${OPENKMS_INTERNAL_SERVICE_CLIENT_IDS:-openkms-cli,qa-agent}
-  OPENKMS_OIDC_TOKEN_URL: ${OPENKMS_OIDC_TOKEN_URL:-http://localhost:8081/realms/openkms/protocol/openid-connect/token}
   LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
   LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
   LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
   LANGFUSE_TRACE_STREAMING: ${LANGFUSE_TRACE_STREAMING:-true}
   LANGFUSE_HEALTHCHECK: ${LANGFUSE_HEALTHCHECK:-true}
 
-# qa-agent: same pattern as backend/worker; defaults align with *backend_env.
+# qa-agent: local service auth (OIDC: add vars via --env-file backend/.env).
 x-qa-agent-env: &qa_agent_env
   OPENKMS_BACKEND_URL: http://backend:8102
   OPENKMS_AUTH_MODE: ${OPENKMS_AUTH_MODE:-local}
-  OPENKMS_OIDC_TOKEN_URL: ${OPENKMS_OIDC_TOKEN_URL:-http://localhost:8081/realms/openkms/protocol/openid-connect/token}
   OPENKMS_QA_AGENT_BASIC_USER: ${OPENKMS_QA_AGENT_BASIC_USER:-qa-agent}
   OPENKMS_QA_AGENT_BASIC_PASSWORD: ${OPENKMS_QA_AGENT_BASIC_PASSWORD:-change-me}
-  OPENKMS_QA_AGENT_OIDC_CLIENT_ID: ${OPENKMS_QA_AGENT_OIDC_CLIENT_ID:-qa-agent}
-  OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET: ${OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET:-}
   LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
   LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
   LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
