@@ -113,7 +113,7 @@ Document parsing runs via the `openkms-cli` pipeline (invoked by procrastinate j
 
 1. Backend: `OPENKMS_AUTH_MODE=local`, run migrations (`alembic upgrade head`) for the `users` table.
 2. Frontend: `VITE_AUTH_MODE=local`.
-3. Optional: `OPENKMS_ALLOW_SIGNUP=false` to disable public registration; `OPENKMS_INITIAL_ADMIN_USER` to grant admin when the signup **username** matches (case-insensitive).
+3. Optional: `OPENKMS_ALLOW_SIGNUP=false` to disable public registration after the first admin exists. The **first** signup is always admin.
 4. **openkms-cli**: `OPENKMS_AUTH_MODE=local`, `OPENKMS_CLI_BASIC_USER`, `OPENKMS_CLI_BASIC_PASSWORD` (must match backend). Use only on trusted networks without TLS.
 
 #### OIDC setup (any standards-compliant IdP)

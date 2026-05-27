@@ -6,7 +6,8 @@ from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings
 
 _ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(_ENV_FILE)
+if _ENV_FILE.is_file():
+    load_dotenv(_ENV_FILE)
 
 
 def openai_v1_base(url: str) -> str:

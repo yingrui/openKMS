@@ -34,8 +34,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | **Max completion (output) cap** for the wiki agent: sent as `max_tokens` to the chat API. Default avoids invalid requests on models with low output limits; **raise** if your model allows more, **lower** for cost. |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | **Max LangGraph steps** (model+tool loop) per chat turn. The default was too low for bulk get/upsert; raise (e.g. 400) only if you need very large single-turn batches, or use smaller batches per message. |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
-| `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local` |
-| `OPENKMS_INITIAL_ADMIN_USER` | (empty) | Local mode: grant `is_admin` when signup username matches (case-insensitive) |
+| `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local`; first user is admin |
 | `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: CLI HTTP Basic username |
 | `OPENKMS_CLI_BASIC_PASSWORD` | (empty) | Local mode: CLI HTTP Basic password |
 | `OPENKMS_OIDC_ISSUER` | (empty) | Full OIDC issuer URL; if set, overrides base+realm below |

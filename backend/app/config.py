@@ -161,7 +161,6 @@ class Settings(BaseSettings):
     # --- Authentication: oidc | local ---
     auth_mode: str = Field(default="oidc", validation_alias="OPENKMS_AUTH_MODE")
     allow_signup: bool = Field(default=True, validation_alias="OPENKMS_ALLOW_SIGNUP")
-    initial_admin_user: str | None = Field(default=None, validation_alias="OPENKMS_INITIAL_ADMIN_USER")
     local_jwt_exp_hours: int = Field(default=168, validation_alias="OPENKMS_LOCAL_JWT_EXP_HOURS")
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
     cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
@@ -212,7 +211,7 @@ class Settings(BaseSettings):
     )
     oidc_service_client_id: str = Field(default="openkms-cli", validation_alias="OPENKMS_OIDC_SERVICE_CLIENT_ID")
 
-    # --- Session (OAuth2 session cookie signing) ---
+    # --- Session cookie + local JWT signing (Starlette SessionMiddleware; HS256 in local mode) ---
     secret_key: str = Field(
         default="openkms-dev-secret-change-in-production",
         validation_alias="OPENKMS_SECRET_KEY",

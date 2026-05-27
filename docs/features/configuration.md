@@ -37,11 +37,10 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | Variable | Default | Purpose |
 |---|---|---|
 | `OPENKMS_AUTH_MODE` | `oidc` | `oidc` (default) or `local` |
-| `OPENKMS_ALLOW_SIGNUP` | `true` | Local mode: allow self-signup |
-| `OPENKMS_INITIAL_ADMIN_USER` | unset | Local mode: matching username gets admin on first signup |
+| `OPENKMS_ALLOW_SIGNUP` | `true` | Local mode: allow self-signup; **first** registered user becomes admin |
 | `OPENKMS_LOCAL_JWT_EXP_HOURS` | `168` | Local-mode JWT lifetime |
 | `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `openkms-cli` |
-| `OPENKMS_SECRET_KEY` | dev value | Sign session cookies; **rotate in production** |
+| `OPENKMS_SECRET_KEY` | dev value | Sign **`openkms_session`** cookie (local + OIDC) and local HS256 JWTs; dev fallback for data-source encryption — **rotate in production** |
 
 ### OIDC
 
@@ -85,7 +84,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 
 ## QA agent (standalone ``qa-agent/`` service)
 
-**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent resolves the category default **LLM** using existing backend routes: **`GET /api/models?category=llm`** then **`GET /api/models/{id}/config`**. Service auth can use qa-agent-specific vars (**`OPENKMS_QA_AGENT_*`**) or compatibility aliases (**`OPENKMS_CLI_BASIC_*`** / **`OPENKMS_OIDC_SERVICE_CLIENT_*`**). Docker Compose passes **`backend/.env`** to the **`qa-agent`** service.
+**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent resolves the category default **LLM** using existing backend routes: **`GET /api/models?category=llm`** then **`GET /api/models/{id}/config`**. Service auth can use qa-agent-specific vars (**`OPENKMS_QA_AGENT_*`**) or compatibility aliases (**`OPENKMS_CLI_BASIC_*`** / **`OPENKMS_OIDC_SERVICE_CLIENT_*`**). Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
 
 Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 

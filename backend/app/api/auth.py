@@ -550,11 +550,7 @@ async def register(
         raise http_error(request, 400, "USERNAME_REQUIRED")
 
     cnt = await db.scalar(select(func.count()).select_from(User))
-    is_admin = False
-    if settings.initial_admin_user and username.lower() == settings.initial_admin_user.lower():
-        is_admin = True
-    elif cnt == 0:
-        is_admin = True
+    is_admin = cnt == 0
 
     user = User(
         email=body.email.lower().strip(),

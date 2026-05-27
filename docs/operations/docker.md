@@ -19,10 +19,11 @@ The browser only ever talks to nginx on **`http://localhost:8082`**, which proxi
 From the repo root:
 
 ```bash
-cp backend/.env.example backend/.env       # edit secrets / auth mode
 docker compose -f docker/docker-compose.yml up -d --build
 open http://localhost:8082
 ```
+
+Optional: `docker compose -f docker/docker-compose.yml --env-file backend/.env up -d --build` after copying `backend/.env.example` — substitutes `${OPENKMS_*}` in compose; the file is not mounted into containers.
 
 Tear it down:
 
@@ -40,16 +41,13 @@ The worker container reaches a host-run VLM via Docker's `host-gateway`:
 OPENKMS_VLM_URL=http://host.docker.internal:8101
 ```
 
-Override in `backend/.env` if your VLM runs elsewhere. Without a reachable VLM, document-parse jobs will fail.
+Override via `--env-file backend/.env` or edit `x-backend-env` in `docker-compose.yml` if your VLM runs elsewhere. Without a reachable VLM, document-parse jobs will fail.
 
 ## Auth mode must match the build
 
-The frontend image is built with `VITE_AUTH_MODE` baked in. To avoid the "mode mismatch" banner, set the **same** mode in both:
+The frontend image is built with `VITE_AUTH_MODE` baked in. Compose defaults use **`OPENKMS_AUTH_MODE=local`**; for OIDC, pass **`--env-file backend/.env`** (or edit compose) so **`OPENKMS_AUTH_MODE=oidc`** matches **`VITE_AUTH_MODE=oidc`** on rebuild.
 
-- `backend/.env` — `OPENKMS_AUTH_MODE=local` (or `oidc`)
-- frontend build arg — `VITE_AUTH_MODE=local` (or `oidc`)
-
-For local-mode CLI access to the backend (worker → `openkms-cli`), set `OPENKMS_CLI_BASIC_*` in `backend/.env`.
+CLI basic credentials for worker → `openkms-cli` default to **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`).
 
 ## See also
 

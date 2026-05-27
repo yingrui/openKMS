@@ -9,25 +9,32 @@ Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), **qa-agent** (K
 From **repo root**:
 
 ```bash
-cp backend/.env.example backend/.env   # edit as needed
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 Or from **`docker/`**: `docker compose -f docker-compose.yml up -d --build`.
 
+Optional overrides (OIDC secrets, Langfuse, custom CLI password): copy `backend/.env.example` to `backend/.env`, edit, then:
+
+```bash
+docker compose -f docker/docker-compose.yml --env-file backend/.env up -d --build
+```
+
+That file is used only for `${OPENKMS_*}` substitution when Compose parses the YAML — it is **not** mounted into containers.
+
 - **UI:** http://localhost:8082 — nginx → `/api`, `/internal-api`, `/login`, sessions, MinIO bucket path. Backend is **not** on the host; use this origin for API calls.
 - **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
 - **Neo4j:** Host maps use **7476** (Browser) and **7689** (Bolt)—Neo4j defaults **7474** / **7687** plus **2** when those ports are already in use on the machine. **Inside the stack** (Console data source, backend) use hostname **`neo4j`** and port **`7687`** (container port, not 7689). Default auth: user **`neo4j`**, password **`openkms-neo4j-dev`**.
 
-Compose sets DB host, MinIO URL, `OPENKMS_FRONTEND_URL=http://localhost:8082`, `OPENKMS_DEBUG=true`, `OPENKMS_BACKEND_URL=http://backend:8102`. Rest from `backend/.env`. Match **`OPENKMS_AUTH_MODE=local`** in `.env` to the frontend build (`VITE_AUTH_MODE=local`) to avoid a mode banner.
+Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_URL=http://host.docker.internal:8101`, and CLI basic credentials. Frontend build uses **`VITE_AUTH_MODE=local`** (match **`OPENKMS_AUTH_MODE=local`** in compose defaults).
 
-**VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. The worker usually uses **`OPENKMS_VLM_URL=http://host.docker.internal:8101`** (compose `extra_hosts: host-gateway`); override in `backend/.env` if your VLM runs elsewhere.
+**VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. Override with **`OPENKMS_VLM_URL`** via `--env-file` or edit `x-backend-env` in `docker-compose.yml`.
 
-**QA agent:** Service **`qa-agent`** listens on **http://localhost:8103** on the host. It calls the backend at **`http://backend:8102`** and resolves the default **LLM** from existing model APIs (`GET /api/models?category=llm` + `GET /api/models/{id}/config`). Service auth supports qa-agent-specific vars (`OPENKMS_QA_AGENT_*`) and compatibility aliases (`OPENKMS_CLI_BASIC_*` / `OPENKMS_OIDC_SERVICE_CLIENT_*`) from **`backend/.env`**. Optional **`OPENKMS_LLM_MODEL_*`** in **`backend/.env`** override individual fields. Optional Langfuse keys use the same names as **`qa-agent/.env.example`**.
+**QA agent:** **http://localhost:8103** on the host; default LLM from Console → Models. Env from the same compose **`environment`** pattern as backend/worker.
 
 For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
 
-Local auth + metadata extraction: set **`OPENKMS_CLI_BASIC_*`** in `backend/.env` for worker → `openkms-cli` API calls.
+Local auth + metadata extraction: defaults **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`); override via `--env-file backend/.env` if needed.
 
 ### Neo4j (Console data source)
 
