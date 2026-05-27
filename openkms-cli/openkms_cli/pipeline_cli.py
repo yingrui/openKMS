@@ -520,7 +520,10 @@ def pipeline_run(
                 from .auth import auth_expired_response, try_api_request_auth
 
                 base = api_url.rstrip("/")
-                config_url = f"{base}/api/models/config-by-name?model_name={quote(extraction_model_name)}"
+                config_url = (
+                    f"{base}/internal-api/models/config-by-name"
+                    f"?model_name={quote(extraction_model_name)}"
+                )
                 config_resp = None
                 for attempt in range(2):
                     req_headers = {**auth_headers}

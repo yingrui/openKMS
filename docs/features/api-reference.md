@@ -17,6 +17,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/auth/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
 | GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup` only |
 | GET | `/internal-api/models/document-parse-defaults` | Authenticated (`require_auth`); query `model_name` optional — named **`vl`**/**`ocr`** model or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
+| GET | `/internal-api/models/config-by-name` | Authenticated (`require_auth`); query **`model_name`** (required), **`category`** (default `llm`); JSON `base_url`, `model_name`, `api_key` for **openkms-cli** (e.g. pipeline metadata extraction) |
 | GET | `/internal-api/models/llm-defaults` | Authenticated (`require_auth`); JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`llm`** category; same resolution as embedded wiki agent) |
 | GET | `/internal-api/models/kb-embedding-credentials` | Authenticated (`require_auth`); query **`knowledge_base_id`** (required); same visibility rules as **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** (KB’s **`embedding_model_id`** + provider secret) |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
@@ -55,7 +56,6 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/search` | Authenticated unified metadata search: query `q`, `types` (`all` or comma-list: `documents`, `articles`, `wiki_spaces`, `knowledge_bases`), optional `document_channel_id`, `article_channel_id`, `updated_after` / `updated_before` (ISO 8601), `limit` (1–100, default 30). Returns sections with `items` (`id`, `name`, `title`, `kind`, `url_path`, `channel_id`, `channel_name`, `updated_at`) and `total` per type; types the user cannot read are empty; **403** if none of the requested types are allowed; **404** if a channel id is unknown. Scoped like list APIs (documents, articles, wiki spaces, KB visibility). **`wiki_spaces`** items use **`url_path`** **`/wikis/{id}/pages/graph`**. |
 | HEAD | `/api/search` | Same auth / permission overlap check as GET; no JSON body |
 | GET | `/api/providers/{id}/models` | Authenticated: list models registered under this provider |
-| GET | `/api/models/{id}/config` | Service client route: full model config (`base_url`, `model_name`, `api_key`) for openkms-cli / qa-agent |
 | GET | `/api/admin/users` | `console:users`: auth mode, IdP notice, `users` (local only) |
 | POST | `/api/admin/users` | `console:users`, **local** only: create user (`email`, `username`, `password`, `is_admin`) |
 | PATCH | `/api/admin/users/{id}` | `console:users`, **local** only: set `is_admin` (syncs security roles) |
@@ -117,7 +117,6 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/models` | List models (optional `?category=`, `?provider_id=`, `?search=`) |
 | GET | `/api/models/categories` | List model categories |
 | POST | `/api/models` | Create model under provider (provider_id, name, category, model_name) |
-| GET | `/api/models/config-by-name` | Get model config by model_name (service client; for CLI extraction) |
 | GET | `/api/models/{id}` | Get model detail |
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |

@@ -61,7 +61,7 @@
 - [x] Design for backend integration: subprocess-invokable
 - [x] Pipeline CLI: `openkms-cli pipeline list` (list supported pipelines), `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
 - [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
-- [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from backend config-by-name, extracts via pydantic-ai, PUTs metadata to backend
+- [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from `GET /internal-api/models/config-by-name`, extracts via pydantic-ai, PUTs metadata to backend
 - [x] PageIndex: pipeline builds markdown→tree via built-in md_to_tree (# headings); backend GET /documents/{id}/page-index and GET /documents/{id}/section; frontend Markdown | Page Index toggle; QA agent LangGraph page_index skill (read TOC, select section, extract content)
 - [x] Pipeline checkpoint: after successful S3 upload, when `--document-id` and API auth (OIDC token or local Basic) are available, CLI `PUT`s parsed markdown then `POST /api/documents/{id}/versions` with `tag: "Pipeline"` (after optional metadata extraction)
 

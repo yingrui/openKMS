@@ -338,15 +338,6 @@ def require_any_permission(*permissions: str):
     return _check
 
 
-async def require_service_client(request: Request, db: AsyncSession = Depends(get_db)) -> str:
-    token = await authenticate_request(request, db)
-    payload = request.state.openkms_jwt_payload
-    azp = payload.get("azp") or payload.get("client_id")
-    if azp != settings.oidc_service_client_id:
-        raise http_error(request, 403, "SERVICE_CLIENT_REQUIRED")
-    return token
-
-
 router = APIRouter(tags=["auth"])
 
 

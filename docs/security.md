@@ -66,7 +66,7 @@ TOKEN=$(curl -sS -X POST "${API%/}/api/auth/login" \
 
   For **scripts and curl**, pass the IdP access token as `Authorization: Bearer …`. The backend verifies it with the IdP **JWKS** (`_verify_oidc_jwt` in `auth.py`). Operation permissions for non-admin users come from **`realm_access.roles`** on the JWT matched against **`security_roles.name`** in PostgreSQL — so the token must be one that carries those roles (typically a **user** access token), not merely “any” client-credentials token unless your IdP is configured to attach the same role claims.
 
-  `OPENKMS_OIDC_SERVICE_CLIENT_ID` is used for **service-only** API paths (for example some internal model defaults); it is **not** a general substitute for a human user token on arbitrary `/api/...` routes unless you deliberately mirror roles onto that client in the IdP.
+  `OPENKMS_OIDC_SERVICE_CLIENT_ID` is the expected **`azp`** on **CLI / qa-agent** machine tokens (local **`local-cli`** JWT or OIDC client credentials). Model credentials with provider secrets are exposed only under **`/internal-api/models/...`** (`require_auth`), not on public **`/api/models`** CRUD routes.
 
 - **CLI / scripts in local mode** — set `OPENKMS_CLI_BASIC_USER` and `OPENKMS_CLI_BASIC_PASSWORD` and send `Authorization: Basic …`. The backend mints an internal **`local-cli`** service JWT (`sub=local-cli`). Use only on trusted networks; Basic over plain HTTP is dev-only.
 

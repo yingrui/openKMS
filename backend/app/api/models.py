@@ -6,7 +6,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.auth import require_auth, require_service_client
+from app.api.auth import require_auth
 from app.database import get_db
 from app.models.api_model import ApiModel, MODEL_CATEGORIES
 from app.models.api_provider import ApiProvider
@@ -92,50 +92,6 @@ async def create_model(body: ApiModelCreate, db: AsyncSession = Depends(get_db))
     await db.refresh(model)
     await db.refresh(model, ["provider_rel"])
     return ApiModelResponse.model_validate(model)
-
-
-@router.get("/config-by-name")
-async def get_model_config_by_name(
-    model_name: str = Query(..., description="LLM model name, e.g. qwen3.5, gpt-4"),
-    _token: str = Depends(require_service_client),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get model config by model_name. Returns first matching LLM model. Service client only."""
-    stmt = (
-        select(ApiModel)
-        .options(selectinload(ApiModel.provider_rel))
-        .where(ApiModel.category == "llm", ApiModel.model_name == model_name)
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    model = result.scalar_one_or_none()
-    if not model:
-        raise HTTPException(status_code=404, detail=f"No LLM model with model_name={model_name!r} found")
-    return {
-        "base_url": model.provider_rel.base_url,
-        "api_key": model.provider_rel.api_key or "",
-        "model_name": model.model_name or "gpt-4",
-    }
-
-
-@router.get("/{model_id}/config")
-async def get_model_config(
-    model_id: str,
-    _token: str = Depends(require_service_client),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get full model config (base_url, api_key, model_name) for CLI. Service client only."""
-    result = await db.execute(
-        select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)
-    )
-    model = result.scalar_one_or_none()
-    if not model:
-        raise HTTPException(status_code=404, detail="Model not found")
-    return {
-        "base_url": model.provider_rel.base_url,
-        "api_key": model.provider_rel.api_key or "",
-        "model_name": model.model_name or "gpt-4",
-    }
 
 
 @router.get("/{model_id}", response_model=ApiModelResponse)

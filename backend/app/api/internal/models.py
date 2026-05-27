@@ -5,9 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.database import get_db
+from app.models.api_model import MODEL_CATEGORIES
 from app.models.knowledge_base import KnowledgeBase
 from app.services.data_resource_policy import knowledge_base_visible
 from app.services.agent.llm import resolve_agent_llm_config
+from app.services.model_config_by_name import resolve_model_config_by_name
 from app.services.document_parse_defaults import get_document_parse_vlm_defaults_for_cli
 from app.services.kb_embedding_cli_defaults import get_kb_embedding_credentials_for_cli
 
@@ -32,6 +34,35 @@ async def get_document_parse_defaults(
         "base_url": d.base_url or "",
         "model_name": d.model_name or "",
         "api_key": d.api_key or "",
+    }
+
+
+@router.get("/config-by-name")
+async def get_model_config_by_name(
+    model_name: str = Query(..., description="ApiModel.model_name, e.g. qwen3.5, gpt-4"),
+    category: str = Query(
+        default="llm",
+        description="Model category (llm, vl, ocr, embedding, text-classification).",
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """base_url, model_name, api_key for openkms-cli (e.g. pipeline metadata extraction)."""
+    valid_categories = {c for c, _ in MODEL_CATEGORIES}
+    if category not in valid_categories:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Invalid category {category!r}; expected one of: {', '.join(sorted(valid_categories))}",
+        )
+    cfg = await resolve_model_config_by_name(db, model_name=model_name, category=category)
+    if cfg is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No {category!r} model with model_name={model_name!r} found",
+        )
+    return {
+        "base_url": cfg["base_url"] or "",
+        "model_name": cfg["model_name"] or "",
+        "api_key": cfg["api_key"] or "",
     }
 
 

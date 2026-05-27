@@ -173,8 +173,8 @@ backend/
 │   │   ├── home_hub.py         # GET /api/home/hub (signed-in knowledge operations hub aggregates)
 │   │   ├── knowledge_map.py    # `/api/knowledge-map/*` — Knowledge Map node tree + CRUD + resource-links + map-html (status, get, regenerate, designer chat, preview, publish) via `knowledge_map_html`
 │   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
-│   │   ├── models.py           # CRUD /api/models, GET config-by-name (service client), POST test
-│   │   ├── internal/           # package: internal/models.py — GET /internal-api/models/document-parse-defaults, GET /internal-api/models/kb-embedding-credentials
+│   │   ├── models.py           # CRUD /api/models, POST test
+│   │   ├── internal/           # package: internal/models.py — document-parse-defaults, llm-defaults, config-by-name, kb-embedding-credentials
 │   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
 │   │   ├── users_admin.py      # GET/POST/PATCH/DELETE /api/admin/users (console:users; local user CRUD + OIDC notice)
 │   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
@@ -286,7 +286,7 @@ openkms-cli/
 - **Tests**: `pip install -e ".[dev]" && pytest tests/` from **`openkms-cli/`** (no Paddle required for the current suite)
 - **Configuration**: `openkms_cli/settings.py` maps each environment variable explicitly (no hidden prefix); loads `openkms-cli/.env` then cwd `.env`; CLI flags override when passed
 - **Commands**: `parse run`, `pipeline list`, `pipeline run`
-- **Pipeline run**: Download from S3 → (optional LibreOffice for DOCX/PPTX, mutool for EPUB) → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend; extraction errors after a successful parse are logged and do not fail the job
+- **Pipeline run**: Download from S3 → (optional LibreOffice for DOCX/PPTX, mutool for EPUB) → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /internal-api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend; extraction errors after a successful parse are logged and do not fail the job
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
 - **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url <url>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, loads embedding **base_url**, **model_name**, and **api_key** via **`GET /internal-api/models/kb-embedding-credentials`** (optional **`OPENKMS_EMBEDDING_MODEL_*`** in **`openkms-cli/.env`** overrides); writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools

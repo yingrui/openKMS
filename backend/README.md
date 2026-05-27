@@ -45,7 +45,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_OIDC_REDIRECT_URI` | http://localhost:8102/login/oauth2/code/oidc | OAuth2 callback URL registered on that client |
 | `OPENKMS_FRONTEND_URL` | http://localhost:5173 | SPA origin (CORS + redirects) |
 | `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | openkms-frontend | Browser client id for RP-initiated logout |
-| `OPENKMS_OIDC_SERVICE_CLIENT_ID` | openkms-cli | `azp` for service-only API (CLI client credentials) |
+| `OPENKMS_OIDC_SERVICE_CLIENT_ID` | openkms-cli | Expected `azp` on CLI / qa-agent machine JWTs (client credentials or local `local-cli`) |
 
 **VLM vs embeddings (avoid dead `backend/.env` keys):**
 
