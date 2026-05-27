@@ -43,16 +43,13 @@ class Settings(BaseSettings):
         default="openkms",
         validation_alias=AliasChoices("OPENKMS_QA_AGENT_OIDC_REALM", "OPENKMS_OIDC_REALM"),
     )
-    oidc_service_client_id: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_ID", "OPENKMS_OIDC_SERVICE_CLIENT_ID"),
+    oidc_client_id: str = Field(
+        default="qa-agent",
+        validation_alias="OPENKMS_QA_AGENT_OIDC_CLIENT_ID",
     )
-    oidc_service_client_secret: str = Field(
+    oidc_client_secret: str = Field(
         default="",
-        validation_alias=AliasChoices(
-            "OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_SECRET",
-            "OPENKMS_OIDC_SERVICE_CLIENT_SECRET",
-        ),
+        validation_alias="OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET",
     )
     cli_basic_user: str = Field(
         default="",

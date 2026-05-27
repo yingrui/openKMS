@@ -123,7 +123,7 @@ def mint_local_cli_jwt() -> str:
         "name": "openkms-cli",
         "email": None,
         "realm_access": {"roles": []},
-        "azp": settings.oidc_service_client_id,
+        "azp": settings.primary_internal_service_client_id,
         "iss": LOCAL_JWT_ISS,
         "iat": now,
         "exp": exp,
@@ -336,6 +336,27 @@ def require_any_permission(*permissions: str):
         await ensure_any_permission(request, db, *permissions)
 
     return _check
+
+
+def _is_internal_service_caller(payload: dict) -> bool:
+    """True for local CLI Basic (``sub=local-cli``) or OIDC machine clients on the allowlist."""
+    if payload.get("sub") == "local-cli":
+        return True
+    client_id = payload.get("azp") or payload.get("client_id")
+    return isinstance(client_id, str) and client_id in settings.resolved_internal_service_client_ids
+
+
+async def require_internal_client(request: Request, db: AsyncSession = Depends(get_db)) -> str:
+    """Authenticate and require an internal service caller (openkms-cli, qa-agent, worker CLI auth)."""
+    token = await authenticate_request(request, db)
+    payload = request.state.openkms_jwt_payload
+    if not _is_internal_service_caller(payload):
+        raise http_error(request, 403, "SERVICE_CLIENT_REQUIRED")
+    return token
+
+
+# Back-compat name for docs / mental model (service JWT on /internal-api only).
+require_service_client = require_internal_client
 
 
 router = APIRouter(tags=["auth"])

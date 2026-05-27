@@ -45,14 +45,14 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_OIDC_REDIRECT_URI` | http://localhost:8102/login/oauth2/code/oidc | OAuth2 callback URL registered on that client |
 | `OPENKMS_FRONTEND_URL` | http://localhost:5173 | SPA origin (CORS + redirects) |
 | `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | openkms-frontend | Browser client id for RP-initiated logout |
-| `OPENKMS_OIDC_SERVICE_CLIENT_ID` | openkms-cli | Expected `azp` on CLI / qa-agent machine JWTs (client credentials or local `local-cli`) |
+| `OPENKMS_INTERNAL_SERVICE_CLIENT_IDS` | `openkms-cli,qa-agent` | Comma-separated OIDC client ids allowed on `/internal-api`; first id is `local-cli` JWT `azp` |
 
 **VLM vs embeddings (avoid dead `backend/.env` keys):**
 
 - **`OPENKMS_VLM_URL`** is the only VLM-related variable the **backend** reads (defaults to mlx-vlm on port **8101**). Pipelines can still override the parse URL from a **linked API model** on the pipeline (`model_id`).
 - **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the backend (`app/config.py` uses `extra: "ignore"`). **`OPENKMS_VLM_API_KEY`** belongs in **`openkms-cli/.env`** when the VLM HTTP API requires a key. **`kb-index`** gets embedding URL, model name, and API key from **`GET /internal-api/models/kb-embedding-credentials`** (same auth as other CLI calls); optional **`OPENKMS_EMBEDDING_MODEL_*`** in **`openkms-cli/.env`** overrides those values when needed. **qa-agent** resolves default LLM via **`GET /internal-api/models/llm-defaults`** (same authenticated service pattern as openkms-cli model defaults).
 
-**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** no longer reads `AUTH_URL` / `AUTH_*`; use `OPENKMS_OIDC_AUTH_SERVER_BASE_URL`, `OPENKMS_OIDC_REALM`, `OPENKMS_OIDC_SERVICE_CLIENT_ID`, and `OPENKMS_OIDC_SERVICE_CLIENT_SECRET` (or `OPENKMS_OIDC_TOKEN_URL` for a full token endpoint URL).
+**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** OIDC: `OPENKMS_CLI_OIDC_CLIENT_ID`, `OPENKMS_CLI_OIDC_CLIENT_SECRET` (or `OPENKMS_OIDC_TOKEN_URL`).
 
 ## Database
 

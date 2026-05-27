@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_auth
+from app.api.auth import require_internal_client
 from app.database import get_db
 from app.models.api_model import MODEL_CATEGORIES
 from app.models.knowledge_base import KnowledgeBase
@@ -16,7 +16,7 @@ from app.services.kb_embedding_cli_defaults import get_kb_embedding_credentials_
 router = APIRouter(
     prefix="/internal-api/models",
     tags=["internal-models"],
-    dependencies=[Depends(require_auth)],
+    dependencies=[Depends(require_internal_client)],
 )
 
 

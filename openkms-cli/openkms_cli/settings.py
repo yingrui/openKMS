@@ -29,11 +29,8 @@ class CliSettings(BaseSettings):
         validation_alias="OPENKMS_OIDC_AUTH_SERVER_BASE_URL",
     )
     oidc_realm: str = Field(default="openkms", validation_alias="OPENKMS_OIDC_REALM")
-    oidc_service_client_id: str = Field(default="", validation_alias="OPENKMS_OIDC_SERVICE_CLIENT_ID")
-    oidc_service_client_secret: str = Field(
-        default="",
-        validation_alias="OPENKMS_OIDC_SERVICE_CLIENT_SECRET",
-    )
+    oidc_client_id: str = Field(default="openkms-cli", validation_alias="OPENKMS_CLI_OIDC_CLIENT_ID")
+    oidc_client_secret: str = Field(default="", validation_alias="OPENKMS_CLI_OIDC_CLIENT_SECRET")
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
     cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
 

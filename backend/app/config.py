@@ -209,7 +209,11 @@ class Settings(BaseSettings):
         default="openkms-frontend",
         validation_alias="OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID",
     )
-    oidc_service_client_id: str = Field(default="openkms-cli", validation_alias="OPENKMS_OIDC_SERVICE_CLIENT_ID")
+    # Comma-separated OIDC client ids allowed on /internal-api (openkms-cli, qa-agent, …).
+    internal_service_client_ids: str = Field(
+        default="openkms-cli,qa-agent",
+        validation_alias="OPENKMS_INTERNAL_SERVICE_CLIENT_IDS",
+    )
 
     # --- Session cookie + local JWT signing (Starlette SessionMiddleware; HS256 in local mode) ---
     secret_key: str = Field(
@@ -260,6 +264,23 @@ class Settings(BaseSettings):
             f"postgresql://{self.database_user}:{self.database_password}"
             f"@{self.database_host}:{self.database_port}/{self.database_name}"
         )
+
+    @property
+    def resolved_internal_service_client_ids(self) -> frozenset[str]:
+        """OIDC ``azp`` / ``client_id`` values allowed on ``/internal-api``."""
+        raw = (self.internal_service_client_ids or "openkms-cli,qa-agent").strip()
+        ids = frozenset(part.strip() for part in raw.split(",") if part.strip())
+        return ids or frozenset({"openkms-cli"})
+
+    @property
+    def primary_internal_service_client_id(self) -> str:
+        """First id in ``OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`` (``local-cli`` JWT ``azp``)."""
+        raw = (self.internal_service_client_ids or "openkms-cli,qa-agent").strip()
+        for part in raw.split(","):
+            p = part.strip()
+            if p:
+                return p
+        return "openkms-cli"
 
     model_config = {"env_file": _ENV_FILE, "extra": "ignore"}
 

@@ -1,7 +1,7 @@
 """Backend service auth for qa-agent: OIDC client credentials or HTTP Basic (local mode).
 
 Same contract as ``openkms-cli`` — local mode uses ``OPENKMS_CLI_BASIC_*``; OIDC uses
-``OPENKMS_OIDC_SERVICE_CLIENT_*`` (or ``OPENKMS_OIDC_TOKEN_URL``).
+``OPENKMS_QA_AGENT_OIDC_CLIENT_*`` (or ``OPENKMS_OIDC_TOKEN_URL``).
 """
 
 from __future__ import annotations
@@ -42,12 +42,11 @@ def get_access_token() -> str:
         realm = settings.oidc_realm
         token_url = f"{base}/realms/{realm}/protocol/openid-connect/token"
 
-    client_id = settings.oidc_service_client_id.strip() or "openkms-cli"
-    client_secret = settings.oidc_service_client_secret.strip()
+    client_id = settings.oidc_client_id.strip() or "qa-agent"
+    client_secret = settings.oidc_client_secret.strip()
     if not client_secret:
         raise ValueError(
-            "OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_SECRET (or OPENKMS_OIDC_SERVICE_CLIENT_SECRET compatibility "
-            "alias) is required for OIDC client-credentials auth "
+            "OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET is required for OIDC client-credentials auth "
             "(or set OPENKMS_QA_AGENT_OIDC_TOKEN_URL / OPENKMS_OIDC_TOKEN_URL)"
         )
 

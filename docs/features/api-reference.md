@@ -1,6 +1,6 @@
 # API reference
 
-Every HTTP route the backend exposes. Browser-facing routes live under `/api/...`; service-only routes for **`openkms-cli`** live under `/internal-api/...`. The unauthenticated routes are explicitly marked.
+Every HTTP route the backend exposes. Browser-facing routes live under `/api/...`; routes that return provider secrets for **`openkms-cli`**, **qa-agent**, and workers live under `/internal-api/...` and require an **internal service** JWT (`sub=local-cli` or OIDC `azp` on **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**). The unauthenticated routes are explicitly marked.
 
 For per-feature context (when an endpoint is used, what it returns), see the matching feature page in the [Features index](../functionalities.md).
 
@@ -16,10 +16,10 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/auth/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
 | GET | `/api/auth/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
 | GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup` only |
-| GET | `/internal-api/models/document-parse-defaults` | Authenticated (`require_auth`); query `model_name` optional — named **`vl`**/**`ocr`** model or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
-| GET | `/internal-api/models/config-by-name` | Authenticated (`require_auth`); query **`model_name`** (required), **`category`** (default `llm`); JSON `base_url`, `model_name`, `api_key` for **openkms-cli** (e.g. pipeline metadata extraction) |
-| GET | `/internal-api/models/llm-defaults` | Authenticated (`require_auth`); JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`llm`** category; same resolution as embedded wiki agent) |
-| GET | `/internal-api/models/kb-embedding-credentials` | Authenticated (`require_auth`); query **`knowledge_base_id`** (required); same visibility rules as **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** (KB’s **`embedding_model_id`** + provider secret) |
+| GET | `/internal-api/models/document-parse-defaults` | **Internal service client only**; query `model_name` optional — named **`vl`**/**`ocr`** model or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
+| GET | `/internal-api/models/config-by-name` | **Internal service client only**; query **`model_name`** (required), **`category`** (default `llm`); JSON `base_url`, `model_name`, `api_key` for openkms-cli (e.g. pipeline metadata extraction) |
+| GET | `/internal-api/models/llm-defaults` | **Internal service client only**; JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`llm`** category; same resolution as embedded wiki agent) |
+| GET | `/internal-api/models/kb-embedding-credentials` | **Internal service client only**; query **`knowledge_base_id`** (required); **`local-cli`** may read any KB; OIDC service clients still require KB visibility like **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/public/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |

@@ -53,7 +53,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_OIDC_CLIENT_SECRET` | empty | |
 | `OPENKMS_OIDC_REDIRECT_URI` | `http://localhost:8102/login/oauth2/code/oidc` | Must match the IdP registration |
 | `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | `openkms-frontend` | Sent on RP-initiated logout |
-| `OPENKMS_OIDC_SERVICE_CLIENT_ID` | `openkms-cli` | Service-account client for the CLI |
+| `OPENKMS_INTERNAL_SERVICE_CLIENT_IDS` | `openkms-cli,qa-agent` | Comma-separated OIDC client ids allowed on `/internal-api`; first id is `local-cli` JWT `azp` |
 | `OPENKMS_FRONTEND_URL` | `http://localhost:5173` | Used for redirects after auth events |
 
 ## Document parsing (VLM)
@@ -84,7 +84,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 
 ## QA agent (standalone ``qa-agent/`` service)
 
-**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (same service-auth pattern as openkms-cli **`document-parse-defaults`**). Service auth can use qa-agent-specific vars (**`OPENKMS_QA_AGENT_*`**) or compatibility aliases (**`OPENKMS_CLI_BASIC_*`** / **`OPENKMS_OIDC_SERVICE_CLIENT_*`**). Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
+**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (internal service client only — same as openkms-cli on **`document-parse-defaults`**). If qa-agent uses a distinct IdP client id, add it to backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Service auth uses **`OPENKMS_QA_AGENT_*`** (or compatibility **`OPENKMS_CLI_BASIC_*`** in local mode). Backend allowlist: **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
 
 Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 
@@ -93,7 +93,7 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 | `OPENKMS_BACKEND_URL` | `http://localhost:8102` | Backend base URL for search APIs and LLM default fetch |
 | `OPENKMS_QA_AGENT_AUTH_MODE` | unset | **`local`** or **`oidc`** — must match backend |
 | `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | unset | Local mode service auth (compatibility aliases: **`OPENKMS_CLI_BASIC_*`**) |
-| `OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_SECRET` | unset | OIDC client credentials (compatibility aliases: **`OPENKMS_OIDC_SERVICE_CLIENT_*`**) |
+| `OPENKMS_QA_AGENT_OIDC_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET` | `qa-agent` / unset | OIDC client credentials (id must appear in backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**) |
 | `OPENKMS_LLM_MODEL_BASE_URL` | unset | Override LLM base URL (skip backend fetch for this field) |
 | `OPENKMS_LLM_MODEL_NAME` | unset | Override model name |
 | `OPENKMS_LLM_MODEL_API_KEY` | unset | Override API key |
