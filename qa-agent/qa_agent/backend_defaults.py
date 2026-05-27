@@ -1,4 +1,4 @@
-"""Resolve qa-agent LLM defaults from existing backend model APIs."""
+"""Resolve qa-agent LLM defaults from the backend internal-api (same auth as openkms-cli)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import httpx
 from .auth import api_request_auth, auth_expired_response
 from .config import Settings
 
-_LIST_LLM_MODELS = "/api/models"
+_INTERNAL_LLM_DEFAULTS = "/internal-api/models/llm-defaults"
 
 
 def _merge_agent_llm_defaults_payload(
@@ -38,23 +38,8 @@ def _merge_agent_llm_defaults_payload(
     return base_url, model_name, api_key
 
 
-def _authed_get(
-    url: str,
-    *,
-    headers: dict[str, str],
-    basic: tuple[str, str] | None,
-    timeout: float = 15.0,
-) -> httpx.Response:
-    auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
-    r = httpx.get(url, headers=headers, auth=auth, timeout=timeout)
-    if auth_expired_response(r) and not basic:
-        headers, basic = api_request_auth()
-        auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
-        r = httpx.get(url, headers=headers, auth=auth, timeout=timeout)
-    return r
-
-
 def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
+    """GET /internal-api/models/llm-defaults with qa-agent service auth (Basic or Bearer)."""
     api = (cfg.openkms_backend_url or "").strip()
     if not api:
         return None
@@ -63,36 +48,16 @@ def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
     except ValueError:
         return None
 
-    base = api.rstrip("/")
+    url = f"{api.rstrip('/')}{_INTERNAL_LLM_DEFAULTS}"
+    auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
     try:
-        list_url = f"{base}{_LIST_LLM_MODELS}?category=llm"
-        list_resp = _authed_get(
-            list_url,
-            headers=headers,
-            basic=basic,
-            timeout=15.0,
-        )
-        list_resp.raise_for_status()
-        items = list_resp.json().get("items") or []
-        if not isinstance(items, list) or not items:
-            return None
-        default_model = next(
-            (m for m in items if isinstance(m, dict) and bool(m.get("is_default_in_category"))),
-            items[0] if isinstance(items[0], dict) else None,
-        )
-        if not isinstance(default_model, dict):
-            return None
-        model_id = str(default_model.get("id") or "").strip()
-        if not model_id:
-            return None
-        config_resp = _authed_get(
-            f"{base}{_LIST_LLM_MODELS}/{model_id}/config",
-            headers=headers,
-            basic=basic,
-            timeout=15.0,
-        )
-        config_resp.raise_for_status()
-        return config_resp.json()
+        r = httpx.get(url, headers=headers, auth=auth, timeout=15.0)
+        if auth_expired_response(r) and not basic:
+            headers, basic = api_request_auth()
+            auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
+            r = httpx.get(url, headers=headers, auth=auth, timeout=15.0)
+        r.raise_for_status()
+        return r.json()
     except Exception:
         return None
 
@@ -101,9 +66,9 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
     """
     Effective (base_url, model_name, api_key) for ChatOpenAI.
 
-    When ``OPENKMS_BACKEND_URL`` is set and service auth succeeds, resolves from existing
-    model APIs: ``GET /api/models?category=llm`` then ``GET /api/models/{id}/config`` for
-    the category default. Explicit ``OPENKMS_LLM_MODEL_*`` env vars override individual fields.
+    When ``OPENKMS_BACKEND_URL`` is set and service auth succeeds, merges from
+    ``GET /internal-api/models/llm-defaults``. Explicit ``OPENKMS_LLM_MODEL_*`` env vars
+    override individual fields.
     """
     base_url = (cfg.llm_base_url or "").strip()
     model_name = (cfg.llm_model_name or "").strip()

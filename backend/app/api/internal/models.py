@@ -7,6 +7,7 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.knowledge_base import KnowledgeBase
 from app.services.data_resource_policy import knowledge_base_visible
+from app.services.agent.llm import resolve_agent_llm_config
 from app.services.document_parse_defaults import get_document_parse_vlm_defaults_for_cli
 from app.services.kb_embedding_cli_defaults import get_kb_embedding_credentials_for_cli
 
@@ -31,6 +32,25 @@ async def get_document_parse_defaults(
         "base_url": d.base_url or "",
         "model_name": d.model_name or "",
         "api_key": d.api_key or "",
+    }
+
+
+@router.get("/llm-defaults")
+async def get_llm_defaults(db: AsyncSession = Depends(get_db)):
+    """LLM base_url, model_name, api_key for qa-agent (default ``llm`` category; same as embedded wiki agent)."""
+    cfg = await resolve_agent_llm_config(db)
+    if cfg is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "No default LLM model configured. Add an LLM on Models and set it as the category default, "
+                "or set OPENKMS_AGENT_MODEL_ID on the backend."
+            ),
+        )
+    return {
+        "base_url": cfg["base_url"] or "",
+        "model_name": cfg["model_name"] or "",
+        "api_key": cfg["api_key"] or "",
     }
 
 

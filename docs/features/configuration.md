@@ -84,7 +84,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 
 ## QA agent (standalone ``qa-agent/`` service)
 
-**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent resolves the category default **LLM** using existing backend routes: **`GET /api/models?category=llm`** then **`GET /api/models/{id}/config`**. Service auth can use qa-agent-specific vars (**`OPENKMS_QA_AGENT_*`**) or compatibility aliases (**`OPENKMS_CLI_BASIC_*`** / **`OPENKMS_OIDC_SERVICE_CLIENT_*`**). Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
+**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (same service-auth pattern as openkms-cli **`document-parse-defaults`**). Service auth can use qa-agent-specific vars (**`OPENKMS_QA_AGENT_*`**) or compatibility aliases (**`OPENKMS_CLI_BASIC_*`** / **`OPENKMS_OIDC_SERVICE_CLIENT_*`**). Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
 
 Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 
