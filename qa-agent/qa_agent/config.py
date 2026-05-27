@@ -23,26 +23,9 @@ def openai_v1_base(url: str) -> str:
 class Settings(BaseSettings):
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 
-    # --- Service auth (qa-agent specific names; openkms-cli names kept as compatibility aliases) ---
-    auth_mode: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENKMS_QA_AGENT_AUTH_MODE", "OPENKMS_AUTH_MODE"),
-    )
-    oidc_token_url: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENKMS_QA_AGENT_OIDC_TOKEN_URL", "OPENKMS_OIDC_TOKEN_URL"),
-    )
-    oidc_auth_server_base_url: str = Field(
-        default="http://localhost:8081",
-        validation_alias=AliasChoices(
-            "OPENKMS_QA_AGENT_OIDC_AUTH_SERVER_BASE_URL",
-            "OPENKMS_OIDC_AUTH_SERVER_BASE_URL",
-        ),
-    )
-    oidc_realm: str = Field(
-        default="openkms",
-        validation_alias=AliasChoices("OPENKMS_QA_AGENT_OIDC_REALM", "OPENKMS_OIDC_REALM"),
-    )
+    # --- Service auth (shared OPENKMS_AUTH_MODE / OPENKMS_OIDC_TOKEN_URL with openkms-cli) ---
+    auth_mode: str = Field(default="", validation_alias="OPENKMS_AUTH_MODE")
+    oidc_token_url: str = Field(default="", validation_alias="OPENKMS_OIDC_TOKEN_URL")
     oidc_client_id: str = Field(
         default="qa-agent",
         validation_alias="OPENKMS_QA_AGENT_OIDC_CLIENT_ID",
@@ -51,14 +34,8 @@ class Settings(BaseSettings):
         default="",
         validation_alias="OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET",
     )
-    cli_basic_user: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENKMS_QA_AGENT_BASIC_USER", "OPENKMS_CLI_BASIC_USER"),
-    )
-    cli_basic_password: str = Field(
-        default="",
-        validation_alias=AliasChoices("OPENKMS_QA_AGENT_BASIC_PASSWORD", "OPENKMS_CLI_BASIC_PASSWORD"),
-    )
+    basic_user: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_USER")
+    basic_password: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_PASSWORD")
 
     # Optional overrides; when unset, resolve from existing backend model APIs.
     llm_base_url: str = Field(default="", validation_alias="OPENKMS_LLM_MODEL_BASE_URL")

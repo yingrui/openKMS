@@ -40,6 +40,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_ALLOW_SIGNUP` | `true` | Local mode: allow self-signup; **first** registered user becomes admin |
 | `OPENKMS_LOCAL_JWT_EXP_HOURS` | `168` | Local-mode JWT lifetime |
 | `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `openkms-cli` |
+| `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | empty | Local mode: HTTP Basic for `qa-agent` (separate from CLI) |
 | `OPENKMS_SECRET_KEY` | dev value | Sign **`openkms_session`** cookie (local + OIDC) and local HS256 JWTs; dev fallback for data-source encryption — **rotate in production** |
 
 ### OIDC
@@ -84,16 +85,24 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 
 ## QA agent (standalone ``qa-agent/`` service)
 
-**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (internal service client only — same as openkms-cli on **`document-parse-defaults`**). If qa-agent uses a distinct IdP client id, add it to backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Service auth uses **`OPENKMS_QA_AGENT_*`** (or compatibility **`OPENKMS_CLI_BASIC_*`** in local mode). Backend allowlist: **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
+**LLM:** When **`OPENKMS_LLM_MODEL_*`** are unset, qa-agent calls **`GET /internal-api/models/llm-defaults`** (internal service client only — same as openkms-cli on **`document-parse-defaults`**). If qa-agent uses a distinct IdP client id, add it to backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Local mode: **`OPENKMS_QA_AGENT_BASIC_*`** on qa-agent (and backend). OIDC: **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**. Backend allowlist: **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**. Docker Compose sets all app service env via **`environment`** only (see **`docker/README.md`**); optional **`docker compose --env-file backend/.env`** for `${…}` substitution (not mounted into containers).
 
 Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra_body`**, then **`enable_thinking: false`** is always applied; **`reasoning_content`** is injected on outgoing assistant rows when the shim is on (see wiki row above). You can set either the **`OPENKMS_LLM_*`** names below or reuse the **`OPENKMS_AGENT_*`** names so one block of env works for both.
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `OPENKMS_BACKEND_URL` | `http://localhost:8102` | Backend base URL for search APIs and LLM default fetch |
-| `OPENKMS_QA_AGENT_AUTH_MODE` | unset | **`local`** or **`oidc`** — must match backend |
-| `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | unset | Local mode service auth (compatibility aliases: **`OPENKMS_CLI_BASIC_*`**) |
+| `OPENKMS_AUTH_MODE` | unset | **`local`** or **`oidc`** — must match backend (same name as openkms-cli) |
+| `OPENKMS_OIDC_TOKEN_URL` | unset | Required in OIDC mode; IdP `token_endpoint` (same name as openkms-cli) |
+| `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | unset | Local mode HTTP Basic (must match backend **`OPENKMS_QA_AGENT_BASIC_*`**) |
 | `OPENKMS_QA_AGENT_OIDC_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET` | `qa-agent` / unset | OIDC client credentials (id must appear in backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**) |
+
+## openkms-cli (OIDC)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENKMS_OIDC_TOKEN_URL` | unset | Required when **`OPENKMS_AUTH_MODE=oidc`**; IdP `token_endpoint` |
+| `OPENKMS_CLI_OIDC_CLIENT_ID` / `OPENKMS_CLI_OIDC_CLIENT_SECRET` | `openkms-cli` / unset | Client credentials for `/internal-api` and other API calls |
 | `OPENKMS_LLM_MODEL_BASE_URL` | unset | Override LLM base URL (skip backend fetch for this field) |
 | `OPENKMS_LLM_MODEL_NAME` | unset | Override model name |
 | `OPENKMS_LLM_MODEL_API_KEY` | unset | Override API key |

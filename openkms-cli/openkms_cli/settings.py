@@ -24,11 +24,6 @@ class CliSettings(BaseSettings):
     # --- Auth (must align with backend when using local mode or OIDC client credentials) ---
     auth_mode: str = Field(default="", validation_alias="OPENKMS_AUTH_MODE")
     oidc_token_url: str = Field(default="", validation_alias="OPENKMS_OIDC_TOKEN_URL")
-    oidc_auth_server_base_url: str = Field(
-        default="http://localhost:8081",
-        validation_alias="OPENKMS_OIDC_AUTH_SERVER_BASE_URL",
-    )
-    oidc_realm: str = Field(default="openkms", validation_alias="OPENKMS_OIDC_REALM")
     oidc_client_id: str = Field(default="openkms-cli", validation_alias="OPENKMS_CLI_OIDC_CLIENT_ID")
     oidc_client_secret: str = Field(default="", validation_alias="OPENKMS_CLI_OIDC_CLIENT_SECRET")
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")

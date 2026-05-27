@@ -89,7 +89,6 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
         raise RuntimeError(
             "Could not resolve LLM settings from the backend. Configure Models → default LLM, "
             "and set OPENKMS_QA_AGENT_BASIC_* or OPENKMS_QA_AGENT_OIDC_CLIENT_* "
-            "(compatibility aliases: OPENKMS_CLI_BASIC_*)."
         )
 
     base_url, model_name, api_key = _merge_agent_llm_defaults_payload(

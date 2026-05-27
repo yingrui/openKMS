@@ -1,7 +1,7 @@
 """Backend service auth for qa-agent: OIDC client credentials or HTTP Basic (local mode).
 
-Same contract as ``openkms-cli`` — local mode uses ``OPENKMS_CLI_BASIC_*``; OIDC uses
-``OPENKMS_QA_AGENT_OIDC_CLIENT_*`` (or ``OPENKMS_OIDC_TOKEN_URL``).
+Local mode: ``OPENKMS_QA_AGENT_BASIC_*``. OIDC: ``OPENKMS_OIDC_TOKEN_URL`` and
+``OPENKMS_QA_AGENT_OIDC_CLIENT_*``. Shared with openkms-cli: ``OPENKMS_AUTH_MODE``.
 """
 
 from __future__ import annotations
@@ -29,25 +29,23 @@ def is_local_auth_mode() -> bool:
 def get_access_token() -> str:
     if is_local_auth_mode():
         raise ValueError(
-            "OPENKMS_QA_AGENT_AUTH_MODE=local: use HTTP Basic (OPENKMS_QA_AGENT_BASIC_USER / "
-            "OPENKMS_QA_AGENT_BASIC_PASSWORD; compatibility: OPENKMS_CLI_BASIC_*) via api_request_auth(); "
+            "OPENKMS_AUTH_MODE=local: use HTTP Basic (OPENKMS_QA_AGENT_BASIC_USER / "
+            "OPENKMS_QA_AGENT_BASIC_PASSWORD) via api_request_auth(); "
             "do not use get_access_token()"
         )
 
-    token_url_override = settings.oidc_token_url.strip()
-    if token_url_override:
-        token_url = token_url_override
-    else:
-        base = settings.oidc_auth_server_base_url.rstrip("/")
-        realm = settings.oidc_realm
-        token_url = f"{base}/realms/{realm}/protocol/openid-connect/token"
+    token_url = settings.oidc_token_url.strip()
+    if not token_url:
+        raise ValueError(
+            "OPENKMS_OIDC_TOKEN_URL is required when OPENKMS_AUTH_MODE=oidc "
+            "(IdP token_endpoint from .well-known/openid-configuration)"
+        )
 
     client_id = settings.oidc_client_id.strip() or "qa-agent"
     client_secret = settings.oidc_client_secret.strip()
     if not client_secret:
         raise ValueError(
-            "OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET is required for OIDC client-credentials auth "
-            "(or set OPENKMS_QA_AGENT_OIDC_TOKEN_URL / OPENKMS_OIDC_TOKEN_URL)"
+            "OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET is required for OIDC client-credentials auth"
         )
 
     data = {
@@ -68,12 +66,11 @@ def get_access_token() -> str:
 def api_request_auth() -> tuple[dict[str, str], tuple[str, str] | None]:
     """Return (headers, basic_auth) for httpx requests to the backend."""
     if is_local_auth_mode():
-        u = settings.cli_basic_user.strip()
-        p = settings.cli_basic_password
+        u = settings.basic_user.strip()
+        p = settings.basic_password
         if not u or not p:
             raise ValueError(
-                "local auth requires OPENKMS_QA_AGENT_BASIC_USER and OPENKMS_QA_AGENT_BASIC_PASSWORD "
-                "(compatibility aliases: OPENKMS_CLI_BASIC_USER / OPENKMS_CLI_BASIC_PASSWORD)"
+                "local auth requires OPENKMS_QA_AGENT_BASIC_USER and OPENKMS_QA_AGENT_BASIC_PASSWORD"
             )
         return {}, (u, p)
     token = get_access_token()

@@ -148,11 +148,15 @@ def _parse_basic_auth(header: str) -> tuple[str, str] | None:
 
 
 def _local_basic_matches(username: str, password: str) -> bool:
-    cfg_user = settings.cli_basic_user
-    cfg_pass = settings.cli_basic_password
-    if not cfg_user or not cfg_pass:
-        return False
-    return secrets.compare_digest(username, cfg_user) and secrets.compare_digest(password, cfg_pass)
+    for cfg_user, cfg_pass in (
+        (settings.cli_basic_user, settings.cli_basic_password),
+        (settings.qa_agent_basic_user, settings.qa_agent_basic_password),
+    ):
+        if cfg_user and cfg_pass and secrets.compare_digest(username, cfg_user) and secrets.compare_digest(
+            password, cfg_pass
+        ):
+            return True
+    return False
 
 
 def _set_auth_state(request: Request, payload: dict, token: str) -> None:

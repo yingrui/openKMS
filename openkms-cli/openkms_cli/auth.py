@@ -34,21 +34,18 @@ def get_access_token() -> str:
         )
 
     cfg = get_cli_settings()
-    token_url_override = cfg.oidc_token_url.strip()
-    if token_url_override:
-        token_url = token_url_override
-    else:
-        base = cfg.oidc_auth_server_base_url.rstrip("/")
-        realm = cfg.oidc_realm
-        token_url = f"{base}/realms/{realm}/protocol/openid-connect/token"
+    token_url = cfg.oidc_token_url.strip()
+    if not token_url:
+        raise ValueError(
+            "OPENKMS_OIDC_TOKEN_URL is required when OPENKMS_AUTH_MODE=oidc "
+            "(IdP token_endpoint from .well-known/openid-configuration)"
+        )
 
     client_id = cfg.oidc_client_id.strip() or "openkms-cli"
     client_secret = cfg.oidc_client_secret.strip()
-
     if not client_secret:
         raise ValueError(
-            "OPENKMS_CLI_OIDC_CLIENT_SECRET is required for OIDC client-credentials auth "
-            "(or set OPENKMS_OIDC_TOKEN_URL for a non-Keycloak-style token endpoint)"
+            "OPENKMS_CLI_OIDC_CLIENT_SECRET is required for OIDC client-credentials auth"
         )
 
     data = {

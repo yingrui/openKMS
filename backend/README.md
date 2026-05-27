@@ -35,8 +35,10 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | **Max LangGraph steps** (model+tool loop) per chat turn. The default was too low for bulk get/upsert; raise (e.g. 400) only if you need very large single-turn batches, or use smaller batches per message. |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
 | `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local`; first user is admin |
-| `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: CLI HTTP Basic username |
-| `OPENKMS_CLI_BASIC_PASSWORD` | (empty) | Local mode: CLI HTTP Basic password |
+| `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: HTTP Basic for openkms-cli |
+| `OPENKMS_CLI_BASIC_PASSWORD` | (empty) | |
+| `OPENKMS_QA_AGENT_BASIC_USER` | (empty) | Local mode: HTTP Basic for qa-agent |
+| `OPENKMS_QA_AGENT_BASIC_PASSWORD` | (empty) | |
 | `OPENKMS_OIDC_ISSUER` | (empty) | Full OIDC issuer URL; if set, overrides base+realm below |
 | `OPENKMS_OIDC_AUTH_SERVER_BASE_URL` | http://localhost:8081 | IdP base URL when issuer is derived as `{base}/realms/{realm}` |
 | `OPENKMS_OIDC_REALM` | openkms | Realm segment for derived issuer |
@@ -52,7 +54,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 - **`OPENKMS_VLM_URL`** is the only VLM-related variable the **backend** reads (defaults to mlx-vlm on port **8101**). Pipelines can still override the parse URL from a **linked API model** on the pipeline (`model_id`).
 - **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the backend (`app/config.py` uses `extra: "ignore"`). **`OPENKMS_VLM_API_KEY`** belongs in **`openkms-cli/.env`** when the VLM HTTP API requires a key. **`kb-index`** gets embedding URL, model name, and API key from **`GET /internal-api/models/kb-embedding-credentials`** (same auth as other CLI calls); optional **`OPENKMS_EMBEDDING_MODEL_*`** in **`openkms-cli/.env`** overrides those values when needed. **qa-agent** resolves default LLM via **`GET /internal-api/models/llm-defaults`** (same authenticated service pattern as openkms-cli model defaults).
 
-**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** OIDC: `OPENKMS_CLI_OIDC_CLIENT_ID`, `OPENKMS_CLI_OIDC_CLIENT_SECRET` (or `OPENKMS_OIDC_TOKEN_URL`).
+**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** / **qa-agent** OIDC: `OPENKMS_OIDC_TOKEN_URL` (required), `OPENKMS_CLI_OIDC_CLIENT_ID`, `OPENKMS_CLI_OIDC_CLIENT_SECRET`.
 
 ## Database
 

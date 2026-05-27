@@ -164,6 +164,8 @@ class Settings(BaseSettings):
     local_jwt_exp_hours: int = Field(default=168, validation_alias="OPENKMS_LOCAL_JWT_EXP_HOURS")
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
     cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
+    qa_agent_basic_user: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_USER")
+    qa_agent_basic_password: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_PASSWORD")
 
     # --- Data security (group-scoped visibility; local mode only until IdP group sync) ---
     enforce_group_data_scopes: bool = Field(

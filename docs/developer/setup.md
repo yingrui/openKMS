@@ -139,7 +139,7 @@ The SPA uses **`oidc-client-ts`** (Authorization Code + PKCE) when the backend r
 
    Create a **confidential** client in your IdP (Keycloak example: enable client credentials, service account):
    - **Client ID**: `openkms-cli` (must be listed in backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**)
-   - Set `OPENKMS_OIDC_AUTH_SERVER_BASE_URL`, `OPENKMS_OIDC_REALM`, `OPENKMS_CLI_OIDC_CLIENT_ID`, and `OPENKMS_CLI_OIDC_CLIENT_SECRET` in `openkms-cli/.env` (Keycloak-style token URL), or set **`OPENKMS_OIDC_TOKEN_URL`** to the token endpoint for other IdPs.
+   - Set **`OPENKMS_OIDC_TOKEN_URL`** (IdP `token_endpoint`), **`OPENKMS_CLI_OIDC_CLIENT_ID`**, and **`OPENKMS_CLI_OIDC_CLIENT_SECRET`** in `openkms-cli/.env` (**qa-agent** uses the same **`OPENKMS_AUTH_MODE`** and **`OPENKMS_OIDC_TOKEN_URL`** plus **`OPENKMS_QA_AGENT_OIDC_CLIENT_*`**).
 
 **Logout errors from the IdP**: ensure the SPA origin is allowed as a post-logout redirect for the browser client.
 

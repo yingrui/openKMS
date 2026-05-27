@@ -53,7 +53,8 @@ The server starts on port 8103 by default.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENKMS_BACKEND_URL` | http://localhost:8102 | openKMS backend API base URL |
-| `OPENKMS_QA_AGENT_AUTH_MODE` | (unset) | **`local`** or **`oidc`** — should match backend auth mode |
+| `OPENKMS_AUTH_MODE` | (unset) | **`local`** or **`oidc`** — should match backend auth mode |
+| `OPENKMS_OIDC_TOKEN_URL` | (unset) | Required in OIDC mode; IdP `token_endpoint` (same as openkms-cli) |
 | `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | (unset) | Local mode: HTTP Basic for backend model/config routes |
 | `OPENKMS_QA_AGENT_OIDC_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET` | `qa-agent` / (unset) | OIDC client credentials when not in local mode |
 | `OPENKMS_LLM_MODEL_BASE_URL` | (from backend) | Optional override; when unset, **`GET /internal-api/models/llm-defaults`** |
