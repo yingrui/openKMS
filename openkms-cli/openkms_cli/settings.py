@@ -41,6 +41,9 @@ class CliSettings(BaseSettings):
     # --- Backend API (pipeline metadata sync, kb-index, etc.) ---
     openkms_api_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_API_URL")
 
+    # --- Pipeline / parse working directory (default output/; empty → cwd; Docker: volume path) ---
+    pipeline_output_dir: str = Field(default="output", validation_alias="OPENKMS_CLI_OUTPUT_DIR")
+
     # --- Embedding overrides (kb-index pipeline) ---
     embedding_model_base_url: str = Field(default="", validation_alias="OPENKMS_EMBEDDING_MODEL_BASE_URL")
     embedding_model_name: str = Field(default="", validation_alias="OPENKMS_EMBEDDING_MODEL_NAME")

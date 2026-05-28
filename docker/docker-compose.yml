@@ -56,6 +56,12 @@ x-backend-env: &backend_env
   LANGFUSE_TRACE_STREAMING: ${LANGFUSE_TRACE_STREAMING:-true}
   LANGFUSE_HEALTHCHECK: ${LANGFUSE_HEALTHCHECK:-true}
 
+# Worker-only: PaddleX model cache + openkms-cli pipeline scratch (see worker service volumes).
+x-worker-env: &worker_env
+  <<: *backend_env
+  PADDLE_PDX_CACHE_HOME: /var/lib/openkms/paddlex
+  OPENKMS_CLI_OUTPUT_DIR: /var/lib/openkms/work/output
+
 # qa-agent: local service auth (OIDC: add vars via --env-file backend/.env).
 x-qa-agent-env: &qa_agent_env
   OPENKMS_BACKEND_URL: http://backend:8102
@@ -148,7 +154,10 @@ services:
       args:
         <<: *build_mirror_args
     environment:
-      <<: *backend_env
+      <<: *worker_env
+    volumes:
+      - openkms_worker_paddlex_cache:/var/lib/openkms/paddlex
+      - openkms_worker_work:/var/lib/openkms/work
     depends_on:
       postgres:
         condition: service_healthy
@@ -193,3 +202,5 @@ volumes:
   openkms_postgres_pg16: {}
   minio_data: {}
   neo4j_data: {}
+  openkms_worker_paddlex_cache: {}
+  openkms_worker_work: {}
