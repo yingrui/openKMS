@@ -1,0 +1,268 @@
+{
+  "file_hash": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "parsing_res_list": [
+    {
+      "label": "header_image",
+      "content": "",
+      "bbox": [85.0, 142.0, 193.0, 258.0],
+      "image_path": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/block_0.png"
+    },
+    {
+      "label": "header",
+      "content": "PUBLISHER LOGO",
+      "bbox": [85.0, 244.0, 193.0, 266.0],
+      "image_path": null
+    },
+    {
+      "label": "header",
+      "content": "Journal of Example Studies 42 (2025) 100–120",
+      "bbox": [398.0, 246.0, 680.0, 266.0],
+      "image_path": null
+    },
+    {
+      "label": "doc_title",
+      "content": "Sample research paper title",
+      "bbox": [170.0, 340.0, 906.0, 376.0],
+      "image_path": null
+    },
+    {
+      "label": "text",
+      "content": "Author One, Author Two",
+      "bbox": [169.0, 399.0, 908.0, 431.0],
+      "image_path": null
+    },
+    {
+      "label": "paragraph_title",
+      "content": "Abstract",
+      "bbox": [82.0, 620.0, 156.0, 641.0],
+      "image_path": null
+    },
+    {
+      "label": "abstract",
+      "content": "This fixture exercises abstract blocks and multi-page layout metadata.",
+      "bbox": [78.0, 655.0, 1000.0, 720.0],
+      "image_path": null
+    },
+    {
+      "label": "footnote",
+      "content": "* Corresponding author: example@university.edu",
+      "bbox": [82.0, 1214.0, 995.0, 1269.0],
+      "image_path": null
+    },
+    {
+      "label": "footer",
+      "content": "© 2025 Example Publisher. All rights reserved.",
+      "bbox": [80.0, 1288.0, 561.0, 1329.0],
+      "image_path": null
+    },
+    {
+      "label": "number",
+      "content": "101",
+      "bbox": [92.0, 139.0, 122.0, 156.0],
+      "image_path": null
+    },
+    {
+      "label": "header",
+      "content": "Author et al. / Journal of Example Studies 42 (2025) 100–120",
+      "bbox": [343.0, 138.0, 754.0, 158.0],
+      "image_path": null
+    },
+    {
+      "label": "paragraph_title",
+      "content": "1. Introduction",
+      "bbox": [90.0, 183.0, 227.0, 205.0],
+      "image_path": null
+    },
+    {
+      "label": "text",
+      "content": "Body text on page two with enough content to represent a paragraph block.",
+      "bbox": [88.0, 230.0, 530.0, 400.0],
+      "image_path": null
+    },
+    {
+      "label": "chart",
+      "content": "",
+      "bbox": [572.0, 185.0, 998.0, 533.0],
+      "image_path": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/block_1.png"
+    },
+    {
+      "label": "figure_title",
+      "content": "Fig. 1. Example chart referenced in markdown.",
+      "bbox": [566.0, 550.0, 1005.0, 590.0],
+      "image_path": null
+    },
+    {
+      "label": "display_formula",
+      "content": "Q = f(P) + g(T)",
+      "bbox": [200.0, 450.0, 400.0, 480.0],
+      "image_path": null
+    },
+    {
+      "label": "number",
+      "content": "102",
+      "bbox": [967.0, 139.0, 996.0, 156.0],
+      "image_path": null
+    },
+    {
+      "label": "header",
+      "content": "Author et al. / Journal of Example Studies 42 (2025) 100–120",
+      "bbox": [333.0, 138.0, 744.0, 158.0],
+      "image_path": null
+    },
+    {
+      "label": "paragraph_title",
+      "content": "2. Methods",
+      "bbox": [90.0, 200.0, 200.0, 222.0],
+      "image_path": null
+    },
+    {
+      "label": "table",
+      "content": "<table><tr><td>Site</td><td>Area (ha)</td></tr><tr><td>Alpha</td><td>120</td></tr></table>",
+      "bbox": [80.0, 260.0, 520.0, 360.0],
+      "image_path": null
+    },
+    {
+      "label": "footer",
+      "content": "doi:10.0000/example.2025.001",
+      "bbox": [80.0, 1280.0, 400.0, 1300.0],
+      "image_path": null
+    }
+  ],
+  "layout_det_res": [
+    {
+      "page_index": 0,
+      "boxes": [
+        {
+          "cls_id": 13,
+          "label": "header_image",
+          "score": 0.797,
+          "coordinate": [85.0, 142.0, 193.0, 258.0],
+          "bbox": null,
+          "content": null,
+          "order": null,
+          "polygon_points": [[85.0, 142.0], [193.0, 142.0], [193.0, 258.0], [85.0, 258.0]],
+          "block_index": 0
+        },
+        {
+          "cls_id": 12,
+          "label": "header",
+          "score": 0.492,
+          "coordinate": [398.0, 246.0, 680.0, 266.0],
+          "bbox": null,
+          "content": null,
+          "order": 1,
+          "polygon_points": [[398.0, 246.0], [680.0, 246.0], [680.0, 266.0], [398.0, 266.0]],
+          "block_index": 2
+        },
+        {
+          "cls_id": 6,
+          "label": "doc_title",
+          "score": 0.637,
+          "coordinate": [170.0, 340.0, 906.0, 376.0],
+          "bbox": null,
+          "content": null,
+          "order": 2,
+          "polygon_points": [[170.0, 340.0], [906.0, 340.0], [906.0, 376.0], [170.0, 376.0]],
+          "block_index": 3
+        },
+        {
+          "cls_id": 8,
+          "label": "footer",
+          "score": 0.417,
+          "coordinate": [80.0, 1288.0, 561.0, 1329.0],
+          "bbox": null,
+          "content": null,
+          "order": null,
+          "polygon_points": [[80.0, 1288.0], [561.0, 1288.0], [561.0, 1329.0], [80.0, 1329.0]],
+          "block_index": 8
+        }
+      ],
+      "input_path": null,
+      "input_img": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/layout_det_0_input_img_0.png"
+    },
+    {
+      "page_index": 1,
+      "boxes": [
+        {
+          "cls_id": 12,
+          "label": "header",
+          "score": 0.501,
+          "coordinate": [343.0, 138.0, 754.0, 158.0],
+          "bbox": null,
+          "content": null,
+          "order": 1,
+          "polygon_points": [[343.0, 138.0], [754.0, 138.0], [754.0, 158.0], [343.0, 158.0]],
+          "block_index": 10
+        },
+        {
+          "cls_id": 22,
+          "label": "text",
+          "score": 0.376,
+          "coordinate": [88.0, 230.0, 530.0, 400.0],
+          "bbox": null,
+          "content": null,
+          "order": 2,
+          "polygon_points": [[88.0, 230.0], [530.0, 230.0], [530.0, 400.0], [88.0, 400.0]],
+          "block_index": 12
+        },
+        {
+          "cls_id": 5,
+          "label": "chart",
+          "score": 0.812,
+          "coordinate": [572.0, 185.0, 998.0, 533.0],
+          "bbox": null,
+          "content": null,
+          "order": 3,
+          "polygon_points": [[572.0, 185.0], [998.0, 185.0], [998.0, 533.0], [572.0, 533.0]],
+          "block_index": 13
+        }
+      ],
+      "input_path": null,
+      "input_img": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/layout_det_1_input_img_0.png"
+    },
+    {
+      "page_index": 2,
+      "boxes": [
+        {
+          "cls_id": 12,
+          "label": "header",
+          "score": 0.488,
+          "coordinate": [333.0, 138.0, 744.0, 158.0],
+          "bbox": null,
+          "content": null,
+          "order": 1,
+          "polygon_points": [[333.0, 138.0], [744.0, 138.0], [744.0, 158.0], [333.0, 158.0]],
+          "block_index": 17
+        },
+        {
+          "cls_id": 4,
+          "label": "table",
+          "score": 0.901,
+          "coordinate": [80.0, 260.0, 520.0, 360.0],
+          "bbox": null,
+          "content": null,
+          "order": 2,
+          "polygon_points": [[80.0, 260.0], [520.0, 260.0], [520.0, 360.0], [80.0, 360.0]],
+          "block_index": 19
+        },
+        {
+          "cls_id": 8,
+          "label": "footer",
+          "score": 0.405,
+          "coordinate": [80.0, 1280.0, 400.0, 1300.0],
+          "bbox": null,
+          "content": null,
+          "order": null,
+          "polygon_points": [[80.0, 1280.0], [400.0, 1280.0], [400.0, 1300.0], [80.0, 1300.0]],
+          "block_index": 20
+        }
+      ],
+      "input_path": null,
+      "input_img": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/layout_det_2_input_img_0.png"
+    }
+  ],
+  "markdown": "# Sample research paper title\n\nAuthor One, Author Two\n\n## Abstract\n\nThis fixture exercises abstract blocks and multi-page layout metadata.\n\n## 1. Introduction\n\nBody text on page two with enough content to represent a paragraph block.\n\n<div style=\"text-align: center;\"><img src=\"imgs/chart.png\" alt=\"Fig. 1\" width=\"40%\" /></div>\n\n<div style=\"text-align: center;\">Fig. 1. Example chart referenced in markdown.</div>\n\n$$Q = f(P) + g(T)$$\n\n## 2. Methods\n\n<table><tr><td>Site</td><td>Area (ha)</td></tr><tr><td>Alpha</td><td>120</td></tr></table>\n",
+  "page_count": 3,
+  "width": 1088,
+  "height": 1486
+}

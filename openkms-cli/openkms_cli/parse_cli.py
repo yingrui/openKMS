@@ -13,7 +13,12 @@ from .settings import get_cli_settings
 
 console = Console()
 
-parse_app = typer.Typer(help="Parse documents (PDF, images, DOCX, PPTX, EPUB) using PaddleOCR-VL")
+parse_app = typer.Typer(
+    help="Parse documents locally (PaddleOCR-VL) or via Baidu Cloud (baidu-doc-parse)",
+)
+
+_PARSE_METHODS = ("paddleocr-doc-parse", "baidu-doc-parse")
+_PADDLE_EXTS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".docx", ".pptx", ".epub"}
 
 
 def _json_default(obj: Any) -> Any:
@@ -68,6 +73,22 @@ def parse_run(
         exists=True,
         help="Config file (JSON) to override defaults",
     ),
+    method: str = typer.Option(
+        "paddleocr-doc-parse",
+        "--method",
+        "-m",
+        help="Parse backend: paddleocr-doc-parse (local VLM) or baidu-doc-parse (Baidu Cloud API)",
+    ),
+    baidu_poll_interval: int = typer.Option(
+        8,
+        "--baidu-poll-interval",
+        help="Seconds between Baidu task status polls (baidu-doc-parse only)",
+    ),
+    baidu_max_wait: int = typer.Option(
+        600,
+        "--baidu-max-wait",
+        help="Max seconds to wait for Baidu parse task (baidu-doc-parse only)",
+    ),
 ) -> None:
     """
     Parse document(s). Output structure matches openKMS backend:
@@ -78,30 +99,51 @@ def parse_run(
       {file_hash}/block_*.png
       {file_hash}/markdown_out/*.md, imgs/*.jpg
     """
-    s = get_cli_settings()
-    merged_vlm_url, merged_vlm_model, merged_vlm_key = resolve_vlm_for_cli(s)
-    if vlm_url is None:
-        vlm_url = merged_vlm_url
-    if model is None:
-        model = merged_vlm_model
-    if max_concurrency is None:
-        max_concurrency = s.vlm_max_concurrency
+    if method not in _PARSE_METHODS:
+        console.print(
+            f"[red]Unknown --method {method!r}. Choose from: {', '.join(_PARSE_METHODS)}[/red]"
+        )
+        raise typer.Exit(1)
 
-    if config_path:
-        try:
-            cfg = json.loads(config_path.read_text())
-            vlm_url = cfg.get("vlm_url", vlm_url)
-            model = cfg.get("model", model)
-            max_concurrency = cfg.get("max_concurrency", max_concurrency)
-        except Exception as e:
-            console.print(f"[red]Failed to load config: {e}[/red]")
-            raise typer.Exit(1)
+    use_baidu = method == "baidu-doc-parse"
+    s = get_cli_settings()
+
+    merged_vlm_url = merged_vlm_model = merged_vlm_key = None
+    if not use_baidu:
+        merged_vlm_url, merged_vlm_model, merged_vlm_key = resolve_vlm_for_cli(s)
+        if vlm_url is None:
+            vlm_url = merged_vlm_url
+        if model is None:
+            model = merged_vlm_model
+        if max_concurrency is None:
+            max_concurrency = s.vlm_max_concurrency
+
+        if config_path:
+            try:
+                cfg = json.loads(config_path.read_text())
+                vlm_url = cfg.get("vlm_url", vlm_url)
+                model = cfg.get("model", model)
+                max_concurrency = cfg.get("max_concurrency", max_concurrency)
+            except Exception as e:
+                console.print(f"[red]Failed to load config: {e}[/red]")
+                raise typer.Exit(1)
+    elif not s.baidu_cloud_api_key or not s.baidu_cloud_secret_key:
+        console.print(
+            "[red]baidu-doc-parse requires OPENKMS_BAIDU_CLOUD_API_KEY and "
+            "OPENKMS_BAIDU_CLOUD_SECRET_KEY[/red]"
+        )
+        raise typer.Exit(1)
 
     if input_path.is_file():
         files = [input_path]
         out_base = output_dir or input_path.parent / "parsed"
     else:
-        exts = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".docx", ".pptx", ".epub"}
+        if use_baidu:
+            from .baidu_parser import _BAIDU_NATIVE_EXT
+
+            exts = set(_BAIDU_NATIVE_EXT) | {".epub"}
+        else:
+            exts = _PADDLE_EXTS
         files = [p for p in input_path.rglob("*") if p.is_file() and p.suffix.lower() in exts]
         if not files:
             console.print("[yellow]No supported files found[/yellow]")
@@ -110,15 +152,23 @@ def parse_run(
 
     out_base.mkdir(parents=True, exist_ok=True)
 
-    try:
-        from .parser import run_parser
-    except ImportError as e:
-        console.print(
-            "[red]Parser not available. Install optional dependencies:[/red]\n"
-            "  pip install openkms-cli[parse]"
-        )
-        console.print(f"[dim]{e}[/dim]")
-        raise typer.Exit(1)
+    if use_baidu:
+        try:
+            from .baidu_parser import BaiduParseError, prepare_for_baidu_parse, run_baidu_parser
+        except ImportError as e:
+            console.print("[red]Baidu parser not available. pip install openkms-cli (requests)[/red]")
+            console.print(f"[dim]{e}[/dim]")
+            raise typer.Exit(1)
+    else:
+        try:
+            from .parser import run_parser
+        except ImportError as e:
+            console.print(
+                "[red]Parser not available. Install optional dependencies:[/red]\n"
+                "  pip install openkms-cli[parse]"
+            )
+            console.print(f"[dim]{e}[/dim]")
+            raise typer.Exit(1)
 
     with Progress(
         SpinnerColumn(),
@@ -128,39 +178,63 @@ def parse_run(
         for fp in files:
             progress.update(task, description=f"Parsing {fp.name}")
             try:
-                from .office_convert import OfficeConvertError, prepare_for_vlm_parse
+                work_sub = out_base / ("_baidu_tmp" if use_baidu else "_office_tmp")
+                if use_baidu:
+                    try:
+                        parse_path, hash_src = prepare_for_baidu_parse(fp.resolve(), work_sub)
+                    except BaiduParseError as e:
+                        console.print(f"[red]{fp}: {e}[/red]")
+                        raise typer.Exit(1)
+                else:
+                    from .office_convert import OfficeConvertError, prepare_for_vlm_parse
 
-                work_sub = out_base / "_office_tmp"
-                try:
-                    parse_path, hash_src = prepare_for_vlm_parse(fp.resolve(), work_sub)
-                except OfficeConvertError as e:
-                    console.print(f"[red]{fp}: {e}[/red]")
-                    raise typer.Exit(1)
+                    try:
+                        parse_path, hash_src = prepare_for_vlm_parse(fp.resolve(), work_sub)
+                    except OfficeConvertError as e:
+                        console.print(f"[red]{fp}: {e}[/red]")
+                        raise typer.Exit(1)
+
                 ch_source = None if parse_path.resolve() == hash_src.resolve() else hash_src
-                result, extra_files, markdown_out_files = run_parser(
-                    input_path=parse_path,
-                    output_dir=out_base,
-                    vlm_url=vlm_url,
-                    vlm_api_key=merged_vlm_key,
-                    model=model,
-                    max_concurrency=max_concurrency,
-                    content_hash_source=ch_source,
-                )
+                if use_baidu:
+
+                    def _baidu_status(status: str) -> None:
+                        progress.update(task, description=f"Baidu parse: {status}...")
+
+                    result, _, _ = run_baidu_parser(
+                        input_path=parse_path,
+                        output_dir=out_base,
+                        api_key=s.baidu_cloud_api_key,
+                        secret_key=s.baidu_cloud_secret_key,
+                        content_hash_source=ch_source,
+                        poll_interval=baidu_poll_interval,
+                        max_wait=baidu_max_wait,
+                        on_status=_baidu_status,
+                    )
+                else:
+                    result, _, _ = run_parser(
+                        input_path=parse_path,
+                        output_dir=out_base,
+                        vlm_url=vlm_url,
+                        vlm_api_key=merged_vlm_key,
+                        model=model,
+                        max_concurrency=max_concurrency,
+                        content_hash_source=ch_source,
+                    )
                 file_hash = result["file_hash"]
                 hash_dir = out_base / file_hash
 
-                # Copy original file
                 ext = Path(hash_src).suffix.lower().lstrip(".") or "bin"
                 (hash_dir / f"original.{ext}").write_bytes(Path(hash_src).read_bytes())
 
-                # result.json and markdown.md already written by parser
-                result_json = json.dumps(result, indent=2, ensure_ascii=False, default=_json_default)
+                result_json = json.dumps(
+                    result, indent=2, ensure_ascii=False, default=_json_default
+                )
                 (hash_dir / "result.json").write_text(result_json, encoding="utf-8")
                 if result.get("markdown"):
                     (hash_dir / "markdown.md").write_text(result["markdown"], encoding="utf-8")
-
-                # extra_files and markdown_out_files are already written by parser
-                # (parser writes to out_dir = output_dir/file_hash)
+            except BaiduParseError as e:
+                console.print(f"[red]Failed {fp}: {e}[/red]")
+                raise typer.Exit(1)
             except Exception as e:
                 console.print(f"[red]Failed {fp}: {e}[/red]")
                 raise typer.Exit(1)

@@ -72,10 +72,20 @@ export function buildPageBlocks(
       }
       if (!coordFlat) continue;
 
-      const parsingIdx = parsingList.findIndex((p) => {
-        const bbox = p.bbox;
-        return Array.isArray(bbox) && coordMatch(coordFlat!, bbox as number[]);
-      });
+      let parsingIdx = -1;
+      const blockIndex = box?.block_index;
+      if (
+        typeof blockIndex === 'number' &&
+        blockIndex >= 0 &&
+        blockIndex < parsingList.length
+      ) {
+        parsingIdx = blockIndex;
+      } else {
+        parsingIdx = parsingList.findIndex((p) => {
+          const bbox = p.bbox;
+          return Array.isArray(bbox) && coordMatch(coordFlat!, bbox as number[]);
+        });
+      }
       const parsingItem = parsingIdx >= 0 ? parsingList[parsingIdx] : undefined;
       list.push({
         pageIndex: pi,

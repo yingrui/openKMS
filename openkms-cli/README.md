@@ -12,6 +12,8 @@ Copy **`openkms-cli/.env.example`** and adjust. For auth against the API, match 
 
 **VLM (document parse / paddleocr pipeline):** When **`OPENKMS_VLM_URL`**, **`OPENKMS_VLM_MODEL`**, or **`OPENKMS_VLM_API_KEY`** are unset (and no key in settings), the CLI calls **`GET {OPENKMS_API_URL}/internal-api/models/document-parse-defaults`** with the same auth as other CLI API calls (**HTTP Basic** in local mode, **client credentials** in OIDC). If **`OPENKMS_VLM_MODEL`** is set in the environment, the request includes **`?model_name=...`** so the backend returns that **`vl`** / **`ocr`** model’s URL and key when it exists, otherwise the default **`vl`** / **`ocr`** row (same as omitting the query). Merge **`base_url`**, **`model_name`**, and **`api_key`** from the JSON response. Override any value with **`OPENKMS_VLM_*`** in `.env` when needed.
 
+**Baidu Cloud (baidu-doc-parse pipeline):** Set **`OPENKMS_BAIDU_CLOUD_API_KEY`** and **`OPENKMS_BAIDU_CLOUD_SECRET_KEY`**. Optional endpoint overrides: **`BAIDU_TOKEN_URL`**, **`BAIDU_TASK_URL`**, **`BAIDU_QUERY_URL`** (defaults are Baidu official PaddleOCR-VL URLs). The pipeline sends the document as **base64 `file_data`**. Limits: images ≤10MB, other documents ≤50MB.
+
 ## Install
 
 ```bash
@@ -33,7 +35,9 @@ pip install -e ".[dev]"
 pytest tests/
 ```
 
-Covers **`backend_defaults`** merge / fetch behavior (mocked HTTP) and **`parser`** restructuring plus small layout helpers (no Paddle install required).
+Covers **`backend_defaults`** merge / fetch behavior (mocked HTTP), **`parser`** restructuring plus small layout helpers (no Paddle install required), and **`parse_result`** schema validation against `tests/fixtures/document_parse_result_minimal.json`.
+
+**Parse result schema:** `schemas/document_parse_result.schema.json` defines the canonical `result.json` shape. Pipelines validate output via `openkms_cli.parse_result.validate_parse_result`.
 
 ## Usage
 
@@ -44,6 +48,9 @@ Supported inputs: **PDF**, **PNG/JPG/JPEG/WEBP**, **DOCX**, **PPTX** (needs **Li
 ```bash
 openkms-cli parse run document.pdf -o ./parsed
 openkms-cli parse run ./inputs/ -o ./parsed
+
+# Baidu Cloud (no local VLM; needs OPENKMS_BAIDU_CLOUD_* in .env):
+openkms-cli parse run document.pdf --method baidu-doc-parse -o ./parsed
 ```
 
 **Pipeline** — list names, then run:
@@ -59,6 +66,8 @@ Wiki content is pulled only for **wiki spaces already linked** to that KB (`GET 
 
 ```bash
 openkms-cli pipeline run --input ./doc.pdf --s3-prefix <prefix>
+# Baidu Cloud (no local VLM): sends document as base64 file_data, polls Baidu API
+openkms-cli pipeline run --pipeline-name baidu-doc-parse --input ./doc.pdf --s3-prefix <prefix>
 ```
 
 **Wiki** — upsert markdown pages and upload assets (requires API auth: OIDC client credentials or local HTTP Basic, same as pipeline metadata sync):

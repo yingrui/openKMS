@@ -142,6 +142,8 @@ def _annotate_layout_boxes(layout_det: Any, blocks: list[dict], iou_threshold: f
     if not blocks:
         return
     for box in _iter_layout_boxes(layout_det):
+        if box.get("block_index") is not None:
+            continue
         coord = box.get("coordinate")
         idx = _find_best_matching_block(coord, blocks, iou_threshold)
         if idx >= 0:
@@ -221,6 +223,8 @@ def run_parser(
     """
     from paddleocr import PaddleOCRVL
 
+    from .parse_result import empty_parse_result, validate_parse_result
+
     hash_path = content_hash_source or input_path
     file_hash = hashlib.sha256(hash_path.read_bytes()).hexdigest()
     input_bytes = input_path.read_bytes()
@@ -239,7 +243,7 @@ def run_parser(
     pages_res = list(pipeline.predict(input=str(input_path)))
     if not pages_res:
         return (
-            {"file_hash": file_hash, "parsing_res_list": [], "layout_det_res": [], "markdown": "", "page_count": 0},
+            empty_parse_result(file_hash),
             [],
             [],
         )
@@ -394,15 +398,17 @@ def run_parser(
                 rel = f.relative_to(md_dir).as_posix()
                 markdown_out_map[rel] = f.read_bytes()
 
-    result = {
-        "file_hash": file_hash,
-        "parsing_res_list": blocks,
-        "layout_det_res": layout_list,
-        "markdown": markdown,
-        "page_count": page_count,
-        "width": res.get("width") if isinstance(res, dict) else getattr(res, "width", None),
-        "height": res.get("height") if isinstance(res, dict) else getattr(res, "height", None),
-    }
+    result = validate_parse_result(
+        {
+            "file_hash": file_hash,
+            "parsing_res_list": blocks,
+            "layout_det_res": layout_list,
+            "markdown": markdown,
+            "page_count": page_count,
+            "width": res.get("width") if isinstance(res, dict) else getattr(res, "width", None),
+            "height": res.get("height") if isinstance(res, dict) else getattr(res, "height", None),
+        }
+    )
     extra_files = list(extra_files_map.items())
     markdown_out_files = list(markdown_out_map.items())
     return _to_serializable(result), extra_files, markdown_out_files

@@ -27,6 +27,10 @@ SUPPORTED_PIPELINES: dict[str, tuple[str, str]] = {
         "PaddleOCR Document Parse",
         "Parse PDF/document with PaddleOCR-VL; output markdown and images to S3.",
     ),
+    "baidu-doc-parse": (
+        "Baidu Cloud Document Parse",
+        "Parse via Baidu PaddleOCR-VL API (file_data, max 50MB); output markdown and images to S3.",
+    ),
     "kb-index": (
         "Knowledge Base Index",
         "Chunk documents, generate embeddings, index FAQs; requires --knowledge-base-id.",
@@ -150,7 +154,14 @@ def pipeline_list() -> None:
     for name, (display, desc) in SUPPORTED_PIPELINES.items():
         table.add_row(name, f"{display}: {desc}")
     console.print(table)
-    console.print("\n[dim]Doc parse: pipeline run --pipeline-name paddleocr-doc-parse --input <uri> --s3-prefix <prefix>[/dim]")
+    console.print(
+        "\n[dim]Doc parse (local VLM): pipeline run --pipeline-name paddleocr-doc-parse "
+        "--input <uri> --s3-prefix <prefix>[/dim]"
+    )
+    console.print(
+        "[dim]Doc parse (Baidu Cloud): pipeline run --pipeline-name baidu-doc-parse "
+        "--input <uri> --s3-prefix <prefix>[/dim]"
+    )
     console.print("[dim]KB index:  pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url <url>[/dim]")
 
 
@@ -248,6 +259,16 @@ def pipeline_run(
         "--extraction-model-name",
         help="LLM model name (e.g. qwen3.5); fetches base_url/api_key from backend",
     ),
+    baidu_poll_interval: int = typer.Option(
+        8,
+        "--baidu-poll-interval",
+        help="Seconds between Baidu task status polls (baidu-doc-parse)",
+    ),
+    baidu_max_wait: int = typer.Option(
+        600,
+        "--baidu-max-wait",
+        help="Max seconds to wait for Baidu parse task (baidu-doc-parse)",
+    ),
 ) -> None:
     """
     Run pipeline. Use `pipeline list` to see supported pipeline names.
@@ -255,6 +276,10 @@ def pipeline_run(
     Document parse example:
       openkms-cli pipeline run --pipeline-name paddleocr-doc-parse \\
         --input s3://openkms/da46.../original.pdf --s3-prefix da46...
+
+    Baidu Cloud document parse (no local VLM):
+      openkms-cli pipeline run --pipeline-name baidu-doc-parse \\
+        --input ./doc.pdf --s3-prefix da46...
 
     KB index example:
       openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url ...
@@ -328,12 +353,23 @@ def pipeline_run(
                 raise typer.Exit(1)
         return
 
-    # --- doc-parse pipelines (e.g. paddleocr-doc-parse) ---
-    merged_vlm_url, merged_vlm_model, merged_vlm_key = resolve_vlm_for_cli(cfg)
-    if vlm_url is None:
-        vlm_url = merged_vlm_url
-    if vlm_api_key is None:
-        vlm_api_key = merged_vlm_key if merged_vlm_key is not None else (cfg.vlm_api_key or None)
+    # --- doc-parse pipelines (paddleocr-doc-parse, baidu-doc-parse) ---
+    use_baidu = pipeline_name == "baidu-doc-parse"
+
+    if not use_baidu:
+        merged_vlm_url, merged_vlm_model, merged_vlm_key = resolve_vlm_for_cli(cfg)
+        if vlm_url is None:
+            vlm_url = merged_vlm_url
+        if vlm_api_key is None:
+            vlm_api_key = merged_vlm_key if merged_vlm_key is not None else (cfg.vlm_api_key or None)
+    else:
+        merged_vlm_model = None
+        if not cfg.baidu_cloud_api_key or not cfg.baidu_cloud_secret_key:
+            console.print(
+                "[red]baidu-doc-parse requires OPENKMS_BAIDU_CLOUD_API_KEY and "
+                "OPENKMS_BAIDU_CLOUD_SECRET_KEY[/red]"
+            )
+            raise typer.Exit(1)
 
     if not input_uri:
         console.print("[red]Document parse pipelines require --input (S3 URI or local file)[/red]")
@@ -394,16 +430,32 @@ def pipeline_run(
         console.print(f"[dim]Input: s3://{input_bucket}/{input_key}[/dim]")
 
     try:
-        from .office_convert import OfficeConvertError, prepare_for_vlm_parse
+        from .baidu_parser import BaiduParseError
+        from .office_convert import OfficeConvertError
+
+        if use_baidu:
+            from .baidu_parser import prepare_for_baidu_parse, validate_file_data_size
+        else:
+            from .office_convert import prepare_for_vlm_parse
     except ImportError:
-        console.print("[red]office_convert module missing[/red]")
+        console.print("[red]Required parser module missing[/red]")
         raise typer.Exit(1)
     try:
-        parse_path, hash_src = prepare_for_vlm_parse(stored_path, work / "office_stage")
-    except OfficeConvertError as e:
+        if use_baidu:
+            parse_path, hash_src = prepare_for_baidu_parse(stored_path, work / "baidu_stage")
+        else:
+            parse_path, hash_src = prepare_for_vlm_parse(stored_path, work / "office_stage")
+    except (OfficeConvertError, BaiduParseError) as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
     ch_source = None if parse_path.resolve() == hash_src.resolve() else hash_src
+
+    if use_baidu:
+        try:
+            validate_file_data_size(parse_path.read_bytes(), parse_path.name)
+        except BaiduParseError as e:
+            console.print(f"[red]{e}[/red]")
+            raise typer.Exit(1)
 
     if not skip_upload and (not access_key or not secret_key):
         console.print("[red]AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required for upload[/red]")
@@ -426,19 +478,40 @@ def pipeline_run(
         task = progress.add_task("Parsing...", total=None)
 
         try:
-            from .parser import run_parser
-        except ImportError:
-            console.print("[red]Parser not available. pip install openkms-cli[parse][/red]")
-            raise typer.Exit(1)
+            if use_baidu:
+                from .baidu_parser import run_baidu_parser
 
-        result, _, _ = run_parser(
-            input_path=parse_path,
-            output_dir=out_base,
-            vlm_url=vlm_url,
-            vlm_api_key=vlm_api_key,
-            model=merged_vlm_model,
-            content_hash_source=ch_source,
-        )
+                def _baidu_status(status: str) -> None:
+                    progress.update(task, description=f"Baidu parse: {status}...")
+
+                result, _, _ = run_baidu_parser(
+                    input_path=parse_path,
+                    output_dir=out_base,
+                    api_key=cfg.baidu_cloud_api_key,
+                    secret_key=cfg.baidu_cloud_secret_key,
+                    content_hash_source=ch_source,
+                    poll_interval=baidu_poll_interval,
+                    max_wait=baidu_max_wait,
+                    on_status=_baidu_status,
+                )
+            else:
+                from .parser import run_parser
+
+                result, _, _ = run_parser(
+                    input_path=parse_path,
+                    output_dir=out_base,
+                    vlm_url=vlm_url,
+                    vlm_api_key=vlm_api_key,
+                    model=merged_vlm_model,
+                    content_hash_source=ch_source,
+                )
+        except ImportError:
+            dep = "requests (base)" if use_baidu else "openkms-cli[parse]"
+            console.print(f"[red]Parser not available. pip install {dep}[/red]")
+            raise typer.Exit(1)
+        except BaiduParseError as e:
+            console.print(f"[red]Baidu parse failed: {e}[/red]")
+            raise typer.Exit(1)
         file_hash = result["file_hash"]
         hash_dir = out_base / file_hash
 

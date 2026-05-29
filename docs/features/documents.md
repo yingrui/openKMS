@@ -21,9 +21,10 @@ Document channels (folder tree), per-channel pipelines and metadata extraction, 
 | Document metadata (unified) | ✅ | All metadata (extracted + manual) in single `metadata` JSONB; manual labels configure in channel settings Manual Labels tab (type: object_type or list[object_type]); object-instance pickers in METADATA section |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
 
-## Document parsing (PaddleOCR-VL)
+## Document parsing (PaddleOCR-VL and Baidu Cloud)
 
-- **PaddleOCR-VL** with mlx-vlm-server as VLM backend
+- **PaddleOCR-VL** with mlx-vlm-server as VLM backend (`paddleocr-doc-parse` pipeline / default `parse run`)
+- **Baidu Cloud PaddleOCR-VL API** (`baidu-doc-parse` pipeline / `parse run --method baidu-doc-parse`) — base64 `file_data` upload; credentials **`OPENKMS_BAIDU_CLOUD_*`** and optional **`BAIDU_*_URL`** in **`openkms-cli/.env`**; page preview PNGs and bbox coords use **2× `page_meta`** (same grid as local VLM)
 - Supports: PDF, PNG, JPG, JPEG, WEBP; **DOCX** and **PPTX** are converted to PDF with **LibreOffice** (`soffice` / `libreoffice`) in the worker/CLI; **EPUB** is converted to PDF with **MuPDF** (`mutool`; package `mupdf-tools` in the worker image), then parsed like PDF
 - Output: Markdown, layout detection, parsing result JSON
 - Configurable: server URL, model, max concurrency
@@ -34,8 +35,8 @@ Document channels (folder tree), per-channel pipelines and metadata extraction, 
 - **CLI** at `openkms-cli/` built with Typer (≥0.9.0)
 - **Tests:** `openkms-cli/tests/` — `pip install -e ".[dev]" && pytest tests/` (VLM defaults merge / fetch wiring with mocks; parser restructure and bbox/layout helpers; no Paddle install required)
 - **Configuration**: `openkms_cli/settings.py` (`CliSettings`, pydantic-settings) lists every supported env var via `validation_alias`; parse/pipeline/auth read through `get_cli_settings()`; Typer no longer duplicates env via `envvar=`
-- **Parse**: `openkms-cli parse run <input> [--output dir] [--vlm-url ...]`; inputs: PDF, images, **DOCX**, **PPTX** (LibreOffice), **EPUB** (`mutool`); VLM URL/model/key can follow **`GET /internal-api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set, needed `OPENKMS_VLM_*` values are missing, and CLI auth succeeds; when **`OPENKMS_VLM_MODEL`** is set in the environment, the CLI sends **`?model_name=...`** so the backend returns that **`vl`**/**`ocr`** row's URL and key, or the default row if there is no match
-- **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --input s3://.../original.<ext>` – S3 or local input (stored key preserves extension); optional --s3-prefix (defaults to file hash), --skip-upload
+- **Parse**: `openkms-cli parse run <input> [--output dir] [--method paddleocr-doc-parse|baidu-doc-parse] [--vlm-url ...]`; inputs: PDF, images, **DOCX**, **PPTX** (LibreOffice), **EPUB** (`mutool`); VLM URL/model/key can follow **`GET /internal-api/models/document-parse-defaults`** when `OPENKMS_API_URL` is set, needed `OPENKMS_VLM_*` values are missing, and CLI auth succeeds; when **`OPENKMS_VLM_MODEL`** is set in the environment, the CLI sends **`?model_name=...`** so the backend returns that **`vl`**/**`ocr`** row's URL and key, or the default row if there is no match
+- **Pipeline**: `openkms-cli pipeline list` (list supported pipelines); `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse|baidu-doc-parse --input s3://.../original.<ext>` – S3 or local input (stored key preserves extension); optional --s3-prefix (defaults to file hash), --skip-upload
 - **Metadata extraction**: when channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config from `GET /internal-api/models/config-by-name`, extracts via pydantic-ai, PUTs to `PUT /api/documents/{id}/metadata`; **LLM failure does not fail the pipeline** after a successful parse
 - Uses PaddleOCR-VL for parsing (optional: `pip install openkms-cli[parse]`); pipeline needs `pip install openkms-cli[pipeline]`; extraction needs `pip install openkms-cli[metadata]`; PageIndex tree built-in (md_to_tree uses # headings)
 - Output structure matches backend: `{file_hash}/original.{ext}`, `result.json`, `markdown.md`, `page_index.json` (when pageindex installed), `layout_det_*`, `block_*`, `markdown_out/*`

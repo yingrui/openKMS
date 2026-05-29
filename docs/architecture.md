@@ -265,7 +265,8 @@ Standalone CLI for document parsing, designed for backend integration. Developer
 ```
 openkms-cli/
 ├── pyproject.toml           # typer>=0.9.0, optional [parse], [pipeline], [metadata], [kb], [dev] (pytest)
-├── tests/                   # pytest: backend_defaults merge/fetch mocks; parser restructure + bbox/layout helpers
+├── tests/                   # pytest: backend_defaults, baidu_parser, parse_result schema, parser helpers
+├── schemas/                 # document_parse_result.schema.json (canonical result.json)
 ├── openkms_cli/
 │   ├── __init__.py
 │   ├── __main__.py          # python -m openkms_cli
@@ -273,11 +274,13 @@ openkms-cli/
 │   ├── settings.py          # CliSettings: explicit env var names (validation_alias); pydantic-settings
 │   ├── auth.py              # OIDC client credentials or local HTTP Basic (try_api_request_auth)
 │   ├── backend_defaults.py  # VLM URL/model/key merge from internal-api (optional model_name)
+│   ├── baidu_parser.py      # Baidu Cloud PaddleOCR-VL API (baidu-doc-parse); optional pymupdf for page previews
+│   ├── parse_result.py      # Pydantic + validate_parse_result for canonical result.json
 │   ├── extract.py           # Metadata extraction via pydantic-ai (optional [metadata])
 │   ├── parse_cli.py         # parse run command
 │   ├── parser.py            # PaddleOCR-VL wrapper (optional [parse]); optional content_hash_source for converted Office inputs
 │   ├── office_convert.py    # LibreOffice (DOCX/PPTX) + MuPDF mutool (EPUB) → PDF for VLM parse
-│   ├── pipeline_cli.py      # pipeline list, pipeline run (doc-parse, kb-index); optional [pipeline], [kb]
+│   ├── pipeline_cli.py      # pipeline list, pipeline run (paddleocr-doc-parse, baidu-doc-parse, kb-index); optional [pipeline], [kb]
 │   └── kb_indexer.py        # Chunking, embedding, pgvector bulk insert (optional [kb])
 └── README.md
 ```
@@ -285,8 +288,8 @@ openkms-cli/
 - **Purpose**: Decouple parsing from backend; run via subprocess in worker/job context
 - **Tests**: `pip install -e ".[dev]" && pytest tests/` from **`openkms-cli/`** (no Paddle required for the current suite)
 - **Configuration**: `openkms_cli/settings.py` maps each environment variable explicitly (no hidden prefix); loads `openkms-cli/.env` then cwd `.env`; CLI flags override when passed
-- **Commands**: `parse run`, `pipeline list`, `pipeline run`
-- **Pipeline run**: Download from S3 → (optional LibreOffice for DOCX/PPTX, mutool for EPUB) → parse → upload to S3. When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /internal-api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend; extraction errors after a successful parse are logged and do not fail the job
+- **Commands**: `parse run` (`--method paddleocr-doc-parse|baidu-doc-parse`), `pipeline list`, `pipeline run`
+- **Pipeline run**: Download from S3 → (optional LibreOffice for DOCX/PPTX, mutool for EPUB) → parse → upload to S3. **`baidu-doc-parse`** uses Baidu Cloud API (no local VLM). When channel has extraction_model_id and extraction_schema, worker passes `--extract-metadata --extraction-model-name <model_name>`; CLI fetches model config via `GET /internal-api/models/config-by-name`, extracts via pydantic-ai, PUTs to backend; extraction errors after a successful parse are logged and do not fail the job
 - **Output**: result.json, markdown.md, layout_det_*, block_*, markdown_out/* (compatible with openKMS backend)
 - **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url <url>` – fetches KB config and documents from backend API, splits documents into chunks (fixed_size, markdown_header, paragraph), propagates document metadata to chunks/FAQs per `metadata_keys`, loads embedding **base_url**, **model_name**, and **api_key** via **`GET /internal-api/models/kb-embedding-credentials`** (optional **`OPENKMS_EMBEDDING_MODEL_*`** in **`openkms-cli/.env`** overrides); writes chunks via `POST /chunks/batch` and FAQ embeddings via `PUT /faqs/batch-embeddings` (no direct DB access)
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools

@@ -55,6 +55,22 @@ class CliSettings(BaseSettings):
         ),
     )
 
+    # --- Baidu Cloud OCR (baidu-doc-parse pipeline) ---
+    baidu_cloud_api_key: str = Field(default="", validation_alias="OPENKMS_BAIDU_CLOUD_API_KEY")
+    baidu_cloud_secret_key: str = Field(default="", validation_alias="OPENKMS_BAIDU_CLOUD_SECRET_KEY")
+    baidu_token_url: str = Field(
+        default="https://aip.baidubce.com/oauth/2.0/token",
+        validation_alias="BAIDU_TOKEN_URL",
+    )
+    baidu_task_url: str = Field(
+        default="https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task",
+        validation_alias="BAIDU_TASK_URL",
+    )
+    baidu_query_url: str = Field(
+        default="https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task/query",
+        validation_alias="BAIDU_QUERY_URL",
+    )
+
     # --- AWS / S3 (standard names) ---
     aws_access_key_id: str = Field(default="", validation_alias="AWS_ACCESS_KEY_ID")
     aws_secret_access_key: str = Field(default="", validation_alias="AWS_SECRET_ACCESS_KEY")

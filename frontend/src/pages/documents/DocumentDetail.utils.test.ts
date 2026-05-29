@@ -73,6 +73,35 @@ describe('buildPageBlocks', () => {
     ]);
   });
 
+  it('prefers layout box block_index over global coordinate matching', () => {
+    const result: ParsingResult = {
+      layout_det_res: [
+        {
+          boxes: [
+            {
+              coordinate: [100, 100, 200, 200],
+              label: 'chart',
+              block_index: 1,
+            },
+          ],
+        },
+      ],
+      parsing_res_list: [
+        { label: 'text', content: 'Wrong match', bbox: [101, 101, 199, 199] },
+        { label: 'chart', content: 'Chart block', bbox: [500, 500, 600, 600] },
+      ],
+    };
+
+    expect(buildPageBlocks(result, true)).toEqual([
+      {
+        pageIndex: 0,
+        coordinate: [100, 100, 200, 200],
+        label: 'chart',
+        parsingItem: { label: 'chart', content: 'Chart block', bbox: [500, 500, 600, 600] },
+      },
+    ]);
+  });
+
   it('builds coordinates from polygon points and falls back when no parsing item matches', () => {
     const result: ParsingResult = {
       layout_det_res: [

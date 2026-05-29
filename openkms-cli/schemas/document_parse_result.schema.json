@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openkms.local/schemas/document_parse_result.schema.json",
+  "title": "DocumentParseResult",
+  "description": "Canonical result.json format for openKMS document parse pipelines (paddleocr-doc-parse, baidu-doc-parse, etc.). Stored at S3 {file_hash}/result.json and synced to the backend parsing_result field.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["file_hash", "parsing_res_list", "layout_det_res", "markdown", "page_count"],
+  "properties": {
+    "file_hash": {
+      "type": "string",
+      "description": "SHA-256 hex digest of the uploaded original file bytes.",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "parsing_res_list": {
+      "type": "array",
+      "description": "Flattened reading-order blocks across all pages.",
+      "items": { "$ref": "#/$defs/ParsingBlock" }
+    },
+    "layout_det_res": {
+      "type": "array",
+      "description": "Per-page layout detection and page preview references.",
+      "items": { "$ref": "#/$defs/LayoutPage" }
+    },
+    "markdown": {
+      "type": "string",
+      "description": "Full document markdown (also written to markdown.md)."
+    },
+    "page_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of pages in the parsed document."
+    },
+    "width": {
+      "description": "Reference page width in pixels (first page or document default).",
+      "type": ["number", "integer", "null"]
+    },
+    "height": {
+      "description": "Reference page height in pixels (first page or document default).",
+      "type": ["number", "integer", "null"]
+    },
+    "parser": {
+      "type": "string",
+      "description": "Optional pipeline identifier (e.g. baidu-cloud-paddle-vl)."
+    },
+    "baidu_file_id": {
+      "type": "string",
+      "description": "Vendor-specific file id when parsed via Baidu Cloud."
+    },
+    "baidu_file_name": {
+      "type": "string",
+      "description": "Vendor-reported source filename when parsed via Baidu Cloud."
+    }
+  },
+  "$defs": {
+    "BBox": {
+      "type": "array",
+      "description": "Axis-aligned box as [x1, y1, x2, y2] in page coordinates.",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "Coordinate": {
+      "type": "array",
+      "description": "Layout detector box as [x1, y1, x2, y2] (PaddleOCR-VL layout_det).",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "PolygonPoint": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "ParsingBlock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["label", "content"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Block type (e.g. doc_title, paragraph_title, text, table, figure, footer)."
+        },
+        "content": {
+          "type": "string",
+          "description": "Text or HTML/table markup for the block."
+        },
+        "bbox": {
+          "$ref": "#/$defs/BBox"
+        },
+        "image_path": {
+          "type": ["string", "null"],
+          "description": "Storage-relative path to a cropped block image, usually {file_hash}/block_N.png."
+        }
+      }
+    },
+    "LayoutBox": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "cls_id": { "type": "integer" },
+        "label": { "type": "string" },
+        "score": { "type": "number" },
+        "coordinate": { "$ref": "#/$defs/Coordinate" },
+        "bbox": { "oneOf": [{ "$ref": "#/$defs/BBox" }, { "type": "null" }] },
+        "content": { "type": ["string", "null"] },
+        "order": { "type": ["integer", "null"] },
+        "polygon_points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/PolygonPoint" }
+        },
+        "block_index": {
+          "type": "integer",
+          "description": "Index into parsing_res_list when annotated by the parser."
+        }
+      }
+    },
+    "LayoutPageImage": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "layout_id": { "type": "string" },
+        "path": {
+          "type": "string",
+          "description": "Storage-relative image path under {file_hash}/."
+        },
+        "position": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "LayoutPage": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "page_index": {
+          "type": ["integer", "null"],
+          "description": "Zero-based page index."
+        },
+        "boxes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LayoutBox" }
+        },
+        "input_img": {
+          "type": "string",
+          "description": "Storage-relative path to the full-page preview PNG, e.g. {file_hash}/layout_det_0_input_img_0.png."
+        },
+        "input_path": {
+          "type": ["string", "null"]
+        },
+        "text": {
+          "type": "string",
+          "description": "Plain text extracted for the page (Baidu pipeline)."
+        },
+        "width": { "type": ["integer", "number", "null"] },
+        "height": { "type": ["integer", "number", "null"] },
+        "images": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/LayoutPageImage" }
+        }
+      }
+    }
+  }
+}
