@@ -11,6 +11,13 @@
 set -e
 cd "$(dirname "$0")"
 
+export HF_ENDPOINT="https://hf-mirror.com"
+
+# Activate venv if present
+if [[ -d .venv ]]; then
+  source .venv/bin/activate
+fi
+
 # Ensure mlx-vlm is installed
 if ! python -c "import mlx_vlm.server" 2>/dev/null; then
   echo "Installing mlx-vlm..."
