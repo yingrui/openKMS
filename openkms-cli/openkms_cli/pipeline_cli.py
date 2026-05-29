@@ -201,12 +201,12 @@ def pipeline_run(
         "--region",
         help="AWS region (default: AWS_REGION)",
     ),
-    output_dir: Optional[Path] = typer.Option(
-        None,
+    output_dir: Path = typer.Option(
+        Path("output"),
         "--output-dir",
         "-o",
         path_type=Path,
-        help="Local directory for temp files before upload (default: OPENKMS_CLI_OUTPUT_DIR; empty env → cwd)",
+        help="Local directory for temp files before upload (default: ./output)",
     ),
     skip_upload: bool = typer.Option(
         False,
@@ -267,8 +267,6 @@ def pipeline_run(
         raise typer.Exit(1)
 
     cfg = get_cli_settings()
-    if output_dir is None:
-        output_dir = Path(cfg.pipeline_output_dir.strip())
     if bucket is None:
         bucket = cfg.aws_bucket_name
     if endpoint_url is None:

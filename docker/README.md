@@ -30,8 +30,6 @@ Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_
 
 **VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. Override with **`OPENKMS_VLM_URL`** via `--env-file` or edit `x-backend-env` in `docker-compose.yml`.
 
-**Worker volumes:** `openkms_worker_paddlex_cache` → PaddleOCR/PaddleX downloaded models (`PADDLE_PDX_CACHE_HOME`). `openkms_worker_work` → openkms-cli pipeline temp (`OPENKMS_CLI_OUTPUT_DIR`, includes `_pipeline_work` and `parsed/`). Survive container recreate; `docker volume rm` to clear.
-
 **QA agent:** **http://localhost:8103** on the host; default LLM from Console → Models. Env from the same compose **`environment`** pattern as backend/worker.
 
 For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
