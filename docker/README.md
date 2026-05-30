@@ -6,21 +6,31 @@ Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), **qa-agent** (K
 
 **Worker** is `platform: linux/amd64` so Paddle wheels install on Apple Silicon (QEMU). Needs **`libgl1`** in the image for OpenCV/PaddleX.
 
-From **repo root**:
+From **`docker/`** (recommended — no `--env-file` flag):
 
 ```bash
+cp .env.example .env   # optional — edit VLM URL, Baidu keys, secrets, mirrors
+docker compose up -d --build
+```
+
+Compose loads **`.env`** in this directory automatically for `${…}` substitution in the YAML.
+
+From **repo root** (same effect; compose file lives in `docker/`):
+
+```bash
+cp docker/.env.example docker/.env   # optional
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-Or from **`docker/`**: `docker compose -f docker-compose.yml up -d --build`.
-
-Optional overrides (Langfuse, custom passwords, OIDC if not using local auth): copy `backend/.env.example` to `backend/.env`, edit, then:
+You do **not** need `--env-file` if the file is **`docker/.env`** (Compose reads it from the compose file’s directory). To be explicit, or if the file lives elsewhere:
 
 ```bash
-docker compose -f docker/docker-compose.yml --env-file backend/.env up -d --build
+docker compose -f docker/docker-compose.yml --env-file docker/.env up -d --build
 ```
 
-That file is used only for `${OPENKMS_*}` substitution when Compose parses the YAML — it is **not** mounted into containers.
+Values substitute `${…}` in the YAML only — the file is **not** mounted into containers. Shell exports with the same name override `.env`.
+
+For OIDC or extra backend-only vars, see **`backend/.env.example`** (you may merge those into `docker/.env` or pass `--env-file backend/.env` in addition).
 
 - **UI:** http://localhost:8082 — nginx → `/api`, `/internal-api`, `/login`, sessions, MinIO bucket path. Backend is **not** on the host; use this origin for API calls.
 - **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
@@ -28,13 +38,15 @@ That file is used only for `${OPENKMS_*}` substitution when Compose parses the Y
 
 Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_URL=http://host.docker.internal:8101`, and CLI basic credentials. Frontend build uses **`VITE_AUTH_MODE=local`** (match **`OPENKMS_AUTH_MODE=local`** in compose defaults).
 
-**VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**). Document parse fails without it. Override with **`OPENKMS_VLM_URL`** via `--env-file` or edit `x-backend-env` in `docker-compose.yml`.
+**VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**) for the PaddleOCR pipeline. Document parse fails without it. Override **`OPENKMS_VLM_URL`** in **`docker/.env`**.
+
+**Baidu Cloud parse:** For pipeline **`baidu-doc-parse`**, set **`OPENKMS_BAIDU_CLOUD_*`** in **`docker/.env`** (see **`docker/.env.example`**); no VLM required.
 
 **QA agent:** **http://localhost:8103** on the host; default LLM from Console → Models. Env from the same compose **`environment`** pattern as backend/worker.
 
 For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
 
-Local auth + metadata extraction: defaults **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`); override via `--env-file backend/.env` if needed.
+Local auth + metadata extraction: defaults **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`); override in **`docker/.env`** if needed.
 
 ### Neo4j (Console data source)
 
@@ -72,7 +84,7 @@ docker compose -f docker/docker-compose.yml down
 
 ## Faster builds (China / slow networks)
 
-**`docker-compose.yml`** defaults to common **mainland China** mirrors. Override in **`docker/.env`** or disable with empty values (e.g. `UV_INDEX_URL=`).
+**`docker-compose.yml`** defaults to common **mainland China** mirrors. Override in **`docker/.env`** (copy from **`docker/.env.example`**) or disable with empty values (e.g. `UV_INDEX_URL=`).
 
 | Build-arg | Default in compose | Used in |
 |-----------|-------------------|---------|
@@ -81,7 +93,7 @@ docker compose -f docker/docker-compose.yml down
 | `UV_EXTRA_INDEX_URL` | `https://pypi.tuna.tsinghua.edu.cn/simple` | Second China mirror for worker `openkms-cli` installs (set to `https://pypi.org/simple` only if a wheel is missing) |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | **npmmirror** (原淘宝 npm 镜像) — `npm ci` / build |
 
-To override defaults, create **`docker/.env`** (optional) with e.g. `UV_INDEX_URL=` for upstream PyPI, then build from **`docker/`**:
+To override defaults, copy **`docker/.env.example`** to **`docker/.env`**, edit, then build from **`docker/`**:
 
 ```bash
 cd docker
@@ -112,6 +124,7 @@ docker compose -f docker/docker-compose.yml build \
 
 | File | Role |
 |------|------|
+| `.env.example` | Compose `${…}` overrides template (copy to `.env`) |
 | `Dockerfile` | `backend` + `worker` targets |
 | `Dockerfile.frontend` | Vite build + nginx |
 | `apt-set-mirror.sh` | Rewrites Debian apt sources when `APT_MIRROR` is set |

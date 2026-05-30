@@ -7,8 +7,8 @@
 # Plain `docker compose up` without --build reuses cached images and can miss new migrations.
 #
 # App services use compose ``environment`` only (no env_file, no .env in images). Defaults: local auth + HTTP Basic
-# for CLI/qa-agent. Override via ``docker compose --env-file backend/.env`` (${OPENKMS_*} substitution only).
-# OIDC is not listed here; add OPENKMS_OIDC_* and OPENKMS_AUTH_MODE=oidc in backend/.env if needed.
+# for CLI/qa-agent. Override via ``docker/.env`` (copy from docker/.env.example) — ${OPENKMS_*} substitution only.
+# OIDC is not listed here; see docker/.env.example and backend/.env.example if switching auth mode.
 #
 # UI (and /api, /internal-api via nginx): http://localhost:8082 — backend is not published on the host.
 # QA agent on host: http://localhost:8103 — set each KB Agent URL to http://qa-agent:8103 (backend resolves this name).
@@ -16,7 +16,7 @@
 # Inside Docker / Console data source: host neo4j, port 7687 (container port, not the host map).
 # Document parsing in the worker calls VLM on the host: set OPENKMS_VLM_URL or use defaults below.
 #
-# Build mirrors (China mainland defaults). Override or disable in docker/.env, e.g. APT_MIRROR= for upstream Debian.
+# Build mirrors (China mainland defaults). Override in docker/.env (see docker/.env.example), e.g. APT_MIRROR= for upstream Debian.
 # Python: Aliyun PyPI · npm: npmmirror (原淘宝镜像).
 
 x-build-mirror-args: &build_mirror_args
@@ -49,6 +49,11 @@ x-backend-env: &backend_env
   OPENKMS_QA_AGENT_BASIC_PASSWORD: ${OPENKMS_QA_AGENT_BASIC_PASSWORD:-change-me}
   OPENKMS_VLM_URL: ${OPENKMS_VLM_URL:-http://host.docker.internal:8101}
   OPENKMS_PIPELINE_TIMEOUT_SECONDS: ${OPENKMS_PIPELINE_TIMEOUT_SECONDS:-7200}
+  OPENKMS_BAIDU_CLOUD_API_KEY: ${OPENKMS_BAIDU_CLOUD_API_KEY:-}
+  OPENKMS_BAIDU_CLOUD_SECRET_KEY: ${OPENKMS_BAIDU_CLOUD_SECRET_KEY:-}
+  BAIDU_TOKEN_URL: ${BAIDU_TOKEN_URL:-https://aip.baidubce.com/oauth/2.0/token}
+  BAIDU_TASK_URL: ${BAIDU_TASK_URL:-https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task}
+  BAIDU_QUERY_URL: ${BAIDU_QUERY_URL:-https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task/query}
   OPENKMS_INTERNAL_SERVICE_CLIENT_IDS: ${OPENKMS_INTERNAL_SERVICE_CLIENT_IDS:-openkms-cli,qa-agent}
   LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
   LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
@@ -56,7 +61,7 @@ x-backend-env: &backend_env
   LANGFUSE_TRACE_STREAMING: ${LANGFUSE_TRACE_STREAMING:-true}
   LANGFUSE_HEALTHCHECK: ${LANGFUSE_HEALTHCHECK:-true}
 
-# qa-agent: local service auth (OIDC: add vars via --env-file backend/.env).
+# qa-agent: local service auth (OIDC: see docker/.env.example and backend/.env.example).
 x-qa-agent-env: &qa_agent_env
   OPENKMS_BACKEND_URL: http://backend:8102
   OPENKMS_AUTH_MODE: ${OPENKMS_AUTH_MODE:-local}
