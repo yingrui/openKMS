@@ -3,9 +3,10 @@ import asyncio
 from typing import Any
 
 from openai import AsyncOpenAI
-from pydantic_ai import Agent, StructuredDict
+from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.openai import OpenAIProvider
 
 DEFAULT_SCHEMA = [
@@ -18,6 +19,11 @@ DEFAULT_SCHEMA = [
 ]
 
 TRUNCATE_CHARS = 8000
+
+_LLM_EXTRACTION_PROFILE = OpenAIModelProfile(
+    supports_json_schema_output=False,
+    supports_json_object_output=True,
+)
 
 
 def _array_schema_to_json_schema(schema: list[dict[str, Any]]) -> dict[str, Any]:
@@ -109,9 +115,10 @@ def extract_metadata_sync(
     openai_model = OpenAIChatModel(
         model_name,
         provider=provider,
+        profile=_LLM_EXTRACTION_PROFILE,
     )
 
-    output_type = StructuredDict(
+    structured = StructuredDict(
         json_schema,
         name="DocumentMetadata",
         description="Extracted document metadata",
@@ -119,7 +126,7 @@ def extract_metadata_sync(
 
     agent = Agent(
         openai_model,
-        output_type=output_type,
+        output_type=PromptedOutput(structured),
         system_prompt="Extract metadata from the document content. Use null for unknown values.",
     )
 

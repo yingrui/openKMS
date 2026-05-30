@@ -3,9 +3,10 @@ import logging
 from typing import Any
 
 from openai import AsyncOpenAI
-from pydantic_ai import Agent, StructuredDict
+from pydantic_ai import Agent, PromptedOutput, StructuredDict
 from pydantic_ai.exceptions import ModelAPIError
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.openai import OpenAIProvider
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +27,12 @@ DEFAULT_SCHEMA = [
 ]
 
 TRUNCATE_CHARS = 8000
+
+# DeepSeek and some OpenAI-compatible APIs reject response_format json_schema; use json_object + schema in prompt.
+_LLM_EXTRACTION_PROFILE = OpenAIModelProfile(
+    supports_json_schema_output=False,
+    supports_json_object_output=True,
+)
 
 
 async def resolve_extraction_schema_for_llm(
@@ -237,9 +244,10 @@ async def extract_metadata(
     openai_model = OpenAIChatModel(
         model.model_name or "gpt-4",
         provider=provider,
+        profile=_LLM_EXTRACTION_PROFILE,
     )
 
-    output_type = StructuredDict(
+    structured = StructuredDict(
         json_schema,
         name="DocumentMetadata",
         description="Extracted document metadata",
@@ -247,7 +255,7 @@ async def extract_metadata(
 
     agent = Agent(
         openai_model,
-        output_type=output_type,
+        output_type=PromptedOutput(structured),
         system_prompt="Extract metadata from the document content. Use null for unknown values.",
     )
 
