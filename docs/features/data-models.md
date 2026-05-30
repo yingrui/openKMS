@@ -6,7 +6,8 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Pipeline
 
-- `id`, `name`, `description`, `command` (template with `{variable}` placeholders), `default_args` (JSONB), `model_id` (FK → api_models, nullable), `created_at`, `updated_at`
+- `id`, `name`, `description`, `command` (template with `{variable}` placeholders), `default_args` (JSONB), `model_id` (FK → api_models, nullable), `is_active` (default true; inactive pipelines cannot start new jobs), `created_at`, `updated_at`
+- Seeded rows: **`pipeline_paddleocr`** (PaddleOCR Document Parse), **`pipeline_baidu_doc_parse`** (Baidu Cloud Document Parse)
 - Defines how to process documents; command template resolved at runtime with variables like `{input}`, `{s3_prefix}`, `{vlm_url}`, `{model_name}`, `{bucket}`, etc.
 - When linked to a model, `{vlm_url}` and `{model_name}` are resolved from the model's `base_url` and `model_name`
 

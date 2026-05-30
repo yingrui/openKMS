@@ -294,7 +294,7 @@ export function Jobs() {
                 {t('jobs.pipeline')}
                 <select value={pipelineIdInput} onChange={(e) => setPipelineIdInput(e.target.value)}>
                   <option value="">{t('jobs.pipelineDefault')}</option>
-                  {pipelines.map((p) => (
+                  {pipelines.filter((p) => p.is_active).map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}
                     </option>

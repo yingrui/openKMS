@@ -62,6 +62,7 @@ async def create_pipeline(body: PipelineCreate, db: AsyncSession = Depends(get_d
         command=body.command,
         default_args=body.default_args,
         model_id=body.model_id,
+        is_active=body.is_active,
     )
     db.add(pipeline)
     await db.commit()

@@ -165,6 +165,7 @@
     "descPlaceholder": "Optional description",
     "pipelineHeading": "Document processing pipeline",
     "pipelineLabel": "Pipeline",
+    "pipelineInactiveSuffix": "disabled",
     "loadingPipelines": "Loading pipelines…",
     "autoProcessHeading": "Auto-process",
     "autoProcessLabel": "Automatically process documents when uploaded to this channel",

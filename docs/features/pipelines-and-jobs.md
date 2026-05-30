@@ -11,6 +11,8 @@ Pipelines define how a document is processed (command template + linked model). 
 | Template variables API | ✅ | `GET /api/pipelines/template-variables` returns available placeholders with descriptions |
 | Channel-pipeline link | ✅ | Each channel can have a pipeline_id and auto_process flag |
 | Default pipeline | ✅ | "PaddleOCR Document Parse" seeded in migration with command template |
+| Baidu Cloud pipeline | ✅ | "Baidu Cloud Document Parse" seeded (`pipeline_baidu_doc_parse`; `baidu-doc-parse`) |
+| Pipeline active flag | ✅ | `is_active` on pipelines; Pipelines UI toggle; disabled pipelines rejected for new jobs; channel/job pickers show active only |
 
 ## Jobs (procrastinate)
 

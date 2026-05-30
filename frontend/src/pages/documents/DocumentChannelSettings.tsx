@@ -323,9 +323,10 @@ export function DocumentChannelSettings() {
                 onChange={(e) => setPipelineId(e.target.value)}
               >
                 <option value="">{t('common.none')}</option>
-                {pipelines.map((p) => (
+                {pipelines.filter((p) => p.is_active || p.id === pipelineId).map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
+                    {!p.is_active ? ` (${t('settings.pipelineInactiveSuffix')})` : ''}
                   </option>
                 ))}
               </select>

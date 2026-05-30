@@ -165,6 +165,7 @@
     "descPlaceholder": "可选描述",
     "pipelineHeading": "文档处理流水线",
     "pipelineLabel": "流水线",
+    "pipelineInactiveSuffix": "已停用",
     "loadingPipelines": "正在加载流水线…",
     "autoProcessHeading": "自动处理",
     "autoProcessLabel": "上传到此频道时自动处理文档",

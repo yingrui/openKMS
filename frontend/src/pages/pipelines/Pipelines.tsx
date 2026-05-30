@@ -34,6 +34,8 @@ export function Pipelines() {
   const [showVarHelp, setShowVarHelp] = useState(false);
   const [allModels, setAllModels] = useState<ApiModelResponse[]>([]);
   const [formModelId, setFormModelId] = useState('');
+  const [formIsActive, setFormIsActive] = useState(true);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,6 +70,7 @@ export function Pipelines() {
     );
     setFormArgs('');
     setFormModelId('');
+    setFormIsActive(true);
     setShowCreate(true);
   };
 
@@ -78,6 +81,7 @@ export function Pipelines() {
     setFormCommand(p.command);
     setFormArgs(p.default_args ? JSON.stringify(p.default_args, null, 2) : '');
     setFormModelId(p.model_id || '');
+    setFormIsActive(p.is_active);
     setShowCreate(true);
   };
 
@@ -105,6 +109,7 @@ export function Pipelines() {
           command: formCommand,
           default_args: parsedArgs ?? null,
           model_id: formModelId || null,
+          is_active: formIsActive,
         });
       } else {
         await createPipeline({
@@ -113,6 +118,7 @@ export function Pipelines() {
           command: formCommand,
           default_args: parsedArgs ?? null,
           model_id: formModelId || null,
+          is_active: formIsActive,
         });
       }
       setShowCreate(false);
@@ -134,6 +140,19 @@ export function Pipelines() {
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('shared.deleteFailed'));
+    }
+  };
+
+  const handleToggleActive = async (p: PipelineResponse) => {
+    setTogglingId(p.id);
+    try {
+      await updatePipeline(p.id, { is_active: !p.is_active });
+      toast.success(p.is_active ? t('pipelines.deactivatedToast') : t('pipelines.activatedToast'));
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('shared.operationFailed'));
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -185,19 +204,20 @@ export function Pipelines() {
                   <th>{t('pipelines.colModel')}</th>
                   <th>{t('pipelines.colCommand')}</th>
                   <th>{t('pipelines.colUpdated')}</th>
+                  <th className="pipelines-table-active">{t('pipelines.colActive')}</th>
                   <th className="pipelines-table-actions">{t('shared.actions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="table-empty">
+                    <td colSpan={7} className="table-empty">
                       {pipelines.length === 0 ? t('pipelines.empty') : t('pipelines.noMatches')}
                     </td>
                   </tr>
                 ) : (
                   filtered.map((p) => (
-                    <tr key={p.id}>
+                    <tr key={p.id} className={p.is_active ? undefined : 'pipelines-row-inactive'}>
                       <td>
                         <div className="pipelines-table-name">
                           <GitBranch size={18} strokeWidth={1.5} />
@@ -210,6 +230,21 @@ export function Pipelines() {
                         <code>{p.command}</code>
                       </td>
                       <td>{new Date(p.updated_at).toLocaleDateString()}</td>
+                      <td className="pipelines-table-active">
+                        <label
+                          className="pipelines-switch"
+                          title={p.is_active ? t('pipelines.activeOn') : t('pipelines.activeOff')}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={p.is_active}
+                            disabled={togglingId === p.id}
+                            aria-label={t('pipelines.colActive')}
+                            onChange={() => void handleToggleActive(p)}
+                          />
+                          <span className="pipelines-switch-slider" />
+                        </label>
+                      </td>
                       <td className="pipelines-table-actions">
                         <div className="pipelines-table-btns">
                           <button type="button" title={t('shared.edit')} onClick={() => openEdit(p)}>
@@ -278,6 +313,17 @@ export function Pipelines() {
                   ))}
                 </select>
               </label>
+              <div className="pipelines-modal-active">
+                <span>{t('pipelines.colActive')}</span>
+                <label className="pipelines-switch">
+                  <input
+                    type="checkbox"
+                    checked={formIsActive}
+                    onChange={(e) => setFormIsActive(e.target.checked)}
+                  />
+                  <span className="pipelines-switch-slider" />
+                </label>
+              </div>
               <label>
                 {t('pipelines.defaultArgsJson')}
                 <textarea rows={4} value={formArgs} onChange={(e) => setFormArgs(e.target.value)} />

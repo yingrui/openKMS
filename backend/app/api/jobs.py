@@ -202,6 +202,8 @@ async def create_job(body: JobCreate, db: AsyncSession = Depends(get_db)):
         pipeline = await db.get(Pipeline, pipeline_id)
         if not pipeline:
             raise HTTPException(status_code=404, detail="Pipeline not found")
+        if not pipeline.is_active:
+            raise HTTPException(status_code=400, detail="Pipeline is disabled")
 
         from app.jobs.tasks import run_pipeline
 

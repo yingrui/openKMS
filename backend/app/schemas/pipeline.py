@@ -11,6 +11,12 @@ DEFAULT_PIPELINE_COMMAND = (
     "--api-url {api_url}{extraction_args}"
 )
 
+DEFAULT_BAIDU_PIPELINE_COMMAND = (
+    "openkms-cli pipeline run --pipeline-name baidu-doc-parse "
+    "--input {input} --s3-prefix {s3_prefix} --document-id {document_id} "
+    "--api-url {api_url}{extraction_args}"
+)
+
 
 class PipelineCreate(BaseModel):
     name: str
@@ -18,6 +24,7 @@ class PipelineCreate(BaseModel):
     command: str = DEFAULT_PIPELINE_COMMAND
     default_args: dict[str, Any] | None = None
     model_id: str | None = None
+    is_active: bool = True
 
 
 class PipelineUpdate(BaseModel):
@@ -26,6 +33,7 @@ class PipelineUpdate(BaseModel):
     command: str | None = Field(default=None, max_length=4096)
     default_args: dict[str, Any] | None = None
     model_id: str | None = None
+    is_active: bool | None = None
 
 
 class PipelineResponse(BaseModel):
@@ -37,6 +45,7 @@ class PipelineResponse(BaseModel):
     model_id: str | None = None
     model_name: str | None = None
     model_base_url: str | None = None
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
 
