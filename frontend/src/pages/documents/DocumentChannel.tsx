@@ -103,6 +103,7 @@ export function DocumentChannel() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
   const channelOptions = flattenChannels(channels);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
@@ -425,6 +426,20 @@ export function DocumentChannel() {
           <Link to="/documents/channels" className="btn btn-primary">
             <Folder size={18} />
             <span>{t('channel.createChannel')}</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!channelId || !channelIds.has(channelId)) {
+    return (
+      <div className="documents">
+        <div className="page-header">
+          <h1>{t('channel.notFoundTitle')}</h1>
+          <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
+          <Link to="/documents" className="btn btn-secondary openkms-link-spaced">
+            {t('channel.backToDocuments')}
           </Link>
         </div>
       </div>

@@ -23,8 +23,11 @@ class AccessGroup(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    user_links: Mapped[list["AccessGroupUser"]] = relationship(
-        "AccessGroupUser", back_populates="group", cascade="all, delete-orphan"
+    user_links: Mapped[list["AccessGroupMember"]] = relationship(
+        "AccessGroupMember",
+        back_populates="group",
+        cascade="all, delete-orphan",
+        foreign_keys="AccessGroupMember.group_id",
     )
     channel_links: Mapped[list["AccessGroupChannel"]] = relationship(
         "AccessGroupChannel", back_populates="group", cascade="all, delete-orphan"
@@ -55,18 +58,20 @@ class AccessGroup(Base):
     )
 
 
-class AccessGroupUser(Base):
-    __tablename__ = "access_group_users"
+class AccessGroupMember(Base):
+    """Defined in resource_acl.py; re-exported here for relationship resolution."""
 
-    user_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
-    )
+    __tablename__ = "access_group_members"
+
+    subject: Mapped[str] = mapped_column(String(320), primary_key=True)
     group_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("access_groups.id", ondelete="CASCADE"), primary_key=True
     )
 
     group: Mapped["AccessGroup"] = relationship("AccessGroup", back_populates="user_links")
 
+
+# Legacy junction tables (scopes migrated to resource_acl_entries; tables may still exist pre-migration cleanup).
 
 class AccessGroupChannel(Base):
     __tablename__ = "access_group_channels"

@@ -133,7 +133,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/console/data-security/data-resources",
             "/console/data-security/data-resources/*",
         ],
-        ["/api/admin/groups/*", "/api/admin/data-resources", "/api/admin/data-resources/*"],
+        ["/api/admin/groups/*", "/api/admin/data-resources", "/api/admin/data-resources/*", "/api/resource-acl/*"],
     ),
     PERM_CONSOLE_PERMISSIONS: (
         ["/console", "/console/permission-management"],

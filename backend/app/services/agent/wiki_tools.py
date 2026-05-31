@@ -85,7 +85,7 @@ async def _wiki_space_readable(db: AsyncSession, space_id: str, jwt_payload: dic
         return False
     sub = jwt_payload.get("sub")
     if isinstance(sub, str) and scope_applies(jwt_payload, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, jwt_payload)
         if allowed is not None and space_id not in allowed:
             return False
     return True

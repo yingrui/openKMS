@@ -1,4 +1,4 @@
-"""Console: access groups and data-security resource scopes."""
+"""Console: access groups and resource sharing."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -9,20 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_permission
 from app.config import settings
 from app.database import get_db
-from app.models.access_group import (
-    AccessGroup,
-    AccessGroupArticleChannel,
-    AccessGroupChannel,
-    AccessGroupDataset,
-    AccessGroupEvaluation,
-    AccessGroupKnowledgeBase,
-    AccessGroupLinkType,
-    AccessGroupObjectType,
-    AccessGroupUser,
-    AccessGroupWikiSpace,
-)
-from app.models.data_resource import AccessGroupDataResource, DataResource
-from app.models.article_channel import ArticleChannel
+from app.models.access_group import AccessGroup, AccessGroupMember
 from app.models.user import User
 from app.services.permission_catalog import PERM_CONSOLE_GROUPS
 
@@ -46,76 +33,17 @@ class AccessGroupUpdate(BaseModel):
 
 
 class GroupMembersBody(BaseModel):
-    user_ids: list[str] = Field(default_factory=list)
+    subjects: list[str] = Field(default_factory=list, description="User ids (local) or OIDC sub values")
 
 
-class GroupScopesOut(BaseModel):
-    channel_ids: list[str]
-    article_channel_ids: list[str]
-    knowledge_base_ids: list[str]
-    wiki_space_ids: list[str]
-    evaluation_ids: list[str]
-    dataset_ids: list[str]
-    object_type_ids: list[str]
-    link_type_ids: list[str]
-    data_resource_ids: list[str]
-
-
-class GroupScopesPut(BaseModel):
-    channel_ids: list[str] | None = None
-    article_channel_ids: list[str] | None = None
-    knowledge_base_ids: list[str] | None = None
-    wiki_space_ids: list[str] | None = None
-    evaluation_ids: list[str] | None = None
-    dataset_ids: list[str] | None = None
-    object_type_ids: list[str] | None = None
-    link_type_ids: list[str] | None = None
-    data_resource_ids: list[str] | None = None
-
-
-class LocalUserBrief(BaseModel):
-    id: str
-    email: str
-    username: str
+class MemberBrief(BaseModel):
+    subject: str
+    email: str | None = None
+    username: str | None = None
 
 
 class GroupMembersResponse(BaseModel):
-    users: list[LocalUserBrief]
-
-
-def _group_membership_local_only():
-    """User ↔ access group links are only maintained in local auth; OIDC uses IdP directory (future sync)."""
-    if settings.auth_mode != "local":
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Access group membership can only be edited in local auth mode. "
-                "In OIDC, define groups and resource scopes in this console; map users to groups via your identity provider."
-            ),
-        )
-
-
-async def _scopes_payload(db: AsyncSession, group_id: str) -> GroupScopesOut:
-    async def col(model, fk: str) -> list[str]:
-        r = await db.execute(select(getattr(model, fk)).where(model.group_id == group_id))
-        return sorted({str(row[0]) for row in r.all()})
-
-    dr = await db.execute(
-        select(AccessGroupDataResource.data_resource_id).where(AccessGroupDataResource.group_id == group_id)
-    )
-    data_resource_ids = sorted({str(row[0]) for row in dr.all()})
-
-    return GroupScopesOut(
-        channel_ids=await col(AccessGroupChannel, "channel_id"),
-        article_channel_ids=await col(AccessGroupArticleChannel, "article_channel_id"),
-        knowledge_base_ids=await col(AccessGroupKnowledgeBase, "knowledge_base_id"),
-        wiki_space_ids=await col(AccessGroupWikiSpace, "wiki_space_id"),
-        evaluation_ids=await col(AccessGroupEvaluation, "evaluation_id"),
-        dataset_ids=await col(AccessGroupDataset, "dataset_id"),
-        object_type_ids=await col(AccessGroupObjectType, "object_type_id"),
-        link_type_ids=await col(AccessGroupLinkType, "link_type_id"),
-        data_resource_ids=data_resource_ids,
-    )
+    members: list[MemberBrief]
 
 
 @router.get("", response_model=list[AccessGroupOut])
@@ -187,6 +115,29 @@ async def delete_group(
     await db.execute(delete(AccessGroup).where(AccessGroup.id == group_id))
 
 
+async def _members_payload(db: AsyncSession, group_id: str) -> GroupMembersResponse:
+    result = await db.execute(
+        select(AccessGroupMember.subject).where(AccessGroupMember.group_id == group_id)
+    )
+    subjects = [str(row[0]) for row in result.all()]
+    if not subjects:
+        return GroupMembersResponse(members=[])
+    if settings.auth_mode == "local":
+        ur = await db.execute(select(User).where(User.id.in_(subjects)))
+        users = {u.id: u for u in ur.scalars().all()}
+        return GroupMembersResponse(
+            members=[
+                MemberBrief(
+                    subject=s,
+                    email=users[s].email if s in users else None,
+                    username=users[s].username if s in users else None,
+                )
+                for s in subjects
+            ]
+        )
+    return GroupMembersResponse(members=[MemberBrief(subject=s) for s in subjects])
+
+
 @router.get("/{group_id}/members", response_model=GroupMembersResponse)
 async def get_group_members(
     group_id: str,
@@ -195,17 +146,7 @@ async def get_group_members(
 ):
     if not await db.get(AccessGroup, group_id):
         raise HTTPException(status_code=404, detail="Group not found")
-    if settings.auth_mode != "local":
-        return GroupMembersResponse(users=[])
-    result = await db.execute(select(AccessGroupUser.user_id).where(AccessGroupUser.group_id == group_id))
-    uids = [str(row[0]) for row in result.all()]
-    if not uids:
-        return GroupMembersResponse(users=[])
-    ur = await db.execute(select(User).where(User.id.in_(uids)))
-    users = list(ur.scalars().all())
-    return GroupMembersResponse(
-        users=[LocalUserBrief(id=str(u.id), email=u.email, username=u.username) for u in users]
-    )
+    return await _members_payload(db, group_id)
 
 
 @router.put("/{group_id}/members", response_model=GroupMembersResponse)
@@ -215,25 +156,33 @@ async def put_group_members(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission(PERM_CONSOLE_GROUPS)),
 ):
-    _group_membership_local_only()
     if not await db.get(AccessGroup, group_id):
         raise HTTPException(status_code=404, detail="Group not found")
-    for uid in body.user_ids:
-        if not await db.get(User, uid):
-            raise HTTPException(status_code=400, detail=f"User not found: {uid}")
-    await db.execute(delete(AccessGroupUser).where(AccessGroupUser.group_id == group_id))
-    for uid in body.user_ids:
-        db.add(AccessGroupUser(user_id=uid, group_id=group_id))
+    subjects = [s.strip() for s in body.subjects if s.strip()]
+    if settings.auth_mode == "local":
+        for sub in subjects:
+            if not await db.get(User, sub):
+                raise HTTPException(status_code=400, detail=f"User not found: {sub}")
+    await db.execute(delete(AccessGroupMember).where(AccessGroupMember.group_id == group_id))
+    for sub in subjects:
+        db.add(AccessGroupMember(subject=sub, group_id=group_id))
     await db.flush()
-    result = await db.execute(select(AccessGroupUser.user_id).where(AccessGroupUser.group_id == group_id))
-    uids = [str(row[0]) for row in result.all()]
-    if not uids:
-        return GroupMembersResponse(users=[])
-    ur = await db.execute(select(User).where(User.id.in_(uids)))
-    users = list(ur.scalars().all())
-    return GroupMembersResponse(
-        users=[LocalUserBrief(id=str(u.id), email=u.email, username=u.username) for u in users]
-    )
+    return await _members_payload(db, group_id)
+
+
+# Legacy scope endpoints — deprecated in favor of per-resource ACL sharing
+class GroupScopesOut(BaseModel):
+    channel_ids: list[str] = Field(default_factory=list)
+    article_channel_ids: list[str] = Field(default_factory=list)
+    knowledge_base_ids: list[str] = Field(default_factory=list)
+    wiki_space_ids: list[str] = Field(default_factory=list)
+    evaluation_ids: list[str] = Field(default_factory=list)
+    dataset_ids: list[str] = Field(default_factory=list)
+    object_type_ids: list[str] = Field(default_factory=list)
+    link_type_ids: list[str] = Field(default_factory=list)
+    data_resource_ids: list[str] = Field(default_factory=list)
+    deprecated: bool = True
+    message: str = "Use PUT /api/resource-acl/{resource_type}/{resource_id} to manage sharing per resource."
 
 
 @router.get("/{group_id}/scopes", response_model=GroupScopesOut)
@@ -244,46 +193,18 @@ async def get_group_scopes(
 ):
     if not await db.get(AccessGroup, group_id):
         raise HTTPException(status_code=404, detail="Group not found")
-    return await _scopes_payload(db, group_id)
+    return GroupScopesOut()
 
 
 @router.put("/{group_id}/scopes", response_model=GroupScopesOut)
 async def put_group_scopes(
     group_id: str,
-    body: GroupScopesPut,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission(PERM_CONSOLE_GROUPS)),
 ):
     if not await db.get(AccessGroup, group_id):
         raise HTTPException(status_code=404, detail="Group not found")
-
-    async def replace(model, ids: list[str] | None, fk_attr: str) -> None:
-        if ids is None:
-            return
-        await db.execute(delete(model).where(model.group_id == group_id))
-        for x in ids:
-            db.add(model(group_id=group_id, **{fk_attr: x}))
-
-    await replace(AccessGroupChannel, body.channel_ids, "channel_id")
-    if body.article_channel_ids is not None:
-        for cid in body.article_channel_ids:
-            if not await db.get(ArticleChannel, cid):
-                raise HTTPException(status_code=400, detail=f"Article channel not found: {cid}")
-    await replace(AccessGroupArticleChannel, body.article_channel_ids, "article_channel_id")
-    await replace(AccessGroupKnowledgeBase, body.knowledge_base_ids, "knowledge_base_id")
-    await replace(AccessGroupWikiSpace, body.wiki_space_ids, "wiki_space_id")
-    await replace(AccessGroupEvaluation, body.evaluation_ids, "evaluation_id")
-    await replace(AccessGroupDataset, body.dataset_ids, "dataset_id")
-    await replace(AccessGroupObjectType, body.object_type_ids, "object_type_id")
-    await replace(AccessGroupLinkType, body.link_type_ids, "link_type_id")
-
-    if body.data_resource_ids is not None:
-        for rid in body.data_resource_ids:
-            if not await db.get(DataResource, rid):
-                raise HTTPException(status_code=400, detail=f"Data resource not found: {rid}")
-        await db.execute(delete(AccessGroupDataResource).where(AccessGroupDataResource.group_id == group_id))
-        for rid in body.data_resource_ids:
-            db.add(AccessGroupDataResource(group_id=group_id, data_resource_id=rid))
-
-    await db.flush()
-    return await _scopes_payload(db, group_id)
+    raise HTTPException(
+        status_code=410,
+        detail="Group scope lists are deprecated. Share each resource via /api/resource-acl instead.",
+    )

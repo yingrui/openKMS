@@ -260,7 +260,9 @@ export async function deleteAccessGroup(id: string): Promise<void> {
 
 export type LocalUserBrief = { id: string; email: string; username: string };
 
-export async function fetchGroupMembers(groupId: string): Promise<{ users: LocalUserBrief[] }> {
+export type MemberBrief = { subject: string; email?: string | null; username?: string | null };
+
+export async function fetchGroupMembers(groupId: string): Promise<{ members: MemberBrief[] }> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
     headers: { ...headers },
@@ -270,16 +272,16 @@ export async function fetchGroupMembers(groupId: string): Promise<{ users: Local
   return res.json();
 }
 
-export async function putGroupMembers(groupId: string, userIds: string[]) {
+export async function putGroupMembers(groupId: string, subjects: string[]) {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
     method: 'PUT',
     headers: { ...headers, 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ user_ids: userIds }),
+    body: JSON.stringify({ subjects }),
   });
   if (!res.ok) throw new Error(await parseError(res));
-  return res.json() as Promise<{ users: LocalUserBrief[] }>;
+  return res.json() as Promise<{ members: MemberBrief[] }>;
 }
 
 export type GroupScopesOut = {

@@ -21,7 +21,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Document Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, type: "object_type"|"list[object_type]"}`), `object_type_extraction_max_instances` (int, nullable, default 100), `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, type: "object_type"|"list[object_type]"}`), `object_type_extraction_max_instances` (int, nullable, default 100), `created_by` (nullable identity subject of creator; set on create), `created_at`
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
 - Metadata extraction: pydantic-ai Agent + PromptedOutput(StructuredDict) with `response_format: json_object`; `extraction_model_id` designates LLM; `extraction_schema` stored as PostgreSQL `json` (not jsonb) to preserve key order; JSON Schema dict (type, properties, required)
@@ -222,35 +222,26 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id`, `key` (unique; e.g. `articles:write`, `console:groups`), `label`, `description`, `frontend_route_patterns` (JSONB array of route globs for the SPA route gate / console sidebar), `backend_api_patterns` (JSONB array of `METHOD path-glob` rules used by strict middleware enforcement), `sort_order`, `created_at`
 - Editable from `/console/permission-management`. The built-in `all` row is rejected for edit/delete.
 
-## Data security (access groups, data resources)
+## Data security (access groups, resource ACL)
 
 ### AccessGroup
 
 - `id` (UUID), `name` (unique), `description`, `created_at`
-- A bag of users plus per-resource scope tables. Membership is editable in local mode only; OIDC clusters manage membership at the IdP.
+- Named groups referenced by resource ACL grants (`grantee_type=group`).
 
-### AccessGroupUser
+### AccessGroupMember
 
-- `user_id` (FK → users, CASCADE), `group_id` (FK → access_groups, CASCADE); composite PK
+- `subject` (PK; local user id or OIDC `sub`), `group_id` (FK → access_groups, CASCADE); composite PK
+- Replaces `access_group_users`. Editable via `PUT /api/admin/groups/{id}/members` in local and OIDC modes.
 
-### DataResource
+### ResourceAclEntry
 
-- `id`, `name` (unique), `description`, `resource_kind` (`document`, `knowledge_base`, `evaluation`, `dataset`, `object_type`, `link_type`), `attributes` (JSONB; whitelisted keys per kind, interpreted as scope predicates), `anchor_channel_id` (FK → document_channels), `anchor_knowledge_base_id` (FK → knowledge_bases), `created_at`, `updated_at`
-- Admin-defined access predicates. Used together with the legacy ID allow-lists when `OPENKMS_ENFORCE_GROUP_DATA_SCOPES=true`.
+- `id`, `resource_type` (e.g. `document_channel`, `document`, `wiki_space`, `knowledge_base`), `resource_id`, `grantee_type` (`user`, `group`, `authenticated`), `grantee_id` (nullable for `authenticated`), `permissions` (bitmask: read=1, write=2, manage=4), `created_at`, `updated_at`
+- Unique on `(resource_type, resource_id, grantee_type, grantee_id)`. Container ACL inherits to children (channel → documents, wiki space → pages). API: `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`.
 
-### Access-group ↔ resource junctions
+### Legacy (migrated to resource_acl_entries)
 
-- `access_group_channels` — `(group_id, channel_id)` PK; FK → access_groups, document_channels
-- `access_group_article_channels` — `(group_id, article_channel_id)`
-- `access_group_knowledge_bases` — `(group_id, knowledge_base_id)`
-- `access_group_wiki_spaces` — `(group_id, wiki_space_id)`
-- `access_group_evaluations` — `(group_id, evaluation_id)`
-- `access_group_datasets` — `(group_id, dataset_id)`
-- `access_group_object_types` — `(group_id, object_type_id)`
-- `access_group_link_types` — `(group_id, link_type_id)`
-- `access_group_data_resources` — `(group_id, data_resource_id)`
-
-All junctions cascade on either side; no extra columns.
+- Junction tables (`access_group_channels`, etc.) and **data resources** remain in schema for downgrade paths; new installs should use resource ACL only. Migration **`x6y7z8a9b0c1`** copies junction rows into `resource_acl_entries` and drops `access_group_users`.
 
 ## Wiki
 

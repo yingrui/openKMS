@@ -158,7 +158,7 @@ async def get_wiki_space_scoped(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, p)
         if allowed is not None and space_id not in allowed:
             raise HTTPException(status_code=404, detail="Wiki space not found")
     return ws
@@ -191,7 +191,7 @@ async def list_wiki_spaces(request: Request, db: AsyncSession = Depends(get_db))
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, p)
         if allowed is not None:
             if not allowed:
                 return WikiSpaceListResponse(items=[], total=0)

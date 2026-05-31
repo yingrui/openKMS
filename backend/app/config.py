@@ -167,11 +167,14 @@ class Settings(BaseSettings):
     qa_agent_basic_user: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_USER")
     qa_agent_basic_password: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_PASSWORD")
 
-    # --- Data security (group-scoped visibility; local mode only until IdP group sync) ---
-    enforce_group_data_scopes: bool = Field(
+    # --- Data security (resource ACL; replaces group-scoped visibility) ---
+    enforce_resource_acl: bool = Field(
         default=False,
-        validation_alias="OPENKMS_ENFORCE_GROUP_DATA_SCOPES",
-        description="When true, non-admin local users with access-group membership see only allowed resources.",
+        validation_alias=AliasChoices(
+            "OPENKMS_ENFORCE_RESOURCE_ACL",
+            "OPENKMS_ENFORCE_GROUP_DATA_SCOPES",
+        ),
+        description="When true, non-admin users are filtered by per-resource ACL and group membership.",
     )
 
     enforce_permission_patterns_strict: bool = Field(

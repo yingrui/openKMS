@@ -44,12 +44,14 @@ from app.schemas.document import (
     MetadataUpdateBody,
     ParsingResultResponse,
 )
-from app.services.data_scope import scope_applies
+from app.services.data_scope import bootstrap_owner_acl, scope_applies
+from app.services.resource_acl_constants import PERM_READ, RT_DOCUMENT, RT_DOCUMENT_CHANNEL
 from app.services.data_resource_policy import (
     channel_allowed_for_document_upload,
     document_passes_scoped_predicate,
     scoped_document_predicate,
 )
+from app.services.resource_acl_service import check_resource_access
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
@@ -167,6 +169,10 @@ async def list_documents(
         target = next((c for c in all_channels if c.id == channel_id), None)
         if not target:
             raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
+        if isinstance(sub, str) and not await check_resource_access(
+            db, p, sub, RT_DOCUMENT_CHANNEL, channel_id, PERM_READ
+        ):
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
         ids_to_include: set[str] = set()
         _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
         if not ids_to_include:
@@ -204,7 +210,7 @@ async def upload_document(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        if not await channel_allowed_for_document_upload(db, sub, channel_id):
+        if not await channel_allowed_for_document_upload(db, p, sub, channel_id):
             raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
@@ -241,6 +247,8 @@ async def upload_document(
     )
     db.add(doc)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_DOCUMENT, doc.id, sub)
 
     ext_lower = ext.lower()
     if ext_lower == "xlsx":
@@ -511,7 +519,7 @@ async def update_document(
         p = request.state.openkms_jwt_payload
         sub = p.get("sub")
         if isinstance(sub, str) and scope_applies(p, sub):
-            if not await channel_allowed_for_document_upload(db, sub, body.channel_id):
+            if not await channel_allowed_for_document_upload(db, p, sub, body.channel_id):
                 raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
         channel = await db.get(DocumentChannel, body.channel_id)
         if not channel:

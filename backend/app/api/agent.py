@@ -58,7 +58,7 @@ async def _ensure_wiki_in_context(
     if not ws:
         raise HTTPException(status_code=404, detail="Wiki space not found")
     if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, p)
         if allowed is not None and space_id not in allowed:
             raise HTTPException(status_code=404, detail="Wiki space not found")
 

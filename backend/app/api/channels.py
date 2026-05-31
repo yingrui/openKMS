@@ -10,7 +10,8 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
-from app.services.data_scope import scope_applies
+from app.services.data_scope import bootstrap_owner_acl
+from app.services.resource_acl_constants import RT_DOCUMENT_CHANNEL
 from app.services.data_resource_policy import effective_channel_ids_with_data_resources
 from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelUpdate
@@ -150,14 +151,20 @@ async def create_document_channel(
     sort_order = next_order.scalar() or 0
 
     channel_id = f"dc_{uuid.uuid4().hex[:8]}"
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
     channel = DocumentChannel(
         id=channel_id,
         name=body.name,
         description=body.description,
         parent_id=body.parent_id,
         sort_order=sort_order,
+        created_by=sub if isinstance(sub, str) else None,
     )
     db.add(channel)
+    await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_DOCUMENT_CHANNEL, channel.id, sub)
     await db.commit()
     await db.refresh(channel)
     return ChannelNode(

@@ -26,6 +26,7 @@ class DocumentChannel(Base):
     object_type_extraction_max_instances: Mapped[int | None] = mapped_column(
         Integer, nullable=True, server_default="100"
     )
+    created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["DocumentChannel | None"] = relationship("DocumentChannel", remote_side=[id], back_populates="children")

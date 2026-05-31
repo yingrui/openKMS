@@ -1,0 +1,95 @@
+"""Resource ACL types and permission bits."""
+
+from __future__ import annotations
+
+# Permission bits (combine with bitwise OR)
+PERM_READ = 1
+PERM_WRITE = 2
+PERM_MANAGE = 4
+
+PERM_ALL_DATA = PERM_READ | PERM_WRITE | PERM_MANAGE
+
+# Securable resource kinds
+RT_DOCUMENT_CHANNEL = "document_channel"
+RT_DOCUMENT = "document"
+RT_ARTICLE_CHANNEL = "article_channel"
+RT_ARTICLE = "article"
+RT_WIKI_SPACE = "wiki_space"
+RT_WIKI_PAGE = "wiki_page"
+RT_KNOWLEDGE_BASE = "knowledge_base"
+RT_EVALUATION = "evaluation"
+RT_DATASET = "dataset"
+RT_OBJECT_TYPE = "object_type"
+RT_LINK_TYPE = "link_type"
+
+SECURABLE_RESOURCE_TYPES = frozenset(
+    {
+        RT_DOCUMENT_CHANNEL,
+        RT_DOCUMENT,
+        RT_ARTICLE_CHANNEL,
+        RT_ARTICLE,
+        RT_WIKI_SPACE,
+        RT_WIKI_PAGE,
+        RT_KNOWLEDGE_BASE,
+        RT_EVALUATION,
+        RT_DATASET,
+        RT_OBJECT_TYPE,
+        RT_LINK_TYPE,
+    }
+)
+
+CONTAINER_TYPES = frozenset({RT_DOCUMENT_CHANNEL, RT_ARTICLE_CHANNEL, RT_WIKI_SPACE})
+
+GRANTEE_USER = "user"
+GRANTEE_GROUP = "group"
+GRANTEE_AUTHENTICATED = "authenticated"
+
+GRANTEE_TYPES = frozenset({GRANTEE_USER, GRANTEE_GROUP, GRANTEE_AUTHENTICATED})
+
+# Leaf resource -> container type for inheritance walk
+LEAF_CONTAINER: dict[str, str] = {
+    RT_DOCUMENT: RT_DOCUMENT_CHANNEL,
+    RT_ARTICLE: RT_ARTICLE_CHANNEL,
+    RT_WIKI_PAGE: RT_WIKI_SPACE,
+}
+
+# Legacy access_group junction table mapping for migration
+LEGACY_SCOPE_TABLES: dict[str, tuple[str, str, str]] = {
+    "access_group_channels": (RT_DOCUMENT_CHANNEL, "channel_id", PERM_READ),
+    "access_group_article_channels": (RT_ARTICLE_CHANNEL, "article_channel_id", PERM_READ),
+    "access_group_knowledge_bases": (RT_KNOWLEDGE_BASE, "knowledge_base_id", PERM_READ),
+    "access_group_wiki_spaces": (RT_WIKI_SPACE, "wiki_space_id", PERM_READ),
+    "access_group_evaluations": (RT_EVALUATION, "evaluation_id", PERM_READ),
+    "access_group_datasets": (RT_DATASET, "dataset_id", PERM_READ),
+    "access_group_object_types": (RT_OBJECT_TYPE, "object_type_id", PERM_READ),
+    "access_group_link_types": (RT_LINK_TYPE, "link_type_id", PERM_READ),
+}
+
+
+def perm_satisfies(have: int, need: int) -> bool:
+    if have & PERM_MANAGE:
+        return True
+    return (have & need) == need
+
+
+def perm_label(bits: int) -> str:
+    parts: list[str] = []
+    if bits & PERM_READ:
+        parts.append("r")
+    if bits & PERM_WRITE:
+        parts.append("w")
+    if bits & PERM_MANAGE:
+        parts.append("m")
+    return "".join(parts) or "-"
+
+
+def parse_perm_string(s: str) -> int:
+    s = (s or "").lower()
+    bits = 0
+    if "r" in s:
+        bits |= PERM_READ
+    if "w" in s:
+        bits |= PERM_WRITE
+    if "m" in s:
+        bits |= PERM_MANAGE
+    return bits

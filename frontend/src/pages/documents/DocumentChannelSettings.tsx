@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch, Tag } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch, Tag, Users } from 'lucide-react';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import {
   findChannel,
@@ -15,6 +15,8 @@ import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { toast } from 'sonner';
 import { updateChannel, type LabelConfigItem } from '../../data/channelsApi';
+import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import './DocumentChannelSettings.scss';
 
 const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
@@ -67,7 +69,7 @@ export function DocumentChannelSettings() {
   const [saving, setSaving] = useState(false);
   const [showJsonPreview, setShowJsonPreview] = useState(false);
 
-  type TabId = 'general' | 'processing' | 'extraction' | 'labels';
+  type TabId = 'general' | 'processing' | 'extraction' | 'labels' | 'sharing';
   const [activeTab, setActiveTab] = useState<TabId>('general');
 
   const channelName = getDocumentChannelName(channels, channelId);
@@ -247,6 +249,7 @@ export function DocumentChannelSettings() {
       { id: 'processing', label: t('settings.tabProcessing'), icon: Zap },
       { id: 'extraction', label: t('settings.tabExtraction'), icon: FileSearch },
       { id: 'labels', label: t('settings.tabLabels'), icon: Tag },
+      { id: 'sharing', label: t('settings.tabSharing'), icon: Users },
     ],
     [t],
   );
@@ -622,11 +625,21 @@ export function DocumentChannelSettings() {
         </section>
         )}
 
+        {activeTab === 'sharing' && channelId && (
+          <ResourceSharePanel
+            resourceType={RESOURCE_TYPES.documentChannel}
+            resourceId={channelId}
+            title={t('settings.sharingHeading')}
+          />
+        )}
+
+        {activeTab !== 'sharing' && (
         <div className="document-channel-settings-actions">
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? t('settings.saving') : t('settings.save')}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

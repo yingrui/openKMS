@@ -43,9 +43,11 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | DELETE | `/api/admin/security-permissions/{id}` | `console:permissions`: delete row (`all` and keys still assigned to roles are rejected) |
 | GET/POST | `/api/admin/groups` | `console:groups`: list/create access groups |
 | GET/PATCH/DELETE | `/api/admin/groups/{id}` | `console:groups`: get/update/delete group |
-| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: list/replace member user ids (**local** auth only for `PUT`; **OIDC**: `GET` returns `[]`, `PUT` **403**) |
-| GET/PUT | `/api/admin/groups/{id}/scopes` | `console:groups`: get/replace resource id lists per category (includes `data_resource_ids`) |
-| GET/POST | `/api/admin/data-resources` | `console:groups`: list/create **data resources** |
+| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: list/replace members (`subjects`: local user ids or OIDC subs) |
+| GET/PUT | `/api/admin/groups/{id}/scopes` | **Deprecated** — `PUT` returns **410**; use resource ACL sharing |
+| GET/PUT | `/api/resource-acl/{resource_type}/{resource_id}` | Authenticated: get/replace sharing grants (r/w/m) on a securable resource. Response includes `created_by` (document channels), `owner_subject`, `owner_label`; when no owner ACL exists but `created_by` is set, GET returns a default owner grant (rwm) for the creator. PUT preserves owner when omitted; if none exists, defaults owner to `created_by` when set. |
+| GET | `/api/resource-acl/{resource_type}/{resource_id}/owner-candidates` | Requires **manage** on the resource. Local auth: list users `{subject, label}` for owner assignment. OIDC: empty list (use subject id in UI). |
+| GET/POST | `/api/admin/data-resources` | **Deprecated** — `POST` returns **410**; use resource ACL |
 | GET | `/api/admin/data-resources/kinds` | `console:groups`: allowed `resource_kind` strings |
 | GET/PATCH/DELETE | `/api/admin/data-resources/{id}` | `console:groups`: get/update/delete data resource |
 | POST | `/api/auth/logout` | Clear server session |

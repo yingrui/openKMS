@@ -94,7 +94,7 @@ async def _require_wiki_space_readable(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, p)
         if allowed is not None and wiki_space_id not in allowed:
             raise HTTPException(status_code=404, detail="Wiki space not found")
     return ws
@@ -440,7 +440,7 @@ async def list_wiki_pages_for_kb_index(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, p)
         if allowed is not None:
             if not allowed:
                 return WikiPageForKbIndexListResponse(items=[], total=0, offset=offset, limit=limit)

@@ -145,7 +145,7 @@ async def _ensure_channel_writable(db: AsyncSession, request: Request, channel_i
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        if not await article_channel_allowed_for_create(db, sub, channel_id):
+        if not await article_channel_allowed_for_create(db, p, sub, channel_id):
             raise HTTPException(status_code=404, detail="Channel not found")
     ch = await db.get(ArticleChannel, channel_id)
     if not ch:

@@ -211,7 +211,7 @@ async def search_wiki_spaces_section(
 ) -> tuple[list[GlobalSearchHit], int]:
     base = select(WikiSpace)
     if isinstance(sub, str) and scope_applies(jwt_payload, sub):
-        allowed = await effective_wiki_space_ids(db, sub)
+        allowed = await effective_wiki_space_ids(db, sub, jwt_payload)
         if allowed is not None:
             if not allowed:
                 return [], 0

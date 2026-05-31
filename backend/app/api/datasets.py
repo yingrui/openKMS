@@ -53,7 +53,7 @@ async def _dataset_scope_restricted(request: Request, db: AsyncSession) -> bool:
     sub = p.get("sub")
     if not isinstance(sub, str) or not scope_applies(p, sub):
         return False
-    gids = await user_group_ids(db, sub)
+    gids = await user_group_ids(db, sub, p)
     return bool(gids)
 
 
