@@ -73,7 +73,7 @@
       },
       "dataSecurity": {
         "title": "数据安全",
-        "description": "在本地认证模式下创建访问组，并为频道、知识库、评测、数据集和本体类型配置允许列表。"
+        "description": "查看共享问题（缺少所有者、其他人拥有 Manage）、管理访问组，并在控制台修复 ACL。"
       },
       "dataSources": {
         "title": "数据源",
@@ -151,11 +151,11 @@
     "deleteConfirm": "删除访问组「{{name}}」？",
     "toastDeleted": "访问组已删除",
     "toastDeleteFailed": "删除失败",
-    "subtitleBefore": "创建访问组，并在 ",
-    "dataSecurityTerm": "数据安全",
-    "subtitleAfter": " 下为每组配置资源范围。",
-    "subtitleLocal": "本地认证模式下，还可通过各组的「数据访问」页分配用户。",
-    "subtitleOidc": "OIDC 模式下成员关系在外部系统维护；请仅在各组「数据访问」页配置范围。",
+    "subtitleBefore": "创建访问组并分配成员。在各项资源的 ",
+    "dataSecurityTerm": "共享",
+    "subtitleAfter": " 面板中授权（读 / 写 / 管理）。",
+    "subtitleLocal": "在各组的「成员」页分配本地用户。",
+    "subtitleOidc": "在各组的「成员」页按身份 subject（OIDC sub）添加用户。",
     "pageTitle": "访问组",
     "newGroup": "新建访问组",
     "name": "名称",
@@ -165,9 +165,97 @@
     "descPlaceholder": "描述",
     "save": "保存",
     "cancel": "取消",
-    "dataAccess": "数据访问",
+    "dataAccess": "成员",
     "edit": "编辑",
     "delete": "删除"
+  },
+  "groupAccess": {
+    "pageTitle": "组成员",
+    "backToGroups": "访问组",
+    "subtitle": "当资源共享给本组时，组成员将获得相应权限（读 / 写 / 管理）。",
+    "loading": "加载中…",
+    "membersHeading": "成员",
+    "membersHint": "OIDC：粘贴用户 profile 中的 subject（用户名或邮箱也可匹配）。本地：从列表勾选用户。",
+    "oidcSubjectPlaceholder": "Subject、用户名或邮箱",
+    "addSubject": "添加",
+    "remove": "移除",
+    "currentCount": "已保存 {{count}} 名成员",
+    "saveMembers": "保存成员",
+    "saving": "保存中…",
+    "shareHint": "要控制可见范围，请打开频道、Wiki 空间等资源，使用其「共享」面板。",
+    "toastLoadFailed": "无法加载访问组",
+    "toastMembersSaved": "成员已保存",
+    "toastSaveFailed": "保存失败",
+    "sharedResourcesHeading": "共享给本组的资源",
+    "sharedResourcesHint": "已授予本组读、写或管理权限的资源。可通过链接打开共享设置。",
+    "noSharedResources": "尚无资源共享给本组。",
+    "colType": "类型",
+    "colName": "名称",
+    "colPermissions": "权限",
+    "openSharing": "打开共享"
+  },
+  "dataSecurityIssues": {
+    "pageTitle": "数据安全问题",
+    "subtitle": "削弱问责或意外扩大数据暴露范围的共享配置问题。",
+    "loading": "加载中…",
+    "toastLoadFailed": "无法加载问题列表",
+    "allClear": "未发现共享配置问题。",
+    "issueSummary": "存在问题的资源：{{count}} 个",
+    "colType": "类型",
+    "colName": "名称",
+    "colDetail": "详情",
+    "notAssigned": "未指定",
+    "fixSharing": "修复共享",
+    "hideSharing": "收起",
+    "openInApp": "在应用中打开",
+    "sharingPanelTitle": "共享 — {{name}}",
+    "legacyHeading": "遗留数据资源",
+    "legacyCount": "遗留行 {{count}} 条 — 已不再生效，可忽略或由数据库清理。",
+    "manageGroups": "管理访问组",
+    "reviewRecommendedHeading": "建议复核",
+    "reviewRecommendedHint": "以下情况可能符合预期，请确认组织内可读是否符合您的意图。",
+    "issueTypes": {
+      "others_manage": {
+        "heading": "「其他人」拥有管理权限",
+        "hint": "所有已登录用户均可修改这些资源的共享设置。"
+      },
+      "others_write": {
+        "heading": "「其他人」拥有写入权限",
+        "hint": "所有已登录用户均可编辑这些资源的内容。"
+      },
+      "unknown_group": {
+        "heading": "访问组不存在",
+        "hint": "组授权引用的访问组已被删除。"
+      },
+      "empty_group": {
+        "heading": "空访问组",
+        "hint": "组授权引用的访问组没有成员，该授权不会生效。"
+      },
+      "unknown_owner": {
+        "heading": "所有者账户不存在",
+        "hint": "所有者授权指向的用户已不存在（本地认证）。"
+      },
+      "missing_owner": {
+        "heading": "缺少所有者",
+        "hint": "已配置共享，但 ACL 中未指定所有者。"
+      },
+      "owner_no_permissions": {
+        "heading": "所有者无任何权限",
+        "hint": "存在所有者授权，但未授予读、写或管理权限。"
+      },
+      "owner_no_manage": {
+        "heading": "所有者无法管理共享",
+        "hint": "所有者无法自行更新共享，需管理员或其他拥有 Manage 的授权。"
+      },
+      "implicit_others": {
+        "heading": "「其他人」继承自父级",
+        "hint": "该资源有独立共享规则但未显式设置「其他人」；已登录用户可能继承父容器的访问权限。"
+      },
+      "others_read": {
+        "heading": "「其他人」拥有读权限",
+        "hint": "已配置基于访问组的共享，但所有已登录用户也可读取。请确认是否符合预期。"
+      }
+    }
   },
   "dataSources": {
     "toastLoadFailed": "无法加载数据源",

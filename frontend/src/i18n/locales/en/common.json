@@ -10,6 +10,7 @@
     "saved": "Sharing updated",
     "saveFailed": "Failed to save sharing",
     "yourAccess": "Your access",
+    "consoleAuditHint": "Console audit — you can view and edit sharing for any resource.",
     "inheritsFrom": "Inherits rules from:",
     "hint": "Owner is the user who created this item. You can restrict their permissions for security control. Groups apply to members of that access group. Others applies to everyone signed in who is not the owner and not in a listed group. New channels start with empty Others until you set them.",
     "owner": "Owner",

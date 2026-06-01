@@ -27,7 +27,6 @@ import {
   Shield,
   KeyRound,
   Library,
-  Tags,
   FolderTree,
   Plug,
 } from 'lucide-react';
@@ -358,28 +357,28 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                   </NavLink>
                 </>
               )}
-              {(canAccessPath('/console/data-security/groups') ||
-                canAccessPath('/console/data-security/data-resources')) && (
+              {(canAccessPath('/console/data-security/issues') ||
+                canAccessPath('/console/data-security/groups')) && (
                 <>
                   <div className="sidebar-menu-label">{t('dataSecurity')}</div>
+                  {canAccessPath('/console/data-security/issues') && (
+                    <NavLink
+                      to="/console/data-security/issues"
+                      title={t('dataSecurityIssues')}
+                      className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                    >
+                      <Shield size={18} strokeWidth={1.75} />
+                      <span>{t('dataSecurityIssues')}</span>
+                    </NavLink>
+                  )}
                   {canAccessPath('/console/data-security/groups') && (
                     <NavLink
                       to="/console/data-security/groups"
                       title={t('accessGroups')}
                       className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
                     >
-                      <Shield size={18} strokeWidth={1.75} />
+                      <Users size={18} strokeWidth={1.75} />
                       <span>{t('accessGroups')}</span>
-                    </NavLink>
-                  )}
-                  {canAccessPath('/console/data-security/data-resources') && (
-                    <NavLink
-                      to="/console/data-security/data-resources"
-                      title={t('dataResources')}
-                      className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-                    >
-                      <Tags size={18} strokeWidth={1.75} />
-                      <span>{t('dataResources')}</span>
                     </NavLink>
                   )}
                 </>

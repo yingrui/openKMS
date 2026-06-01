@@ -186,6 +186,7 @@
     "sources": "Sources:",
     "qaErrorPrefix": "Error:",
     "settingsTitle": "Knowledge Base Settings",
+    "sharingTitle": "Sharing",
     "qaAgentUrl": "QA Agent Service URL",
     "qaAgentUrlPlaceholder": "http://localhost:8103",
     "qaAgentUrlHelp": "URL of the QA agent service for answering questions",

@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
   BookOpen,
@@ -75,6 +75,8 @@ import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
 import {
   appendDeltaToStreamParts,
@@ -402,10 +404,12 @@ function DocPickerChannelTree({
 export function KnowledgeBaseDetail() {
   const { id: kbId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { channels } = useDocumentChannels();
   const { t, i18n } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>('documents');
+  const initialTab = (searchParams.get('tab') as TabId) || 'documents';
+  const [activeTab, setActiveTab] = useState<TabId>(TAB_ORDER.includes(initialTab) ? initialTab : 'documents');
   const [qaFullPage, setQaFullPage] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -599,6 +603,14 @@ export function KnowledgeBaseDetail() {
   }, []);
 
   useEffect(() => { loadKb(); loadModels(); }, [loadKb, loadModels]);
+
+  useEffect(() => {
+    const q = searchParams.get('tab');
+    if (!q) return;
+    if (TAB_ORDER.includes(q as TabId)) {
+      setActiveTab(q as TabId);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeTab === 'documents') void loadDocs();
@@ -2529,6 +2541,14 @@ export function KnowledgeBaseDetail() {
                 {settingsSaving ? t('detail.savingSettings') : t('detail.saveSettings')}
               </button>
             </div>
+
+            {kbId && (
+              <ResourceSharePanel
+                resourceType={RESOURCE_TYPES.knowledgeBase}
+                resourceId={kbId}
+                title={t('detail.sharingTitle')}
+              />
+            )}
 
             <div className="kb-settings-form">
               <div className="kb-settings-layout">

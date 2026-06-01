@@ -106,6 +106,7 @@ nav:
       - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
       - Pipelines, jobs & models: features/pipelines-and-jobs.md
+      - Data security: features/data-security.md
       - Console & authentication: features/console-and-auth.md
       - OpenCode skill (openkms): features/opencode-openkms-skill.md
       - API reference: features/api-reference.md

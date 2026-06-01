@@ -7,6 +7,8 @@ import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../../data/channelsApi';
 import { fetchDocuments } from '../../data/documentsApi';
 import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
   createWikiPage,
   deleteWikiPage,
@@ -543,6 +545,14 @@ export function WikiSpaceSettings() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            <section className="wiki-space-settings-section wiki-space-settings-card" id="sharing">
+              <ResourceSharePanel
+                resourceType={RESOURCE_TYPES.wikiSpace}
+                resourceId={spaceId}
+                title={t('sectionSharing')}
+              />
             </section>
 
             <section

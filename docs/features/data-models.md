@@ -224,6 +224,8 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ## Data security (access groups, resource ACL)
 
+Design and enforcement: [Data security](data-security.md).
+
 ### AccessGroup
 
 - `id` (UUID), `name` (unique), `description`, `created_at`

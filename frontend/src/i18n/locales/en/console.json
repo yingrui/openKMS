@@ -73,7 +73,7 @@
       },
       "dataSecurity": {
         "title": "Data security",
-        "description": "In local auth mode, create access groups and attach allow lists for channels, knowledge bases, evaluations, datasets, and ontology types."
+        "description": "Review sharing issues (missing owner, Manage on Others), manage access groups, and fix ACL from the console."
       },
       "dataSources": {
         "title": "Data sources",
@@ -185,7 +185,77 @@
     "shareHint": "To control what they can see, open a channel, wiki space, or other item and use its Sharing panel.",
     "toastLoadFailed": "Failed to load group",
     "toastMembersSaved": "Members saved",
-    "toastSaveFailed": "Save failed"
+    "toastSaveFailed": "Save failed",
+    "sharedResourcesHeading": "Shared with this group",
+    "sharedResourcesHint": "Resources that grant read, write, or manage access to this group. Open sharing to change grants.",
+    "noSharedResources": "No resources share with this group yet.",
+    "colType": "Type",
+    "colName": "Name",
+    "colPermissions": "Permissions",
+    "openSharing": "Open sharing"
+  },
+  "dataSecurityIssues": {
+    "pageTitle": "Data security issues",
+    "subtitle": "Sharing misconfigurations that weaken accountability or expose data more broadly than intended.",
+    "loading": "Loading…",
+    "toastLoadFailed": "Failed to load issues",
+    "allClear": "No sharing issues found.",
+    "issueSummary": "{{count}} resource(s) with issues",
+    "colType": "Type",
+    "colName": "Name",
+    "colDetail": "Detail",
+    "notAssigned": "Not assigned",
+    "fixSharing": "Fix sharing",
+    "hideSharing": "Hide",
+    "openInApp": "Open in app",
+    "sharingPanelTitle": "Sharing — {{name}}",
+    "legacyHeading": "Legacy data resources",
+    "legacyCount": "{{count}} leftover row(s) — no longer enforced; safe to ignore or delete from the database.",
+    "manageGroups": "Manage access groups",
+    "reviewRecommendedHeading": "Review recommended",
+    "reviewRecommendedHint": "These may be intentional. Confirm whether org-wide read matches your intent.",
+    "issueTypes": {
+      "others_manage": {
+        "heading": "Manage granted to Others",
+        "hint": "Everyone signed in can change sharing on these resources."
+      },
+      "others_write": {
+        "heading": "Write granted to Others",
+        "hint": "Everyone signed in can edit content on these resources."
+      },
+      "unknown_group": {
+        "heading": "Missing access group",
+        "hint": "A group grant references a group that no longer exists."
+      },
+      "empty_group": {
+        "heading": "Empty access group",
+        "hint": "A group grant references a group with no members — no one receives that access."
+      },
+      "unknown_owner": {
+        "heading": "Owner account not found",
+        "hint": "The owner grant points to a user that no longer exists (local auth)."
+      },
+      "missing_owner": {
+        "heading": "Missing owner",
+        "hint": "Sharing is configured but no owner is assigned in the ACL."
+      },
+      "owner_no_permissions": {
+        "heading": "Owner has no permissions",
+        "hint": "The owner grant exists but grants no read, write, or manage access."
+      },
+      "owner_no_manage": {
+        "heading": "Owner cannot manage sharing",
+        "hint": "The owner cannot update sharing without an admin or another grantee with Manage."
+      },
+      "implicit_others": {
+        "heading": "Others inherited from parent",
+        "hint": "This resource has its own sharing rules but no explicit Others row; signed-in users may inherit access from a parent container."
+      },
+      "others_read": {
+        "heading": "Read granted to Others",
+        "hint": "Group-based sharing is configured, but everyone signed in can also read. Confirm this is intentional."
+      }
+    }
   },
   "dataSources": {
     "toastLoadFailed": "Failed to load data sources",

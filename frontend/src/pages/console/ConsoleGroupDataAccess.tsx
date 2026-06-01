@@ -7,10 +7,13 @@ import { PERM_CONSOLE_GROUPS } from '../../config/permissions';
 import { fetchAdminUsersPage, type LocalUserRow } from '../../data/adminUsersApi';
 import {
   fetchGroupMembers,
+  fetchGroupSharedResources,
   putGroupMembers,
+  type GroupSharedResourceOut,
   type MemberBrief,
 } from '../../data/securityAdminApi';
 import './ConsoleGroupDataAccess.scss';
+import './ConsoleDataSecurityIssues.scss';
 
 export function ConsoleGroupDataAccess() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -19,6 +22,7 @@ export function ConsoleGroupDataAccess() {
   const membershipLocal = authMode === 'local';
   const [members, setMembers] = useState<MemberBrief[]>([]);
   const [memberSubjects, setMemberSubjects] = useState<string[]>([]);
+  const [sharedResources, setSharedResources] = useState<GroupSharedResourceOut[]>([]);
   const [allUsers, setAllUsers] = useState<LocalUserRow[]>([]);
   const [oidcSubjectInput, setOidcSubjectInput] = useState('');
   const [loading, setLoading] = useState(true);
@@ -28,14 +32,16 @@ export function ConsoleGroupDataAccess() {
     if (!groupId) return;
     setLoading(true);
     try {
-      const [mem, usersPage] = await Promise.all([
+      const [mem, shared, usersPage] = await Promise.all([
         fetchGroupMembers(groupId),
+        fetchGroupSharedResources(groupId),
         membershipLocal
           ? fetchAdminUsersPage().catch(() => ({ users: [] as LocalUserRow[] }))
           : Promise.resolve({ users: [] as LocalUserRow[] }),
       ]);
       setMembers(mem.members);
       setMemberSubjects(mem.members.map((m) => m.subject));
+      setSharedResources(shared);
       if (usersPage.users?.length) setAllUsers(usersPage.users);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('groupAccess.toastLoadFailed'));
@@ -95,6 +101,7 @@ export function ConsoleGroupDataAccess() {
       {loading ? (
         <p className="console-group-access-muted">{t('groupAccess.loading')}</p>
       ) : (
+        <>
         <section className="console-group-access-section">
           <h2>{t('groupAccess.membersHeading')}</h2>
           <p className="console-group-access-hint">{t('groupAccess.membersHint')}</p>
@@ -152,6 +159,46 @@ export function ConsoleGroupDataAccess() {
 
           <p className="console-group-access-hint">{t('groupAccess.shareHint')}</p>
         </section>
+
+        <section className="console-group-access-section">
+          <h2>{t('groupAccess.sharedResourcesHeading')}</h2>
+          <p className="console-group-access-hint">{t('groupAccess.sharedResourcesHint')}</p>
+          {sharedResources.length === 0 ? (
+            <p className="console-group-access-muted">{t('groupAccess.noSharedResources')}</p>
+          ) : (
+            <table className="console-dso-table">
+              <thead>
+                <tr>
+                  <th>{t('groupAccess.colType')}</th>
+                  <th>{t('groupAccess.colName')}</th>
+                  <th>{t('groupAccess.colPermissions')}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {sharedResources.map((row) => (
+                  <tr key={`${row.resource_type}:${row.resource_id}`}>
+                    <td>{row.resource_type_label}</td>
+                    <td>{row.resource_label}</td>
+                    <td>
+                      <code>{row.permissions || '—'}</code>
+                    </td>
+                    <td>
+                      {row.share_path ? (
+                        <Link to={row.share_path} className="btn-link">
+                          {t('groupAccess.openSharing')}
+                        </Link>
+                      ) : (
+                        <span className="console-group-access-muted">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+        </>
       )}
     </div>
   );

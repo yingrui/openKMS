@@ -128,12 +128,16 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_CONSOLE_GROUPS: (
         [
             "/console",
+            "/console/data-security/issues",
             "/console/data-security/groups",
             "/console/data-security/groups/*",
-            "/console/data-security/data-resources",
-            "/console/data-security/data-resources/*",
         ],
-        ["/api/admin/groups/*", "/api/admin/data-resources", "/api/admin/data-resources/*", "/api/resource-acl/*"],
+        [
+            "/api/admin/groups/*",
+            "/api/admin/data-resources/migration-report",
+            "/api/admin/resource-acl/*",
+            "/api/resource-acl/*",
+        ],
     ),
     PERM_CONSOLE_PERMISSIONS: (
         ["/console", "/console/permission-management"],

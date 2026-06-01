@@ -66,6 +66,8 @@
     "descPlaceholder": "可选描述",
     "parent": "父频道",
     "parentHint": "不能将父频道设为本频道或其子频道。",
+    "tabSharing": "共享",
+    "sharingHeading": "共享",
     "saving": "保存中…",
     "save": "保存"
   },

@@ -25,7 +25,7 @@
   "permissions": "权限",
   "dataSecurity": "数据安全",
   "accessGroups": "访问组",
-  "dataResources": "数据资源",
+  "dataSecurityIssues": "问题",
   "consoleSection": "控制台",
   "dataSources": "数据源",
   "connectors": "连接器",

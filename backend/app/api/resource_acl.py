@@ -213,6 +213,83 @@ async def _ensure_owner_in_parsed(
         _append_preserved_owner(parsed, created_by, PERM_ALL_DATA)
 
 
+async def list_local_owner_candidates(db: AsyncSession) -> list[OwnerCandidateOut]:
+    if settings.auth_mode != "local":
+        return []
+    result = await db.execute(select(User).order_by(User.username))
+    out: list[OwnerCandidateOut] = []
+    for user in result.scalars().all():
+        label = f"{user.username} ({user.email})" if user.email else user.username
+        out.append(OwnerCandidateOut(subject=str(user.id), label=label))
+    return out
+
+
+async def serialize_resource_acl(
+    db: AsyncSession,
+    resource_type: str,
+    resource_id: str,
+    viewer_sub: str,
+    payload: dict,
+    *,
+    entries: list | None = None,
+) -> ResourceAclOut:
+    if entries is None:
+        entries = await list_acl_entries(db, resource_type, resource_id)
+    chain = await resource_context_chain(db, resource_type, resource_id)
+    inherits = [
+        {"resource_type": rt, "resource_id": rid}
+        for rt, rid in chain[1:]
+        if await resource_has_acl_restrictions(db, rt, rid)
+    ]
+    eff = await effective_permissions(db, viewer_sub, resource_type, resource_id, payload)
+    grant_rows, owner, owner_label = await _grant_labels(db, entries)
+    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
+        db, resource_type, resource_id, entries, grant_rows, owner, owner_label
+    )
+    created_by = await _resource_created_by(db, resource_type, resource_id)
+    return ResourceAclOut(
+        resource_type=resource_type,
+        resource_id=resource_id,
+        grants=grant_rows,
+        effective_permissions=perm_label(eff),
+        inherits_from=inherits,
+        owner_subject=owner,
+        owner_label=owner_label,
+        created_by=created_by,
+    )
+
+
+async def persist_resource_acl(
+    db: AsyncSession,
+    resource_type: str,
+    resource_id: str,
+    body: ResourceAclPut,
+    viewer_sub: str,
+    payload: dict,
+    *,
+    skip_manage_check: bool = False,
+) -> ResourceAclOut:
+    if not skip_manage_check:
+        can_manage = await check_resource_access(db, payload, viewer_sub, resource_type, resource_id, PERM_MANAGE)
+        if not can_manage:
+            has_any = await resource_has_acl_restrictions(db, resource_type, resource_id)
+            if has_any:
+                raise HTTPException(status_code=403, detail="Manage permission required to change sharing")
+
+    parsed = _parse_grants(body)
+    for g in parsed:
+        if g["grantee_type"] == GRANTEE_GROUP and g["grantee_id"]:
+            if not await db.get(AccessGroup, g["grantee_id"]):
+                raise HTTPException(status_code=400, detail=f"Group not found: {g['grantee_id']}")
+
+    await _ensure_owner_in_parsed(db, resource_type, resource_id, parsed)
+    entries = await replace_resource_acl(db, resource_type, resource_id, parsed)
+    await db.commit()
+    return await serialize_resource_acl(
+        db, resource_type, resource_id, viewer_sub, payload, entries=entries
+    )
+
+
 @router.get("/{resource_type}/{resource_id}/owner-candidates", response_model=list[OwnerCandidateOut])
 async def get_owner_candidates(
     resource_type: str,
@@ -228,15 +305,7 @@ async def get_owner_candidates(
     if not await check_resource_access(db, payload, sub, resource_type, resource_id, PERM_MANAGE):
         raise HTTPException(status_code=403, detail="Manage permission required")
 
-    if settings.auth_mode != "local":
-        return []
-
-    result = await db.execute(select(User).order_by(User.username))
-    out: list[OwnerCandidateOut] = []
-    for user in result.scalars().all():
-        label = f"{user.username} ({user.email})" if user.email else user.username
-        out.append(OwnerCandidateOut(subject=str(user.id), label=label))
-    return out
+    return await list_local_owner_candidates(db)
 
 
 @router.get("/{resource_type}/{resource_id}", response_model=ResourceAclOut)
@@ -254,29 +323,7 @@ async def get_resource_acl(
     if not await check_resource_access(db, payload, sub, resource_type, resource_id, PERM_READ):
         raise HTTPException(status_code=404, detail="Resource not found")
 
-    entries = await list_acl_entries(db, resource_type, resource_id)
-    chain = await resource_context_chain(db, resource_type, resource_id)
-    inherits = [
-        {"resource_type": rt, "resource_id": rid}
-        for rt, rid in chain[1:]
-        if await resource_has_acl_restrictions(db, rt, rid)
-    ]
-    eff = await effective_permissions(db, sub, resource_type, resource_id, payload)
-    grant_rows, owner, owner_label = await _grant_labels(db, entries)
-    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
-        db, resource_type, resource_id, entries, grant_rows, owner, owner_label
-    )
-    created_by = await _resource_created_by(db, resource_type, resource_id)
-    return ResourceAclOut(
-        resource_type=resource_type,
-        resource_id=resource_id,
-        grants=grant_rows,
-        effective_permissions=perm_label(eff),
-        inherits_from=inherits,
-        owner_subject=owner,
-        owner_label=owner_label,
-        created_by=created_by,
-    )
+    return await serialize_resource_acl(db, resource_type, resource_id, sub, payload)
 
 
 @router.put("/{resource_type}/{resource_id}", response_model=ResourceAclOut)
@@ -292,42 +339,4 @@ async def put_resource_acl(
     sub = payload.get("sub")
     if not isinstance(sub, str):
         raise HTTPException(status_code=401, detail="Unauthorized")
-    can_manage = await check_resource_access(db, payload, sub, resource_type, resource_id, PERM_MANAGE)
-    if not can_manage:
-        # Allow initial ACL setup when none exists (bootstrap)
-        has_any = await resource_has_acl_restrictions(db, resource_type, resource_id)
-        if has_any:
-            raise HTTPException(status_code=403, detail="Manage permission required to change sharing")
-
-    parsed = _parse_grants(body)
-    for g in parsed:
-        if g["grantee_type"] == GRANTEE_GROUP and g["grantee_id"]:
-            if not await db.get(AccessGroup, g["grantee_id"]):
-                raise HTTPException(status_code=400, detail=f"Group not found: {g['grantee_id']}")
-
-    await _ensure_owner_in_parsed(db, resource_type, resource_id, parsed)
-
-    entries = await replace_resource_acl(db, resource_type, resource_id, parsed)
-    await db.commit()
-    eff = await effective_permissions(db, sub, resource_type, resource_id, payload)
-    chain = await resource_context_chain(db, resource_type, resource_id)
-    inherits = [
-        {"resource_type": rt, "resource_id": rid}
-        for rt, rid in chain[1:]
-        if await resource_has_acl_restrictions(db, rt, rid)
-    ]
-    grant_rows, owner, owner_label = await _grant_labels(db, entries)
-    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
-        db, resource_type, resource_id, entries, grant_rows, owner, owner_label
-    )
-    created_by = await _resource_created_by(db, resource_type, resource_id)
-    return ResourceAclOut(
-        resource_type=resource_type,
-        resource_id=resource_id,
-        grants=grant_rows,
-        effective_permissions=perm_label(eff),
-        inherits_from=inherits,
-        owner_subject=owner,
-        owner_label=owner_label,
-        created_by=created_by,
-    )
+    return await persist_resource_acl(db, resource_type, resource_id, body, sub, payload)

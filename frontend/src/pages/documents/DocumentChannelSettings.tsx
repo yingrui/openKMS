@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch, Tag, Users } from 'lucide-react';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
@@ -70,7 +70,28 @@ export function DocumentChannelSettings() {
   const [showJsonPreview, setShowJsonPreview] = useState(false);
 
   type TabId = 'general' | 'processing' | 'extraction' | 'labels' | 'sharing';
-  const [activeTab, setActiveTab] = useState<TabId>('general');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab: TabId =
+    tabParam === 'sharing' ||
+    tabParam === 'processing' ||
+    tabParam === 'extraction' ||
+    tabParam === 'labels'
+      ? tabParam
+      : 'general';
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+
+  useEffect(() => {
+    if (
+      tabParam === 'sharing' ||
+      tabParam === 'processing' ||
+      tabParam === 'extraction' ||
+      tabParam === 'labels' ||
+      tabParam === 'general'
+    ) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const channelName = getDocumentChannelName(channels, channelId);
 

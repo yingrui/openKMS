@@ -10,6 +10,7 @@
   "resetEdits": "放弃更改",
   "saveSpaceMeta": "保存",
   "savingSpaceMeta": "保存中…",
+  "sectionSharing": "共享",
   "toastSpaceNameRequired": "请填写此 Wiki 空间的名称。",
   "toastSpaceMetaSaved": "空间信息已保存",
   "toastSpaceMetaFailed": "无法保存空间信息",

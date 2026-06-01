@@ -19,7 +19,7 @@ type FeatureItem = {
 const CONSOLE_TOOL_FEATURES: FeatureItem[] = [
   { id: 'health', path: '/console/health' },
   { id: 'permissions', path: '/console/permission-management' },
-  { id: 'dataSecurity', path: '/console/data-security/groups' },
+  { id: 'dataSecurity', path: '/console/data-security/issues' },
   { id: 'dataSources', path: '/console/data-sources' },
   { id: 'usersToggles', path: '/console/users' },
   { id: 'systemSettings', path: '/console/settings' },

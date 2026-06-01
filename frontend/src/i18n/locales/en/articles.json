@@ -66,6 +66,8 @@
     "descPlaceholder": "Optional description",
     "parent": "Parent",
     "parentHint": "You cannot set a parent to this channel or its descendants.",
+    "tabSharing": "Sharing",
+    "sharingHeading": "Sharing",
     "saving": "Saving…",
     "save": "Save"
   },

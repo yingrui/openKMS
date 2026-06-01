@@ -134,7 +134,7 @@ export function ConsoleDataSecurityGroups() {
                     {g.description && <div className="console-ds-groups-desc">{g.description}</div>}
                   </div>
                   <div className="console-ds-groups-actions">
-                    <Link to={`/console/data-security/groups/${g.id}/access`} className="btn-secondary">
+                    <Link to={`/console/data-security/groups/${g.id}/members`} className="btn-secondary">
                       {t('dataSecurityGroups.dataAccess')}
                     </Link>
                     <button

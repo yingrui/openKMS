@@ -10,8 +10,15 @@ from app.api.auth import require_permission
 from app.config import settings
 from app.database import get_db
 from app.models.access_group import AccessGroup, AccessGroupMember
+from app.models.resource_acl import ResourceAclEntry
 from app.models.user import User
 from app.services.permission_catalog import PERM_CONSOLE_GROUPS
+from app.services.resource_acl_admin_helpers import (
+    resolve_resource_label,
+    resource_type_label,
+    share_path_for,
+)
+from app.services.resource_acl_constants import GRANTEE_GROUP, perm_label
 
 router = APIRouter(prefix="/admin/groups", tags=["admin-access-groups"])
 
@@ -168,6 +175,48 @@ async def put_group_members(
         db.add(AccessGroupMember(subject=sub, group_id=group_id))
     await db.flush()
     return await _members_payload(db, group_id)
+
+
+class GroupSharedResourceOut(BaseModel):
+    resource_type: str
+    resource_type_label: str
+    resource_id: str
+    resource_label: str
+    permissions: str
+    share_path: str | None
+
+
+@router.get("/{group_id}/shared-resources", response_model=list[GroupSharedResourceOut])
+async def get_group_shared_resources(
+    group_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_permission(PERM_CONSOLE_GROUPS)),
+):
+    """ACL grants that reference this access group (read-only audit)."""
+    if not await db.get(AccessGroup, group_id):
+        raise HTTPException(status_code=404, detail="Group not found")
+    result = await db.execute(
+        select(ResourceAclEntry)
+        .where(
+            ResourceAclEntry.grantee_type == GRANTEE_GROUP,
+            ResourceAclEntry.grantee_id == group_id,
+        )
+        .order_by(ResourceAclEntry.resource_type, ResourceAclEntry.resource_id)
+    )
+    out: list[GroupSharedResourceOut] = []
+    for entry in result.scalars().all():
+        label = await resolve_resource_label(db, entry.resource_type, entry.resource_id)
+        out.append(
+            GroupSharedResourceOut(
+                resource_type=entry.resource_type,
+                resource_type_label=resource_type_label(entry.resource_type),
+                resource_id=entry.resource_id,
+                resource_label=label,
+                permissions=perm_label(entry.permissions),
+                share_path=share_path_for(entry.resource_type, entry.resource_id),
+            )
+        )
+    return out
 
 
 # Legacy scope endpoints — deprecated in favor of per-resource ACL sharing

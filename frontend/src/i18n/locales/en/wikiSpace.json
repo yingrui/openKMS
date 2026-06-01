@@ -10,6 +10,7 @@
   "resetEdits": "Discard changes",
   "saveSpaceMeta": "Save",
   "savingSpaceMeta": "Saving…",
+  "sectionSharing": "Sharing",
   "toastSpaceNameRequired": "Enter a name for this wiki space.",
   "toastSpaceMetaSaved": "Space details saved",
   "toastSpaceMetaFailed": "Could not save space details",

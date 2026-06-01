@@ -31,6 +31,7 @@ from app.api.datasets import router as datasets_router
 from app.api.evaluations import router as evaluations_router
 from app.api.users_admin import router as users_admin_router
 from app.api.admin.data_resources import router as admin_data_resources_router
+from app.api.admin.resource_acl_admin import router as admin_resource_acl_router
 from app.api.resource_acl import router as resource_acl_router
 from app.api.admin.groups import router as admin_groups_router
 from app.api.admin.security_roles import router as admin_security_roles_router
@@ -134,6 +135,7 @@ app.include_router(users_admin_router, prefix="/api")
 app.include_router(admin_groups_router, prefix="/api")
 app.include_router(resource_acl_router, prefix="/api")
 app.include_router(admin_data_resources_router, prefix="/api")
+app.include_router(admin_resource_acl_router, prefix="/api")
 app.include_router(admin_security_roles_router, prefix="/api")
 app.include_router(admin_security_permissions_router, prefix="/api")
 app.include_router(admin_permission_reference_router, prefix="/api")

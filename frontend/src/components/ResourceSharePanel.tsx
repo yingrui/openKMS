@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuth } from '../contexts/AuthContext';
-import { fetchAccessGroups, type AccessGroupOut } from '../data/securityAdminApi';
+import {
+  fetchAccessGroups,
+  fetchAdminResourceAcl,
+  fetchAdminResourceAclOwnerCandidates,
+  putAdminResourceAcl,
+  type AccessGroupOut,
+} from '../data/securityAdminApi';
 import {
   fetchResourceAcl,
   fetchResourceAclOwnerCandidates,
@@ -31,6 +37,9 @@ type Props = {
   resourceType: string;
   resourceId: string;
   title?: string;
+  /** Console audit: load/save via admin API (no resource-level read/manage required). */
+  consoleAudit?: boolean;
+  onSaved?: () => void;
 };
 
 function apiPermToRow(perm: string | undefined): string {
@@ -172,7 +181,11 @@ function applyAclToState(
   setGroupRows(groups);
 }
 
-export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
+function canManageFromAcl(a: ResourceAclOut, consoleAudit: boolean): boolean {
+  return consoleAudit || (a.effective_permissions ?? '').includes('m');
+}
+
+export function ResourceSharePanel({ resourceType, resourceId, title, consoleAudit = false, onSaved }: Props) {
   const { t } = useTranslation('common');
   const { authMode } = useAuth();
   const membershipLocal = authMode === 'local';
@@ -187,7 +200,7 @@ export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const canManage = (acl?.effective_permissions ?? '').includes('m');
+  const canManage = consoleAudit || (acl?.effective_permissions ?? '').includes('m');
   const groupOptions = mergedGroupOptions(groups, groupRows);
   const ownerOptions = mergedOwnerCandidates(
     ownerCandidates,
@@ -202,8 +215,9 @@ export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      const fetchAcl = consoleAudit ? fetchAdminResourceAcl : fetchResourceAcl;
       const [a, g] = await Promise.all([
-        fetchResourceAcl(resourceType, resourceId),
+        fetchAcl(resourceType, resourceId),
         fetchAccessGroups().catch(() => [] as AccessGroupOut[]),
       ]);
       setAcl(a);
@@ -211,8 +225,11 @@ export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
       applyAclToState(a, setOthersPermissions, setOwnerGrant, setGroupRows);
       setOwnerEditing(false);
       setOidcOwnerInput('');
-      if ((a.effective_permissions ?? '').includes('m')) {
-        const candidates = await fetchResourceAclOwnerCandidates(resourceType, resourceId).catch(
+      if (canManageFromAcl(a, consoleAudit)) {
+        const fetchCandidates = consoleAudit
+          ? fetchAdminResourceAclOwnerCandidates
+          : fetchResourceAclOwnerCandidates;
+        const candidates = await fetchCandidates(resourceType, resourceId).catch(
           () => [] as OwnerCandidate[]
         );
         setOwnerCandidates(candidates);
@@ -224,7 +241,7 @@ export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [resourceId, resourceType, t]);
+  }, [consoleAudit, resourceId, resourceType, t]);
 
   useEffect(() => {
     void load();
@@ -239,10 +256,12 @@ export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
     setSaving(true);
     try {
       const grants = buildGrantPayload(ownerGrant, groupRows, othersPermissions);
-      const updated = await putResourceAcl(resourceType, resourceId, grants);
+      const putAcl = consoleAudit ? putAdminResourceAcl : putResourceAcl;
+      const updated = await putAcl(resourceType, resourceId, grants);
       setAcl(updated);
       applyAclToState(updated, setOthersPermissions, setOwnerGrant, setGroupRows);
       toast.success(t('resourceShare.saved'));
+      onSaved?.();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('resourceShare.saveFailed'));
     } finally {
@@ -313,10 +332,14 @@ export function ResourceSharePanel({ resourceType, resourceId, title }: Props) {
     <section className="resource-share-panel">
       <header className="resource-share-header">
         <h2>{title ?? t('resourceShare.title')}</h2>
-        {acl?.effective_permissions && (
-          <span className="resource-share-effective">
-            {t('resourceShare.yourAccess')}: <code>{acl.effective_permissions || '—'}</code>
-          </span>
+        {consoleAudit ? (
+          <span className="resource-share-effective">{t('resourceShare.consoleAuditHint')}</span>
+        ) : (
+          acl?.effective_permissions && (
+            <span className="resource-share-effective">
+              {t('resourceShare.yourAccess')}: <code>{acl.effective_permissions || '—'}</code>
+            </span>
+          )
         )}
       </header>
 

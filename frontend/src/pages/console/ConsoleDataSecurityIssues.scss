@@ -1,0 +1,86 @@
+.console-dso-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.console-dso-table th,
+.console-dso-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.console-dso-actions {
+  white-space: nowrap;
+}
+
+.console-dso-detail-row td {
+  padding-top: 0.75rem;
+  padding-bottom: 1.25rem;
+  background: var(--surface-muted, #f9fafb);
+}
+
+.console-dso-legacy {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.console-dso-legacy-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.console-dso-review-block {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle, #e5e7eb);
+}
+
+.console-dso-review-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.console-dso-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 0.75rem;
+}
+
+.console-dso-pagination-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.console-dso-pagination-info label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.console-dso-pagination-info select {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border-subtle, #e5e7eb);
+  border-radius: 4px;
+  background: var(--surface, #fff);
+}
+
+.console-dso-pagination-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.console-dso-page-nums {
+  font-size: 0.875rem;
+  padding: 0 0.35rem;
+}

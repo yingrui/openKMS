@@ -39,12 +39,17 @@ import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
 import { ConsoleDataSecurityGroups } from './pages/console/ConsoleDataSecurityGroups';
 import { ConsoleGroupDataAccess } from './pages/console/ConsoleGroupDataAccess';
-import { ConsoleDataResources } from './pages/console/ConsoleDataResources';
+import { ConsoleDataSecurityIssues } from './pages/console/ConsoleDataSecurityIssues';
 import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/evaluation/EvaluationDatasetDetail';
 import { EvaluationDatasetSettings } from './pages/evaluation/EvaluationDatasetSettings';
 import { FeatureGate } from './components/FeatureGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+function GroupMembersLegacyRedirect() {
+  const { groupId = '' } = useParams<{ groupId: string }>();
+  return <Navigate to={`/console/data-security/groups/${groupId}/members`} replace />;
+}
 
 function AppLoadingFallback() {
   const { t } = useTranslation('common');
@@ -177,9 +182,21 @@ function App() {
             <Route index element={<ConsoleOverview />} />
             <Route path="health" element={<ConsoleHealth />} />
             <Route path="permission-management" element={<ConsolePermissionManagement />} />
+            <Route path="data-security/issues" element={<ConsoleDataSecurityIssues />} />
+            <Route
+              path="data-security/overview"
+              element={<Navigate to="/console/data-security/issues" replace />}
+            />
             <Route path="data-security/groups" element={<ConsoleDataSecurityGroups />} />
-            <Route path="data-security/groups/:groupId/access" element={<ConsoleGroupDataAccess />} />
-            <Route path="data-security/data-resources" element={<ConsoleDataResources />} />
+            <Route path="data-security/groups/:groupId/members" element={<ConsoleGroupDataAccess />} />
+            <Route
+              path="data-security/groups/:groupId/access"
+              element={<GroupMembersLegacyRedirect />}
+            />
+            <Route
+              path="data-security/data-resources"
+              element={<Navigate to="/console/data-security/issues" replace />}
+            />
             <Route path="data-sources" element={<ConsoleDataSources />} />
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />

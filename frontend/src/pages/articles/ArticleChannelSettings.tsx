@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
 import {
@@ -12,6 +12,8 @@ import {
   type ChannelNode,
 } from '../../data/channelUtils';
 import { updateArticleChannel } from '../../data/articleChannelsApi';
+import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import '../documents/DocumentChannelSettings.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
@@ -32,9 +34,13 @@ function findParentId(nodes: ChannelNode[], targetId: string, parent: string | n
   return undefined;
 }
 
+type TabId = 'general' | 'sharing';
+
 export function ArticleChannelSettings() {
   const { t } = useTranslation('articles');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error, refetch } = useArticleChannels();
 
@@ -45,6 +51,13 @@ export function ArticleChannelSettings() {
   const [descriptionField, setDescriptionField] = useState('');
   const [parentIdField, setParentIdField] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>(tabParam === 'sharing' ? 'sharing' : 'general');
+
+  useEffect(() => {
+    if (tabParam === 'sharing' || tabParam === 'general') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   const parentOptions = useMemo(() => flattenForParent(channels), [channels]);
 
@@ -125,6 +138,11 @@ export function ArticleChannelSettings() {
     );
   }
 
+  const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
+    { id: 'general', label: t('channelSettings.general'), icon: Settings },
+    { id: 'sharing', label: t('channelSettings.tabSharing'), icon: Users },
+  ];
+
   return (
     <div className="document-channel-settings">
       <Link to={`/articles/channels/${channelId}`} className="document-channel-settings-back">
@@ -137,54 +155,75 @@ export function ArticleChannelSettings() {
         <p className="page-subtitle">{t('channelSettings.configureSubtitle', { name: channelName })}</p>
       </div>
 
-      <div className="document-channel-settings-form">
-        <section className="document-channel-settings-section">
-          <h2>{t('channelSettings.general')}</h2>
-          <p className="document-channel-settings-hint">
-            {t('channelSettings.generalHint')}
-          </p>
-          <div className="document-channel-settings-field">
-            <label htmlFor="ac-settings-name">{t('channelSettings.name')}</label>
-            <input
-              id="ac-settings-name"
-              type="text"
-              value={nameField}
-              onChange={(e) => setNameField(e.target.value)}
-              placeholder={t('channelSettings.namePlaceholder')}
-            />
-          </div>
-          <div className="document-channel-settings-field">
-            <label htmlFor="ac-settings-description">{t('channelSettings.description')}</label>
-            <textarea
-              id="ac-settings-description"
-              value={descriptionField}
-              onChange={(e) => setDescriptionField(e.target.value)}
-              placeholder={t('channelSettings.descPlaceholder')}
-              rows={3}
-            />
-          </div>
-          <div className="document-channel-settings-field">
-            <label htmlFor="ac-settings-parent">{t('channelSettings.parent')}</label>
-            <select
-              id="ac-settings-parent"
-              value={parentIdField}
-              onChange={(e) => setParentIdField(e.target.value)}
-            >
-              {moveParentChoices.map((p) => (
-                <option key={p.id || 'root'} value={p.id}>
-                  {'—'.repeat(p.depth)} {p.name}
-                </option>
-              ))}
-            </select>
-            <p className="document-channel-settings-hint">{t('channelSettings.parentHint')}</p>
-          </div>
-        </section>
-
-        <div className="document-channel-settings-actions">
-          <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
-            {saving ? t('channelSettings.saving') : t('channelSettings.save')}
+      <div className="document-channel-settings-tabs">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <tab.icon size={16} />
+            {tab.label}
           </button>
-        </div>
+        ))}
+      </div>
+
+      <div className="document-channel-settings-form">
+        {activeTab === 'general' && (
+          <section className="document-channel-settings-section">
+            <h2>{t('channelSettings.general')}</h2>
+            <p className="document-channel-settings-hint">{t('channelSettings.generalHint')}</p>
+            <div className="document-channel-settings-field">
+              <label htmlFor="ac-settings-name">{t('channelSettings.name')}</label>
+              <input
+                id="ac-settings-name"
+                type="text"
+                value={nameField}
+                onChange={(e) => setNameField(e.target.value)}
+                placeholder={t('channelSettings.namePlaceholder')}
+              />
+            </div>
+            <div className="document-channel-settings-field">
+              <label htmlFor="ac-settings-description">{t('channelSettings.description')}</label>
+              <textarea
+                id="ac-settings-description"
+                value={descriptionField}
+                onChange={(e) => setDescriptionField(e.target.value)}
+                placeholder={t('channelSettings.descPlaceholder')}
+                rows={3}
+              />
+            </div>
+            <div className="document-channel-settings-field">
+              <label htmlFor="ac-settings-parent">{t('channelSettings.parent')}</label>
+              <select
+                id="ac-settings-parent"
+                value={parentIdField}
+                onChange={(e) => setParentIdField(e.target.value)}
+              >
+                {moveParentChoices.map((p) => (
+                  <option key={p.id || 'root'} value={p.id}>
+                    {'—'.repeat(p.depth)} {p.name}
+                  </option>
+                ))}
+              </select>
+              <p className="document-channel-settings-hint">{t('channelSettings.parentHint')}</p>
+            </div>
+            <div className="document-channel-settings-actions">
+              <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+                {saving ? t('channelSettings.saving') : t('channelSettings.save')}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'sharing' && channelId && (
+          <ResourceSharePanel
+            resourceType={RESOURCE_TYPES.articleChannel}
+            resourceId={channelId}
+            title={t('channelSettings.sharingHeading')}
+          />
+        )}
       </div>
     </div>
   );

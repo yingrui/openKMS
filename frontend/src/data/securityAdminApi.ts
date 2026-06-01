@@ -1,5 +1,6 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
+import type { OwnerCandidate, ResourceAclOut } from './resourceAclApi';
 
 export type PermissionCatalogEntry = {
   key: string;
@@ -306,19 +307,18 @@ export async function fetchGroupScopes(groupId: string): Promise<GroupScopesOut>
   return res.json();
 }
 
-export type DataResourceOut = {
-  id: string;
-  name: string;
-  description: string | null;
-  resource_kind: string;
-  attributes: Record<string, unknown>;
-  anchor_channel_id: string | null;
-  anchor_knowledge_base_id: string | null;
+export type GroupSharedResourceOut = {
+  resource_type: string;
+  resource_type_label: string;
+  resource_id: string;
+  resource_label: string;
+  permissions: string;
+  share_path: string | null;
 };
 
-export async function fetchDataResources(): Promise<DataResourceOut[]> {
+export async function fetchGroupSharedResources(groupId: string): Promise<GroupSharedResourceOut[]> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/shared-resources`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -326,9 +326,76 @@ export async function fetchDataResources(): Promise<DataResourceOut[]> {
   return res.json();
 }
 
-export async function fetchResourceKinds(): Promise<string[]> {
+export type ResourceAclIssueCode =
+  | 'others_manage'
+  | 'others_write'
+  | 'unknown_group'
+  | 'empty_group'
+  | 'unknown_owner'
+  | 'missing_owner'
+  | 'owner_no_permissions'
+  | 'owner_no_manage'
+  | 'implicit_others'
+  | 'others_read';
+
+export const RESOURCE_ACL_ISSUE_ORDER: ResourceAclIssueCode[] = [
+  'others_manage',
+  'others_write',
+  'unknown_group',
+  'empty_group',
+  'unknown_owner',
+  'missing_owner',
+  'owner_no_permissions',
+  'owner_no_manage',
+  'implicit_others',
+  'others_read',
+];
+
+/** May be intentional — shown under “Review recommended”. */
+export const RESOURCE_ACL_ISSUE_REVIEW: ResourceAclIssueCode[] = ['others_read'];
+
+export const RESOURCE_ACL_ISSUE_CRITICAL_ORDER = RESOURCE_ACL_ISSUE_ORDER.filter(
+  (code) => !RESOURCE_ACL_ISSUE_REVIEW.includes(code)
+);
+
+export type ResourceAclIssueItem = {
+  resource_type: string;
+  resource_type_label: string;
+  resource_id: string;
+  resource_label: string;
+  share_path: string | null;
+  issues: ResourceAclIssueCode[];
+  owner_label: string | null;
+  owner_permissions: string | null;
+  others_permissions: string | null;
+  inherited_others_permissions: string | null;
+  broken_group_ids: string[];
+  empty_group_ids: string[];
+  grants: {
+    grantee_type: string;
+    grantee_id: string | null;
+    permissions: string;
+    grantee_label?: string | null;
+    is_owner?: boolean;
+  }[];
+};
+
+export type ResourceAclIssuesSummaryOut = {
+  issue_count: number;
+  by_issue: Partial<Record<ResourceAclIssueCode, number>>;
+};
+
+export type ResourceAclIssuesPageOut = ResourceAclIssuesSummaryOut & {
+  issue: ResourceAclIssueCode;
+  total: number;
+  limit: number;
+  offset: number;
+  items: ResourceAclIssueItem[];
+};
+
+export async function fetchResourceAclIssuesSummary(): Promise<ResourceAclIssuesSummaryOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/kinds`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/resource-acl/issues`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -336,55 +403,93 @@ export async function fetchResourceKinds(): Promise<string[]> {
   return res.json();
 }
 
-export async function createDataResource(body: {
-  name: string;
-  description?: string | null;
-  resource_kind: string;
-  attributes?: Record<string, unknown>;
-  anchor_channel_id?: string | null;
-  anchor_knowledge_base_id?: string | null;
-}): Promise<DataResourceOut> {
+export async function fetchResourceAclIssuesPage(
+  issue: ResourceAclIssueCode,
+  limit: number,
+  offset: number
+): Promise<ResourceAclIssuesPageOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources`, {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
+  const params = new URLSearchParams({
+    issue,
+    limit: String(limit),
+    offset: String(offset),
   });
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/resource-acl/issues?${params.toString()}`,
+    { headers: { ...headers }, credentials: 'include' }
+  );
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
 
-export async function patchDataResource(
-  id: string,
-  body: {
-    name?: string;
-    description?: string | null;
-    resource_kind?: string;
-    attributes?: Record<string, unknown>;
-    anchor_channel_id?: string | null;
-    anchor_knowledge_base_id?: string | null;
-  }
-): Promise<DataResourceOut> {
+export async function fetchAdminResourceAcl(
+  resourceType: string,
+  resourceId: string
+): Promise<ResourceAclOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
-    method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(body),
-  });
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
+    { headers, credentials: 'include' }
+  );
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
 
-export async function deleteDataResource(id: string): Promise<void> {
+export async function putAdminResourceAcl(
+  resourceType: string,
+  resourceId: string,
+  grants: { grantee_type: string; grantee_id?: string | null; permissions: string }[]
+): Promise<ResourceAclOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/${id}`, {
-    method: 'DELETE',
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
+    {
+      method: 'PUT',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ grants }),
+    }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function fetchAdminResourceAclOwnerCandidates(
+  resourceType: string,
+  resourceId: string
+): Promise<OwnerCandidate[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/owner-candidates`,
+    { headers, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export type DataResourceMigrationReportOut = {
+  deprecated: boolean;
+  message: string;
+  row_count: number;
+  rows: {
+    id: string;
+    name: string;
+    description: string | null;
+    resource_kind: string;
+    attributes: Record<string, unknown>;
+    anchor_channel_id: string | null;
+    anchor_knowledge_base_id: string | null;
+  }[];
+};
+
+export async function fetchDataResourcesMigrationReport(): Promise<DataResourceMigrationReportOut> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/migration-report`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
 }
 
 export async function putGroupScopes(groupId: string, body: Partial<GroupScopesOut>) {
