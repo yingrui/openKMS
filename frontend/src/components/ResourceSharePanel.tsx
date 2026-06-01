@@ -358,17 +358,18 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
         <p className="resource-share-inherit">{t('resourceShare.readOnlyHint')}</p>
       )}
 
-      <table className="resource-share-table">
-        <thead>
-          <tr>
-            <th>{t('resourceShare.grantee')}</th>
-            <th>{t('resourceShare.read')}</th>
-            <th>{t('resourceShare.write')}</th>
-            <th>{t('resourceShare.manage')}</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
+      <div className="resource-share-table-wrap">
+        <table className="resource-share-table">
+          <thead>
+            <tr>
+              <th>{t('resourceShare.grantee')}</th>
+              <th>{t('resourceShare.read')}</th>
+              <th>{t('resourceShare.write')}</th>
+              <th>{t('resourceShare.manage')}</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
           <tr className="resource-share-owner-row">
             <td>
               <strong>{t('resourceShare.owner')}</strong>
@@ -396,7 +397,7 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
                       onChange={(e) => setOidcOwnerInput(e.target.value)}
                       placeholder={t('resourceShare.ownerSubjectPlaceholder')}
                     />
-                    <button type="button" className="btn-secondary" onClick={confirmOidcOwner}>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={confirmOidcOwner}>
                       {t('resourceShare.assignOwner')}
                     </button>
                   </div>
@@ -498,18 +499,24 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
             {renderPermCells(othersPermissions, setOthersPermissions, !canManage)}
             <td />
           </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
 
       <div className="resource-share-actions">
         {canManage && (
-          <button type="button" className="btn-secondary" onClick={addGroupRow} disabled={!addableGroups.length}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={addGroupRow}
+            disabled={!addableGroups.length}
+          >
             {t('resourceShare.addGroup')}
           </button>
         )}
         <button
           type="button"
-          className="btn-primary"
+          className="btn btn-primary"
           onClick={() => void onSave()}
           disabled={saving || !canManage}
         >

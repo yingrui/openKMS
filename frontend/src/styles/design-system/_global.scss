@@ -106,6 +106,38 @@ textarea {
   line-height: var(--text-sm--line);
 }
 
+.btn-link {
+  display: inline;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.btn-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+.btn-link.danger {
+  color: #b91c1c;
+}
+
+.btn-link.danger:hover {
+  color: #991b1b;
+}
+
 /* Utility */
 .sr-only {
   position: absolute;
