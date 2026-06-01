@@ -109,14 +109,60 @@ export async function createSecurityPermission(body: {
   return res.json();
 }
 
-export async function fetchSecurityPermissions(): Promise<SecurityPermissionRowOut[]> {
+export type SecurityPermissionsPageOut = {
+  items: SecurityPermissionRowOut[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type ListPageParams = {
+  limit?: number;
+  offset?: number;
+  search?: string;
+};
+
+export async function fetchSecurityPermissionsPage(
+  params: ListPageParams & { category?: string | null } = {}
+): Promise<SecurityPermissionsPageOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions`, {
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  if (params.search?.trim()) qs.set('search', params.search.trim());
+  if (params.category) qs.set('category', params.category);
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/security-permissions?${qs.toString()}`,
+    { headers: { ...headers }, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+/** All catalog keys (for onboarding / hint diff). */
+export async function fetchSecurityPermissionKeys(): Promise<string[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions/keys`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+/** @deprecated Prefer fetchSecurityPermissionsPage */
+export async function fetchSecurityPermissions(): Promise<SecurityPermissionRowOut[]> {
+  const items: SecurityPermissionRowOut[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetchSecurityPermissionsPage({ limit: 200, offset });
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+  return items;
 }
 
 export async function patchSecurityPermission(
@@ -207,16 +253,60 @@ export async function putRolePermissions(roleId: string, permissionKeys: string[
   return res.json();
 }
 
-export type AccessGroupOut = { id: string; name: string; description: string | null };
+export type AccessGroupOut = {
+  id: string;
+  name: string;
+  description: string | null;
+  member_count: number;
+  shared_resource_count: number;
+};
 
-export async function fetchAccessGroups(): Promise<AccessGroupOut[]> {
+export async function fetchAccessGroup(groupId: string): Promise<AccessGroupOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+export type AccessGroupsPageOut = {
+  items: AccessGroupOut[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function fetchAccessGroupsPage(
+  params: ListPageParams = {}
+): Promise<AccessGroupsPageOut> {
+  const headers = await getAuthHeaders();
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  if (params.search?.trim()) qs.set('search', params.search.trim());
+  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups?${qs.toString()}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+/** All groups (sidebar, share panel). Paginates at API max page size (200). */
+export async function fetchAccessGroups(): Promise<AccessGroupOut[]> {
+  const items: AccessGroupOut[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetchAccessGroupsPage({ limit: 200, offset });
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+  return items;
 }
 
 export async function createAccessGroup(body: {
@@ -263,12 +353,36 @@ export type LocalUserBrief = { id: string; email: string; username: string };
 
 export type MemberBrief = { subject: string; email?: string | null; username?: string | null };
 
-export async function fetchGroupMembers(groupId: string): Promise<{ members: MemberBrief[] }> {
+export type GroupMembersPageOut = {
+  members: MemberBrief[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function fetchGroupMemberSubjects(groupId: string): Promise<string[]> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/groups/${groupId}/member-subjects`,
+    { headers: { ...headers }, credentials: 'include' }
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = (await res.json()) as { subjects: string[] };
+  return data.subjects;
+}
+
+export async function fetchGroupMembersPage(
+  groupId: string,
+  params: ListPageParams = {}
+): Promise<GroupMembersPageOut> {
+  const headers = await getAuthHeaders();
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/groups/${groupId}/members?${qs.toString()}`,
+    { headers: { ...headers }, credentials: 'include' }
+  );
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }
@@ -316,12 +430,25 @@ export type GroupSharedResourceOut = {
   share_path: string | null;
 };
 
-export async function fetchGroupSharedResources(groupId: string): Promise<GroupSharedResourceOut[]> {
+export type GroupSharedResourcesPageOut = {
+  items: GroupSharedResourceOut[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export async function fetchGroupSharedResourcesPage(
+  groupId: string,
+  params: ListPageParams = {}
+): Promise<GroupSharedResourcesPageOut> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/shared-resources`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/admin/groups/${groupId}/shared-resources?${qs.toString()}`,
+    { headers: { ...headers }, credentials: 'include' }
+  );
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }

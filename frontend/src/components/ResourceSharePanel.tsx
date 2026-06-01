@@ -107,6 +107,8 @@ function mergedGroupOptions(catalog: AccessGroupOut[], rows: GroupRow[]): Access
         id: row.grantee_id,
         name: row.label?.trim() || row.grantee_id,
         description: null,
+        member_count: 0,
+        shared_resource_count: 0,
       });
     }
   }

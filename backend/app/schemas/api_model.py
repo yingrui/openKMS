@@ -85,6 +85,8 @@ class ApiModelResponse(BaseModel):
 class ApiModelListResponse(BaseModel):
     items: list[ApiModelResponse]
     total: int
+    limit: int
+    offset: int
 
 
 class ApiModelTestRequest(BaseModel):

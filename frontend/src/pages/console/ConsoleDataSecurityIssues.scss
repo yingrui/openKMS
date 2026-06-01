@@ -1,3 +1,22 @@
+.console-group-access-muted {
+  color: var(--color-text-muted);
+}
+
+.console-group-access-hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.console-group-access-section {
+  margin-bottom: 2rem;
+}
+
+.console-group-access-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
 .console-dso-table {
   width: 100%;
   border-collapse: collapse;

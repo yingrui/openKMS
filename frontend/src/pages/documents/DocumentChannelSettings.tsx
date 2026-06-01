@@ -11,7 +11,7 @@ import {
   type ExtractionSchemaField,
 } from '../../data/channelUtils';
 import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
-import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { toast } from 'sonner';
 import { updateChannel, type LabelConfigItem } from '../../data/channelsApi';
@@ -110,8 +110,8 @@ export function DocumentChannelSettings() {
   const loadModels = useCallback(async () => {
     setModelsLoading(true);
     try {
-      const res = await fetchModels({ category: 'llm' });
-      setLlmModels(res.items);
+      const res = await fetchAllModels({ category: 'llm' });
+      setLlmModels(res);
     } catch {
       setLlmModels([]);
     } finally {

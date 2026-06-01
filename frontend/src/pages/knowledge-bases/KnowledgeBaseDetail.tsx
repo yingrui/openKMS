@@ -74,7 +74,7 @@ import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesAp
 import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
-import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
@@ -595,10 +595,10 @@ export function KnowledgeBaseDetail() {
 
   const loadModels = useCallback(async () => {
     try {
-      const emb = await fetchModels({ category: 'embedding' });
-      setEmbeddingModels(emb.items);
-      const llm = await fetchModels({ category: 'llm' });
-      setLlmModels(llm.items);
+      const emb = await fetchAllModels({ category: 'embedding' });
+      setEmbeddingModels(emb);
+      const llm = await fetchAllModels({ category: 'llm' });
+      setLlmModels(llm);
     } catch { /* noop */ }
   }, []);
 

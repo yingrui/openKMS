@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2, Server } from 'lucide-react';
@@ -19,7 +19,10 @@ import {
   deleteProvider,
   type ApiProviderResponse,
 } from '../../data/providersApi';
+import { Pagination } from '../../styles/design-system';
 import './Models.scss';
+
+const MODELS_PAGE_SIZE_DEFAULT = 25;
 
 type ModalMode = 'provider' | 'model' | null;
 
@@ -28,11 +31,15 @@ export function Models() {
   const navigate = useNavigate();
   const [providers, setProviders] = useState<ApiProviderResponse[]>([]);
   const [models, setModels] = useState<ApiModelResponse[]>([]);
+  const [modelsTotal, setModelsTotal] = useState(0);
+  const [modelsPage, setModelsPage] = useState(0);
+  const [modelsPageSize, setModelsPageSize] = useState(MODELS_PAGE_SIZE_DEFAULT);
   const [categories, setCategories] = useState<ModelCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editProvider, setEditProvider] = useState<ApiProviderResponse | null>(null);
   const [editModel, setEditModel] = useState<ApiModelResponse | null>(null);
@@ -60,6 +67,15 @@ export function Models() {
     }
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearchDebounced(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setModelsPage(0);
+  }, [activeCategory, activeProvider, searchDebounced]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,12 +83,15 @@ export function Models() {
         fetchModels({
           category: activeCategory || undefined,
           provider_id: activeProvider || undefined,
-          search: search || undefined,
+          search: searchDebounced.trim() || undefined,
+          limit: modelsPageSize,
+          offset: modelsPage * modelsPageSize,
         }),
         fetchModelCategories(),
         fetchProviders(),
       ]);
       setModels(modelsRes.items);
+      setModelsTotal(modelsRes.total);
       setCategories(cats);
       setProviders(provsRes.items);
     } catch (e) {
@@ -80,11 +99,19 @@ export function Models() {
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeProvider, search, t]);
+  }, [activeCategory, activeProvider, modelsPage, modelsPageSize, searchDebounced, t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
+
+  const providerModelCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const m of models) {
+      counts.set(m.provider_id, (counts.get(m.provider_id) ?? 0) + 1);
+    }
+    return counts;
+  }, [models]);
 
   const openAddProvider = () => {
     setEditProvider(null);
@@ -230,8 +257,7 @@ export function Models() {
   };
 
   const categoryLabel = (catId: string) => categories.find((c) => c.id === catId)?.label || catId;
-  const providerModelCount = (providerId: string) =>
-    models.filter((m) => m.provider_id === providerId).length;
+  const providerModelCount = (providerId: string) => providerModelCounts.get(providerId) ?? 0;
 
   return (
     <div className="models">
@@ -252,34 +278,36 @@ export function Models() {
               {t('shared.add')}
             </button>
           </div>
-          <ul className="models-category-list">
-            <li
-              className={`models-category-item ${activeProvider === null ? 'active' : ''}`}
-              onClick={() => setActiveProvider(null)}
-            >
-              <Server size={16} />
-              <span>{t('shared.all')}</span>
-            </li>
-            {providers.map((p) => (
+          <div className="models-category-list-scroll">
+            <ul className="models-category-list">
               <li
-                key={p.id}
-                className={`models-category-item models-provider-item ${activeProvider === p.id ? 'active' : ''}`}
-                onClick={() => setActiveProvider(p.id)}
+                className={`models-category-item ${activeProvider === null ? 'active' : ''}`}
+                onClick={() => setActiveProvider(null)}
               >
                 <Server size={16} />
-                <span className="models-provider-name">{p.name}</span>
-                <span className="models-provider-count">({providerModelCount(p.id)})</span>
-                <div className="models-provider-actions" onClick={(e) => e.stopPropagation()}>
-                  <button type="button" title={t('models.editProvider')} onClick={() => openEditProvider(p)}>
-                    <Pencil size={12} />
-                  </button>
-                  <button type="button" title={t('models.deleteProvider')} onClick={() => handleDeleteProvider(p.id)}>
-                    <Trash2 size={12} />
-                  </button>
-                </div>
+                <span>{t('shared.all')}</span>
               </li>
-            ))}
-          </ul>
+              {providers.map((p) => (
+                <li
+                  key={p.id}
+                  className={`models-category-item models-provider-item ${activeProvider === p.id ? 'active' : ''}`}
+                  onClick={() => setActiveProvider(p.id)}
+                >
+                  <Server size={16} />
+                  <span className="models-provider-name">{p.name}</span>
+                  <span className="models-provider-count">({providerModelCount(p.id)})</span>
+                  <div className="models-provider-actions" onClick={(e) => e.stopPropagation()}>
+                    <button type="button" title={t('models.editProvider')} onClick={() => openEditProvider(p)}>
+                      <Pencil size={12} />
+                    </button>
+                    <button type="button" title={t('models.deleteProvider')} onClick={() => handleDeleteProvider(p.id)}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
         <div className="models-content">
           <div className="models-toolbar">
@@ -326,6 +354,7 @@ export function Models() {
                 <p>{t('models.loading')}</p>
               </div>
             ) : (
+              <>
               <table className="models-table">
                 <thead>
                   <tr>
@@ -343,7 +372,9 @@ export function Models() {
                       <td colSpan={6} className="table-empty">
                         {providers.length === 0
                           ? t('models.emptyNoProviders')
-                          : t('models.emptyNoModels')}
+                          : modelsTotal === 0 && !searchDebounced.trim() && !activeCategory && !activeProvider
+                            ? t('models.emptyNoModels')
+                            : t('models.emptyNoMatch')}
                       </td>
                     </tr>
                   ) : (
@@ -404,6 +435,18 @@ export function Models() {
                   )}
                 </tbody>
               </table>
+              <Pagination
+                total={modelsTotal}
+                page={modelsPage}
+                pageSize={modelsPageSize}
+                loading={loading}
+                onPageChange={setModelsPage}
+                onPageSizeChange={(size) => {
+                  setModelsPageSize(size);
+                  setModelsPage(0);
+                }}
+              />
+              </>
             )}
           </div>
         </div>

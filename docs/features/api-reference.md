@@ -37,14 +37,16 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | PUT | `/api/admin/security-roles/{role_id}/permissions` | `console:permissions`: replace keys (each must exist in `security_permissions`); cannot drop sole `all` without adding another permission first (see Permissions page) |
 | GET | `/api/admin/health-status` | `console:access`: dependency checks (API, database, object storage, job queue, **Langfuse** public health when `LANGFUSE_BASE_URL` is set and `LANGFUSE_HEALTHCHECK` is true); probes registered data sources when caller has `console:data_sources` |
 | GET | `/api/admin/permission-reference` | `console:permissions`: frontend feature path patterns + full OpenAPI operation list (method, path, summary, tags) to help configure `security_permissions` |
-| GET | `/api/admin/security-permissions` | `console:permissions`: list permission catalog rows (id, key, label, patterns, sort_order) |
+| GET | `/api/admin/security-permissions` | `console:permissions`: paginated catalog (`items`, `total`, `limit`, `offset`; query `search`, `category`) |
+| GET | `/api/admin/security-permissions/keys` | `console:permissions`: all catalog keys (for onboarding / hint diff) |
 | POST | `/api/admin/security-permissions` | `console:permissions`: create catalog row |
 | PATCH | `/api/admin/security-permissions/{id}` | `console:permissions`: update label, description, patterns, sort_order (built-in `all` row rejected) |
 | DELETE | `/api/admin/security-permissions/{id}` | `console:permissions`: delete row (`all` and keys still assigned to roles are rejected) |
-| GET/POST | `/api/admin/groups` | `console:groups`: list/create access groups |
-| GET/PATCH/DELETE | `/api/admin/groups/{id}` | `console:groups`: get/update/delete group |
-| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: list/replace members (`subjects`: local user ids or OIDC subs) |
-| GET | `/api/admin/groups/{id}/shared-resources` | `console:groups`: read-only list of ACL grants where this group is referenced (`resource_type`, `resource_label`, permissions, optional share link path) |
+| GET/POST | `/api/admin/groups` | `console:groups`: paginated list (`items`, `total`, `limit`, `offset`; query `search`) or create group (`member_count`, `shared_resource_count` on each item) |
+| GET/PATCH/DELETE | `/api/admin/groups/{id}` | `console:groups`: get/update/delete group (includes counts) |
+| GET | `/api/admin/groups/{id}/member-subjects` | `console:groups`: all member subject ids (for full membership state) |
+| GET/PUT | `/api/admin/groups/{id}/members` | `console:groups`: paginated member list (`limit`, `offset`) or replace all members (`subjects`) |
+| GET | `/api/admin/groups/{id}/shared-resources` | `console:groups`: paginated ACL grants for this group (`items`, `total`, `limit`, `offset`) |
 | GET/PUT | `/api/admin/groups/{id}/scopes` | **Deprecated** — `PUT` returns **410**; use resource ACL sharing |
 | GET | `/api/admin/resource-acl/issues` | `console:groups`: ACL issue summary (`issue_count`, `by_issue`) when called without query params |
 | GET | `/api/admin/resource-acl/issues?issue={code}&limit=&offset=` | `console:groups`: paginated items for one issue code (`others_manage`, `others_write`, `unknown_group`, `empty_group`, `unknown_owner`, `missing_owner`, `owner_no_permissions`, `owner_no_manage`, `implicit_others`, `others_read`); response includes `total`, `limit`, `offset`, refreshed `by_issue` |

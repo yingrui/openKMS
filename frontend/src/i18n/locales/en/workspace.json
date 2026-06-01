@@ -322,6 +322,7 @@
     "loading": "Loading models…",
     "emptyNoProviders": "Add a provider first, then add models.",
     "emptyNoModels": "No models yet. Click \"Add Model\" to get started.",
+    "emptyNoMatch": "No models match your filters.",
     "colModel": "Model",
     "colProvider": "Provider",
     "colCategory": "Category",

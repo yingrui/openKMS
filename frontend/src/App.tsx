@@ -37,8 +37,7 @@ import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
-import { ConsoleDataSecurityGroups } from './pages/console/ConsoleDataSecurityGroups';
-import { ConsoleGroupDataAccess } from './pages/console/ConsoleGroupDataAccess';
+import { ConsoleAccessGroups } from './pages/console/ConsoleAccessGroups';
 import { ConsoleDataSecurityIssues } from './pages/console/ConsoleDataSecurityIssues';
 import { EvaluationDatasetList } from './pages/evaluation/EvaluationDatasetList';
 import { EvaluationDatasetDetail } from './pages/evaluation/EvaluationDatasetDetail';
@@ -48,7 +47,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 
 function GroupMembersLegacyRedirect() {
   const { groupId = '' } = useParams<{ groupId: string }>();
-  return <Navigate to={`/console/data-security/groups/${groupId}/members`} replace />;
+  return <Navigate to={`/console/data-security/groups/${groupId}`} replace />;
 }
 
 function AppLoadingFallback() {
@@ -187,8 +186,12 @@ function App() {
               path="data-security/overview"
               element={<Navigate to="/console/data-security/issues" replace />}
             />
-            <Route path="data-security/groups" element={<ConsoleDataSecurityGroups />} />
-            <Route path="data-security/groups/:groupId/members" element={<ConsoleGroupDataAccess />} />
+            <Route path="data-security/groups" element={<ConsoleAccessGroups />} />
+            <Route path="data-security/groups/:groupId" element={<ConsoleAccessGroups />} />
+            <Route
+              path="data-security/groups/:groupId/members"
+              element={<GroupMembersLegacyRedirect />}
+            />
             <Route
               path="data-security/groups/:groupId/access"
               element={<GroupMembersLegacyRedirect />}

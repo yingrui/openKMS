@@ -25,6 +25,8 @@ export interface ApiModelResponse {
 export interface ApiModelListResponse {
   items: ApiModelResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface ApiModelCreate {
@@ -60,12 +62,16 @@ export async function fetchModels(params?: {
   category?: string;
   provider_id?: string;
   search?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<ApiModelListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
   if (params?.category) query.set('category', params.category);
   if (params?.provider_id) query.set('provider_id', params.provider_id);
   if (params?.search) query.set('search', params.search);
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
   const qs = query.toString() ? `?${query.toString()}` : '';
   const res = await authAwareFetch(`${config.apiUrl}/api/models${qs}`, {
     headers: { ...headers },
@@ -73,6 +79,25 @@ export async function fetchModels(params?: {
   });
   if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
   return res.json();
+}
+
+/** Full list for dropdowns. Paginates at API max page size (200). */
+export async function fetchAllModels(params?: {
+  category?: string;
+  provider_id?: string;
+  search?: string;
+}): Promise<ApiModelResponse[]> {
+  const items: ApiModelResponse[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetchModels({ ...params, limit: 200, offset });
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+  return items;
 }
 
 export async function fetchModelById(id: string): Promise<ApiModelResponse> {

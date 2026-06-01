@@ -1,4 +1,12 @@
 {
+  "pagination": {
+    "aria": "分页",
+    "range": "显示第 {{from}}–{{to}} 条，共 {{total}} 条",
+    "perPage": "每页",
+    "previous": "上一页",
+    "next": "下一页",
+    "pageStatus": "第 {{current}} / {{total}} 页"
+  },
   "appLoading": "加载中…",
   "graphPanZoomHint": "拖拽平移，滚动缩放。",
   "graph3dHint": "拖拽旋转视角，滚动缩放。青色连线为上下级，灰色为引用。点击地图节点可在左侧树中选中；点击资源则打开对应页面。",

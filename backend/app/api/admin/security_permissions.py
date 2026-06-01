@@ -6,8 +6,9 @@ import re
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +19,6 @@ from app.services.permission_catalog import PERM_CONSOLE_PERMISSIONS, PERM_ALL
 from app.services.permission_pattern_cache import invalidate_permission_pattern_cache
 from app.services.security_permission_service import (
     get_permission_by_key,
-    list_permissions_sorted,
     next_sort_order,
     permission_key_in_use,
 )
@@ -48,6 +48,13 @@ class SecurityPermissionCreateBody(BaseModel):
     sort_order: int | None = None
 
 
+class SecurityPermissionsPageOut(BaseModel):
+    items: list[SecurityPermissionOut]
+    total: int
+    limit: int
+    offset: int
+
+
 class SecurityPermissionPatchBody(BaseModel):
     label: str | None = Field(None, min_length=1, max_length=512)
     description: str | None = Field(None, max_length=8000)
@@ -75,6 +82,14 @@ def _normalize_key(raw: str) -> str:
     return raw.strip()
 
 
+def _category_filter(category: str):
+    if category == "admin":
+        return SecurityPermission.key == PERM_ALL
+    if category == "other":
+        return ~SecurityPermission.key.contains(":")
+    return SecurityPermission.key.startswith(f"{category}:")
+
+
 def _validate_key(key: str) -> None:
     if not _KEY_RE.match(key):
         raise HTTPException(
@@ -91,13 +106,52 @@ def _validate_pattern_list(name: str, items: list[str]) -> None:
             raise HTTPException(status_code=400, detail=f"Trim pattern strings in {name}")
 
 
-@router.get("", response_model=list[SecurityPermissionOut])
-async def list_security_permissions(
+@router.get("/keys", response_model=list[str])
+async def list_security_permission_keys(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_permission(PERM_CONSOLE_PERMISSIONS)),
 ):
-    rows = await list_permissions_sorted(db)
-    return [_to_out(p) for p in rows]
+    result = await db.execute(
+        select(SecurityPermission.key).order_by(SecurityPermission.sort_order, SecurityPermission.key)
+    )
+    return [str(row[0]) for row in result.all()]
+
+
+@router.get("", response_model=SecurityPermissionsPageOut)
+async def list_security_permissions(
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    search: str | None = Query(None, max_length=256),
+    category: str | None = Query(None, max_length=64),
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(require_permission(PERM_CONSOLE_PERMISSIONS)),
+):
+    base = select(SecurityPermission)
+    if search and (q := search.strip()):
+        like = f"%{q}%"
+        base = base.where(
+            or_(
+                SecurityPermission.key.ilike(like),
+                SecurityPermission.label.ilike(like),
+                SecurityPermission.description.ilike(like),
+            )
+        )
+    if category and (cat := category.strip()):
+        base = base.where(_category_filter(cat))
+    count_result = await db.execute(select(func.count()).select_from(base.subquery()))
+    total = int(count_result.scalar_one() or 0)
+    result = await db.execute(
+        base.order_by(SecurityPermission.sort_order, SecurityPermission.key)
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = list(result.scalars().all())
+    return SecurityPermissionsPageOut(
+        items=[_to_out(p) for p in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=SecurityPermissionOut, status_code=201)

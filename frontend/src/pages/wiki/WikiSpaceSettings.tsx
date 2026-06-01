@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../../data/channelsApi';
 import { fetchDocuments } from '../../data/documentsApi';
-import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
@@ -143,8 +143,8 @@ export function WikiSpaceSettings() {
     (async () => {
       setEmbeddingModelsLoading(true);
       try {
-        const r = await fetchModels({ category: 'embedding' });
-        if (!cancelled) setEmbeddingModels(r.items);
+        const r = await fetchAllModels({ category: 'embedding' });
+        if (!cancelled) setEmbeddingModels(r);
       } catch {
         if (!cancelled) setEmbeddingModels([]);
       } finally {

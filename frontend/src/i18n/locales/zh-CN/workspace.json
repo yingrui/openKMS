@@ -322,6 +322,7 @@
     "loading": "正在加载模型…",
     "emptyNoProviders": "请先添加提供商，再添加模型。",
     "emptyNoModels": "暂无模型。点击「添加模型」开始。",
+    "emptyNoMatch": "没有符合筛选条件的模型。",
     "colModel": "模型",
     "colProvider": "提供商",
     "colCategory": "类别",

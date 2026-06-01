@@ -20,7 +20,8 @@ import {
   deleteSecurityPermission,
   deleteSecurityRole,
   fetchPermissionReference,
-  fetchSecurityPermissions,
+  fetchSecurityPermissionKeys,
+  fetchSecurityPermissionsPage,
   fetchSecurityRolesPage,
   patchSecurityPermission,
   putRolePermissions,
@@ -30,7 +31,10 @@ import {
   type SecurityRoleOut,
 } from '../../data/securityAdminApi';
 import '../ontology/ontology-admin.scss';
+import { Pagination } from '../../styles/design-system';
 import './ConsolePermissionManagement.scss';
+
+const PERMS_PAGE_SIZE_DEFAULT = 25;
 
 const ONBOARDING_DISMISSED_KEY = 'openkms_permissions_onboarding_dismissed';
 
@@ -51,6 +55,10 @@ function formatCategoryLabel(id: string): string {
 export function ConsolePermissionManagement() {
   const { hasPermission } = useAuth();
   const [catalog, setCatalog] = useState<SecurityPermissionRowOut[]>([]);
+  const [catalogKeys, setCatalogKeys] = useState<string[]>([]);
+  const [permTotal, setPermTotal] = useState(0);
+  const [permPage, setPermPage] = useState(0);
+  const [permPageSize, setPermPageSize] = useState(PERMS_PAGE_SIZE_DEFAULT);
   const [operationKeyHints, setOperationKeyHints] = useState<OperationKeyHintRef[]>([]);
   const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
     try {
@@ -96,28 +104,56 @@ export function ConsolePermissionManagement() {
   /** Keys assigned to the selected role in the UI; only persisted when the user clicks Save. */
   const [roleDraftKeys, setRoleDraftKeys] = useState<string[]>([]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const loadMeta = useCallback(async () => {
     try {
-      const [perms, page, ref] = await Promise.all([
-        fetchSecurityPermissions(),
+      const [rolesPage, ref, keys] = await Promise.all([
         fetchSecurityRolesPage(),
         fetchPermissionReference(),
+        fetchSecurityPermissionKeys(),
       ]);
-      setCatalog(perms);
-      setRoles(page.roles);
-      setManaged(page.managed_in_console);
+      setRoles(rolesPage.roles);
+      setManaged(rolesPage.managed_in_console);
       setOperationKeyHints(Array.isArray(ref.operation_key_hints) ? ref.operation_key_hints : []);
+      setCatalogKeys(keys);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to load');
+    }
+  }, []);
+
+  const loadCatalog = useCallback(async () => {
+    setLoading(true);
+    try {
+      const page = await fetchSecurityPermissionsPage({
+        limit: permPageSize,
+        offset: permPage * permPageSize,
+        search: permSearch.trim() || undefined,
+        category: activeCategory ?? undefined,
+      });
+      setCatalog(page.items);
+      setPermTotal(page.total);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeCategory, permPage, permPageSize, permSearch]);
+
+  const reloadAll = useCallback(async () => {
+    await loadMeta();
+    await loadCatalog();
+  }, [loadMeta, loadCatalog]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadMeta();
+  }, [loadMeta]);
+
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
+
+  useEffect(() => {
+    setPermPage(0);
+  }, [permSearch, activeCategory]);
 
   const selectedRole = useMemo(
     () => roles.find((r) => r.id === selectedRoleId) ?? null,
@@ -202,9 +238,9 @@ export function ConsolePermissionManagement() {
   }, []);
 
   const missingOperationKeyHints = useMemo(() => {
-    const keys = new Set(catalog.map((c) => c.key));
+    const keys = new Set(catalogKeys);
     return operationKeyHints.filter((h) => !keys.has(h.key));
-  }, [catalog, operationKeyHints]);
+  }, [catalogKeys, operationKeyHints]);
 
   const hintCategoryByKey = useMemo(() => {
     const m = new Map<string, string>();
@@ -216,30 +252,11 @@ export function ConsolePermissionManagement() {
 
   const permissionCategories = useMemo(() => {
     const s = new Set<string>();
-    for (const row of catalog) {
-      s.add(hintCategoryByKey.get(row.key) ?? inferPermissionCategory(row.key));
+    for (const h of operationKeyHints) {
+      s.add(h.category);
     }
     return Array.from(s).sort((a, b) => a.localeCompare(b));
-  }, [catalog, hintCategoryByKey]);
-
-  const filteredCatalog = useMemo(() => {
-    let rows = catalog;
-    if (activeCategory) {
-      rows = rows.filter(
-        (r) => (hintCategoryByKey.get(r.key) ?? inferPermissionCategory(r.key)) === activeCategory
-      );
-    }
-    const q = permSearch.trim().toLowerCase();
-    if (q) {
-      rows = rows.filter(
-        (r) =>
-          r.key.toLowerCase().includes(q) ||
-          r.label.toLowerCase().includes(q) ||
-          (r.description ?? '').toLowerCase().includes(q)
-      );
-    }
-    return rows;
-  }, [catalog, activeCategory, permSearch, hintCategoryByKey]);
+  }, [operationKeyHints]);
 
   const addSuggestedPermission = useCallback(
     async (h: OperationKeyHintRef) => {
@@ -253,14 +270,14 @@ export function ConsolePermissionManagement() {
           backend_api_patterns: [],
         });
         toast.success(`Added ${h.key}`);
-        await load();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Failed to add');
-      } finally {
-        setAddingHintKey(null);
-      }
-    },
-    [load]
+      await reloadAll();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to add');
+    } finally {
+      setAddingHintKey(null);
+    }
+  },
+    [reloadAll]
   );
 
   const addAllMissingSuggestedKeys = useCallback(async () => {
@@ -277,13 +294,13 @@ export function ConsolePermissionManagement() {
         });
       }
       toast.success(`Added ${missingOperationKeyHints.length} permissions`);
-      await load();
+      await reloadAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Bulk add failed');
     } finally {
       setBulkAddingHints(false);
     }
-  }, [missingOperationKeyHints, load]);
+  }, [missingOperationKeyHints, reloadAll]);
 
   const openEditPermission = useCallback((row: SecurityPermissionRowOut) => {
     if (row.key === PERM_ALL) {
@@ -321,7 +338,7 @@ export function ConsolePermissionManagement() {
       toast.success('Permission updated');
       setShowEditPermModal(false);
       setEditingPermissionId(null);
-      await load();
+      await reloadAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Update failed');
     } finally {
@@ -342,7 +359,7 @@ export function ConsolePermissionManagement() {
       await deleteSecurityPermission(row.id);
       setDetailEntry(null);
       toast.success('Permission deleted');
-      await load();
+      await reloadAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Delete failed');
     }
@@ -380,7 +397,7 @@ export function ConsolePermissionManagement() {
       setPermDesc('');
       setPermFe('');
       setPermBe('');
-      await load();
+      await reloadAll();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Create failed');
     } finally {
@@ -437,8 +454,8 @@ export function ConsolePermissionManagement() {
   }, []);
 
   const toggleAllVisibleInDraft = useCallback(() => {
-    if (!selectedRole || filteredCatalog.length === 0) return;
-    const visibleKeys = filteredCatalog.map((r) => r.key);
+    if (!selectedRole || catalog.length === 0) return;
+    const visibleKeys = catalog.map((r) => r.key);
     setRoleDraftKeys((prev) => {
       const set = new Set(prev);
       const allAssigned = visibleKeys.every((k) => set.has(k));
@@ -449,7 +466,7 @@ export function ConsolePermissionManagement() {
       }
       return [...set];
     });
-  }, [selectedRole, filteredCatalog]);
+  }, [selectedRole, catalog]);
 
   const resetRoleDraft = useCallback(() => {
     if (!selectedRole) return;
@@ -474,16 +491,16 @@ export function ConsolePermissionManagement() {
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
   const visibleAssignState = useMemo(() => {
-    if (!selectedRole || filteredCatalog.length === 0) {
+    if (!selectedRole || catalog.length === 0) {
       return { checked: false, indeterminate: false };
     }
-    const keys = filteredCatalog.map((r) => r.key);
+    const keys = catalog.map((r) => r.key);
     const n = keys.filter((k) => roleDraftKeys.includes(k)).length;
     return {
       checked: n === keys.length && keys.length > 0,
       indeterminate: n > 0 && n < keys.length,
     };
-  }, [selectedRole, filteredCatalog, roleDraftKeys]);
+  }, [selectedRole, catalog, roleDraftKeys]);
 
   useEffect(() => {
     const el = selectAllCheckboxRef.current;
@@ -643,41 +660,43 @@ export function ConsolePermissionManagement() {
                   Add
                 </button>
               </div>
-              <ul className="console-perm-category-list">
-                <li
-                  className={`console-perm-category-item ${selectedRoleId === null ? 'active' : ''}`}
-                  onClick={() => trySetSelectedRoleId(null)}
-                >
-                  <LayoutGrid size={16} />
-                  <span>All</span>
-                </li>
-                {roles.map((r) => (
+              <div className="console-perm-category-list-scroll">
+                <ul className="console-perm-category-list">
                   <li
-                    key={r.id}
-                    className={`console-perm-category-item console-perm-role-sidebar-item ${
-                      selectedRoleId === r.id ? 'active' : ''
-                    }`}
-                    onClick={() => trySetSelectedRoleId(r.id)}
+                    className={`console-perm-category-item ${selectedRoleId === null ? 'active' : ''}`}
+                    onClick={() => trySetSelectedRoleId(null)}
                   >
-                    <Shield size={16} />
-                    <span className="console-perm-role-sidebar-name">{r.name}</span>
-                    <span className="console-perm-role-sidebar-count">({r.permission_keys.length})</span>
-                    {!r.is_system_role ? (
-                      <div className="console-perm-role-sidebar-actions" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          title="Delete role"
-                          disabled={deletingId === r.id}
-                          onClick={() => void confirmDeleteRole(r)}
-                          aria-label={`Delete role ${r.name}`}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ) : null}
+                    <LayoutGrid size={16} />
+                    <span>All</span>
                   </li>
-                ))}
-              </ul>
+                  {roles.map((r) => (
+                    <li
+                      key={r.id}
+                      className={`console-perm-category-item console-perm-role-sidebar-item ${
+                        selectedRoleId === r.id ? 'active' : ''
+                      }`}
+                      onClick={() => trySetSelectedRoleId(r.id)}
+                    >
+                      <Shield size={16} />
+                      <span className="console-perm-role-sidebar-name">{r.name}</span>
+                      <span className="console-perm-role-sidebar-count">({r.permission_keys.length})</span>
+                      {!r.is_system_role ? (
+                        <div className="console-perm-role-sidebar-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            title="Delete role"
+                            disabled={deletingId === r.id}
+                            onClick={() => void confirmDeleteRole(r)}
+                            aria-label={`Delete role ${r.name}`}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
               {roles.length === 0 ? (
                 <p className="console-perm-roles-sidebar-hint console-perm-muted">No roles yet. Use Add to create one.</p>
               ) : null}
@@ -779,7 +798,7 @@ export function ConsolePermissionManagement() {
                     <Loader2 size={32} className="console-perm-loading-spinner" />
                     <p>Loading permissions…</p>
                   </div>
-                ) : catalog.length === 0 ? (
+                ) : permTotal === 0 && !permSearch.trim() && !activeCategory ? (
                   <p className="console-perm-table-empty">No permission rows yet. Click &quot;Add permission&quot; to create catalog entries.</p>
                 ) : (
                   <table className="console-perm-table">
@@ -797,7 +816,7 @@ export function ConsolePermissionManagement() {
                               disabled={
                                 !selectedRole ||
                                 (selectedRole ? savingRoleId === selectedRole.id : false) ||
-                                filteredCatalog.length === 0
+                                catalog.length === 0
                               }
                               checked={visibleAssignState.checked}
                               onChange={() => toggleAllVisibleInDraft()}
@@ -811,14 +830,14 @@ export function ConsolePermissionManagement() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredCatalog.length === 0 ? (
+                      {catalog.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="console-perm-table-empty-cell">
                             No permissions match your search or filter.
                           </td>
                         </tr>
                       ) : (
-                        filteredCatalog.map((row) => {
+                        catalog.map((row) => {
                           const cat = hintCategoryByKey.get(row.key) ?? inferPermissionCategory(row.key);
                           const canAssign = !!selectedRole;
                           const on = selectedRole ? roleDraftKeys.includes(row.key) : false;
@@ -900,6 +919,17 @@ export function ConsolePermissionManagement() {
                     </tbody>
                   </table>
                 )}
+                <Pagination
+                  total={permTotal}
+                  page={permPage}
+                  pageSize={permPageSize}
+                  loading={loading}
+                  onPageChange={setPermPage}
+                  onPageSizeChange={(size) => {
+                    setPermPageSize(size);
+                    setPermPage(0);
+                  }}
+                />
               </div>
             </div>
           </div>

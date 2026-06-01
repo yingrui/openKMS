@@ -16,7 +16,6 @@ import {
   type ResourceAclIssueItem,
   type ResourceAclIssuesSummaryOut,
 } from '../../data/securityAdminApi';
-import './ConsoleGroupDataAccess.scss';
 import './ConsoleDataSecurityIssues.scss';
 
 const PAGE_SIZE_OPTIONS = [5, 25, 50, 100] as const;

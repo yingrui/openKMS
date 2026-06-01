@@ -11,7 +11,7 @@ import {
   updatePipeline,
   type PipelineResponse,
 } from '../../data/pipelinesApi';
-import { fetchModels, type ApiModelResponse } from '../../data/modelsApi';
+import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import './Pipelines.scss';
 
 export function Pipelines() {
@@ -44,11 +44,11 @@ export function Pipelines() {
       const [res, vars, modelsRes] = await Promise.all([
         fetchPipelines(),
         fetchTemplateVariables(),
-        fetchModels(),
+        fetchAllModels(),
       ]);
       setPipelines(res.items);
       setTemplateVars(vars);
-      setAllModels(modelsRes.items);
+      setAllModels(modelsRes);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('pipelines.loadFailed');
       setError(msg);

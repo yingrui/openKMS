@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Shield, KeyRound, Database, Box, Settings, Users, HeartPulse } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_ALL, PERM_CONSOLE_GROUPS, PERM_CONSOLE_PERMISSIONS } from '../../config/permissions';
-import { fetchSecurityPermissions } from '../../data/securityAdminApi';
+import { fetchSecurityPermissionKeys } from '../../data/securityAdminApi';
 import './ConsoleOverview.scss';
 
 const PERMS_ONBOARDING_KEY = 'openkms_permissions_onboarding_dismissed';
@@ -59,9 +59,9 @@ export function ConsoleOverview() {
     let cancelled = false;
     void (async () => {
       try {
-        const rows = await fetchSecurityPermissions();
+        const keys = await fetchSecurityPermissionKeys();
         if (cancelled) return;
-        if (rows.length === 1 && rows[0]?.key === PERM_ALL) {
+        if (keys.length === 1 && keys[0] === PERM_ALL) {
           setShowPermSetupNudge(true);
         }
       } catch {

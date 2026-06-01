@@ -33,6 +33,8 @@ async def list_models(
     category: str | None = Query(None),
     provider_id: str | None = Query(None),
     search: str | None = Query(None),
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """List registered models, optionally filtered by category, provider, or search term."""
@@ -45,8 +47,8 @@ async def list_models(
     if provider_id:
         stmt = stmt.where(ApiModel.provider_id == provider_id)
         count_stmt = count_stmt.where(ApiModel.provider_id == provider_id)
-    if search:
-        like = f"%{search}%"
+    if search and (q := search.strip()):
+        like = f"%{q}%"
         stmt = stmt.join(ApiProvider).where(
             ApiModel.name.ilike(like) | ApiProvider.name.ilike(like)
         )
@@ -55,11 +57,13 @@ async def list_models(
         )
 
     total_result = await db.execute(count_stmt)
-    total = total_result.scalar_one()
+    total = int(total_result.scalar_one() or 0)
 
-    result = await db.execute(stmt.order_by(ApiModel.created_at.desc()))
+    result = await db.execute(
+        stmt.order_by(ApiModel.created_at.desc()).limit(limit).offset(offset)
+    )
     items = [ApiModelResponse.model_validate(m) for m in result.scalars().all()]
-    return ApiModelListResponse(items=items, total=total)
+    return ApiModelListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 async def _clear_category_defaults(db: AsyncSession, category: str, exclude_model_id: str | None = None):
