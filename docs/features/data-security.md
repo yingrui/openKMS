@@ -121,6 +121,8 @@ Defined in `backend/app/services/resource_acl_constants.py`:
 | `group` | `access_groups.id` | Named group row |
 | `authenticated` | `NULL` | **Others** — all signed-in users not owner / not in listed groups |
 
+User grants are stored as the canonical subject (`sub` / local user id). PUT normalizes username or email to that id; permission checks also match JWT aliases (`preferred_username`, email) so legacy rows saved as a username still apply.
+
 ### Default-open vs restricted
 
 - **No ACL rows** anywhere in the resource's inheritance chain → **open** to all authenticated users (who pass Layer 1).
@@ -220,7 +222,7 @@ Legacy `data_resource_policy.py` delegates visibility to resource ACL; deprecate
 
 ### Per-resource sharing
 
-- **API:** `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`; `GET …/owner-candidates` (manage + local auth lists users for owner picker).
+- **API:** `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`; `GET …/owner-candidates` (manage: searchable user list for owner picker — local DB users in local auth; OIDC identities from API keys, group members, and mapped local users).
 - **SPA:** **Sharing** tab on document and article channel settings, wiki space settings, and knowledge base settings (`ResourceSharePanel` — owner, groups, Others checkboxes).
 
 User-visible copy uses **Owner**, **Groups**, and **Others** — not internal grantee type names.
@@ -279,7 +281,7 @@ See [Security](../security.md) for auth modes and token behaviour.
 | `OPENKMS_ENFORCE_RESOURCE_ACL=true` default-closed | Not implemented — flag reserved |
 | Admin read-all break-glass | Not implemented — admin needs grants to read data |
 | Object Explorer Cypher | Not rewritten for ACL — restrict via `ontology:read` / deployment policy |
-| OIDC owner picker | `owner-candidates` empty in OIDC mode — use subject id |
+| OIDC owner picker | Searchable list from `owner-candidates` (API-key users, group members); free-text subject still accepted |
 | List filter performance | Per-channel Python evaluation; may need SQL batching at large scale |
 
 ---

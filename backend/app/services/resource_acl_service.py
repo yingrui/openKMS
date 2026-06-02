@@ -122,6 +122,169 @@ async def resolve_subject_display(
     return subject
 
 
+async def _oidc_sub_for_user_row(db: AsyncSession, user: Any) -> str | None:
+    """Map a local users row to OIDC sub when the user has personal API keys."""
+    from sqlalchemy import func, or_
+
+    from app.models.user_api_key import UserApiKey
+
+    clauses = []
+    if user.username:
+        clauses.append(func.lower(UserApiKey.display_username) == user.username.lower())
+    if user.email:
+        clauses.append(func.lower(UserApiKey.display_email) == user.email.lower())
+    if not clauses:
+        return None
+    r = await db.execute(
+        select(UserApiKey.owner_sub)
+        .where(or_(*clauses))
+        .order_by(UserApiKey.created_at.desc())
+        .limit(1)
+    )
+    return r.scalar_one_or_none()
+
+
+async def _canonical_user_grantee_id(
+    db: AsyncSession,
+    user: Any,
+    payload: dict | None = None,
+) -> str:
+    """Storage id for a user grant: users.id in local auth, OIDC sub when known."""
+    if settings.auth_mode == "local":
+        return str(user.id)
+    sub = payload.get("sub") if payload else None
+    if isinstance(sub, str):
+        alias_lc = {a.lower() for a in subject_aliases(sub, payload)}
+        if user.username and user.username.lower() in alias_lc:
+            return sub
+        if user.email and user.email.lower() in alias_lc:
+            return sub
+    oidc_sub = await _oidc_sub_for_user_row(db, user)
+    if oidc_sub:
+        return oidc_sub
+    return str(user.id)
+
+
+async def list_owner_candidates(db: AsyncSession) -> list[tuple[str, str]]:
+    """Known identities for owner assignment: (subject, label)."""
+    if settings.auth_mode == "local":
+        from app.models.user import User
+
+        result = await db.execute(select(User).order_by(User.username))
+        return [(str(u.id), u.username) for u in result.scalars().all()]
+
+    from sqlalchemy import func
+
+    from app.models.access_group import AccessGroupMember
+    from app.models.user import User
+    from app.models.user_api_key import UserApiKey
+
+    by_subject: dict[str, str] = {}
+
+    keys = await db.execute(
+        select(UserApiKey.owner_sub, UserApiKey.display_username, UserApiKey.display_email)
+        .where(UserApiKey.owner_sub != "")
+        .order_by(UserApiKey.created_at.desc())
+    )
+    for owner_sub, username, email in keys.all():
+        if not owner_sub or owner_sub in by_subject:
+            continue
+        label = (username or "").strip() or owner_sub
+        em = (email or "").strip()
+        if em and em.lower() != label.lower():
+            label = f"{label} ({em})"
+        by_subject[owner_sub] = label
+
+    users = await db.execute(select(User).order_by(User.username))
+    for user in users.scalars().all():
+        oidc_sub = await _oidc_sub_for_user_row(db, user)
+        subject = oidc_sub or str(user.id)
+        if subject not in by_subject:
+            by_subject[subject] = user.username
+
+    members = await db.execute(select(func.distinct(AccessGroupMember.subject)))
+    for (subj,) in members.all():
+        if not subj or subj in by_subject:
+            continue
+        by_subject[subj] = await resolve_subject_display(db, subj)
+
+    return sorted(by_subject.items(), key=lambda pair: pair[1].lower())
+
+
+async def normalize_user_grantee_id(
+    db: AsyncSession,
+    grantee_id: str,
+    payload: dict | None = None,
+) -> str:
+    """Map username / alias to canonical subject (local user id or OIDC sub) for ACL storage."""
+    raw = (grantee_id or "").strip()
+    if not raw:
+        return raw
+    sub = payload.get("sub") if payload else None
+    if isinstance(sub, str) and raw == sub:
+        return raw
+    if payload and isinstance(sub, str):
+        aliases = subject_aliases(sub, payload)
+        if raw in aliases or raw.lower() in {a.lower() for a in aliases}:
+            return sub
+
+    from sqlalchemy import func, or_
+
+    from app.models.user import User
+    from app.models.user_api_key import UserApiKey
+
+    by_id = await db.get(User, raw)
+    if by_id:
+        return await _canonical_user_grantee_id(db, by_id, payload)
+    r = await db.execute(
+        select(User).where(
+            or_(func.lower(User.username) == raw.lower(), func.lower(User.email) == raw.lower())
+        )
+    )
+    user = r.scalar_one_or_none()
+    if user:
+        return await _canonical_user_grantee_id(db, user, payload)
+    r = await db.execute(
+        select(UserApiKey.owner_sub)
+        .where(func.lower(UserApiKey.display_username) == raw.lower())
+        .order_by(UserApiKey.created_at.desc())
+        .limit(1)
+    )
+    oidc_sub = r.scalar_one_or_none()
+    if oidc_sub:
+        return oidc_sub
+    return raw
+
+
+async def user_grant_matches(
+    db: AsyncSession,
+    grantee_id: str | None,
+    subject: str,
+    payload: dict | None = None,
+) -> bool:
+    """True when a persisted user grant applies to the current subject."""
+    if not grantee_id or not grantee_id.strip():
+        return False
+    canonical = await normalize_user_grantee_id(db, grantee_id, payload)
+    if canonical == subject:
+        return True
+    aliases = subject_aliases(subject, payload)
+    if canonical in aliases or canonical.lower() in {a.lower() for a in aliases}:
+        return True
+    from app.models.user import User
+
+    user = await db.get(User, canonical)
+    if user:
+        if str(user.id) == subject:
+            return True
+        alias_lc = {a.lower() for a in aliases}
+        if user.username and user.username.lower() in alias_lc:
+            return True
+        if user.email and user.email.lower() in alias_lc:
+            return True
+    return False
+
+
 async def user_group_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> list[str]:
     aliases = subject_aliases(subject, payload)
     if not aliases:
@@ -224,9 +387,26 @@ async def resource_has_acl_restrictions(
     return len(entries) > 0
 
 
-def _grant_matches(entry: ResourceAclEntry, subject: str, group_ids: set[str]) -> bool:
+def _grant_matches(
+    entry: ResourceAclEntry,
+    subject: str,
+    group_ids: set[str],
+    *,
+    subject_alias_set: set[str] | None = None,
+) -> bool:
     if entry.grantee_type == GRANTEE_USER:
-        return entry.grantee_id == subject
+        if not entry.grantee_id:
+            return False
+        grantee = entry.grantee_id.strip()
+        if grantee == subject:
+            return True
+        if subject_alias_set:
+            if grantee in subject_alias_set:
+                return True
+            lower = grantee.lower()
+            if lower in {a.lower() for a in subject_alias_set}:
+                return True
+        return False
     if entry.grantee_type == GRANTEE_GROUP:
         return entry.grantee_id in group_ids
     if entry.grantee_type == GRANTEE_AUTHENTICATED:
@@ -256,6 +436,15 @@ async def effective_permissions(
     payload: dict | None = None,
 ) -> int:
     group_ids = set(await user_group_ids(db, subject, payload))
+    alias_set = subject_aliases(subject, payload)
+    if settings.auth_mode == "local":
+        from app.models.user import User
+
+        user = await db.get(User, subject)
+        if user:
+            alias_set.add(str(user.id))
+            alias_set.add(user.username)
+            alias_set.add(user.username.lower())
     chain = await resource_context_chain(db, resource_type, resource_id)
     entries = await _acl_entries_for_resources(db, chain)
     bits = 0
@@ -265,7 +454,11 @@ async def effective_permissions(
     for entry in entries:
         if entry.grantee_type == GRANTEE_AUTHENTICATED:
             continue
-        if _grant_matches(entry, subject, group_ids):
+        if entry.grantee_type == GRANTEE_USER:
+            if await user_grant_matches(db, entry.grantee_id, subject, payload):
+                bits |= entry.permissions
+            continue
+        if _grant_matches(entry, subject, group_ids, subject_alias_set=alias_set):
             bits |= entry.permissions
     return bits
 
@@ -508,12 +701,18 @@ async def _instance_ids_with_direct_read(
     db: AsyncSession, subject: str, resource_type: str, payload: dict | None = None
 ) -> set[str]:
     group_ids = set(await user_group_ids(db, subject, payload))
+    alias_set = subject_aliases(subject, payload)
     result = await db.execute(
         select(ResourceAclEntry).where(ResourceAclEntry.resource_type == resource_type)
     )
     out: set[str] = set()
     for entry in result.scalars().all():
-        if _grant_matches(entry, subject, group_ids) and perm_satisfies(entry.permissions, PERM_READ):
+        matched = False
+        if entry.grantee_type == GRANTEE_USER:
+            matched = await user_grant_matches(db, entry.grantee_id, subject, payload)
+        else:
+            matched = _grant_matches(entry, subject, group_ids, subject_alias_set=alias_set)
+        if matched and perm_satisfies(entry.permissions, PERM_READ):
             out.add(entry.resource_id)
     return out
 

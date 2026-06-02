@@ -7,11 +7,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.api.auth import get_jwt_payload, require_auth
 from app.database import get_db
 from app.models.access_group import AccessGroup
-from app.models.user import User
 from app.services.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
@@ -30,6 +28,8 @@ from app.services.resource_acl_service import (
     check_resource_access,
     effective_permissions,
     list_acl_entries,
+    list_owner_candidates,
+    normalize_user_grantee_id,
     replace_resource_acl,
     resolve_subject_display,
     resource_context_chain,
@@ -240,13 +240,8 @@ async def _ensure_owner_in_parsed(
 
 
 async def list_local_owner_candidates(db: AsyncSession) -> list[OwnerCandidateOut]:
-    if settings.auth_mode != "local":
-        return []
-    result = await db.execute(select(User).order_by(User.username))
-    out: list[OwnerCandidateOut] = []
-    for user in result.scalars().all():
-        out.append(OwnerCandidateOut(subject=str(user.id), label=user.username))
-    return out
+    rows = await list_owner_candidates(db)
+    return [OwnerCandidateOut(subject=subject, label=label) for subject, label in rows]
 
 
 async def serialize_resource_acl(
@@ -321,6 +316,8 @@ async def persist_resource_acl(
         if g["grantee_type"] == GRANTEE_GROUP and g["grantee_id"]:
             if not await db.get(AccessGroup, g["grantee_id"]):
                 raise HTTPException(status_code=400, detail=f"Group not found: {g['grantee_id']}")
+        if g["grantee_type"] == GRANTEE_USER and g["grantee_id"]:
+            g["grantee_id"] = await normalize_user_grantee_id(db, g["grantee_id"], payload)
 
     await _ensure_owner_in_parsed(db, resource_type, resource_id, parsed)
     entries = await replace_resource_acl(db, resource_type, resource_id, parsed)

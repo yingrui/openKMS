@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '../contexts/AuthContext';
 import {
   fetchAccessGroups,
   fetchAdminResourceAcl,
@@ -189,8 +189,6 @@ function canManageFromAcl(a: ResourceAclOut, consoleAudit: boolean): boolean {
 
 export function ResourceSharePanel({ resourceType, resourceId, title, consoleAudit = false, onSaved }: Props) {
   const { t } = useTranslation('common');
-  const { authMode } = useAuth();
-  const membershipLocal = authMode === 'local';
   const [acl, setAcl] = useState<ResourceAclOut | null>(null);
   const [groups, setGroups] = useState<AccessGroupOut[]>([]);
   const [ownerCandidates, setOwnerCandidates] = useState<OwnerCandidate[]>([]);
@@ -198,7 +196,9 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
   const [othersPermissions, setOthersPermissions] = useState('');
   const [ownerGrant, setOwnerGrant] = useState<OwnerGrant | null>(null);
   const [ownerEditing, setOwnerEditing] = useState(false);
-  const [oidcOwnerInput, setOidcOwnerInput] = useState('');
+  const [ownerPickQuery, setOwnerPickQuery] = useState('');
+  const [ownerPickOpen, setOwnerPickOpen] = useState(false);
+  const ownerPickRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -213,6 +213,24 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
   const assignedGroupIds = new Set(groupRows.map((r) => r.grantee_id));
   const addableGroups = groupOptions.filter((g) => !assignedGroupIds.has(g.id));
   const pickerOptions = (idx: number) => addableGroupsForRow(groupOptions, groupRows, idx);
+  const filteredOwnerOptions = useMemo(() => {
+    const q = ownerPickQuery.trim().toLowerCase();
+    if (!q) return ownerOptions;
+    return ownerOptions.filter(
+      (c) => c.label.toLowerCase().includes(q) || c.subject.toLowerCase().includes(q)
+    );
+  }, [ownerOptions, ownerPickQuery]);
+
+  useEffect(() => {
+    if (!ownerPickOpen) return;
+    const onPointerDown = (ev: MouseEvent) => {
+      if (ownerPickRef.current && !ownerPickRef.current.contains(ev.target as Node)) {
+        setOwnerPickOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [ownerPickOpen]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -226,7 +244,8 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
       setGroups(g);
       applyAclToState(a, setOthersPermissions, setOwnerGrant, setGroupRows);
       setOwnerEditing(false);
-      setOidcOwnerInput('');
+      setOwnerPickQuery('');
+      setOwnerPickOpen(false);
       if (canManageFromAcl(a, consoleAudit)) {
         const fetchCandidates = consoleAudit
           ? fetchAdminResourceAclOwnerCandidates
@@ -290,24 +309,38 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
       permissions: prev?.permissions && apiPermToRow(prev.permissions) ? prev.permissions : 'rwm',
     }));
     setOwnerEditing(false);
-    setOidcOwnerInput('');
+    setOwnerPickQuery('');
+    setOwnerPickOpen(false);
+  };
+
+  const confirmOwnerPick = () => {
+    const raw = ownerPickQuery.trim();
+    if (!raw) return;
+    const exact = ownerOptions.find(
+      (c) =>
+        c.subject.toLowerCase() === raw.toLowerCase() || c.label.toLowerCase() === raw.toLowerCase()
+    );
+    if (exact) {
+      assignOwner(exact.subject, exact.label);
+      return;
+    }
+    if (filteredOwnerOptions.length === 1) {
+      const only = filteredOwnerOptions[0];
+      assignOwner(only.subject, only.label);
+      return;
+    }
+    assignOwner(raw, raw);
   };
 
   const startOwnerAssign = () => {
-    if (!ownerGrant) {
-      if (membershipLocal && ownerOptions.length > 0) {
-        assignOwner(ownerOptions[0].subject, ownerOptions[0].label);
-      } else if (!membershipLocal) {
-        setOidcOwnerInput(acl?.created_by ?? '');
-      }
-    }
+    setOwnerPickQuery(ownerGrant?.label?.trim() || ownerGrant?.grantee_id || '');
     setOwnerEditing(true);
   };
 
-  const confirmOidcOwner = () => {
-    const subject = oidcOwnerInput.trim();
-    if (!subject) return;
-    assignOwner(subject, subject);
+  const cancelOwnerAssign = () => {
+    setOwnerEditing(false);
+    setOwnerPickQuery('');
+    setOwnerPickOpen(false);
   };
 
   const renderPermCells = (
@@ -374,34 +407,55 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
             <td>
               <strong>{t('resourceShare.owner')}</strong>
               {ownerEditing && canManage ? (
-                membershipLocal ? (
-                  <select
-                    className="resource-share-owner-picker"
-                    value={ownerGrant?.grantee_id ?? ''}
+                <div className="resource-share-owner-pick" ref={ownerPickRef}>
+                  <Search size={16} aria-hidden />
+                  <input
+                    type="search"
+                    value={ownerPickQuery}
                     onChange={(e) => {
-                      const c = ownerOptions.find((x) => x.subject === e.target.value);
-                      if (c) assignOwner(c.subject, c.label);
+                      setOwnerPickQuery(e.target.value);
+                      setOwnerPickOpen(true);
                     }}
+                    onFocus={() => setOwnerPickOpen(true)}
+                    placeholder={t('resourceShare.ownerSearchPlaceholder')}
+                    aria-autocomplete="list"
+                    aria-expanded={ownerPickOpen && filteredOwnerOptions.length > 0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        confirmOwnerPick();
+                      }
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelOwnerAssign();
+                      }
+                    }}
+                  />
+                  {ownerPickOpen && filteredOwnerOptions.length > 0 && (
+                    <ul className="resource-share-owner-menu" role="listbox">
+                      {filteredOwnerOptions.slice(0, 12).map((c) => (
+                        <li key={c.subject} role="option">
+                          <button
+                            type="button"
+                            onClick={() => assignOwner(c.subject, c.label)}
+                          >
+                            <span>{c.label}</span>
+                            {c.label !== c.subject && (
+                              <span className="resource-share-owner-menu-sub">{c.subject}</span>
+                            )}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={confirmOwnerPick}
                   >
-                    {ownerOptions.map((c) => (
-                      <option key={c.subject} value={c.subject}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="resource-share-owner-oidc">
-                    <input
-                      type="text"
-                      value={oidcOwnerInput}
-                      onChange={(e) => setOidcOwnerInput(e.target.value)}
-                      placeholder={t('resourceShare.ownerSubjectPlaceholder')}
-                    />
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={confirmOidcOwner}>
-                      {t('resourceShare.assignOwner')}
-                    </button>
-                  </div>
-                )
+                    {t('resourceShare.assignOwner')}
+                  </button>
+                </div>
               ) : ownerGrant ? (
                 <>
                   <span className="resource-share-grantee-primary">{ownerDisplayName(ownerGrant)}</span>
@@ -433,7 +487,7 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
                 </button>
               )}
               {canManage && ownerEditing && (
-                <button type="button" className="btn-link" onClick={() => setOwnerEditing(false)}>
+                <button type="button" className="btn-link" onClick={cancelOwnerAssign}>
                   {t('resourceShare.cancel')}
                 </button>
               )}

@@ -25,6 +25,7 @@
     "ownerNotSet": "Not assigned",
     "assignOwner": "Assign owner",
     "changeOwner": "Change",
+    "ownerSearchPlaceholder": "Search by name, email, or subject id",
     "ownerSubjectPlaceholder": "Subject id, username, or email",
     "ownerIsCreator": "Channel creator",
     "cancel": "Cancel",

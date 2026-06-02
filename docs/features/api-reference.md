@@ -53,7 +53,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET/PUT | `/api/admin/resource-acl/{resource_type}/{resource_id}` | `console:groups`: read/replace sharing on any resource without requiring data read/manage on that resource (Console audit) |
 | GET | `/api/admin/resource-acl/{resource_type}/{resource_id}/owner-candidates` | `console:groups`: local auth user list for owner picker in Console audit |
 | GET/PUT | `/api/resource-acl/{resource_type}/{resource_id}` | Authenticated: get/replace sharing grants (r/w/m) on a securable resource. Response includes `created_by` (document and article channels), `owner_subject`, `owner_label`; when no owner ACL exists but `created_by` is set, GET returns a default owner grant (rwm) for the creator. PUT preserves owner when omitted; if none exists, defaults owner to `created_by` when set. |
-| GET | `/api/resource-acl/{resource_type}/{resource_id}/owner-candidates` | Requires **manage** on the resource. Local auth: list users `{subject, label}` for owner assignment. OIDC: empty list (use subject id in UI). |
+| GET | `/api/resource-acl/{resource_type}/{resource_id}/owner-candidates` | Requires **manage** on the resource. Returns `{subject, label}` for owner assignment: local auth lists DB users; OIDC lists API-key identities, mapped local users, and access-group member subjects. |
 | GET | `/api/admin/data-resources/migration-report` | `console:groups`: read-only legacy data-resource rows (deprecated report only; rows are not enforced) |
 | GET/POST | `/api/admin/data-resources` | **Deprecated** — `GET` is backward-compatible list; `POST` returns **410** |
 | GET | `/api/admin/data-resources/kinds` | **Deprecated** — returns **410** |

@@ -91,3 +91,97 @@ def test_resolve_subject_display_prefers_hint():
         resolve_subject_display(None, "11dcdd51-b251-4a69-9288-05ab2952be38", display_hint="yingrui")
     )
     assert label == "yingrui"
+
+
+def test_user_grant_matches_username_alias():
+    from app.services.resource_acl_service import user_grant_matches
+
+    async def _run():
+        matched = await user_grant_matches(
+            None,
+            "yingrui",
+            "11dcdd51-b251-4a69-9288-05ab2952be38",
+            {"sub": "11dcdd51-b251-4a69-9288-05ab2952be38", "preferred_username": "yingrui"},
+        )
+        assert matched is True
+
+    asyncio.run(_run())
+
+
+def test_normalize_user_grantee_id_maps_local_user_id_to_oidc_sub(monkeypatch):
+    """Saving owner with legacy local users.id must store OIDC sub in OIDC mode."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.models.user import User
+    from app.services import resource_acl_service as svc
+
+    local_id = "cb8f2d42-1eb4-4b48-a82a-fdde0586aaa8"
+    oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
+    user = MagicMock(spec=User)
+    user.id = local_id
+    user.username = "yingrui"
+    user.email = "yingrui.f@gmail.com"
+
+    async def fake_get(model, key):
+        if model is User and key == local_id:
+            return user
+        return None
+
+    db = AsyncMock()
+    db.get = fake_get
+    monkeypatch.setattr(svc.settings, "auth_mode", "oidc")
+
+    async def _run():
+        as_self = await svc.normalize_user_grantee_id(
+            db,
+            local_id,
+            {"sub": oidc_sub, "preferred_username": "yingrui"},
+        )
+        assert as_self == oidc_sub
+
+        async def fake_oidc_sub(_db, _user):
+            return oidc_sub
+
+        monkeypatch.setattr(svc, "_oidc_sub_for_user_row", fake_oidc_sub)
+        as_admin = await svc.normalize_user_grantee_id(db, local_id, None)
+        assert as_admin == oidc_sub
+
+    asyncio.run(_run())
+
+
+def test_user_grant_matches_local_user_id_for_oidc_subject():
+    """Owner ACL stored as legacy local users.id must match OIDC sub via username/email."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.models.user import User
+    from app.services.resource_acl_service import user_grant_matches
+
+    local_id = "cb8f2d42-1eb4-4b48-a82a-fdde0586aaa8"
+    oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
+    user = MagicMock(spec=User)
+    user.id = local_id
+    user.username = "yingrui"
+    user.email = "yingrui.f@gmail.com"
+
+    async def fake_get(model, key):
+        if model is User and key == local_id:
+            return user
+        return None
+
+    db = AsyncMock()
+    db.get = fake_get
+
+    async def _run():
+        matched = await user_grant_matches(
+            db,
+            local_id,
+            oidc_sub,
+            {
+                "sub": oidc_sub,
+                "preferred_username": "yingrui",
+                "email": "yingrui.f@gmail.com",
+            },
+        )
+        assert matched is True
+
+    asyncio.run(_run())
