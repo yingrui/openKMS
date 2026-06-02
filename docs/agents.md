@@ -13,7 +13,7 @@ The docs split into three layers:
     - [`security.md`](security.md), [`tech_debt.md`](tech_debt.md), [`wiki_agent_prototype.md`](wiki_agent_prototype.md).
 2. **Per-feature pages** under [`features/`](functionalities.md) — one short page per product area, plus three cross-cutting pages (`api-reference.md`, `data-models.md`, `configuration.md`). This is where **most product-code changes** land.
 3. **Reader-friendly entry pages** added on top, optimised for scanning:
-    - [`index.md`](index.md), [`overview.md`](overview.md), [`quickstart.md`](quickstart.md), [`operations/docker.md`](operations/docker.md), [`developer/setup.md`](developer/setup.md), this page.
+    - [`index.md`](index.md) (home and doc router), [`quickstart.md`](quickstart.md), [`operations/docker.md`](operations/docker.md), [`developer/setup.md`](developer/setup.md), this page.
 
 When in doubt, **edit the most specific feature page first**, then update the cross-cutting `api-reference.md` / `data-models.md` if the change adds a route or column.
 
@@ -57,7 +57,7 @@ If a commit touches several layers, **stage the doc updates with the code commit
 
 1. Create the file under `docs/…` (folders may nest one level deep — see `developer/`, `operations/`).
 2. Add it to the `nav:` block of `mkdocs.yml`.
-3. Link to it from the closest existing page (usually `index.md` or `overview.md`).
+3. Link to it from the closest existing page (usually [`index.md`](index.md) or [`functionalities.md`](functionalities.md)).
 4. Build locally (see below) before committing.
 
 ## Build the site locally
@@ -87,6 +87,6 @@ These come from `.cursor/rules/alembic-migrations.mdc`; restated here so an agen
 ## Quick checklist before you commit a doc change
 
 - [ ] Updated the right canonical file (`architecture` / `functionalities` / `development_plan`).
-- [ ] Wrapper pages still accurate (quickstart, overview, operations).
+- [ ] Wrapper pages still accurate (quickstart, index, operations).
 - [ ] `mkdocs build --strict` passes locally (or you're confident no links broke).
 - [ ] Subject line is short and imperative; no wall-of-text body unless needed.

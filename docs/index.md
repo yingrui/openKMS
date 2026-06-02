@@ -23,10 +23,13 @@ A unified **Knowledge Map** ties terms to channels, wiki spaces, and article cha
 
 | If you want to… | Read |
 |---|---|
-| Understand **why** openKMS exists (goals & business problems, 中文) | [Goals & vision](goals.md) |
+| Understand **why** openKMS exists (vision & business problems; Chinese) | [Goals & vision](goals.md) |
 | Try it locally with Docker or on the host | [Quickstart](quickstart.md) |
-| Understand the system | [Overview](overview.md) → [Architecture](architecture.md) |
-| Find a specific feature or API | [Functionalities](functionalities.md) |
+| Understand the system | [Architecture](architecture.md) · [Functionalities](functionalities.md) |
+| Find a specific feature or API | [Functionalities](functionalities.md) → `features/*.md` |
+| HTTP or schema reference | [API reference](features/api-reference.md) · [Data models](features/data-models.md) |
+| Knowledge artifact types | [Knowledge types](features/knowledge-types.md) |
+| Sharing and resource ACL | [Data security](features/data-security.md) (and [Security](security.md)) |
 | Use openKMS from OpenCode / an external agent | [OpenCode skill (`openkms-skill`)](features/opencode-openkms-skill.md) |
 | Set up a dev environment | [Developer setup](developer/setup.md) |
 | Deploy with Docker | [Operations · Docker](operations/docker.md) |

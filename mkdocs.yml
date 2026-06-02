@@ -88,7 +88,6 @@ exclude_docs: |
 
 nav:
   - Home: index.md
-  - Overview: overview.md
   - Goals (vision): goals.md
   - Quickstart: quickstart.md
   - Architecture: architecture.md

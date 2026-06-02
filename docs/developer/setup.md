@@ -73,9 +73,9 @@ pages_res = list(output)
 output = pipeline.restructure_pages(pages_res)
 
 for res in output:
-    res.print() ## 打印预测的结构化输出
-    res.save_to_json(save_path="output") ## 保存当前图像的结构化json结果
-    res.save_to_markdown(save_path="output") ## 保存当前图像的markdown格式的结果
+    res.print()  ## print structured prediction
+    res.save_to_json(save_path="output")  ## save structured JSON for this page
+    res.save_to_markdown(save_path="output")  ## save markdown for this page
 ```
 
 ### Backend Integration
