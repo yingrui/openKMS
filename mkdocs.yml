@@ -123,3 +123,4 @@ nav:
       - Wiki agent prototype: wiki_agent_prototype.md
   - Research:
       - LLM wiki vs openKMS: research/llm_wiki_comparison.md
+      - RAGFlow vs openKMS: research/ragflow_vs_openkms.md
