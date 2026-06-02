@@ -7,19 +7,21 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | Page | Covers |
 |---|---|
 | [Infrastructure & quality](features/infrastructure.md) | Compose, tests, error handling, code splitting, typecheck |
-| [Documents](features/documents.md) | Document channels, upload, parsing pipeline (PaddleOCR-VL), `openkms-cli` |
+| [Documents](features/documents.md) | Document channels, upload, parsing pipeline (PaddleOCR-VL, Baidu Cloud), `openkms-cli` |
 | [Articles](features/articles.md) | Article channels, CRUD, relationships, lifecycle, attachments, bulk import |
 | [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, QA proxy, kb-index |
 | [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view, Wiki Copilot agent |
-| [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare |
+| [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare (experimental; quality-improvement workflows planned) |
 | [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |
 | [Knowledge map & home](features/knowledge-map.md) | Knowledge Map terms, resource links, home hub graph |
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, Object Explorer, data sources, datasets |
-| [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry |
+| [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
 | [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement |
-| [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys) |
-| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | Agent skill + CLI against the REST API (`openkms-skill/`, install to `~/.config/opencode/skills/`) |
+| [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
+| [Connectors](features/console-and-auth.md#console-admin) | **Partial:** `/connectors` CRUD, kinds, secrets, dataset output slots — sync jobs **not shipped** ([development plan](../development_plan.md#connectors-high)) |
+| [Agents in openKMS](features/wiki-spaces.md) | **Partial:** Wiki Copilot, KB Q&A, map designer, eval assist — broader in-app assistant planned ([development plan](../development_plan.md#in-product-agents-high)) |
+| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | External agent skill + CLI (`openkms-skill/`); not a substitute for in-app agents |
 
 ## Cross-cutting reference
 

@@ -1,248 +1,147 @@
 # openKMS Development Plan
 
-## Current State (as of latest commit)
+Business **why** and long-form narrative: [Goals (vision)](goals.md). This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
 
-- Document channels: CRUD, tree, description
-- Document upload + parsing via PaddleOCR-VL; **DOCX/PPTX** converted with LibreOffice, **EPUB** with MuPDF `mutool`, then parsed like PDF; **XLSX** preview (openpyxl) at upload + `run_spreadsheet_preview` job on re-process; store in S3/MinIO under `{file_hash}/`
-- Document detail view with Markdown, layout images, block images; loads files via backend proxy
-- Document list by channel: `GET /api/documents?channel_id=`
-- Delete document: `DELETE /api/documents/{id}`
-- Document info & metadata: Edit name (`PUT /api/documents/{id}`), edit metadata (`PUT /metadata`), Extract via pydantic-ai Agent + StructuredDict
-- Document markdown: Edit and save (`PUT /markdown`; rebuilds page index in S3), restore from S3 (`POST /restore-markdown`; rebuilds page index), optional `POST /rebuild-page-index` (also triggered from Page Index tab refresh); detail page shows Save/Cancel in panel header when editing (not View toggle); Page Index tab has refresh control (tooltip: parse markdown to tree)
-- Document versions: `document_versions` table; explicit snapshots of markdown + metadata (`POST /versions`, `GET /versions`, `GET /versions/{id}`, `POST /versions/{id}/restore`); version checkpoint uses JSON field **`tag`** (DB column `tag`); UI: version column in Document Information (3-column stats), Save version when working copy newer than last snapshot, optional tag in Save as version modal, **Versions** modal as a table (Version / Tag / Saved / Actions); list/preview/restore with optional save-current-first; not created on routine markdown/metadata save
-- **Document lifecycle & lineage**: `series_id`, `effective_from` / `effective_to`, `lifecycle_status` on documents; `document_relationships` (supersedes, amends, implements, see_also); `PATCH /lifecycle`, `GET/POST/DELETE /relationships`; document API `is_current_for_rag` (computed: **currently applicable** for normal KB answers/indexing); default KB semantic search and kb-index (`lifecycle_index_mode` default `current_only`) respect that unless opted out; document detail **Lineage & lifecycle** under the METADATA block, collapsed by default (expand loads relationships)
-- Documents overview, channel management, channel settings (tabbed: General, Processing, Metadata extraction, Manual Labels)
-- Document metadata (unified): extracted metadata and manual labels stored in single `metadata` JSONB; channel extraction_schema supports object_type and list[object_type]; label_config (Manual Labels tab) maps keys to Master Data object types with type (object_type | list[object_type]); single METADATA section on document detail
-- Authentication: `OPENKMS_AUTH_MODE=oidc` (default, OIDC via issuer discovery + JWKS) or `local` (PostgreSQL users, `/api/auth/*`, CLI HTTP Basic); backend verifies JWT Bearer or session; `GET /api/auth/public-config` (no auth) exposes `auth_mode` and `allow_signup` only; `GET /internal-api/models/document-parse-defaults` (auth; optional `model_name`) supplies VLM `base_url`, `model_name`, and provider `api_key` for **openkms-cli**; SPA OIDC uses `oidc-client-ts` (`VITE_OIDC_ISSUER`); frontend resolves local vs OIDC from the API with `VITE_AUTH_MODE` as fallback; Vite proxy for `/api` and `/internal-api` in dev
-- User profile: `/profile` shows current user from `GET /api/auth/me` (`is_admin`, `roles`, resolved `permissions`, header menu). **User settings** `/settings`: personal **API keys** (`POST`/`GET`/`DELETE /api/auth/api-keys`). Console → Users & Roles: `/api/admin/users` with `console:users`; Permission management (`/console/permission-management`): **All** under Roles edits the `security_permissions` catalog; a named role uses checkboxes + **Save role permissions** (draft, no per-click API); `GET /api/admin/permission-reference` includes `operation_key_hints`; overview nudge when catalog is only `all`; Data security (`/console/data-security/*`) remains local-user–centric; group data scopes behind `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`
-- Route protection: **Home** (`/`) is always reachable without sign-in (static marketing content via **`HomeStaticLanding`**); all other **`MainLayout`** routes require authentication. **`401`** responses whose body indicates invalid/expired session (including localized **`detail.code`** from the API) trigger **`authAwareFetch`**: one silent session retry when configured, then **`AuthContext`** clears state and routes the user to sign-in so the same gate appears instead of raw API error JSON
-- **UI languages**: SPA **i18next** ([`frontend/src/i18n/`](https://github.com/yingrui/openKMS/tree/main/frontend/src/i18n)) — English + Chinese (`zh-CN`), locale in **`localStorage`** (`openkms_locale`), language switcher in the header; **`Accept-Language`** on API requests. Backend structured errors: **`backend/app/i18n/`** + **`Accept-Language`** for localized `detail.message` where migrated
-- **SPA styles**: **`frontend/src/index.scss`** loads **`_css-variables`** (palette, semantic surfaces, spacing, typography, motion, z-index, document status tokens) + **`_global`**. Compile-time **`_tokens`** / **`_mixins`** (and optional **`design-system/_index`** barrel) for breakpoints; feature SCSS uses **`@use …/tokens`**, **`@use …/mixins`**. KaTeX stays a vendor **`.css`** import. See [`frontend/src/styles/README.md`](https://github.com/yingrui/openKMS/blob/main/frontend/src/styles/README.md).
-- **Knowledge Map & home hub**: SQLAlchemy **`app.models.knowledge_map`** (`KnowledgeMapNode`, `KnowledgeMapResourceLink`, **`KnowledgeMapHtmlArtifact`** → `knowledge_map_nodes` / `knowledge_map_resource_links` / **`knowledge_map_html_artifact`**); API **`app.api.knowledge_map`** at **`GET /api/knowledge-map/nodes/tree`**, node PATCH (move/reorder/edit) + link CRUD + **`GET /api/knowledge-map/map-html/status`**, **`GET /api/knowledge-map/map-html`**, **`POST /api/knowledge-map/map-html/regenerate`**, **`POST /api/knowledge-map/map-html/designer/chat`** (body may include **`working_html`**, **`conversation_id`**; response **`{ content }`** or NDJSON stream; LLM **`apply_html_patches`** tool; successful turns append to **`surface=knowledge_map_html`** on **`agent_conversations`** / **`agent_messages`**), **`GET/POST /api/knowledge-map/map-html/designer/conversations`**, **`GET /api/knowledge-map/map-html/designer/session`** (optional **`conversation_id`** query), **`DELETE /api/knowledge-map/map-html/designer/conversations/{id}`**, **`POST /api/knowledge-map/map-html/preview`**, **`POST /api/knowledge-map/map-html/publish`** (LLM via **`app.services.knowledge_map_html`**), **`DELETE /api/knowledge-map/map-html`**; **`GET /api/home/hub`** (knowledge_map summary field in JSON + scoped document relationship work items + placeholder share requests); SPA **`KnowledgeMap.tsx`** at **`/knowledge-map`**; sidebar above Glossaries; **Edit map** tree + details vs **Explore (3D)** lazy `react-force-graph-3d`; **HTML overview** tab: **Knowledge Map Designer** (Claude-style fenced `html` in assistant `content`, client preview, publish, delete saved, multiple persisted chats); signed-in **`Home.tsx`** with **knowledge_map:read** centers **`KnowledgeMapForceGraph`** (2D only; shared `knowledgeMapGraphModel` with the 3D component); term → **`/knowledge-map?node=`**, resource → channel/wiki/articles; **`MainLayout`** applies **`app-content--home`** on **`/`** for hub padding; permissions **`knowledge_map:read`** / **`knowledge_map:write`**
-- **Articles**: Backend **`article_channels`**, **`articles`**, **`article_versions`**, **`article_attachments`**, **`access_group_article_channels`**; APIs **`/api/article-channels`**, **`/api/articles`** (list, CRUD, lifecycle, markdown, files redirect, attachments, versions); MinIO prefix **`articles/{article_id}/`**; Knowledge Map validates **`article_channel`** links; permissions **`articles:read`** / **`articles:write`**; SPA **`ArticleChannelsContext`**, **`/articles`**, **`/articles/channels`**, **`/articles/channels/:id`**, **`/articles/channels/:id/settings`**, detail + markdown asset URLs
-- Knowledge Bases: Full CRUD, documents, linked wiki spaces, FAQs (manual + LLM-generated), chunks (pgvector), semantic search with hybrid filters (metadata_filters) and optional **include_historical_documents**, Q&A proxy (`POST …/ask`, `POST …/ask/stream`), **persisted Q&A chats** (`surface=knowledge_base` on `agent_conversations` + `GET/POST/PATCH/DELETE …/agent-conversations` and messages with NDJSON stream persist via **`kb_agent_conversations`**), settings (chunk_config incl. lifecycle_index_mode, faq_prompt, metadata_keys); doc_metadata propagated from documents/ wiki pages to FAQs/chunks per metadata_keys; **`POST …/index-job`** (`run_kb_index`); openkms-cli `pipeline run --pipeline-name kb-index`; QA Agent service (FastAPI + LangGraph)
-- **Wiki spaces**: `wiki_spaces`, `wiki_pages` (**`embedding`**, **`embedding_model_id`**, **`embedded_at`** for offline semantic index; **`POST /api/wiki-spaces/{id}/semantic-index`**), `wiki_files`, **`wiki_space_documents`** (+ `access_group_wiki_spaces`); API `/api/wiki-spaces` (scoped like KBs when `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`); PageIndex; **`GET /api/wiki-spaces/{id}/graph`**; vault mirror + **`POST .../import/vault`**; **paginated** page list (15); **`GET/POST/DELETE` `/api/wiki-spaces/{id}/documents`** for channel document links (GET list: `linked_at` + linked **document** `updated_at` for SPA “last updated”); **embedded agent** `POST/GET/DELETE/PATCH` **`/api/agent/conversations`**, `.../messages` (list by wiki space, conversation **delete**/**title** optional, GFM + auto-scroll in SPA; LangGraph tools including **`search_wiki_pages`** (substring + semantic when indexed), **`list_wiki_pages`**, **`get_wiki_page`**, linked docs; `OPENKMS_AGENT_MODEL_ID` or default **LLM** on **Models** `/models`) — [wiki_agent_prototype.md](./wiki_agent_prototype.md); **openkms-cli** `wiki put` / `sync` / `upload-file`
-- **openkms-cli tests:** `openkms-cli/tests/` — `pip install -e ".[dev]" && pytest tests/` (VLM defaults merge + mocked fetch; parser **`_restructure_pages_after_predict`** and layout/bbox helpers; no Paddle in test env)
-- Console: **System settings** (`/console/settings`) — **`system_settings`** table (`system_name`, `default_timezone`, `api_base_url_note`); **`GET /api/public/system`** (unauthenticated) returns trimmed **`system_name`** only; **`GET`/`PUT /api/system/settings`** with **`console:settings`**; **sidebar** title is blank until that public response, then shows **`openKMS`** when the name is empty or whitespace; users, feature toggles, object types, link types, data sources, datasets, permission management, data security (groups + resource scopes); entry gated by `console:*` permissions or JWT `admin`; per-page permissions (e.g. `console:feature_toggles`)
-- **Connectors** (`/connectors`): **`connectors`** table (**`inputs`** / **`outputs`** JSON + optional settings + encrypted secrets); **`connectors:read`** (list kinds and instances) and **`connectors:write`** (create/update/delete); main sidebar entry when the **`connectors`** feature toggle is on (default on); migration **`u3v4w5x6y7z8`** maps roles from removed **`console:connectors`**; migration **`v4w5x6y7z8a0`** adds the **`connectors`** toggle and removes legacy content-area toggles
-- Evaluation (experimental, feature toggle): query + expected answer pairs per KB; topic column; CSV import (topic, query, answer); **items list** paginated (`GET .../items` `offset`/`limit`, default limit 10); run types **search_retrieval** (hybrid search + judge) and **qa_answer** (KB agent + judge); persisted **evaluation_runs** / **evaluation_run_items**; list/get/delete/compare runs in API and evaluation detail UI; sidebar link when `evaluations` enabled
-- Glossaries: CRUD glossaries, terms with bilingual (EN/CN) support, definition, synonyms, AI suggestion (translation + definition + synonyms), search (EN, CN, definition, synonyms), export/import; dev.sh ensures pgvector on start; backend README + dev setup doc: pgvector install, Docker/PGDG, `$libdir/vector` troubleshooting
-- Objects & Links: ontology layer (object types, link types, instances); schema in Console; user-facing browse at /ontology (overview), /objects, /links
-- Data Sources: Console → Data Sources (PostgreSQL/Neo4j connections, encrypted creds). Datasets & object/link **schema** admin: Ontology sidebar (`/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`); `ontology:read`/`ontology:write` can use the same APIs as `console:datasets` / `console:object_types` / `console:link_types` where wired with `require_any_permission`.
-- Docs site: **`mkdocs.yml`** (Material theme) + **`.github/workflows/docs.yml`** publish **`docs/`** to **GitHub Pages** at <https://yingrui.github.io/openKMS/> on every push to `main` that touches `docs/**`, `mkdocs.yml`, or the workflow; reader-friendly entry pages (`index.md`, `overview.md`, `quickstart.md`, `operations/docker.md`, `developer/setup.md`) sit on top of the existing canonical references (`architecture.md`, `functionalities.md`, `development_plan.md`, `security.md`, `tech_debt.md`); **`docs/agents.md`** documents where each kind of doc edit goes, mirroring `.cursor/rules/*.mdc`. Folder rename `docs/for developer/` → `docs/developer/` to keep URLs space-free.
+## Current State (as of 2026-06) {#current-state-as-of-2026-06}
 
-## Short-Term (Next Steps)
+**License:** [Apache License 2.0](../LICENSE).
 
-### Wiki Copilot and linked documents (build on [wiki_agent_prototype.md](./wiki_agent_prototype.md))
+Shipped product scope follows the same index as [Functionalities](./functionalities.md). **Covers** text is kept in sync with that page; each linked feature doc is the source of truth for APIs, UI, and behavior.
 
-- [x] **Space settings** at **`/wikis/:id/settings`** (sectioned UI: space fields, imports, **offline semantic index** for wiki pages, pages list, linked documents); **Wiki Copilot** in **WikiWorkspace** (toolbar toggle; **WikiSpaceAgentPanel** + **`/api/agent`**); **wiki-skills** vendored via `git subtree` at `third-party/wiki-skills`, `SKILL.md` content in LangGraph system prompt
-- [x] `wiki_space_documents` + `agent_*` tables; link/unlink/list; SPA uses API (not sessionStorage) for links
-- [x] **Wiki workspace** (`WikiWorkspace` + `WikiPagePanel`): `/wikis/:id` redirects to **`/wikis/:id/pages/graph`**; **`/wikis/:id/pages/:pageId`** and **`/wikis/:id/pages/graph`** share one shell (multi-page tabs, embedded graph, toolbar); full reload opens only the URL (no tab-strip persistence); **`GET /api/search`** wiki space hits use `url_path` **`/wikis/{id}/pages/graph`**
-- [x] Backend embedded agent (v1): LangGraph `create_react_agent` + `agent_conversations` / `agent_messages`; Copilot can call **`search_wiki_pages`** (title/path match, then semantic when the space has embeddings) before **`get_wiki_page`**
-- [x] **Tool visibility** while streaming: `astream_events` (v2) → NDJSON `tool_start` / `tool_end` / `tool_error` (paired by `run_id`); wiki panel shows compact terminal-style rows **interleaved with streamed text** (not all tools then all text) and expandable I/O
-- [x] optional: Langfuse tracing for the embedded wiki agent (**`LANGFUSE_*`**, **`OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES`**)
+### Per feature
 
-### KB Q&A threads and qa-agent (see [knowledge-bases.md](./features/knowledge-bases.md), [wiki_agent_prototype.md](./wiki_agent_prototype.md))
+| Page | Covers |
+|---|---|
+| [Infrastructure & quality](features/infrastructure.md) | Compose, tests, error handling, code splitting, typecheck |
+| [Documents](features/documents.md) | Document channels, upload, parsing pipeline (PaddleOCR-VL, Baidu Cloud), `openkms-cli` |
+| [Articles](features/articles.md) | Article channels, CRUD, relationships, lifecycle, attachments, bulk import |
+| [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, QA proxy, kb-index |
+| [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view, Wiki Copilot agent |
+| [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare (experimental toggle; quality-improvement workflows still evolving) |
+| [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |
+| [Knowledge map & home](features/knowledge-map.md) | Knowledge Map terms, resource links, home hub graph |
+| [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |
+| [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, Object Explorer, data sources, datasets |
+| [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
+| [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement |
+| [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
+| [Connectors](features/console-and-auth.md#console-admin) | **Partial:** `/connectors` CRUD, kinds, secrets, dataset output slots — sync jobs **not shipped** ([backlog](#connectors-high)) |
+| [Agents in openKMS](features/wiki-spaces.md) | **Partial:** Wiki Copilot, KB Q&A, map designer, eval assist — broader in-app assistant planned ([backlog](#in-product-agents-high)) |
+| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | **External:** agent skill + CLI for third-party tools (`openkms-skill/`); complements but does not replace in-app agents |
 
-- [x] **`surface=knowledge_base`** conversations scoped by `context.knowledge_base_id`; REST under **`/api/knowledge-bases/{id}/agent-conversations/…`**
-- [x] Stream path persists user + assistant, **`kb_qa_sources_v1`**, and forwarded **`wiki_tool_traces_v1`** when the qa-agent emits tool lines
-- [x] SPA full-page Q&A: thread sidebar, month grouping, delete chat, Wiki Copilot–style tool rail + GFM (`KnowledgeBaseDetail.tsx` + shared **`wikiCopilotStreamParts`**)
-- [x] **`surface=evaluation`** and **`surface=kb_faq`** thread APIs (same qa-agent contract; paths under **`/api/evaluations/…/agent-conversations`** and **`/api/knowledge-bases/…/faq-assist-conversations`**)
-- [x] qa-agent Langfuse: require **`LANGFUSE_BASE_URL`** with keys; optional **`LANGFUSE_HEALTHCHECK`** circuit + **`LANGFUSE_HEALTHCHECK_RETRY_SECONDS`**; rerank **`OPENKMS_RERANK_ENABLED`** defaults **false**; Console **`GET /api/admin/health-status`** probes Langfuse when backend **`LANGFUSE_BASE_URL`** is set (**`LANGFUSE_HEALTHCHECK`**)
+### Cross-cutting reference
 
-### 0. openkms-cli (document parsing CLI)
+| Page | Covers |
+|---|---|
+| [Knowledge types](features/knowledge-types.md) | Taxonomy (artifacts, indexes, dimensions); **insect-research** workflow table; **when to add a Recordings/Video functionality** ([anchor](features/knowledge-types.md#video-as-functionality)) |
+| [API reference](features/api-reference.md) | One table of every HTTP endpoint, grouped by area |
+| [Data models](features/data-models.md) | Schema for every persisted table |
+| [Configuration](features/configuration.md) | Backend deps, pgvector, S3/MinIO, cursor rules |
 
-- [x] Wiki CLI: `openkms-cli wiki put|sync|upload-file` for wiki space pages and assets (authenticated API)
-- [x] Create `openkms-cli/` folder with Typer CLI (typer>=0.9.0)
-- [x] Use PaddleOCR-VL for parsing (optional `pip install openkms-cli[parse]`)
-- [x] CLI commands: `openkms-cli parse run <input> [--output <path>] [--config <path>]`
-- [x] Configurable via CLI args, env vars, config file (VLM URL, model, concurrency)
-- [x] Explicit env → settings: `openkms_cli/settings.py` (`CliSettings`), `get_cli_settings()`; pipeline/parse/auth use it; pydantic-settings dependency
-- [x] Design for backend integration: subprocess-invokable
-- [x] Pipeline CLI: `openkms-cli pipeline list` (list supported pipelines), `openkms-cli pipeline run --input s3://.../original.pdf` (optional --s3-prefix, --skip-upload; local input supported)
-- [x] Backend async job spawns CLI for document parsing (offload from API process) – via procrastinate
-- [x] Pipeline metadata extraction: when channel has extraction_model_id and extraction_schema, worker passes --extract-metadata --extraction-model-name; CLI fetches config from `GET /internal-api/models/config-by-name`, extracts via pydantic-ai, PUTs metadata to backend
-- [x] PageIndex: pipeline builds markdown→tree via built-in md_to_tree (# headings); backend GET /documents/{id}/page-index and GET /documents/{id}/section; frontend Markdown | Page Index toggle; QA agent LangGraph page_index skill (read TOC, select section, extract content)
-- [x] Pipeline checkpoint: after successful S3 upload, when `--document-id` and API auth (OIDC token or local Basic) are available, CLI `PUT`s parsed markdown then `POST /api/documents/{id}/versions` with `tag: "Pipeline"` (after optional metadata extraction)
+Also published: [Architecture](./architecture.md), [Security](./security.md), [Tech debt](./tech_debt.md), MkDocs site (see [index](./index.md)).
 
-### 1. Document List Integration
+## Strategic priorities {#strategic-priorities}
 
-- [x] Replace `mockDocumentsByChannel` with backend API
-- [x] Add `GET /api/documents?channel_id=...` (filter by channel + descendants)
-- [x] Wire DocumentChannel page to real document list
+Product direction (not a commitment order). Shipped basics live under **Current State**; gaps below are intentional next investments. Mapped to [Goals](goals.md):
 
-### 2. Channel Management (Rename, Move, Merge, Delete)
+| Priority | Goals pillar |
+|----------|----------------|
+| 1. Connectors | [打破信息孤岛](goals.md#goals-unified-source) · [从检索到决策](goals.md#goals-decision)（业务数据入本体） |
+| 2. In-product agents | [为智能体提供精准的知识服务](goals.md#goals-agent-service) · [隐性经验萃取](goals.md#goals-tacit) |
+| 3. Multimodal knowledge | [海量非标文档的理解](goals.md#goals-documents)（延伸至图像/音视频证据） |
+| 4. Evaluation for quality | [隐性经验萃取](goals.md#goals-tacit) · [智能体知识服务](goals.md#goals-agent-service)（可衡量的语料质量） |
 
-- [x] **Rename channel**: Name field in channel settings; backend `PUT` supports `name`
-- [x] **Edit description**: Description in channel create form and settings; backend supports it
-- [x] **Move channel**: `parent_id` in `ChannelUpdate`; Move button in manage UI with parent dropdown
-- [x] **Delete channel**: `DELETE /api/document-channels/{id}`; blocks if has documents or sub-channels; confirm UI
-- [x] **Merge channels**: `POST /api/document-channels/merge`; move docs to target, delete source; optional include_descendants
+1. **Connectors** — Finish the loop: external sources → **reliable sync jobs** → ontology **datasets** (and downstream KB/wiki), not only credential storage and output wiring.
+2. **In-product agents** — Users should get capable assistants **inside openKMS** (curate, search, Q&A, maintenance), not depend on installing [OpenCode skill](features/opencode-openkms-skill.md) in an external agent IDE.
+3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
+4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 
-### 3. Document Operations
+## Backlog {#backlog}
 
-- [x] Move document between channels (`PUT /api/documents/{id}` with `channel_id`; Move modal in document list)
-- [x] Delete document
-- [x] Document metadata extraction: LLM extracts abstract, author, publish_date, tags, etc.; configurable schema per channel in settings; Extract button on detail page
-- [x] Search in document list (`GET /api/documents?search=...`; optional when no channel)
-- [ ] Advanced filter in channel
+### Connectors (high) {#connectors-high}
 
-### 4a. Objects & Links (Ontology)
+| Item | Notes |
+|------|--------|
+| Sync execution | Procrastinate (or pipeline) jobs per connector kind; write into configured **dataset** outputs; run history and failures in UI |
+| Operator UX | Manual **Run sync**, schedule/cron, last-success timestamp, row counts, retry |
+| Kind expansion | Beyond Tushare: additional catalogs and mapping docs per kind |
+| Downstream | Optional hooks: refresh datasets → re-index linked KBs or notify operators |
 
-- [x] Object types: schema with name, description, properties (string/number/boolean)
-- [x] Object instances: CRUD under `/api/object-types/{id}/objects` (admin write)
-- [x] Link types: schema with source/target object types
-- [x] Link instances: CRUD under `/api/link-types/{id}/links` (admin write)
-- [x] Ontology Object Types page (`/ontology/object-types`): CRUD object types and properties; Edit dialog wider; property name/type read-only when editing; key_property (primary key) selector; is_master_data and display_property for document labels
-- [x] Console Link Types page: CRUD link types
-- [x] Ontology overview page (`/ontology`) – all object types and link types on one page
-- [x] User-facing Objects list (`/objects`), Object type detail with instances (`/objects/:typeId`)
-- [x] User-facing Links list (`/links`), Link type detail with instances (`/links/:typeId`)
-- [x] Search filter on object instances
-- [x] Objects & Links routes and sidebar (permission-gated; Neo4j data source still used for graph features)
+API/UI today: [Connectors](features/console-and-auth.md#console-admin), [API reference — Connectors](features/api-reference.md).
 
-### 4b. Data Sources (Console) & Datasets / schema (Ontology)
+### In-product agents (high) {#in-product-agents-high}
 
-- [x] Data sources: CRUD for PostgreSQL and Neo4j connections; credentials encrypted (Fernet)
-- [x] Test connection: POST /api/data-sources/{id}/test
-- [x] Neo4j delete all: POST /api/data-sources/{id}/neo4j-delete-all; confirmation modal in Console
-- [x] Datasets: CRUD for PostgreSQL tables (schema + table) linked to data sources
-- [x] List tables: GET /api/datasets/from-source/{id} for table picker
-- [x] Console Data Sources page: table, Add/Edit modal, Test button
-- [x] Datasets UI under Ontology (`/ontology/datasets`, detail `/ontology/datasets/:id`); legacy `/console/datasets` redirects
-- [x] Dataset detail: click dataset → Data tab (rows with pagination, page size selector) and Metadata tab (column info)
-- [x] Dataset rows/metadata API: GET /api/datasets/{id}/rows, GET /api/datasets/{id}/metadata
-- [x] seed_mock_insurance_data.py: mock diseases, insurance products, relationships for demo datasets
-- [x] Object types link to datasets (dataset_id); instance_count uses dataset row count when linked
-- [x] Link types: cardinality (one-to-one, one-to-many, many-to-many) and optional dataset_id for many-to-many
-- [x] Link types FK mapping: source_key_property, target_key_property, source_dataset_column, target_dataset_column
-- [x] Many-to-many with dataset: connections read from junction table; link_count and list links from dataset
-- [x] Many-to-one/one-to-many: link_count from source object type dataset where FK column is not null
-- [x] Index to Neo4j: Object Types and Link Types pages; Index Objects/Links when Neo4j exists; POST /api/object-types/index-to-neo4j and POST /api/object-types/{id}/index-to-neo4j (dataset rows, or `object_instances` when no dataset); POST /api/link-types/index-to-neo4j and POST /api/link-types/{id}/index-to-neo4j (junction or source-FK dataset, else `link_instances`); Object types and Link types table row actions
-- [x] Ontology sidebar: **Ontology** top-level next to **Glossaries**; indented subnav (Datasets, Object types, Link types, Objects, Links, Object Explorer) when on those routes; schema admin at `/ontology/datasets`, `/ontology/object-types`, `/ontology/link-types`
-- [x] Objects & Links visible when Neo4j data source exists (hasNeo4jDataSource in feature toggles)
-- [x] Object Explorer: graph view at /object-explorer (react-force-graph-2d, Cypher execution, object/link type selection)
-- [x] Objects page: instances and instance_count from Neo4j; Ontology Object Types: counts from datasets
-- [x] Links page: instances and link_count from Neo4j; Console Link Types: counts from datasets
-- [x] API params: count_from_neo4j on GET /api/object-types, /object-types/{id}, /api/link-types, /link-types/{id}
+| Item | Notes |
+|------|--------|
+| Unified assistant entry | One discoverable “ask the knowledge base” pattern across documents, wiki, KB, ontology — not only per-surface Copilot panels |
+| Broader tool coverage | Read/write paths agents can call safely (with ACL): documents, articles, glossary, global search, ontology (within explore limits) |
+| Maintenance workflows | Suggest wiki/KB fixes from evaluation failures; gap lists operators can accept or reject |
+| Parity with external skill | Capabilities in [openkms-skill](features/opencode-openkms-skill.md) should be reachable from in-app agents where permissions allow |
 
-### 4. Authentication
+Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](features/knowledge-bases.md), [Knowledge map](features/knowledge-map.md).
 
-- [x] Integrate OIDC IdP with frontend (`oidc-client-ts`, discovery + PKCE; login/logout) when API reports `oidc`
-- [x] Local auth mode: PostgreSQL `users`, `/api/auth/register|login|me`, frontend `/login` & `/signup`, CLI HTTP Basic
-- [x] `GET /api/auth/public-config` + SPA uses API-reported mode (compatibility with local vs central IdP); optional mismatch banner vs `VITE_AUTH_MODE`
-- [x] Profile page `/profile` and `fetchAuthMe`; user **Settings** `/settings` for personal API keys; user admin APIs `/api/admin/users` + Console Users (`console:users`, local only)
-- [x] Protect backend routes with JWT Bearer or session (or local Basic for CLI)
-- [x] Operation permissions: `security_permissions` (catalog), `security_roles`, `security_role_permissions`, `user_security_roles`; `require_permission` + `GET /api/auth/permission-catalog` (from DB) + admin CRUD `/api/admin/security-permissions`; OIDC resolves permissions by matching JWT realm role names to `security_roles.name`; Console sidebar and APIs use granular `console:*` keys; JWT realm `admin` / `local-cli` bypass
-- [x] Pattern-based access control: optional `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` middleware; default `frontend_route_patterns` / `backend_api_patterns` per catalog key (Alembic); SPA `canAccessPath` from permission-catalog union; docs and `.env.example` updated
-- [x] Access groups: `access_groups`, junctions for channels/KBs/wiki/evaluation/datasets/object_types/link_types; **data resources** (`data_resources`, `access_group_data_resources`) with `/api/admin/data-resources` + Console **Data resources** page; group scopes include `data_resource_ids`; `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` unions legacy ID lists with resource predicates (`data_scope` + `data_resource_policy`) for local non-admin filters (no OIDC enforcement in phase 1); **OIDC**: console may still manage groups, scopes, and data resources; `PUT` group members remains local-only
-- [x] Feature toggles persisted in PostgreSQL (`feature_toggles` table); `GET/PUT /api/feature-toggles` (PUT requires `console:feature_toggles`)
-- [x] Backend `require_admin` retained where needed; sensitive console routes migrated to `require_permission`
-- [x] Backend dependency management via pyproject.toml + uv.lock (replaces requirements.txt)
+### Multimodal models & media (high) {#multimodal-models--media-high}
 
-## Medium-Term
+| Item | Notes |
+|------|--------|
+| Model registry | Categories/playgrounds for **image** and **video** understanding models (not only `vl` / `ocr` / `embedding` / `llm` for documents) |
+| Media functionality | Library UX, derivatives, transcripts/segments, links to specimens/taxa — [when to add Recordings/Video](features/knowledge-types.md#video-as-functionality) |
+| Pipelines | Parse/index paths for audio/video (and still frames) into searchable text for KB |
+| RAG | Chunk/provenance model for multimodal sources |
 
-### 5. Pipelines
+### Evaluation & knowledge quality (high) {#evaluation--knowledge-quality-high}
 
-- [x] Pipeline model (name, command, default_args) + CRUD API (`/api/pipelines`)
-- [x] Link pipelines to channels (`pipeline_id`, `auto_process` on DocumentChannel)
-- [x] DocumentChannelSettings fetches real pipelines from API
-- [x] Pipelines.tsx: CRUD UI with real API
-- [x] Model management: API provider registry (CRUD, linked to pipelines)
-- [x] Provider–model hierarchy: manage service providers first, then add models under them
-- [x] Model detail page with playground (test endpoint proxied through backend)
-- [x] Playground adapts per model category: form-based (VL with image upload), embedding (text input → vector output), chat (LLM/other)
-- [x] Model default in category: `is_default_in_category` on api_models; Models list Default column
-- [ ] Additional pipeline types beyond PaddleOCR
+| Item | Notes |
+|------|--------|
+| Failure drill-down | Per-item: which chunks/pages failed, expected vs retrieved, judge rationale export |
+| Improvement loop | From a run: suggested new FAQs, chunk edits, wiki gaps, re-index prompts |
+| Dashboards | Trends across runs (pass rate, score), compare after corpus changes |
+| Coverage | Stronger wiki checklist runs + KB retrieval baselines; optional export for CI |
+| Product default | Consider enabling evaluations toggle by default once workflows are clearer |
 
-### 6. Jobs (procrastinate)
+Today: [Evaluation](features/evaluation.md) (`search_retrieval`, `qa_answer`, `wiki_content_coverage`).
 
-- [x] procrastinate (PostgreSQL-based job queue) integration
-- [x] Upload decoupled from parsing: stores file only, `status=uploaded`
-- [x] Document status field: uploaded → pending → running → completed/failed
-- [x] run_pipeline task: spawns `openkms-cli pipeline run` as subprocess; wait capped by **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default 3600); when channel has extraction config (model_name from ApiModel), renders extraction args into template and runs metadata extraction in CLI
-- [x] Jobs API: list, detail, create, retry, delete (`/api/jobs`)
-- [x] Jobs.tsx: real API, status filter, create job, retry, delete
-- [x] JobDetail.tsx: full job detail page with timing, document link, pipeline info, rendered command, event log
-- [x] Process button on document list and detail for uploaded/failed docs
-- [x] Reset status button for pending/failed docs (resets to uploaded if no active jobs)
-- [x] Pipeline command template system: `{variable}` placeholders resolved at runtime
-- [x] Template variables API: `GET /api/pipelines/template-variables`
-- [x] Sonner toast system for project-wide notifications
-- [x] Worker entry point: `backend/worker.py`
-- [x] Model-aware command template: `{vlm_url}`, `{model_name}` resolved from linked ApiModel
-- [ ] Job logs/stdout capture
-- [ ] Configurable concurrency for worker
+### Policy & lifecycle (medium) {#policy--lifecycle-medium}
 
-### 6b. Unify Metadata and Labels (2026-03)
+Aligns with [Goals — 规则的动态保鲜与溯源](goals.md#goals-lifecycle) (e.g. regulatory change rippling to SOPs and training material).
 
-- [x] Merge labels into metadata; single METADATA concept in DB and UI
-- [x] Alembic migration: merge labels → metadata, label_keys → metadata_keys, drop labels/label_keys columns
-- [x] Add object_type and list[object_type] to extraction schema; object_type_extraction_max_instances on channel
-- [x] Rename Labels tab to Manual Labels; label_config uses type (object_type | list[object_type]) instead of allow_multiple
-- [x] KB: metadata_keys only; openkms-cli and backend propagation use _propagate_metadata(doc_metadata, metadata_keys)
+| Item | Notes |
+|------|--------|
+| Change impact | When a document is superseded or leaves its effective window: surface **dependents** (relationships, KB chunks, wiki links, map resources) |
+| Review queue | Operator list: materials **needs review**; optional bulk actions |
+| Visibility | Home hub or channel dashboards: stale / affected counts after a known change |
+| Notifications | Optional hooks (email/webhook) when `lifecycle_status` or `effective_to` changes — org-specific |
 
-### 6c. Tech Debt Mitigation (2026-03)
+Today: [Documents](features/documents.md) lifecycle + relationships; `is_current_for_rag` on KB search — **no** automated impact workflow.
 
-- [x] Error boundary around routes (App.tsx)
-- [x] Document model status default fix (migration p1q2r3s4t5u6)
-- [x] Frontend typecheck script (`npm run typecheck`)
-- [x] Cypher injection hardening (ontology_explore: block CALL, apoc., dbms.; require RETURN)
-- [x] Docker Compose (Postgres, MinIO)
-- [x] Docker workflow documented in `docker/README.md` using `docker compose -f docker/docker-compose.yml` from repo root (`build`, `up -d --build`, `down`)
-- [x] .env.example (root, vlm-server)
-- [x] Production secret key check (reject startup with default)
-- [x] Pipeline command validation (max_length=4096)
-- [x] Backend pytest + smoke tests
-- [x] Article management key tests (`backend/tests/test_articles_management.py`: channel subtree collection, import `rewrite_markdown_links`, `is_allowed_article_file_path` / safe filenames / S3 key validation)
-- [x] Document enum contract tests (`backend/tests/test_documents_constants.py`: `DocumentStatus`, `DocumentLifecycleStatus`, `DocumentRelationType` string values)
-- [x] Frontend Vitest + smoke tests
-- [x] Ontology explore Cypher gate tests (`backend/tests/test_ontology_explore_cypher.py`: `validate_ontology_explore_cypher` in `ontology_explore.py`; read-only keywords, RETURN, CALL, apoc/dbms)
-- [x] Data scope channel expand tests (`backend/tests/test_data_scope_channel_expand.py`: `_expand_channel_ids`, `_expand_article_channel_ids`)
-- [x] Frontend permission pattern tests (`frontend/src/utils/permissionPatterns.test.ts`: pathname normalization, `/*` patterns, SPA public path union)
-- [x] Global search (`GET /api/search`, `/search` UI, `docs/features/global-search.md`, `tests/test_global_search.py`)
-- [x] DocumentStatus enum; async subprocess (run_pipeline); document list query optimization; VLM config consolidation
-- [x] Route-level code splitting (React.lazy); ErrorBanner; ConsoleSettings a11y (id/htmlFor)
+### Other
 
-### 7. Knowledge Bases (RAG)
+| Area | Item | Feature doc |
+|------|------|-------------|
+| Documents | Advanced filter in channel document list | [Documents](features/documents.md) |
+| Articles | Editor / detail UX polish | [Articles](features/articles.md) |
+| Jobs | Job logs / stdout capture; configurable worker concurrency | [Pipelines, jobs & models](features/pipelines-and-jobs.md) |
+| Data security | Default-closed system mode when `OPENKMS_ENFORCE_RESOURCE_ACL` semantics are defined | [Data security](features/data-security.md) |
 
-- [x] Knowledge base CRUD API (`/api/knowledge-bases`)
-- [x] Add/remove documents to/from knowledge base (join table `kb_documents`)
-- [x] FAQ CRUD (manual create/edit/delete)
-- [x] FAQ generation from documents via LLM (`POST /faqs/generate` returns preview; `POST /faqs/batch` saves selected; UI: review step with remove unqualified before save)
-- [x] Chunk model with pgvector embeddings
-- [x] pgvector extension enabled in database.py
-- [x] Semantic search over chunks and FAQs (`POST /search`)
-- [x] QA proxy to external agent service (`POST /ask`, `POST /ask/stream`)
-- [x] Persisted Q&A threads (`GET/POST/PATCH/DELETE …/agent-conversations`, messages + truncate-from; **`kb_agent_conversations.py`**)
-- [x] KB settings: agent URL, embedding model (**`embedding_model_id`** → **Models** / `api_models`; not backend `OPENKMS_EMBEDDING_*`), chunking config, FAQ generation prompt
-- [x] openkms-cli `pipeline run --pipeline-name kb-index`: chunk documents, generate embeddings, bulk insert to pgvector
-- [x] `run_kb_index` procrastinate task for background indexing
-- [x] Frontend: KnowledgeBaseList with real CRUD (create, edit, delete)
-- [x] Frontend: KnowledgeBaseDetail with Documents, Wiki spaces, FAQs, Chunks, Search, Settings tabs; full-page Q&A from header when agent URL is set (sidebar threads, stream + reload, **`session_id`** for Langfuse when configured on qa-agent)
-- [x] QA Agent Service project (`qa-agent/`): FastAPI + LangGraph, retrieves via backend search API (no DB access)
-- [x] Batch document selection for FAQ generation in the UI (modal with doc picker, review generated FAQs, remove unqualified, save)
-- [x] Re-index from UI: **Queue indexing job** on Settings (`POST …/index-job` → `run_kb_index`); track on **Jobs**
-- [x] Optional: dedicated **Re-index** control outside Settings copy, or job preflight when embedding model missing
-
-### 8. Articles (shipped)
-
-Article channels, articles, versions, attachments, and SPA routes are implemented; see **Current State** (Articles bullet). Follow-up work is **UX polish** (for example a richer editor experience) rather than net-new article storage APIs.
+Active UX / quality gaps: [Tech debt](./tech_debt.md).
 
 ## Long-Term
 
 - Multi-tenancy
-- Audit logging
-- Glossary export/import (implemented); document export/import
-- Plugin/extensibility
+- Audit logging (beyond resource ACL admin Issues)
+- Document export/import
+- Plugin/extensibility (connector kinds, agent tools)
 - Mobile/responsive polish
+- Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 
 ## Conventions
 
-- **Before commit**: Update `docs/architecture.md`, `docs/development_plan.md`, `docs/functionalities.md` to reflect changes. See `.cursor/rules/docs-before-commit.mdc`.
+- **Before commit**: Update the matching `docs/features/*.md` page, [API reference](features/api-reference.md) / [Data models](features/data-models.md) when needed, then keep [Functionalities](./functionalities.md) and this plan’s **Current State** tables aligned (same rows and **Covers** text). See `.cursor/rules/docs-before-commit.mdc`.
 
 ## Open Questions
 
 1. **All documents view** – Show documents from all channels when no channel selected?
-2. **Article channels** – Same tree model as documents or different?
-3. **Default channel** – Auto-select first channel or require explicit selection?
+2. **Default channel** – Auto-select first channel or require explicit selection?
+3. **Global in-app agent** – Single chat shell vs contextual Copilot per surface (wiki, KB, documents)?
+4. **Media vs documents** – New **Recordings/Media** functionality vs extend [Documents](features/documents.md) + model registry — [knowledge-types](./features/knowledge-types.md#rich-media-and-3d)
+5. **Connector vs pipeline** – Is every external sync a **connector job**, or some as generic `openkms-cli` pipelines only?
