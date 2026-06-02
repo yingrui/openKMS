@@ -20,7 +20,9 @@ from app.api.auth import require_auth
 from app.api.jobs import read_job_response
 from app.database import get_db
 from app.services.data_resource_policy import knowledge_base_visible
-from app.services.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
+from app.services.kb_scope import require_knowledge_base_manage, require_knowledge_base_write
+from app.services.resource_acl_constants import RT_KNOWLEDGE_BASE
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
@@ -68,10 +70,10 @@ router = APIRouter(
 )
 
 
-async def get_kb_scoped(
+async def _get_kb_or_404(
     kb_id: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession,
 ) -> KnowledgeBase:
     kb = await db.get(KnowledgeBase, kb_id)
     if not kb:
@@ -81,6 +83,23 @@ async def get_kb_scoped(
     if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     return kb
+
+
+async def get_kb_scoped(
+    kb_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> KnowledgeBase:
+    return await _get_kb_or_404(kb_id, request, db)
+
+
+async def get_kb_scoped_write(
+    kb_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> KnowledgeBase:
+    kb = await _get_kb_or_404(kb_id, request, db)
+    return await require_knowledge_base_write(db, request, kb)
 
 
 async def _require_wiki_space_readable(
@@ -177,7 +196,14 @@ async def list_knowledge_bases(request: Request, db: AsyncSession = Depends(get_
 
 
 @router.post("", response_model=KnowledgeBaseResponse, status_code=201)
-async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = Depends(get_db)):
+async def create_knowledge_base(
+    body: KnowledgeBaseCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     kb = KnowledgeBase(
         id=str(uuid.uuid4()),
         name=body.name,
@@ -188,9 +214,14 @@ async def create_knowledge_base(body: KnowledgeBaseCreate, db: AsyncSession = De
         chunk_config=body.chunk_config,
         faq_prompt=body.faq_prompt,
         metadata_keys=body.metadata_keys,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(kb)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_KNOWLEDGE_BASE, kb.id, sub)
+    await db.commit()
     await db.refresh(kb)
     stats = await _kb_stats(db, kb.id)
     return _kb_to_response(kb, stats)
@@ -209,7 +240,7 @@ async def get_knowledge_base(
 async def update_knowledge_base(
     kb_id: str,
     body: KnowledgeBaseUpdate,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     update_data = body.model_dump(exclude_unset=True)
@@ -224,7 +255,7 @@ async def update_knowledge_base(
 @router.post("/{kb_id}/index-job", response_model=JobResponse, status_code=201)
 async def enqueue_knowledge_base_index_job(
     kb_id: str,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Queue a worker job that runs openkms-cli kb-index for this knowledge base (same task as CLI)."""
@@ -249,10 +280,12 @@ async def enqueue_knowledge_base_index_job(
 
 @router.delete("/{kb_id}", status_code=204)
 async def delete_knowledge_base(
+    request: Request,
     kb_id: str,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_knowledge_base_manage(db, request, kb)
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
     await db.execute(delete(FAQ).where(FAQ.knowledge_base_id == kb_id))
     await db.execute(delete(KBDocument).where(KBDocument.knowledge_base_id == kb_id))
@@ -291,7 +324,7 @@ async def list_kb_documents(
 async def add_kb_document(
     kb_id: str,
     body: KBDocumentAdd,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     doc = await db.get(Document, body.document_id)
@@ -328,7 +361,7 @@ async def add_kb_document(
 async def remove_kb_document(
     kb_id: str,
     document_id: str,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -374,7 +407,7 @@ async def add_kb_wiki_space(
     kb_id: str,
     body: KBWikiSpaceAdd,
     request: Request,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     await _require_wiki_space_readable(body.wiki_space_id, request, db)
@@ -409,7 +442,7 @@ async def add_kb_wiki_space(
 async def remove_kb_wiki_space(
     kb_id: str,
     wiki_space_id: str,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -525,7 +558,7 @@ async def list_faqs(
 async def create_faq(
     kb_id: str,
     body: FAQCreate,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     faq = FAQ(
@@ -556,7 +589,7 @@ async def create_faq(
 async def update_faqs_embeddings_batch(
     kb_id: str,
     body: FAQBatchEmbeddingsRequest,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk update FAQ embeddings (base64-encoded). Used by kb-index pipeline. Optionally updates doc_metadata."""
@@ -575,7 +608,7 @@ async def update_faq(
     kb_id: str,
     faq_id: str,
     body: FAQUpdate,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     faq = await db.get(FAQ, faq_id)
@@ -603,7 +636,7 @@ async def update_faq(
 async def delete_faq(
     kb_id: str,
     faq_id: str,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     faq = await db.get(FAQ, faq_id)
@@ -616,7 +649,7 @@ async def delete_faq(
 async def generate_faqs(
     kb_id: str,
     body: FAQGenerateRequest,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Generate FAQ pairs from documents using an LLM. Returns preview only; use batch save to persist."""
@@ -661,7 +694,7 @@ async def generate_faqs(
 async def create_faqs_batch(
     kb_id: str,
     body: FAQBatchCreateRequest,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Save selected FAQ pairs to the knowledge base."""
@@ -800,7 +833,7 @@ async def get_chunk(
 @router.delete("/{kb_id}/chunks", status_code=204)
 async def delete_all_chunks(
     kb_id: str,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
@@ -811,7 +844,7 @@ async def update_chunk(
     kb_id: str,
     chunk_id: str,
     body: ChunkUpdate,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Update chunk content, labels, or doc_metadata."""
@@ -867,7 +900,7 @@ def _base64_to_floats(b64: str) -> list[float]:
 async def create_chunks_batch(
     kb_id: str,
     body: ChunkBatchCreateRequest,
-    kb: KnowledgeBase = Depends(get_kb_scoped),
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Bulk create chunks with base64-encoded embeddings. Used by kb-index pipeline."""

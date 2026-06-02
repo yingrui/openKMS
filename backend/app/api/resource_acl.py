@@ -21,6 +21,8 @@ from app.services.resource_acl_constants import (
     PERM_WRITE,
     RT_ARTICLE_CHANNEL,
     RT_DOCUMENT_CHANNEL,
+    RT_KNOWLEDGE_BASE,
+    RT_WIKI_SPACE,
     SECURABLE_RESOURCE_TYPES,
     perm_label,
 )
@@ -29,11 +31,12 @@ from app.services.resource_acl_service import (
     effective_permissions,
     list_acl_entries,
     list_owner_candidates,
-    normalize_user_grantee_id,
+    normalize_owner_grantee_id,
     replace_resource_acl,
     resolve_subject_display,
     resource_context_chain,
     resource_has_acl_restrictions,
+    user_grant_matches,
 )
 
 router = APIRouter(prefix="/resource-acl", tags=["resource-acl"], dependencies=[Depends(require_auth)])
@@ -43,6 +46,7 @@ class AclGrantIn(BaseModel):
     grantee_type: str
     grantee_id: str | None = None
     permissions: str = Field(description="Permission string: r, w, m (e.g. rw, r, rwm)")
+    grantee_label: str | None = None
 
 
 class AclGrantOut(BaseModel):
@@ -89,7 +93,15 @@ def _parse_grants(body: ResourceAclPut) -> list[dict]:
         bits = parse_perm_string(g.permissions)
         if bits == 0 and g.grantee_type != GRANTEE_AUTHENTICATED:
             raise HTTPException(status_code=400, detail="At least one permission (r/w/m) required")
-        out.append({"grantee_type": g.grantee_type, "grantee_id": gid, "permissions": bits})
+        label = g.grantee_label.strip() if g.grantee_label and g.grantee_label.strip() else None
+        out.append(
+            {
+                "grantee_type": g.grantee_type,
+                "grantee_id": gid,
+                "permissions": bits,
+                "grantee_label": label,
+            }
+        )
     return out
 
 
@@ -98,11 +110,17 @@ async def _channel_creator_identity(
 ) -> tuple[str | None, str | None]:
     from app.models.article_channel import ArticleChannel
     from app.models.document_channel import DocumentChannel
+    from app.models.knowledge_base import KnowledgeBase
+    from app.models.wiki_models import WikiSpace
 
     if resource_type == RT_DOCUMENT_CHANNEL:
         ch = await db.get(DocumentChannel, resource_id)
     elif resource_type == RT_ARTICLE_CHANNEL:
         ch = await db.get(ArticleChannel, resource_id)
+    elif resource_type == RT_WIKI_SPACE:
+        ch = await db.get(WikiSpace, resource_id)
+    elif resource_type == RT_KNOWLEDGE_BASE:
+        ch = await db.get(KnowledgeBase, resource_id)
     else:
         return None, None
     if not ch:
@@ -136,7 +154,14 @@ async def _grant_labels(
             label = "Others"
         elif g.grantee_type == GRANTEE_USER and g.grantee_id:
             is_owner = True
-            hint = creator_display_name if g.grantee_id == creator_subject else None
+            hint: str | None = getattr(g, "grantee_label", None)
+            if hint and not str(hint).strip():
+                hint = None
+            if creator_subject and creator_display_name:
+                if g.grantee_id == creator_subject:
+                    hint = hint or creator_display_name
+                elif await user_grant_matches(db, g.grantee_id, creator_subject, None):
+                    hint = hint or creator_display_name
             label = await resolve_subject_display(db, g.grantee_id, display_hint=hint)
             if owner_subject is None:
                 owner_subject = g.grantee_id
@@ -232,11 +257,21 @@ async def _ensure_owner_in_parsed(
     existing_entries = await list_acl_entries(db, resource_type, resource_id)
     existing_owner = next((e for e in existing_entries if e.grantee_type == GRANTEE_USER), None)
     if existing_owner and existing_owner.grantee_id:
-        _append_preserved_owner(parsed, existing_owner.grantee_id, existing_owner.permissions)
+        _append_preserved_owner(
+            parsed,
+            existing_owner.grantee_id,
+            existing_owner.permissions,
+            grantee_label=existing_owner.grantee_label,
+        )
         return
-    creator_subject, _ = await _channel_creator_identity(db, resource_type, resource_id)
+    creator_subject, creator_name = await _channel_creator_identity(db, resource_type, resource_id)
     if creator_subject:
-        _append_preserved_owner(parsed, creator_subject, PERM_ALL_DATA)
+        _append_preserved_owner(
+            parsed,
+            creator_subject,
+            PERM_ALL_DATA,
+            grantee_label=creator_name,
+        )
 
 
 async def list_local_owner_candidates(db: AsyncSession) -> list[OwnerCandidateOut]:
@@ -317,7 +352,7 @@ async def persist_resource_acl(
             if not await db.get(AccessGroup, g["grantee_id"]):
                 raise HTTPException(status_code=400, detail=f"Group not found: {g['grantee_id']}")
         if g["grantee_type"] == GRANTEE_USER and g["grantee_id"]:
-            g["grantee_id"] = await normalize_user_grantee_id(db, g["grantee_id"], payload)
+            g["grantee_id"] = await normalize_owner_grantee_id(db, g["grantee_id"], payload)
 
     await _ensure_owner_in_parsed(db, resource_type, resource_id, parsed)
     entries = await replace_resource_acl(db, resource_type, resource_id, parsed)

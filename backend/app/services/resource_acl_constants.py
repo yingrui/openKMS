@@ -53,19 +53,6 @@ LEAF_CONTAINER: dict[str, str] = {
     RT_WIKI_PAGE: RT_WIKI_SPACE,
 }
 
-# Legacy access_group junction table mapping for migration
-LEGACY_SCOPE_TABLES: dict[str, tuple[str, str, str]] = {
-    "access_group_channels": (RT_DOCUMENT_CHANNEL, "channel_id", PERM_READ),
-    "access_group_article_channels": (RT_ARTICLE_CHANNEL, "article_channel_id", PERM_READ),
-    "access_group_knowledge_bases": (RT_KNOWLEDGE_BASE, "knowledge_base_id", PERM_READ),
-    "access_group_wiki_spaces": (RT_WIKI_SPACE, "wiki_space_id", PERM_READ),
-    "access_group_evaluations": (RT_EVALUATION, "evaluation_id", PERM_READ),
-    "access_group_datasets": (RT_DATASET, "dataset_id", PERM_READ),
-    "access_group_object_types": (RT_OBJECT_TYPE, "object_type_id", PERM_READ),
-    "access_group_link_types": (RT_LINK_TYPE, "link_type_id", PERM_READ),
-}
-
-
 def perm_satisfies(have: int, need: int) -> bool:
     if have & PERM_MANAGE:
         return True

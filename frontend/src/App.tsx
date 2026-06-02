@@ -196,10 +196,6 @@ function App() {
               path="data-security/groups/:groupId/access"
               element={<GroupMembersLegacyRedirect />}
             />
-            <Route
-              path="data-security/data-resources"
-              element={<Navigate to="/console/data-security/issues" replace />}
-            />
             <Route path="data-sources" element={<ConsoleDataSources />} />
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />

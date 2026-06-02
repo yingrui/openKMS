@@ -6,12 +6,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONSOLE_GROUPS } from '../../config/permissions';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import {
-  fetchDataResourcesMigrationReport,
   fetchResourceAclIssuesPage,
   fetchResourceAclIssuesSummary,
   RESOURCE_ACL_ISSUE_CRITICAL_ORDER,
   RESOURCE_ACL_ISSUE_REVIEW,
-  type DataResourceMigrationReportOut,
   type ResourceAclIssueCode,
   type ResourceAclIssueItem,
   type ResourceAclIssuesSummaryOut,
@@ -323,19 +321,14 @@ export function ConsoleDataSecurityIssues() {
   const { t } = useTranslation('console');
   const { hasPermission } = useAuth();
   const [summary, setSummary] = useState<ResourceAclIssuesSummaryOut | null>(null);
-  const [legacy, setLegacy] = useState<DataResourceMigrationReportOut | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
 
   const loadSummary = useCallback(async () => {
     try {
-      const [sum, mig] = await Promise.all([
-        fetchResourceAclIssuesSummary(),
-        fetchDataResourcesMigrationReport(),
-      ]);
+      const sum = await fetchResourceAclIssuesSummary();
       setSummary(sum);
-      setLegacy(mig);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('dataSecurityIssues.toastLoadFailed'));
     }
@@ -383,7 +376,7 @@ export function ConsoleDataSecurityIssues() {
         <>
           {summary && (
             <>
-              {!hasAclIssues && !(legacy && legacy.row_count > 0) ? (
+              {!hasAclIssues ? (
                 <p className="console-group-access-muted">{t('dataSecurityIssues.allClear')}</p>
               ) : (
                 <>
@@ -429,24 +422,6 @@ export function ConsoleDataSecurityIssues() {
                 </>
               )}
             </>
-          )}
-
-          {legacy && legacy.row_count > 0 && (
-            <section className="console-group-access-section console-dso-legacy">
-              <h2>{t('dataSecurityIssues.legacyHeading')}</h2>
-              <p className="console-group-access-hint">{legacy.message}</p>
-              <p className="console-group-access-muted">
-                {t('dataSecurityIssues.legacyCount', { count: legacy.row_count })}
-              </p>
-              <ul className="console-dso-legacy-list">
-                {legacy.rows.map((row) => (
-                  <li key={row.id}>
-                    <strong>{row.name}</strong>{' '}
-                    <span className="console-group-access-muted">({row.resource_kind})</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
           )}
 
           <p className="console-group-access-hint">

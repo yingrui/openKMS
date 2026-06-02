@@ -63,7 +63,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### KnowledgeBase
 
-- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap; optional **`lifecycle_index_mode`**: `current_only` (default) skips documents that are **not currently applicable** per lifecycle rules during `kb-index`; `all` indexes every linked document regardless of lifecycle), `faq_prompt` (optional default for FAQ generation), `metadata_keys` (JSONB array: keys from document metadata to propagate to FAQs/chunks), `created_at`, `updated_at`
+- `id`, `name`, `description`, `embedding_model_id` (FK → api_models), `agent_url`, `chunk_config` (JSONB: strategy, chunk_size, chunk_overlap; optional **`lifecycle_index_mode`**: `current_only` (default) skips documents that are **not currently applicable** per lifecycle rules during `kb-index`; `all` indexes every linked document regardless of lifecycle), `faq_prompt` (optional default for FAQ generation), `metadata_keys` (JSONB array: keys from document metadata to propagate to FAQs/chunks), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - Groups documents, FAQs, and chunks for RAG Q&A; semantic search defaults to documents that **are currently applicable** unless the client sets `include_historical_documents: true` on the search request
 
 ### KBDocument
@@ -231,6 +231,11 @@ Design and enforcement: [Data security](data-security.md).
 - `id` (UUID), `name` (unique), `description`, `created_at`
 - Named groups referenced by resource ACL grants (`grantee_type=group`).
 
+### OidcIdentity
+
+- `sub` (PK; IdP subject from JWT), `preferred_username`, `email`, `name` (nullable), `first_seen_at`, `last_seen_at`, `created_at`, `updated_at`
+- Upserted on OIDC login (`oauth2_callback`), `POST /api/auth/sync-session`, and `GET /api/auth/me`. Used to resolve ACL owner display names and username → `sub` without personal API keys. Migration **`j9k0l1m2n3o4`** backfills from `user_api_keys` where `auth_mode=oidc`.
+
 ### AccessGroupMember
 
 - `subject` (PK; local user id or OIDC `sub`), `group_id` (FK → access_groups, CASCADE); composite PK
@@ -238,18 +243,14 @@ Design and enforcement: [Data security](data-security.md).
 
 ### ResourceAclEntry
 
-- `id`, `resource_type` (e.g. `document_channel`, `document`, `wiki_space`, `knowledge_base`), `resource_id`, `grantee_type` (`user`, `group`, `authenticated`), `grantee_id` (nullable for `authenticated`), `permissions` (bitmask: read=1, write=2, manage=4), `created_at`, `updated_at`
+- `id`, `resource_type` (e.g. `document_channel`, `document`, `wiki_space`, `knowledge_base`), `resource_id`, `grantee_type` (`user`, `group`, `authenticated`), `grantee_id` (nullable for `authenticated`), `grantee_label` (nullable; display name saved at PUT, e.g. username when OIDC `sub` is stored), `permissions` (bitmask: read=1, write=2, manage=4), `created_at`, `updated_at`
 - Unique on `(resource_type, resource_id, grantee_type, grantee_id)`. Container ACL inherits to children (channel → documents, wiki space → pages). API: `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`.
-
-### Legacy (migrated to resource_acl_entries)
-
-- Junction tables (`access_group_channels`, etc.) and **data resources** remain in schema for downgrade paths; new installs should use resource ACL only. Migration **`x6y7z8a9b0c1`** copies junction rows into `resource_acl_entries` and drops `access_group_users`.
 
 ## Wiki
 
 ### WikiSpace
 
-- `id`, `name`, `description`, `semantic_similarity_threshold` (float, 0–1, default **0.4** for new rows; minimum cosine similarity for semantic page matches), `semantic_match_top_k` (int ≥ 1, default **10**; max semantic hits for the tree API), `semantic_embedding_model_id` (nullable FK → `api_models`, **SET NULL**; null = use global default embedding model for index + search), `last_semantic_index_at` (nullable timestamptz; set when **POST …/semantic-index** completes successfully), `created_at`, `updated_at`
+- `id`, `name`, `description`, `semantic_similarity_threshold` (float, 0–1, default **0.4** for new rows; minimum cosine similarity for semantic page matches), `semantic_match_top_k` (int ≥ 1, default **10**; max semantic hits for the tree API), `semantic_embedding_model_id` (nullable FK → `api_models`, **SET NULL**; null = use global default embedding model for index + search), `last_semantic_index_at` (nullable timestamptz; set when **POST …/semantic-index** completes successfully), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 
 ### WikiPage
 

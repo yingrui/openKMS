@@ -49,7 +49,9 @@ from app.schemas.wiki import (
     WikiVaultMarkdownImportResponse,
 )
 from app.services.data_resource_policy import document_passes_scoped_predicate
-from app.services.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
+from app.services.resource_acl_constants import RT_WIKI_SPACE
+from app.services.wiki_scope import require_wiki_space_manage, require_wiki_space_write
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
 from app.services.storage import (
@@ -147,10 +149,10 @@ def _wiki_link_graph_from_payload(payload: dict) -> WikiLinkGraphResponse:
     )
 
 
-async def get_wiki_space_scoped(
+async def _get_wiki_space_or_404(
     space_id: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession,
 ) -> WikiSpace:
     ws = await db.get(WikiSpace, space_id)
     if not ws:
@@ -162,6 +164,23 @@ async def get_wiki_space_scoped(
         if allowed is not None and space_id not in allowed:
             raise HTTPException(status_code=404, detail="Wiki space not found")
     return ws
+
+
+async def get_wiki_space_scoped(
+    space_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> WikiSpace:
+    return await _get_wiki_space_or_404(space_id, request, db)
+
+
+async def get_wiki_space_scoped_write(
+    space_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> WikiSpace:
+    space = await _get_wiki_space_or_404(space_id, request, db)
+    return await require_wiki_space_write(db, request, space)
 
 
 async def _page_count(db: AsyncSession, space_id: str) -> int:
@@ -208,14 +227,26 @@ async def list_wiki_spaces(request: Request, db: AsyncSession = Depends(get_db))
     status_code=201,
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
-async def create_wiki_space(body: WikiSpaceCreate, db: AsyncSession = Depends(get_db)):
+async def create_wiki_space(
+    body: WikiSpaceCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     ws = WikiSpace(
         id=str(uuid.uuid4()),
         name=body.name.strip(),
         description=body.description.strip() if body.description else None,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(ws)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_WIKI_SPACE, ws.id, sub)
+    await db.commit()
     await db.refresh(ws)
     return _space_to_response(ws, 0)
 
@@ -238,7 +269,7 @@ async def get_wiki_space(
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
 async def post_wiki_space_semantic_index(
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -286,7 +317,7 @@ async def post_wiki_space_semantic_index(
 )
 async def patch_wiki_space(
     body: WikiSpaceUpdate,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     if body.name is not None:
@@ -324,9 +355,11 @@ async def patch_wiki_space(
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
 async def delete_wiki_space(
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    request: Request,
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
+    await require_wiki_space_manage(db, request, space)
     prefix = f"wiki/{space.id}/"
     await db.delete(space)
     await db.flush()
@@ -381,7 +414,7 @@ async def list_wiki_space_linked_documents(
 async def link_document_to_wiki_space(
     request: Request,
     body: WikiSpaceDocumentLinkCreate,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     p = request.state.openkms_jwt_payload
@@ -417,7 +450,7 @@ async def link_document_to_wiki_space(
 )
 async def unlink_document_from_wiki_space(
     document_id: str,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -530,7 +563,7 @@ async def wiki_pages_semantic_matches(
 )
 async def create_page(
     body: WikiPageCreate,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     path = normalize_wiki_path(body.path)
@@ -590,7 +623,7 @@ async def get_page_by_path(
 async def upsert_page_by_path(
     page_path: str,
     body: WikiPageUpsertBody,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     path = normalize_wiki_path(page_path)
@@ -627,7 +660,7 @@ async def upsert_page_by_path(
 )
 async def delete_page_by_path(
     page_path: str,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     path = normalize_wiki_path(page_path)
@@ -663,7 +696,7 @@ async def get_page(
 async def patch_page(
     page_id: str,
     body: WikiPageUpdate,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     page = await _get_page_in_space(db, space.id, page_id)
@@ -690,7 +723,7 @@ async def patch_page(
 )
 async def delete_page(
     page_id: str,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     page = await _get_page_in_space(db, space.id, page_id)
@@ -781,7 +814,7 @@ async def list_files(
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
 async def upload_wiki_file(
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
     wiki_page_id: str | None = Form(default=None),
@@ -864,7 +897,7 @@ async def get_wiki_file_content(
 )
 async def delete_wiki_file(
     file_id: str,
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     wf = await _get_file_in_space(db, space.id, file_id)
@@ -879,7 +912,7 @@ async def delete_wiki_file(
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
 async def import_vault_markdown_file(
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
     payload: WikiVaultMarkdownFileBody = Body(...),
 ):
@@ -903,7 +936,7 @@ async def import_vault_markdown_file(
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
 async def import_obsidian_vault(
-    space: WikiSpace = Depends(get_wiki_space_scoped),
+    space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
     archive: Annotated[UploadFile | None, File()] = None,
     files: Annotated[list[UploadFile] | None, File()] = None,

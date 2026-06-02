@@ -115,9 +115,18 @@ function mergedGroupOptions(catalog: AccessGroupOut[], rows: GroupRow[]): Access
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function ownerDisplayName(row: OwnerGrant): string {
-  if (row.label?.trim()) return row.label.trim();
-  return row.grantee_id;
+function ownerDisplayName(
+  row: OwnerGrant,
+  ownerOptions: OwnerCandidate[],
+  aclOwnerLabel?: string | null
+): string {
+  const label = row.label?.trim();
+  if (label && label !== row.grantee_id) return label;
+  const fromAcl = aclOwnerLabel?.trim();
+  if (fromAcl && fromAcl !== row.grantee_id) return fromAcl;
+  const fromCatalog = ownerOptions.find((c) => c.subject === row.grantee_id)?.label?.trim();
+  if (fromCatalog && fromCatalog !== row.grantee_id) return fromCatalog;
+  return label || fromAcl || fromCatalog || row.grantee_id;
 }
 
 function groupDisplayName(row: GroupRow, options: AccessGroupOut[]): string {
@@ -458,7 +467,9 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
                 </div>
               ) : ownerGrant ? (
                 <>
-                  <span className="resource-share-grantee-primary">{ownerDisplayName(ownerGrant)}</span>
+                  <span className="resource-share-grantee-primary">
+                    {ownerDisplayName(ownerGrant, ownerOptions, acl?.owner_label)}
+                  </span>
                   {acl?.created_by === ownerGrant.grantee_id && (
                     <span className="resource-share-grantee-note">{t('resourceShare.ownerIsCreator')}</span>
                   )}

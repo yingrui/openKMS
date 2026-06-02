@@ -5,7 +5,8 @@ Index documents into a knowledge base, generate FAQs and chunks, run hybrid sema
 | Feature | Status | Description |
 |---------|--------|-------------|
 | SPA i18n | ✅ | List + detail UI use **`knowledgeBase`** namespace (`frontend/src/i18n/locales/{en,zh-CN}/knowledgeBase.json`) |
-| KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete |
+| KB management | ✅ | CRUD via `/api/knowledge-bases`; KnowledgeBaseList with create/edit/delete; **resource ACL** per KB (`knowledge_base`); create bootstraps owner ACL; mutations require write on the KB when ACL applies; delete requires manage |
+| KB sharing | ✅ | Settings tab **Sharing** (`ResourceSharePanel`); `GET/PUT /api/resource-acl/knowledge_base/{id}`. **New** KBs: owner-only ACL bootstrap (Others denied). **Pre-existing** KBs (before migration `h8i9j0k1l2m3`): seeded Others **r/w/m** to preserve open-by-default. |
 | KB documents | ✅ | Add/remove documents to KB (join table); link existing documents without copying; Add Documents dialog: left sidebar channel tree, right documents list with search and pagination |
 | KB wiki spaces | ✅ | Dedicated **Wiki spaces** tab on KB detail (same pattern as Documents): link spaces (`GET/POST/DELETE …/wiki-spaces`); `kb-index` pulls page bodies via `GET …/wiki-pages-for-index`, chunks them with the same strategy as documents, and stores `chunks` with `wiki_page_id` (and optional `doc_metadata` from page metadata when `metadata_keys` matches); unlinking a space removes those chunks from the KB |
 | FAQs | ✅ | Manual create/edit/delete FAQ pairs; LLM-based FAQ generation from documents; FAQ list shows source document; paginated list (offset, limit); Edit FAQ modal with key-value form for document metadata (from KB metadata_keys; channel label_config/extraction_schema for object_type/list[object_type]) |

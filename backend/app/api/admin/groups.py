@@ -19,6 +19,7 @@ from app.services.resource_acl_admin_helpers import (
     share_path_for,
 )
 from app.services.resource_acl_constants import GRANTEE_GROUP, perm_label
+from app.services.resource_acl_service import canonicalize_group_member_subjects
 
 router = APIRouter(prefix="/admin/groups", tags=["admin-access-groups"])
 
@@ -42,7 +43,10 @@ class AccessGroupUpdate(BaseModel):
 
 
 class GroupMembersBody(BaseModel):
-    subjects: list[str] = Field(default_factory=list, description="User ids (local) or OIDC sub values")
+    subjects: list[str] = Field(
+        default_factory=list,
+        description="User id, OIDC sub, or username/email; stored as canonical subject after normalize",
+    )
 
 
 class MemberBrief(BaseModel):
@@ -304,7 +308,7 @@ async def put_group_members(
 ):
     if not await db.get(AccessGroup, group_id):
         raise HTTPException(status_code=404, detail="Group not found")
-    subjects = [s.strip() for s in body.subjects if s.strip()]
+    subjects = await canonicalize_group_member_subjects(db, body.subjects)
     if settings.auth_mode == "local":
         for sub in subjects:
             if not await db.get(User, sub):
@@ -373,7 +377,6 @@ class GroupScopesOut(BaseModel):
     dataset_ids: list[str] = Field(default_factory=list)
     object_type_ids: list[str] = Field(default_factory=list)
     link_type_ids: list[str] = Field(default_factory=list)
-    data_resource_ids: list[str] = Field(default_factory=list)
     deprecated: bool = True
     message: str = "Use PUT /api/resource-acl/{resource_type}/{resource_id} to manage sharing per resource."
 

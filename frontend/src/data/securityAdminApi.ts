@@ -408,7 +408,6 @@ export type GroupScopesOut = {
   dataset_ids: string[];
   object_type_ids: string[];
   link_type_ids: string[];
-  data_resource_ids: string[];
 };
 
 export async function fetchGroupScopes(groupId: string): Promise<GroupScopesOut> {
@@ -590,31 +589,6 @@ export async function fetchAdminResourceAclOwnerCandidates(
     `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/owner-candidates`,
     { headers, credentials: 'include' }
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
-}
-
-export type DataResourceMigrationReportOut = {
-  deprecated: boolean;
-  message: string;
-  row_count: number;
-  rows: {
-    id: string;
-    name: string;
-    description: string | null;
-    resource_kind: string;
-    attributes: Record<string, unknown>;
-    anchor_channel_id: string | null;
-    anchor_knowledge_base_id: string | null;
-  }[];
-};
-
-export async function fetchDataResourcesMigrationReport(): Promise<DataResourceMigrationReportOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/data-resources/migration-report`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
 }

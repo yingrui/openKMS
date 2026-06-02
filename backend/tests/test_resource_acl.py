@@ -86,6 +86,48 @@ def test_subject_aliases_includes_jwt_claims():
     assert aliases == {"uuid-sub", "bob", "bob@example.com", "Bob"}
 
 
+def test_resolve_subject_display_maps_oidc_sub_via_user_row(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.models.user import User
+    from app.services import resource_acl_service as svc
+
+    oidc_sub = "c539b559-96c5-4611-a499-966fea88fbae"
+    user = MagicMock(spec=User)
+    user.id = "cb8f2d42-local"
+    user.username = "bob"
+    user.email = "bob@example.com"
+
+    async def fake_get(model, key):
+        if model is User and key == oidc_sub:
+            return None
+        return None
+
+    async def fake_execute(stmt):
+        r = MagicMock()
+        r.first.return_value = None
+        r.scalar_one_or_none.return_value = None
+        scalars = MagicMock()
+        scalars.all.return_value = [user]
+        r.scalars.return_value = scalars
+        return r
+
+    async def fake_oidc_sub(_db, u):
+        return oidc_sub if u is user else None
+
+    db = AsyncMock()
+    db.get = fake_get
+    db.execute = fake_execute
+    monkeypatch.setattr(svc.settings, "auth_mode", "oidc")
+    monkeypatch.setattr(svc, "_oidc_sub_for_user_row", fake_oidc_sub)
+
+    async def _run():
+        label = await svc.resolve_subject_display(db, oidc_sub)
+        assert label == "bob"
+
+    asyncio.run(_run())
+
+
 def test_resolve_subject_display_prefers_hint():
     label = asyncio.run(
         resolve_subject_display(None, "11dcdd51-b251-4a69-9288-05ab2952be38", display_hint="yingrui")
@@ -145,6 +187,106 @@ def test_normalize_user_grantee_id_maps_local_user_id_to_oidc_sub(monkeypatch):
         monkeypatch.setattr(svc, "_oidc_sub_for_user_row", fake_oidc_sub)
         as_admin = await svc.normalize_user_grantee_id(db, local_id, None)
         assert as_admin == oidc_sub
+
+    asyncio.run(_run())
+
+
+def test_pick_richer_owner_label_prefers_email():
+    from app.services.resource_acl_service import _pick_richer_owner_label
+
+    assert _pick_richer_owner_label("yingrui", "yingrui (yingrui.f@gmail.com)") == "yingrui (yingrui.f@gmail.com)"
+    assert _pick_richer_owner_label("yingrui (a@b.com)", "yingrui") == "yingrui (a@b.com)"
+
+
+def test_normalize_owner_grantee_id_keeps_unresolved_username(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.services import resource_acl_service as svc
+
+    db = AsyncMock()
+
+    async def fake_normalize(_db, raw, _payload=None):
+        return raw
+
+    monkeypatch.setattr(svc, "normalize_user_grantee_id", fake_normalize)
+
+    async def _run():
+        out = await svc.normalize_owner_grantee_id(db, "bob", None)
+        assert out == "bob"
+
+    asyncio.run(_run())
+
+
+def test_normalize_owner_grantee_id_accepts_uuid(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.services import resource_acl_service as svc
+
+    oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
+    db = AsyncMock()
+
+    async def fake_normalize(_db, raw, _payload=None):
+        return raw
+
+    monkeypatch.setattr(svc.settings, "auth_mode", "oidc")
+    monkeypatch.setattr(svc, "normalize_user_grantee_id", fake_normalize)
+
+    async def _run():
+        out = await svc.normalize_owner_grantee_id(db, oidc_sub, None)
+        assert out == oidc_sub
+
+    asyncio.run(_run())
+
+
+def test_canonicalize_group_member_subjects_dedupes(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from app.services import resource_acl_service as svc
+
+    oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
+    db = AsyncMock()
+
+    async def fake_normalize(_db, raw, _payload=None):
+        if raw in ("yingrui", oidc_sub):
+            return oidc_sub
+        return raw
+
+    monkeypatch.setattr(svc, "normalize_user_grantee_id", fake_normalize)
+
+    async def _run():
+        out = await svc.canonicalize_group_member_subjects(db, ["yingrui", oidc_sub, "  ", "bob"])
+        assert out == [oidc_sub, "bob"]
+
+    asyncio.run(_run())
+
+
+def test_add_owner_candidate_merges_aliases_to_canonical(monkeypatch):
+    """Username and OIDC sub normalize to one map entry with the richer label."""
+    from unittest.mock import AsyncMock
+
+    from app.services import resource_acl_service as svc
+
+    oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
+    db = AsyncMock()
+
+    async def fake_normalize(_db, raw, _payload=None):
+        if raw in (oidc_sub, "yingrui", "cb8f2d42-local"):
+            return oidc_sub
+        return raw
+
+    monkeypatch.setattr(svc, "normalize_user_grantee_id", fake_normalize)
+
+    async def _run():
+        merged: dict[str, str] = {}
+        await svc._add_owner_candidate(db, merged, "yingrui", "yingrui")
+        await svc._add_owner_candidate(
+            db,
+            merged,
+            oidc_sub,
+            "yingrui (yingrui.f@gmail.com)",
+        )
+        assert list(merged.keys()) == [oidc_sub]
+        assert merged[oidc_sub] == "yingrui (yingrui.f@gmail.com)"
 
     asyncio.run(_run())
 

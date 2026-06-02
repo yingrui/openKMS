@@ -51,7 +51,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), **user_api_keys** (hashed personal API tokens; Bearer `okms.{id}.{secret}` authenticates as owner), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups**, **access_group_members** (subject ↔ group), **resource_acl_entries** (per-resource sharing: r/w/m grants to user, group, or authenticated; container inheritance), legacy junction tables (migrated to ACL), **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **knowledge_map_nodes** (self-referential tree of terms for the Knowledge Map), **knowledge_map_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **knowledge_map_html_artifact** (singleton cached LLM HTML overview + semantic `content_hash`), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
+| **PostgreSQL + pgvector** | users (local auth), **user_api_keys** (hashed personal API tokens; Bearer `okms.{id}.{secret}` authenticates as owner), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups**, **access_group_members** (subject ↔ group), **resource_acl_entries** (per-resource sharing: r/w/m grants to user, group, or authenticated; container inheritance),  **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **knowledge_map_nodes** (self-referential tree of terms for the Knowledge Map), **knowledge_map_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **knowledge_map_html_artifact** (singleton cached LLM HTML overview + semantic `content_hash`), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
 | **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; **article bundles** `articles/{article_id}/content.md`, `articles/{article_id}/images/…`, `articles/{article_id}/attachments/…`, optional `origin.html` (served via authenticated `GET /api/articles/{id}/files/{path}` → presigned redirect); wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; **Graph View** cache JSON `wiki/{space_id}/link-graph.json` (invalidated when `max(wiki_pages.updated_at)` is newer than the object’s `LastModified`); ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
 | **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
 | **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
@@ -129,7 +129,7 @@ frontend/src/
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
     ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.scss; co-located SCSS per page
-    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleDataResources, ConsoleGroupDataAccess, DataSources, Connectors, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
+    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, DataSources, Connectors, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```
 
 ### Internationalization (SPA)
@@ -190,9 +190,8 @@ backend/
 │   │   ├── user_api_key.py   # UserApiKey (user_id FK, name, key_prefix, key_hash bcrypt; Bearer `okms.{id}.{secret}` for HTTP)
 │   │   ├── security_role.py # SecurityRole, SecurityRolePermission, UserSecurityRole
 │   │   ├── security_permission.py # SecurityPermission (key, label, description, JSONB route/API patterns, sort_order)
-│   │   ├── access_group.py  # AccessGroup, AccessGroupMember, legacy junction tables
+│   │   ├── access_group.py  # AccessGroup, AccessGroupMember
 │   │   ├── resource_acl.py  # ResourceAclEntry
-│   │   ├── data_resource.py  # DataResource, AccessGroupDataResource
 │   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK, key_property, is_master_data, display_property)
 │   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
 │   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
@@ -250,7 +249,7 @@ backend/
 │       ├── user_roles_sync.py          # Sync user_security_roles from users.is_admin; create member role with `all` if missing
 │       ├── data_scope.py               # Re-exports resource ACL helpers; channel subtree expansion
 │       ├── resource_acl_service.py     # OPENKMS_ENFORCE_RESOURCE_ACL: hierarchical ACL resolve, list filters, inheritance
-│       └── data_resource_policy.py     # Deprecated data-resource API; delegates visibility to resource ACL
+│       └── data_resource_policy.py     # Visibility helpers delegating to resource ACL
 ├── scripts/
 │   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
 │   └── seed_mock_insurance_data.py  # Create mock diseases, insurance_products, disease_insurance_product tables in schema 'mock'

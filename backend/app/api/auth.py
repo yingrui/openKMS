@@ -367,7 +367,7 @@ router = APIRouter(tags=["auth"])
 
 
 @router.post("/sync-session")
-async def sync_session(request: Request) -> dict:
+async def sync_session(request: Request, db: AsyncSession = Depends(get_db)) -> dict:
     """Sync browser JWT to backend session (cookie) for credentialed img/object requests."""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.lower().startswith("bearer "):
@@ -375,8 +375,12 @@ async def sync_session(request: Request) -> dict:
     token = auth_header[7:].strip()
     if not token:
         raise http_error(request, 401, "BEARER_TOKEN_REQUIRED")
-    _verify_token_for_mode(token)
+    payload = _verify_token_for_mode(token)
     request.session["access_token"] = token
+    from app.services.oidc_identity_service import upsert_oidc_identity_from_jwt
+
+    await upsert_oidc_identity_from_jwt(db, payload)
+    await db.commit()
     return {"ok": True}
 
 
@@ -407,6 +411,7 @@ async def login(request: Request) -> RedirectResponse:
 async def oauth2_callback(
     request: Request,
     response: Response,
+    db: AsyncSession = Depends(get_db),
     code: str = "",
     state: str = "",
 ) -> RedirectResponse:
@@ -448,10 +453,18 @@ async def oauth2_callback(
         return RedirectResponse(url=f"{frontend}/?error=token_exchange_failed", status_code=302)
 
     data = token_res.json()
-    request.session["access_token"] = data.get("access_token")
+    access_token = data.get("access_token")
+    request.session["access_token"] = access_token
     request.session["refresh_token"] = data.get("refresh_token")
     if "oauth_state" in request.session:
         del request.session["oauth_state"]
+
+    if isinstance(access_token, str) and access_token.strip():
+        from app.services.oidc_identity_service import upsert_oidc_identity_from_jwt
+
+        payload = _verify_oidc_jwt(access_token.strip())
+        await upsert_oidc_identity_from_jwt(db, payload)
+        await db.commit()
 
     frontend = _frontend_base()
     return RedirectResponse(url=frontend, status_code=302)
@@ -876,6 +889,10 @@ async def build_auth_user_out(request: Request, db: AsyncSession) -> AuthUserOut
 @api_auth_router.get("/me", response_model=AuthUserOut)
 async def auth_me(request: Request, db: AsyncSession = Depends(get_db)):
     await authenticate_request(request, db)
+    from app.services.oidc_identity_service import upsert_oidc_identity_from_jwt
+
+    await upsert_oidc_identity_from_jwt(db, request.state.openkms_jwt_payload)
+    await db.commit()
     return await build_auth_user_out(request, db)
 
 

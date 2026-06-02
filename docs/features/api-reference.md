@@ -52,12 +52,8 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/admin/resource-acl/issues?issue={code}&limit=&offset=` | `console:groups`: paginated items for one issue code (`others_manage`, `others_write`, `unknown_group`, `empty_group`, `unknown_owner`, `missing_owner`, `owner_no_permissions`, `owner_no_manage`, `implicit_others`, `others_read`); response includes `total`, `limit`, `offset`, refreshed `by_issue` |
 | GET/PUT | `/api/admin/resource-acl/{resource_type}/{resource_id}` | `console:groups`: read/replace sharing on any resource without requiring data read/manage on that resource (Console audit) |
 | GET | `/api/admin/resource-acl/{resource_type}/{resource_id}/owner-candidates` | `console:groups`: local auth user list for owner picker in Console audit |
-| GET/PUT | `/api/resource-acl/{resource_type}/{resource_id}` | Authenticated: get/replace sharing grants (r/w/m) on a securable resource. Response includes `created_by` (document and article channels), `owner_subject`, `owner_label`; when no owner ACL exists but `created_by` is set, GET returns a default owner grant (rwm) for the creator. PUT preserves owner when omitted; if none exists, defaults owner to `created_by` when set. |
+| GET/PUT | `/api/resource-acl/{resource_type}/{resource_id}` | Authenticated: get/replace sharing grants (r/w/m) on a securable resource. Response includes `created_by` (document/article channels, wiki spaces, knowledge bases), `owner_subject`, `owner_label`; when no owner ACL exists but `created_by` is set, GET returns a default owner grant (rwm) for the creator. PUT preserves owner when omitted; if none exists, defaults owner to `created_by` when set. |
 | GET | `/api/resource-acl/{resource_type}/{resource_id}/owner-candidates` | Requires **manage** on the resource. Returns `{subject, label}` for owner assignment: local auth lists DB users; OIDC lists API-key identities, mapped local users, and access-group member subjects. |
-| GET | `/api/admin/data-resources/migration-report` | `console:groups`: read-only legacy data-resource rows (deprecated report only; rows are not enforced) |
-| GET/POST | `/api/admin/data-resources` | **Deprecated** — `GET` is backward-compatible list; `POST` returns **410** |
-| GET | `/api/admin/data-resources/kinds` | **Deprecated** — returns **410** |
-| GET/PATCH/DELETE | `/api/admin/data-resources/{id}` | **Deprecated** — `GET` backward-compatible read; `PATCH`/`DELETE` return **410** |
 | POST | `/api/auth/logout` | Clear server session |
 | POST | `/api/auth/sync-session` | Sync frontend JWT to backend session (Bearer required) |
 | POST | `/api/auth/clear-session` | Clear backend session (called before logout) |

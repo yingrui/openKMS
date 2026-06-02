@@ -36,7 +36,7 @@ Defined in [`backend/app/services/permission_catalog.py`](https://github.com/yin
 
 ## Authentication
 
-- **OIDC mode** (default): any OIDC IdP – Authorization Code + PKCE in browser (`oidc-client-ts`); RP-initiated logout when the IdP exposes `end_session_endpoint`
+- **OIDC mode** (default): any OIDC IdP – Authorization Code + PKCE in browser (`oidc-client-ts`); RP-initiated logout when the IdP exposes `end_session_endpoint`. On login, **`oidc_identities`** stores `sub` → `preferred_username` / email from the access token (callback, `POST /api/auth/sync-session`, `GET /api/auth/me`) for sharing UI and ACL alias resolution—no IdP Admin API and no personal API key required.
 - **Local mode** (`OPENKMS_AUTH_MODE=local`): sign-up when `OPENKMS_ALLOW_SIGNUP` (exposed as `allow_signup` on `GET /api/auth/public-config`); sign-in with **username or email** + password; users stored in PostgreSQL; HS256 JWT + session cookie; no built-in admin password (**first** signup only becomes admin). The UI uses `public-config` so it stays aligned with the server even if `VITE_AUTH_MODE` differs.
 - **openkms-cli**: OIDC client credentials (Bearer) or, in local mode, HTTP Basic (`OPENKMS_CLI_BASIC_*`)
 - **Profile** (`/profile`): authenticated users see display name, email (if present), administrator yes/no, realm **roles**, and resolved **permissions** (local users: DB keys such as `all` or granular `console:*`; OIDC IdP admins receive the full catalog); data from `GET /api/auth/me`. Linked from the header user menu.

@@ -134,7 +134,6 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
         [
             "/api/admin/groups/*",
-            "/api/admin/data-resources/migration-report",
             "/api/admin/resource-acl/*",
             "/api/resource-acl/*",
         ],

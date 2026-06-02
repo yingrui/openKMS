@@ -83,6 +83,8 @@ User grants: PUT runs `normalize_user_grantee_id()` (username, email, legacy loc
 
 Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL` is reserved for future system-wide defaults.
 
+**Others defaults (wiki space, knowledge base, channels):** Alembic seeds `grantee_type=authenticated` with **r/w/m** on resources that already existed when sharing shipped (`y7z8a9b0c1d2` document channels, `b2c3d4e5f6a9` article channels, `h8i9j0k1l2m3` wiki spaces and knowledge bases). **`bootstrap_owner_acl`** on create adds **owner rwm only** — no Others row, so non-owners are denied until sharing is changed.
+
 ---
 
 ## Inheritance and evaluation
@@ -108,7 +110,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 - **New** document/article channels: owner-only (no **Others** row).
 - **Pre-migration** channels: Alembic backfilled **Others** `rwm` (`y7z8a9b0c1d2`, `b2c3d4e5f6a9`).
 
-**OIDC pitfall:** Owner label may come from `users.username` or API-key display name while checks use JWT `sub`. Migrations **`d4e5f6a7b8c1`**, **`e5f6a7b8c9d0`** fix username/local-id rows; runtime uses `normalize_user_grantee_id` / `user_grant_matches`.
+**OIDC display:** Owner label resolves from **`oidc_identities`** (upsert on login / sync-session / `GET /me`), then `created_by_name`, group-member aliases, `users`, or legacy `grantee_label` on ACL rows. Access checks use JWT `sub` via `normalize_user_grantee_id` / `user_grant_matches`. Migrations **`d4e5f6a7b8c1`**, **`e5f6a7b8c9d0`** fix legacy grantee ids; **`j9k0l1m2n3o4`** adds the identity directory.
 
 ### Caller matrix
 
@@ -133,7 +135,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 | Sharing API | GET needs read; PUT needs manage |
 | SPA channel page | Sidebar filter; missing channel → not found |
 
-`data_resource_policy.py` delegates to ACL; deprecated data-resource PUT → **410**.
+`data_resource_policy.py` delegates visibility checks to resource ACL (no `data_resources` table).
 
 ---
 
@@ -142,7 +144,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 ### Console — access groups
 
 - `/console/data-security/groups`, `…/groups/:id/members` — permission `console:groups`
-- `PUT /api/admin/groups/{id}/members` with `subjects` (local ids or OIDC subs)
+- `PUT /api/admin/groups/{id}/members` with `subjects` (username/email accepted; stored as canonical OIDC `sub` or local `users.id`, duplicates collapsed)
 - `GET …/groups/{id}/shared-resources` — grants referencing the group
 
 ### Console — issues audit
@@ -153,7 +155,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 
 ### Per-resource sharing (`ResourceSharePanel`)
 
-**Routes:** document/article channel settings (Sharing tab), wiki space settings, KB settings.
+**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`).
 
 | Row | `grantee_type` | Notes |
 |---|---|---|
@@ -168,7 +170,7 @@ Shows **Your access:** `effective_permissions`. Read-only without manage. **Save
 | Auth | List source |
 |---|---|
 | Local | `users` (id, username) |
-| OIDC | `user_api_keys`, mapped `users`, `access_group_members` |
+| OIDC | `user_api_keys`, mapped `users`, `access_group_members` — merged to **one row per person** via `normalize_user_grantee_id` (username / local `users.id` → OIDC `sub` when known) |
 
 ---
 
@@ -183,6 +185,8 @@ Owner `bob` `rwm`, group **QA** `rwm`, **Others** empty → user **alice** with 
 | Revision | Change |
 |---|---|
 | `x6y7z8a9b0c1` | `resource_acl_entries`; copy junction scopes; `access_group_members` |
+| `k0l1m2n3o4p5` | Drop legacy `access_group_*` junction tables (scopes only in `resource_acl_entries`) |
+| `l1m2n3o4p5q6` | Drop `data_resources` table |
 | `y7z8a9b0c1d2` | Others on existing document channels |
 | `z8a9b0c1d2e4` | `document_channels.created_by` |
 | `a1b2c3d4e5f8` | `article_channels.created_by` |

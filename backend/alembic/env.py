@@ -41,10 +41,10 @@ import app.models.evaluation_run  # noqa: F401 - register models with Base.metad
 import app.models.user  # noqa: F401 - register models with Base.metadata
 import app.models.user_preference  # noqa: F401 - register models with Base.metadata
 import app.models.user_api_key  # noqa: F401 - register models with Base.metadata
+import app.models.oidc_identity  # noqa: F401 - register models with Base.metadata
 import app.models.security_role  # noqa: F401 - register models with Base.metadata
 import app.models.security_permission  # noqa: F401 - register models with Base.metadata
 import app.models.access_group  # noqa: F401 - register models with Base.metadata
-import app.models.data_resource  # noqa: F401 - register models with Base.metadata
 import app.models.resource_acl  # noqa: F401 - register models with Base.metadata
 import app.models.wiki_models  # noqa: F401 - register models with Base.metadata
 import app.models.agent_models  # noqa: F401 - register models with Base.metadata
