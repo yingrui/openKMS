@@ -58,4 +58,4 @@ CLI basic credentials for worker → `openkms-cli` default to **`OPENKMS_CLI_BAS
 
 - [`docker/README.md`](https://github.com/yingrui/openKMS/blob/main/docker/README.md) — canonical short reference, kept next to the Compose file.
 - [Architecture](../architecture.md) — how the services fit together.
-- [Security](../security.md) — secrets and auth-mode contracts.
+- [Security design](../security.md) — principles; [Console & authentication](../features/console-and-auth.md) — auth mode and secrets in deploy.

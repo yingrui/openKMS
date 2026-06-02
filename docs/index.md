@@ -29,11 +29,11 @@ A unified **Knowledge Map** ties terms to channels, wiki spaces, and article cha
 | Find a specific feature or API | [Functionalities](functionalities.md) → `features/*.md` |
 | HTTP or schema reference | [API reference](features/api-reference.md) · [Data models](features/data-models.md) |
 | Knowledge artifact types | [Knowledge types](features/knowledge-types.md) |
-| Sharing and resource ACL | [Data security](features/data-security.md) (and [Security](security.md)) |
+| Sharing and resource ACL | [Data security](features/data-security.md) |
 | Use openKMS from OpenCode / an external agent | [OpenCode skill (`openkms-skill`)](features/opencode-openkms-skill.md) |
 | Set up a dev environment | [Developer setup](developer/setup.md) |
 | Deploy with Docker | [Operations · Docker](operations/docker.md) |
-| Review the auth and permission model | [Security](security.md) |
+| Review security design (principles) | [Security](security.md) · [Data security](features/data-security.md) · [Console & auth](features/console-and-auth.md) |
 | See what's planned next | [Roadmap · Development plan](development_plan.md) |
 | Edit the docs (human or AI agent) | [Doc conventions for AI agents](agents.md) |
 

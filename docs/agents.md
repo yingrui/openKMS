@@ -26,7 +26,8 @@ When in doubt, **edit the most specific feature page first**, then update the cr
 | New HTTP endpoint | The feature page **and** [`features/api-reference.md`](features/api-reference.md) |
 | New table or column | The feature page **and** [`features/data-models.md`](features/data-models.md) |
 | Task you just finished, or a plan shift | [`development_plan.md`](development_plan.md) |
-| Auth / permission / scope behaviour | [`security.md`](security.md), [`features/data-security.md`](features/data-security.md), and [`features/console-and-auth.md`](features/console-and-auth.md) |
+| Security **design** (principles) | [`security.md`](security.md) |
+| Auth / permission / scope **behaviour** | [`features/data-security.md`](features/data-security.md), [`features/console-and-auth.md`](features/console-and-auth.md) |
 | Known shortcut, hack, or risk | [`tech_debt.md`](tech_debt.md) |
 | Quickstart steps or ports | [`quickstart.md`](quickstart.md) and root `README.md` |
 | Docker / Compose runtime | [`operations/docker.md`](operations/docker.md) and `docker/README.md` |

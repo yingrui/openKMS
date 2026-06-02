@@ -99,7 +99,7 @@ Incremental typing backlog (examples): `get_categories` in `backend/app/api/mode
 
 ### API tokens and machine authentication (backlog) {#api-tokens-machine-auth}
 
-Operators use `POST /api/auth/login` or Bearer JWTs per [Obtaining an API token](security.md#obtaining-an-api-token). Open themes: shorter-lived tokens or refresh, first-class PATs / device code / client-credentials with explicit role mapping, rate limiting on login, audit for issuance, IdP recipes for automation users, stricter warnings on long `OPENKMS_LOCAL_JWT_EXP_HOURS` in prod-like configs.
+Operators use `POST /api/auth/login` or Bearer JWTs per [Obtaining an API token](features/console-and-auth.md#obtaining-an-api-token). Open themes: shorter-lived tokens or refresh, first-class PATs / device code / client-credentials with explicit role mapping, rate limiting on login, audit for issuance, IdP recipes for automation users, stricter warnings on long `OPENKMS_LOCAL_JWT_EXP_HOURS` in prod-like configs.
 
 ### OpenAPI / Redoc
 

@@ -2,7 +2,7 @@
 
 How openKMS separates **who may use a feature** (operation permissions) from **which items they may see or change** (resource ACL). Read this page before changing auth, sharing UI, list filters, or agent/CLI data access.
 
-**Related:** [Console & authentication](console-and-auth.md) (Console UX, OIDC/local login), [Security](../security.md) (auth modes, tokens, production checklist), [Data models — Data security](data-models.md#data-security-access-groups-resource-acl) (table schemas), [API reference — resource ACL](api-reference.md).
+**Related:** [Security design](../security.md) (principles and trust boundaries), [Console & authentication](console-and-auth.md) (login, tokens, Console UX), [Data models — Data security](data-models.md#data-security-access-groups-resource-acl) (table schemas), [API reference — resource ACL](api-reference.md).
 
 ---
 
@@ -56,7 +56,7 @@ flowchart LR
 
 ---
 
-## Layer 1 — Operation permissions (RBAC)
+## Layer 1 — Operation permissions (RBAC) {#layer-1-operation-rbac}
 
 **Purpose:** Gate features and Console tools — not individual channels or documents.
 
@@ -79,7 +79,7 @@ Canonical key list: [Console & authentication — Permission catalog](console-an
 
 ---
 
-## Layer 2 — Resource ACL (data plane)
+## Layer 2 — Resource ACL (data plane) {#layer-2-resource-acl}
 
 **Purpose:** Control which **instances** a user may read, write, or share — document channels, documents, wiki spaces, knowledge bases, etc.
 
@@ -269,7 +269,7 @@ Old **data resource** APIs and group **scope** PUT handlers return **410** with 
 | `OPENKMS_ENFORCE_RESOURCE_ACL` | Reserved for future system-wide ACL defaults (alias: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`). Per-resource sharing applies when ACL entries exist **regardless** of this flag. |
 | `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` | Layer 1 only — strict API pattern matching |
 
-See [Security](../security.md) for auth modes and token behaviour.
+See [Security design](../security.md) for principles; [Console & authentication](console-and-auth.md) for auth modes and tokens.
 
 ---
 

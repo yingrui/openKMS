@@ -1,102 +1,104 @@
-# Security
+# Security design
 
-Security considerations for the openKMS project.
+How openKMS thinks about security: principles and trust boundaries. For **mechanics** (login flows, env vars, curl examples, sharing tables), use the linked feature pages—not this one.
 
-## Authentication
+---
 
-- **`OPENKMS_AUTH_MODE=oidc` (default)**: External OpenID Connect IdP – OAuth2 Authorization Code + PKCE in the SPA (`oidc-client-ts`). Backend trusts JWTs via issuer discovery (`jwks_uri`, `issuer` claim).
-- **`OPENKMS_AUTH_MODE=local`**: Users and bcrypt password hashes in PostgreSQL; backend-issued HS256 JWTs (`OPENKMS_SECRET_KEY`); optional HTTP Basic for `openkms-cli` (`OPENKMS_CLI_BASIC_*`). Use TLS in production; Basic over plain HTTP is only for trusted dev networks.
-- **`GET /api/auth/public-config`** (unauthenticated): Returns `auth_mode` and `allow_signup` only—no secrets and no VLM or other infrastructure hints—so clients pick the correct login flow and match the deployed mode (local authenticator vs central IdP).
-- Backend accepts:
-  - `Authorization: Bearer <JWT>` for API requests
-  - Session cookie (from `POST /sync-session` after browser login)
-  - In local mode: `Authorization: Basic` for CLI (validated against env; minted service JWT internally)
-- OIDC JWTs validated via IdP JWKS; local JWTs validated with shared secret.
-- **Route protection**: **`/`** (home) is public for guests (static marketing content). All other routes under `MainLayout` require authentication; `/login` and `/signup` are outside that shell. For signed-in users who are not JWT `admin` and do not hold the `all` key, the SPA also enforces **frontend route patterns**: after loading `GET /api/auth/permission-catalog`, the pathname must match the union of `frontend_route_patterns` for the user’s resolved keys, except **always-allowed** paths `/` and `/profile`. If the catalog request fails, the gate degrades to allow navigation (operators should fix API reachability).
-- **Strict API patterns (optional)**: `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` (default `false`). When `true`, after authentication every `/api/...` request must match catalog rules; the user must hold **at least one** of the permission keys tied for the best-matching rule tier when several rows share the same pattern specificity (e.g. `console:object_types` and `ontology:write` on the same POST path), or hold `all`, or JWT realm `admin`, or service subject `local-cli`. **Bypass / no-pattern paths** (still subject to normal `require_auth` where applicable): `GET /api/auth/public-config`, `POST /api/auth/register`, `POST /api/auth/login`; `GET|HEAD /api/auth/me`, `GET /api/auth/permission-catalog`, `POST /api/auth/logout`, `GET|HEAD /api/feature-toggles`; `OPTIONS` on any path; `GET /openapi.json`, `GET /docs`, `GET /redoc`; non-`/api` routes (e.g. `/health`). Unmatched paths return **403** with a message to extend the catalog or turn strict mode off. Compiled rules are cached (`OPENKMS_PERMISSION_PATTERN_CACHE_TTL_SECONDS`, default `60`); admin `PATCH`/`POST`/`DELETE` on `/api/admin/security-permissions` invalidates that **compiled-rule** cache and the in-process **`GET /api/auth/permission-catalog`** response cache (see **`OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS`** in architecture / backend `.env.example`). Alembic revision `a2b3c4d5e6f7` backfills default patterns for all `OPERATION_KEY_HINTS` keys.
-- **Console**: Entry requires any `console:*` operation permission from `GET /api/auth/me`, or JWT realm role `admin` (OIDC). Individual console pages require specific keys (for example `console:users`, `console:data_sources`). **Local** users receive permissions from `user_security_roles` → `security_role_permissions`. **OIDC** non-admin users: JWT `realm_access.roles` names are matched to **`security_roles.name`**; the union of those roles’ `security_role_permissions` is used. **Permission definitions** live in **`security_permissions`**; empty databases get **`all`** from the seed migration, and Alembic **`a2b3c4d5e6f7`** inserts/updates default pattern rows for every **`operation_key_hint`** key. Admins may add or edit keys via **`/api/admin/security-permissions`** or the Console, guided by **`GET /api/admin/permission-reference`**. `is_admin` (local) or realm role `admin` (OIDC) receives every defined permission key for bootstrap.
-- **First-time admin (least-privilege catalog)**: **`GET /api/admin/permission-reference`** includes **`operation_key_hints`**—canonical operation strings aligned with backend `require_permission` checks, each with label, description, and category. The Console **Permissions** page can bulk-add missing hinted keys (creates **`security_permissions`** rows with empty route/API pattern lists; operators fill patterns from the same reference). Dismissing the in-page **Getting started** panel is stored in the browser (`openkms_permissions_onboarding_dismissed`). **Console overview** shows a one-line nudge when the catalog still has only **`all`** and that flag is not set (alongside cards for console-only tools: permissions, data security, data sources, users & toggles, settings). For OIDC delegation, create roles whose **`security_roles.name`** matches IdP realm role names, then assign catalog keys in the role matrix.
-- **Operation permissions**: Stable keys are listed by `GET /api/auth/permission-catalog` (each entry includes human text plus frontend route and backend API path patterns for documentation). **`all`** grants full access. Backend checks use `require_permission` or `require_any_permission` where wired; holding **`all`** satisfies any key (JWT realm `admin` and `local-cli` bypass). Console **Permissions** edits roles in PostgreSQL for local auth; some catalog keys are policy targets for UI and API enforcement alongside data scopes.
-- **Resource ACL (data access)**: All signed-in users (including JWT `admin`) are filtered by **per-resource ACL** whenever a resource (or an ancestor container) has sharing entries. Permissions use **read (r)**, **write (w)**, and **manage (m)** bits. Grantees: **user** (owner), **group** (access group id), or **authenticated** (**Others** — everyone signed in who is not owner and not in a listed group). Empty **Others** is an explicit deny for those users. Resources with **no ACL** in their inheritance chain remain open to all authenticated users. JWT `admin` may still **manage sharing** (configure ACL) without a grant; **read/write data** requires an explicit grant. Optional `OPENKMS_ENFORCE_RESOURCE_ACL` (alias `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`) is reserved for future system-wide defaults; sharing configured on a channel takes effect without it. Full design: [Data security](features/data-security.md).
-- **Object Explorer** (`POST /api/ontology/explore`): Arbitrary read-only Cypher is not rewritten for group scope; trusted operators should treat it as a power-user path. Prefer restricting access via console permissions and deployment policy.
+## Principles
 
-## Credentials and Secrets
+1. **Authenticate before data** — Product APIs require a known principal. The public surface is intentionally small (marketing home, health, `public-config`, system name).
 
-### Do Not Expose in CLI
+2. **Two layers, both must pass** — **Operation permissions** answer “may this user use Documents / Console / …?” **Resource ACL** answers “may this user see *this* channel, KB, or wiki?” Coarse gates do not replace per-resource sharing. See [Data security](features/data-security.md).
 
-- `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are **never** CLI parameters.
-- They are read only from environment variables (e.g. via `.env` with python-dotenv).
-- Avoid passing secrets on the command line; they may appear in process lists and shell history.
+3. **Restrict data by explicit choice** — With **no** ACL rows on a resource or its container chain, any authenticated user who holds the right operation key can access it. Turning on sharing is **opt-in closure**, not opt-in openness.
 
-### Environment Variables
+4. **Platform admin ≠ data superuser** — JWT `admin` / catalog key `all` can run Console and configure sharing, but **read and write on content** still follow resource ACL when sharing is configured. That supports least-privilege and audit-friendly deployments.
 
-| Variable | Scope | Purpose |
-|----------|-------|---------|
-| `OPENKMS_OIDC_CLIENT_SECRET` | Backend | OAuth2 confidential client secret (backend code flow, oidc mode) |
-| `OPENKMS_SECRET_KEY` | Backend | Session cookie signing and local JWT signing |
-| `OPENKMS_CLI_BASIC_PASSWORD` | Backend + CLI | Local mode CLI Basic secret (protect like a password) |
-| `AWS_ACCESS_KEY_ID` | Backend, CLI | S3/MinIO access |
-| `AWS_SECRET_ACCESS_KEY` | Backend, CLI | S3/MinIO secret |
-| `OPENKMS_DATABASE_PASSWORD` | Backend | PostgreSQL |
-| `OPENKMS_ENFORCE_RESOURCE_ACL` | Backend | Reserved for future system-wide ACL defaults (alias: `OPENKMS_ENFORCE_GROUP_DATA_SCOPES`). Per-resource sharing applies when ACL entries exist regardless of this flag. |
-| `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` | Backend | When `true`, authenticated `/api/*` must match catalog `backend_api_patterns` and user must hold the owning key; default `false` |
-| `OPENKMS_PERMISSION_PATTERN_CACHE_TTL_SECONDS` | Backend | In-memory TTL for compiled pattern rules loaded from `security_permissions` |
+5. **Identity outside, authorization inside** — In OIDC mode the IdP proves *who* someone is; PostgreSQL holds the permission catalog, roles, groups, and ACL. Realm role names map to `security_roles.name`; API keys snapshot that mapping at creation time.
 
-Keep `.env` out of version control (use `.env.example` as a template).
+6. **Least privilege in the catalog** — Keys are feature-sized (`documents:read`, `console:groups`, …). The built-in `all` key is for bootstrap; operators are nudged toward granular keys via the Console permission reference.
 
-## Obtaining an API token
+7. **Secrets stay out of git and argv** — Credentials live in environment or a secret store. The CLI never accepts cloud storage keys on the command line. Object access uses presigned URLs after authorization checks.
 
-Examples in the docs use `Authorization: Bearer $TOKEN`. The backend accepts a **Bearer** JWT on every `/api/*` route when `Authorization` is present; otherwise it falls back to the **session** cookie (see below). How `$TOKEN` is obtained depends on `OPENKMS_AUTH_MODE`:
+8. **Power paths are visible** — Arbitrary read-only Cypher (Object Explorer), internal model credential routes, and service subjects (`local-cli`) are separate trust decisions—not “just another API.”
 
-- **Local mode** — `POST /api/auth/login` with JSON `{ "login", "password" }` returns `access_token` (HS256, signed with `OPENKMS_SECRET_KEY`) plus `user`. That token is the same shape the SPA stores after login.
+---
 
-  Prefer **not** embedding the password in the shell command (it can appear in shell history and, on shared hosts, process listings). Read credentials from the environment and build JSON with `jq`, or use a secrets manager / CI secret store:
+## Trust boundaries
 
-```bash
-TOKEN=$(curl -sS -X POST "${API%/}/api/auth/login" \
-  -H 'Content-Type: application/json' \
-  -d "$(jq -n --arg login "$OPENKMS_LOGIN" --arg password "$OPENKMS_LOGIN_PASSWORD" \
-        '{login:$login,password:$password}')" \
-  | jq -er '.access_token // empty')
+```mermaid
+flowchart TB
+  subgraph clients [Clients]
+    SPA[Browser SPA]
+    Agent[Scripts / agents / CLI]
+  end
+  API[FastAPI backend]
+  IdP[OIDC IdP]
+  PG[(PostgreSQL)]
+  Store[(S3 / MinIO)]
+  VLM[VLM server]
+
+  SPA -->|session or Bearer| API
+  Agent -->|Bearer / Basic| API
+  SPA -.->|PKCE| IdP
+  API -.->|JWKS| IdP
+  API --> PG
+  API --> Store
+  API -.->|worker only| VLM
 ```
 
-  If `TOKEN` is empty, inspect the response body for `detail` (wrong password, wrong mode, etc.). Default lifetime is `OPENKMS_LOCAL_JWT_EXP_HOURS` hours (168 by default) — long-lived tokens are convenient for dev scripts but increase blast radius if leaked.
+| Boundary | Responsibility |
+|----------|----------------|
+| **Browser** | Route gate from `permission-catalog` patterns; backend remains authoritative on every `/api/*` call. |
+| **Backend** | Verify JWT/session/API key; apply operation checks and resource ACL; issue presigned URLs only after access checks. |
+| **IdP** (OIDC) | Authentication and realm roles; not the ACL catalog. |
+| **Object storage** | Bytes at rest; access mediated by the backend, not direct public buckets for documents. |
+| **VLM server** | Parsing only; keep off the public internet; workers call it internally. |
 
-- **OIDC mode** — the SPA obtains an **access token** from the IdP (Authorization Code + PKCE), then `POST /api/auth/sync-session` with `Authorization: Bearer <IdP access token>` stores that same token in the **session cookie** so credentialed browser requests work without repeating the Bearer header.
+---
 
-  For **scripts and curl**, pass the IdP access token as `Authorization: Bearer …`. The backend verifies it with the IdP **JWKS** (`_verify_oidc_jwt` in `auth.py`). Operation permissions for non-admin users come from **`realm_access.roles`** on the JWT matched against **`security_roles.name`** in PostgreSQL — so the token must be one that carries those roles (typically a **user** access token), not merely “any” client-credentials token unless your IdP is configured to attach the same role claims.
+## Two-layer model (summary)
 
-  **`/internal-api/models/...`** returns provider **`api_key`** values and accepts only **internal service** callers: local **`sub=local-cli`** (HTTP Basic for CLI/qa-agent) or OIDC JWT whose **`azp`** / **`client_id`** is in **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** (default `openkms-cli,qa-agent`). Human user tokens and personal API keys get **403** even if authenticated. Public **`/api/models`** CRUD does not expose secrets.
+| Layer | Question | Detail |
+|-------|----------|--------|
+| **Operation RBAC** | Can the user open this *feature* or Console tool? | [Data security — Layer 1](features/data-security.md#layer-1-operation-rbac), [Console & authentication](features/console-and-auth.md) |
+| **Resource ACL** | Can the user read/write *this instance*? | [Data security — Layer 2](features/data-security.md#layer-2-resource-acl) |
 
-- **CLI / scripts in local mode** — set `OPENKMS_CLI_BASIC_USER` and `OPENKMS_CLI_BASIC_PASSWORD` and send `Authorization: Basic …`. The backend mints an internal **`local-cli`** service JWT (`sub=local-cli`). Use only on trusted networks; Basic over plain HTTP is dev-only.
+Optional strict mode (`OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT`) tightens Layer 1 so every `/api/*` path must match catalog patterns—documented in [Configuration](features/configuration.md).
 
-- **Personal API keys** — signed-in users can create keys under **Settings** (`/settings`, user menu → **Settings**) via `POST /api/auth/api-keys`. The plaintext value looks like `okms.{uuid}.{secret}` and is shown **once**. Send it as `Authorization: Bearer …` on `/api/*` routes; the backend resolves the same **owner** as your account and applies the usual permission checks. **Local mode:** permissions follow `user_security_roles` as for a login JWT. **OIDC mode:** the key stores a **snapshot** of your IdP realm roles from creation time; if your roles change later, create a new key to pick up the new mapping (or revoke and recreate). Keys can be listed and soft-revoked via `GET` / `DELETE /api/auth/api-keys`.
+---
 
-In all cases, `GET /api/auth/me` confirms the token (or session) is accepted and lists resolved permission keys.
+## Identity modes
 
-**Hardening backlog:** token lifetime, script ergonomics, and machine-auth patterns are tracked in [Technical debt: API tokens and machine authentication](tech_debt.md#api-tokens-machine-auth).
+| Mode | Typical use | Design intent |
+|------|-------------|---------------|
+| **OIDC** (default) | Enterprise SSO | Single sign-on; map IdP realm roles to openKMS roles; no passwords in openKMS. |
+| **Local** | Dev, air-gapped, small installs | openKMS stores users and issues JWTs; still require TLS and strong secrets in production. |
 
-## Storage
+Login behaviour, API keys, and token examples: [Console & authentication](features/console-and-auth.md#authentication).
 
-- **S3/MinIO**: Document files are stored under `{file_hash}/` with presigned URLs for access.
-- **PostgreSQL**: Metadata, channels, and user-related data.
-- Ensure S3 bucket policies and CORS are configured correctly for your deployment.
+---
 
-## API Security
+## Deliberate non-goals (today)
 
-- All `/api/*` endpoints require authentication.
-- Document file URLs are validated: backend checks that the requested path belongs to the document before redirecting to storage.
-- VLM server URL is internal; avoid exposing it directly to untrusted clients.
+- **No** implicit “admin sees every channel” for regulated tenants.
+- **No** automatic ACL filtering on arbitrary Object Explorer Cypher—gate with operation permissions and deployment policy instead.
+- **No** committed secrets or long-lived tokens treated as low risk—see [Tech debt — API tokens](tech_debt.md#api-tokens-machine-auth).
 
-## Production Checklist
+---
 
-1. Use strong `OPENKMS_SECRET_KEY` (e.g. 32+ random bytes).
-2. Configure the OIDC IdP with proper redirect URIs for production (no wildcards unless intended). For local mode, set `OPENKMS_ALLOW_SIGNUP=false` if you do not want public registration.
-3. Use HTTPS for frontend and backend in production.
-4. Restrict database and S3 access to trusted networks where possible.
-5. Review IdP realm roles and client scopes (oidc mode).
-6. Keep dependencies up to date (`pip install -U`, `npm audit`).
+## Where to read next
 
-## Reporting Vulnerabilities
+| You need… | Read |
+|-----------|------|
+| Sharing, groups, inheritance, enforcement code | [Data security](features/data-security.md) |
+| Console, catalog, OIDC/local login, **obtaining tokens** | [Console & authentication](features/console-and-auth.md) |
+| Env vars and toggles | [Configuration](features/configuration.md) |
+| Deploy and auth-mode alignment | [Docker operations](operations/docker.md) |
+| Schemas | [Data models — Data security](features/data-models.md#data-security-access-groups-resource-acl) |
 
-If you discover a security vulnerability, please report it privately rather than opening a public issue.
+---
+
+## Reporting vulnerabilities
+
+If you find a security issue, report it **privately** (do not open a public issue with exploit details).

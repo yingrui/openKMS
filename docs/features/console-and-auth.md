@@ -1,6 +1,6 @@
 # Console and authentication
 
-Operator surface (`/console/*`), permission catalog and roles, system settings, and the two authentication modes. For the **data security model** (operation RBAC vs resource ACL, sharing, inheritance), see [Data security](data-security.md).
+Operator surface (`/console/*`), permission catalog and roles, system settings, and the two authentication modes. For **why** openKMS splits identity, operations, and data access, see [Security design](../security.md). For the **data security model** (RBAC vs resource ACL, sharing, inheritance), see [Data security](data-security.md).
 
 ## Console (admin)
 
@@ -44,6 +44,53 @@ Defined in [`backend/app/services/permission_catalog.py`](https://github.com/yin
 - **OIDC + API traffic:** the token provider used by `getAuthHeaders()` returns the access token only (no `setUser` / no `POST /sync-session` + `GET /api/auth/me` on every token read). Session sync and profile refresh run from OIDC init and **`UserManager`** user events. The SPA permission-catalog effect depends on a stable **username / roles / permissions** key so equivalent `user` objects do not refetch in a loop.
 - **Idle / expired session on API calls:** `authAwareFetch` treats structured **`401`** auth failures (see architecture **Invalid JWT on API calls**) as recoverable: one silent **`signinSilent`** + **`sync-session`** (OIDC) or cookie **`/me`** check (local), then a single retry with refreshed headers; if that still fails, the app clears session, shows a short toast, and sends the user to sign-in again (local **`/login`**, OIDC **interactive redirect**).
 - Protected routes: under `MainLayout`, all except home (`/`) require auth; `/login` and `/signup` are separate routes. Unauthenticated users on **`/`** see the static marketing home; on any other path they see "Authentication Required". Authenticated users without JWT `admin` / `all` must match the union of `frontend_route_patterns` from `GET /api/auth/permission-catalog` for their keys (paths `/` and `/profile` are always allowed); otherwise "Access denied" with a link home.
+- **`GET /api/auth/public-config`** (unauthenticated): `auth_mode` and `allow_signup` only—no secrets—so the SPA matches deployed auth mode.
+- Backend accepts `Authorization: Bearer`, session cookie (after `POST /api/auth/sync-session` in the browser), and in local mode `Authorization: Basic` for CLI (minted `local-cli` service JWT).
+- **Strict API patterns** (optional): `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` — when `true`, authenticated `/api/*` must match `security_permissions` `backend_api_patterns` unless bypassed (`all`, realm `admin`, `local-cli`, or allowlisted paths). See [Configuration](configuration.md).
+
+## Obtaining an API token {#obtaining-an-api-token}
+
+Docs examples use `Authorization: Bearer $TOKEN`. How you get `$TOKEN` depends on `OPENKMS_AUTH_MODE`:
+
+- **Local mode** — `POST /api/auth/login` with JSON `{ "login", "password" }` returns `access_token` (HS256). Prefer env vars + `jq` over embedding the password in the shell:
+
+```bash
+TOKEN=$(curl -sS -X POST "${API%/}/api/auth/login" \
+  -H 'Content-Type: application/json' \
+  -d "$(jq -n --arg login "$OPENKMS_LOGIN" --arg password "$OPENKMS_LOGIN_PASSWORD" \
+        '{login:$login,password:$password}')" \
+  | jq -er '.access_token // empty')
+```
+
+  Default lifetime: `OPENKMS_LOCAL_JWT_EXP_HOURS` (168 hours). Long-lived tokens are convenient for dev scripts but widen blast radius if leaked.
+
+- **OIDC mode** — use the IdP **user** access token as `Authorization: Bearer …` (verified via JWKS). Operation permissions for non-admin users come from `realm_access.roles` matched to `security_roles.name`—the token must carry those roles. **`/internal-api/models/...`** accepts only `sub=local-cli` or OIDC clients in `OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`; human tokens and personal API keys get **403**.
+
+- **CLI (local mode)** — `OPENKMS_CLI_BASIC_USER` / `OPENKMS_CLI_BASIC_PASSWORD` → `Authorization: Basic …` → internal `local-cli` JWT. Dev/trusted networks only.
+
+- **Personal API keys** — **Settings** → `POST /api/auth/api-keys`; plaintext `okms.{uuid}.{secret}` shown once. **Local:** permissions follow `user_security_roles`. **OIDC:** roles are snapshotted at creation—recreate the key after IdP role changes.
+
+`GET /api/auth/me` confirms the token and lists resolved permission keys. Hardening themes: [Tech debt — API tokens](../tech_debt.md#api-tokens-machine-auth).
+
+### Credentials (do not commit)
+
+| Variable | Purpose |
+|----------|---------|
+| `OPENKMS_OIDC_CLIENT_SECRET` | OIDC confidential client |
+| `OPENKMS_SECRET_KEY` | Session cookie + local JWT signing |
+| `OPENKMS_CLI_BASIC_PASSWORD` | CLI Basic secret (local mode) |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | S3/MinIO — **env only**, never CLI args |
+| `OPENKMS_DATABASE_PASSWORD` | PostgreSQL |
+
+Full list: [Configuration](configuration.md). Use `.env.example` as a template; keep `.env` out of git.
+
+### Production checklist
+
+1. Strong `OPENKMS_SECRET_KEY` (32+ random bytes).
+2. HTTPS for frontend and backend; OIDC redirect URIs locked down; `OPENKMS_ALLOW_SIGNUP=false` in local mode if registration should be closed.
+3. Review IdP realm roles vs `security_roles.name`; prefer granular catalog keys over permanent `all`.
+4. Restrict database and object storage to trusted networks; keep the VLM URL internal.
+5. Keep dependencies updated (`pip install -U`, `npm audit`).
 
 ## Static home (landing page)
 
