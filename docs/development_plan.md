@@ -1,10 +1,19 @@
 # openKMS Development Plan
 
-Business **why** and long-form narrative: [Goals (vision)](goals.md). This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
+Business **why** and long-form narrative: [Goals (vision)](goals.md) — [user vs organization](goals.md) framing (same knowledge network; personal **取用 / 贡献** vs enterprise **治理 / AI-ready**). This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
+
+## How priorities map to Goals {#goals-mapping}
+
+| [Goals](goals.md) lens | What “done” looks like in product | Where tracked here |
+|------------------------|-----------------------------------|--------------------|
+| **User** — [痛点](goals.md#goals-user-value)（遍寻无果、无征不信…） | Shorter paths to **find, trust, learn, contribute** | [Backlog](#backlog) rows tagged **user** below |
+| **User** — [取用 / 贡献](goals.md#goals-user-value) | Retrieve with provenance; deposit without heavy authoring | Shipped: search, KB Q&A, wiki, parse+edit; gaps: unified agent, eval→fix loop |
+| **User** — [企业角色](goals.md#goals-user-value) | 业务人员/专家爽用；管理员与合规体系可托底 | Console, ACL, eval, connectors (partial) in **Current State** |
+| **Organization** — [组织侧](goals.md#goals-organization) | Structure, lifecycle, multimodal ingest, unified layer for agents | **Strategic priorities** + org-tagged backlog |
+
+If a release improves only org tooling but not **业务人员 / 业务专家** daily paths, expect **秘而不宣** and **无暇沉淀** to persist (see Goals).
 
 ## Current State (as of 2026-06) {#current-state-as-of-2026-06}
-
-**License:** [Apache License 2.0](../LICENSE).
 
 Shipped product scope follows the same index as [Functionalities](./functionalities.md). **Covers** text is kept in sync with that page; each linked feature doc is the source of truth for APIs, UI, and behavior.
 
@@ -42,27 +51,42 @@ Also published: [Architecture](./architecture.md), [Security](./security.md), [T
 
 ## Strategic priorities {#strategic-priorities}
 
-Product direction (not a commitment order). Shipped basics live under **Current State**; gaps below are intentional next investments. Mapped to [Goals](goals.md):
+Product direction (not a commitment order). Shipped basics live under **Current State**; gaps below are intentional next investments.
 
-| Priority | Goals pillar |
-|----------|----------------|
-| 1. Connectors | [打破信息孤岛](goals.md#goals-unified-source) · [从检索到决策](goals.md#goals-decision)（业务数据入本体） |
-| 2. In-product agents | [为智能体提供精准的知识服务](goals.md#goals-agent-service) · [隐性经验萃取](goals.md#goals-tacit) |
-| 3. Multimodal knowledge | [海量非标文档的理解](goals.md#goals-documents)（延伸至图像/音视频证据） |
-| 4. Evaluation for quality | [隐性经验萃取](goals.md#goals-tacit) · [智能体知识服务](goals.md#goals-agent-service)（可衡量的语料质量） |
+| Priority | Organization ([Goals — 组织侧](goals.md#goals-organization)) | User outcomes ([Goals — 用户侧](goals.md#goals-user-value)) |
+|----------|---------------------------------------------------------------|----------------------------------------------------------|
+| 1. Connectors | [打破信息孤岛](goals.md#goals-unified-source) · [从检索到决策](goals.md#goals-decision) | 少 **遍寻无果**；业务数据与文档在同一可信层 |
+| 2. In-product agents | [智能体知识服务](goals.md#goals-agent-service) · [隐性经验显性化](goals.md#goals-tacit) | 少 **秘而不宣**；取用（提问）与贡献（起草）在同一应用内 |
+| 3. Multimodal knowledge | [海量非标文档的理解](goals.md#goals-documents) | 图像/音视频可查找、可校对，而非仅附件 |
+| 4. Evaluation for quality | [隐性经验显性化](goals.md#goals-tacit) · 语料可度量 | 贡献后有反馈：知道写得对不对、哪里要补 |
+| 5. Policy impact (medium) | [规则动态保鲜](goals.md#goals-lifecycle) | 少 **失效未觉**；法务合规 / 体系岗能推动待审 |
 
 1. **Connectors** — Finish the loop: external sources → **reliable sync jobs** → ontology **datasets** (and downstream KB/wiki), not only credential storage and output wiring.
-2. **In-product agents** — Users should get capable assistants **inside openKMS** (curate, search, Q&A, maintenance), not depend on installing [OpenCode skill](features/opencode-openkms-skill.md) in an external agent IDE.
+2. **In-product agents** — **业务人员与业务专家** get capable assistants **inside openKMS** (curate, search, Q&A, maintenance), not only [OpenCode skill](features/opencode-openkms-skill.md) in an external IDE.
 3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
+5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **知识管理员** and **法务合规 / 体系管理** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
 
 ## Backlog {#backlog}
+
+Tag: **user** = primarily improves daily paths for 业务人员 / 业务专家; **org** = governance, integration, or specialist roles (知识管理员, 法务合规, 内控, 体系).
+
+### User experience (high) {#user-experience-high}
+
+Aligns with [Goals — 取用与贡献](goals.md#goals-user-value) and [痛点](goals.md#goals-user-value).
+
+| Item | Tags | Addresses (Goals 痛点 / 动作) |
+|------|------|-----------------------------|
+| Source citations everywhere | user | **无征不信** — KB Q&A, search, agent replies consistently show version + link |
+| Ask → contribute shortcut | user | **秘而不宣**, **无暇沉淀** — e.g. promote Q&A hit to FAQ / wiki paragraph in one flow |
+| Onboarding paths | user | **不知就里** — role- or map-guided “start here” for new hires / 转岗 |
+| Trust indicators in UI | user | **无征不信**, **失效未觉** — “current for RAG”, effective dates visible in consumer surfaces |
 
 ### Connectors (high) {#connectors-high}
 
 | Item | Notes |
 |------|--------|
-| Sync execution | Procrastinate (or pipeline) jobs per connector kind; write into configured **dataset** outputs; run history and failures in UI |
+| Sync execution | org — Procrastinate (or pipeline) jobs per connector kind; write into configured **dataset** outputs; run history and failures in UI |
 | Operator UX | Manual **Run sync**, schedule/cron, last-success timestamp, row counts, retry |
 | Kind expansion | Beyond Tushare: additional catalogs and mapping docs per kind |
 | Downstream | Optional hooks: refresh datasets → re-index linked KBs or notify operators |
@@ -73,10 +97,10 @@ API/UI today: [Connectors](features/console-and-auth.md#console-admin), [API ref
 
 | Item | Notes |
 |------|--------|
-| Unified assistant entry | One discoverable “ask the knowledge base” pattern across documents, wiki, KB, ontology — not only per-surface Copilot panels |
-| Broader tool coverage | Read/write paths agents can call safely (with ACL): documents, articles, glossary, global search, ontology (within explore limits) |
-| Maintenance workflows | Suggest wiki/KB fixes from evaluation failures; gap lists operators can accept or reject |
-| Parity with external skill | Capabilities in [openkms-skill](features/opencode-openkms-skill.md) should be reachable from in-app agents where permissions allow |
+| Unified assistant entry | user — One discoverable pattern across documents, wiki, KB, ontology (**遍寻无果**, **秘而不宣**) |
+| Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
+| Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (**提质**, **无暇沉淀** feedback loop) |
+| Parity with external skill | user — [openkms-skill](features/opencode-openkms-skill.md) capabilities reachable in-app where permissions allow |
 
 Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](features/knowledge-bases.md), [Knowledge map](features/knowledge-map.md).
 
@@ -93,8 +117,8 @@ Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](fea
 
 | Item | Notes |
 |------|--------|
-| Failure drill-down | Per-item: which chunks/pages failed, expected vs retrieved, judge rationale export |
-| Improvement loop | From a run: suggested new FAQs, chunk edits, wiki gaps, re-index prompts |
+| Failure drill-down | user · org — Per-item: which chunks/pages failed, expected vs retrieved, judge rationale export |
+| Improvement loop | user — From a run: suggested FAQs, chunk edits, wiki gaps, re-index prompts (**提质**) |
 | Dashboards | Trends across runs (pass rate, score), compare after corpus changes |
 | Coverage | Stronger wiki checklist runs + KB retrieval baselines; optional export for CI |
 | Product default | Consider enabling evaluations toggle by default once workflows are clearer |
@@ -107,8 +131,8 @@ Aligns with [Goals — 规则的动态保鲜与溯源](goals.md#goals-lifecycle)
 
 | Item | Notes |
 |------|--------|
-| Change impact | When a document is superseded or leaves its effective window: surface **dependents** (relationships, KB chunks, wiki links, map resources) |
-| Review queue | Operator list: materials **needs review**; optional bulk actions |
+| Change impact | org · user — Surface **dependents** when superseded or out of effective window (**失效未觉**) |
+| Review queue | org — **needs review** list for 知识管理员 / 法务合规 / 体系管理; optional bulk actions |
 | Visibility | Home hub or channel dashboards: stale / affected counts after a known change |
 | Notifications | Optional hooks (email/webhook) when `lifecycle_status` or `effective_to` changes — org-specific |
 
