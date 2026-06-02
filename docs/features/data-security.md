@@ -155,8 +155,10 @@ Built by `resource_context_chain()` — **nearest resource first**, then ancesto
 ### Owner bootstrap
 
 - On create, `bootstrap_owner_acl()` adds a **user** grant with `rwm` for the creator when applicable.
-- Document channels store `document_channels.created_by`; sharing GET/PUT uses it as default owner when no owner grant exists.
+- Document and article channels store `created_by` (JWT `sub`) and `created_by_name` (username / OIDC `preferred_username`); sharing GET/PUT uses them as default owner when no owner grant exists.
 - PUT preserves the owner row when omitted from the payload.
+- **New** document and article channels get **owner-only** ACL bootstrap (no **Others** row) — only the creator has access until sharing is changed.
+- **Existing** document and article channels (before owner-only bootstrap) were backfilled with **Others** `rwm` via Alembic so org-wide access stayed open; channels created after that migration start restricted unless sharing grants **Others** or groups.
 
 ---
 
@@ -219,7 +221,7 @@ Legacy `data_resource_policy.py` delegates visibility to resource ACL; deprecate
 ### Per-resource sharing
 
 - **API:** `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`; `GET …/owner-candidates` (manage + local auth lists users for owner picker).
-- **SPA:** **Sharing** tab on document channel settings (`ResourceSharePanel` — owner, groups, Others checkboxes). More surfaces may follow the same component.
+- **SPA:** **Sharing** tab on document and article channel settings, wiki space settings, and knowledge base settings (`ResourceSharePanel` — owner, groups, Others checkboxes).
 
 User-visible copy uses **Owner**, **Groups**, and **Others** — not internal grantee type names.
 

@@ -405,9 +405,6 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
               ) : ownerGrant ? (
                 <>
                   <span className="resource-share-grantee-primary">{ownerDisplayName(ownerGrant)}</span>
-                  {ownerDisplayName(ownerGrant) !== ownerGrant.grantee_id && (
-                    <span className="resource-share-grantee-note">{ownerGrant.grantee_id}</span>
-                  )}
                   {acl?.created_by === ownerGrant.grantee_id && (
                     <span className="resource-share-grantee-note">{t('resourceShare.ownerIsCreator')}</span>
                   )}

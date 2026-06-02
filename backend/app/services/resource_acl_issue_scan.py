@@ -60,9 +60,27 @@ def aggregate_issue_counts(scanned: list[ScannedResourceIssue]) -> tuple[int, di
 
 
 async def _audit_grants(db: AsyncSession, resource_type: str, resource_id: str, entries: list):
-    grant_rows, owner, owner_label = await _grant_labels(db, entries)
+    from app.api.resource_acl import _channel_creator_identity
+
+    creator_subject, creator_display_name = await _channel_creator_identity(
+        db, resource_type, resource_id
+    )
+    grant_rows, owner, owner_label = await _grant_labels(
+        db,
+        entries,
+        creator_subject=creator_subject,
+        creator_display_name=creator_display_name,
+    )
     grant_rows, owner, owner_label = await _enrich_default_owner_grant(
-        db, resource_type, resource_id, entries, grant_rows, owner, owner_label
+        db,
+        resource_type,
+        resource_id,
+        entries,
+        grant_rows,
+        owner,
+        owner_label,
+        creator_subject=creator_subject,
+        creator_display_name=creator_display_name,
     )
     return grant_rows
 

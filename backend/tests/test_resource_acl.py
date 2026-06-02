@@ -1,7 +1,9 @@
 """Tests for resource ACL permission helpers."""
 
+import asyncio
+
 from app.services.resource_acl_constants import PERM_MANAGE, PERM_READ, PERM_WRITE, perm_satisfies, parse_perm_string
-from app.services.resource_acl_service import _authenticated_bits_from_chain, subject_aliases
+from app.services.resource_acl_service import _authenticated_bits_from_chain, resolve_subject_display, subject_aliases
 
 
 def test_perm_satisfies_manage_implies_all():
@@ -82,3 +84,10 @@ def test_subject_aliases_includes_jwt_claims():
         {"preferred_username": "bob", "email": "bob@example.com", "name": "Bob"},
     )
     assert aliases == {"uuid-sub", "bob", "bob@example.com", "Bob"}
+
+
+def test_resolve_subject_display_prefers_hint():
+    label = asyncio.run(
+        resolve_subject_display(None, "11dcdd51-b251-4a69-9288-05ab2952be38", display_hint="yingrui")
+    )
+    assert label == "yingrui"

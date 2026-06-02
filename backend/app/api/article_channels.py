@@ -17,7 +17,8 @@ from app.schemas.article_channel import (
     ArticleChannelReorderBody,
     ArticleChannelUpdate,
 )
-from app.services.data_scope import effective_article_channel_ids, scope_applies
+from app.services.data_scope import bootstrap_owner_acl, effective_article_channel_ids, scope_applies
+from app.services.resource_acl_constants import RT_ARTICLE_CHANNEL
 
 router = APIRouter(prefix="/article-channels", tags=["article-channels"], dependencies=[Depends(require_auth)])
 
@@ -116,14 +117,22 @@ async def create_article_channel(
     sort_order = next_order.scalar() or 0
 
     channel_id = f"ac_{uuid.uuid4().hex[:8]}"
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     channel = ArticleChannel(
         id=channel_id,
         name=body.name,
         description=body.description,
         parent_id=body.parent_id,
         sort_order=sort_order,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(channel)
+    await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_ARTICLE_CHANNEL, channel.id, sub)
     await db.commit()
     await db.refresh(channel)
     return ArticleChannelNode(

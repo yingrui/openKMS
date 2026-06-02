@@ -74,6 +74,54 @@ def subject_aliases(subject: str, payload: dict | None = None) -> set[str]:
     return aliases
 
 
+async def resolve_subject_display(
+    db: AsyncSession,
+    subject: str,
+    *,
+    display_hint: str | None = None,
+) -> str:
+    """Human-readable username for an ACL subject (local user id, OIDC sub, or username)."""
+    if display_hint and display_hint.strip():
+        return display_hint.strip()
+    if not subject or not subject.strip():
+        return subject
+    subject = subject.strip()
+
+    from sqlalchemy import func, or_
+
+    from app.models.user import User
+    from app.models.user_api_key import UserApiKey
+
+    user = await db.get(User, subject)
+    if user:
+        return user.username
+
+    r = await db.execute(
+        select(User).where(
+            or_(
+                func.lower(User.username) == subject.lower(),
+                func.lower(User.email) == subject.lower(),
+            )
+        )
+    )
+    user = r.scalar_one_or_none()
+    if user:
+        return user.username
+
+    r = await db.execute(
+        select(UserApiKey.display_username)
+        .where(UserApiKey.owner_sub == subject)
+        .where(UserApiKey.display_username != "")
+        .order_by(UserApiKey.created_at.desc())
+        .limit(1)
+    )
+    uname = r.scalar_one_or_none()
+    if uname:
+        return uname
+
+    return subject
+
+
 async def user_group_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> list[str]:
     aliases = subject_aliases(subject, payload)
     if not aliases:

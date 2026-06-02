@@ -27,6 +27,7 @@ class DocumentChannel(Base):
         Integer, nullable=True, server_default="100"
     )
     created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
+    created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["DocumentChannel | None"] = relationship("DocumentChannel", remote_side=[id], back_populates="children")

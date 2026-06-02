@@ -18,6 +18,8 @@ class ArticleChannel(Base):
         String(64), ForeignKey("article_channels.id", ondelete="CASCADE"), nullable=True, index=True
     )
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
+    created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     parent: Mapped["ArticleChannel | None"] = relationship(

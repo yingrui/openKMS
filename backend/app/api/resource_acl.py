@@ -21,6 +21,7 @@ from app.services.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,
+    RT_ARTICLE_CHANNEL,
     RT_DOCUMENT_CHANNEL,
     SECURABLE_RESOURCE_TYPES,
     perm_label,
@@ -30,6 +31,7 @@ from app.services.resource_acl_service import (
     effective_permissions,
     list_acl_entries,
     replace_resource_acl,
+    resolve_subject_display,
     resource_context_chain,
     resource_has_acl_restrictions,
 )
@@ -91,16 +93,30 @@ def _parse_grants(body: ResourceAclPut) -> list[dict]:
     return out
 
 
-async def _resolve_user_display(db: AsyncSession, subject: str) -> str:
-    user = await db.get(User, subject)
-    if user:
-        if user.email:
-            return f"{user.username} ({user.email})"
-        return user.username
-    return subject
+async def _channel_creator_identity(
+    db: AsyncSession, resource_type: str, resource_id: str
+) -> tuple[str | None, str | None]:
+    from app.models.article_channel import ArticleChannel
+    from app.models.document_channel import DocumentChannel
+
+    if resource_type == RT_DOCUMENT_CHANNEL:
+        ch = await db.get(DocumentChannel, resource_id)
+    elif resource_type == RT_ARTICLE_CHANNEL:
+        ch = await db.get(ArticleChannel, resource_id)
+    else:
+        return None, None
+    if not ch:
+        return None, None
+    return ch.created_by, ch.created_by_name
 
 
-async def _grant_labels(db: AsyncSession, grants: list) -> tuple[list[AclGrantOut], str | None, str | None]:
+async def _grant_labels(
+    db: AsyncSession,
+    grants: list,
+    *,
+    creator_subject: str | None = None,
+    creator_display_name: str | None = None,
+) -> tuple[list[AclGrantOut], str | None, str | None]:
     group_names: dict[str, str] = {}
     gids = [g.grantee_id for g in grants if g.grantee_type == GRANTEE_GROUP and g.grantee_id]
     if gids:
@@ -120,7 +136,8 @@ async def _grant_labels(db: AsyncSession, grants: list) -> tuple[list[AclGrantOu
             label = "Others"
         elif g.grantee_type == GRANTEE_USER and g.grantee_id:
             is_owner = True
-            label = await _resolve_user_display(db, g.grantee_id)
+            hint = creator_display_name if g.grantee_id == creator_subject else None
+            label = await resolve_subject_display(db, g.grantee_id, display_hint=hint)
             if owner_subject is None:
                 owner_subject = g.grantee_id
                 owner_label = label
@@ -136,24 +153,24 @@ async def _grant_labels(db: AsyncSession, grants: list) -> tuple[list[AclGrantOu
     return out, owner_subject, owner_label
 
 
-async def _resource_created_by(
-    db: AsyncSession, resource_type: str, resource_id: str
-) -> str | None:
-    from app.models.document_channel import DocumentChannel
-
-    if resource_type != RT_DOCUMENT_CHANNEL:
-        return None
-    ch = await db.get(DocumentChannel, resource_id)
-    return ch.created_by if ch else None
-
-
 async def _owner_from_created_by(
-    db: AsyncSession, resource_type: str, resource_id: str
+    db: AsyncSession,
+    resource_type: str,
+    resource_id: str,
+    *,
+    creator_subject: str | None = None,
+    creator_display_name: str | None = None,
 ) -> tuple[str | None, str | None]:
-    created_by = await _resource_created_by(db, resource_type, resource_id)
+    if creator_subject is None and creator_display_name is None:
+        creator_subject, creator_display_name = await _channel_creator_identity(
+            db, resource_type, resource_id
+        )
+    created_by = creator_subject
     if not created_by:
         return None, None
-    label = await _resolve_user_display(db, created_by)
+    label = await resolve_subject_display(
+        db, created_by, display_hint=creator_display_name
+    )
     return created_by, label
 
 
@@ -165,11 +182,20 @@ async def _enrich_default_owner_grant(
     grant_rows: list[AclGrantOut],
     owner: str | None,
     owner_label: str | None,
+    *,
+    creator_subject: str | None = None,
+    creator_display_name: str | None = None,
 ) -> tuple[list[AclGrantOut], str | None, str | None]:
     """When no persisted owner ACL exists, default to channel creator with full permissions."""
     if any(e.grantee_type == GRANTEE_USER for e in entries):
         return grant_rows, owner, owner_label
-    created_by, label = await _owner_from_created_by(db, resource_type, resource_id)
+    created_by, label = await _owner_from_created_by(
+        db,
+        resource_type,
+        resource_id,
+        creator_subject=creator_subject,
+        creator_display_name=creator_display_name,
+    )
     if not created_by:
         return grant_rows, owner, owner_label
     default_perms = perm_label(PERM_ALL_DATA)
@@ -208,9 +234,9 @@ async def _ensure_owner_in_parsed(
     if existing_owner and existing_owner.grantee_id:
         _append_preserved_owner(parsed, existing_owner.grantee_id, existing_owner.permissions)
         return
-    created_by = await _resource_created_by(db, resource_type, resource_id)
-    if created_by:
-        _append_preserved_owner(parsed, created_by, PERM_ALL_DATA)
+    creator_subject, _ = await _channel_creator_identity(db, resource_type, resource_id)
+    if creator_subject:
+        _append_preserved_owner(parsed, creator_subject, PERM_ALL_DATA)
 
 
 async def list_local_owner_candidates(db: AsyncSession) -> list[OwnerCandidateOut]:
@@ -219,8 +245,7 @@ async def list_local_owner_candidates(db: AsyncSession) -> list[OwnerCandidateOu
     result = await db.execute(select(User).order_by(User.username))
     out: list[OwnerCandidateOut] = []
     for user in result.scalars().all():
-        label = f"{user.username} ({user.email})" if user.email else user.username
-        out.append(OwnerCandidateOut(subject=str(user.id), label=label))
+        out.append(OwnerCandidateOut(subject=str(user.id), label=user.username))
     return out
 
 
@@ -242,11 +267,26 @@ async def serialize_resource_acl(
         if await resource_has_acl_restrictions(db, rt, rid)
     ]
     eff = await effective_permissions(db, viewer_sub, resource_type, resource_id, payload)
-    grant_rows, owner, owner_label = await _grant_labels(db, entries)
-    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
-        db, resource_type, resource_id, entries, grant_rows, owner, owner_label
+    creator_subject, creator_display_name = await _channel_creator_identity(
+        db, resource_type, resource_id
     )
-    created_by = await _resource_created_by(db, resource_type, resource_id)
+    grant_rows, owner, owner_label = await _grant_labels(
+        db,
+        entries,
+        creator_subject=creator_subject,
+        creator_display_name=creator_display_name,
+    )
+    grant_rows, owner, owner_label = await _enrich_default_owner_grant(
+        db,
+        resource_type,
+        resource_id,
+        entries,
+        grant_rows,
+        owner,
+        owner_label,
+        creator_subject=creator_subject,
+        creator_display_name=creator_display_name,
+    )
     return ResourceAclOut(
         resource_type=resource_type,
         resource_id=resource_id,
@@ -255,7 +295,7 @@ async def serialize_resource_acl(
         inherits_from=inherits,
         owner_subject=owner,
         owner_label=owner_label,
-        created_by=created_by,
+        created_by=creator_subject,
     )
 
 

@@ -153,6 +153,7 @@ async def create_document_channel(
     channel_id = f"dc_{uuid.uuid4().hex[:8]}"
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     channel = DocumentChannel(
         id=channel_id,
         name=body.name,
@@ -160,6 +161,7 @@ async def create_document_channel(
         parent_id=body.parent_id,
         sort_order=sort_order,
         created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(channel)
     await db.flush()

@@ -21,7 +21,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Document Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, type: "object_type"|"list[object_type]"}`), `object_type_extraction_max_instances` (int, nullable, default 100), `created_by` (nullable identity subject of creator; set on create), `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `pipeline_id` (FK → pipelines), `auto_process`, `extraction_model_id` (FK → api_models), `extraction_schema` (json), `label_config` (json: array of `{key, object_type_id, display_label?, type: "object_type"|"list[object_type]"}`), `object_type_extraction_max_instances` (int, nullable, default 100), `created_by` (nullable identity subject of creator; set on create), `created_by_name` (nullable username at create), `created_at`
 - Tree structure: parent → children
 - When `auto_process=true`, uploads to this channel automatically defer a processing job
 - Metadata extraction: pydantic-ai Agent + PromptedOutput(StructuredDict) with `response_format: json_object`; `extraction_model_id` designates LLM; `extraction_schema` stored as PostgreSQL `json` (not jsonb) to preserve key order; JSON Schema dict (type, properties, required)
@@ -41,7 +41,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Article Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `created_at`
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable; username at create time), `created_at`
 - Tree structure like document channels; **no** `pipeline_id`, `auto_process`, or extraction fields (articles are not processed by the document VLM pipeline)
 
 ### Article

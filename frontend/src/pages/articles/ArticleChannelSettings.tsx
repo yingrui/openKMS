@@ -39,7 +39,7 @@ type TabId = 'general' | 'sharing';
 export function ArticleChannelSettings() {
   const { t } = useTranslation('articles');
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error, refetch } = useArticleChannels();
@@ -143,6 +143,15 @@ export function ArticleChannelSettings() {
     { id: 'sharing', label: t('channelSettings.tabSharing'), icon: Users },
   ];
 
+  const selectTab = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === 'general') {
+      setSearchParams({}, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
+
   return (
     <div className="document-channel-settings">
       <Link to={`/articles/channels/${channelId}`} className="document-channel-settings-back">
@@ -161,7 +170,7 @@ export function ArticleChannelSettings() {
             key={tab.id}
             type="button"
             className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => selectTab(tab.id)}
           >
             <tab.icon size={16} />
             {tab.label}
@@ -218,11 +227,14 @@ export function ArticleChannelSettings() {
         )}
 
         {activeTab === 'sharing' && channelId && (
-          <ResourceSharePanel
-            resourceType={RESOURCE_TYPES.articleChannel}
-            resourceId={channelId}
-            title={t('channelSettings.sharingHeading')}
-          />
+          <>
+            <p className="document-channel-settings-hint">{t('channelSettings.sharingHint')}</p>
+            <ResourceSharePanel
+              resourceType={RESOURCE_TYPES.articleChannel}
+              resourceId={channelId}
+              title={t('channelSettings.sharingHeading')}
+            />
+          </>
         )}
       </div>
     </div>

@@ -67,7 +67,8 @@
     "parent": "父频道",
     "parentHint": "不能将父频道设为本频道或其子频道。",
     "tabSharing": "共享",
-    "sharingHeading": "共享",
+    "sharingHeading": "共享与访问",
+    "sharingHint": "设置谁可以阅读、编辑和管理本频道。文章会继承所属频道的访问规则。",
     "saving": "保存中…",
     "save": "保存"
   },
