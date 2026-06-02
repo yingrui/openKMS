@@ -417,46 +417,48 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
               <strong>{t('resourceShare.owner')}</strong>
               {ownerEditing && canManage ? (
                 <div className="resource-share-owner-pick" ref={ownerPickRef}>
-                  <Search size={16} aria-hidden />
-                  <input
-                    type="search"
-                    value={ownerPickQuery}
-                    onChange={(e) => {
-                      setOwnerPickQuery(e.target.value);
-                      setOwnerPickOpen(true);
-                    }}
-                    onFocus={() => setOwnerPickOpen(true)}
-                    placeholder={t('resourceShare.ownerSearchPlaceholder')}
-                    aria-autocomplete="list"
-                    aria-expanded={ownerPickOpen && filteredOwnerOptions.length > 0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        confirmOwnerPick();
-                      }
-                      if (e.key === 'Escape') {
-                        e.preventDefault();
-                        cancelOwnerAssign();
-                      }
-                    }}
-                  />
-                  {ownerPickOpen && filteredOwnerOptions.length > 0 && (
-                    <ul className="resource-share-owner-menu" role="listbox">
-                      {filteredOwnerOptions.slice(0, 12).map((c) => (
-                        <li key={c.subject} role="option">
-                          <button
-                            type="button"
-                            onClick={() => assignOwner(c.subject, c.label)}
-                          >
-                            <span>{c.label}</span>
-                            {c.label !== c.subject && (
-                              <span className="resource-share-owner-menu-sub">{c.subject}</span>
-                            )}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <div className="resource-share-owner-pick-field">
+                    <Search size={16} aria-hidden />
+                    <input
+                      type="search"
+                      value={ownerPickQuery}
+                      onChange={(e) => {
+                        setOwnerPickQuery(e.target.value);
+                        setOwnerPickOpen(true);
+                      }}
+                      onFocus={() => setOwnerPickOpen(true)}
+                      placeholder={t('resourceShare.ownerSearchPlaceholder')}
+                      aria-autocomplete="list"
+                      aria-expanded={ownerPickOpen && filteredOwnerOptions.length > 0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          confirmOwnerPick();
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          cancelOwnerAssign();
+                        }
+                      }}
+                    />
+                    {ownerPickOpen && filteredOwnerOptions.length > 0 && (
+                      <ul className="resource-share-owner-menu" role="listbox">
+                        {filteredOwnerOptions.slice(0, 12).map((c) => (
+                          <li key={c.subject} role="option">
+                            <button
+                              type="button"
+                              onClick={() => assignOwner(c.subject, c.label)}
+                            >
+                              <span>{c.label}</span>
+                              {c.label !== c.subject && (
+                                <span className="resource-share-owner-menu-sub">{c.subject}</span>
+                              )}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"

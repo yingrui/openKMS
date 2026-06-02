@@ -18,6 +18,7 @@ import {
   Trash2,
   Sparkles,
   Settings,
+  Users,
   MessageSquare,
   Pencil,
   X,
@@ -88,6 +89,8 @@ import '../../components/wiki/WikiSpaceAgentPanel.scss';
 import './KnowledgeBaseDetail.scss';
 
 type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'settings';
+
+type SettingsSubTabId = 'general' | 'sharing';
 
 const TAB_ORDER: TabId[] = ['documents', 'wiki_spaces', 'faqs', 'chunks', 'search', 'settings'];
 
@@ -515,7 +518,17 @@ export function KnowledgeBaseDetail() {
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
   const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTabId>('general');
   const [indexJobSubmitting, setIndexJobSubmitting] = useState(false);
+
+  const settingsSubTabs = useMemo(
+    () =>
+      [
+        { id: 'general' as const, label: t('detail.settingsTabGeneral'), icon: Settings },
+        { id: 'sharing' as const, label: t('detail.settingsTabSharing'), icon: Users },
+      ],
+    [t],
+  );
 
   const loadKb = useCallback(async () => {
     if (!kbId) return;
@@ -2530,8 +2543,39 @@ export function KnowledgeBaseDetail() {
         {/* ===== SETTINGS TAB ===== */}
         {activeTab === 'settings' && (
           <section className="kb-section kb-settings-section">
+            <h2 id="kb-settings-heading" className="kb-settings-page-title">
+              {t('detail.settingsTitle')}
+            </h2>
+
+            <div className="kb-settings-subtabs" role="tablist" aria-label={t('detail.settingsTitle')}>
+              {settingsSubTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={settingsSubTab === tab.id}
+                  className={`kb-settings-subtab ${settingsSubTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setSettingsSubTab(tab.id)}
+                >
+                  <tab.icon size={16} aria-hidden />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="kb-settings-subtab-panel" role="tabpanel">
+              {settingsSubTab === 'sharing' && kbId ? (
+                <ResourceSharePanel
+                  resourceType={RESOURCE_TYPES.knowledgeBase}
+                  resourceId={kbId}
+                  title={t('detail.sharingTitle')}
+                />
+              ) : null}
+
+              {settingsSubTab === 'general' ? (
+                <>
             <div className="kb-settings-header-row">
-              <h2 id="kb-settings-heading">{t('detail.settingsTitle')}</h2>
+              <p className="kb-settings-general-lead">{t('detail.settingsGeneralLead')}</p>
               <button
                 type="button"
                 className="btn btn-primary kb-settings-header-save"
@@ -2541,14 +2585,6 @@ export function KnowledgeBaseDetail() {
                 {settingsSaving ? t('detail.savingSettings') : t('detail.saveSettings')}
               </button>
             </div>
-
-            {kbId && (
-              <ResourceSharePanel
-                resourceType={RESOURCE_TYPES.knowledgeBase}
-                resourceId={kbId}
-                title={t('detail.sharingTitle')}
-              />
-            )}
 
             <div className="kb-settings-form">
               <div className="kb-settings-layout">
@@ -2664,6 +2700,9 @@ export function KnowledgeBaseDetail() {
                   <small className="kb-settings-index-warn">{t('detail.indexJobRequiresEmbedding')}</small>
                 ) : null}
               </fieldset>
+            </div>
+                </>
+              ) : null}
             </div>
           </section>
         )}

@@ -38,8 +38,13 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 16px;
+}
+
+.resource-share-owner-row {
+  position: relative;
+  z-index: 2;
 }
 
 .resource-share-table {
@@ -95,6 +100,7 @@
 .resource-share-group-row td:first-child,
 .resource-share-others-row td:first-child {
   vertical-align: middle;
+  overflow: visible;
 }
 
 .resource-share-owner-picker {
@@ -104,13 +110,21 @@
 }
 
 .resource-share-owner-pick {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   margin-top: 0.35rem;
   min-width: 14rem;
+}
+
+.resource-share-owner-pick-field {
+  position: relative;
+  flex: 1 1 12rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 10rem;
 
   svg {
     flex: 0 0 auto;
@@ -118,8 +132,9 @@
   }
 
   input {
-    flex: 1 1 10rem;
-    min-width: 8rem;
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
     padding: 6px 10px;
     font-size: 0.875rem;
     border: 1px solid var(--color-border);
@@ -130,13 +145,14 @@
 
 .resource-share-owner-menu {
   position: absolute;
-  z-index: 20;
+  z-index: 50;
   top: calc(100% + 4px);
   left: 0;
   right: 0;
   margin: 0;
   padding: 4px 0;
   list-style: none;
+  min-width: 100%;
   max-height: 16rem;
   overflow: auto;
   background: var(--color-bg-elevated);

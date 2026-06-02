@@ -1727,7 +1727,72 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   cursor: not-allowed;
 }
 
-/* Settings — header (title + save), two-column form, index fieldset at bottom */
+/* Settings — sub-tabs (general / sharing) + panels */
+.kb-settings-page-title {
+  margin: 0 0 16px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.kb-settings-subtabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 4px 12px 0;
+  flex-shrink: 0;
+}
+
+.kb-settings-subtab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+
+  &:hover {
+    color: var(--color-text);
+  }
+
+  &.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+  }
+}
+
+.kb-settings-subtab-panel {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 16px;
+
+  .resource-share-panel {
+    margin-top: 0;
+  }
+}
+
+.kb-settings-general-lead {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+}
+
+/* Settings — header (save), two-column form, index fieldset at bottom */
 .kb-settings-header-row {
   display: flex;
   flex-wrap: wrap;
