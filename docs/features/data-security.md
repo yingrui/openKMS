@@ -133,6 +133,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 | Documents | `scoped_document_predicate`, upload/move helpers |
 | Articles | `scoped_article_predicate`, `article_passes_scoped_predicate` |
 | Wiki, KB, eval, dataset, ontology types | `readable_resource_ids`, `instance_visible` |
+| Dataset register / table picker | RBAC: `console:datasets` only (not `ontology:write`; not blocked by access-group membership); per-dataset ACL on read/update/delete |
 | Global search | Scoped in `global_search.py` |
 | Sharing API | GET needs read; PUT needs manage |
 | SPA channel page | Sidebar filter; missing channel → not found |

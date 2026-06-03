@@ -11,10 +11,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_any_permission, require_auth
-from app.services.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
+from app.api.auth import require_any_permission, require_auth, require_permission
+from app.services.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
 from app.database import get_db
-from app.services.data_scope import bootstrap_owner_acl, scope_applies, user_group_ids
+from app.services.data_scope import bootstrap_owner_acl
 from app.services.data_resource_policy import dataset_visible
 from app.services.dataset_scope import (
     require_dataset_manage,
@@ -53,14 +53,7 @@ router = APIRouter(
     dependencies=[Depends(require_auth)],
 )
 
-
-async def _dataset_scope_restricted(request: Request, db: AsyncSession) -> bool:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not scope_applies(p, sub):
-        return False
-    gids = await user_group_ids(db, sub, p)
-    return bool(gids)
+_DATASET_VIEW = (PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ)
 
 
 async def get_dataset_scoped(
@@ -95,19 +88,13 @@ async def get_dataset_scoped_manage(
 @router.get(
     "/from-source/{data_source_id}",
     response_model=list[TableInfo],
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE))],
+    dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))],
 )
 async def list_tables_from_source(
     data_source_id: str,
-    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """List PostgreSQL tables from a data source (for picker when creating dataset)."""
-    if await _dataset_scope_restricted(request, db):
-        raise HTTPException(
-            status_code=403,
-            detail="Table listing is not available when your account is restricted by group data scopes",
-        )
     ds = await db.get(DataSource, data_source_id)
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
@@ -135,7 +122,7 @@ async def list_tables_from_source(
         raise HTTPException(status_code=502, detail=f"Failed to list tables: {e}") from e
 
 
-@router.get("", response_model=DatasetListResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))])
+@router.get("", response_model=DatasetListResponse, dependencies=[Depends(require_any_permission(*_DATASET_VIEW))])
 async def list_datasets(
     request: Request,
     data_source_id: str | None = None,
@@ -175,18 +162,13 @@ async def list_datasets(
     )
 
 
-@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
+@router.post("", response_model=DatasetResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
 async def create_dataset(
     request: Request,
     body: DatasetCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a dataset."""
-    if await _dataset_scope_restricted(request, db):
-        raise HTTPException(
-            status_code=403,
-            detail="Creating datasets is not allowed when your account is restricted by group data scopes",
-        )
     ds = await db.get(DataSource, body.data_source_id)
     if not ds:
         raise HTTPException(status_code=400, detail="Data source not found")
@@ -321,7 +303,7 @@ async def fetch_dataset_rows(
 @router.get(
     "/{dataset_id}/rows",
     response_model=DatasetRowsResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))],
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
 )
 async def get_dataset_rows(
     dataset: Dataset = Depends(get_dataset_scoped),
@@ -359,7 +341,7 @@ async def get_dataset_rows(
 @router.get(
     "/{dataset_id}/metadata",
     response_model=list[ColumnMetadata],
-    dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))],
+    dependencies=[Depends(require_any_permission(*_DATASET_VIEW))],
 )
 async def get_dataset_metadata(
     dataset: Dataset = Depends(get_dataset_scoped),
@@ -399,7 +381,7 @@ async def get_dataset_metadata(
         raise HTTPException(status_code=502, detail=f"Failed to fetch metadata: {e}") from e
 
 
-@router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))])
+@router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(*_DATASET_VIEW))])
 async def get_dataset(
     dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
@@ -418,7 +400,7 @@ async def get_dataset(
     )
 
 
-@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
+@router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
 async def update_dataset(
     body: DatasetUpdate,
     dataset: Dataset = Depends(get_dataset_scoped_write),
@@ -443,7 +425,7 @@ async def update_dataset(
     )
 
 
-@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
+@router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONSOLE_DATASETS))])
 async def delete_dataset(
     dataset: Dataset = Depends(get_dataset_scoped_manage),
     db: AsyncSession = Depends(get_db),

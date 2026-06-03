@@ -29,7 +29,7 @@ PostgreSQL and Neo4j connections live in **Console → Data Sources**; mappings 
 | Test connection | ✅ | `POST /api/data-sources/{id}/test` validates connectivity |
 | Neo4j delete all | ✅ | `POST /api/data-sources/{id}/neo4j-delete-all` wipes all nodes and relationships; confirmation modal in Console |
 | Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; **Ontology → Datasets** (`/ontology/datasets`); legacy `/console/datasets` redirects |
-| List tables from source | ✅ | `GET /api/datasets/from-source/{id}` returns tables for picker when creating dataset |
+| List tables from source | ✅ | `GET /api/datasets/from-source/{id}` — requires **`console:datasets`** (Manage datasets) |
 | Dataset detail | ✅ | Click dataset name → `/ontology/datasets/:id` with Data tab (rows, pagination) and Metadata tab (column info); **Settings** opens General (display name) and Sharing |
 | Dataset rows | ✅ | `GET /api/datasets/{id}/rows?limit=&offset=` fetches paginated rows from table |
 | Dataset metadata | ✅ | `GET /api/datasets/{id}/metadata` returns column name, type, nullable, position from information_schema |

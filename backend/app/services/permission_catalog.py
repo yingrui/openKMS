@@ -92,7 +92,7 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
     OperationKeyHint(
         PERM_CONSOLE_DATASETS,
         "Manage datasets",
-        "CRUD /api/datasets (console dataset admin).",
+        "Register PostgreSQL tables, CRUD /api/datasets, and dataset sharing (includes from-source table picker).",
         "console",
     ),
     OperationKeyHint(
@@ -212,7 +212,7 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
     OperationKeyHint(
         PERM_ONTOLOGY_READ,
         "View ontology, objects, links",
-        "Ontology explorer, objects, links, read APIs.",
+        "View datasets (list, rows, metadata), ontology explorer, objects, links, read APIs.",
         "ontology",
     ),
     OperationKeyHint(

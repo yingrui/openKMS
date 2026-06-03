@@ -288,8 +288,6 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_ONTOLOGY_WRITE: (
         [
             "/ontology",
-            "/ontology/datasets",
-            "/ontology/datasets/*",
             "/ontology/object-types",
             "/ontology/link-types",
             "/objects",
@@ -299,9 +297,6 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/object-explorer",
         ],
         [
-            "POST /api/datasets",
-            "PUT /api/datasets/*",
-            "DELETE /api/datasets/*",
             "POST /api/object-types",
             "PUT /api/object-types",
             "PUT /api/object-types/*",

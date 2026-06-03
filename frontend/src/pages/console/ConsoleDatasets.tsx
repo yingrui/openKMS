@@ -80,13 +80,14 @@ export function ConsoleDatasets() {
 
   const openCreate = () => {
     setEditItem(null);
-    setFormDataSourceId(dataSources[0]?.id ?? '');
+    const defaultPg = pgDataSources[0]?.id ?? '';
+    setFormDataSourceId(defaultPg);
     setFormSchema('');
     setFormTable('');
     setFormDisplayName('');
     setTables([]);
-    if (dataSources[0]?.id) {
-      loadTables(dataSources[0].id);
+    if (defaultPg) {
+      void loadTables(defaultPg);
     }
     setShowForm(true);
   };

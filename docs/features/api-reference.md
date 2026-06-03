@@ -273,14 +273,14 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/connectors/{id}` | Get one connector |
 | PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided; merge `secrets` or send `{}` to clear secrets |
 | DELETE | `/api/connectors/{id}` | Delete connector |
-| GET | `/api/datasets` | List datasets (`console:datasets`, optional ?data_source_id=) |
+| GET | `/api/datasets` | List datasets (`console:datasets` or `ontology:read`; filtered by dataset ACL) |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |
 | POST | `/api/datasets` | Create dataset (`console:datasets`) |
-| GET | `/api/datasets/{id}` | Get dataset (`console:datasets`) |
-| GET | `/api/datasets/{id}/rows` | Get paginated rows from dataset table (`console:datasets`; ?limit=, ?offset=) |
-| GET | `/api/datasets/{id}/metadata` | Get column metadata from information_schema (`console:datasets`) |
-| PUT | `/api/datasets/{id}` | Update dataset (`console:datasets`) |
-| DELETE | `/api/datasets/{id}` | Delete dataset (`console:datasets`) |
+| GET | `/api/datasets/{id}` | Get dataset (`console:datasets` or `ontology:read`; dataset ACL) |
+| GET | `/api/datasets/{id}/rows` | Get paginated rows (`console:datasets` or `ontology:read`; dataset ACL) |
+| GET | `/api/datasets/{id}/metadata` | Column metadata (`console:datasets` or `ontology:read`; dataset ACL) |
+| PUT | `/api/datasets/{id}` | Update dataset (`console:datasets`; write on dataset) |
+| DELETE | `/api/datasets/{id}` | Delete dataset (`console:datasets`; manage on dataset) |
 
 ## Feature toggles
 
