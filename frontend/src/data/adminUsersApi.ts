@@ -1,19 +1,25 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
-export interface LocalUserRow {
+export interface AdminUserRow {
   id: string;
   email: string;
   username: string;
-  is_admin: boolean;
-  created_at: string | null;
+  name?: string | null;
+  is_admin?: boolean | null;
+  created_at?: string | null;
+  first_seen_at?: string | null;
+  last_seen_at?: string | null;
 }
+
+/** Local-mode user row (admin flag always set). */
+export type LocalUserRow = AdminUserRow & { is_admin: boolean; created_at: string | null };
 
 export interface AdminUsersPage {
   auth_mode: string;
   managed_in_console: boolean;
   idp_notice: string | null;
-  users: LocalUserRow[];
+  users: AdminUserRow[];
 }
 
 export async function fetchAdminUsersPage(): Promise<AdminUsersPage> {

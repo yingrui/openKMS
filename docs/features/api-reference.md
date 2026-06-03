@@ -62,7 +62,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/search` | Authenticated unified metadata search: query `q`, `types` (`all` or comma-list: `documents`, `articles`, `wiki_spaces`, `knowledge_bases`), optional `document_channel_id`, `article_channel_id`, `updated_after` / `updated_before` (ISO 8601), `limit` (1–100, default 30). Returns sections with `items` (`id`, `name`, `title`, `kind`, `url_path`, `channel_id`, `channel_name`, `updated_at`) and `total` per type; types the user cannot read are empty; **403** if none of the requested types are allowed; **404** if a channel id is unknown. Scoped like list APIs (documents, articles, wiki spaces, KB visibility). **`wiki_spaces`** items use **`url_path`** **`/wikis/{id}/pages/graph`**. |
 | HEAD | `/api/search` | Same auth / permission overlap check as GET; no JSON body |
 | GET | `/api/providers/{id}/models` | Authenticated: list models registered under this provider |
-| GET | `/api/admin/users` | `console:users`: auth mode, IdP notice, `users` (local only) |
+| GET | `/api/admin/users` | `console:users`: auth mode, IdP notice, `users` (local accounts or OIDC sign-in directory) |
 | POST | `/api/admin/users` | `console:users`, **local** only: create user (`email`, `username`, `password`, `is_admin`) |
 | PATCH | `/api/admin/users/{id}` | `console:users`, **local** only: set `is_admin` (syncs security roles) |
 | DELETE | `/api/admin/users/{id}` | `console:users`, **local** only: delete user |

@@ -46,12 +46,16 @@ export function ConsoleUsers() {
     if (!page?.users.length) return [];
     const q = search.trim().toLowerCase();
     if (!q) return page.users;
-    return page.users.filter(
-      (u) =>
-        u.username.toLowerCase().includes(q) ||
-        u.email.toLowerCase().includes(q)
-    );
+    return page.users.filter((u) => {
+      const hay = [u.username, u.email, u.name ?? '', u.id].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
   }, [page?.users, search]);
+
+  const formatWhen = (iso: string | null | undefined) =>
+    iso
+      ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+      : t('users.dash');
 
   const onToggleAdmin = async (u: LocalUserRow, next: boolean) => {
     try {
@@ -127,84 +131,107 @@ export function ConsoleUsers() {
             </div>
           )}
 
-          {page.managed_in_console && (
-            <>
-              <div className="console-users-toolbar">
-                <div className="console-users-search">
-                  <Search size={18} />
-                  <input
-                    type="search"
-                    aria-label={t('users.searchAria')}
-                    placeholder={t('users.searchPlaceholder')}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="console-users-table-wrap">
-                <table className="console-users-table">
-                  <thead>
-                    <tr>
-                      <th>{t('users.colUser')}</th>
-                      <th>{t('users.colEmail')}</th>
+          <div className="console-users-toolbar">
+            <div className="console-users-search">
+              <Search size={18} />
+              <input
+                type="search"
+                aria-label={t('users.searchAria')}
+                placeholder={
+                  page.managed_in_console ? t('users.searchPlaceholder') : t('users.searchPlaceholderOidc')
+                }
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="console-users-table-wrap">
+            <table className="console-users-table">
+              <thead>
+                <tr>
+                  <th>{t('users.colUser')}</th>
+                  <th>{t('users.colEmail')}</th>
+                  {page.managed_in_console ? (
+                    <>
                       <th>{t('users.colAdmin')}</th>
                       <th>{t('users.colCreated')}</th>
                       <th aria-label={t('users.colActionsAria')} />
+                    </>
+                  ) : (
+                    <>
+                      <th>{t('users.colName')}</th>
+                      <th>{t('users.colFirstSeen')}</th>
+                      <th>{t('users.colLastSeen')}</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={page.managed_in_console ? 5 : 5}
+                      className="console-users-empty"
+                    >
+                      {search.trim()
+                        ? t('users.emptyFilter')
+                        : !page.managed_in_console && page.users.length === 0
+                          ? t('users.emptyOidc')
+                          : t('users.emptyFilter')}
+                    </td>
+                  </tr>
+                ) : page.managed_in_console ? (
+                  filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td>
+                        <div className="console-users-table-name">
+                          <Users size={18} strokeWidth={1.5} />
+                          <span>{u.username}</span>
+                        </div>
+                      </td>
+                      <td>{u.email}</td>
+                      <td>
+                        <label className="console-users-admin-toggle">
+                          <input
+                            type="checkbox"
+                            checked={!!u.is_admin}
+                            onChange={(e) => void onToggleAdmin(u as LocalUserRow, e.target.checked)}
+                            aria-label={t('users.adminAria', { username: u.username })}
+                          />
+                          <span>{u.is_admin ? t('users.yes') : t('users.no')}</span>
+                        </label>
+                      </td>
+                      <td className="console-users-date">{formatWhen(u.created_at)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm console-users-delete"
+                          onClick={() => void onDelete(u as LocalUserRow)}
+                        >
+                          {t('users.delete')}
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="console-users-empty">
-                          {t('users.emptyFilter')}
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredUsers.map((u) => (
-                        <tr key={u.id}>
-                          <td>
-                            <div className="console-users-table-name">
-                              <Users size={18} strokeWidth={1.5} />
-                              <span>{u.username}</span>
-                            </div>
-                          </td>
-                          <td>{u.email}</td>
-                          <td>
-                            <label className="console-users-admin-toggle">
-                              <input
-                                type="checkbox"
-                                checked={u.is_admin}
-                                onChange={(e) => void onToggleAdmin(u, e.target.checked)}
-                                aria-label={t('users.adminAria', { username: u.username })}
-                              />
-                              <span>{u.is_admin ? t('users.yes') : t('users.no')}</span>
-                            </label>
-                          </td>
-                          <td className="console-users-date">
-                            {u.created_at
-                              ? new Date(u.created_at).toLocaleString(undefined, {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short',
-                                })
-                              : t('users.dash')}
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm console-users-delete"
-                              onClick={() => void onDelete(u)}
-                            >
-                              {t('users.delete')}
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+                  ))
+                ) : (
+                  filteredUsers.map((u) => (
+                    <tr key={u.id}>
+                      <td>
+                        <div className="console-users-table-name">
+                          <Users size={18} strokeWidth={1.5} />
+                          <span>{u.username}</span>
+                        </div>
+                      </td>
+                      <td>{u.email || t('users.dash')}</td>
+                      <td>{u.name?.trim() ? u.name : t('users.dash')}</td>
+                      <td className="console-users-date">{formatWhen(u.first_seen_at)}</td>
+                      <td className="console-users-date">{formatWhen(u.last_seen_at)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
 

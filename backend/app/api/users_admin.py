@@ -1,4 +1,4 @@
-"""Console: Users & roles (local DB) or IdP notice (OIDC)."""
+"""Console: Users & roles (local DB) or OIDC sign-in directory (read-only)."""
 
 from datetime import datetime
 
@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import _hash_password, get_jwt_payload, require_permission
 from app.config import settings
 from app.database import get_db
+from app.models.oidc_identity import OidcIdentity
 from app.models.user import User
 from app.services.permission_catalog import PERM_CONSOLE_USERS
 from app.services.user_roles_sync import sync_security_roles_for_user
@@ -18,12 +19,19 @@ from app.services.user_roles_sync import sync_security_roles_for_user
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 
 
-class LocalUserOut(BaseModel):
+class AdminUserOut(BaseModel):
     id: str
     email: str
     username: str
-    is_admin: bool
+    name: str | None = None
+    is_admin: bool | None = None
     created_at: datetime | None = None
+    first_seen_at: datetime | None = None
+    last_seen_at: datetime | None = None
+
+
+class LocalUserOut(AdminUserOut):
+    is_admin: bool
 
 
 class AdminUsersPageResponse(BaseModel):
@@ -32,7 +40,7 @@ class AdminUsersPageResponse(BaseModel):
     managed_in_console: bool
     """True when users can be edited in this UI (local mode)."""
     idp_notice: str | None
-    users: list[LocalUserOut]
+    users: list[AdminUserOut]
 
 
 class PatchLocalUserBody(BaseModel):
@@ -52,20 +60,35 @@ async def admin_users_page(
     _: None = Depends(require_permission(PERM_CONSOLE_USERS)),
 ):
     if settings.auth_mode != "local":
+        result = await db.execute(
+            select(OidcIdentity).order_by(OidcIdentity.last_seen_at.desc(), OidcIdentity.preferred_username)
+        )
+        rows = list(result.scalars().all())
+        users = [
+            AdminUserOut(
+                id=row.sub,
+                email=row.email or "",
+                username=row.preferred_username or row.sub,
+                name=row.name,
+                first_seen_at=row.first_seen_at,
+                last_seen_at=row.last_seen_at,
+            )
+            for row in rows
+        ]
         return AdminUsersPageResponse(
             auth_mode="oidc",
             managed_in_console=False,
             idp_notice=(
-                "User accounts and roles (for example realm or application roles such as admin) are managed in your "
-                "OpenID Connect identity provider. openKMS does not mirror the full user directory."
+                "Accounts and roles (for example realm or application roles such as admin) are managed in your "
+                "identity provider. The list below shows users who have signed in to openKMS."
             ),
-            users=[],
+            users=users,
         )
 
     result = await db.execute(select(User).order_by(User.created_at))
     rows = list(result.scalars().all())
     users = [
-        LocalUserOut(
+        AdminUserOut(
             id=str(u.id),
             email=u.email,
             username=u.username,
