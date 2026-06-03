@@ -2,7 +2,11 @@
 
 **北极星：** 让一线敢用、专家愿写、组织可管、Agent 可用。
 
-**Agent 可用**指在知识保鲜、内容准确、安全可信的前提下，Agent可发现、可检索、可作答、可溯源。
+*North star:* *Frontline confidence · Expert contribution · Organizational governance · Agent readiness.*
+
+**Agent 可用**指在知识保鲜、内容准确、安全可信的前提下，Agent 可发现、可检索、可作答、可溯源。
+
+*Agent-ready* means discoverable, retrievable, answerable, and traceable—on knowledge that stays current, accurate, and permission-aware.
 
 本文从**业务与知识工程**角度说明 openKMS 希望达成的方向；具体能力与实现路径见 [Functionalities](functionalities.md)、[Architecture](architecture.md) 与 [Development plan](development_plan.md)（已交付索引、战略重点与 backlog）。文档入口见 [Home](index.md)。英文路线图见 [Development plan](development_plan.md)。
 

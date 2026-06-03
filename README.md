@@ -1,6 +1,8 @@
 # openKMS
 
-Open Knowledge Management System — document channels, parsing, knowledge bases, and RAG-style Q&A.
+**Open Knowledge Management System** — one governed knowledge network for people and agents.
+
+Teams **retrieve**, **contribute**, and **govern** the same corpus—so answers stay sourced and permission-aware, not trapped in private chat or stale files. [Documentation](https://yingrui.github.io/openKMS/) · Vision: [`docs/goals.md`](docs/goals.md).
 
 ## Repository layout
 
@@ -10,7 +12,19 @@ Open Knowledge Management System — document channels, parsing, knowledge bases
 - **`openkms-skill/`** — Optional OpenCode-style **SKILL** + Python CLI for agents calling the public HTTP API (personal API keys in the app under **Settings**; see **`docs/features/opencode-openkms-skill.md`**)
 - **`vlm-server/`** — **mlx-vlm** HTTP server for **PaddleOCR-VL** document parsing (run this separately)
 - **`docker/`** — Dockerfiles and **`docker-compose.yml`** (run via **`docker compose -f docker/docker-compose.yml …`** from repo root; see **`docker/README.md`**)
-- **`docs/`** — Architecture, features, and developer setup
+- **`docs/`** — Architecture, features, developer setup, and research notes (published at [yingrui.github.io/openKMS](https://yingrui.github.io/openKMS/))
+- **`qa-agent/`** — Optional LangGraph Q&A service (proxied by the backend for KB chat)
+
+## Documentation
+
+| Topic | Where |
+|--------|--------|
+| Run locally | [`docs/quickstart.md`](docs/quickstart.md) · [`docs/developer/setup.md`](docs/developer/setup.md) |
+| Vision | [`docs/goals.md`](docs/goals.md) |
+| Features & APIs | [`docs/functionalities.md`](docs/functionalities.md) |
+| Security design | [`docs/security.md`](docs/security.md) · [`docs/features/data-security.md`](docs/features/data-security.md) |
+| Roadmap | [`docs/development_plan.md`](docs/development_plan.md) |
+| Comparisons & evaluation research | [`docs/research/`](docs/research/) (RAGFlow, Confluence AI, OKF, text quality) |
 
 ## Quick start
 

@@ -1,23 +1,40 @@
 # openKMS
 
-**Open Knowledge Management System** — channel-based document, article, and knowledge-base platform with RAG-style Q&A and a wiki workspace.
+**Open Knowledge Management System** — one governed knowledge network for people and agents.
+
+Teams **retrieve**, **contribute**, and **govern** the same corpus—so answers stay sourced and permission-aware, not trapped in private chat or stale files.
 
 [Repository on GitHub :material-github:](https://github.com/yingrui/openKMS){ .md-button .md-button--primary }
 [Quickstart](quickstart.md){ .md-button }
 
 ---
 
-## What is openKMS?
+## Why openKMS?
 
-openKMS organizes content in **channel trees** (similar to Google Drive folders). Three primary content surfaces sit on top of those channels:
+Most organizations already have files, wikis, and AI chat. The gap is **one place** where:
 
-- **Documents** — upload PDF, HTML, ZIP, images; parse via PaddleOCR-VL on a separate VLM server; store originals in S3/MinIO; convert to Markdown.
-- **Articles** — markdown-first CMS with channels, versions, attachments, and **article-to-article relationships** (`supersedes`, `amends`, `see_also`, …).
-- **Knowledge bases** — RAG over indexed documents, with FAQs, hybrid search, and a separate QA Agent service.
+- **Frontline staff** can find answers **with sources** they dare use in real work.
+- **Experts** can contribute without a separate publishing project.
+- **The organization** can govern who sees what, what is still valid, and what must be reviewed.
+- **Agents** can discover, retrieve, answer, and **cite** in-bounds content—not only a model with no corpus.
 
-A **Wiki workspace** offers free-form notes with vault import, a graph view, and an embedded Wiki Copilot.
+openKMS treats those as **one network**, not separate “KM for humans” and “RAG for bots.” If governance exists but nobody uses the system—or if search works but answers cannot be trusted for compliance—both sides fail.
 
-A unified **Knowledge Map** ties terms to channels, wiki spaces, and article channels.
+North star: [Goals](goals.md) — *Frontline confidence · Expert contribution · Organizational governance · Agent readiness* (让一线敢用、专家愿写、组织可管、Agent 可用).
+
+## What you build in openKMS
+
+Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
+
+| Surface | Role |
+|---------|------|
+| **Documents** | Upload PDFs and office files; parse to editable Markdown (PaddleOCR-VL via a separate VLM server); versions and policy **lifecycle**. |
+| **Articles** | Markdown CMS with channels, attachments, and relationships (`supersedes`, `amends`, `see_also`, …). |
+| **Wiki spaces** | Path-based notes, vault import, page graph, **Wiki Copilot**. |
+| **Knowledge bases** | Hybrid search and **Q&A with provenance** (chunks, sources, optional QA Agent service). |
+| **Knowledge map & ontology** | Terms linked to channels/spaces; optional structured data and graph explore. |
+
+**Under the hood:** [operation permissions + resource ACL](features/data-security.md) (admin does not imply read-all data), [evaluations](features/evaluation.md) for retrieval and wiki coverage, and [development plan](development_plan.md) for what is shipped vs next.
 
 ## Where to start
 
@@ -35,7 +52,20 @@ A unified **Knowledge Map** ties terms to channels, wiki spaces, and article cha
 | Deploy with Docker | [Operations · Docker](operations/docker.md) |
 | Review security design (principles) | [Security](security.md) · [Data security](features/data-security.md) · [Console & auth](features/console-and-auth.md) |
 | See what's planned next | [Roadmap · Development plan](development_plan.md) |
+| Compare openKMS to other stacks or read KM frameworks | [Research](#research) (below) |
 | Edit the docs (human or AI agent) | [Doc conventions for AI agents](agents.md) |
+
+## Research {#research}
+
+Notes for architecture and product decisions (not shipped feature specs):
+
+| Topic | Document |
+|--------|----------|
+| RAG engine vs openKMS | [RAGFlow vs openKMS](research/ragflow_vs_openkms.md) |
+| Confluence AI (Rovo) vs openKMS | [Confluence AI vs openKMS](research/confluence_ai_vs_openkms.md) |
+| LLM wiki (llm_wiki) vs wiki spaces | [LLM wiki vs openKMS](research/llm_wiki_comparison.md) |
+| Measuring KM outcomes (OKF dimension) | [Operational Knowledge Fitness](research/km_dimension_operational_fitness.md) |
+| Evaluating articles & wiki text | [Text content evaluation](research/text_content_evaluation.md) |
 
 ## At a glance
 
