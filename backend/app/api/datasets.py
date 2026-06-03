@@ -14,8 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_any_permission, require_auth
 from app.services.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 from app.database import get_db
-from app.services.data_scope import scope_applies, user_group_ids
+from app.services.data_scope import bootstrap_owner_acl, scope_applies, user_group_ids
 from app.services.data_resource_policy import dataset_visible
+from app.services.dataset_scope import (
+    require_dataset_manage,
+    require_dataset_read,
+    require_dataset_write,
+)
+from app.services.resource_acl_constants import RT_DATASET
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -57,14 +63,33 @@ async def _dataset_scope_restricted(request: Request, db: AsyncSession) -> bool:
     return bool(gids)
 
 
-async def _require_dataset_in_scope(request: Request, db: AsyncSession, dataset_id: str) -> None:
+async def get_dataset_scoped(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Dataset:
     row = await db.get(Dataset, dataset_id)
     if not row:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and not await dataset_visible(db, p, sub, row):
-        raise HTTPException(status_code=404, detail="Dataset not found")
+    return await require_dataset_read(db, request, row)
+
+
+async def get_dataset_scoped_write(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Dataset:
+    row = await get_dataset_scoped(dataset_id, request, db)
+    return await require_dataset_write(db, request, row)
+
+
+async def get_dataset_scoped_manage(
+    dataset_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Dataset:
+    row = await get_dataset_scoped(dataset_id, request, db)
+    return await require_dataset_manage(db, request, row)
 
 
 @router.get(
@@ -165,15 +190,23 @@ async def create_dataset(
     ds = await db.get(DataSource, body.data_source_id)
     if not ds:
         raise HTTPException(status_code=400, detail="Data source not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     dataset = Dataset(
         id=str(uuid.uuid4()),
         data_source_id=body.data_source_id,
         schema_name=body.schema_name,
         table_name=body.table_name,
         display_name=body.display_name,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(dataset)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_DATASET, dataset.id, sub)
+    await db.commit()
     await db.refresh(dataset)
     return DatasetResponse(
         id=dataset.id,
@@ -291,17 +324,13 @@ async def fetch_dataset_rows(
     dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))],
 )
 async def get_dataset_rows(
-    dataset_id: str,
-    request: Request,
+    dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     """Fetch rows from the dataset table (PostgreSQL only)."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    await _require_dataset_in_scope(request, db, dataset_id)
+    dataset_id = dataset.id
     ds = await db.get(DataSource, dataset.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise HTTPException(status_code=400, detail="Dataset rows only supported for PostgreSQL sources")
@@ -333,15 +362,10 @@ async def get_dataset_rows(
     dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))],
 )
 async def get_dataset_metadata(
-    dataset_id: str,
-    request: Request,
+    dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Fetch column metadata from the dataset table (PostgreSQL only)."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    await _require_dataset_in_scope(request, db, dataset_id)
     ds = await db.get(DataSource, dataset.data_source_id)
     if not ds or ds.kind != "postgresql":
         raise HTTPException(status_code=400, detail="Metadata only supported for PostgreSQL sources")
@@ -377,15 +401,10 @@ async def get_dataset_metadata(
 
 @router.get("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ))])
 async def get_dataset(
-    dataset_id: str,
-    request: Request,
+    dataset: Dataset = Depends(get_dataset_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Get a dataset by ID."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    await _require_dataset_in_scope(request, db, dataset_id)
     ds = await db.get(DataSource, dataset.data_source_id)
     return DatasetResponse(
         id=dataset.id,
@@ -401,22 +420,14 @@ async def get_dataset(
 
 @router.put("/{dataset_id}", response_model=DatasetResponse, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
 async def update_dataset(
-    dataset_id: str,
-    request: Request,
     body: DatasetUpdate,
+    dataset: Dataset = Depends(get_dataset_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Update a dataset."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    await _require_dataset_in_scope(request, db, dataset_id)
-    if body.schema_name is not None:
-        dataset.schema_name = body.schema_name
-    if body.table_name is not None:
-        dataset.table_name = body.table_name
-    if body.display_name is not None:
-        dataset.display_name = body.display_name
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(dataset, field, value)
     await db.flush()
     await db.refresh(dataset)
     ds = await db.get(DataSource, dataset.data_source_id)
@@ -434,13 +445,8 @@ async def update_dataset(
 
 @router.delete("/{dataset_id}", status_code=204, dependencies=[Depends(require_any_permission(PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_WRITE))])
 async def delete_dataset(
-    dataset_id: str,
-    request: Request,
+    dataset: Dataset = Depends(get_dataset_scoped_manage),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a dataset."""
-    dataset = await db.get(Dataset, dataset_id)
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    await _require_dataset_in_scope(request, db, dataset_id)
     await db.delete(dataset)

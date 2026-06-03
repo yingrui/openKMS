@@ -32,9 +32,24 @@
   color: var(--color-accent);
 }
 
-.console-dataset-detail-header h1 {
+.console-dataset-detail-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.console-dataset-detail-title-row h1 {
   margin: 0 0 4px;
   font-size: 1.5rem;
+}
+
+.console-dataset-detail-title-row .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .console-dataset-detail-subtitle {

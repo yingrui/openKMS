@@ -68,7 +68,7 @@ export async function createDataset(data: {
 
 export async function updateDataset(
   id: string,
-  data: { schema_name?: string; table_name?: string; display_name?: string }
+  data: { schema_name?: string; table_name?: string; display_name?: string | null }
 ): Promise<DatasetResponse> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/datasets/${id}`, {

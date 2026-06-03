@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Table, FileJson, Loader2 } from 'lucide-react';
+import { ArrowLeft, Settings, Table, FileJson, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchDataset,
@@ -118,12 +118,24 @@ export function ConsoleDatasetDetail() {
           <ArrowLeft size={18} />
           <span>{t('datasetDetail.back')}</span>
         </Link>
-        <div>
-          <h1>{displayName}</h1>
-          <p className="console-dataset-detail-subtitle">
-            {dataset.schema_name}.{dataset.table_name}
-            {dataset.data_source_name && ` • ${dataset.data_source_name}`}
-          </p>
+        <div className="console-dataset-detail-title-row">
+          <div>
+            <h1>{displayName}</h1>
+            <p className="console-dataset-detail-subtitle">
+              {dataset.schema_name}.{dataset.table_name}
+              {dataset.data_source_name && ` • ${dataset.data_source_name}`}
+            </p>
+          </div>
+          {id ? (
+            <Link
+              to={`/ontology/datasets/${id}/settings`}
+              className="btn btn-secondary"
+              title={t('datasetDetail.settings')}
+            >
+              <Settings size={18} />
+              <span>{t('datasetDetail.settings')}</span>
+            </Link>
+          ) : null}
         </div>
       </div>
 

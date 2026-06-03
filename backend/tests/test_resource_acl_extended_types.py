@@ -9,6 +9,7 @@ from app.services.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,
+    RT_DATASET,
     RT_EVALUATION,
     RT_GLOSSARY,
     RT_LINK_TYPE,
@@ -20,6 +21,7 @@ from app.services.ontology_type_scope import object_type_allowed
 
 
 def test_glossary_in_securable_resource_types():
+    assert RT_DATASET in SECURABLE_RESOURCE_TYPES
     assert RT_GLOSSARY in SECURABLE_RESOURCE_TYPES
     assert RT_EVALUATION in SECURABLE_RESOURCE_TYPES
     assert RT_OBJECT_TYPE in SECURABLE_RESOURCE_TYPES

@@ -40,6 +40,7 @@ def share_path_for(resource_type: str, resource_id: str) -> str | None:
         RT_KNOWLEDGE_BASE: f"/knowledge-bases/{resource_id}?tab=settings",
         RT_EVALUATION: f"/evaluations/{resource_id}/settings?tab=sharing",
         RT_GLOSSARY: f"/glossaries/{resource_id}/settings?tab=sharing",
+        RT_DATASET: f"/ontology/datasets/{resource_id}/settings?tab=sharing",
         RT_OBJECT_TYPE: f"/ontology/object-types/{resource_id}/settings?tab=sharing",
         RT_LINK_TYPE: f"/ontology/link-types/{resource_id}/settings?tab=sharing",
     }
@@ -97,7 +98,9 @@ async def resolve_resource_label(db: AsyncSession, resource_type: str, resource_
         return row.name if row else resource_id
     if resource_type == RT_DATASET:
         row = await db.get(Dataset, resource_id)
-        return row.name if row else resource_id
+        if not row:
+            return resource_id
+        return row.display_name or f"{row.schema_name}.{row.table_name}"
     if resource_type == RT_OBJECT_TYPE:
         row = await db.get(ObjectType, resource_id)
         return row.name if row else resource_id

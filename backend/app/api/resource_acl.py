@@ -110,6 +110,7 @@ async def _resource_creator_identity(
 ) -> tuple[str | None, str | None]:
     from app.models.article_channel import ArticleChannel
     from app.models.document_channel import DocumentChannel
+    from app.models.dataset import Dataset
     from app.models.evaluation import Evaluation
     from app.models.glossary import Glossary
     from app.models.knowledge_base import KnowledgeBase
@@ -117,6 +118,7 @@ async def _resource_creator_identity(
     from app.models.object_type import ObjectType
     from app.models.wiki_models import WikiSpace
     from app.services.resource_acl_constants import (
+        RT_DATASET,
         RT_EVALUATION,
         RT_GLOSSARY,
         RT_LINK_TYPE,
@@ -136,6 +138,8 @@ async def _resource_creator_identity(
         ch = await db.get(Evaluation, resource_id)
     elif resource_type == RT_GLOSSARY:
         ch = await db.get(Glossary, resource_id)
+    elif resource_type == RT_DATASET:
+        ch = await db.get(Dataset, resource_id)
     elif resource_type == RT_OBJECT_TYPE:
         ch = await db.get(ObjectType, resource_id)
     elif resource_type == RT_LINK_TYPE:

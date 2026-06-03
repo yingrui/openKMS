@@ -429,7 +429,8 @@
     "update": "更新",
     "create": "创建",
     "editTitle": "编辑",
-    "deleteTitle": "删除"
+    "deleteTitle": "删除",
+    "sharingTitle": "共享"
   },
   "datasetDetail": {
     "toastLoadDatasetFailed": "无法加载数据集",
@@ -456,7 +457,27 @@
     "colPosition": "顺序",
     "yes": "是",
     "no": "否",
-    "dash": "—"
+    "dash": "—",
+    "settings": "设置"
+  },
+  "datasetSettings": {
+    "pageTitle": "数据集设置",
+    "backDataset": "返回数据集",
+    "backDatasets": "数据集",
+    "tabGeneral": "基本信息",
+    "tabSharing": "共享",
+    "sharingTitle": "谁可以访问此数据集",
+    "generalHeading": "概览",
+    "generalHint": "显示名用于列表与页面标题。库表与数据源不可在此修改。",
+    "displayName": "显示名",
+    "tableLabel": "表",
+    "dataSourceLabel": "数据源",
+    "loading": "加载中…",
+    "loadFailed": "无法加载数据集",
+    "saveFailed": "保存数据集失败",
+    "savedToast": "数据集已更新",
+    "save": "保存",
+    "notFoundTitle": "未找到数据集"
   },
   "ontologySettings": {
     "tabGeneral": "基本信息",

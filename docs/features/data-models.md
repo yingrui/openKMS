@@ -156,7 +156,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Dataset
 
-- `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `created_at`, `updated_at`
+- `id`, `data_source_id` (FK), `schema_name`, `table_name`, `display_name`, `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - PostgreSQL table reference; can be mapped to ObjectType/LinkType in future
 
 ## Console / system

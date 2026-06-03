@@ -89,6 +89,7 @@ const ArticleChannelSettings = lazy(() =>
   import('./pages/articles/ArticleChannelSettings').then((m) => ({ default: m.ArticleChannelSettings })),
 );
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
+const DatasetSettings = lazy(() => import('./pages/console/DatasetSettings').then((m) => ({ default: m.DatasetSettings })));
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 function EvaluationDatasetDetailPage() {
   const { id } = useParams();
@@ -168,6 +169,7 @@ function App() {
             <Route index element={<OntologyList />} />
             <Route path="datasets" element={<ConsoleDatasets />} />
             <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
+            <Route path="datasets/:id/settings" element={<DatasetSettings />} />
             <Route path="object-types" element={<ObjectTypesPage />} />
             <Route path="object-types/:typeId/settings" element={<ObjectTypeSettings />} />
             <Route path="link-types" element={<LinkTypesPage />} />

@@ -12,4 +12,4 @@ Bilingual (EN/CN) term definitions with synonyms, AI-suggested translations, and
 | AI suggestion | ✅ | `POST /api/glossaries/{id}/terms/suggest` – LLM suggests translation, definition, and synonyms; button in Add Term form when primary entered |
 | Export | ✅ | `GET /api/glossaries/{id}/export` returns JSON with glossary_id, name, terms array |
 | Import | ✅ | `POST /api/glossaries/{id}/import` with `{ terms, mode: "append" \| "replace" }`; JSON file picker in UI |
-| Sharing | ✅ | **Sharing settings** button on glossary detail opens `/glossaries/{id}/settings?tab=sharing` (General \| Sharing tabs, same layout as object type settings) |
+| Sharing | ✅ | **Settings** on glossary detail opens `/glossaries/{id}/settings` (General: name/description; Sharing tab for ACL) |

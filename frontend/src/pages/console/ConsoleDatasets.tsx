@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, X, RefreshCw, Search, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, RefreshCw, Search, Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchDatasets,
@@ -242,6 +242,13 @@ export function ConsoleDatasets() {
                     <td>{d.schema_name}.{d.table_name}</td>
                     <td className="console-table-actions">
                       <div className="console-table-btns">
+                        <Link
+                          to={`/ontology/datasets/${d.id}/settings?tab=sharing`}
+                          title={t('datasets.sharingTitle')}
+                          className="console-table-icon-link"
+                        >
+                          <Users size={16} />
+                        </Link>
                         <button type="button" title={t('datasets.editTitle')} onClick={() => openEdit(d)}>
                           <Pencil size={16} />
                         </button>

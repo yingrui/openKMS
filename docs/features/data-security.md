@@ -85,7 +85,7 @@ User grants: PUT runs `normalize_user_grantee_id()` (username, email, legacy loc
 
 Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL` is reserved for future system-wide defaults.
 
-**Others defaults (wiki space, knowledge base, channels, evaluations, glossaries, object types, link types):** Alembic seeds `grantee_type=authenticated` with **r/w/m** on resources that already existed when sharing shipped (`y7z8a9b0c1d2` document channels, `b2c3d4e5f6a9` article channels, `h8i9j0k1l2m3` wiki spaces and knowledge bases, `m2n3o4p5q6r7` evaluations, glossaries, object types, link types). **`bootstrap_owner_acl`** on create adds **owner rwm only** — no Others row, so non-owners are denied until sharing is changed.
+**Others defaults (wiki space, knowledge base, channels, evaluations, glossaries, datasets, object types, link types):** Alembic seeds `grantee_type=authenticated` with **r/w/m** on resources that already existed when sharing shipped (`y7z8a9b0c1d2` document channels, `b2c3d4e5f6a9` article channels, `h8i9j0k1l2m3` wiki spaces and knowledge bases, `m2n3o4p5q6r7` evaluations, glossaries, object types, link types; `n3o4p5q6r7s8` datasets). **`bootstrap_owner_acl`** on create adds **owner rwm only** — no Others row, so non-owners are denied until sharing is changed.
 
 ---
 
@@ -157,7 +157,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 
 ### Per-resource sharing (`ResourceSharePanel`)
 
-**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`), evaluation dataset settings (`/evaluations/{id}/settings?tab=sharing`), glossary settings (`/glossaries/{id}/settings?tab=sharing`), object type / link type settings (`/ontology/object-types|link-types/{id}/settings?tab=sharing`).
+**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`), evaluation dataset settings (`/evaluations/{id}/settings?tab=sharing`), glossary settings (`/glossaries/{id}/settings?tab=sharing`), ontology dataset settings (`/ontology/datasets/{id}/settings?tab=sharing`), object type / link type settings (`/ontology/object-types|link-types/{id}/settings?tab=sharing`).
 
 | Row | `grantee_type` | Notes |
 |---|---|---|

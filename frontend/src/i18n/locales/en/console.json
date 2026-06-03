@@ -429,7 +429,8 @@
     "update": "Update",
     "create": "Create",
     "editTitle": "Edit",
-    "deleteTitle": "Delete"
+    "deleteTitle": "Delete",
+    "sharingTitle": "Sharing"
   },
   "datasetDetail": {
     "toastLoadDatasetFailed": "Failed to load dataset",
@@ -456,7 +457,27 @@
     "colPosition": "Position",
     "yes": "Yes",
     "no": "No",
-    "dash": "—"
+    "dash": "—",
+    "settings": "Settings"
+  },
+  "datasetSettings": {
+    "pageTitle": "Dataset settings",
+    "backDataset": "Back to dataset",
+    "backDatasets": "Datasets",
+    "tabGeneral": "General",
+    "tabSharing": "Sharing",
+    "sharingTitle": "Who can access this dataset",
+    "generalHeading": "Overview",
+    "generalHint": "Display name is shown in lists and the dataset header. Schema and table cannot be changed here.",
+    "displayName": "Display name",
+    "tableLabel": "Table",
+    "dataSourceLabel": "Data source",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load dataset",
+    "saveFailed": "Failed to save dataset",
+    "savedToast": "Dataset updated",
+    "save": "Save",
+    "notFoundTitle": "Dataset not found"
   },
   "ontologySettings": {
     "tabGeneral": "General",

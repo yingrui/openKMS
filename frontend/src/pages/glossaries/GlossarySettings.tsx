@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchGlossary, type GlossaryResponse } from '../../data/glossariesApi';
+import { fetchGlossary, updateGlossary, type GlossaryResponse } from '../../data/glossariesApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import '../documents/DocumentChannelSettings.scss';
@@ -22,6 +22,9 @@ export function GlossarySettings() {
   );
   const [glossary, setGlossary] = useState<GlossaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nameField, setNameField] = useState('');
+  const [descriptionField, setDescriptionField] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const tabs = useMemo(
     () => [
@@ -37,6 +40,8 @@ export function GlossarySettings() {
     try {
       const data = await fetchGlossary(glossaryId);
       setGlossary(data);
+      setNameField(data.name);
+      setDescriptionField(data.description ?? '');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('glossary.settings.loadFailed'));
       setGlossary(null);
@@ -58,6 +63,30 @@ export function GlossarySettings() {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
+
+  const handleSave = async () => {
+    if (!glossaryId || !glossary) return;
+    const name = nameField.trim();
+    if (!name) {
+      toast.error(t('glossary.settings.nameRequired'));
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateGlossary(glossaryId, {
+        name,
+        description: descriptionField.trim() || undefined,
+      });
+      setGlossary(updated);
+      setNameField(updated.name);
+      setDescriptionField(updated.description ?? '');
+      toast.success(t('glossary.toastUpdated'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('glossary.settings.saveFailed'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!glossaryId) return null;
 
@@ -123,11 +152,37 @@ export function GlossarySettings() {
           <section className="document-channel-settings-section">
             <h2>{t('glossary.settings.generalHeading')}</h2>
             <p className="document-channel-settings-hint">{t('glossary.settings.generalHint')}</p>
-            <p>
-              <strong>{glossary.name}</strong>
-            </p>
-            {glossary.description ? <p>{glossary.description}</p> : null}
+            <div className="document-channel-settings-field">
+              <label htmlFor="glossary-settings-name">{t('shared.name')}</label>
+              <input
+                id="glossary-settings-name"
+                type="text"
+                value={nameField}
+                onChange={(e) => setNameField(e.target.value)}
+                placeholder={t('glossary.placeholderName')}
+              />
+            </div>
+            <div className="document-channel-settings-field">
+              <label htmlFor="glossary-settings-description">{t('shared.description')}</label>
+              <textarea
+                id="glossary-settings-description"
+                value={descriptionField}
+                onChange={(e) => setDescriptionField(e.target.value)}
+                placeholder={t('glossary.placeholderDesc')}
+                rows={3}
+              />
+            </div>
           </section>
+          <div className="document-channel-settings-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void handleSave()}
+              disabled={saving}
+            >
+              {saving ? t('shared.saving') : t('shared.save')}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
