@@ -194,7 +194,9 @@
     "dangerHint": "Deleting removes all items and run history. This cannot be undone.",
     "deleteDataset": "Delete dataset",
     "deleting": "Deleting…",
-    "deleteFailed": "Delete failed"
+    "deleteFailed": "Delete failed",
+    "tabSharing": "Sharing",
+    "sharingTitle": "Who can access this evaluation"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "Failed to load evaluation dataset",

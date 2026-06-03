@@ -452,5 +452,20 @@
     "yes": "Yes",
     "no": "No",
     "dash": "—"
+  },
+  "ontologySettings": {
+    "tabGeneral": "General",
+    "tabSharing": "Sharing",
+    "sharingTitle": "Who can access this type",
+    "generalHeading": "Overview",
+    "objectTypeTitle": "Object type settings",
+    "linkTypeTitle": "Link type settings",
+    "objectTypeGeneralHint": "Schema changes are made from the Object types list. Use Sharing to control who can view or edit instances.",
+    "linkTypeGeneralHint": "Schema changes are made from the Link types list. Use Sharing to control who can view or edit links.",
+    "backObjectTypes": "Back to object types",
+    "backLinkTypes": "Back to link types",
+    "loading": "Loading…",
+    "loadFailed": "Failed to load",
+    "notFoundTitle": "Not found"
   }
 }

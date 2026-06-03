@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchEvaluation,
@@ -11,14 +11,23 @@ import {
 } from '../../data/evaluationsApi';
 import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import '../documents/DocumentChannelSettings.scss';
 import './EvaluationDatasetDetail.scss';
 import './EvaluationDatasetSettings.scss';
+
+type SettingsTabId = 'general' | 'sharing';
 
 export function EvaluationDatasetSettings() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
   const { id: evaluationId = '' } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(
+    tabParam === 'sharing' ? 'sharing' : 'general'
+  );
 
   const [dataset, setDataset] = useState<EvaluationResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +71,20 @@ export function EvaluationDatasetSettings() {
     }
     void load();
   }, [evaluationId, load, navigate]);
+
+  useEffect(() => {
+    if (tabParam === 'sharing' || tabParam === 'general') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
+
+  const settingsTabs = useMemo(
+    () => [
+      { id: 'general' as const, label: t('evaluationSettings.general'), icon: Settings },
+      { id: 'sharing' as const, label: t('evaluationSettings.tabSharing'), icon: Users },
+    ],
+    [t]
+  );
 
   const handleSave = async () => {
     if (!evaluationId || !dataset) return;
@@ -148,7 +171,33 @@ export function EvaluationDatasetSettings() {
         <p className="eval-detail-desc">{t('evaluationSettings.configureSubtitle', { name: dataset.name })}</p>
       </div>
 
-      <div className="document-channel-settings-form">
+      <div className="document-channel-settings-tabs eval-dataset-settings-tabs">
+        {settingsTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <tab.icon size={16} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'sharing' && evaluationId ? (
+        <div className="document-channel-settings-form eval-dataset-settings-panel">
+          <ResourceSharePanel
+            resourceType={RESOURCE_TYPES.evaluation}
+            resourceId={evaluationId}
+            title={t('evaluationSettings.sharingTitle')}
+          />
+        </div>
+      ) : null}
+
+      {activeTab === 'general' ? (
+      <>
+      <div className="document-channel-settings-form eval-dataset-settings-panel">
         <section className="document-channel-settings-section">
           <h2>{t('evaluationSettings.general')}</h2>
           <p className="document-channel-settings-hint">{t('evaluationSettings.generalHint')}</p>
@@ -257,6 +306,8 @@ export function EvaluationDatasetSettings() {
           {deleting ? t('evaluationSettings.deleting') : t('evaluationSettings.deleteDataset')}
         </button>
       </section>
+      </>
+      ) : null}
     </div>
   );
 }

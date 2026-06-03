@@ -874,12 +874,14 @@ async def readable_resource_ids(
         return set()
     from app.models.dataset import Dataset
     from app.models.evaluation import Evaluation
+    from app.models.glossary import Glossary
     from app.models.knowledge_base import KnowledgeBase
     from app.models.link_type import LinkType
     from app.models.object_type import ObjectType
     from app.services.resource_acl_constants import (
         RT_DATASET,
         RT_EVALUATION,
+        RT_GLOSSARY,
         RT_KNOWLEDGE_BASE,
         RT_LINK_TYPE,
         RT_OBJECT_TYPE,
@@ -889,6 +891,7 @@ async def readable_resource_ids(
         RT_WIKI_SPACE: WikiSpace,
         RT_KNOWLEDGE_BASE: KnowledgeBase,
         RT_EVALUATION: Evaluation,
+        RT_GLOSSARY: Glossary,
         RT_DATASET: Dataset,
         RT_OBJECT_TYPE: ObjectType,
         RT_LINK_TYPE: LinkType,

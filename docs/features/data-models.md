@@ -90,7 +90,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Evaluations
 
-- `id`, `name`, `knowledge_base_id` (FK → knowledge_bases), optional `wiki_space_id` (FK → wiki_spaces, `ON DELETE SET NULL`), `description`, `created_at`, `updated_at`
+- `id`, `name`, `knowledge_base_id` (FK → knowledge_bases), optional `wiki_space_id` (FK → wiki_spaces, `ON DELETE SET NULL`), `description`, `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - Container for query + expected answer pairs; optional wiki space for wiki-side evaluation runs
 
 ### EvaluationItem
@@ -112,7 +112,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Glossary
 
-- `id`, `name`, `description`, `created_at`, `updated_at`
+- `id`, `name`, `description`, `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - Container for domain terms and synonyms
 
 ### GlossaryTerm
@@ -124,7 +124,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### ObjectType
 
-- `id`, `name`, `description`, `dataset_id`, `key_property`, `is_master_data`, `display_property`, `properties` (JSONB: list of `{name, type, required}`), `created_at`, `updated_at`
+- `id`, `name`, `description`, `dataset_id`, `key_property`, `is_master_data`, `display_property`, `properties` (JSONB: list of `{name, type, required}`), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - Schema for entity types; property types: string, number, boolean
 - `is_master_data`: only master data types can be used for document labels in channel settings
 - `display_property`: property used to display object instances in document label pickers
@@ -136,7 +136,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### LinkType
 
-- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `cardinality` (one-to-one | one-to-many | many-to-many), `dataset_id` (FK → datasets, nullable, for many-to-many), `source_key_property`, `target_key_property`, `source_dataset_column`, `target_dataset_column` (nullable, junction table columns for M:M), `created_at`, `updated_at`
+- `id`, `name`, `description`, `source_object_type_id` (FK), `target_object_type_id` (FK), `cardinality` (one-to-one | one-to-many | many-to-many), `dataset_id` (FK → datasets, nullable, for many-to-many), `source_key_property`, `target_key_property`, `source_dataset_column`, `target_dataset_column` (nullable, junction table columns for M:M), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
 - Schema for relationships between two object types; when many-to-many with dataset_id, links and link_count come from junction table
 
 ### LinkInstance

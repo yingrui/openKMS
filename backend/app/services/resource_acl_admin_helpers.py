@@ -10,6 +10,7 @@ from app.models.dataset import Dataset
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.models.evaluation import Evaluation
+from app.models.glossary import Glossary
 from app.models.knowledge_base import KnowledgeBase
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
@@ -21,6 +22,7 @@ from app.services.resource_acl_constants import (
     RT_DOCUMENT,
     RT_DOCUMENT_CHANNEL,
     RT_EVALUATION,
+    RT_GLOSSARY,
     RT_KNOWLEDGE_BASE,
     RT_LINK_TYPE,
     RT_OBJECT_TYPE,
@@ -36,7 +38,10 @@ def share_path_for(resource_type: str, resource_id: str) -> str | None:
         RT_ARTICLE_CHANNEL: f"/articles/channels/{resource_id}/settings?tab=sharing",
         RT_WIKI_SPACE: f"/wikis/{resource_id}/settings#sharing",
         RT_KNOWLEDGE_BASE: f"/knowledge-bases/{resource_id}?tab=settings",
-        RT_EVALUATION: f"/evaluations/{resource_id}/settings",
+        RT_EVALUATION: f"/evaluations/{resource_id}/settings?tab=sharing",
+        RT_GLOSSARY: f"/glossaries/{resource_id}/settings?tab=sharing",
+        RT_OBJECT_TYPE: f"/ontology/object-types/{resource_id}/settings?tab=sharing",
+        RT_LINK_TYPE: f"/ontology/link-types/{resource_id}/settings?tab=sharing",
     }
     return paths.get(resource_type)
 
@@ -51,6 +56,7 @@ def resource_type_label(resource_type: str) -> str:
         RT_WIKI_PAGE: "Wiki page",
         RT_KNOWLEDGE_BASE: "Knowledge base",
         RT_EVALUATION: "Evaluation",
+        RT_GLOSSARY: "Glossary",
         RT_DATASET: "Dataset",
         RT_OBJECT_TYPE: "Object type",
         RT_LINK_TYPE: "Link type",
@@ -85,6 +91,9 @@ async def resolve_resource_label(db: AsyncSession, resource_type: str, resource_
         return row.name if row else resource_id
     if resource_type == RT_EVALUATION:
         row = await db.get(Evaluation, resource_id)
+        return row.name if row else resource_id
+    if resource_type == RT_GLOSSARY:
+        row = await db.get(Glossary, resource_id)
         return row.name if row else resource_id
     if resource_type == RT_DATASET:
         row = await db.get(Dataset, resource_id)

@@ -6,6 +6,20 @@
   max-width: 900px;
 }
 
+.eval-dataset-settings-tabs {
+  margin-bottom: 0;
+}
+
+.eval-dataset-settings-panel {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-bottom: 24px;
+
+  .resource-share-panel {
+    margin-top: 0;
+  }
+}
+
 .eval-dataset-settings-kb-link {
   font-size: 0.9375rem;
   color: var(--color-accent);

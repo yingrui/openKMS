@@ -93,4 +93,5 @@ export const RESOURCE_TYPES = {
   dataset: 'dataset',
   objectType: 'object_type',
   linkType: 'link_type',
+  glossary: 'glossary',
 } as const;

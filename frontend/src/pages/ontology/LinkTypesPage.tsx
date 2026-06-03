@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Database } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Database, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   fetchLinkTypes,
@@ -327,6 +328,13 @@ export function LinkTypesPage() {
                             )}
                           </button>
                         ) : null}
+                        <Link
+                          to={`/ontology/link-types/${t.id}/settings?tab=sharing`}
+                          title="Sharing"
+                          className="console-table-icon-link"
+                        >
+                          <Users size={16} />
+                        </Link>
                         <button type="button" title="Edit" onClick={() => openEdit(t)}>
                           <Pencil size={16} />
                         </button>

@@ -213,6 +213,18 @@
   margin-top: 0.15rem;
 }
 
+.resource-share-owner-unassigned {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+
+  .resource-share-grantee-note {
+    margin-top: 0;
+  }
+}
+
 .resource-share-loading {
   color: var(--color-text-muted);
 }

@@ -33,6 +33,13 @@ from app.schemas.evaluation import (
     SearchResultSnippet,
 )
 from app.services.data_resource_policy import evaluation_visible, knowledge_base_visible
+from app.services.data_scope import bootstrap_owner_acl
+from app.services.evaluation_scope import (
+    require_evaluation_manage,
+    require_evaluation_read,
+    require_evaluation_write,
+)
+from app.services.resource_acl_constants import RT_EVALUATION
 from app.services.evaluation.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
@@ -60,11 +67,25 @@ async def get_evaluation_scoped(
     ev = await db.get(Evaluation, evaluation_id)
     if not ev:
         raise HTTPException(status_code=404, detail="Evaluation not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and not await evaluation_visible(db, p, sub, ev):
-        raise HTTPException(status_code=404, detail="Evaluation not found")
-    return ev
+    return await require_evaluation_read(db, request, ev)
+
+
+async def get_evaluation_scoped_write(
+    evaluation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Evaluation:
+    ev = await get_evaluation_scoped(evaluation_id, request, db)
+    return await require_evaluation_write(db, request, ev)
+
+
+async def get_evaluation_scoped_manage(
+    evaluation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Evaluation:
+    ev = await get_evaluation_scoped(evaluation_id, request, db)
+    return await require_evaluation_manage(db, request, ev)
 
 
 async def _item_count(db: AsyncSession, evaluation_id: str) -> int:
@@ -244,6 +265,7 @@ async def list_evaluations(
 @router.post("", response_model=EvaluationResponse, status_code=201)
 async def create_evaluation(
     body: EvaluationCreate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     kb = await db.get(KnowledgeBase, body.knowledge_base_id)
@@ -255,15 +277,23 @@ async def create_evaluation(
         if not ws:
             raise HTTPException(status_code=404, detail="Wiki space not found")
         wiki_name = ws.name
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     ev = Evaluation(
         id=str(uuid.uuid4()),
         name=body.name,
         knowledge_base_id=body.knowledge_base_id,
         wiki_space_id=body.wiki_space_id,
         description=body.description,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(ev)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_EVALUATION, ev.id, sub)
+    await db.commit()
     await db.refresh(ev)
     return _evaluation_to_response(ev, kb.name, wiki_name, 0)
 
@@ -285,7 +315,7 @@ async def update_evaluation(
     evaluation_id: str,
     body: EvaluationUpdate,
     request: Request,
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump(exclude_unset=True)
@@ -320,7 +350,7 @@ async def update_evaluation(
 @router.delete("/{evaluation_id}", status_code=204)
 async def delete_evaluation(
     evaluation_id: str,
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_manage),
     db: AsyncSession = Depends(get_db),
 ):
     await db.delete(ev)
@@ -359,7 +389,7 @@ async def list_evaluation_items(
 async def create_evaluation_item(
     evaluation_id: str,
     body: EvaluationItemCreate,
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     item = EvaluationItem(
@@ -381,7 +411,7 @@ async def update_evaluation_item(
     evaluation_id: str,
     item_id: str,
     body: EvaluationItemUpdate,
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     item = await db.get(EvaluationItem, item_id)
@@ -398,7 +428,7 @@ async def update_evaluation_item(
 async def import_evaluation_items(
     evaluation_id: str,
     file: UploadFile = File(...),
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Import evaluation items from a CSV file. Expected columns: topic (optional), query, answer or expected_answer."""
@@ -454,7 +484,7 @@ async def import_evaluation_items(
 async def delete_evaluation_item(
     evaluation_id: str,
     item_id: str,
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     item = await db.get(EvaluationItem, item_id)
@@ -594,7 +624,7 @@ async def get_evaluation_run(
 async def delete_evaluation_run(
     evaluation_id: str,
     run_id: str,
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     run = await db.get(EvaluationRun, run_id)
@@ -608,7 +638,7 @@ async def run_evaluation(
     evaluation_id: str,
     body: EvaluationRunRequestBody = Body(default_factory=EvaluationRunRequestBody),
     token: str = Depends(require_auth),
-    ev: Evaluation = Depends(get_evaluation_scoped),
+    ev: Evaluation = Depends(get_evaluation_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Run evaluation (search retrieval or QA), persist report, return full results."""

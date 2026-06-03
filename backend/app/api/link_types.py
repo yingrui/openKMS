@@ -13,6 +13,9 @@ from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLO
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count, get_dataset_row_count_where_not_null
 from app.database import get_db
 from app.services.data_resource_policy import link_type_visible
+from app.services.data_scope import bootstrap_owner_acl
+from app.services.ontology_type_scope import require_link_type_permission
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_TYPE
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
@@ -37,14 +40,12 @@ router = APIRouter(
 )
 
 
-async def _require_link_type_in_scope(request: Request, db: AsyncSession, link_type_id: str) -> None:
-    lt = await db.get(LinkType, link_type_id)
-    if not lt:
-        raise HTTPException(status_code=404, detail="Link type not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and not await link_type_visible(db, p, sub, lt):
-        raise HTTPException(status_code=404, detail="Link type not found")
+async def _require_link_type_read(request: Request, db: AsyncSession, link_type_id: str) -> None:
+    await require_link_type_permission(request, db, link_type_id, PERM_READ)
+
+
+async def _require_link_type_write(request: Request, db: AsyncSession, link_type_id: str) -> None:
+    await require_link_type_permission(request, db, link_type_id, PERM_WRITE)
 
 
 class IndexToNeo4jRequest(BaseModel):
@@ -237,6 +238,7 @@ async def list_link_types(
 @router.post("", response_model=LinkTypeResponse, status_code=201)
 async def create_link_type(
     body: LinkTypeCreate,
+    request: Request,
     _: None = Depends(require_any_permission(PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -250,6 +252,9 @@ async def create_link_type(
     cardinality = body.cardinality or "one-to-many"
     if cardinality not in CARDINALITY_CHOICES:
         raise HTTPException(status_code=400, detail=f"cardinality must be one of {CARDINALITY_CHOICES}")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     link_type = LinkType(
         id=str(uuid.uuid4()),
         name=body.name,
@@ -262,9 +267,14 @@ async def create_link_type(
         target_key_property=body.target_key_property,
         source_dataset_column=body.source_dataset_column,
         target_dataset_column=body.target_dataset_column,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(link_type)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_LINK_TYPE, link_type.id, sub)
+    await db.commit()
     await db.refresh(link_type)
     return await _to_response(db, link_type)
 
@@ -321,7 +331,7 @@ async def update_link_type(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    await _require_link_type_in_scope(request, db, link_type_id)
+    await _require_link_type_read(request, db, link_type_id)
     if body.name is not None:
         link_type.name = body.name
     if body.description is not None:
@@ -368,7 +378,7 @@ async def delete_link_type(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    await _require_link_type_in_scope(request, db, link_type_id)
+    await _require_link_type_read(request, db, link_type_id)
     await db.delete(link_type)
 
 
@@ -639,7 +649,7 @@ async def list_link_instances(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    await _require_link_type_in_scope(request, db, link_type_id)
+    await _require_link_type_read(request, db, link_type_id)
 
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
@@ -800,7 +810,7 @@ async def create_link_instance(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    await _require_link_type_in_scope(request, db, link_type_id)
+    await _require_link_type_write(request, db, link_type_id)
     if link_type.cardinality == "many-to-many" and link_type.dataset_id:
         raise HTTPException(
             status_code=400,
@@ -849,7 +859,7 @@ async def delete_link_instance(
     link_type = await db.get(LinkType, link_type_id)
     if not link_type:
         raise HTTPException(status_code=404, detail="Link type not found")
-    await _require_link_type_in_scope(request, db, link_type_id)
+    await _require_link_type_write(request, db, link_type_id)
     if link_type.cardinality == "many-to-many" and link_type.dataset_id:
         raise HTTPException(
             status_code=400,

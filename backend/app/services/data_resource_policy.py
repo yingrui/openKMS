@@ -6,12 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.dataset import Dataset
 from app.models.evaluation import Evaluation
+from app.models.glossary import Glossary
 from app.models.knowledge_base import KnowledgeBase
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.resource_acl_constants import (
     RT_DATASET,
     RT_EVALUATION,
+    RT_GLOSSARY,
     RT_KNOWLEDGE_BASE,
     RT_LINK_TYPE,
     RT_OBJECT_TYPE,
@@ -41,6 +43,10 @@ async def object_type_visible(db: AsyncSession, jwt_payload: dict, sub: str, row
     return await instance_visible(db, jwt_payload, sub, RT_OBJECT_TYPE, row.id)
 
 
+async def glossary_visible(db: AsyncSession, jwt_payload: dict, sub: str, row: Glossary) -> bool:
+    return await instance_visible(db, jwt_payload, sub, RT_GLOSSARY, row.id)
+
+
 async def link_type_visible(db: AsyncSession, jwt_payload: dict, sub: str, row: LinkType) -> bool:
     return await instance_visible(db, jwt_payload, sub, RT_LINK_TYPE, row.id)
 
@@ -51,6 +57,7 @@ __all__ = [
     "document_passes_scoped_predicate",
     "effective_channel_ids_with_data_resources",
     "evaluation_visible",
+    "glossary_visible",
     "knowledge_base_visible",
     "link_type_visible",
     "object_type_visible",

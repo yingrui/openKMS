@@ -477,7 +477,14 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
                   )}
                 </>
               ) : (
-                <span className="resource-share-grantee-note">{t('resourceShare.ownerNotSet')}</span>
+                <div className="resource-share-owner-unassigned">
+                  <span className="resource-share-grantee-note">{t('resourceShare.ownerNotSet')}</span>
+                  {canManage && !ownerEditing && (
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={startOwnerAssign}>
+                      {t('resourceShare.assignOwner')}
+                    </button>
+                  )}
+                </div>
               )}
             </td>
             {ownerGrant ? (
@@ -494,9 +501,9 @@ export function ResourceSharePanel({ resourceType, resourceId, title, consoleAud
               </>
             )}
             <td>
-              {canManage && !ownerEditing && (
+              {canManage && !ownerEditing && ownerGrant && (
                 <button type="button" className="btn-link" onClick={startOwnerAssign}>
-                  {ownerGrant ? t('resourceShare.changeOwner') : t('resourceShare.assignOwner')}
+                  {t('resourceShare.changeOwner')}
                 </button>
               )}
               {canManage && ownerEditing && (

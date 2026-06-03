@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,14 @@ from app.schemas.glossary import (
     GlossaryTermUpdate,
     GlossaryUpdate,
 )
+from app.services.data_resource_policy import glossary_visible
+from app.services.data_scope import bootstrap_owner_acl
+from app.services.glossary_scope import (
+    require_glossary_manage,
+    require_glossary_read,
+    require_glossary_write,
+)
+from app.services.resource_acl_constants import RT_GLOSSARY
 
 router = APIRouter(
     prefix="/glossaries",
@@ -63,12 +71,45 @@ def _term_to_response(term: GlossaryTerm) -> GlossaryTermResponse:
     )
 
 
+async def get_glossary_scoped(
+    glossary_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Glossary:
+    glossary = await db.get(Glossary, glossary_id)
+    if not glossary:
+        raise HTTPException(status_code=404, detail="Glossary not found")
+    return await require_glossary_read(db, request, glossary)
+
+
+async def get_glossary_scoped_write(
+    glossary_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Glossary:
+    glossary = await get_glossary_scoped(glossary_id, request, db)
+    return await require_glossary_write(db, request, glossary)
+
+
+async def get_glossary_scoped_manage(
+    glossary_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Glossary:
+    glossary = await get_glossary_scoped(glossary_id, request, db)
+    return await require_glossary_manage(db, request, glossary)
+
+
 # --- Glossary CRUD ---
 
 @router.get("", response_model=GlossaryListResponse)
-async def list_glossaries(db: AsyncSession = Depends(get_db)):
+async def list_glossaries(request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Glossary).order_by(Glossary.created_at.desc()))
-    glossaries = result.scalars().all()
+    glossaries = list(result.scalars().all())
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str):
+        glossaries = [g for g in glossaries if await glossary_visible(db, p, sub, g)]
     items = []
     for g in glossaries:
         count = await _glossary_term_count(db, g.id)
@@ -77,35 +118,42 @@ async def list_glossaries(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("", response_model=GlossaryResponse, status_code=201)
-async def create_glossary(body: GlossaryCreate, db: AsyncSession = Depends(get_db)):
+async def create_glossary(body: GlossaryCreate, request: Request, db: AsyncSession = Depends(get_db)):
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     glossary = Glossary(
         id=str(uuid.uuid4()),
         name=body.name,
         description=body.description,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(glossary)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_GLOSSARY, glossary.id, sub)
+    await db.commit()
     await db.refresh(glossary)
     count = await _glossary_term_count(db, glossary.id)
     return _glossary_to_response(glossary, count)
 
 
 @router.get("/{glossary_id}", response_model=GlossaryResponse)
-async def get_glossary(glossary_id: str, db: AsyncSession = Depends(get_db)):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
+async def get_glossary(
+    glossary: Glossary = Depends(get_glossary_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     count = await _glossary_term_count(db, glossary.id)
     return _glossary_to_response(glossary, count)
 
 
 @router.put("/{glossary_id}", response_model=GlossaryResponse)
 async def update_glossary(
-    glossary_id: str, body: GlossaryUpdate, db: AsyncSession = Depends(get_db)
+    body: GlossaryUpdate,
+    glossary: Glossary = Depends(get_glossary_scoped_write),
+    db: AsyncSession = Depends(get_db),
 ):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(glossary, field, value)
@@ -116,11 +164,11 @@ async def update_glossary(
 
 
 @router.delete("/{glossary_id}", status_code=204)
-async def delete_glossary(glossary_id: str, db: AsyncSession = Depends(get_db)):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
-    await db.execute(delete(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary_id))
+async def delete_glossary(
+    glossary: Glossary = Depends(get_glossary_scoped_manage),
+    db: AsyncSession = Depends(get_db),
+):
+    await db.execute(delete(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary.id))
     await db.delete(glossary)
 
 
@@ -128,15 +176,11 @@ async def delete_glossary(glossary_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/{glossary_id}/terms", response_model=GlossaryTermListResponse)
 async def list_glossary_terms(
-    glossary_id: str,
     search: str | None = Query(None),
+    glossary: Glossary = Depends(get_glossary_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
-
-    query = select(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary_id)
+    query = select(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary.id)
 
     if search and search.strip():
         pattern = f"%{search.strip()}%"
@@ -160,14 +204,11 @@ async def list_glossary_terms(
 
 @router.post("/{glossary_id}/terms/suggest", response_model=GlossaryTermSuggestResponse)
 async def suggest_glossary_term(
-    glossary_id: str,
     body: GlossaryTermSuggestRequest,
+    glossary: Glossary = Depends(get_glossary_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Use AI to suggest translation and synonyms for a term. Requires at least primary_en or primary_cn."""
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
     if not (body.primary_en or body.primary_cn) or (
         not (body.primary_en or "").strip() and not (body.primary_cn or "").strip()
     ):
@@ -210,15 +251,13 @@ async def suggest_glossary_term(
 
 @router.post("/{glossary_id}/terms", response_model=GlossaryTermResponse, status_code=201)
 async def create_glossary_term(
-    glossary_id: str, body: GlossaryTermCreate, db: AsyncSession = Depends(get_db)
+    body: GlossaryTermCreate,
+    glossary: Glossary = Depends(get_glossary_scoped_write),
+    db: AsyncSession = Depends(get_db),
 ):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
-
     term = GlossaryTerm(
         id=str(uuid.uuid4()),
-        glossary_id=glossary_id,
+        glossary_id=glossary.id,
         primary_en=body.primary_en or None,
         primary_cn=body.primary_cn or None,
         definition=body.definition or None,
@@ -233,23 +272,25 @@ async def create_glossary_term(
 
 @router.get("/{glossary_id}/terms/{term_id}", response_model=GlossaryTermResponse)
 async def get_glossary_term(
-    glossary_id: str, term_id: str, db: AsyncSession = Depends(get_db)
+    term_id: str,
+    glossary: Glossary = Depends(get_glossary_scoped),
+    db: AsyncSession = Depends(get_db),
 ):
     term = await db.get(GlossaryTerm, term_id)
-    if not term or term.glossary_id != glossary_id:
+    if not term or term.glossary_id != glossary.id:
         raise HTTPException(status_code=404, detail="Term not found")
     return _term_to_response(term)
 
 
 @router.put("/{glossary_id}/terms/{term_id}", response_model=GlossaryTermResponse)
 async def update_glossary_term(
-    glossary_id: str,
     term_id: str,
     body: GlossaryTermUpdate,
+    glossary: Glossary = Depends(get_glossary_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
     term = await db.get(GlossaryTerm, term_id)
-    if not term or term.glossary_id != glossary_id:
+    if not term or term.glossary_id != glossary.id:
         raise HTTPException(status_code=404, detail="Term not found")
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -257,7 +298,6 @@ async def update_glossary_term(
             setattr(term, field, value.strip() or None)
         else:
             setattr(term, field, value)
-    # Validate: at least one primary must remain
     if not term.primary_en and not term.primary_cn:
         raise HTTPException(
             status_code=400,
@@ -270,10 +310,12 @@ async def update_glossary_term(
 
 @router.delete("/{glossary_id}/terms/{term_id}", status_code=204)
 async def delete_glossary_term(
-    glossary_id: str, term_id: str, db: AsyncSession = Depends(get_db)
+    term_id: str,
+    glossary: Glossary = Depends(get_glossary_scoped_write),
+    db: AsyncSession = Depends(get_db),
 ):
     term = await db.get(GlossaryTerm, term_id)
-    if not term or term.glossary_id != glossary_id:
+    if not term or term.glossary_id != glossary.id:
         raise HTTPException(status_code=404, detail="Term not found")
     await db.delete(term)
 
@@ -281,12 +323,12 @@ async def delete_glossary_term(
 # --- Export ---
 
 @router.get("/{glossary_id}/export", response_model=GlossaryExportPayload)
-async def export_glossary(glossary_id: str, db: AsyncSession = Depends(get_db)):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
+async def export_glossary(
+    glossary: Glossary = Depends(get_glossary_scoped),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary_id).order_by(GlossaryTerm.created_at)
+        select(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary.id).order_by(GlossaryTerm.created_at)
     )
     terms = result.scalars().all()
     return GlossaryExportPayload(
@@ -310,20 +352,18 @@ async def export_glossary(glossary_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{glossary_id}/import", response_model=GlossaryTermListResponse)
 async def import_glossary(
-    glossary_id: str, body: GlossaryImportPayload, db: AsyncSession = Depends(get_db)
+    body: GlossaryImportPayload,
+    glossary: Glossary = Depends(get_glossary_scoped_write),
+    db: AsyncSession = Depends(get_db),
 ):
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
-
     if body.mode == "replace":
-        await db.execute(delete(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary_id))
+        await db.execute(delete(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary.id))
 
     created = []
     for item in body.terms:
         term = GlossaryTerm(
             id=str(uuid.uuid4()),
-            glossary_id=glossary_id,
+            glossary_id=glossary.id,
             primary_en=item.primary_en or None,
             primary_cn=item.primary_cn or None,
             definition=item.definition or None,

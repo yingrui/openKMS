@@ -34,6 +34,8 @@ class LinkType(Base):
     target_key_property: Mapped[str | None] = mapped_column(String(128), nullable=True)  # Property in target object type for FK
     source_dataset_column: Mapped[str | None] = mapped_column(String(128), nullable=True)  # Column in junction table for source FK
     target_dataset_column: Mapped[str | None] = mapped_column(String(128), nullable=True)  # Column in junction table for target FK
+    created_by: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
+    created_by_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

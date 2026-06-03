@@ -148,6 +148,20 @@
   background: var(--color-bg-muted);
 }
 
+.console-table-btns .console-table-icon-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.console-table-btns .console-table-icon-link:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
 .console-table-empty {
   text-align: center;
   color: var(--color-text-muted);

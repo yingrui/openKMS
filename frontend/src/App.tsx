@@ -24,6 +24,7 @@ import { KnowledgeBaseList } from './pages/knowledge-bases/KnowledgeBaseList';
 import { WikiSpaceList } from './pages/wiki/WikiSpaceList';
 import { GlossaryList } from './pages/glossaries/GlossaryList';
 import { GlossaryDetail } from './pages/glossaries/GlossaryDetail';
+import { GlossarySettings } from './pages/glossaries/GlossarySettings';
 import { DocumentChannels } from './pages/documents/DocumentChannels';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
 import { ConsoleOverview } from './pages/console/ConsoleOverview';
@@ -33,6 +34,8 @@ import { ConsoleFeatureToggles } from './pages/console/ConsoleFeatureToggles';
 import { ConsoleHealth } from './pages/console/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
+import { ObjectTypeSettings } from './pages/ontology/ObjectTypeSettings';
+import { LinkTypeSettings } from './pages/ontology/LinkTypeSettings';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
@@ -151,6 +154,7 @@ function App() {
           <Route path="evaluations/:id/settings" element={<FeatureGate feature="evaluations"><EvaluationDatasetSettings /></FeatureGate>} />
           <Route path="evaluations/:id" element={<FeatureGate feature="evaluations"><EvaluationDatasetDetailPage /></FeatureGate>} />
           <Route path="glossaries" element={<GlossaryList />} />
+          <Route path="glossaries/:id/settings" element={<GlossarySettings />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
           <Route path="connectors" element={<FeatureGate feature="connectors"><ConnectorsPage /></FeatureGate>} />
           <Route path="profile" element={<Profile />} />
@@ -165,7 +169,9 @@ function App() {
             <Route path="datasets" element={<ConsoleDatasets />} />
             <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
             <Route path="object-types" element={<ObjectTypesPage />} />
+            <Route path="object-types/:typeId/settings" element={<ObjectTypeSettings />} />
             <Route path="link-types" element={<LinkTypesPage />} />
+            <Route path="link-types/:linkTypeId/settings" element={<LinkTypeSettings />} />
           </Route>
           <Route path="objects" element={<ObjectsList />} />
           <Route path="objects/:typeId" element={<ObjectTypeDetail />} />

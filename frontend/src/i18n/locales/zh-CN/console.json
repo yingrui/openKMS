@@ -452,5 +452,20 @@
     "yes": "是",
     "no": "否",
     "dash": "—"
+  },
+  "ontologySettings": {
+    "tabGeneral": "基本信息",
+    "tabSharing": "共享",
+    "sharingTitle": "谁可以访问此类型",
+    "generalHeading": "概览",
+    "objectTypeTitle": "对象类型设置",
+    "linkTypeTitle": "链接类型设置",
+    "objectTypeGeneralHint": "在对象类型列表中编辑模式。在「共享」中控制谁可查看或编辑实例。",
+    "linkTypeGeneralHint": "在链接类型列表中编辑模式。在「共享」中控制谁可查看或编辑链接。",
+    "backObjectTypes": "返回对象类型",
+    "backLinkTypes": "返回链接类型",
+    "loading": "加载中…",
+    "loadFailed": "加载失败",
+    "notFoundTitle": "未找到"
   }
 }

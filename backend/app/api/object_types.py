@@ -12,6 +12,9 @@ from app.services.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTO
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
 from app.services.data_resource_policy import object_type_visible
+from app.services.data_scope import bootstrap_owner_acl
+from app.services.ontology_type_scope import require_object_type_permission
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.credential_encryption import decrypt
@@ -35,14 +38,12 @@ router = APIRouter(
 )
 
 
-async def _require_object_type_in_scope(request: Request, db: AsyncSession, object_type_id: str) -> None:
-    ot = await db.get(ObjectType, object_type_id)
-    if not ot:
-        raise HTTPException(status_code=404, detail="Object type not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and not await object_type_visible(db, p, sub, ot):
-        raise HTTPException(status_code=404, detail="Object type not found")
+async def _require_object_type_read(request: Request, db: AsyncSession, object_type_id: str) -> None:
+    await require_object_type_permission(request, db, object_type_id, PERM_READ)
+
+
+async def _require_object_type_write(request: Request, db: AsyncSession, object_type_id: str) -> None:
+    await require_object_type_permission(request, db, object_type_id, PERM_WRITE)
 
 
 class IndexToNeo4jRequest(BaseModel):
@@ -285,6 +286,7 @@ async def list_object_types(
 @router.post("", response_model=ObjectTypeResponse, status_code=201)
 async def create_object_type(
     body: ObjectTypeCreate,
+    request: Request,
     _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
@@ -293,6 +295,9 @@ async def create_object_type(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Object type with this name already exists")
     props = _prop_defs_to_dicts(body.properties)
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
     obj_type = ObjectType(
         id=str(uuid.uuid4()),
         name=body.name,
@@ -302,9 +307,14 @@ async def create_object_type(
         is_master_data=body.is_master_data,
         display_property=body.display_property,
         properties=props,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
     )
     db.add(obj_type)
     await db.flush()
+    if isinstance(sub, str):
+        await bootstrap_owner_acl(db, RT_OBJECT_TYPE, obj_type.id, sub)
+    await db.commit()
     await db.refresh(obj_type)
     count = await _resolve_instance_count(db, obj_type)
     ds_name = await _dataset_name(db, obj_type.dataset_id)
@@ -565,7 +575,7 @@ async def list_object_instances(
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
-    await _require_object_type_in_scope(request, db, object_type_id)
+    await _require_object_type_read(request, db, object_type_id)
 
     id_prop = _resolve_id_property(obj_type)
 
@@ -664,7 +674,7 @@ async def create_object_instance(
     obj_type = await db.get(ObjectType, object_type_id)
     if not obj_type:
         raise HTTPException(status_code=404, detail="Object type not found")
-    await _require_object_type_in_scope(request, db, object_type_id)
+    await _require_object_type_write(request, db, object_type_id)
     instance = ObjectInstance(
         id=str(uuid.uuid4()),
         object_type_id=object_type_id,
@@ -689,7 +699,7 @@ async def get_object_instance(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_object_type_in_scope(request, db, object_type_id)
+    await _require_object_type_read(request, db, object_type_id)
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:
         raise HTTPException(status_code=404, detail="Object not found")
@@ -711,7 +721,7 @@ async def update_object_instance(
     _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_object_type_in_scope(request, db, object_type_id)
+    await _require_object_type_write(request, db, object_type_id)
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:
         raise HTTPException(status_code=404, detail="Object not found")
@@ -736,7 +746,7 @@ async def delete_object_instance(
     _: str = Depends(require_any_permission(PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE)),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_object_type_in_scope(request, db, object_type_id)
+    await _require_object_type_write(request, db, object_type_id)
     instance = await db.get(ObjectInstance, object_id)
     if not instance or instance.object_type_id != object_type_id:
         raise HTTPException(status_code=404, detail="Object not found")

@@ -105,14 +105,25 @@ def _parse_grants(body: ResourceAclPut) -> list[dict]:
     return out
 
 
-async def _channel_creator_identity(
+async def _resource_creator_identity(
     db: AsyncSession, resource_type: str, resource_id: str
 ) -> tuple[str | None, str | None]:
     from app.models.article_channel import ArticleChannel
     from app.models.document_channel import DocumentChannel
+    from app.models.evaluation import Evaluation
+    from app.models.glossary import Glossary
     from app.models.knowledge_base import KnowledgeBase
+    from app.models.link_type import LinkType
+    from app.models.object_type import ObjectType
     from app.models.wiki_models import WikiSpace
+    from app.services.resource_acl_constants import (
+        RT_EVALUATION,
+        RT_GLOSSARY,
+        RT_LINK_TYPE,
+        RT_OBJECT_TYPE,
+    )
 
+    ch = None
     if resource_type == RT_DOCUMENT_CHANNEL:
         ch = await db.get(DocumentChannel, resource_id)
     elif resource_type == RT_ARTICLE_CHANNEL:
@@ -121,11 +132,23 @@ async def _channel_creator_identity(
         ch = await db.get(WikiSpace, resource_id)
     elif resource_type == RT_KNOWLEDGE_BASE:
         ch = await db.get(KnowledgeBase, resource_id)
-    else:
-        return None, None
+    elif resource_type == RT_EVALUATION:
+        ch = await db.get(Evaluation, resource_id)
+    elif resource_type == RT_GLOSSARY:
+        ch = await db.get(Glossary, resource_id)
+    elif resource_type == RT_OBJECT_TYPE:
+        ch = await db.get(ObjectType, resource_id)
+    elif resource_type == RT_LINK_TYPE:
+        ch = await db.get(LinkType, resource_id)
     if not ch:
         return None, None
     return ch.created_by, ch.created_by_name
+
+
+async def _channel_creator_identity(
+    db: AsyncSession, resource_type: str, resource_id: str
+) -> tuple[str | None, str | None]:
+    return await _resource_creator_identity(db, resource_type, resource_id)
 
 
 async def _grant_labels(

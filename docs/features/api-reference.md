@@ -185,11 +185,11 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/evaluations` | List evaluations (optional ?knowledge_base_id=) |
-| POST | `/api/evaluations` | Create evaluation (body: `name`, `knowledge_base_id`, optional `wiki_space_id`, optional `description`) |
-| GET | `/api/evaluations/{id}` | Get evaluation |
-| PUT | `/api/evaluations/{id}` | Update evaluation (`name`, `description`, optional `knowledge_base_id`, optional `wiki_space_id` to link or clear) |
-| DELETE | `/api/evaluations/{id}` | Delete evaluation |
+| GET | `/api/evaluations` | List evaluations (optional ?knowledge_base_id=); filtered by read ACL |
+| POST | `/api/evaluations` | Create evaluation (body: `name`, `knowledge_base_id`, optional `wiki_space_id`, optional `description`); bootstraps owner ACL |
+| GET | `/api/evaluations/{id}` | Get evaluation (read ACL) |
+| PUT | `/api/evaluations/{id}` | Update evaluation (write ACL) |
+| DELETE | `/api/evaluations/{id}` | Delete evaluation (manage ACL) |
 | GET | `/api/evaluations/{id}/items` | List evaluation items (`offset`, `limit` default 10 max 200; response `{ items, total }`) |
 | POST | `/api/evaluations/{id}/items` | Add evaluation item (`query`, `expected_answer`, optional `topic`, optional `sort_order`) |
 | POST | `/api/evaluations/{id}/items/import` | Import items from CSV (multipart file; columns: topic, query, answer or expected_answer) |
@@ -212,11 +212,11 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/glossaries` | List glossaries |
-| POST | `/api/glossaries` | Create glossary |
-| GET | `/api/glossaries/{id}` | Get glossary with term count |
-| PUT | `/api/glossaries/{id}` | Update glossary |
-| DELETE | `/api/glossaries/{id}` | Delete glossary (cascades terms) |
+| GET | `/api/glossaries` | List glossaries (read ACL filter) |
+| POST | `/api/glossaries` | Create glossary; bootstraps owner ACL |
+| GET | `/api/glossaries/{id}` | Get glossary with term count (read ACL) |
+| PUT | `/api/glossaries/{id}` | Update glossary (write ACL) |
+| DELETE | `/api/glossaries/{id}` | Delete glossary (manage ACL; cascades terms) |
 | GET | `/api/glossaries/{id}/terms` | List terms (optional `?search=`) |
 | POST | `/api/glossaries/{id}/terms/suggest` | AI suggest translation, definition, synonyms (body: `{ primary_en?, primary_cn? }`); uses default LLM |
 | POST | `/api/glossaries/{id}/terms` | Create term |
@@ -230,16 +230,16 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/object-types` | List object types (authenticated); ?count_from_neo4j=true for instance_count from Neo4j |
-| POST | `/api/object-types` | Create object type (admin-only) |
+| GET | `/api/object-types` | List object types (authenticated, read ACL); ?count_from_neo4j=true for instance_count from Neo4j |
+| POST | `/api/object-types` | Create object type (admin-only); bootstraps owner ACL |
 | GET | `/api/object-types/{id}` | Get object type; ?count_from_neo4j=true for instance_count from Neo4j |
 | PUT | `/api/object-types/{id}` | Update object type (admin-only) |
 | DELETE | `/api/object-types/{id}` | Delete object type (admin-only) |
-| GET | `/api/object-types/{id}/objects` | List object instances (from Neo4j when available; optional ?search=, ?limit=, ?offset=) |
-| POST | `/api/object-types/{id}/objects` | Create object instance (admin-only) |
-| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance |
-| PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only) |
-| DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only) |
+| GET | `/api/object-types/{id}/objects` | List object instances (read ACL on parent type; from Neo4j when available; optional ?search=, ?limit=, ?offset=) |
+| POST | `/api/object-types/{id}/objects` | Create object instance (admin-only + write ACL on parent type) |
+| GET | `/api/object-types/{id}/objects/{obj_id}` | Get object instance (read ACL on parent type) |
+| PUT | `/api/object-types/{id}/objects/{obj_id}` | Update object instance (admin-only + write ACL on parent type) |
+| DELETE | `/api/object-types/{id}/objects/{obj_id}` | Delete object instance (admin-only + write ACL on parent type) |
 | POST | `/api/object-types/index-to-neo4j` | Index object types that have a linked dataset or stored instances to Neo4j as nodes (admin-only; body: neo4j_data_source_id) |
 | POST | `/api/object-types/{id}/index-to-neo4j` | Index one object type to Neo4j from its dataset, or from `object_instances` when there is no dataset (admin-only; body: neo4j_data_source_id; 400 if neither applies) |
 | GET | `/api/link-types` | List link types (authenticated); ?count_from_neo4j=true for link_count from Neo4j |

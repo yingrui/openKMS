@@ -63,7 +63,9 @@ Columns: [Data models — Data security](data-models.md#data-security-access-gro
 | `article` | Row + channel chain |
 | `wiki_space` | — |
 | `wiki_page` | Parent wiki space |
-| `knowledge_base`, `evaluation`, `dataset`, `object_type`, `link_type` | Standalone |
+| `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type` | Standalone |
+
+Object and link **instances** inherit read/write from their parent type’s ACL (not separate securable rows). Object Explorer sidebar lists only object/link types the caller can read.
 
 ### Grantees and bits
 
@@ -83,7 +85,7 @@ User grants: PUT runs `normalize_user_grantee_id()` (username, email, legacy loc
 
 Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL` is reserved for future system-wide defaults.
 
-**Others defaults (wiki space, knowledge base, channels):** Alembic seeds `grantee_type=authenticated` with **r/w/m** on resources that already existed when sharing shipped (`y7z8a9b0c1d2` document channels, `b2c3d4e5f6a9` article channels, `h8i9j0k1l2m3` wiki spaces and knowledge bases). **`bootstrap_owner_acl`** on create adds **owner rwm only** — no Others row, so non-owners are denied until sharing is changed.
+**Others defaults (wiki space, knowledge base, channels, evaluations, glossaries, object types, link types):** Alembic seeds `grantee_type=authenticated` with **r/w/m** on resources that already existed when sharing shipped (`y7z8a9b0c1d2` document channels, `b2c3d4e5f6a9` article channels, `h8i9j0k1l2m3` wiki spaces and knowledge bases, `m2n3o4p5q6r7` evaluations, glossaries, object types, link types). **`bootstrap_owner_acl`** on create adds **owner rwm only** — no Others row, so non-owners are denied until sharing is changed.
 
 ---
 
@@ -155,7 +157,7 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 
 ### Per-resource sharing (`ResourceSharePanel`)
 
-**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`).
+**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`), evaluation dataset settings (`/evaluations/{id}/settings?tab=sharing`), glossary settings (`/glossaries/{id}/settings?tab=sharing`), object type / link type settings (`/ontology/object-types|link-types/{id}/settings?tab=sharing`).
 
 | Row | `grantee_type` | Notes |
 |---|---|---|

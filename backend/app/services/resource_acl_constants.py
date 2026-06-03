@@ -21,6 +21,7 @@ RT_EVALUATION = "evaluation"
 RT_DATASET = "dataset"
 RT_OBJECT_TYPE = "object_type"
 RT_LINK_TYPE = "link_type"
+RT_GLOSSARY = "glossary"
 
 SECURABLE_RESOURCE_TYPES = frozenset(
     {
@@ -35,6 +36,7 @@ SECURABLE_RESOURCE_TYPES = frozenset(
         RT_DATASET,
         RT_OBJECT_TYPE,
         RT_LINK_TYPE,
+        RT_GLOSSARY,
     }
 )
 

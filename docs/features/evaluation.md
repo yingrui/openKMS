@@ -4,7 +4,7 @@ Evaluations are (query, expected answer) pairs, run against a **linked knowledge
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Evaluation CRUD | ✅ | Create/edit/delete evaluations; each linked to one **knowledge base** and optionally one **wiki space**; **Settings** at `/evaluations/{id}/settings` (name, description, **knowledge base** and wiki space selectors, delete evaluation) |
+| Evaluation CRUD | ✅ | Create/edit/delete evaluations; each linked to one **knowledge base** and optionally one **wiki space**; **Settings** at `/evaluations/{id}/settings` (General: name, description, KB/wiki selectors; **Sharing** tab; delete evaluation requires manage ACL) |
 | Evaluation items | ✅ | Add/edit/delete items: query + expected answer; optional **topic**; list API paginated (`offset`/`limit`, default limit 10); dataset detail UI: per-page size, prev/next |
 | CSV import | ✅ | Import Data uploads CSV: **topic** (optional), **query**, **answer** or **expected_answer** |
 | Run evaluation | ✅ | `POST /api/evaluations/{id}/run` body `{ evaluation_type }`: **`search_retrieval`** (default) — hybrid KB search + LLM judge on snippets; **`qa_answer`** — KB QA agent `/ask` per item + LLM judge; **`wiki_content_coverage`** — LLM judges whether matched wiki pages support **every** bullet/line in **expected_answer** (checklist-style decomposition). Pages are found from each item’s **query** (title/path substring, then semantic index). Requires **`wiki_space_id`** on the evaluation. For “find this in search”, index wiki content into the linked KB and use **`search_retrieval`**. Persists **`evaluation_runs`** + **`evaluation_run_items`** (JSONB `detail`); response includes `run_id`, aggregates |

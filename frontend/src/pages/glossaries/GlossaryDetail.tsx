@@ -12,6 +12,7 @@ import {
   Upload,
   Sparkles,
   Loader2,
+  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -337,6 +338,14 @@ export function GlossaryDetail() {
               <Upload size={18} />
               <span>{t('glossary.detail.import')}</span>
             </button>
+            <Link
+              to={`/glossaries/${glossaryId}/settings?tab=sharing`}
+              className="btn btn-secondary"
+              title={t('glossary.detail.sharingSettings')}
+            >
+              <Users size={18} />
+              <span>{t('glossary.detail.sharingSettings')}</span>
+            </Link>
             <button type="button" className="btn btn-primary" onClick={openAddTerm}>
               <Plus size={18} />
               <span>{t('glossary.detail.addTerm')}</span>

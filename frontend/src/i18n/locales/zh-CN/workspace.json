@@ -194,7 +194,9 @@
     "dangerHint": "删除数据集将同时移除全部条目与运行历史，且无法恢复。",
     "deleteDataset": "删除数据集",
     "deleting": "删除中…",
-    "deleteFailed": "删除失败"
+    "deleteFailed": "删除失败",
+    "tabSharing": "共享",
+    "sharingTitle": "谁可以访问此评测"
   },
   "evaluationDetail": {
     "toastLoadDatasetFailed": "无法加载评测数据集",
