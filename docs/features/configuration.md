@@ -129,8 +129,9 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 |---|---|---|
 | `OPENKMS_PERMISSION_CATALOG_CACHE_SECONDS` | `5` | In-process TTL for `GET /api/auth/permission-catalog`; `0` disables. Cleared when admins mutate `security_permissions`. |
 | `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` | `false` | When `true`, every authenticated `/api` request must match a catalog `backend_api_pattern` and the user must hold that key |
+| `OPENKMS_ENFORCE_RESOURCE_ACL` | `false` | Default-closed Layer 2: resources without ACL rows are denied (`OPENKMS_ENFORCE_GROUP_DATA_SCOPES` is an alias) |
 | `OPENKMS_PERMISSION_PATTERN_CACHE_TTL_SECONDS` | `60` | TTL for compiled permission patterns loaded from `security_permissions` |
-| `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` | (alias) | Same as `OPENKMS_ENFORCE_RESOURCE_ACL` — older env name kept for compatibility |
+| `OPENKMS_ENFORCE_GROUP_DATA_SCOPES` | (alias) | Same as `OPENKMS_ENFORCE_RESOURCE_ACL` |
 | `OPENKMS_DATASOURCE_ENCRYPTION_KEY` | unset | Fernet key (base64) used to encrypt `data_sources` credentials and **connector** secrets (`connectors.secrets_encrypted`); required before storing those values |
 
 ## Cursor / contributor rules

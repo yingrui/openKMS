@@ -10,7 +10,7 @@
 
 | Question | Answer |
 |---|---|
-| Resolver | `backend/app/services/resource_acl_service.py` |
+| Resolver | `resource_acl_service.py`; guards: `resource_guard.py` (standalone), `context_guard.py` (hierarchical) |
 | When is data restricted? | Any ACL row on the resource **or an ancestor** in its chain |
 | **Others** | `grantee_type=authenticated`; `permissions=0` = explicit deny for non-owner, non-group users |
 | Bits | `r`=1, `w`=2, `m`=4; manage satisfies read/write in `perm_satisfies` |
@@ -18,7 +18,7 @@
 | Sharing API | `GET`/`PUT /api/resource-acl/{type}/{id}`; `GET …/owner-candidates` |
 | Legacy | Data-resource scope APIs → **410**; use resource ACL |
 
-New **list/get** handlers: wire `check_resource_access` / `instance_visible` / `scoped_*_predicate`. New securable types: extend `SECURABLE_RESOURCE_TYPES`, `resource_context_chain`, Alembic, this page + `data-models.md`.
+New **list/get** handlers: use `resource_guard.load_scoped_resource` / `require_resource_by_id` for standalone types, or `check_resource_access` / `instance_visible` / channel predicates for hierarchical types. New securable types: extend `RESOURCE_REGISTRY` in `resource_guard.py`, `SECURABLE_RESOURCE_TYPES`, `resource_context_chain`, Alembic, this page + `data-models.md`.
 
 ---
 
@@ -33,7 +33,12 @@ Gates features and Console tools — not individual channels or documents.
 | `user_security_roles` | Local users → roles |
 | OIDC JWT `realm_access.roles` | Matched to `security_roles.name` |
 
-**Enforcement:** `require_permission` on routes; SPA via `GET /api/auth/permission-catalog`. Optional `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` (Layer 1 only — see [Configuration](configuration.md)).
+**Enforcement:** `require_permission` on routes; SPA via `GET /api/auth/permission-catalog`. Optional strict Layer 1 middleware — see [Configuration](configuration.md).
+
+| Flag | Default | Effect |
+|---|---|---|
+| `OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT` | `false` | Layer 1: every `/api` call must match a catalog pattern and permission key |
+| `OPENKMS_ENFORCE_RESOURCE_ACL` | `false` | Layer 2 default-closed: deny resources with no ACL rows until sharing is set |
 
 Canonical keys: [Console & authentication — Permission catalog](console-and-auth.md#permission-catalog-canonical-keys).
 
@@ -58,14 +63,12 @@ Columns: [Data models — Data security](data-models.md#data-security-access-gro
 | `resource_type` | Container chain |
 |---|---|
 | `document_channel` | Parent channels to root |
-| `document` | Row + channel chain |
 | `article_channel` | Parent article channels |
-| `article` | Row + channel chain |
 | `wiki_space` | — |
 | `wiki_page` | Parent wiki space |
 | `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type` | Standalone |
 
-Object and link **instances** inherit read/write from their parent type’s ACL (not separate securable rows). Object Explorer sidebar lists only object/link types the caller can read.
+**Documents and articles** are not securable rows: visibility is **channel-only** (`document_channel` / `article_channel` ACL).
 
 ### Grantees and bits
 
@@ -83,7 +86,7 @@ Object and link **instances** inherit read/write from their parent type’s ACL 
 
 User grants: PUT runs `normalize_user_grantee_id()` (username, email, legacy local id → canonical). Read uses `user_grant_matches()` for alias / legacy-id bridging.
 
-Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL` is reserved for future system-wide defaults.
+Per-resource sharing applies when ACL rows exist. Set **`OPENKMS_ENFORCE_RESOURCE_ACL=true`** for **default-closed** mode: resources with no ACL rows are denied until sharing is configured (Layer 1 keys alone are not enough).
 
 **Others defaults (wiki space, knowledge base, channels, evaluations, glossaries, datasets, object types, link types):** Alembic seeds `grantee_type=authenticated` with **r/w/m** on resources that already existed when sharing shipped (`y7z8a9b0c1d2` document channels, `b2c3d4e5f6a9` article channels, `h8i9j0k1l2m3` wiki spaces and knowledge bases, `m2n3o4p5q6r7` evaluations, glossaries, object types, link types; `n3o4p5q6r7s8` datasets). **`bootstrap_owner_acl`** on create adds **owner rwm only** — no Others row, so non-owners are denied until sharing is changed.
 
@@ -129,14 +132,15 @@ Per-resource sharing applies when ACL rows exist; `OPENKMS_ENFORCE_RESOURCE_ACL`
 
 | Surface | Mechanism |
 |---|---|
-| Document channels | `readable_document_channel_ids`; single GET → 404 if not readable |
-| Documents | `scoped_document_predicate`, upload/move helpers |
-| Articles | `scoped_article_predicate`, `article_passes_scoped_predicate` |
-| Wiki, KB, eval, dataset, ontology types | `readable_resource_ids`, `instance_visible` |
-| Dataset register / table picker | RBAC: `console:datasets` only (not `ontology:write`; not blocked by access-group membership); per-dataset ACL on read/update/delete |
+| Standalone resources (KB, eval, glossary, dataset, ontology types) | `resource_guard.py` — `load_scoped_resource`, `require_resource_by_id` |
+| Documents | Channel ACL — read: `require_document_read`; **write/mutate:** `require_document_write` (channel `w`) |
+| Articles | Channel ACL — read: `require_article_read`; **write/mutate:** `require_article_write` (channel `w`) |
+| Document / article channels | Read lists: batched `readable_*_channel_ids`. **Mutations:** `require_*_channel_write` |
+| Wiki / KB linked documents | **List:** all links when caller can read space/KB. **Add:** space/KB write + document read (channel) |
+| Wiki pages | Space ACL via `get_wiki_space_scoped`; page-level ACL reserved |
+| Jobs | Args resolved to document (channel write for create/retry) or KB (scoped write/read) |
 | Global search | Scoped in `global_search.py` |
 | Sharing API | GET needs read; PUT needs manage |
-| SPA channel page | Sidebar filter; missing channel → not found |
 
 `data_resource_policy.py` delegates visibility checks to resource ACL (no `data_resources` table).
 
@@ -217,9 +221,10 @@ Owner `bob` `rwm`, group **QA** `rwm`, **Others** empty → user **alice** with 
 | Topic | Status |
 |---|---|
 | Share UI coverage | Channels, wiki, KB; API supports all `SECURABLE_RESOURCE_TYPES` |
-| `OPENKMS_ENFORCE_RESOURCE_ACL` default-closed | Reserved, not implemented |
+| Wiki page ACL | Registered in `SECURABLE_RESOURCE_TYPES`; content routes use space ACL only |
+| KB search / ask side channel | Indexed chunk content returned to KB readers without re-checking document channel ACL |
 | OIDC owner picker directory | API keys + group members, not full IdP sync |
-| List filter performance | Per-channel evaluation; may need SQL batching |
+| List filter performance | Standalone + channel trees batched; restricted channels still per-id `check_resource_access` |
 
 Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — Deliberate non-goals](../security.md#deliberate-non-goals-today).
 
@@ -230,7 +235,10 @@ Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — 
 | Path | Role |
 |---|---|
 | `resource_acl_constants.py` | Types, bits, grantees |
-| `resource_acl_service.py` | Resolve, filters, normalize/match owner |
+| `resource_guard.py` | Unified Layer 2 guard + `RESOURCE_REGISTRY` for standalone types |
+| `context_guard.py` | Hierarchical guard + `CONTEXT_*_REGISTRY` for documents, articles, channels |
+| `document_scope.py`, `article_scope.py`, `channel_scope.py`, `article_channel_scope.py` | Thin API-facing aliases |
+| `resource_acl_service.py` | Resolve, filters, normalize/match owner, `acl_check_required` |
 | `api/resource_acl.py` | Sharing HTTP API |
 | `api/admin/resource_acl_admin.py` | Issues + audit ACL |
 | `api/admin/groups.py` | Groups, members, shared list |
@@ -238,3 +246,4 @@ Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — 
 | `data_scope.py` | Channel tree + re-exports |
 | `ResourceSharePanel.tsx` / `resourceAclApi.ts` | SPA sharing |
 | `tests/test_resource_acl.py` | Unit tests |
+| `tests/test_document_write_acl.py` | Document write vs read channel ACL |

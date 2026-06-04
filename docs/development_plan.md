@@ -145,7 +145,7 @@ Today: [Documents](features/documents.md) lifecycle + relationships; `is_current
 | Documents | Advanced filter in channel document list | [Documents](features/documents.md) |
 | Articles | Editor / detail UX polish | [Articles](features/articles.md) |
 | Jobs | Job logs / stdout capture; configurable worker concurrency | [Pipelines, jobs & models](features/pipelines-and-jobs.md) |
-| Data security | Default-closed system mode when `OPENKMS_ENFORCE_RESOURCE_ACL` semantics are defined | [Data security](features/data-security.md) |
+| Data security | Hierarchical list batching for document/article channels | [Data security](features/data-security.md) |
 
 Active UX / quality gaps: [Tech debt](./tech_debt.md).
 

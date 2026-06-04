@@ -248,7 +248,9 @@ backend/
 │       ├── permission_resolution.py    # Permissions: local via user_security_roles; OIDC via JWT realm role name matching security_roles.name
 │       ├── user_roles_sync.py          # Sync user_security_roles from users.is_admin; create member role with `all` if missing
 │       ├── data_scope.py               # Re-exports resource ACL helpers; channel subtree expansion
-│       ├── resource_acl_service.py     # OPENKMS_ENFORCE_RESOURCE_ACL: hierarchical ACL resolve, list filters, inheritance
+│       ├── resource_guard.py           # Layer 2 guard (standalone types)
+│       ├── context_guard.py            # Layer 2 guard (channels, documents, articles)
+│       ├── resource_acl_service.py     # ACL resolve, list filters, acl_check_required
 │       └── data_resource_policy.py     # Visibility helpers delegating to resource ACL
 ├── scripts/
 │   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing

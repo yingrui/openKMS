@@ -32,14 +32,14 @@ from app.schemas.evaluation import (
     EvaluationUpdate,
     SearchResultSnippet,
 )
-from app.services.data_resource_policy import evaluation_visible, knowledge_base_visible
+from app.services.data_resource_policy import evaluation_visible, knowledge_base_visible, wiki_space_visible
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.evaluation_scope import (
+    load_evaluation_scoped,
     require_evaluation_manage,
-    require_evaluation_read,
     require_evaluation_write,
 )
-from app.services.resource_acl_constants import RT_EVALUATION
+from app.services.resource_acl_constants import PERM_READ, RT_EVALUATION
 from app.services.evaluation.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
@@ -64,10 +64,7 @@ async def get_evaluation_scoped(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Evaluation:
-    ev = await db.get(Evaluation, evaluation_id)
-    if not ev:
-        raise HTTPException(status_code=404, detail="Evaluation not found")
-    return await require_evaluation_read(db, request, ev)
+    return await load_evaluation_scoped(db, request, evaluation_id, PERM_READ)
 
 
 async def get_evaluation_scoped_write(
@@ -271,14 +268,18 @@ async def create_evaluation(
     kb = await db.get(KnowledgeBase, body.knowledge_base_id)
     if not kb:
         raise HTTPException(status_code=404, detail="Knowledge base not found")
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
     wiki_name = None
     if body.wiki_space_id:
         ws = await db.get(WikiSpace, body.wiki_space_id)
         if not ws:
             raise HTTPException(status_code=404, detail="Wiki space not found")
+        if isinstance(sub, str) and not await wiki_space_visible(db, p, sub, ws):
+            raise HTTPException(status_code=404, detail="Wiki space not found")
         wiki_name = ws.name
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
     uname = p.get("preferred_username") or p.get("name")
     ev = Evaluation(
         id=str(uuid.uuid4()),
@@ -328,6 +329,8 @@ async def update_evaluation(
             else:
                 ws = await db.get(WikiSpace, value)
                 if not ws:
+                    raise HTTPException(status_code=404, detail="Wiki space not found")
+                if isinstance(sub, str) and not await wiki_space_visible(db, p, sub, ws):
                     raise HTTPException(status_code=404, detail="Wiki space not found")
                 ev.wiki_space_id = value
         elif field == "knowledge_base_id":

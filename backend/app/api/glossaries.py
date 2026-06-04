@@ -27,11 +27,11 @@ from app.schemas.glossary import (
 from app.services.data_resource_policy import glossary_visible
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.glossary_scope import (
+    load_glossary_scoped,
     require_glossary_manage,
-    require_glossary_read,
     require_glossary_write,
 )
-from app.services.resource_acl_constants import RT_GLOSSARY
+from app.services.resource_acl_constants import PERM_READ, RT_GLOSSARY
 
 router = APIRouter(
     prefix="/glossaries",
@@ -76,10 +76,7 @@ async def get_glossary_scoped(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Glossary:
-    glossary = await db.get(Glossary, glossary_id)
-    if not glossary:
-        raise HTTPException(status_code=404, detail="Glossary not found")
-    return await require_glossary_read(db, request, glossary)
+    return await load_glossary_scoped(db, request, glossary_id, PERM_READ)
 
 
 async def get_glossary_scoped_write(

@@ -25,10 +25,14 @@ from app.services.resource_acl_constants import (
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,
-    RT_ARTICLE,
     RT_ARTICLE_CHANNEL,
-    RT_DOCUMENT,
+    RT_DATASET,
     RT_DOCUMENT_CHANNEL,
+    RT_EVALUATION,
+    RT_GLOSSARY,
+    RT_KNOWLEDGE_BASE,
+    RT_LINK_TYPE,
+    RT_OBJECT_TYPE,
     RT_WIKI_PAGE,
     RT_WIKI_SPACE,
     SECURABLE_RESOURCE_TYPES,
@@ -596,15 +600,7 @@ async def resource_context_chain(
     """Resource itself plus container ancestors for ACL inheritance (nearest first)."""
     chain: list[tuple[str, str]] = [(resource_type, resource_id)]
 
-    if resource_type == RT_DOCUMENT:
-        doc = await db.get(Document, resource_id)
-        if doc:
-            chain.extend(await _document_channel_chain(db, doc.channel_id))
-    elif resource_type == RT_ARTICLE:
-        art = await db.get(Article, resource_id)
-        if art:
-            chain.extend(await _article_channel_chain(db, art.channel_id))
-    elif resource_type == RT_WIKI_PAGE:
+    if resource_type == RT_WIKI_PAGE:
         page = await db.get(WikiPage, resource_id)
         if page:
             chain.append((RT_WIKI_SPACE, page.wiki_space_id))
@@ -627,6 +623,49 @@ async def resource_has_acl_restrictions(
     chain = await resource_context_chain(db, resource_type, resource_id)
     entries = await _acl_entries_for_resources(db, chain)
     return len(entries) > 0
+
+
+async def acl_check_required(
+    db: AsyncSession, resource_type: str, resource_id: str
+) -> bool:
+    """True when Layer 2 ACL must be evaluated (has rows or default-closed mode)."""
+    if settings.enforce_resource_acl:
+        return True
+    return await resource_has_acl_restrictions(db, resource_type, resource_id)
+
+
+async def _effective_permissions_from_entries(
+    db: AsyncSession,
+    subject: str,
+    chain: list[tuple[str, str]],
+    entries: list[ResourceAclEntry],
+    payload: dict | None = None,
+) -> int:
+    """In-memory effective bits for a pre-loaded entry set (standalone resources)."""
+    group_ids = set(await user_group_ids(db, subject, payload))
+    alias_set = subject_aliases(subject, payload)
+    if settings.auth_mode == "local":
+        from app.models.user import User
+
+        user = await db.get(User, subject)
+        if user:
+            alias_set.add(str(user.id))
+            alias_set.add(user.username)
+            alias_set.add(user.username.lower())
+    bits = 0
+    auth_bits = _authenticated_bits_from_chain(chain, entries)
+    if auth_bits:
+        bits |= auth_bits
+    for entry in entries:
+        if entry.grantee_type == GRANTEE_AUTHENTICATED:
+            continue
+        if entry.grantee_type == GRANTEE_USER:
+            if await user_grant_matches(db, entry.grantee_id, subject, payload):
+                bits |= entry.permissions
+            continue
+        if _grant_matches(entry, subject, group_ids, subject_alias_set=alias_set):
+            bits |= entry.permissions
+    return bits
 
 
 def _grant_matches(
@@ -718,7 +757,7 @@ async def check_resource_access(
         return True
     if not _acl_subject(payload, subject):
         return True
-    if not await resource_has_acl_restrictions(db, resource_type, resource_id):
+    if not await acl_check_required(db, resource_type, resource_id):
         return True
     bits = await effective_permissions(db, subject, resource_type, resource_id, payload)
     return perm_satisfies(bits, required)
@@ -825,6 +864,71 @@ def _expand_channel_ids(all_channels: list, roots: set[str], id_attr: str = "id"
     return out
 
 
+def _channel_ids_requiring_acl_check(
+    channels: list[Any],
+    ids_with_direct_acl: set[str],
+) -> set[str]:
+    """Channel ids whose self-or-ancestor chain has ACL rows (or all ids when enforce)."""
+    if not channels:
+        return set()
+    if settings.enforce_resource_acl:
+        return {str(getattr(c, "id")) for c in channels}
+    if not ids_with_direct_acl:
+        return set()
+
+    by_id = {str(getattr(c, "id")): c for c in channels}
+    memo: dict[str, bool] = {}
+
+    def restricted(cid: str) -> bool:
+        if cid in memo:
+            return memo[cid]
+        if cid in ids_with_direct_acl:
+            memo[cid] = True
+            return True
+        ch = by_id.get(cid)
+        pid = getattr(ch, "parent_id", None) if ch else None
+        if pid and str(pid) in by_id:
+            result = restricted(str(pid))
+        else:
+            result = False
+        memo[cid] = result
+        return result
+
+    return {str(getattr(c, "id")) for c in channels if restricted(str(getattr(c, "id")))}
+
+
+async def _readable_channel_ids_batched(
+    db: AsyncSession,
+    payload: dict,
+    subject: str,
+    resource_type: str,
+    channel_model: type,
+) -> set[str]:
+    if not isinstance(subject, str):
+        return set()
+    result = await db.execute(select(channel_model))
+    channels = list(result.scalars().all())
+    all_ids = {str(getattr(c, "id")) for c in channels}
+    if not all_ids:
+        return set()
+
+    entries_result = await db.execute(
+        select(ResourceAclEntry.resource_id)
+        .where(ResourceAclEntry.resource_type == resource_type)
+        .distinct()
+    )
+    ids_with_acl = {str(row[0]) for row in entries_result.all()}
+    restricted = _channel_ids_requiring_acl_check(channels, ids_with_acl)
+
+    readable: set[str] = set()
+    for cid in all_ids:
+        if cid not in restricted:
+            readable.add(cid)
+        elif await check_resource_access(db, payload, subject, resource_type, cid, PERM_READ):
+            readable.add(cid)
+    return readable
+
+
 async def readable_document_channel_ids(
     db: AsyncSession, payload: dict, subject: str
 ) -> set[str] | None:
@@ -833,43 +937,71 @@ async def readable_document_channel_ids(
     Channels without ACL on themselves or any ancestor are open to all authenticated users.
     Restricted channels require a matching grant (group, user, or authenticated/Others).
     """
-    if not isinstance(subject, str):
-        return set()
-    result = await db.execute(select(DocumentChannel.id))
-    all_ids = {str(row[0]) for row in result.all()}
-    if not all_ids:
-        return set()
-    readable: set[str] = set()
-    for cid in all_ids:
-        if not await resource_has_acl_restrictions(db, RT_DOCUMENT_CHANNEL, cid):
-            readable.add(cid)
-        elif await check_resource_access(db, payload, subject, RT_DOCUMENT_CHANNEL, cid, PERM_READ):
-            readable.add(cid)
-    return readable
+    return await _readable_channel_ids_batched(
+        db, payload, subject, RT_DOCUMENT_CHANNEL, DocumentChannel
+    )
 
 
 async def readable_article_channel_ids(
     db: AsyncSession, payload: dict, subject: str
 ) -> set[str] | None:
+    return await _readable_channel_ids_batched(
+        db, payload, subject, RT_ARTICLE_CHANNEL, ArticleChannel
+    )
+
+
+_STANDALONE_RESOURCE_TYPES = frozenset(
+    {
+        RT_WIKI_SPACE,
+        RT_KNOWLEDGE_BASE,
+        RT_EVALUATION,
+        RT_GLOSSARY,
+        RT_DATASET,
+        RT_OBJECT_TYPE,
+        RT_LINK_TYPE,
+    }
+)
+
+
+async def _readable_standalone_resource_ids(
+    db: AsyncSession,
+    payload: dict,
+    subject: str,
+    resource_type: str,
+    all_ids: set[str],
+) -> set[str]:
+    """Batch ACL evaluation for standalone securable types (single context node)."""
     if not isinstance(subject, str):
         return set()
-    result = await db.execute(select(ArticleChannel.id))
-    all_ids = {str(row[0]) for row in result.all()}
-    if not all_ids:
-        return set()
+    if not scope_applies(payload, subject):
+        return all_ids
+
+    entries_result = await db.execute(
+        select(ResourceAclEntry).where(ResourceAclEntry.resource_type == resource_type)
+    )
+    entries_by_id: dict[str, list[ResourceAclEntry]] = {}
+    for entry in entries_result.scalars().all():
+        entries_by_id.setdefault(entry.resource_id, []).append(entry)
+
     readable: set[str] = set()
-    for cid in all_ids:
-        if not await resource_has_acl_restrictions(db, RT_ARTICLE_CHANNEL, cid):
-            readable.add(cid)
-        elif await check_resource_access(db, payload, subject, RT_ARTICLE_CHANNEL, cid, PERM_READ):
-            readable.add(cid)
+    for rid in all_ids:
+        entries = entries_by_id.get(rid, [])
+        if not settings.enforce_resource_acl and not entries:
+            readable.add(rid)
+            continue
+        chain = [(resource_type, rid)]
+        bits = await _effective_permissions_from_entries(
+            db, subject, chain, entries, payload
+        )
+        if perm_satisfies(bits, PERM_READ):
+            readable.add(rid)
     return readable
 
 
 async def readable_resource_ids(
     db: AsyncSession, payload: dict, subject: str, resource_type: str
 ) -> set[str] | None:
-    """Instance ids (KB, wiki space, etc.) readable by user; unset ACL = open."""
+    """Instance ids (KB, wiki space, etc.) readable by user; unset ACL = open unless enforced."""
     if not isinstance(subject, str):
         return set()
     from app.models.dataset import Dataset
@@ -901,9 +1033,13 @@ async def readable_resource_ids(
         return None
     result = await db.execute(select(model.id))
     all_ids = {str(row[0]) for row in result.all()}
+    if resource_type in _STANDALONE_RESOURCE_TYPES:
+        return await _readable_standalone_resource_ids(
+            db, payload, subject, resource_type, all_ids
+        )
     readable: set[str] = set()
     for rid in all_ids:
-        if not await resource_has_acl_restrictions(db, resource_type, rid):
+        if not await acl_check_required(db, resource_type, rid):
             readable.add(rid)
         elif await check_resource_access(db, payload, subject, resource_type, rid, PERM_READ):
             readable.add(rid)
@@ -936,77 +1072,59 @@ async def accessible_resource_ids(
 
 
 async def scoped_document_predicate(db: AsyncSession, payload: dict, subject: str) -> Any | None:
+    """Documents visible when their channel (and ancestors) grants read."""
     if not isinstance(subject, str):
         return false()
     allowed_channels = await readable_document_channel_ids(db, payload, subject)
-    direct_docs = await _instance_ids_with_direct_read(db, subject, RT_DOCUMENT, payload)
-    parts = []
-    if allowed_channels:
-        parts.append(Document.channel_id.in_(allowed_channels))
-    if direct_docs:
-        parts.append(Document.id.in_(direct_docs))
-    if not parts:
+    if not allowed_channels:
         return false()
-    return or_(*parts) if len(parts) > 1 else parts[0]
+    return Document.channel_id.in_(allowed_channels)
 
 
-async def _instance_ids_with_direct_read(
-    db: AsyncSession, subject: str, resource_type: str, payload: dict | None = None
-) -> set[str]:
-    group_ids = set(await user_group_ids(db, subject, payload))
-    alias_set = subject_aliases(subject, payload)
-    result = await db.execute(
-        select(ResourceAclEntry).where(ResourceAclEntry.resource_type == resource_type)
-    )
-    out: set[str] = set()
-    for entry in result.scalars().all():
-        matched = False
-        if entry.grantee_type == GRANTEE_USER:
-            matched = await user_grant_matches(db, entry.grantee_id, subject, payload)
-        else:
-            matched = _grant_matches(entry, subject, group_ids, subject_alias_set=alias_set)
-        if matched and perm_satisfies(entry.permissions, PERM_READ):
-            out.add(entry.resource_id)
-    return out
-
-
-async def document_passes_scoped_predicate(
+async def document_visible_via_channel(
     db: AsyncSession, payload: dict, subject: str, doc: Document
 ) -> bool:
     if not isinstance(subject, str):
         return False
-    if not await resource_has_acl_restrictions(db, RT_DOCUMENT, doc.id):
-        chain = await resource_context_chain(db, RT_DOCUMENT, doc.id)
-        if not any(await resource_has_acl_restrictions(db, rt, rid) for rt, rid in chain[1:]):
-            return True
-    return await check_resource_access(db, payload, subject, RT_DOCUMENT, doc.id, PERM_READ)
+    if not scope_applies(payload, subject):
+        return True
+    if not doc.channel_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_DOCUMENT_CHANNEL, doc.channel_id, PERM_READ
+    )
+
+
+# Backward-compatible alias
+document_passes_scoped_predicate = document_visible_via_channel
 
 
 async def scoped_article_predicate(db: AsyncSession, payload: dict, subject: str) -> Any | None:
+    """Articles visible when their channel (and ancestors) grants read."""
     if not isinstance(subject, str):
         return false()
     allowed_channels = await readable_article_channel_ids(db, payload, subject)
-    direct = await _instance_ids_with_direct_read(db, subject, RT_ARTICLE, payload)
-    parts = []
-    if allowed_channels:
-        parts.append(Article.channel_id.in_(allowed_channels))
-    if direct:
-        parts.append(Article.id.in_(direct))
-    if not parts:
+    if not allowed_channels:
         return false()
-    return or_(*parts) if len(parts) > 1 else parts[0]
+    return Article.channel_id.in_(allowed_channels)
 
 
-async def article_passes_scoped_predicate(
+async def article_visible_via_channel(
     db: AsyncSession, payload: dict, subject: str, article: Article
 ) -> bool:
     if not isinstance(subject, str):
         return False
-    if not await resource_has_acl_restrictions(db, RT_ARTICLE, article.id):
-        chain = await _article_channel_chain(db, article.channel_id)
-        if not any(await resource_has_acl_restrictions(db, rt, rid) for rt, rid in chain):
-            return True
-    return await check_resource_access(db, payload, subject, RT_ARTICLE, article.id, PERM_READ)
+    if not scope_applies(payload, subject):
+        return True
+    if not article.channel_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_ARTICLE_CHANNEL, article.channel_id, PERM_READ
+    )
+
+
+# Backward-compatible alias
+article_passes_scoped_predicate = article_visible_via_channel
 
 
 async def instance_visible(
@@ -1014,7 +1132,9 @@ async def instance_visible(
 ) -> bool:
     if not isinstance(subject, str):
         return False
-    if not await resource_has_acl_restrictions(db, resource_type, resource_id):
+    if not scope_applies(payload, subject):
+        return True
+    if not await acl_check_required(db, resource_type, resource_id):
         return True
     return await check_resource_access(db, payload, subject, resource_type, resource_id, PERM_READ)
 
@@ -1022,10 +1142,20 @@ async def instance_visible(
 async def channel_allowed_for_document_upload(
     db: AsyncSession, payload: dict, subject: str, channel_id: str
 ) -> bool:
-    if not isinstance(subject, str):
+    if not isinstance(subject, str) or not channel_id:
         return False
     return await check_resource_access(
         db, payload, subject, RT_DOCUMENT_CHANNEL, channel_id, PERM_WRITE
+    )
+
+
+async def channel_allowed_for_article_write(
+    db: AsyncSession, payload: dict, subject: str, channel_id: str
+) -> bool:
+    if not isinstance(subject, str) or not channel_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_ARTICLE_CHANNEL, channel_id, PERM_WRITE
     )
 
 

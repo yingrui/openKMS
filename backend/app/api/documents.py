@@ -44,13 +44,14 @@ from app.schemas.document import (
     MetadataUpdateBody,
     ParsingResultResponse,
 )
-from app.services.data_scope import bootstrap_owner_acl, scope_applies
-from app.services.resource_acl_constants import PERM_READ, RT_DOCUMENT, RT_DOCUMENT_CHANNEL
-from app.services.data_resource_policy import (
-    channel_allowed_for_document_upload,
-    document_passes_scoped_predicate,
-    scoped_document_predicate,
+from app.services.data_scope import scope_applies
+from app.services.document_scope import (
+    document_list_predicate,
+    load_document_scoped,
+    require_document_read,
 )
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
+from app.services.data_resource_policy import channel_allowed_for_document_upload
 from app.services.resource_acl_service import check_resource_access
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
@@ -60,12 +61,10 @@ router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depend
 
 
 async def _require_document_in_scope(request: Request, db: AsyncSession, doc: Document) -> None:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str):
-        return
-    if not await document_passes_scoped_predicate(db, p, sub, doc):
-        raise http_error(request, 404, "DOCUMENT_NOT_FOUND")
+    try:
+        await require_document_read(db, request, doc)
+    except HTTPException:
+        raise http_error(request, 404, "DOCUMENT_NOT_FOUND") from None
 
 
 async def get_scoped_document(
@@ -73,11 +72,21 @@ async def get_scoped_document(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Document:
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise http_error(request, 404, "DOCUMENT_NOT_FOUND")
-    await _require_document_in_scope(request, db, doc)
-    return doc
+    try:
+        return await load_document_scoped(db, request, document_id, PERM_READ)
+    except HTTPException:
+        raise http_error(request, 404, "DOCUMENT_NOT_FOUND") from None
+
+
+async def get_scoped_document_write(
+    document_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Document:
+    try:
+        return await load_document_scoped(db, request, document_id, PERM_WRITE)
+    except HTTPException:
+        raise http_error(request, 404, "DOCUMENT_NOT_FOUND") from None
 
 
 def _maybe_upload_page_index_from_markdown(doc: Document, markdown: str | None) -> None:
@@ -115,11 +124,7 @@ def _collect_channel_and_descendants(channels: list[DocumentChannel], channel_id
 @router.get("/stats")
 async def get_document_stats(request: Request, db: AsyncSession = Depends(get_db)):
     """Return document counts for the documents index (e.g. total)."""
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    scope_pred = (
-        await scoped_document_predicate(db, p, sub) if isinstance(sub, str) else None
-    )
+    scope_pred = await document_list_predicate(db, request)
     q = select(func.count(Document.id))
     if scope_pred is not None:
         q = q.where(scope_pred)
@@ -157,9 +162,7 @@ async def list_documents(
     )
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    scope_pred = (
-        await scoped_document_predicate(db, p, sub) if isinstance(sub, str) else None
-    )
+    scope_pred = await document_list_predicate(db, request)
 
     if channel_id:
         from sqlalchemy import and_
@@ -247,8 +250,6 @@ async def upload_document(
     )
     db.add(doc)
     await db.flush()
-    if isinstance(sub, str):
-        await bootstrap_owner_acl(db, RT_DOCUMENT, doc.id, sub)
 
     ext_lower = ext.lower()
     if ext_lower == "xlsx":
@@ -311,7 +312,7 @@ async def upload_document(
 
 @router.delete("/{document_id}", status_code=204)
 async def delete_document(
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document and its files from storage."""
@@ -325,7 +326,7 @@ async def delete_document(
 @router.post("/{document_id}/reset-status", response_model=DocumentResponse)
 async def reset_document_status(
     document_id: str,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Reset document status to 'uploaded' if no active jobs exist for it."""
@@ -371,7 +372,7 @@ async def get_document(
 async def patch_document_lifecycle(
     document_id: str,
     body: DocumentLifecycleUpdateBody,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Update policy lifecycle fields (series, validity window, lifecycle status)."""
@@ -445,7 +446,7 @@ async def create_document_relationship(
     document_id: str,
     body: DocumentRelationshipCreateBody,
     request: Request,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a directed edge from this document to the target (e.g. supersedes, amends)."""
@@ -493,7 +494,7 @@ async def create_document_relationship(
 async def delete_document_relationship(
     document_id: str,
     relationship_id: str,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an outgoing relationship (source must be this document)."""
@@ -509,7 +510,7 @@ async def update_document(
     document_id: str,
     body: DocumentInfoUpdateBody,
     request: Request,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Update document info (e.g. name, channel)."""
@@ -534,7 +535,7 @@ async def update_document(
 async def update_document_markdown(
     document_id: str,
     body: MarkdownUpdateBody,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Update document markdown in database and rebuild page index from updated content."""
@@ -550,7 +551,7 @@ async def update_document_markdown(
 @router.post("/{document_id}/restore-markdown", response_model=DocumentResponse)
 async def restore_document_markdown(
     document_id: str,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Restore markdown from object storage (original parsed content)."""
@@ -581,7 +582,7 @@ async def restore_document_markdown(
 @router.post("/{document_id}/rebuild-page-index")
 async def rebuild_page_index(
     document_id: str,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Rebuild page index from current document markdown (DB or S3) and store in S3."""
@@ -694,7 +695,7 @@ async def get_document_section(
 async def create_document_version(
     document_id: str,
     body: DocumentVersionCreateBody,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
     claims: dict = Depends(get_jwt_payload),
 ):
@@ -754,7 +755,7 @@ async def restore_document_version(
     document_id: str,
     version_id: str,
     body: DocumentVersionRestoreBody,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
     claims: dict = Depends(get_jwt_payload),
 ):
@@ -795,7 +796,7 @@ async def restore_document_version(
 async def update_document_metadata(
     document_id: str,
     body: MetadataUpdateBody,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Update document metadata (partial merge)."""
@@ -810,7 +811,7 @@ async def update_document_metadata(
 @router.post("/{document_id}/extract-metadata", response_model=ExtractMetadataResponse)
 async def extract_document_metadata(
     document_id: str,
-    doc: Document = Depends(get_scoped_document),
+    doc: Document = Depends(get_scoped_document_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Extract metadata from document markdown using channel's LLM."""

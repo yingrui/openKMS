@@ -10,9 +10,13 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
+from app.services.channel_scope import (
+    require_document_channel_in_scope,
+    require_document_channel_write,
+    scoped_document_channel_ids,
+)
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.resource_acl_constants import RT_DOCUMENT_CHANNEL
-from app.services.data_resource_policy import effective_channel_ids_with_data_resources
 from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelUpdate
 
@@ -20,18 +24,11 @@ router = APIRouter(prefix="/document-channels", tags=["document-channels"], depe
 
 
 async def _scoped_channel_ids(request: Request, db: AsyncSession) -> set[str] | None:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str):
-        return None
-    return await effective_channel_ids_with_data_resources(db, p, sub)
+    return await scoped_document_channel_ids(request, db)
 
 
 def _require_channel_in_scope(allowed: set[str] | None, channel_id: str) -> None:
-    if allowed is None:
-        return
-    if channel_id not in allowed:
-        raise HTTPException(status_code=404, detail="Channel not found")
+    require_document_channel_in_scope(allowed, channel_id)
 
 
 def _strip_field_order(schema: dict[str, Any] | list | None) -> dict[str, Any] | list | None:
@@ -132,11 +129,10 @@ async def create_document_channel(
 ):
     """Create a document channel."""
     allowed = await _scoped_channel_ids(request, db)
-    if allowed is not None:
-        if body.parent_id:
-            _require_channel_in_scope(allowed, body.parent_id)
-        elif not allowed:
-            raise HTTPException(status_code=403, detail="Not allowed to create channels outside your access scope")
+    if body.parent_id:
+        await require_document_channel_write(request, db, body.parent_id)
+    elif allowed is not None:
+        raise HTTPException(status_code=403, detail="Not allowed to create top-level channels outside your write scope")
     if body.parent_id:
         parent = await db.get(DocumentChannel, body.parent_id)
         if not parent:
@@ -191,10 +187,8 @@ async def merge_document_channels(
     db: AsyncSession = Depends(get_db),
 ):
     """Merge source channel(s) into target. Moves all documents to target, then deletes source channel(s)."""
-    allowed = await _scoped_channel_ids(request, db)
-    if allowed is not None:
-        _require_channel_in_scope(allowed, body.source_channel_id)
-        _require_channel_in_scope(allowed, body.target_channel_id)
+    await require_document_channel_write(request, db, body.source_channel_id)
+    await require_document_channel_write(request, db, body.target_channel_id)
     if body.source_channel_id == body.target_channel_id:
         raise HTTPException(status_code=400, detail="Source and target must be different")
 
@@ -250,8 +244,7 @@ async def delete_document_channel(
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document channel. Fails if channel has documents or sub-channels."""
-    allowed = await _scoped_channel_ids(request, db)
-    _require_channel_in_scope(allowed, channel_id)
+    await require_document_channel_write(request, db, channel_id)
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -293,8 +286,7 @@ async def reorder_document_channel(
     db: AsyncSession = Depends(get_db),
 ):
     """Move channel up or down among siblings (same parent)."""
-    allowed = await _scoped_channel_ids(request, db)
-    _require_channel_in_scope(allowed, channel_id)
+    await require_document_channel_write(request, db, channel_id)
     if body.direction not in ("up", "down"):
         raise HTTPException(status_code=400, detail="direction must be 'up' or 'down'")
     channel = await db.get(DocumentChannel, channel_id)
@@ -353,8 +345,7 @@ async def update_document_channel(
     db: AsyncSession = Depends(get_db),
 ):
     """Update a document channel."""
-    allowed = await _scoped_channel_ids(request, db)
-    _require_channel_in_scope(allowed, channel_id)
+    await require_document_channel_write(request, db, channel_id)
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
@@ -366,6 +357,7 @@ async def update_document_channel(
         if new_parent_id == channel_id:
             raise HTTPException(status_code=400, detail="Cannot move channel to be its own child")
         if new_parent_id is not None:
+            await require_document_channel_write(request, db, new_parent_id)
             parent = await db.get(DocumentChannel, new_parent_id)
             if not parent:
                 raise HTTPException(status_code=404, detail="Parent channel not found")

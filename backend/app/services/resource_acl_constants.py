@@ -26,9 +26,7 @@ RT_GLOSSARY = "glossary"
 SECURABLE_RESOURCE_TYPES = frozenset(
     {
         RT_DOCUMENT_CHANNEL,
-        RT_DOCUMENT,
         RT_ARTICLE_CHANNEL,
-        RT_ARTICLE,
         RT_WIKI_SPACE,
         RT_WIKI_PAGE,
         RT_KNOWLEDGE_BASE,
@@ -48,10 +46,8 @@ GRANTEE_AUTHENTICATED = "authenticated"
 
 GRANTEE_TYPES = frozenset({GRANTEE_USER, GRANTEE_GROUP, GRANTEE_AUTHENTICATED})
 
-# Leaf resource -> container type for inheritance walk
+# Leaf resource -> container type for inheritance walk (articles/documents: channel ACL only)
 LEAF_CONTAINER: dict[str, str] = {
-    RT_DOCUMENT: RT_DOCUMENT_CHANNEL,
-    RT_ARTICLE: RT_ARTICLE_CHANNEL,
     RT_WIKI_PAGE: RT_WIKI_SPACE,
 }
 

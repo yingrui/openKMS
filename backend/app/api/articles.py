@@ -40,8 +40,9 @@ from app.schemas.article import (
 )
 from app.services.article_scope import (
     article_channel_allowed_for_create,
-    article_passes_scoped_predicate,
-    scoped_article_predicate,
+    article_list_predicate,
+    load_article_scoped,
+    require_article_read,
 )
 from app.services.article_service import (
     ArticleData,
@@ -58,6 +59,8 @@ from app.services.article_service import (
 )
 from app.services.article_storage import article_object_key, is_allowed_article_file_path
 from app.services.data_scope import scope_applies
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
+from app.services.resource_acl_service import check_resource_access
 from app.services.storage import delete_object, get_redirect_url, object_exists
 from app.config import settings
 
@@ -65,12 +68,10 @@ router = APIRouter(prefix="/articles", tags=["articles"], dependencies=[Depends(
 
 
 async def _require_article_in_scope(request: Request, db: AsyncSession, row: Article) -> None:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str):
-        return
-    if not await article_passes_scoped_predicate(db, p, sub, row):
-        raise HTTPException(status_code=404, detail="Article not found")
+    try:
+        await require_article_read(db, request, row)
+    except HTTPException:
+        raise HTTPException(status_code=404, detail="Article not found") from None
 
 
 async def get_scoped_article(
@@ -78,18 +79,20 @@ async def get_scoped_article(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Article:
-    row = await db.get(Article, article_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Article not found")
-    await _require_article_in_scope(request, db, row)
-    return row
+    return await load_article_scoped(db, request, article_id, PERM_READ)
+
+
+async def get_scoped_article_write(
+    article_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Article:
+    return await load_article_scoped(db, request, article_id, PERM_WRITE)
 
 
 @router.get("/stats")
 async def article_stats(request: Request, db: AsyncSession = Depends(get_db)):
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    scope_pred = await scoped_article_predicate(db, p, sub) if isinstance(sub, str) else None
+    scope_pred = await article_list_predicate(db, request)
     q = select(func.count(Article.id))
     if scope_pred is not None:
         q = q.where(scope_pred)
@@ -109,13 +112,17 @@ async def list_articles(
     base_query = select(Article)
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    scope_pred = await scoped_article_predicate(db, p, sub) if isinstance(sub, str) else None
+    scope_pred = await article_list_predicate(db, request)
 
     if channel_id:
         ch_result = await db.execute(select(ArticleChannel).order_by(ArticleChannel.sort_order))
         all_channels = list(ch_result.scalars().all())
         target = next((c for c in all_channels if c.id == channel_id), None)
         if not target:
+            raise HTTPException(status_code=404, detail="Channel not found")
+        if isinstance(sub, str) and not await check_resource_access(
+            db, p, sub, RT_ARTICLE_CHANNEL, channel_id, PERM_READ
+        ):
             raise HTTPException(status_code=404, detail="Channel not found")
         ids_to_include: set[str] = set()
         collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
@@ -312,7 +319,7 @@ async def patch_article(
     article_id: str,
     body: ArticleUpdate,
     request: Request,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     if body.channel_id is not None:
@@ -330,7 +337,7 @@ async def patch_article(
 async def put_article_markdown(
     article_id: str,
     body: ArticleMarkdownBody,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     await update_article(db, row, {"markdown": body.markdown})
@@ -344,7 +351,7 @@ async def put_article_markdown(
 async def patch_article_lifecycle(
     article_id: str,
     body: ArticleLifecycleUpdateBody,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     data = body.model_dump(exclude_unset=True)
@@ -408,7 +415,7 @@ async def create_article_relationship(
     article_id: str,
     body: ArticleRelationshipCreateBody,
     request: Request,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a directed edge from this article to the target (e.g. supersedes, amends)."""
@@ -456,7 +463,7 @@ async def create_article_relationship(
 async def delete_article_relationship(
     article_id: str,
     relationship_id: str,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     """Delete an outgoing relationship (source must be this article)."""
@@ -470,7 +477,7 @@ async def delete_article_relationship(
 @router.delete("/{article_id}", status_code=204)
 async def delete_article(
     article_id: str,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     delete_article_assets(row.id)
@@ -518,7 +525,7 @@ def _require_storage_enabled() -> None:
 async def upload_article_attachment(
     article_id: str,
     file: UploadFile = File(...),
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     _require_storage_enabled()
@@ -540,7 +547,7 @@ async def upload_article_attachment(
 async def upload_article_image(
     article_id: str,
     file: UploadFile = File(...),
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
 ):
     """Upload an inline image under articles/{id}/images/. Returns markdown-friendly path."""
     _require_storage_enabled()
@@ -565,7 +572,7 @@ async def upload_article_image(
 async def delete_article_attachment(
     article_id: str,
     attachment_id: str,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
 ):
     att = await db.get(ArticleAttachment, attachment_id)
@@ -591,7 +598,7 @@ async def _next_article_version_number(db: AsyncSession, article_id: str) -> int
 async def create_article_version(
     article_id: str,
     body: ArticleVersionCreateBody,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
     claims: dict = Depends(get_jwt_payload),
 ):
@@ -648,7 +655,7 @@ async def restore_article_version(
     article_id: str,
     version_id: str,
     body: ArticleVersionRestoreBody,
-    row: Article = Depends(get_scoped_article),
+    row: Article = Depends(get_scoped_article_write),
     db: AsyncSession = Depends(get_db),
     claims: dict = Depends(get_jwt_payload),
 ):

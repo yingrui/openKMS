@@ -17,11 +17,11 @@ from app.database import get_db
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.data_resource_policy import dataset_visible
 from app.services.dataset_scope import (
+    load_dataset_scoped,
     require_dataset_manage,
-    require_dataset_read,
     require_dataset_write,
 )
-from app.services.resource_acl_constants import RT_DATASET
+from app.services.resource_acl_constants import PERM_READ, RT_DATASET
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -61,10 +61,7 @@ async def get_dataset_scoped(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Dataset:
-    row = await db.get(Dataset, dataset_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return await require_dataset_read(db, request, row)
+    return await load_dataset_scoped(db, request, dataset_id, PERM_READ)
 
 
 async def get_dataset_scoped_write(

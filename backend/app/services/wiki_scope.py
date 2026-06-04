@@ -1,47 +1,43 @@
-"""Wiki space resource ACL helpers."""
+"""Wiki space resource ACL — thin aliases over ``resource_guard``."""
 
 from __future__ import annotations
 
-from fastapi import HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.wiki_models import WikiSpace
 from app.services.resource_acl_constants import PERM_MANAGE, PERM_READ, PERM_WRITE, RT_WIKI_SPACE
-from app.services.resource_acl_service import check_resource_access, scope_applies
+from app.services.resource_guard import (
+    load_scoped_resource,
+    require_manage,
+    require_read,
+    require_write,
+    resource_allowed,
+)
+
+__all__ = [
+    "load_wiki_space_scoped",
+    "require_wiki_space_manage",
+    "require_wiki_space_read",
+    "require_wiki_space_write",
+    "wiki_space_allowed",
+]
 
 
-async def wiki_space_allowed(
-    db: AsyncSession,
-    request: Request,
-    space_id: str,
-    required: int,
-) -> bool:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not scope_applies(p, sub):
-        return True
-    return await check_resource_access(db, p, sub, RT_WIKI_SPACE, space_id, required)
+async def wiki_space_allowed(db, request, space_id: str, required: int) -> bool:
+    return await resource_allowed(db, request, RT_WIKI_SPACE, space_id, required)
 
 
-async def require_wiki_space_read(
-    db: AsyncSession, request: Request, space: WikiSpace
+async def require_wiki_space_read(db, request, space: WikiSpace) -> WikiSpace:
+    return await require_read(db, request, RT_WIKI_SPACE, space)
+
+
+async def require_wiki_space_write(db, request, space: WikiSpace) -> WikiSpace:
+    return await require_write(db, request, RT_WIKI_SPACE, space)
+
+
+async def require_wiki_space_manage(db, request, space: WikiSpace) -> WikiSpace:
+    return await require_manage(db, request, RT_WIKI_SPACE, space)
+
+
+async def load_wiki_space_scoped(
+    db, request, space_id: str, required: int = PERM_READ
 ) -> WikiSpace:
-    if not await wiki_space_allowed(db, request, space.id, PERM_READ):
-        raise HTTPException(status_code=404, detail="Wiki space not found")
-    return space
-
-
-async def require_wiki_space_write(
-    db: AsyncSession, request: Request, space: WikiSpace
-) -> WikiSpace:
-    if not await wiki_space_allowed(db, request, space.id, PERM_WRITE):
-        raise HTTPException(status_code=404, detail="Wiki space not found")
-    return space
-
-
-async def require_wiki_space_manage(
-    db: AsyncSession, request: Request, space: WikiSpace
-) -> WikiSpace:
-    if not await wiki_space_allowed(db, request, space.id, PERM_MANAGE):
-        raise HTTPException(status_code=404, detail="Wiki space not found")
-    return space
+    return await load_scoped_resource(db, request, RT_WIKI_SPACE, space_id, required)

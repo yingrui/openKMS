@@ -48,7 +48,6 @@ from app.schemas.wiki import (
     WikiVaultMarkdownFileBody,
     WikiVaultMarkdownImportResponse,
 )
-from app.services.data_resource_policy import document_passes_scoped_predicate
 from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
 from app.services.resource_acl_constants import RT_WIKI_SPACE
 from app.services.wiki_scope import require_wiki_space_manage, require_wiki_space_write
@@ -385,12 +384,9 @@ def _linked_doc_to_response(link: WikiSpaceDocument, doc: Document) -> WikiSpace
     dependencies=[Depends(require_permission(PERM_WIKIS_READ))],
 )
 async def list_wiki_space_linked_documents(
-    request: Request,
     space: WikiSpace = Depends(get_wiki_space_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
     result = await db.execute(
         select(WikiSpaceDocument, Document)
         .join(Document, WikiSpaceDocument.document_id == Document.id)
@@ -398,10 +394,7 @@ async def list_wiki_space_linked_documents(
         .order_by(Document.name)
     )
     rows = list(result.all())
-    items: list[WikiSpaceDocumentLinkResponse] = []
-    for link, doc in rows:
-        if isinstance(sub, str) and await document_passes_scoped_predicate(db, p, sub, doc):
-            items.append(_linked_doc_to_response(link, doc))
+    items = [_linked_doc_to_response(link, doc) for link, doc in rows]
     return WikiSpaceDocumentListResponse(items=items, total=len(items))
 
 
@@ -417,13 +410,9 @@ async def link_document_to_wiki_space(
     space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    doc = await db.get(Document, body.document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    if not isinstance(sub, str) or not await document_passes_scoped_predicate(db, p, sub, doc):
-        raise HTTPException(status_code=404, detail="Document not found")
+    from app.services.document_scope import require_document_by_id_read
+
+    doc = await require_document_by_id_read(db, request, body.document_id)
     link = WikiSpaceDocument(
         id=str(uuid.uuid4()),
         wiki_space_id=space.id,

@@ -243,8 +243,8 @@ Design and enforcement: [Data security](data-security.md).
 
 ### ResourceAclEntry
 
-- `id`, `resource_type` (e.g. `document_channel`, `document`, `wiki_space`, `knowledge_base`), `resource_id`, `grantee_type` (`user`, `group`, `authenticated`), `grantee_id` (nullable for `authenticated`), `grantee_label` (nullable; display name saved at PUT, e.g. username when OIDC `sub` is stored), `permissions` (bitmask: read=1, write=2, manage=4), `created_at`, `updated_at`
-- Unique on `(resource_type, resource_id, grantee_type, grantee_id)`. Container ACL inherits to children (channel → documents, wiki space → pages). API: `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`.
+- `id`, `resource_type` (e.g. `document_channel`, `wiki_space`, `knowledge_base`), `resource_id`, `grantee_type` (`user`, `group`, `authenticated`), `grantee_id` (nullable for `authenticated`), `grantee_label` (nullable; display name saved at PUT, e.g. username when OIDC `sub` is stored), `permissions` (bitmask: read=1, write=2, manage=4), `created_at`, `updated_at`
+- Unique on `(resource_type, resource_id, grantee_type, grantee_id)`. Container ACL inherits to children (document/article **channels** → items in channel; wiki space → pages). Documents and articles do **not** have their own ACL rows. API: `GET`/`PUT /api/resource-acl/{resource_type}/{resource_id}`.
 
 ## Wiki
 

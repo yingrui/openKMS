@@ -1,41 +1,41 @@
-"""Dataset resource ACL helpers."""
+"""Dataset resource ACL — thin aliases over ``resource_guard``."""
 
 from __future__ import annotations
 
-from fastapi import HTTPException, Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.dataset import Dataset
 from app.services.resource_acl_constants import PERM_MANAGE, PERM_READ, PERM_WRITE, RT_DATASET
-from app.services.resource_acl_service import check_resource_access, scope_applies
+from app.services.resource_guard import (
+    load_scoped_resource,
+    require_manage,
+    require_read,
+    require_write,
+    resource_allowed,
+)
+
+__all__ = [
+    "dataset_allowed",
+    "load_dataset_scoped",
+    "require_dataset_manage",
+    "require_dataset_read",
+    "require_dataset_write",
+]
 
 
-async def dataset_allowed(
-    db: AsyncSession,
-    request: Request,
-    dataset_id: str,
-    required: int,
-) -> bool:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not scope_applies(p, sub):
-        return True
-    return await check_resource_access(db, p, sub, RT_DATASET, dataset_id, required)
+async def dataset_allowed(db, request, dataset_id: str, required: int) -> bool:
+    return await resource_allowed(db, request, RT_DATASET, dataset_id, required)
 
 
-async def require_dataset_read(db: AsyncSession, request: Request, dataset: Dataset) -> Dataset:
-    if not await dataset_allowed(db, request, dataset.id, PERM_READ):
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return dataset
+async def require_dataset_read(db, request, dataset: Dataset) -> Dataset:
+    return await require_read(db, request, RT_DATASET, dataset)
 
 
-async def require_dataset_write(db: AsyncSession, request: Request, dataset: Dataset) -> Dataset:
-    if not await dataset_allowed(db, request, dataset.id, PERM_WRITE):
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return dataset
+async def require_dataset_write(db, request, dataset: Dataset) -> Dataset:
+    return await require_write(db, request, RT_DATASET, dataset)
 
 
-async def require_dataset_manage(db: AsyncSession, request: Request, dataset: Dataset) -> Dataset:
-    if not await dataset_allowed(db, request, dataset.id, PERM_MANAGE):
-        raise HTTPException(status_code=404, detail="Dataset not found")
-    return dataset
+async def require_dataset_manage(db, request, dataset: Dataset) -> Dataset:
+    return await require_manage(db, request, RT_DATASET, dataset)
+
+
+async def load_dataset_scoped(db, request, dataset_id: str, required: int = PERM_READ) -> Dataset:
+    return await load_scoped_resource(db, request, RT_DATASET, dataset_id, required)

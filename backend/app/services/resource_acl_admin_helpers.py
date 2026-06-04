@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.article import Article
 from app.models.article_channel import ArticleChannel
 from app.models.dataset import Dataset
-from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.models.evaluation import Evaluation
 from app.models.glossary import Glossary
@@ -16,10 +14,8 @@ from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.models.wiki_models import WikiPage, WikiSpace
 from app.services.resource_acl_constants import (
-    RT_ARTICLE,
     RT_ARTICLE_CHANNEL,
     RT_DATASET,
-    RT_DOCUMENT,
     RT_DOCUMENT_CHANNEL,
     RT_EVALUATION,
     RT_GLOSSARY,
@@ -50,9 +46,7 @@ def share_path_for(resource_type: str, resource_id: str) -> str | None:
 def resource_type_label(resource_type: str) -> str:
     labels = {
         RT_DOCUMENT_CHANNEL: "Document channel",
-        RT_DOCUMENT: "Document",
         RT_ARTICLE_CHANNEL: "Article channel",
-        RT_ARTICLE: "Article",
         RT_WIKI_SPACE: "Wiki space",
         RT_WIKI_PAGE: "Wiki page",
         RT_KNOWLEDGE_BASE: "Knowledge base",
@@ -73,12 +67,6 @@ async def resolve_resource_label(db: AsyncSession, resource_type: str, resource_
     if resource_type == RT_ARTICLE_CHANNEL:
         row = await db.get(ArticleChannel, resource_id)
         return row.name if row else resource_id
-    if resource_type == RT_DOCUMENT:
-        row = await db.get(Document, resource_id)
-        return row.name if row else resource_id
-    if resource_type == RT_ARTICLE:
-        row = await db.get(Article, resource_id)
-        return (row.title or row.id) if row else resource_id
     if resource_type == RT_WIKI_SPACE:
         row = await db.get(WikiSpace, resource_id)
         return row.name if row else resource_id

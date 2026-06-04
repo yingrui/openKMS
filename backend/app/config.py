@@ -174,7 +174,10 @@ class Settings(BaseSettings):
             "OPENKMS_ENFORCE_RESOURCE_ACL",
             "OPENKMS_ENFORCE_GROUP_DATA_SCOPES",
         ),
-        description="When true, non-admin users are filtered by per-resource ACL and group membership.",
+        description=(
+            "When true, resources without ACL rows are denied (default-closed). "
+            "When false (default), only resources with ACL rows are restricted."
+        ),
     )
 
     enforce_permission_patterns_strict: bool = Field(

@@ -19,10 +19,16 @@ from sqlalchemy.dialects.postgresql import JSONB
 from app.api.auth import require_auth
 from app.api.jobs import read_job_response
 from app.database import get_db
-from app.services.data_resource_policy import knowledge_base_visible
 from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
-from app.services.kb_scope import require_knowledge_base_manage, require_knowledge_base_write
-from app.services.resource_acl_constants import RT_KNOWLEDGE_BASE
+from app.services.data_resource_policy import knowledge_base_visible
+from app.services.document_scope import require_document_by_id_read
+from app.services.kb_scope import (
+    load_knowledge_base_scoped,
+    require_knowledge_base_manage,
+    require_knowledge_base_write,
+)
+from app.services.wiki_scope import require_wiki_space_write
+from app.services.resource_acl_constants import PERM_READ, RT_KNOWLEDGE_BASE
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
@@ -75,14 +81,7 @@ async def _get_kb_or_404(
     request: Request,
     db: AsyncSession,
 ) -> KnowledgeBase:
-    kb = await db.get(KnowledgeBase, kb_id)
-    if not kb:
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
-        raise HTTPException(status_code=404, detail="Knowledge base not found")
-    return kb
+    return await load_knowledge_base_scoped(db, request, kb_id, PERM_READ)
 
 
 async def get_kb_scoped(
@@ -324,12 +323,11 @@ async def list_kb_documents(
 async def add_kb_document(
     kb_id: str,
     body: KBDocumentAdd,
+    request: Request,
     kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    doc = await db.get(Document, body.document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    doc = await require_document_by_id_read(db, request, body.document_id)
     existing = await db.execute(
         select(KBDocument).where(
             KBDocument.knowledge_base_id == kb_id,
@@ -411,6 +409,9 @@ async def add_kb_wiki_space(
     db: AsyncSession = Depends(get_db),
 ):
     await _require_wiki_space_readable(body.wiki_space_id, request, db)
+    ws = await db.get(WikiSpace, body.wiki_space_id)
+    assert ws is not None
+    await require_wiki_space_write(db, request, ws)
     existing = await db.execute(
         select(KBWikiSpace).where(
             KBWikiSpace.knowledge_base_id == kb_id,
@@ -419,8 +420,6 @@ async def add_kb_wiki_space(
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Wiki space already linked to this knowledge base")
-    ws = await db.get(WikiSpace, body.wiki_space_id)
-    assert ws is not None
     row = KBWikiSpace(
         id=str(uuid.uuid4()),
         knowledge_base_id=kb_id,
@@ -649,6 +648,7 @@ async def delete_faq(
 async def generate_faqs(
     kb_id: str,
     body: FAQGenerateRequest,
+    request: Request,
     kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
@@ -674,8 +674,8 @@ async def generate_faqs(
     effective_prompt = body.prompt or kb.faq_prompt
     results = []
     for doc_id in body.document_ids:
-        doc = await db.get(Document, doc_id)
-        if not doc or not doc.markdown:
+        doc = await require_document_by_id_read(db, request, doc_id)
+        if not doc.markdown:
             continue
         pairs = await generate_faq_pairs(doc.markdown, model_config, custom_prompt=effective_prompt)
         doc_meta = _propagate_metadata(doc.doc_metadata, kb.metadata_keys)
@@ -900,6 +900,7 @@ def _base64_to_floats(b64: str) -> list[float]:
 async def create_chunks_batch(
     kb_id: str,
     body: ChunkBatchCreateRequest,
+    request: Request,
     kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
@@ -924,6 +925,8 @@ async def create_chunks_batch(
                 doc_metadata=item.doc_metadata,
             )
         else:
+            if doc_id:
+                await require_document_by_id_read(db, request, doc_id)
             chunk = Chunk(
                 id=item.id,
                 knowledge_base_id=kb_id,
