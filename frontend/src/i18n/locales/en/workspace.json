@@ -54,7 +54,7 @@
     "empty": "No runs yet. Queue document processing or indexing from a knowledge base.",
     "noMatches": "No matches found.",
     "colId": "ID",
-    "colTask": "Task",
+    "colTask": "Job name",
     "colDocument": "Document",
     "colPipeline": "Pipeline",
     "colStatus": "Status",

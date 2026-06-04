@@ -54,7 +54,7 @@
     "empty": "暂无运行记录。可排队文档处理，或在知识库设置中排队索引。",
     "noMatches": "无匹配结果。",
     "colId": "ID",
-    "colTask": "任务",
+    "colTask": "作业名称",
     "colDocument": "文档",
     "colPipeline": "流水线",
     "colStatus": "状态",
