@@ -45,14 +45,14 @@ from app.schemas.document import (
     ParsingResultResponse,
 )
 from app.services.data_scope import scope_applies
+from app.services.channel_scope import require_document_channel_write
+from app.services.channel_list_filter import channel_subtree_ids_for_list
 from app.services.document_scope import (
     document_list_predicate,
     load_document_scoped,
     require_document_read,
 )
 from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
-from app.services.data_resource_policy import channel_allowed_for_document_upload
-from app.services.resource_acl_service import check_resource_access
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
@@ -167,17 +167,18 @@ async def list_documents(
     if channel_id:
         from sqlalchemy import and_
 
-        result = await db.execute(select(DocumentChannel).order_by(DocumentChannel.sort_order))
-        all_channels = list(result.scalars().all())
-        target = next((c for c in all_channels if c.id == channel_id), None)
-        if not target:
-            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
-        if isinstance(sub, str) and not await check_resource_access(
-            db, p, sub, RT_DOCUMENT_CHANNEL, channel_id, PERM_READ
-        ):
-            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
-        ids_to_include: set[str] = set()
-        _collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
+        try:
+            ids_to_include = await channel_subtree_ids_for_list(
+                db,
+                request,
+                channel_id=channel_id,
+                channel_model=DocumentChannel,
+                rt_channel=RT_DOCUMENT_CHANNEL,
+                collect_descendants=_collect_channel_and_descendants,
+                not_found_detail="Channel not found",
+            )
+        except HTTPException:
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND") from None
         if not ids_to_include:
             return DocumentListResponse(items=[], total=0)
         if scope_pred is not None:
@@ -213,8 +214,10 @@ async def upload_document(
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        if not await channel_allowed_for_document_upload(db, p, sub, channel_id):
-            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
+        try:
+            await require_document_channel_write(request, db, channel_id)
+        except HTTPException:
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND") from None
     channel = await db.get(DocumentChannel, channel_id)
     if not channel:
         raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
@@ -520,8 +523,10 @@ async def update_document(
         p = request.state.openkms_jwt_payload
         sub = p.get("sub")
         if isinstance(sub, str) and scope_applies(p, sub):
-            if not await channel_allowed_for_document_upload(db, p, sub, body.channel_id):
-                raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
+            try:
+                await require_document_channel_write(request, db, body.channel_id)
+            except HTTPException:
+                raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND") from None
         channel = await db.get(DocumentChannel, body.channel_id)
         if not channel:
             raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")

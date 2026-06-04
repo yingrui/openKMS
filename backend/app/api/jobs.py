@@ -13,10 +13,9 @@ from app.models.document_channel import DocumentChannel
 from app.models.job_worker_log import JobWorkerLog
 from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
-from app.services.document_scope import load_document_scoped, require_document_by_id_read
-from app.services.kb_scope import load_knowledge_base_scoped
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE
-from app.services.resource_acl_service import channel_allowed_for_document_upload, scope_applies
+from app.services.job_scope import job_args_allowed, require_job_args_access
+from app.services.document_scope import load_document_scoped
+from app.services.resource_acl_constants import PERM_WRITE
 
 logger = logging.getLogger(__name__)
 
@@ -83,55 +82,6 @@ async def _procrastinate_table_exists(db: AsyncSession) -> bool:
     return result.scalar()
 
 
-async def _job_args_allowed(
-    request: Request,
-    db: AsyncSession,
-    args: dict,
-    *,
-    require_write: bool = False,
-) -> bool:
-    """Return whether the caller may access a job by its args (document or KB)."""
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not scope_applies(p, sub):
-        return True
-    doc_id = args.get("document_id")
-    kb_id = args.get("knowledge_base_id")
-    if doc_id and isinstance(doc_id, str):
-        doc = await db.get(Document, doc_id)
-        if not doc:
-            return False
-        if require_write:
-            return bool(
-                doc.channel_id
-                and await channel_allowed_for_document_upload(db, p, sub, doc.channel_id)
-            )
-        try:
-            await require_document_by_id_read(db, request, doc_id)
-            return True
-        except HTTPException:
-            return False
-    if kb_id and isinstance(kb_id, str):
-        perm = PERM_WRITE if require_write else PERM_READ
-        try:
-            await load_knowledge_base_scoped(db, request, kb_id, perm)
-            return True
-        except HTTPException:
-            return False
-    return False
-
-
-async def _require_job_access(
-    request: Request,
-    db: AsyncSession,
-    args: dict,
-    *,
-    require_write: bool = False,
-) -> None:
-    if not await _job_args_allowed(request, db, args, require_write=require_write):
-        raise HTTPException(status_code=404, detail="Job not found")
-
-
 @router.get("", response_model=JobListResponse)
 async def list_jobs(
     request: Request,
@@ -168,7 +118,7 @@ async def list_jobs(
     rows = list(result)
     visible = [
         r for r in rows
-        if await _job_args_allowed(request, db, r.args or {}, require_write=False)
+        if await job_args_allowed(request, db, r.args or {}, require_write=False)
     ]
     return JobListResponse(items=[_row_to_response(r) for r in visible], total=len(visible))
 
@@ -186,7 +136,7 @@ async def get_job(job_id: int, request: Request, db: AsyncSession = Depends(get_
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
-    await _require_job_access(request, db, row.args or {}, require_write=False)
+    await require_job_args_access(request, db, row.args or {}, require_write=False)
 
     events_result = await db.execute(
         text(
@@ -307,7 +257,7 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
-    await _require_job_access(request, db, row.args or {}, require_write=True)
+    await require_job_args_access(request, db, row.args or {}, require_write=True)
 
     if _STATUS_MAP.get(row.status, row.status) != "failed":
         raise HTTPException(status_code=400, detail="Only failed jobs can be retried")
@@ -398,7 +348,7 @@ async def mark_job_failed(job_id: int, request: Request, db: AsyncSession = Depe
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
-    await _require_job_access(request, db, row.args or {}, require_write=True)
+    await require_job_args_access(request, db, row.args or {}, require_write=True)
 
     if row.status not in _MARK_FAILED_STATUSES:
         raise HTTPException(
@@ -443,7 +393,7 @@ async def delete_job(job_id: int, request: Request, db: AsyncSession = Depends(g
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
-    await _require_job_access(request, db, row.args or {}, require_write=True)
+    await require_job_args_access(request, db, row.args or {}, require_write=True)
 
     mapped_status = _STATUS_MAP.get(row.status, row.status)
     if mapped_status == "running":

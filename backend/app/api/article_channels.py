@@ -17,7 +17,7 @@ from app.schemas.article_channel import (
     ArticleChannelReorderBody,
     ArticleChannelUpdate,
 )
-from app.services.article_channel_scope import (
+from app.services.channel_scope import (
     require_article_channel_in_scope,
     require_article_channel_write,
     scoped_article_channel_ids,

@@ -85,7 +85,6 @@ export const RESOURCE_TYPES = {
   documentChannel: 'document_channel',
   articleChannel: 'article_channel',
   wikiSpace: 'wiki_space',
-  wikiPage: 'wiki_page',
   knowledgeBase: 'knowledge_base',
   evaluation: 'evaluation',
   dataset: 'dataset',

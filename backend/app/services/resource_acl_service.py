@@ -21,7 +21,6 @@ from app.services.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
     GRANTEE_USER,
-    LEAF_CONTAINER,
     PERM_MANAGE,
     PERM_READ,
     PERM_WRITE,
@@ -33,7 +32,6 @@ from app.services.resource_acl_constants import (
     RT_KNOWLEDGE_BASE,
     RT_LINK_TYPE,
     RT_OBJECT_TYPE,
-    RT_WIKI_PAGE,
     RT_WIKI_SPACE,
     SECURABLE_RESOURCE_TYPES,
     perm_satisfies,
@@ -600,19 +598,12 @@ async def resource_context_chain(
     """Resource itself plus container ancestors for ACL inheritance (nearest first)."""
     chain: list[tuple[str, str]] = [(resource_type, resource_id)]
 
-    if resource_type == RT_WIKI_PAGE:
-        page = await db.get(WikiPage, resource_id)
-        if page:
-            chain.append((RT_WIKI_SPACE, page.wiki_space_id))
-    elif resource_type in LEAF_CONTAINER.values():
-        pass
-    elif resource_type in {RT_WIKI_SPACE, RT_DOCUMENT_CHANNEL, RT_ARTICLE_CHANNEL}:
-        if resource_type == RT_DOCUMENT_CHANNEL:
-            chain.extend(await _document_channel_chain(db, resource_id))
-            chain = list(dict.fromkeys(chain))
-        elif resource_type == RT_ARTICLE_CHANNEL:
-            chain.extend(await _article_channel_chain(db, resource_id))
-            chain = list(dict.fromkeys(chain))
+    if resource_type == RT_DOCUMENT_CHANNEL:
+        chain.extend(await _document_channel_chain(db, resource_id))
+        chain = list(dict.fromkeys(chain))
+    elif resource_type == RT_ARTICLE_CHANNEL:
+        chain.extend(await _article_channel_chain(db, resource_id))
+        chain = list(dict.fromkeys(chain))
 
     return list(dict.fromkeys(chain))
 
@@ -1125,6 +1116,34 @@ async def article_visible_via_channel(
 
 # Backward-compatible alias
 article_passes_scoped_predicate = article_visible_via_channel
+
+
+async def wiki_page_visible_via_space(
+    db: AsyncSession, payload: dict, subject: str, page: WikiPage
+) -> bool:
+    if not isinstance(subject, str):
+        return False
+    if not scope_applies(payload, subject):
+        return True
+    if not page.wiki_space_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_WIKI_SPACE, page.wiki_space_id, PERM_READ
+    )
+
+
+async def wiki_page_writable_via_space(
+    db: AsyncSession, payload: dict, subject: str, page: WikiPage
+) -> bool:
+    if not isinstance(subject, str):
+        return False
+    if not scope_applies(payload, subject):
+        return True
+    if not page.wiki_space_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_WIKI_SPACE, page.wiki_space_id, PERM_WRITE
+    )
 
 
 async def instance_visible(

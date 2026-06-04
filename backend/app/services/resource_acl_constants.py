@@ -9,13 +9,13 @@ PERM_MANAGE = 4
 
 PERM_ALL_DATA = PERM_READ | PERM_WRITE | PERM_MANAGE
 
-# Securable resource kinds
+# Securable resource kinds (sharing API / admin). Instance types use container ACL only.
 RT_DOCUMENT_CHANNEL = "document_channel"
-RT_DOCUMENT = "document"
+RT_DOCUMENT = "document"  # legacy rows only; not in SECURABLE_RESOURCE_TYPES
 RT_ARTICLE_CHANNEL = "article_channel"
-RT_ARTICLE = "article"
+RT_ARTICLE = "article"  # legacy rows only
 RT_WIKI_SPACE = "wiki_space"
-RT_WIKI_PAGE = "wiki_page"
+RT_WIKI_PAGE = "wiki_page"  # legacy rows only; pages use wiki_space ACL
 RT_KNOWLEDGE_BASE = "knowledge_base"
 RT_EVALUATION = "evaluation"
 RT_DATASET = "dataset"
@@ -28,7 +28,6 @@ SECURABLE_RESOURCE_TYPES = frozenset(
         RT_DOCUMENT_CHANNEL,
         RT_ARTICLE_CHANNEL,
         RT_WIKI_SPACE,
-        RT_WIKI_PAGE,
         RT_KNOWLEDGE_BASE,
         RT_EVALUATION,
         RT_DATASET,
@@ -45,11 +44,6 @@ GRANTEE_GROUP = "group"
 GRANTEE_AUTHENTICATED = "authenticated"
 
 GRANTEE_TYPES = frozenset({GRANTEE_USER, GRANTEE_GROUP, GRANTEE_AUTHENTICATED})
-
-# Leaf resource -> container type for inheritance walk (articles/documents: channel ACL only)
-LEAF_CONTAINER: dict[str, str] = {
-    RT_WIKI_PAGE: RT_WIKI_SPACE,
-}
 
 def perm_satisfies(have: int, need: int) -> bool:
     if have & PERM_MANAGE:

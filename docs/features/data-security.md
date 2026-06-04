@@ -65,10 +65,11 @@ Columns: [Data models — Data security](data-models.md#data-security-access-gro
 | `document_channel` | Parent channels to root |
 | `article_channel` | Parent article channels |
 | `wiki_space` | — |
-| `wiki_page` | Parent wiki space |
 | `knowledge_base`, `evaluation`, `glossary`, `dataset`, `object_type`, `link_type` | Standalone |
 
-**Documents and articles** are not securable rows: visibility is **channel-only** (`document_channel` / `article_channel` ACL).
+**Wiki pages** are not securable rows: visibility is **wiki space ACL only** (`wiki_page_scope`), same pattern as documents on channels.
+
+**Documents and articles** use **channel-only** ACL (`document_scope` / `article_scope`).
 
 ### Grantees and bits
 
@@ -137,7 +138,7 @@ Per-resource sharing applies when ACL rows exist. Set **`OPENKMS_ENFORCE_RESOURC
 | Articles | Channel ACL — read: `require_article_read`; **write/mutate:** `require_article_write` (channel `w`) |
 | Document / article channels | Read lists: batched `readable_*_channel_ids`. **Mutations:** `require_*_channel_write` |
 | Wiki / KB linked documents | **List:** all links when caller can read space/KB. **Add:** space/KB write + document read (channel) |
-| Wiki pages | Space ACL via `get_wiki_space_scoped`; page-level ACL reserved |
+| Wiki pages | Space ACL — `wiki_page_scope` / `get_wiki_page_in_space` |
 | Jobs | Args resolved to document (channel write for create/retry) or KB (scoped write/read) |
 | Global search | Scoped in `global_search.py` |
 | Sharing API | GET needs read; PUT needs manage |
@@ -221,7 +222,7 @@ Owner `bob` `rwm`, group **QA** `rwm`, **Others** empty → user **alice** with 
 | Topic | Status |
 |---|---|
 | Share UI coverage | Channels, wiki, KB; API supports all `SECURABLE_RESOURCE_TYPES` |
-| Wiki page ACL | Registered in `SECURABLE_RESOURCE_TYPES`; content routes use space ACL only |
+| Wiki page ACL | Space-only (same as document/channel); no `wiki_page` sharing rows |
 | KB search / ask side channel | Indexed chunk content returned to KB readers without re-checking document channel ACL |
 | OIDC owner picker directory | API keys + group members, not full IdP sync |
 | List filter performance | Standalone + channel trees batched; restricted channels still per-id `check_resource_access` |
@@ -237,7 +238,8 @@ Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — 
 | `resource_acl_constants.py` | Types, bits, grantees |
 | `resource_guard.py` | Unified Layer 2 guard + `RESOURCE_REGISTRY` for standalone types |
 | `context_guard.py` | Hierarchical guard + `CONTEXT_*_REGISTRY` for documents, articles, channels |
-| `document_scope.py`, `article_scope.py`, `channel_scope.py`, `article_channel_scope.py` | Thin API-facing aliases |
+| `document_scope.py`, `article_scope.py`, `wiki_page_scope.py`, `channel_scope.py` | Container-only visibility aliases |
+| `job_scope.py`, `channel_list_filter.py` | Job args ACL; channel subtree list filter |
 | `resource_acl_service.py` | Resolve, filters, normalize/match owner, `acl_check_required` |
 | `api/resource_acl.py` | Sharing HTTP API |
 | `api/admin/resource_acl_admin.py` | Issues + audit ACL |
@@ -247,3 +249,4 @@ Policy non-goals (admin read-all, Object Explorer Cypher): [Security design — 
 | `ResourceSharePanel.tsx` / `resourceAclApi.ts` | SPA sharing |
 | `tests/test_resource_acl.py` | Unit tests |
 | `tests/test_document_write_acl.py` | Document write vs read channel ACL |
+| `tests/test_wiki_page_space_visibility.py` | Wiki page read via space ACL |

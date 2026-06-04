@@ -27,8 +27,9 @@ from app.services.kb_scope import (
     require_knowledge_base_manage,
     require_knowledge_base_write,
 )
-from app.services.wiki_scope import require_wiki_space_write
-from app.services.resource_acl_constants import PERM_READ, RT_KNOWLEDGE_BASE
+from app.services.wiki_page_scope import require_wiki_page_by_id_read
+from app.services.wiki_scope import load_wiki_space_scoped
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_KNOWLEDGE_BASE, RT_WIKI_SPACE
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
@@ -99,23 +100,6 @@ async def get_kb_scoped_write(
 ) -> KnowledgeBase:
     kb = await _get_kb_or_404(kb_id, request, db)
     return await require_knowledge_base_write(db, request, kb)
-
-
-async def _require_wiki_space_readable(
-    wiki_space_id: str,
-    request: Request,
-    db: AsyncSession,
-) -> WikiSpace:
-    ws = await db.get(WikiSpace, wiki_space_id)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Wiki space not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub, p)
-        if allowed is not None and wiki_space_id not in allowed:
-            raise HTTPException(status_code=404, detail="Wiki space not found")
-    return ws
 
 
 async def _ensure_wiki_page_in_kb_wiki_spaces(db: AsyncSession, kb_id: str, wiki_page_id: str) -> None:
@@ -408,10 +392,7 @@ async def add_kb_wiki_space(
     kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    await _require_wiki_space_readable(body.wiki_space_id, request, db)
-    ws = await db.get(WikiSpace, body.wiki_space_id)
-    assert ws is not None
-    await require_wiki_space_write(db, request, ws)
+    await load_wiki_space_scoped(db, request, body.wiki_space_id, PERM_WRITE)
     existing = await db.execute(
         select(KBWikiSpace).where(
             KBWikiSpace.knowledge_base_id == kb_id,
@@ -912,6 +893,7 @@ async def create_chunks_batch(
         doc_id = (item.document_id or "").strip() or None
         if wiki_pid:
             await _ensure_wiki_page_in_kb_wiki_spaces(db, kb_id, wiki_pid)
+            await require_wiki_page_by_id_read(db, request, wiki_pid)
             chunk = Chunk(
                 id=item.id,
                 knowledge_base_id=kb_id,

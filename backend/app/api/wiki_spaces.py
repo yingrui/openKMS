@@ -49,8 +49,9 @@ from app.schemas.wiki import (
     WikiVaultMarkdownImportResponse,
 )
 from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
-from app.services.resource_acl_constants import RT_WIKI_SPACE
-from app.services.wiki_scope import require_wiki_space_manage, require_wiki_space_write
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_WIKI_SPACE
+from app.services.wiki_page_scope import get_wiki_page_in_space
+from app.services.wiki_scope import load_wiki_space_scoped, require_wiki_space_manage
 from app.services.page_index import md_to_tree_from_markdown
 from app.services.permission_catalog import PERM_WIKIS_READ, PERM_WIKIS_WRITE
 from app.services.storage import (
@@ -148,29 +149,12 @@ def _wiki_link_graph_from_payload(payload: dict) -> WikiLinkGraphResponse:
     )
 
 
-async def _get_wiki_space_or_404(
-    space_id: str,
-    request: Request,
-    db: AsyncSession,
-) -> WikiSpace:
-    ws = await db.get(WikiSpace, space_id)
-    if not ws:
-        raise HTTPException(status_code=404, detail="Wiki space not found")
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub, p)
-        if allowed is not None and space_id not in allowed:
-            raise HTTPException(status_code=404, detail="Wiki space not found")
-    return ws
-
-
 async def get_wiki_space_scoped(
     space_id: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> WikiSpace:
-    return await _get_wiki_space_or_404(space_id, request, db)
+    return await load_wiki_space_scoped(db, request, space_id, PERM_READ)
 
 
 async def get_wiki_space_scoped_write(
@@ -178,8 +162,7 @@ async def get_wiki_space_scoped_write(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> WikiSpace:
-    space = await _get_wiki_space_or_404(space_id, request, db)
-    return await require_wiki_space_write(db, request, space)
+    return await load_wiki_space_scoped(db, request, space_id, PERM_WRITE)
 
 
 async def _page_count(db: AsyncSession, space_id: str) -> int:
@@ -579,12 +562,6 @@ async def create_page(
     return _page_to_response(page)
 
 
-async def _get_page_in_space(db: AsyncSession, space_id: str, page_id: str) -> WikiPage:
-    page = await db.get(WikiPage, page_id)
-    if not page or page.wiki_space_id != space_id:
-        raise HTTPException(status_code=404, detail="Wiki page not found")
-    return page
-
 
 @router.get(
     "/{space_id}/pages/by-path/{page_path:path}",
@@ -670,10 +647,11 @@ async def delete_page_by_path(
 )
 async def get_page(
     page_id: str,
+    request: Request,
     space: WikiSpace = Depends(get_wiki_space_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    page = await _get_page_in_space(db, space.id, page_id)
+    page = await get_wiki_page_in_space(db, request, space.id, page_id)
     return _page_to_response(page)
 
 
@@ -685,10 +663,11 @@ async def get_page(
 async def patch_page(
     page_id: str,
     body: WikiPageUpdate,
+    request: Request,
     space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    page = await _get_page_in_space(db, space.id, page_id)
+    page = await get_wiki_page_in_space(db, request, space.id, page_id, PERM_WRITE)
     if body.title is not None:
         page.title = body.title.strip()
     if body.body is not None:
@@ -712,10 +691,11 @@ async def patch_page(
 )
 async def delete_page(
     page_id: str,
+    request: Request,
     space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    page = await _get_page_in_space(db, space.id, page_id)
+    page = await get_wiki_page_in_space(db, request, space.id, page_id, PERM_WRITE)
     wiki_path = page.path
     await db.delete(page)
     await db.flush()
@@ -728,10 +708,11 @@ async def delete_page(
 )
 async def get_page_index(
     page_id: str,
+    request: Request,
     space: WikiSpace = Depends(get_wiki_space_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    page = await _get_page_in_space(db, space.id, page_id)
+    page = await get_wiki_page_in_space(db, request, space.id, page_id)
     if page.page_index is not None:
         return page.page_index
     return md_to_tree_from_markdown(page.body or "", doc_name=page.title or page.path)
@@ -803,6 +784,7 @@ async def list_files(
     dependencies=[Depends(require_permission(PERM_WIKIS_WRITE))],
 )
 async def upload_wiki_file(
+    request: Request,
     space: WikiSpace = Depends(get_wiki_space_scoped_write),
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
@@ -817,7 +799,7 @@ async def upload_wiki_file(
     if not raw:
         raise HTTPException(status_code=400, detail="Empty file")
     if wiki_page_id:
-        await _get_page_in_space(db, space.id, wiki_page_id)
+        await get_wiki_page_in_space(db, request, space.id, wiki_page_id, PERM_WRITE)
 
     fid = str(uuid.uuid4())
     orig_name = (file.filename or "upload").replace("\\", "/")

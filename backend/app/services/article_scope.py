@@ -6,11 +6,10 @@ from fastapi import HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article import Article
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE
 from app.services.resource_acl_service import (
     article_visible_via_channel,
     channel_allowed_for_article_write,
-    check_resource_access,
     scoped_article_predicate,
     scope_applies,
 )
@@ -35,9 +34,7 @@ async def article_channel_allowed_for_create(
 ) -> bool:
     if not scope_applies(payload, subject):
         return True
-    return await check_resource_access(
-        db, payload, subject, RT_ARTICLE_CHANNEL, channel_id, PERM_WRITE
-    )
+    return await channel_allowed_for_article_write(db, payload, subject, channel_id)
 
 
 async def require_article_read(db: AsyncSession, request: Request, row: Article) -> Article:

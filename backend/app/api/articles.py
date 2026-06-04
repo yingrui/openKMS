@@ -39,11 +39,12 @@ from app.schemas.article import (
     ArticleVersionRestoreBody,
 )
 from app.services.article_scope import (
-    article_channel_allowed_for_create,
     article_list_predicate,
     load_article_scoped,
     require_article_read,
 )
+from app.services.channel_list_filter import channel_subtree_ids_for_list
+from app.services.channel_scope import require_article_channel_write
 from app.services.article_service import (
     ArticleData,
     ImportAttachment,
@@ -60,7 +61,6 @@ from app.services.article_service import (
 from app.services.article_storage import article_object_key, is_allowed_article_file_path
 from app.services.data_scope import scope_applies
 from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
-from app.services.resource_acl_service import check_resource_access
 from app.services.storage import delete_object, get_redirect_url, object_exists
 from app.config import settings
 
@@ -115,17 +115,18 @@ async def list_articles(
     scope_pred = await article_list_predicate(db, request)
 
     if channel_id:
-        ch_result = await db.execute(select(ArticleChannel).order_by(ArticleChannel.sort_order))
-        all_channels = list(ch_result.scalars().all())
-        target = next((c for c in all_channels if c.id == channel_id), None)
-        if not target:
-            raise HTTPException(status_code=404, detail="Channel not found")
-        if isinstance(sub, str) and not await check_resource_access(
-            db, p, sub, RT_ARTICLE_CHANNEL, channel_id, PERM_READ
-        ):
-            raise HTTPException(status_code=404, detail="Channel not found")
-        ids_to_include: set[str] = set()
-        collect_channel_and_descendants(all_channels, channel_id, ids_to_include)
+        try:
+            ids_to_include = await channel_subtree_ids_for_list(
+                db,
+                request,
+                channel_id=channel_id,
+                channel_model=ArticleChannel,
+                rt_channel=RT_ARTICLE_CHANNEL,
+                collect_descendants=collect_channel_and_descendants,
+                not_found_detail="Channel not found",
+            )
+        except HTTPException:
+            raise HTTPException(status_code=404, detail="Channel not found") from None
         if not ids_to_include:
             return ArticleListResponse(items=[], total=0)
         if scope_pred is not None:
@@ -152,8 +153,7 @@ async def _ensure_channel_writable(db: AsyncSession, request: Request, channel_i
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):
-        if not await article_channel_allowed_for_create(db, p, sub, channel_id):
-            raise HTTPException(status_code=404, detail="Channel not found")
+        await require_article_channel_write(request, db, channel_id)
     ch = await db.get(ArticleChannel, channel_id)
     if not ch:
         raise HTTPException(status_code=404, detail="Channel not found")
