@@ -58,8 +58,15 @@ def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
             r = httpx.get(url, headers=headers, auth=auth, timeout=15.0)
         r.raise_for_status()
         return r.json()
-    except Exception:
-        return None
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text[:500] if exc.response is not None else str(exc)
+        raise RuntimeError(
+            f"Backend llm-defaults returned HTTP {exc.response.status_code}: {detail}"
+        ) from exc
+    except ValueError as exc:
+        raise RuntimeError(f"qa-agent service auth misconfigured: {exc}") from exc
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"Could not reach backend at {api!r}: {exc}") from exc
 
 
 def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
@@ -84,11 +91,21 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
             )
         return base_url, model_name, api_key or "no-key"
 
-    data = _fetch_agent_llm_defaults(cfg)
+    try:
+        data = _fetch_agent_llm_defaults(cfg)
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not resolve LLM settings from the backend. Configure Models → set a default "
+            "chat-completions model, and set OPENKMS_QA_AGENT_BASIC_* (local) or "
+            "OPENKMS_QA_AGENT_OIDC_CLIENT_* (OIDC)."
+        ) from exc
     if not data:
         raise RuntimeError(
-            "Could not resolve LLM settings from the backend. Configure Models → default LLM, "
-            "and set OPENKMS_QA_AGENT_BASIC_* or OPENKMS_QA_AGENT_OIDC_CLIENT_* "
+            "Could not resolve LLM settings from the backend (empty response). Configure Models → "
+            "set a default chat-completions model, and set OPENKMS_QA_AGENT_BASIC_* (local) or "
+            "OPENKMS_QA_AGENT_OIDC_CLIENT_* (OIDC)."
         )
 
     base_url, model_name, api_key = _merge_agent_llm_defaults_payload(
@@ -102,6 +119,7 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
     )
     if not base_url or not model_name:
         raise RuntimeError(
-            "Backend returned no LLM base_url or model_name. Add an LLM on Models and set it as the category default."
+            "Backend returned no LLM base_url or model_name. Add a chat-completions model on Models "
+            "and set it as default for that API kind."
         )
     return base_url, model_name, api_key or "no-key"

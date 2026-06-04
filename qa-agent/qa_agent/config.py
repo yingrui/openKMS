@@ -28,11 +28,17 @@ class Settings(BaseSettings):
     oidc_token_url: str = Field(default="", validation_alias="OPENKMS_OIDC_TOKEN_URL")
     oidc_client_id: str = Field(
         default="qa-agent",
-        validation_alias="OPENKMS_QA_AGENT_OIDC_CLIENT_ID",
+        validation_alias=AliasChoices(
+            "OPENKMS_QA_AGENT_OIDC_CLIENT_ID",
+            "OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_ID",
+        ),
     )
     oidc_client_secret: str = Field(
         default="",
-        validation_alias="OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET",
+        validation_alias=AliasChoices(
+            "OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET",
+            "OPENKMS_QA_AGENT_OIDC_SERVICE_CLIENT_SECRET",
+        ),
     )
     basic_user: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_USER")
     basic_password: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_PASSWORD")

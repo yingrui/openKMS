@@ -148,7 +148,7 @@
     "qaNewChatAria": "Start a new chat",
     "qaDeleteChatTitle": "Delete this chat",
     "qaDeleteChatAria": "Delete this chat",
-    "qaChatUntitled": "{{snippet}}",
+    "qaChatDatePrefix": "Chat ·",
     "qaConfirmDeleteChat": "Delete this chat? Its messages will be removed.",
     "qaToastLoadMessagesFailed": "Could not load chat messages",
     "qaToastLoadConversationsFailed": "Could not load chats",

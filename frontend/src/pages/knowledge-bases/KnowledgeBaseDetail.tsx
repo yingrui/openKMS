@@ -669,7 +669,17 @@ export function KnowledgeBaseDetail() {
     (c: AgentConversationResponse) => {
       const t0 = (c.title || '').trim();
       if (t0) return t0.length > 60 ? `${t0.slice(0, 59)}…` : t0;
-      return t('detail.qaChatUntitled', { snippet: `${c.id.slice(0, 8)}…` });
+      const raw = c.updated_at || c.created_at;
+      const d = raw ? new Date(raw) : null;
+      if (d && !Number.isNaN(d.getTime())) {
+        return `${t('detail.qaChatDatePrefix')} ${d.toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`;
+      }
+      return t('detail.qaNewChat');
     },
     [t]
   );

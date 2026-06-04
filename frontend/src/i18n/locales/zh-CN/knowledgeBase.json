@@ -148,7 +148,7 @@
     "qaNewChatAria": "开始新会话",
     "qaDeleteChatTitle": "删除此会话",
     "qaDeleteChatAria": "删除此会话",
-    "qaChatUntitled": "{{snippet}}",
+    "qaChatDatePrefix": "对话 ·",
     "qaConfirmDeleteChat": "确定删除此会话？其中的消息将被删除。",
     "qaToastLoadMessagesFailed": "无法加载会话消息",
     "qaToastLoadConversationsFailed": "无法加载会话列表",
