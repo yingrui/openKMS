@@ -1,7 +1,7 @@
-"""Jobs API – list, create, retry document processing jobs."""
+"""Job runs API – list, create, retry document processing runs."""
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,7 @@ from app.constants import DocumentStatus
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
-from app.models.job_worker_log import JobWorkerLog
+from app.models.job_run_worker_log import JobRunWorkerLog
 from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
 from app.services.job_scope import job_args_allowed, require_job_args_access
@@ -19,7 +19,7 @@ from app.services.resource_acl_constants import PERM_WRITE
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/jobs", tags=["jobs"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/jobs", tags=["job-runs"], dependencies=[Depends(require_auth)])
 
 _STATUS_MAP = {
     "todo": "pending",
@@ -31,6 +31,19 @@ _STATUS_MAP = {
 }
 
 _MARK_FAILED_STATUSES = frozenset({"todo", "doing"})
+
+_PROCRASTINATE_STATUSES_FOR_API: dict[str, tuple[str, ...]] = {
+    "pending": ("todo",),
+    "running": ("doing", "aborting"),
+    "completed": ("succeeded",),
+    "failed": ("failed",),
+    "cancelled": ("cancelled",),
+}
+
+_JOBS_LIST_SELECT = (
+    "SELECT id, queue_name, task_name, status, args, scheduled_at, attempts "
+    "FROM procrastinate_jobs"
+)
 
 
 def _row_to_response(row) -> JobResponse:
@@ -82,45 +95,116 @@ async def _procrastinate_table_exists(db: AsyncSession) -> bool:
     return result.scalar()
 
 
+def _jobs_list_filters(
+    *,
+    document_id: str | None,
+    knowledge_base_id: str | None,
+    status: str | None,
+    search: str | None,
+) -> tuple[str, dict]:
+    clauses: list[str] = []
+    params: dict = {}
+
+    if document_id:
+        clauses.append("args->>'document_id' = :document_id")
+        params["document_id"] = document_id
+    if knowledge_base_id:
+        clauses.append("args->>'knowledge_base_id' = :knowledge_base_id")
+        params["knowledge_base_id"] = knowledge_base_id
+    if status and (st := status.strip()):
+        proc = _PROCRASTINATE_STATUSES_FOR_API.get(st)
+        if proc:
+            placeholders = ", ".join(f":st_{i}" for i in range(len(proc)))
+            clauses.append(f"status IN ({placeholders})")
+            for i, v in enumerate(proc):
+                params[f"st_{i}"] = v
+    if search and (q := search.strip()):
+        params["search"] = f"%{q}%"
+        clauses.append(
+            "(task_name ILIKE :search OR COALESCE(args->>'document_id', '') ILIKE :search "
+            "OR COALESCE(args->>'knowledge_base_id', '') ILIKE :search)"
+        )
+
+    where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+    return where, params
+
+
+async def _count_jobs(db: AsyncSession, where: str, params: dict) -> int:
+    result = await db.execute(
+        text(f"SELECT COUNT(*) FROM procrastinate_jobs{where}"),
+        params,
+    )
+    return int(result.scalar_one() or 0)
+
+
+async def _fetch_job_rows(
+    db: AsyncSession, where: str, params: dict, *, limit: int, offset: int
+) -> list:
+    qparams = {**params, "limit": limit, "offset": offset}
+    result = await db.execute(
+        text(f"{_JOBS_LIST_SELECT}{where} ORDER BY id DESC LIMIT :limit OFFSET :offset"),
+        qparams,
+    )
+    return list(result)
+
+
+async def _list_jobs_visible(
+    request: Request,
+    db: AsyncSession,
+    where: str,
+    params: dict,
+    *,
+    limit: int,
+    offset: int,
+) -> list[JobResponse]:
+    """Page of jobs the caller may read; over-fetches SQL batches when ACL filters rows."""
+    visible: list[JobResponse] = []
+    sql_offset = offset
+    batch_size = min(max(limit * 4, 50), 200)
+    scans = 0
+    max_scans = 50
+
+    while len(visible) < limit and scans < max_scans:
+        rows = await _fetch_job_rows(db, where, params, limit=batch_size, offset=sql_offset)
+        if not rows:
+            break
+        for row in rows:
+            if await job_args_allowed(request, db, row.args or {}, require_write=False):
+                visible.append(_row_to_response(row))
+                if len(visible) >= limit:
+                    break
+        sql_offset += len(rows)
+        scans += 1
+        if len(rows) < batch_size:
+            break
+
+    return visible
+
+
 @router.get("", response_model=JobListResponse)
 async def list_jobs(
     request: Request,
     document_id: str | None = None,
     knowledge_base_id: str | None = None,
-    limit: int = 50,
-    offset: int = 0,
+    status: str | None = Query(None, description="API status: pending, running, completed, failed, cancelled"),
+    search: str | None = Query(None),
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List jobs from procrastinate_jobs table."""
+    """List jobs from procrastinate_jobs table (paginated)."""
     if not await _procrastinate_table_exists(db):
-        return JobListResponse(items=[], total=0)
+        return JobListResponse(items=[], total=0, limit=limit, offset=offset)
 
-    where_clauses: list[str] = []
-    params: dict = {"limit": limit, "offset": offset}
-
-    if document_id:
-        where_clauses.append("args->>'document_id' = :document_id")
-        params["document_id"] = document_id
-    if knowledge_base_id:
-        where_clauses.append("args->>'knowledge_base_id' = :knowledge_base_id")
-        params["knowledge_base_id"] = knowledge_base_id
-
-    where = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-
-    result = await db.execute(
-        text(
-            f"SELECT id, queue_name, task_name, status, args, scheduled_at, attempts "
-            f"FROM procrastinate_jobs {where} "
-            f"ORDER BY id DESC LIMIT :limit OFFSET :offset"
-        ),
-        params,
+    where, params = _jobs_list_filters(
+        document_id=document_id,
+        knowledge_base_id=knowledge_base_id,
+        status=status,
+        search=search,
     )
-    rows = list(result)
-    visible = [
-        r for r in rows
-        if await job_args_allowed(request, db, r.args or {}, require_write=False)
-    ]
-    return JobListResponse(items=[_row_to_response(r) for r in visible], total=len(visible))
+    total = await _count_jobs(db, where, params)
+    items = await _list_jobs_visible(request, db, where, params, limit=limit, offset=offset)
+    return JobListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -156,7 +240,7 @@ async def get_job(job_id: int, request: Request, db: AsyncSession = Depends(get_
         if ev.type in ("succeeded", "failed", "cancelled") and ev.at:
             resp.finished_at = ev.at
 
-    wl = await db.get(JobWorkerLog, job_id)
+    wl = await db.get(JobRunWorkerLog, job_id)
     if wl is not None:
         resp.worker_log = wl.log_text
         resp.worker_log_truncated = wl.truncated
@@ -400,7 +484,7 @@ async def delete_job(job_id: int, request: Request, db: AsyncSession = Depends(g
         raise HTTPException(status_code=400, detail="Cannot delete a running job")
 
     await db.execute(
-        text("DELETE FROM job_worker_logs WHERE procrastinate_job_id = :job_id"),
+        text("DELETE FROM job_run_worker_logs WHERE job_run_id = :job_id"),
         {"job_id": job_id},
     )
     await db.execute(

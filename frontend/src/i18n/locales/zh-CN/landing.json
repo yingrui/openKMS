@@ -39,7 +39,7 @@
   "funcOnt3": "可选 Neo4j 索引与图探索",
   "funcPipeTitle": "流水线与自动化",
   "funcPipe1": "可配置的文档流水线与命令模板",
-  "funcPipe2": "异步解析任务；按频道流水线与自动处理",
+  "funcPipe2": "异步解析运行；按频道流水线与自动处理",
   "funcPipe3": "流水线关联模型用于 OCR / VL / 抽取",
   "ctaReady": "准备好整理知识了吗？",
   "ctaHint": "登录账号以使用完整应用。",

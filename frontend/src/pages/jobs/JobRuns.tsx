@@ -5,7 +5,10 @@ import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'luc
 import { toast } from 'sonner';
 import { fetchJobs, createJob, retryJob, deleteJob, markJobFailed, type JobResponse } from '../../data/jobsApi';
 import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
+import { Pagination } from '../../styles/design-system';
 import './Jobs.scss';
+
+const JOBS_PAGE_SIZE_DEFAULT = 25;
 
 function formatDate(iso: string | undefined | null, dash: string): string {
   if (!iso) return dash;
@@ -17,28 +20,50 @@ function formatDate(iso: string | undefined | null, dash: string): string {
   });
 }
 
-export function Jobs() {
+export function JobRuns() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
   const dash = t('shared.dash');
   const [jobs, setJobs] = useState<JobResponse[]>([]);
+  const [jobsTotal, setJobsTotal] = useState(0);
+  const [jobsPage, setJobsPage] = useState(0);
+  const [jobsPageSize, setJobsPageSize] = useState(JOBS_PAGE_SIZE_DEFAULT);
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [docIdInput, setDocIdInput] = useState('');
   const [pipelineIdInput, setPipelineIdInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [forceReparseCreate, setForceReparseCreate] = useState(false);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSearchDebounced(search), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setJobsPage(0);
+  }, [statusFilter, searchDebounced]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [jobsRes, pipRes] = await Promise.all([fetchJobs({ limit: 100 }), fetchPipelines()]);
+      const [jobsRes, pipRes] = await Promise.all([
+        fetchJobs({
+          limit: jobsPageSize,
+          offset: jobsPage * jobsPageSize,
+          status: statusFilter || undefined,
+          search: searchDebounced.trim() || undefined,
+        }),
+        fetchPipelines(),
+      ]);
       setJobs(jobsRes.items);
+      setJobsTotal(jobsRes.total);
       setPipelines(pipRes.items);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('jobs.loadFailed');
@@ -47,7 +72,7 @@ export function Jobs() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [jobsPage, jobsPageSize, searchDebounced, statusFilter, t]);
 
   useEffect(() => {
     void load();
@@ -99,7 +124,11 @@ export function Jobs() {
       setPipelineIdInput('');
       setForceReparseCreate(false);
       toast.success(t('jobs.createdToast'));
-      await load();
+      if (jobsPage === 0) {
+        await load();
+      } else {
+        setJobsPage(0);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('jobs.createFailed'));
     } finally {
@@ -108,23 +137,6 @@ export function Jobs() {
   };
 
   const pipelineMap = new Map(pipelines.map((p) => [p.id, p]));
-
-  const filtered = jobs.filter((j) => {
-    if (statusFilter && j.status !== statusFilter) return false;
-    if (search) {
-      const s = search.toLowerCase();
-      const docId = String(j.args?.document_id || '');
-      const kbId = String(j.args?.knowledge_base_id || '');
-      if (
-        !j.task_name.toLowerCase().includes(s) &&
-        !docId.toLowerCase().includes(s) &&
-        !kbId.toLowerCase().includes(s)
-      ) {
-        return false;
-      }
-    }
-    return true;
-  });
 
   return (
     <div className="jobs">
@@ -171,105 +183,120 @@ export function Jobs() {
               <p>{t('jobs.loadingJobs')}</p>
             </div>
           ) : (
-            <table className="jobs-table">
-              <thead>
-                <tr>
-                  <th>{t('jobs.colId')}</th>
-                  <th>{t('jobs.colTask')}</th>
-                  <th>{t('jobs.colDocument')}</th>
-                  <th>{t('jobs.colPipeline')}</th>
-                  <th>{t('jobs.colStatus')}</th>
-                  <th>{t('jobs.colCreated')}</th>
-                  <th>{t('jobs.colAttempts')}</th>
-                  <th className="jobs-table-actions-col">{t('shared.actions')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
+            <>
+              <table className="jobs-table">
+                <thead>
                   <tr>
-                    <td colSpan={8} className="table-empty">
-                      {jobs.length === 0 ? t('jobs.empty') : t('jobs.noMatches')}
-                    </td>
+                    <th>{t('jobs.colId')}</th>
+                    <th>{t('jobs.colTask')}</th>
+                    <th>{t('jobs.colDocument')}</th>
+                    <th>{t('jobs.colPipeline')}</th>
+                    <th>{t('jobs.colStatus')}</th>
+                    <th>{t('jobs.colCreated')}</th>
+                    <th>{t('jobs.colAttempts')}</th>
+                    <th className="jobs-table-actions-col">{t('shared.actions')}</th>
                   </tr>
-                ) : (
-                  filtered.map((job) => {
-                    const docId = String(job.args?.document_id || '');
-                    const kbId = String(job.args?.knowledge_base_id || '');
-                    const targetId =
-                      job.task_name === 'run_kb_index' ? kbId || dash : docId || dash;
-                    const pipelineId = String(job.args?.pipeline_id || '');
-                    const pipeline = pipelineMap.get(pipelineId);
-                    return (
-                      <tr
-                        key={job.id}
-                        className="jobs-table-row-clickable"
-                        onClick={() => navigate(`/jobs/${job.id}`)}
-                      >
-                        <td>#{job.id}</td>
-                        <td>
-                          <div className="jobs-table-name">
-                            <ListTodo size={18} strokeWidth={1.5} />
-                            <span>{job.task_name}</span>
-                          </div>
-                        </td>
-                        <td className="jobs-table-docid" title={targetId}>
-                          {targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId}
-                        </td>
-                        <td>{pipeline?.name || pipelineId || dash}</td>
-                        <td>
-                          <span className={`job-status job-status-${job.status}`}>{job.status}</span>
-                        </td>
-                        <td>{formatDate(job.created_at, dash)}</td>
-                        <td>{job.attempts}</td>
-                        <td className="jobs-table-actions-col">
-                          <div className="jobs-table-actions-btns">
-                            {job.status === 'failed' && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleRetry(job.id);
-                                }}
-                                title={t('shared.retry')}
-                              >
-                                <RefreshCw size={14} />
-                              </button>
-                            )}
-                            {(job.status === 'running' || job.status === 'pending') && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleMarkFailed(job.id);
-                                }}
-                                title={t('jobs.markFailedTitle')}
-                              >
-                                <CircleX size={14} />
-                              </button>
-                            )}
-                            {job.status !== 'running' && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm jobs-delete-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDelete(job.id);
-                                }}
-                                title={t('shared.delete')}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {jobs.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="table-empty">
+                        {jobsTotal === 0 && !searchDebounced.trim() && !statusFilter
+                          ? t('jobs.empty')
+                          : t('jobs.noMatches')}
+                      </td>
+                    </tr>
+                  ) : (
+                    jobs.map((job) => {
+                      const docId = String(job.args?.document_id || '');
+                      const kbId = String(job.args?.knowledge_base_id || '');
+                      const targetId =
+                        job.task_name === 'run_kb_index' ? kbId || dash : docId || dash;
+                      const pipelineId = String(job.args?.pipeline_id || '');
+                      const pipeline = pipelineMap.get(pipelineId);
+                      return (
+                        <tr
+                          key={job.id}
+                          className="jobs-table-row-clickable"
+                          onClick={() => navigate(`/job-runs/${job.id}`)}
+                        >
+                          <td>#{job.id}</td>
+                          <td>
+                            <div className="jobs-table-name">
+                              <ListTodo size={18} strokeWidth={1.5} />
+                              <span>{job.task_name}</span>
+                            </div>
+                          </td>
+                          <td className="jobs-table-docid" title={targetId}>
+                            {targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId}
+                          </td>
+                          <td>{pipeline?.name || pipelineId || dash}</td>
+                          <td>
+                            <span className={`job-status job-status-${job.status}`}>{job.status}</span>
+                          </td>
+                          <td>{formatDate(job.created_at, dash)}</td>
+                          <td>{job.attempts}</td>
+                          <td className="jobs-table-actions-col">
+                            <div className="jobs-table-actions-btns">
+                              {job.status === 'failed' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleRetry(job.id);
+                                  }}
+                                  title={t('shared.retry')}
+                                >
+                                  <RefreshCw size={14} />
+                                </button>
+                              )}
+                              {(job.status === 'running' || job.status === 'pending') && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleMarkFailed(job.id);
+                                  }}
+                                  title={t('jobs.markFailedTitle')}
+                                >
+                                  <CircleX size={14} />
+                                </button>
+                              )}
+                              {job.status !== 'running' && (
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm jobs-delete-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void handleDelete(job.id);
+                                  }}
+                                  title={t('shared.delete')}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+              <Pagination
+                total={jobsTotal}
+                page={jobsPage}
+                pageSize={jobsPageSize}
+                loading={loading}
+                onPageChange={setJobsPage}
+                onPageSizeChange={(size) => {
+                  setJobsPageSize(size);
+                  setJobsPage(0);
+                }}
+              />
+            </>
           )}
         </div>
       </div>

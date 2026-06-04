@@ -49,6 +49,8 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "/console/health",
             "/pipelines",
             "/pipelines/*",
+            "/job-runs",
+            "/job-runs/*",
             "/jobs",
             "/jobs/*",
             "/models",

@@ -53,6 +53,11 @@ function GroupMembersLegacyRedirect() {
   return <Navigate to={`/console/data-security/groups/${groupId}`} replace />;
 }
 
+function LegacyJobRunRedirect() {
+  const { jobId = '' } = useParams<{ jobId: string }>();
+  return <Navigate to={`/job-runs/${jobId}`} replace />;
+}
+
 function AppLoadingFallback() {
   const { t } = useTranslation('common');
   return (
@@ -66,7 +71,7 @@ const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );
 const Pipelines = lazy(() => import('./pages/pipelines/Pipelines').then((m) => ({ default: m.Pipelines })));
-const Jobs = lazy(() => import('./pages/jobs/Jobs').then((m) => ({ default: m.Jobs })));
+const JobRuns = lazy(() => import('./pages/jobs/JobRuns').then((m) => ({ default: m.JobRuns })));
 const JobDetail = lazy(() => import('./pages/jobs/JobDetail').then((m) => ({ default: m.JobDetail })));
 const Models = lazy(() => import('./pages/models/Models').then((m) => ({ default: m.Models })));
 const ModelDetail = lazy(() => import('./pages/models/ModelDetail').then((m) => ({ default: m.ModelDetail })));
@@ -161,8 +166,10 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="pipelines" element={<Pipelines />} />
-          <Route path="jobs" element={<Jobs />} />
-          <Route path="jobs/:jobId" element={<JobDetail />} />
+          <Route path="job-runs" element={<JobRuns />} />
+          <Route path="job-runs/:jobId" element={<JobDetail />} />
+          <Route path="jobs" element={<Navigate to="/job-runs" replace />} />
+          <Route path="jobs/:jobId" element={<LegacyJobRunRedirect />} />
           <Route path="models" element={<Models />} />
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="ontology" element={<Outlet />}>

@@ -1,4 +1,4 @@
-"""Build truncated worker logs and upsert ``job_worker_logs`` rows."""
+"""Build truncated worker logs and upsert ``job_run_worker_logs`` rows."""
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.models.job_worker_log import JobWorkerLog
+from app.models.job_run_worker_log import JobRunWorkerLog
 
 logger = logging.getLogger(__name__)
 
 
-def build_job_worker_log_text(
+def build_job_run_worker_log_text(
     command: str | None,
     stdout: str,
     stderr: str,
@@ -43,22 +43,22 @@ def build_job_worker_log_text(
     return full[:head] + marker + full[-tail:], True
 
 
-async def upsert_job_worker_log(
+async def upsert_job_run_worker_log(
     session: AsyncSession,
-    procrastinate_job_id: int,
+    job_run_id: int,
     log_text: str,
     truncated: bool,
     char_limit_applied: int,
 ) -> None:
-    """Insert or replace log row for this Procrastinate job id."""
-    stmt = pg_insert(JobWorkerLog).values(
-        procrastinate_job_id=procrastinate_job_id,
+    """Insert or replace log row for this job run id."""
+    stmt = pg_insert(JobRunWorkerLog).values(
+        job_run_id=job_run_id,
         log_text=log_text,
         truncated=truncated,
         char_limit_applied=char_limit_applied,
     )
     stmt = stmt.on_conflict_do_update(
-        index_elements=[JobWorkerLog.procrastinate_job_id],
+        index_elements=[JobRunWorkerLog.job_run_id],
         set_={
             "log_text": stmt.excluded.log_text,
             "truncated": stmt.excluded.truncated,
@@ -68,8 +68,8 @@ async def upsert_job_worker_log(
     await session.execute(stmt)
 
 
-async def persist_job_worker_log_best_effort(
-    procrastinate_job_id: int,
+async def persist_job_run_worker_log_best_effort(
+    job_run_id: int,
     command: str | None,
     stdout: str,
     stderr: str,
@@ -77,12 +77,11 @@ async def persist_job_worker_log_best_effort(
     """Build truncated text and upsert; swallow errors so task outcome is unchanged."""
     try:
         limit = settings.job_log_max_chars
-        text, truncated = build_job_worker_log_text(command, stdout, stderr, limit)
+        text, truncated = build_job_run_worker_log_text(command, stdout, stderr, limit)
         from app.database import async_session_maker
 
         async with async_session_maker() as session:
-            await upsert_job_worker_log(session, procrastinate_job_id, text, truncated, limit)
+            await upsert_job_run_worker_log(session, job_run_id, text, truncated, limit)
             await session.commit()
     except Exception:
-        logger.exception("Failed to persist job_worker_logs for job_id=%s", procrastinate_job_id)
-
+        logger.exception("Failed to persist job_run_worker_logs for job_run_id=%s", job_run_id)

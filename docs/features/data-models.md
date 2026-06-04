@@ -173,18 +173,18 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - `id` (PK, integer; singleton row `id=1`), `system_name` (display name shown in the SPA header), `default_timezone` (default `UTC`), `api_base_url_note` (free-text operator note; SPA API URL is build-time), `updated_at`
 - Loaded by the Console settings page and the public `system_name` lookup
 
-### Jobs (procrastinate_jobs)
+### Job runs (procrastinate_jobs)
 
 - Managed by procrastinate; stores task_name, args (document_id, pipeline_id, knowledge_base_id, etc.), status, attempts, timestamps
 
-### JobWorkerLog (job_worker_logs)
+### JobRunWorkerLog (job_run_worker_logs)
 
-- `procrastinate_job_id` (PK, bigint): same id as `procrastinate_jobs.id`
+- `job_run_id` (PK, bigint): same id as `procrastinate_jobs.id`
 - `log_text` (TEXT): captured worker output (command + stderr + stdout), truncated server-side to `char_limit_applied` when over limit
 - `truncated` (boolean)
 - `char_limit_applied` (integer): cap used for that row (from **`OPENKMS_JOB_LOG_MAX_CHARS`**)
 - `created_at`
-- Removed when the job is deleted via **`DELETE /api/jobs/{id}`**
+- Removed when the run is deleted via **`DELETE /api/jobs/{id}`**
 
 ## Auth and permissions
 

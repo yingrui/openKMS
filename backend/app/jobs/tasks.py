@@ -190,7 +190,7 @@ async def run_pipeline(
                 "(same credentials the API accepts for HTTP Basic); see backend/.env.example."
             )
 
-    from app.services.job_worker_log import persist_job_worker_log_best_effort
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     try:
         async with async_session_maker() as session:
@@ -310,7 +310,7 @@ async def run_pipeline(
     except RuntimeError:
         raise
     finally:
-        await persist_job_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
+        await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
 @job_app.task(name="run_spreadsheet_preview", pass_context=True)
@@ -325,7 +325,7 @@ async def run_spreadsheet_preview(
 
     from app.database import async_session_maker
     from app.models.document import Document
-    from app.services.job_worker_log import persist_job_worker_log_best_effort
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.spreadsheet_preview import build_xlsx_preview
     from app.services.storage import get_object
 
@@ -372,7 +372,7 @@ async def run_spreadsheet_preview(
         log_out = "Spreadsheet preview completed (openpyxl); document status set to completed."
         logger.info("Spreadsheet preview completed for document %s", document_id)
     finally:
-        await persist_job_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
+        await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
 @job_app.task(name="run_mindmap_preview", pass_context=True)
@@ -387,7 +387,7 @@ async def run_mindmap_preview(
 
     from app.database import async_session_maker
     from app.models.document import Document
-    from app.services.job_worker_log import persist_job_worker_log_best_effort
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.mindmap_preview import build_xmind_preview
     from app.services.storage import get_object
 
@@ -434,7 +434,7 @@ async def run_mindmap_preview(
         log_out = "Mind map preview completed; document status set to completed."
         logger.info("Mind map preview completed for document %s", document_id)
     finally:
-        await persist_job_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
+        await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
 @job_app.task(name="run_kb_index", pass_context=True)
@@ -449,7 +449,7 @@ async def run_kb_index(
     """
     from app.database import async_session_maker
     from app.models.knowledge_base import KnowledgeBase
-    from app.services.job_worker_log import persist_job_worker_log_best_effort
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_pk = context.job.id
     log_cmd: str | None = f"run_kb_index knowledge_base_id={knowledge_base_id}"
@@ -503,7 +503,7 @@ async def run_kb_index(
             logger.error("KB indexing timed out for %s", knowledge_base_id)
             raise
     finally:
-        await persist_job_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
+        await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
 def _load_result_from_s3(file_hash: str) -> dict:

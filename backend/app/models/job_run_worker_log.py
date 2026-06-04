@@ -1,4 +1,4 @@
-"""Stored worker subprocess log for Procrastinate jobs (GET /api/jobs/{id})."""
+"""Stored worker subprocess log for job runs (GET /api/jobs/{id})."""
 
 from datetime import datetime
 
@@ -8,12 +8,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-class JobWorkerLog(Base):
-    """One row per ``procrastinate_jobs.id``; ``log_text`` is PostgreSQL TEXT (unbounded)."""
+class JobRunWorkerLog(Base):
+    """One row per job run (``procrastinate_jobs.id``); ``log_text`` is PostgreSQL TEXT (unbounded)."""
 
-    __tablename__ = "job_worker_logs"
+    __tablename__ = "job_run_worker_logs"
 
-    procrastinate_job_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    job_run_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     log_text: Mapped[str] = mapped_column(Text, nullable=False)
     truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     char_limit_applied: Mapped[int] = mapped_column(Integer, nullable=False)

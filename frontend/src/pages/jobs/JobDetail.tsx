@@ -122,7 +122,7 @@ export function JobDetail() {
   if (!job) {
     return (
       <div className="job-detail">
-        <Link to="/jobs" className="job-detail-back">
+        <Link to="/job-runs" className="job-detail-back">
           <ArrowLeft size={18} /> {t('jobDetail.back')}
         </Link>
         <p className="job-detail-not-found">{t('jobDetail.notFound')}</p>
@@ -140,7 +140,7 @@ export function JobDetail() {
 
   return (
     <div className="job-detail">
-      <Link to="/jobs" className="job-detail-back">
+      <Link to="/job-runs" className="job-detail-back">
         <ArrowLeft size={18} />
         <span>{t('jobDetail.back')}</span>
       </Link>

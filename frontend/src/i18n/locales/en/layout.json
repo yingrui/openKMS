@@ -48,7 +48,7 @@
   "knowledgeBases": "Knowledge Bases",
   "evaluation": "Evaluations",
   "pipelines": "Pipelines",
-  "jobs": "Jobs",
+  "jobs": "Job runs",
   "models": "Models",
   "authRequiredTitle": "Authentication Required",
   "authRequiredBody": "You need to be logged in to access this page. Please sign in with your account to continue.",

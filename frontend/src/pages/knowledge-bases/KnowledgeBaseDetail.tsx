@@ -598,7 +598,7 @@ export function KnowledgeBaseDetail() {
     try {
       const job = await enqueueKnowledgeBaseIndexJob(kbId);
       toast.success(t('detail.indexJobToastQueued', { id: job.id }));
-      navigate(`/jobs/${job.id}`);
+      navigate(`/job-runs/${job.id}`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.indexJobToastFailed'));
     } finally {
@@ -2701,7 +2701,7 @@ export function KnowledgeBaseDetail() {
                       t('detail.indexJobButton')
                     )}
                   </button>
-                  <Link to="/jobs" className="kb-settings-index-jobs-link">
+                  <Link to="/job-runs" className="kb-settings-index-jobs-link">
                     {t('detail.indexJobViewJobs')}
                   </Link>
                 </div>

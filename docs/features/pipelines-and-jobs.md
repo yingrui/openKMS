@@ -1,6 +1,6 @@
 # Pipelines, jobs, and models
 
-Pipelines define how a document is processed (command template + linked model). Jobs run pipelines on the procrastinate worker. Models capture provider/API endpoint metadata that pipelines and other features reuse.
+Pipelines define how a document is processed (command template + linked model). **Job runs** execute pipelines on the procrastinate worker. Models capture provider/API endpoint metadata that pipelines and other features reuse.
 
 ## Pipelines
 
@@ -14,14 +14,15 @@ Pipelines define how a document is processed (command template + linked model). 
 | Baidu Cloud pipeline | ✅ | "Baidu Cloud Document Parse" seeded (`pipeline_baidu_doc_parse`; `baidu-doc-parse`) |
 | Pipeline active flag | ✅ | `is_active` on pipelines; Pipelines UI toggle; disabled pipelines rejected for new jobs; channel/job pickers show active only |
 
-## Jobs (procrastinate)
+## Job runs (procrastinate)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Job queue | ✅ | procrastinate (PostgreSQL-based); schema applied on startup |
-| Jobs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry`, `POST /api/jobs/{id}/mark-failed` |
-| Jobs UI | ✅ | Jobs.tsx with real API, status filter, create job, retry failed, mark stale in-flight jobs failed, delete |
-| Job detail | ✅ | JobDetail.tsx at `/jobs/:jobId` – timing, document link, pipeline info, rendered command, event log |
+| Job runs list pagination | ✅ | `GET /api/jobs` returns `total`, `limit`, `offset`; UI paginates with status/search server-side |
+| Job runs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry`, `POST /api/jobs/{id}/mark-failed` |
+| Job runs UI | ✅ | `JobRuns.tsx` at `/job-runs` (legacy `/jobs` redirects), status filter, queue run, retry failed, mark stale in-flight runs failed, delete |
+| Job run detail | ✅ | `JobDetail.tsx` at `/job-runs/:jobId` – timing, document link, pipeline info, rendered command, event log |
 | run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default **3600**) caps wait time; updates document status |
 | Worker | ✅ | `backend/worker.py` entry point for procrastinate worker |
 | Document status | ✅ | uploaded → pending → running → completed/failed; shown in list and detail |

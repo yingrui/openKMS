@@ -50,7 +50,7 @@ import app.models.wiki_models  # noqa: F401 - register models with Base.metadata
 import app.models.agent_models  # noqa: F401 - register models with Base.metadata
 import app.models.system_settings  # noqa: F401 - register models with Base.metadata
 import app.models.knowledge_map  # noqa: F401 - register models with Base.metadata
-import app.models.job_worker_log  # noqa: F401 - register models with Base.metadata
+import app.models.job_run_worker_log  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

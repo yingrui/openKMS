@@ -48,7 +48,7 @@
   "knowledgeBases": "知识库",
   "evaluation": "评测集",
   "pipelines": "流水线",
-  "jobs": "任务",
+  "jobs": "任务运行",
   "models": "模型",
   "authRequiredTitle": "需要登录",
   "authRequiredBody": "访问此页面需要先登录。",

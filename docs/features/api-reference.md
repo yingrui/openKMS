@@ -130,12 +130,12 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |
 | POST | `/api/models/{id}/test` | Test model (proxies to provider; chat-completions with optional vision image) |
-| GET | `/api/jobs` | List jobs (optional `?document_id=`, optional `?knowledge_base_id=` filters `run_kb_index` args) |
-| GET | `/api/jobs/{id}` | Get job detail (includes `events`, and when the worker persisted output: `worker_log` merged command/stderr/stdout as plain text, `worker_log_truncated`, `worker_log_char_limit`; list endpoint omits log fields) |
-| POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id?, force_reparse? }`). **`force_reparse`** (default `false`): for pipeline document types, if storage already has `{file_hash}/result.json` from a prior successful parse, the worker reuses it and skips VLM (set `true` to always run the CLI). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id`; `force_reparse` ignored). **`.xmind`**: defers `run_mindmap_preview` (no `pipeline_id`; `force_reparse` ignored). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
-| POST | `/api/jobs/{id}/retry` | Retry a failed job; **`run_pipeline`** retries always set **`force_reparse`** so the VLM CLI runs again; **`run_kb_index`** re-queues the same **`knowledge_base_id`** |
-| POST | `/api/jobs/{id}/mark-failed` | Mark a pending or running job failed when the worker stopped without finishing; reconciles linked document processing status from all jobs for that document (does not downgrade `completed` when a later job succeeded) |
-| DELETE | `/api/jobs/{id}` | Delete a job (not running) |
+| GET | `/api/jobs` | List job runs (`items`, `total`, `limit`, `offset`; optional `?document_id=`, `?knowledge_base_id=`, `?status=`, `?search=`, `?limit=`, `?offset=`) |
+| GET | `/api/jobs/{id}` | Get job run detail (includes `events`, and when the worker persisted output: `worker_log` merged command/stderr/stdout as plain text, `worker_log_truncated`, `worker_log_char_limit`; list endpoint omits log fields) |
+| POST | `/api/jobs` | Queue processing run (`{ document_id, pipeline_id?, force_reparse? }`). **`force_reparse`** (default `false`): for pipeline document types, if storage already has `{file_hash}/result.json` from a prior successful parse, the worker reuses it and skips VLM (set `true` to always run the CLI). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id`; `force_reparse` ignored). **`.xmind`**: defers `run_mindmap_preview` (no `pipeline_id`; `force_reparse` ignored). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
+| POST | `/api/jobs/{id}/retry` | Retry a failed run; **`run_pipeline`** retries always set **`force_reparse`** so the VLM CLI runs again; **`run_kb_index`** re-queues the same **`knowledge_base_id`** |
+| POST | `/api/jobs/{id}/mark-failed` | Mark a pending or running run failed when the worker stopped without finishing; reconciles linked document processing status from all runs for that document (does not downgrade `completed` when a later run succeeded) |
+| DELETE | `/api/jobs/{id}` | Delete a run (not running) |
 
 ## Knowledge bases
 

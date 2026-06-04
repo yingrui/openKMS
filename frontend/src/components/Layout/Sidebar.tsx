@@ -598,9 +598,9 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           <span>{t('pipelines')}</span>
         </NavLink>
         )}
-        {canAccessPath('/jobs') && (
+        {(canAccessPath('/job-runs') || canAccessPath('/jobs')) && (
         <NavLink
-          to="/jobs"
+          to="/job-runs"
           title={t('jobs')}
           className={({ isActive }) =>
             `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`

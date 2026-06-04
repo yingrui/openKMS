@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend (React/Vite)"]
-    FE["Home (Knowledge Map force graph when knowledge_map:read), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Jobs, Models"]
+    FE["Home (Knowledge Map force graph when knowledge_map:read), Knowledge Map, Documents, Articles, Knowledge Bases, Wiki Spaces, Glossaries, Pipelines, Job runs, Models"]
   end
 
   subgraph Backend["Backend (FastAPI)"]
@@ -82,7 +82,7 @@ flowchart TB
     Eval[EvaluationDatasetList, EvaluationDatasetDetail]
     Glossaries[GlossaryList, GlossaryDetail]
     Pipelines[Pipelines]
-    Jobs[Jobs, JobDetail]
+    JobRuns[JobRuns, JobDetail]
     Models[Models, ModelDetail]
     Ontology[OntologyList; Datasets, DatasetDetail, ObjectTypesPage, LinkTypesPage; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer] — SPA sources under **`frontend/src/pages/ontology/`**
     Console[Console: Overview, Permission management, Data security, DataSources, Connectors, Settings, Users, FeatureToggles]
@@ -127,7 +127,7 @@ frontend/src/
     ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx (`/wikis/:id/settings`; sectioned settings UI; **Build index** for offline wiki page embeddings (default embedding ApiModel); folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiWorkspace** graph tab), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; optional **WikiSpaceAgentPanel** Copilot rail toggled from the toolbar; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
     ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
     ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
-    ├── Pipelines.tsx, Jobs.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
+    ├── Pipelines.tsx, JobRuns.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
     ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.scss; co-located SCSS per page
     └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, DataSources, Connectors, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
 ```

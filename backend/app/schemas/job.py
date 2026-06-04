@@ -39,3 +39,5 @@ class JobResponse(BaseModel):
 class JobListResponse(BaseModel):
     items: list[JobResponse]
     total: int
+    limit: int
+    offset: int

@@ -69,7 +69,7 @@ _SPA_PATH_PREFIXES = (
     "/object-explorer",
     "/console",
     "/pipelines",
-    "/jobs",
+    "/job-runs",
     "/models",
     "/glossaries",
     "/ontology",

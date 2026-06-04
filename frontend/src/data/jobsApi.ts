@@ -1,4 +1,4 @@
-/** API for processing jobs (backend). */
+/** API for processing job runs (backend `/api/jobs`). */
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
@@ -28,6 +28,8 @@ export interface JobResponse {
 export interface JobListResponse {
   items: JobResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface JobCreate {
@@ -40,6 +42,8 @@ export interface JobCreate {
 export async function fetchJobs(params?: {
   document_id?: string;
   knowledge_base_id?: string;
+  status?: string;
+  search?: string;
   limit?: number;
   offset?: number;
 }): Promise<JobListResponse> {
@@ -47,14 +51,16 @@ export async function fetchJobs(params?: {
   const query = new URLSearchParams();
   if (params?.document_id) query.set('document_id', params.document_id);
   if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
-  if (params?.limit) query.set('limit', String(params.limit));
-  if (params?.offset) query.set('offset', String(params.offset));
+  if (params?.status) query.set('status', params.status);
+  if (params?.search?.trim()) query.set('search', params.search.trim());
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
   const qs = query.toString() ? `?${query.toString()}` : '';
   const res = await authAwareFetch(`${config.apiUrl}/api/jobs${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
-  if (!res.ok) throw new Error(`Failed to fetch jobs: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch job runs: ${res.status}`);
   return res.json();
 }
 

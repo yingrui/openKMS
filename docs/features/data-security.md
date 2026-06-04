@@ -139,7 +139,7 @@ Per-resource sharing applies when ACL rows exist. Set **`OPENKMS_ENFORCE_RESOURC
 | Document / article channels | Read lists: batched `readable_*_channel_ids`. **Mutations:** `require_*_channel_write` |
 | Wiki / KB linked documents | **List:** all links when caller can read space/KB. **Add:** space/KB write + document read (channel) |
 | Wiki pages | Space ACL — `wiki_page_scope` / `get_wiki_page_in_space` |
-| Jobs | Args resolved to document (channel write for create/retry) or KB (scoped write/read) |
+| Job runs | Args resolved to document (channel write for create/retry) or KB (scoped write/read) |
 | Global search | Scoped in `global_search.py` |
 | Sharing API | GET needs read; PUT needs manage |
 
