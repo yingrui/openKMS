@@ -6,24 +6,22 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.api_model import ApiModel, MODEL_CATEGORIES
-
-_VALID_CATEGORIES = frozenset(c for c, _ in MODEL_CATEGORIES)
+from app.models.api_model import VALID_API_KINDS, ApiModel
 
 
 async def resolve_model_config_by_name(
     db: AsyncSession,
     *,
     model_name: str,
-    category: str,
+    api_kind: str,
 ) -> dict[str, str] | None:
-    """Return base_url, api_key, model_name for the first row matching category + model_name."""
-    if category not in _VALID_CATEGORIES:
+    """Return base_url, api_key, model_name for the first row matching api_kind + model_name."""
+    if api_kind not in VALID_API_KINDS:
         return None
     stmt = (
         select(ApiModel)
         .options(selectinload(ApiModel.provider_rel))
-        .where(ApiModel.category == category, ApiModel.model_name == model_name)
+        .where(ApiModel.api_kind == api_kind, ApiModel.model_name == model_name)
         .limit(1)
     )
     result = await db.execute(stmt)

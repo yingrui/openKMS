@@ -220,7 +220,7 @@ async def extract_metadata(
 
     Args:
         markdown: Document content in markdown.
-        model: Registered ApiModel (category=llm).
+        model: Registered ApiModel (api_kind=chat-completions).
         schema: JSON Schema dict (type/object, properties, required) or legacy array
                 of field definitions. If None/empty, uses default schema.
 

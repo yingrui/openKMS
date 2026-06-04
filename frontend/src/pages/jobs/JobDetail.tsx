@@ -287,8 +287,8 @@ export function JobDetail() {
               <dd>{model.name}</dd>
               <dt>{t('jobDetail.provider')}</dt>
               <dd>{model.provider_name}</dd>
-              <dt>{t('jobDetail.category')}</dt>
-              <dd>{model.category}</dd>
+              <dt>{t('jobDetail.apiKind')}</dt>
+              <dd>{model.api_kind}</dd>
               <dt>{t('jobDetail.baseUrl')}</dt>
               <dd className="job-detail-mono">{model.base_url}</dd>
               {model.model_name && (

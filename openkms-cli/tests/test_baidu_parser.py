@@ -42,19 +42,39 @@ def test_get_access_token_missing_credentials():
         get_access_token("", "")
 
 
-def test_create_parse_task_success():
+def test_create_parse_task_file_data_success():
     mock_resp = MagicMock()
     mock_resp.json.return_value = {
         "error_code": 0,
         "result": {"task_id": "task-abc"},
     }
     with patch("openkms_cli.baidu_parser.requests.post", return_value=mock_resp) as mock_post:
-        task_id = create_parse_task("tok", b"%PDF-1.4", "doc.pdf")
+        task_id = create_parse_task("tok", "doc.pdf", file_bytes=b"%PDF-1.4")
     assert task_id == "task-abc"
     payload = mock_post.call_args.kwargs.get("data") or mock_post.call_args[1].get("data")
     assert "file_data" in payload
     assert "file_url" not in payload
     assert payload["file_name"] == "doc.pdf"
+
+
+def test_create_parse_task_file_url_success():
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "error_code": 0,
+        "result": {"task_id": "task-url-1"},
+    }
+    file_url = "https://kms.example.com/api/public/documents/d1/original.pdf?exp=1&sig=abc"
+    with patch("openkms_cli.baidu_parser.requests.post", return_value=mock_resp) as mock_post:
+        task_id = create_parse_task("tok", "doc.pdf", file_url=file_url)
+    assert task_id == "task-url-1"
+    payload = mock_post.call_args.kwargs.get("data") or mock_post.call_args[1].get("data")
+    assert payload["file_url"] == file_url
+    assert "file_data" not in payload
+
+
+def test_create_parse_task_requires_input():
+    with pytest.raises(BaiduParseError, match="file_bytes or file_url"):
+        create_parse_task("tok", "doc.pdf")
 
 
 def test_validate_file_data_size_image_too_large():

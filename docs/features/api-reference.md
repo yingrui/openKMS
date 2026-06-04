@@ -16,11 +16,13 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/api/auth/login/oauth2/code/oidc` | OAuth2 callback (backend confidential client; register on IdP) |
 | GET | `/api/auth/login/oauth2/code/keycloak` | Same as above (legacy callback path) |
 | GET | `/api/auth/public-config` | No auth: `auth_mode`, `allow_signup` only |
-| GET | `/internal-api/models/document-parse-defaults` | **Internal service client only**; query `model_name` optional — named **`vl`**/**`ocr`** model or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
-| GET | `/internal-api/models/config-by-name` | **Internal service client only**; query **`model_name`** (required), **`category`** (default `llm`); JSON `base_url`, `model_name`, `api_key` for openkms-cli (e.g. pipeline metadata extraction) |
-| GET | `/internal-api/models/llm-defaults` | **Internal service client only**; JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`llm`** category; same resolution as embedded wiki agent) |
+| GET | `/internal-api/models/document-parse-defaults` | **Internal service client only**; query `model_name` optional — named model with **`document-parse`** capability or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
+| GET | `/internal-api/models/config-by-name` | **Internal service client only**; query **`model_name`** (required), **`api_kind`** (default `chat-completions`); JSON `base_url`, `model_name`, `api_key` for openkms-cli (e.g. pipeline metadata extraction) |
+| GET | `/internal-api/models/llm-defaults` | **Internal service client only**; JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`chat-completions`** model; same as embedded wiki agent) |
 | GET | `/internal-api/models/kb-embedding-credentials` | **Internal service client only**; query **`knowledge_base_id`** (required); **`local-cli`** may read any KB; OIDC service clients still require KB visibility like **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** |
+| GET | `/internal-api/documents/{document_id}/baidu-fetch-url` | **Internal service client only**; query **`file_ext`** (required); mints signed **`file_url`** on **`OPENKMS_FRONTEND_URL`** for Baidu **`baidu-doc-parse`** (`exp`/`sig` query params; TTL **`OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS`**) |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
+| GET | `/api/public/documents/{document_id}/original.{file_ext}` | No auth: query **`exp`**, **`sig`** (HMAC); 302 to presigned original object (Baidu **`file_url`** fetch) |
 | GET | `/api/public/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
@@ -120,13 +122,14 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/providers/{id}` | Get provider |
 | PUT | `/api/providers/{id}` | Update provider |
 | DELETE | `/api/providers/{id}` | Delete provider (fails if has models) |
-| GET | `/api/models` | List models (optional `?category=`, `?provider_id=`, `?search=`) |
-| GET | `/api/models/categories` | List model categories |
-| POST | `/api/models` | Create model under provider (provider_id, name, category, model_name) |
+| GET | `/api/models` | List models (optional `?api_kind=`, `?capability=`, `?provider_id=`, `?search=`) |
+| GET | `/api/models/api-kinds` | List API kinds (`chat-completions`, `embeddings`, `custom`) |
+| GET | `/api/models/capabilities` | List known capability tags |
+| POST | `/api/models` | Create model (provider_id, name, api_kind, capabilities[], model_name) |
 | GET | `/api/models/{id}` | Get model detail |
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |
-| POST | `/api/models/{id}/test` | Test model (proxies to provider's base_url; supports chat/embedding/VL) |
+| POST | `/api/models/{id}/test` | Test model (proxies to provider; chat-completions with optional vision image) |
 | GET | `/api/jobs` | List jobs (optional `?document_id=`, optional `?knowledge_base_id=` filters `run_kb_index` args) |
 | GET | `/api/jobs/{id}` | Get job detail (includes `events`, and when the worker persisted output: `worker_log` merged command/stderr/stdout as plain text, `worker_log_truncated`, `worker_log_char_limit`; list endpoint omits log fields) |
 | POST | `/api/jobs` | Create processing job (`{ document_id, pipeline_id?, force_reparse? }`). **`force_reparse`** (default `false`): for pipeline document types, if storage already has `{file_hash}/result.json` from a prior successful parse, the worker reuses it and skips VLM (set `true` to always run the CLI). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id`; `force_reparse` ignored). **`.xmind`**: defers `run_mindmap_preview` (no `pipeline_id`; `force_reparse` ignored). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |

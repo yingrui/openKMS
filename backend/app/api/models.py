@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.auth import require_auth
 from app.database import get_db
-from app.models.api_model import ApiModel, MODEL_CATEGORIES
+from app.models.api_model import API_KINDS, MODEL_CAPABILITIES, ApiModel
 from app.models.api_provider import ApiProvider
 from app.schemas.api_model import (
     ApiModelCreate,
@@ -22,28 +22,38 @@ from app.schemas.api_model import (
 router = APIRouter(prefix="/models", tags=["models"], dependencies=[Depends(require_auth)])
 
 
-@router.get("/categories")
-async def get_categories():
-    """Return the fixed list of model categories."""
-    return {"categories": [{"id": c[0], "label": c[1]} for c in MODEL_CATEGORIES]}
+@router.get("/api-kinds")
+async def get_api_kinds():
+    """Return the fixed list of API kinds (protocol / endpoint shape)."""
+    return {"api_kinds": [{"id": k[0], "label": k[1]} for k in API_KINDS]}
+
+
+@router.get("/capabilities")
+async def get_capabilities():
+    """Return known capability tags for models (vision, tools, etc.)."""
+    return {"capabilities": [{"id": c[0], "label": c[1]} for c in MODEL_CAPABILITIES]}
 
 
 @router.get("", response_model=ApiModelListResponse)
 async def list_models(
-    category: str | None = Query(None),
+    api_kind: str | None = Query(None),
+    capability: str | None = Query(None, description="Filter models that include this capability tag"),
     provider_id: str | None = Query(None),
     search: str | None = Query(None),
     limit: int = Query(25, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    """List registered models, optionally filtered by category, provider, or search term."""
+    """List registered models, optionally filtered by api_kind, capability, provider, or search."""
     stmt = select(ApiModel).options(selectinload(ApiModel.provider_rel))
     count_stmt = select(func.count(ApiModel.id))
 
-    if category:
-        stmt = stmt.where(ApiModel.category == category)
-        count_stmt = count_stmt.where(ApiModel.category == category)
+    if api_kind:
+        stmt = stmt.where(ApiModel.api_kind == api_kind)
+        count_stmt = count_stmt.where(ApiModel.api_kind == api_kind)
+    if capability and (cap := capability.strip()):
+        stmt = stmt.where(ApiModel.capabilities.contains([cap]))
+        count_stmt = count_stmt.where(ApiModel.capabilities.contains([cap]))
     if provider_id:
         stmt = stmt.where(ApiModel.provider_id == provider_id)
         count_stmt = count_stmt.where(ApiModel.provider_id == provider_id)
@@ -66,9 +76,9 @@ async def list_models(
     return ApiModelListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
-async def _clear_category_defaults(db: AsyncSession, category: str, exclude_model_id: str | None = None):
-    """Set is_default_in_category=False for all models in category except exclude_model_id."""
-    stmt = update(ApiModel).where(ApiModel.category == category).values(is_default_in_category=False)
+async def _clear_api_kind_defaults(db: AsyncSession, api_kind: str, exclude_model_id: str | None = None):
+    """Set is_default_in_category=False for all models in api_kind except exclude_model_id."""
+    stmt = update(ApiModel).where(ApiModel.api_kind == api_kind).values(is_default_in_category=False)
     if exclude_model_id:
         stmt = stmt.where(ApiModel.id != exclude_model_id)
     await db.execute(stmt)
@@ -81,12 +91,13 @@ async def create_model(body: ApiModelCreate, db: AsyncSession = Depends(get_db))
     if not provider:
         raise HTTPException(status_code=404, detail="Provider not found")
     if body.is_default_in_category:
-        await _clear_category_defaults(db, body.category)
+        await _clear_api_kind_defaults(db, body.api_kind)
     model = ApiModel(
         id=f"model_{uuid.uuid4().hex[:8]}",
         provider_id=body.provider_id,
         name=body.name,
-        category=body.category,
+        api_kind=body.api_kind,
+        capabilities=body.capabilities,
         is_default_in_category=body.is_default_in_category,
         model_name=body.model_name,
         config=body.config,
@@ -125,8 +136,8 @@ async def update_model(model_id: str, body: ApiModelUpdate, db: AsyncSession = D
         if not provider:
             raise HTTPException(status_code=404, detail="Provider not found")
     if update_data.get("is_default_in_category") is True:
-        category = update_data.get("category", model.category)
-        await _clear_category_defaults(db, category, exclude_model_id=model_id)
+        api_kind = update_data.get("api_kind", model.api_kind)
+        await _clear_api_kind_defaults(db, api_kind, exclude_model_id=model_id)
     for key, value in update_data.items():
         setattr(model, key, value)
     await db.commit()
@@ -158,7 +169,8 @@ async def test_model(model_id: str, body: ApiModelTestRequest, db: AsyncSession 
         raise HTTPException(status_code=404, detail="Model not found")
     return await execute_test(
         base_url=model.provider_rel.base_url,
-        category=model.category,
+        api_kind=model.api_kind,
+        capabilities=model.capabilities,
         api_key=model.provider_rel.api_key,
         model_name=model.model_name,
         prompt=body.prompt,

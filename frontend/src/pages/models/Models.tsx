@@ -5,12 +5,14 @@ import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2, Server } from 'lucide-re
 import { toast } from 'sonner';
 import {
   fetchModels,
-  fetchModelCategories,
+  fetchApiKinds,
+  fetchModelCapabilities,
   createModel,
   updateModel,
   deleteModel,
   type ApiModelResponse,
-  type ModelCategory,
+  type ApiKindOption,
+  type CapabilityOption,
 } from '../../data/modelsApi';
 import {
   fetchProviders,
@@ -34,10 +36,11 @@ export function Models() {
   const [modelsTotal, setModelsTotal] = useState(0);
   const [modelsPage, setModelsPage] = useState(0);
   const [modelsPageSize, setModelsPageSize] = useState(MODELS_PAGE_SIZE_DEFAULT);
-  const [categories, setCategories] = useState<ModelCategory[]>([]);
+  const [apiKinds, setApiKinds] = useState<ApiKindOption[]>([]);
+  const [capabilityOptions, setCapabilityOptions] = useState<CapabilityOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeApiKind, setActiveApiKind] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -53,7 +56,8 @@ export function Models() {
   // Model form
   const [formProviderId, setFormProviderId] = useState('');
   const [formName, setFormName] = useState('');
-  const [formCategory, setFormCategory] = useState('');
+  const [formApiKind, setFormApiKind] = useState('');
+  const [formCapabilities, setFormCapabilities] = useState<string[]>([]);
   const [formIsDefaultInCategory, setFormIsDefaultInCategory] = useState(false);
   const [formModelName, setFormModelName] = useState('');
   const [formConfig, setFormConfig] = useState('');
@@ -74,32 +78,34 @@ export function Models() {
 
   useEffect(() => {
     setModelsPage(0);
-  }, [activeCategory, activeProvider, searchDebounced]);
+  }, [activeApiKind, activeProvider, searchDebounced]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [modelsRes, cats, provsRes] = await Promise.all([
+      const [modelsRes, kinds, caps, provsRes] = await Promise.all([
         fetchModels({
-          category: activeCategory || undefined,
+          api_kind: activeApiKind || undefined,
           provider_id: activeProvider || undefined,
           search: searchDebounced.trim() || undefined,
           limit: modelsPageSize,
           offset: modelsPage * modelsPageSize,
         }),
-        fetchModelCategories(),
+        fetchApiKinds(),
+        fetchModelCapabilities(),
         fetchProviders(),
       ]);
       setModels(modelsRes.items);
       setModelsTotal(modelsRes.total);
-      setCategories(cats);
+      setApiKinds(kinds);
+      setCapabilityOptions(caps);
       setProviders(provsRes.items);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('models.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeProvider, modelsPage, modelsPageSize, searchDebounced, t]);
+  }, [activeApiKind, activeProvider, modelsPage, modelsPageSize, searchDebounced, t]);
 
   useEffect(() => {
     void load();
@@ -133,7 +139,8 @@ export function Models() {
     setEditModel(null);
     setFormProviderId(activeProvider || (providers[0]?.id ?? ''));
     setFormName('');
-    setFormCategory(categories[0]?.id ?? '');
+    setFormApiKind(apiKinds[0]?.id ?? 'chat-completions');
+    setFormCapabilities([]);
     setFormIsDefaultInCategory(false);
     setFormModelName('');
     setFormConfig('');
@@ -144,7 +151,8 @@ export function Models() {
     setEditModel(m);
     setFormProviderId(m.provider_id);
     setFormName(m.name);
-    setFormCategory(m.category);
+    setFormApiKind(m.api_kind);
+    setFormCapabilities([...(m.capabilities || [])]);
     setFormIsDefaultInCategory(m.is_default_in_category ?? false);
     setFormModelName(m.model_name || '');
     setFormConfig(m.config ? JSON.stringify(m.config, null, 2) : '');
@@ -189,7 +197,7 @@ export function Models() {
   };
 
   const handleModelSubmit = async () => {
-    if (!formName.trim() || !formProviderId || !formCategory) return;
+    if (!formName.trim() || !formProviderId || !formApiKind) return;
     setSubmitting(true);
     try {
       let parsedConfig: Record<string, unknown> | undefined;
@@ -199,7 +207,8 @@ export function Models() {
       const payload = {
         provider_id: formProviderId,
         name: formName,
-        category: formCategory,
+        api_kind: formApiKind,
+        capabilities: formCapabilities,
         is_default_in_category: formIsDefaultInCategory,
         model_name: formModelName || null,
         config: parsedConfig ?? null,
@@ -249,14 +258,22 @@ export function Models() {
     if (m.is_default_in_category) return;
     try {
       await updateModel(m.id, { is_default_in_category: true });
-      toast.success(t('models.defaultSet', { name: m.name, category: categoryLabel(m.category) }));
+      toast.success(t('models.defaultSet', { name: m.name, apiKind: apiKindLabel(m.api_kind) }));
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('models.defaultFailed'));
     }
   };
 
-  const categoryLabel = (catId: string) => categories.find((c) => c.id === catId)?.label || catId;
+  const apiKindLabel = (kindId: string) => apiKinds.find((k) => k.id === kindId)?.label || kindId;
+  const capabilityLabel = (capId: string) =>
+    capabilityOptions.find((c) => c.id === capId)?.label || capId;
+
+  const toggleFormCapability = (capId: string) => {
+    setFormCapabilities((prev) =>
+      prev.includes(capId) ? prev.filter((c) => c !== capId) : [...prev, capId]
+    );
+  };
   const providerModelCount = (providerId: string) => providerModelCounts.get(providerId) ?? 0;
 
   return (
@@ -325,19 +342,19 @@ export function Models() {
               <div className="models-category-filters">
                 <button
                   type="button"
-                  className={`models-filter-btn ${activeCategory === null ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(null)}
+                  className={`models-filter-btn ${activeApiKind === null ? 'active' : ''}`}
+                  onClick={() => setActiveApiKind(null)}
                 >
                   {t('shared.all')}
                 </button>
-                {categories.map((c) => (
+                {apiKinds.map((k) => (
                   <button
-                    key={c.id}
+                    key={k.id}
                     type="button"
-                    className={`models-filter-btn ${activeCategory === c.id ? 'active' : ''}`}
-                    onClick={() => setActiveCategory(c.id)}
+                    className={`models-filter-btn ${activeApiKind === k.id ? 'active' : ''}`}
+                    onClick={() => setActiveApiKind(k.id)}
                   >
-                    {c.label}
+                    {k.label}
                   </button>
                 ))}
               </div>
@@ -360,7 +377,8 @@ export function Models() {
                   <tr>
                     <th>{t('models.colModel')}</th>
                     <th>{t('models.colProvider')}</th>
-                    <th>{t('models.colCategory')}</th>
+                    <th>{t('models.colApiKind')}</th>
+                    <th>{t('models.colCapabilities')}</th>
                     <th>{t('models.colDefault')}</th>
                     <th>{t('models.colBaseUrl')}</th>
                     <th className="models-table-actions-col">{t('shared.actions')}</th>
@@ -369,10 +387,10 @@ export function Models() {
                 <tbody>
                   {models.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="table-empty">
+                      <td colSpan={7} className="table-empty">
                         {providers.length === 0
                           ? t('models.emptyNoProviders')
-                          : modelsTotal === 0 && !searchDebounced.trim() && !activeCategory && !activeProvider
+                          : modelsTotal === 0 && !searchDebounced.trim() && !activeApiKind && !activeProvider
                             ? t('models.emptyNoModels')
                             : t('models.emptyNoMatch')}
                       </td>
@@ -396,7 +414,20 @@ export function Models() {
                           </div>
                         </td>
                         <td>{m.provider_name}</td>
-                        <td>{categoryLabel(m.category)}</td>
+                        <td>{apiKindLabel(m.api_kind)}</td>
+                        <td>
+                          <div className="models-capability-tags">
+                            {(m.capabilities || []).length === 0 ? (
+                              <span className="models-capability-empty">—</span>
+                            ) : (
+                              m.capabilities.map((cap) => (
+                                <span key={cap} className="models-capability-tag">
+                                  {capabilityLabel(cap)}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </td>
                         <td>
                           {m.is_default_in_category ? (
                             <span className="models-default-badge">{t('models.defaultBadge')}</span>
@@ -404,7 +435,7 @@ export function Models() {
                             <button
                               type="button"
                               className="models-set-default-btn"
-                              title={t('models.setDefaultTitle', { category: categoryLabel(m.category) })}
+                              title={t('models.setDefaultTitle', { apiKind: apiKindLabel(m.api_kind) })}
                               onClick={(e) => handleSetDefault(m, e)}
                             >
                               {t('models.set')}
@@ -539,21 +570,36 @@ export function Models() {
                 />
               </label>
               <label>
-                {t('models.category')}
-                <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)}>
-                  <option value="">{t('models.selectCategory')}</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
+                {t('models.apiKind')}
+                <select value={formApiKind} onChange={(e) => setFormApiKind(e.target.value)}>
+                  <option value="">{t('models.selectApiKind')}</option>
+                  {apiKinds.map((k) => (
+                    <option key={k.id} value={k.id}>{k.label}</option>
                   ))}
                 </select>
               </label>
+              <fieldset className="models-capabilities-fieldset">
+                <legend>{t('models.capabilities')}</legend>
+                <div className="models-capabilities-checkboxes">
+                  {capabilityOptions.map((c) => (
+                    <label key={c.id} className="models-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={formCapabilities.includes(c.id)}
+                        onChange={() => toggleFormCapability(c.id)}
+                      />
+                      <span>{c.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label className="models-checkbox-label">
                 <input
                   type="checkbox"
                   checked={formIsDefaultInCategory}
                   onChange={(e) => setFormIsDefaultInCategory(e.target.checked)}
                 />
-                <span>{t('models.defaultInCategory')}</span>
+                <span>{t('models.defaultInApiKind')}</span>
               </label>
               <label>
                 {t('models.modelApiName')}
@@ -582,7 +628,7 @@ export function Models() {
                 type="button"
                 className="btn btn-primary"
                 onClick={handleModelSubmit}
-                disabled={!formName.trim() || !formProviderId || !formCategory || submitting}
+                disabled={!formName.trim() || !formProviderId || !formApiKind || submitting}
               >
                 {submitting ? t('shared.saving') : editModel ? t('shared.update') : t('shared.add')}
               </button>

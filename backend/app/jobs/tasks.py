@@ -128,7 +128,7 @@ async def run_pipeline(
                     select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == channel.extraction_model_id)
                 )
                 extraction_model_row = ext_result.scalar_one_or_none()
-                if extraction_model_row and extraction_model_row.category == "llm":
+                if extraction_model_row and extraction_model_row.api_kind == "chat-completions":
                     model_name = (extraction_model_row.model_name or "").strip()
                     if not model_name:
                         logger.warning(
@@ -173,6 +173,9 @@ async def run_pipeline(
         "AWS_ACCESS_KEY_ID": settings.aws_access_key_id,
         "AWS_SECRET_ACCESS_KEY": settings.aws_secret_access_key,
         "OPENKMS_API_URL": settings.openkms_backend_url.rstrip("/"),
+        "OPENKMS_FRONTEND_URL": settings.frontend_url.rstrip("/"),
+        "OPENKMS_BAIDU_UPLOAD_MODE": os.environ.get("OPENKMS_BAIDU_UPLOAD_MODE", "auto"),
+        "OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS": str(settings.baidu_external_fetch_ttl_seconds),
         # openkms-cli reads these for try_api_request_auth() (local: HTTP Basic; OIDC: still from os.environ).
         "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
         "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,

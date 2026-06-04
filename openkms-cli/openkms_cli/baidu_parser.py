@@ -1,7 +1,7 @@
-"""Document parser using Baidu Cloud PaddleOCR-VL API (async, file_data upload).
+"""Document parser using Baidu Cloud PaddleOCR-VL API (async).
 
 Requires OPENKMS_BAIDU_CLOUD_API_KEY and OPENKMS_BAIDU_CLOUD_SECRET_KEY.
-Sends base64-encoded file bytes in the submit request (file_data mode).
+Upload modes: ``file_data`` (base64) or ``file_url`` (temporary openKMS public URL).
 """
 
 from __future__ import annotations
@@ -9,11 +9,15 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
+from urllib.parse import urlparse
 
 import requests
+
+logger = logging.getLogger("openkms_cli.baidu")
 
 _DEFAULT_POLL_INTERVAL = 8
 _DEFAULT_MAX_WAIT = 600
@@ -21,9 +25,10 @@ _DEFAULT_MAX_WAIT = 600
 # PyMuPDF dpi=150 (≈2.083×) produces a different grid and ~4% bbox drift.
 _BAIDU_COORD_TO_PNG_SCALE = 2.0
 
-# Baidu file_data size limits (bytes). file_url (>50MB) is not implemented yet.
+# Baidu file_data size limits (bytes). file_url supports larger documents (Baidu fetches URL).
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_FILE_DATA_BYTES = 50 * 1024 * 1024
+BaiduUploadMode = Literal["file_data", "file_url"]
 
 _BAIDU_IMAGE_EXT = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"})
 _BAIDU_STREAMING_EXT = frozenset({".doc", ".docx", ".txt", ".wps"})
@@ -92,21 +97,59 @@ def get_access_token(api_key: str, secret_key: str, *, session: requests.Session
     return str(data["access_token"])
 
 
+def _redact_file_url(url: str) -> str:
+    if "sig=" not in url:
+        return url
+    p = urlparse(url)
+    return f"{p.scheme}://{p.netloc}{p.path}?…"
+
+
 def create_parse_task(
     access_token: str,
-    file_bytes: bytes,
     file_name: str,
     *,
+    file_bytes: bytes | None = None,
+    file_url: str | None = None,
+    upload_mode: BaiduUploadMode | None = None,
     session: requests.Session | None = None,
     **options: bool,
 ) -> str:
-    """Submit a document parse task with base64 file_data; return task_id."""
-    validate_file_data_size(file_bytes, file_name)
+    """Submit a document parse task (file_data or file_url); return task_id."""
     http = session or requests
-    payload: dict[str, str] = {
-        "file_data": base64.b64encode(file_bytes).decode("ascii"),
-        "file_name": file_name,
-    }
+    payload: dict[str, str] = {"file_name": file_name}
+
+    if file_url:
+        mode: BaiduUploadMode = "file_url"
+        payload["file_url"] = file_url.strip()
+        if file_bytes is not None:
+            logger.info(
+                "baidu_task_submit mode=file_url file_name=%s size=%s url=%s",
+                file_name,
+                len(file_bytes),
+                _redact_file_url(file_url),
+            )
+        else:
+            logger.info(
+                "baidu_task_submit mode=file_url file_name=%s url=%s",
+                file_name,
+                _redact_file_url(file_url),
+            )
+    elif file_bytes is not None:
+        mode = "file_data"
+        validate_file_data_size(file_bytes, file_name)
+        payload["file_data"] = base64.b64encode(file_bytes).decode("ascii")
+        logger.info(
+            "baidu_task_submit mode=file_data file_name=%s size=%s b64_len=%s",
+            file_name,
+            len(file_bytes),
+            len(payload["file_data"]),
+        )
+    else:
+        raise BaiduParseError("create_parse_task requires file_bytes or file_url")
+
+    if upload_mode and upload_mode != mode:
+        logger.warning("baidu_task_submit upload_mode arg %s differs from payload %s", upload_mode, mode)
+
     for key, val in options.items():
         if val is not None:
             payload[key] = str(val).lower() if isinstance(val, bool) else str(val)
@@ -120,12 +163,19 @@ def create_parse_task(
     )
     data = resp.json()
     if data.get("error_code") != 0:
+        logger.error(
+            "baidu_task_submit failed mode=%s error_code=%s msg=%s",
+            mode,
+            data.get("error_code"),
+            (data.get("error_msg") or "")[:200],
+        )
         raise BaiduParseError(
             f"Baidu task submit failed ({data.get('error_code')}): {data.get('error_msg', resp.text[:200])}"
         )
     task_id = (data.get("result") or {}).get("task_id")
     if not task_id:
         raise BaiduParseError(f"Baidu task submit returned no task_id: {data}")
+    logger.info("baidu_task_submit ok mode=%s task_id=%s", mode, task_id)
     return str(task_id)
 
 
@@ -547,24 +597,90 @@ def run_baidu_parser(
     secret_key: str,
     *,
     content_hash_source: Path | None = None,
+    document_id: str | None = None,
+    api_url: str | None = None,
+    auth_headers: dict[str, str] | None = None,
+    basic_auth: tuple[str, str] | None = None,
+    upload_mode_setting: str = "auto",
+    original_file_ext: str | None = None,
     poll_interval: int = _DEFAULT_POLL_INTERVAL,
     max_wait: int = _DEFAULT_MAX_WAIT,
     on_status: Callable[[str], None] | None = None,
 ) -> tuple[dict[str, Any], list[tuple[str, bytes]], list[tuple[str, bytes]]]:
     """
-    Parse document via Baidu Cloud API (file_data / base64 mode).
+    Parse document via Baidu Cloud API (file_data or file_url).
 
     Returns (result_dict, extra_files, markdown_out_files) matching paddle parser shape.
     """
+    from .baidu_fetch_url import request_baidu_file_url, resolve_baidu_upload_mode
+
     hash_path = content_hash_source or input_path
     file_hash = hashlib.sha256(hash_path.read_bytes()).hexdigest()
     file_name = input_path.name
     file_bytes = input_path.read_bytes()
-    validate_file_data_size(file_bytes, file_name)
+    file_ext = (original_file_ext or input_path.suffix.lower().lstrip(".") or "bin").lower().lstrip(".")
+
+    upload_mode = resolve_baidu_upload_mode(
+        upload_mode_setting,
+        document_id=document_id,
+        file_bytes=file_bytes,
+        file_name=file_name,
+    )
+    converted = (
+        content_hash_source is not None
+        and content_hash_source.resolve() != input_path.resolve()
+    )
+    if upload_mode == "file_url" and converted:
+        logger.warning(
+            "baidu_parse converted input (%s -> %s); file_url targets S3 original only, "
+            "falling back to file_data",
+            content_hash_source.name if content_hash_source else "?",
+            file_name,
+        )
+        validate_file_data_size(file_bytes, file_name)
+        upload_mode = "file_data"
+    logger.info(
+        "baidu_parse start file_name=%s size=%s upload_mode=%s document_id=%s file_hash_prefix=%s converted=%s",
+        file_name,
+        len(file_bytes),
+        upload_mode,
+        document_id or "",
+        file_hash[:12],
+        converted,
+    )
 
     session = requests.Session()
     token = get_access_token(api_key, secret_key, session=session)
-    task_id = create_parse_task(token, file_bytes, file_name, session=session)
+    logger.info("baidu_parse access_token obtained")
+
+    file_url: str | None = None
+    if upload_mode == "file_url":
+        file_url = request_baidu_file_url(
+            api_url or "",
+            document_id or "",
+            file_ext,
+            auth_headers=auth_headers,
+            basic_auth=basic_auth,
+            session=session,
+        )
+
+    if upload_mode == "file_url" and file_url:
+        task_id = create_parse_task(
+            token,
+            file_name,
+            file_url=file_url,
+            file_bytes=file_bytes,
+            upload_mode="file_url",
+            session=session,
+        )
+    else:
+        task_id = create_parse_task(
+            token,
+            file_name,
+            file_bytes=file_bytes,
+            upload_mode="file_data",
+            session=session,
+        )
     task_result = poll_parse_task(
         token,
         task_id,

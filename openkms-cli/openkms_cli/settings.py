@@ -40,6 +40,8 @@ class CliSettings(BaseSettings):
 
     # --- Backend API (pipeline metadata sync, kb-index, etc.) ---
     openkms_api_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_API_URL")
+    frontend_url: str = Field(default="", validation_alias="OPENKMS_FRONTEND_URL")
+    baidu_upload_mode: str = Field(default="auto", validation_alias="OPENKMS_BAIDU_UPLOAD_MODE")
 
     # --- Embedding overrides (kb-index pipeline) ---
     embedding_model_base_url: str = Field(default="", validation_alias="OPENKMS_EMBEDDING_MODEL_BASE_URL")

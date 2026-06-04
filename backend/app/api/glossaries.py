@@ -220,14 +220,14 @@ async def suggest_glossary_term(
     model_result = await db.execute(
         select(ApiModel)
         .options(selectinload(ApiModel.provider_rel))
-        .where(ApiModel.category == "llm", ApiModel.is_default_in_category == True)
+        .where(ApiModel.api_kind == "chat-completions", ApiModel.is_default_in_category == True)
         .limit(1)
     )
     model = model_result.scalar_one_or_none()
     if not model:
         raise HTTPException(
             status_code=400,
-            detail="No default LLM model configured. Set a model as default in its category (Models page).",
+            detail="No default chat-completions model configured. Set a model as default on the Models page.",
         )
 
     model_config = {

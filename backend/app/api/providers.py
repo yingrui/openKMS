@@ -96,4 +96,15 @@ async def list_provider_models(provider_id: str, db: AsyncSession = Depends(get_
         select(ApiModel).where(ApiModel.provider_id == provider_id).order_by(ApiModel.name)
     )
     models = result.scalars().all()
-    return {"items": [{"id": m.id, "name": m.name, "category": m.category} for m in models], "total": len(models)}
+    return {
+        "items": [
+            {
+                "id": m.id,
+                "name": m.name,
+                "api_kind": m.api_kind,
+                "capabilities": list(m.capabilities or []),
+            }
+            for m in models
+        ],
+        "total": len(models),
+    }

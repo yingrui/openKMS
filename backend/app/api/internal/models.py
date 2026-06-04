@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_internal_client
 from app.database import get_db
-from app.models.api_model import MODEL_CATEGORIES
+from app.models.api_model import VALID_API_KINDS
 from app.models.knowledge_base import KnowledgeBase
 from app.services.data_resource_policy import knowledge_base_visible
 from app.services.agent.llm import resolve_agent_llm_config
@@ -25,10 +25,10 @@ async def get_document_parse_defaults(
     db: AsyncSession = Depends(get_db),
     model_name: str | None = Query(
         default=None,
-        description="If set, resolve vl/ocr ApiModel by model_name or display name; else category default.",
+        description="If set, resolve document-parse ApiModel by model_name or display name; else default.",
     ),
 ):
-    """VLM base_url, model_name, api_key for openkms-cli (named vl/ocr row or same fallback as public defaults)."""
+    """VLM base_url, model_name, api_key for openkms-cli (document-parse capability or env fallback)."""
     d = await get_document_parse_vlm_defaults_for_cli(db, model_name)
     return {
         "base_url": d.base_url or "",
@@ -40,24 +40,23 @@ async def get_document_parse_defaults(
 @router.get("/config-by-name")
 async def get_model_config_by_name(
     model_name: str = Query(..., description="ApiModel.model_name, e.g. qwen3.5, gpt-4"),
-    category: str = Query(
-        default="llm",
-        description="Model category (llm, vl, ocr, embedding, text-classification).",
+    api_kind: str = Query(
+        default="chat-completions",
+        description="API kind (chat-completions, embeddings, custom).",
     ),
     db: AsyncSession = Depends(get_db),
 ):
     """base_url, model_name, api_key for openkms-cli (e.g. pipeline metadata extraction)."""
-    valid_categories = {c for c, _ in MODEL_CATEGORIES}
-    if category not in valid_categories:
+    if api_kind not in VALID_API_KINDS:
         raise HTTPException(
             status_code=422,
-            detail=f"Invalid category {category!r}; expected one of: {', '.join(sorted(valid_categories))}",
+            detail=f"Invalid api_kind {api_kind!r}; expected one of: {', '.join(sorted(VALID_API_KINDS))}",
         )
-    cfg = await resolve_model_config_by_name(db, model_name=model_name, category=category)
+    cfg = await resolve_model_config_by_name(db, model_name=model_name, api_kind=api_kind)
     if cfg is None:
         raise HTTPException(
             status_code=404,
-            detail=f"No {category!r} model with model_name={model_name!r} found",
+            detail=f"No {api_kind!r} model with model_name={model_name!r} found",
         )
     return {
         "base_url": cfg["base_url"] or "",
@@ -68,14 +67,14 @@ async def get_model_config_by_name(
 
 @router.get("/llm-defaults")
 async def get_llm_defaults(db: AsyncSession = Depends(get_db)):
-    """LLM base_url, model_name, api_key for qa-agent (default ``llm`` category; same as embedded wiki agent)."""
+    """LLM base_url, model_name, api_key for qa-agent (default chat-completions; same as embedded wiki agent)."""
     cfg = await resolve_agent_llm_config(db)
     if cfg is None:
         raise HTTPException(
             status_code=400,
             detail=(
-                "No default LLM model configured. Add an LLM on Models and set it as the category default, "
-                "or set OPENKMS_AGENT_MODEL_ID on the backend."
+                "No default chat-completions model configured. Add a model on Models and set it as default "
+                "for its API kind, or set OPENKMS_AGENT_MODEL_ID on the backend."
             ),
         )
     return {
@@ -108,7 +107,7 @@ async def get_kb_embedding_credentials(
     if creds is None:
         raise HTTPException(
             status_code=400,
-            detail="Knowledge base has no embedding model, or the model is missing or not category embedding",
+            detail="Knowledge base has no embedding model, or the model is missing or not api_kind embeddings",
         )
     return {
         "base_url": creds.base_url,

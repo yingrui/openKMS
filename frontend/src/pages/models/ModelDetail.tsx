@@ -41,8 +41,6 @@ export function ModelDetail() {
 
   const [imageDataUri, setImageDataUri] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string | null>(null);
-  const [vlResponse, setVlResponse] = useState<{ content: string; elapsed_ms: number } | null>(null);
-  const [vlError, setVlError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -86,40 +84,24 @@ export function ModelDetail() {
     setImageFileName(null);
   };
 
-  const handleVLSend = async () => {
-    if (!prompt.trim() || !modelId || sending) return;
-    setSending(true);
-    setVlResponse(null);
-    setVlError(null);
-    try {
-      const res: ModelTestResponse = await testModel(modelId, {
-        prompt: prompt.trim(),
-        image: imageDataUri || undefined,
-        max_tokens: maxTokens,
-        temperature,
-      });
-      if (res.success && res.content) {
-        setVlResponse({ content: res.content, elapsed_ms: res.elapsed_ms });
-      } else {
-        setVlError(res.error || t('modelDetail.unknownError'));
-      }
-    } catch (e) {
-      setVlError(e instanceof Error ? e.message : t('modelDetail.requestFailed'));
-    } finally {
-      setSending(false);
-    }
-  };
-
   const handleSend = async () => {
     if (!prompt.trim() || !modelId || sending) return;
     const userMsg = prompt.trim();
+    const attachImage = imageDataUri || undefined;
     setPrompt('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMsg }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content: attachImage ? `${userMsg}\n[${t('modelDetail.imageAttached')}]` : userMsg,
+      },
+    ]);
     setSending(true);
 
     try {
       const res: ModelTestResponse = await testModel(modelId, {
         prompt: userMsg,
+        image: attachImage,
         max_tokens: maxTokens,
         temperature,
       });
@@ -174,9 +156,9 @@ export function ModelDetail() {
     );
   }
 
-  const isEmbedding = model.category === 'embedding';
-  const isVL = model.category === 'vl';
-  const isChatModel = model.category === 'llm';
+  const isEmbedding = model.api_kind === 'embeddings';
+  const isChatCompletions = model.api_kind === 'chat-completions';
+  const hasVision = (model.capabilities || []).includes('vision');
 
   return (
     <div className="model-detail">
@@ -193,7 +175,14 @@ export function ModelDetail() {
             {model.model_name && <span className="model-detail-subtitle">{model.model_name}</span>}
           </div>
         </div>
-        <span className="model-detail-category">{model.category}</span>
+        <div className="model-detail-badges">
+          <span className="model-detail-api-kind">{model.api_kind}</span>
+          {(model.capabilities || []).map((cap) => (
+            <span key={cap} className="model-detail-capability">
+              {cap}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="model-detail-grid">
@@ -321,85 +310,12 @@ export function ModelDetail() {
               </div>
             )}
           </div>
-        ) : isVL ? (
-          <div className="playground-vl-form">
-            <div className="playground-vl-inputs">
-              <div className="playground-vl-image-section">
-                <label>{t('modelDetail.image')}</label>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} hidden />
-                {imageDataUri ? (
-                  <div className="playground-vl-image-preview">
-                    <img src={imageDataUri} alt={t('modelDetail.previewAlt')} />
-                    <div className="playground-vl-image-actions">
-                      <span className="playground-vl-image-name">{imageFileName}</span>
-                      <button type="button" onClick={clearImage} title={t('modelDetail.removeImage')}>
-                        <X size={14} />
-                      </button>
-                      <button type="button" onClick={() => fileInputRef.current?.click()} className="btn btn-sm">
-                        {t('modelDetail.replace')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    className="playground-vl-upload-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={sending}
-                  >
-                    <ImagePlus size={24} />
-                    <span>{t('modelDetail.uploadImage')}</span>
-                  </button>
-                )}
-              </div>
-              <div className="playground-vl-prompt-section">
-                <label>{t('modelDetail.prompt')}</label>
-                <textarea
-                  rows={4}
-                  placeholder={t('modelDetail.vlPlaceholder')}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  disabled={sending}
-                />
-              </div>
-              <button
-                type="button"
-                className="btn btn-primary playground-vl-submit"
-                onClick={() => void handleVLSend()}
-                disabled={!prompt.trim() || sending}
-              >
-                {sending ? (
-                  <>
-                    <Loader2 size={16} className="model-detail-spinner" /> {t('modelDetail.analyzing')}
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} /> {t('modelDetail.analyze')}
-                  </>
-                )}
-              </button>
-            </div>
-
-            {(vlResponse || vlError) && (
-              <div className="playground-vl-result">
-                <h3>
-                  {t('modelDetail.response')}{' '}
-                  {vlResponse?.elapsed_ms ? <span className="playground-msg-meta">{vlResponse.elapsed_ms}ms</span> : null}
-                </h3>
-                {vlError ? (
-                  <div className="playground-vl-error">{vlError}</div>
-                ) : (
-                  <div className="playground-vl-markdown">{vlResponse!.content}</div>
-                )}
-              </div>
-            )}
-          </div>
         ) : (
           <>
             <div className="playground-messages">
               {messages.length === 0 && (
                 <div className="playground-empty">
-                  {isChatModel ? t('modelDetail.emptyChatLLM') : t('modelDetail.emptyChatOther')}
+                  {isChatCompletions ? t('modelDetail.emptyChatLLM') : t('modelDetail.emptyChatOther')}
                 </div>
               )}
               {messages.map((msg, i) => (
@@ -422,32 +338,72 @@ export function ModelDetail() {
                   <div className="playground-msg-role">{model.name}</div>
                   <div className="playground-msg-content playground-typing">
                     <Loader2 size={16} className="model-detail-spinner" />
-                    <span>{isChatModel ? t('modelDetail.thinking') : t('modelDetail.processing')}</span>
+                    <span>{isChatCompletions ? t('modelDetail.thinking') : t('modelDetail.processing')}</span>
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="playground-input">
-              <textarea
-                rows={2}
-                placeholder={
-                  isChatModel ? t('modelDetail.placeholderChat') : t('modelDetail.placeholderOther')
-                }
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={handleKeyDown}
-                disabled={sending}
-              />
-              <button
-                type="button"
-                className="btn btn-primary playground-send"
-                onClick={() => void handleSend()}
-                disabled={!prompt.trim() || sending}
-              >
-                {sending ? <Loader2 size={18} className="model-detail-spinner" /> : <Send size={18} />}
-              </button>
+            <div className="playground-composer">
+              {hasVision && (
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageSelect} hidden />
+              )}
+              {hasVision && imageDataUri && (
+                <div className="playground-image-preview">
+                  <img src={imageDataUri} alt={t('modelDetail.previewAlt')} />
+                  <div className="playground-image-preview-info">
+                    <span className="playground-image-preview-name" title={imageFileName ?? undefined}>
+                      {imageFileName}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      title={t('modelDetail.removeImage')}
+                      aria-label={t('modelDetail.removeImage')}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="playground-input">
+                {hasVision && (
+                  <button
+                    type="button"
+                    className={`playground-image-btn${imageDataUri ? ' has-image' : ''}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    title={t('modelDetail.uploadImage')}
+                    aria-label={t('modelDetail.uploadImage')}
+                    disabled={sending}
+                  >
+                    <ImagePlus size={18} />
+                  </button>
+                )}
+                <textarea
+                  rows={2}
+                  placeholder={
+                    hasVision
+                      ? t('modelDetail.vlPlaceholder')
+                      : isChatCompletions
+                        ? t('modelDetail.placeholderChat')
+                        : t('modelDetail.placeholderOther')
+                  }
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={sending}
+                />
+                <button
+                  type="button"
+                  className="playground-send"
+                  onClick={() => void handleSend()}
+                  disabled={!prompt.trim() || sending}
+                  aria-label={t('modelDetail.send')}
+                >
+                  {sending ? <Loader2 size={18} className="model-detail-spinner" /> : <Send size={18} />}
+                </button>
+              </div>
             </div>
           </>
         )}

@@ -36,12 +36,13 @@ Pipelines define how a document is processed (command template + linked model). 
 | Service providers | ✅ | CRUD via `/api/providers`; add OpenAI, Anthropic, etc. with base_url and api_key |
 | Model registry | ✅ | Models belong to providers; CRUD via `/api/models`; provider selector in Models.tsx sidebar |
 | Provider–model UI | ✅ | Models.tsx: left sidebar lists providers (filter models); Add Provider / Add Model modals |
-| Categories | ✅ | Fixed categories: OCR, VL, LLM, Embedding, Text Classification; `GET /api/models/categories` |
+| API kinds | ✅ | `chat-completions`, `embeddings`, `custom`; `GET /api/models/api-kinds` |
+| Capabilities | ✅ | Tags on each model (`text[]`, e.g. `vision`, `document-parse`); `GET /api/models/capabilities` |
 | Pipeline link | ✅ | Pipelines can link to a model (`model_id` FK); model selector in pipeline create/edit form |
 | Command resolution | ✅ | `{vlm_url}` and `{model_name}` template vars resolved from linked model at job creation |
 | Job detail model | ✅ | JobDetail.tsx shows model info card when job has a linked model |
-| Default in category | ✅ | `is_default_in_category` on api_models; one model per category can be default; Models list shows Default column with "Set" button |
+| Default per API kind | ✅ | `is_default_in_category` on api_models; one model per `api_kind` can be default; Models list shows Default column with "Set" button |
 | Default seed | ✅ | PaddleOCR-VL-1.5 model seeded in migration and linked to default pipeline |
 | Model detail | ✅ | ModelDetail.tsx at `/models/:modelId` – connection info (from provider), config, timestamps |
-| Model playground | ✅ | Test models directly from the detail page; adapts per category: VL (form with image upload + prompt → markdown response), Embedding (text → dimension + values), LLM/other (chat conversation) |
+| Model playground | ✅ | Test from detail page: embeddings UI for `embeddings`; chat UI for `chat-completions` / `custom` (image upload when `vision` capability is set) |
 | Model test API | ✅ | `POST /api/models/{id}/test` proxies request to provider's base_url; supports chat completions and embeddings |

@@ -1,4 +1,4 @@
-"""Resolve OpenAI-compatible LLM config for the embedded agent from api_models."""
+"""Resolve LLM credentials for embedded wiki agent and qa-agent."""
 
 from __future__ import annotations
 
@@ -11,20 +11,29 @@ from app.models.api_model import ApiModel
 
 
 async def resolve_agent_llm_config(db: AsyncSession) -> dict[str, str] | None:
-    """Return base_url, api_key, model_name for ChatOpenAI, or None if no model is available."""
-    q = select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.category == "llm")
+    """Default chat-completions model, or explicit OPENKMS_AGENT_MODEL_ID."""
     if settings.agent_model_id:
-        q = q.where(ApiModel.id == settings.agent_model_id)
+        stmt = (
+            select(ApiModel)
+            .options(selectinload(ApiModel.provider_rel))
+            .where(ApiModel.id == settings.agent_model_id)
+        )
     else:
-        q = q.order_by(ApiModel.is_default_in_category.desc().nullslast())
-    q = q.limit(1)
-    r = await db.execute(q)
-    m = r.scalar_one_or_none()
-    if not m or not m.provider_rel:
+        stmt = (
+            select(ApiModel)
+            .options(selectinload(ApiModel.provider_rel))
+            .where(ApiModel.api_kind == "chat-completions")
+            .order_by(ApiModel.is_default_in_category.desc().nullslast())
+        )
+    result = await db.execute(stmt.limit(1))
+    model = result.scalar_one_or_none()
+    if not model or not model.provider_rel:
         return None
-    prov = m.provider_rel
+    if model.api_kind != "chat-completions":
+        return None
+    prov = model.provider_rel
     return {
-        "base_url": prov.base_url,
-        "api_key": (prov.api_key or "no-key").strip() or "no-key",
-        "model_name": (m.model_name or m.name or "gpt-4o-mini").strip(),
+        "base_url": prov.base_url or "",
+        "api_key": prov.api_key or "",
+        "model_name": model.model_name or model.name or "",
     }

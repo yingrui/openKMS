@@ -2,18 +2,30 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
-MODEL_CATEGORIES = [
-    ("ocr", "OCR APIs"),
-    ("vl", "Vision-Language APIs"),
-    ("llm", "LLM APIs"),
-    ("embedding", "Embedding APIs"),
-    ("text-classification", "Text Classification APIs"),
+API_KINDS = [
+    ("chat-completions", "Chat completions"),
+    ("embeddings", "Embeddings"),
+    ("custom", "Custom endpoint"),
 ]
+
+MODEL_CAPABILITIES = [
+    ("vision", "Vision"),
+    ("tools", "Tools"),
+    ("thinking", "Thinking"),
+    ("document-parse", "Document parse"),
+]
+
+VALID_API_KINDS = frozenset(k for k, _ in API_KINDS)
+VALID_CAPABILITIES = frozenset(c for c, _ in MODEL_CAPABILITIES)
+
+
+def model_has_capability(capabilities: list[str] | None, capability: str) -> bool:
+    return capability in (capabilities or [])
 
 
 class ApiModel(Base):
@@ -26,7 +38,10 @@ class ApiModel(Base):
         String(64), ForeignKey("api_providers.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(256), nullable=False)
-    category: Mapped[str] = mapped_column(String(64), nullable=False)
+    api_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    capabilities: Mapped[list[str]] = mapped_column(
+        ARRAY(String(64)), nullable=False, server_default="{}"
+    )
     is_default_in_category: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     model_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
     config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

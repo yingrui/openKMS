@@ -207,6 +207,44 @@
   color: var(--color-on-accent);
 }
 
+.models-capability-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.models-capability-tag {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.75rem;
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.models-capability-empty {
+  color: var(--color-text-muted);
+}
+
+.models-capabilities-fieldset {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  margin: 0;
+}
+
+.models-capabilities-fieldset legend {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  padding: 0 var(--space-1);
+}
+
+.models-capabilities-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-4);
+}
+
 .models-search {
   max-width: 360px;
   display: flex;

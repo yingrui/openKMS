@@ -850,8 +850,8 @@ async def extract_document_metadata(
     model = result.scalar_one_or_none()
     if not model:
         raise HTTPException(status_code=404, detail="Extraction model not found")
-    if model.category != "llm":
-        raise HTTPException(status_code=400, detail="Extraction model must be category=llm")
+    if model.api_kind != "chat-completions":
+        raise HTTPException(status_code=400, detail="Extraction model must use api_kind chat-completions")
 
     schema = channel.extraction_schema if channel.extraction_schema else None
     resolved_schema, warnings = await resolve_extraction_schema_for_llm(schema, channel, db)

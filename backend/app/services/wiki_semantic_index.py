@@ -86,7 +86,7 @@ async def resolve_wiki_space_embedding_model(db: AsyncSession, wiki_space: WikiS
             .options(selectinload(ApiModel.provider_rel))
             .where(
                 ApiModel.id == wiki_space.semantic_embedding_model_id,
-                ApiModel.category == "embedding",
+                ApiModel.api_kind == "embeddings",
             )
         )
         row = (await db.execute(stmt)).scalar_one_or_none()
@@ -105,11 +105,11 @@ async def wiki_space_has_any_embedding(db: AsyncSession, wiki_space_id: str) -> 
 
 
 async def resolve_default_embedding_model(db: AsyncSession) -> ApiModel | None:
-    """First embedding-category model: default flag wins, then oldest created."""
+    """First embeddings api_kind model: default flag wins, then oldest created."""
     stmt = (
         select(ApiModel)
         .options(selectinload(ApiModel.provider_rel))
-        .where(ApiModel.category == "embedding")
+        .where(ApiModel.api_kind == "embeddings")
         .order_by(ApiModel.is_default_in_category.desc().nullslast(), ApiModel.created_at.asc())
         .limit(1)
     )

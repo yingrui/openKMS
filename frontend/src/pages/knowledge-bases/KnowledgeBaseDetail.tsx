@@ -608,9 +608,9 @@ export function KnowledgeBaseDetail() {
 
   const loadModels = useCallback(async () => {
     try {
-      const emb = await fetchAllModels({ category: 'embedding' });
+      const emb = await fetchAllModels({ api_kind: 'embeddings' });
       setEmbeddingModels(emb);
-      const llm = await fetchAllModels({ category: 'llm' });
+      const llm = await fetchAllModels({ api_kind: 'chat-completions' });
       setLlmModels(llm);
     } catch { /* noop */ }
   }, []);

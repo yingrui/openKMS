@@ -29,7 +29,7 @@ SUPPORTED_PIPELINES: dict[str, tuple[str, str]] = {
     ),
     "baidu-doc-parse": (
         "Baidu Cloud Document Parse",
-        "Parse via Baidu PaddleOCR-VL API (file_data, max 50MB); output markdown and images to S3.",
+        "Parse via Baidu PaddleOCR-VL API (file_url or file_data); output markdown and images to S3.",
     ),
     "kb-index": (
         "Knowledge Base Index",
@@ -434,7 +434,7 @@ def pipeline_run(
         from .office_convert import OfficeConvertError
 
         if use_baidu:
-            from .baidu_parser import prepare_for_baidu_parse, validate_file_data_size
+            from .baidu_parser import prepare_for_baidu_parse
         else:
             from .office_convert import prepare_for_vlm_parse
     except ImportError:
@@ -450,12 +450,10 @@ def pipeline_run(
         raise typer.Exit(1)
     ch_source = None if parse_path.resolve() == hash_src.resolve() else hash_src
 
-    if use_baidu:
-        try:
-            validate_file_data_size(parse_path.read_bytes(), parse_path.name)
-        except BaiduParseError as e:
-            console.print(f"[red]{e}[/red]")
-            raise typer.Exit(1)
+    baidu_auth_headers: dict[str, str] = {}
+    baidu_basic_auth: Optional[tuple[str, str]] = None
+    if use_baidu and document_id:
+        baidu_auth_headers, baidu_basic_auth, _ = _resolve_api_request_auth(required=False)
 
     if not skip_upload and (not access_key or not secret_key):
         console.print("[red]AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required for upload[/red]")
@@ -484,12 +482,23 @@ def pipeline_run(
                 def _baidu_status(status: str) -> None:
                     progress.update(task, description=f"Baidu parse: {status}...")
 
+                fetch_ext = (
+                    parse_path.suffix.lower().lstrip(".")
+                    if parse_path.resolve() != stored_path.resolve()
+                    else stored_path.suffix.lower().lstrip(".")
+                ) or "bin"
                 result, _, _ = run_baidu_parser(
                     input_path=parse_path,
                     output_dir=out_base,
                     api_key=cfg.baidu_cloud_api_key,
                     secret_key=cfg.baidu_cloud_secret_key,
                     content_hash_source=ch_source,
+                    document_id=document_id,
+                    api_url=api_url,
+                    auth_headers=baidu_auth_headers or None,
+                    basic_auth=baidu_basic_auth,
+                    upload_mode_setting=cfg.baidu_upload_mode,
+                    original_file_ext=fetch_ext,
                     poll_interval=baidu_poll_interval,
                     max_wait=baidu_max_wait,
                     on_status=_baidu_status,

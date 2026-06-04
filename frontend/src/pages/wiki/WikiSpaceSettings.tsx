@@ -143,7 +143,7 @@ export function WikiSpaceSettings() {
     (async () => {
       setEmbeddingModelsLoading(true);
       try {
-        const r = await fetchAllModels({ category: 'embedding' });
+        const r = await fetchAllModels({ api_kind: 'embeddings' });
         if (!cancelled) setEmbeddingModels(r);
       } catch {
         if (!cancelled) setEmbeddingModels([]);

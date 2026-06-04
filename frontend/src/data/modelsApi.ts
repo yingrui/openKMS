@@ -2,7 +2,12 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
-export interface ModelCategory {
+export interface ApiKindOption {
+  id: string;
+  label: string;
+}
+
+export interface CapabilityOption {
   id: string;
   label: string;
 }
@@ -12,7 +17,8 @@ export interface ApiModelResponse {
   provider_id: string;
   provider_name: string;
   name: string;
-  category: string;
+  api_kind: string;
+  capabilities: string[];
   is_default_in_category: boolean;
   base_url: string;
   api_key_set?: boolean;
@@ -32,7 +38,8 @@ export interface ApiModelListResponse {
 export interface ApiModelCreate {
   provider_id: string;
   name: string;
-  category: string;
+  api_kind: string;
+  capabilities?: string[];
   is_default_in_category?: boolean;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
@@ -41,25 +48,38 @@ export interface ApiModelCreate {
 export interface ApiModelUpdate {
   provider_id?: string;
   name?: string;
-  category?: string;
+  api_kind?: string;
+  capabilities?: string[];
   is_default_in_category?: boolean;
   model_name?: string | null;
   config?: Record<string, unknown> | null;
 }
 
-export async function fetchModelCategories(): Promise<ModelCategory[]> {
+export async function fetchApiKinds(): Promise<ApiKindOption[]> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/categories`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/api-kinds`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) return [];
   const data = await res.json();
-  return data.categories || [];
+  return data.api_kinds || [];
+}
+
+export async function fetchModelCapabilities(): Promise<CapabilityOption[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/models/capabilities`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.capabilities || [];
 }
 
 export async function fetchModels(params?: {
-  category?: string;
+  api_kind?: string;
+  capability?: string;
   provider_id?: string;
   search?: string;
   limit?: number;
@@ -67,7 +87,8 @@ export async function fetchModels(params?: {
 }): Promise<ApiModelListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
-  if (params?.category) query.set('category', params.category);
+  if (params?.api_kind) query.set('api_kind', params.api_kind);
+  if (params?.capability) query.set('capability', params.capability);
   if (params?.provider_id) query.set('provider_id', params.provider_id);
   if (params?.search) query.set('search', params.search);
   if (params?.limit != null) query.set('limit', String(params.limit));
@@ -83,7 +104,8 @@ export async function fetchModels(params?: {
 
 /** Full list for dropdowns. Paginates at API max page size (200). */
 export async function fetchAllModels(params?: {
-  category?: string;
+  api_kind?: string;
+  capability?: string;
   provider_id?: string;
   search?: string;
 }): Promise<ApiModelResponse[]> {
@@ -155,7 +177,7 @@ export async function deleteModel(id: string): Promise<void> {
 
 export interface ModelTestRequest {
   prompt: string;
-  image?: string | null;  // base64 data URI for VL models
+  image?: string | null;
   max_tokens?: number;
   temperature?: number;
 }

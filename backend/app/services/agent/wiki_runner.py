@@ -274,7 +274,7 @@ async def _load_wiki_run_context(
     llm_cfg = await resolve_agent_llm_config(db)
     if not llm_cfg:
         return _WikiRunCtx(
-            "Error: no LLM is configured. Add an **LLM** on **Models** and set it as the default for the LLM category, or set **OPENKMS_AGENT_MODEL_ID**.",
+            "Error: no LLM is configured. Add a **chat-completions** model on **Models** and set it as default for that API kind, or set **OPENKMS_AGENT_MODEL_ID**.",
             None,
             [],
         )

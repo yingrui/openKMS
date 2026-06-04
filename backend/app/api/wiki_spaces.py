@@ -257,7 +257,7 @@ async def post_wiki_space_semantic_index(
     """
     Build or refresh per-page embedding vectors for semantic search (offline).
     Uses this wiki space's configured embedding model when set, otherwise the global default
-    embedding ApiModel (Models → category Embedding → set as default).
+    embedding ApiModel (Models → api_kind Embeddings → set as default).
     """
     from app.services.wiki_semantic_index import is_pgvector_server_missing, reindex_wiki_space_embeddings
 
@@ -319,7 +319,7 @@ async def patch_wiki_space(
             raw = str(v).strip() or None
             if raw:
                 m = await db.get(ApiModel, raw)
-                if not m or m.category != "embedding":
+                if not m or m.api_kind != "embeddings":
                     raise HTTPException(
                         status_code=400, detail="semantic_embedding_model_id must be an embedding ApiModel."
                     )

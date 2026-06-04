@@ -110,7 +110,7 @@ export function DocumentChannelSettings() {
   const loadModels = useCallback(async () => {
     setModelsLoading(true);
     try {
-      const res = await fetchAllModels({ category: 'llm' });
+      const res = await fetchAllModels({ api_kind: 'chat-completions' });
       setLlmModels(res);
     } catch {
       setLlmModels([]);

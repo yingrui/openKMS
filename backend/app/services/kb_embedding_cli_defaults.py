@@ -36,7 +36,7 @@ async def get_kb_embedding_credentials_for_cli(
     row = result.scalar_one_or_none()
     if not row or not row.provider_rel:
         return None
-    if row.category != "embedding":
+    if row.api_kind != "embeddings":
         return None
 
     prov = row.provider_rel

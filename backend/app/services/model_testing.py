@@ -4,20 +4,18 @@ import time
 
 import httpx
 
+from app.models.api_model import model_has_capability
 from app.schemas.api_model import ApiModelTestResponse
 
 logger = logging.getLogger(__name__)
 
 
-def _build_url(base_url: str, category: str) -> str:
+def _build_url(base_url: str, api_kind: str) -> str:
     base = base_url.rstrip("/")
-    if category == "embedding":
+    if api_kind == "embeddings":
         return f"{base}/embeddings"
-    elif category == "llm":
+    if api_kind == "chat-completions":
         return f"{base}/chat/completions"
-    elif category == "vl":
-        return f"{base}/chat/completions"
-    # Otherwise, use url as is
     return base
 
 
@@ -29,7 +27,7 @@ def _build_headers(api_key: str | None) -> dict[str, str]:
 
 
 def _build_vl_content(prompt: str, image: str | None) -> list[dict]:
-    """Build multimodal content array for vision-language models."""
+    """Build multimodal content array for vision-capable chat models."""
     parts: list[dict] = []
     if image:
         parts.append({
@@ -41,19 +39,26 @@ def _build_vl_content(prompt: str, image: str | None) -> list[dict]:
 
 
 def _build_payload(
-    category: str,
+    api_kind: str,
+    capabilities: list[str] | None,
     prompt: str,
     model_name: str | None,
     max_tokens: int,
     temperature: float,
     image: str | None = None,
 ) -> dict:
-    if category == "embedding":
+    if api_kind == "embeddings":
         payload: dict = {"input": prompt}
-    elif category == "vl":
+    elif api_kind == "chat-completions" and image and model_has_capability(capabilities, "vision"):
         content = _build_vl_content(prompt, image)
         payload = {
             "messages": [{"role": "user", "content": content}],
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+    elif api_kind == "chat-completions":
+        payload = {
+            "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
@@ -89,9 +94,9 @@ def _parse_chat_response(data: dict) -> str:
     return choices[0]["message"]["content"] if choices else str(data)
 
 
-def parse_response(data: dict, category: str, prompt: str) -> str:
-    """Parse model API response based on category."""
-    if category == "embedding":
+def parse_response(data: dict, api_kind: str, prompt: str) -> str:
+    """Parse model API response based on api_kind."""
+    if api_kind == "embeddings":
         return _parse_embedding_response(data, prompt)
     return _parse_chat_response(data)
 
@@ -99,7 +104,8 @@ def parse_response(data: dict, category: str, prompt: str) -> str:
 async def execute_test(
     *,
     base_url: str,
-    category: str,
+    api_kind: str,
+    capabilities: list[str] | None = None,
     api_key: str | None,
     model_name: str | None,
     prompt: str,
@@ -108,9 +114,11 @@ async def execute_test(
     temperature: float = 0.7,
 ) -> ApiModelTestResponse:
     """Send a test request to a model endpoint and return a structured result."""
-    url = _build_url(base_url, category)
+    url = _build_url(base_url, api_kind)
     headers = _build_headers(api_key)
-    payload = _build_payload(category, prompt, model_name, max_tokens, temperature, image=image)
+    payload = _build_payload(
+        api_kind, capabilities, prompt, model_name, max_tokens, temperature, image=image
+    )
 
     t0 = time.monotonic()
     try:
@@ -126,7 +134,7 @@ async def execute_test(
             )
 
         data = resp.json()
-        content = parse_response(data, category, prompt)
+        content = parse_response(data, api_kind, prompt)
         return ApiModelTestResponse(success=True, content=content, elapsed_ms=elapsed)
 
     except httpx.ConnectError as e:

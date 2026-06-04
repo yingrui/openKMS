@@ -76,8 +76,8 @@ def resolve_vlm_for_cli(cfg: CliSettings) -> tuple[str, str, str | None]:
     When OPENKMS_API_URL is set and CLI auth succeeds, merges from
     GET /internal-api/models/document-parse-defaults. Optional query
     ``model_name`` is sent when OPENKMS_VLM_MODEL is set in the environment
-    so the backend can return that vl/ocr row's URL and key, or the default
-    row if no match.
+    so the backend can return that document-parse row's URL and key, or the
+    default row if no match.
     """
     url = (cfg.vlm_url or "").strip() or "http://localhost:8101/"
     model = (cfg.vlm_model or "").strip() or "PaddlePaddle/PaddleOCR-VL-1.5"

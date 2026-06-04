@@ -9,24 +9,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.models.api_model import ApiModel
+from app.models.api_model import ApiModel, model_has_capability
 
 
 @dataclass(frozen=True)
 class DocumentParseVlmDefaults:
-    """Defaults for document parse; api_key only when a vl/ocr ApiModel row exists (provider secret)."""
+    """Defaults for document parse; api_key only when a document-parse ApiModel row exists."""
 
     base_url: str | None
     model_name: str | None
     api_key: str | None
 
 
+def _document_parse_filter():
+    return ApiModel.capabilities.contains(["document-parse"])
+
+
 async def get_document_parse_vlm_defaults(db: AsyncSession) -> DocumentParseVlmDefaults:
-    """Pick default vl/ocr model from DB, else server OPENKMS_PADDLEOCR_VL_* / OPENKMS_VLM_* (no env API key)."""
+    """Pick default document-parse model from DB, else server OPENKMS_PADDLEOCR_VL_* / OPENKMS_VLM_*."""
     stmt = (
         select(ApiModel)
         .options(selectinload(ApiModel.provider_rel))
-        .where(ApiModel.category.in_(("vl", "ocr")))
+        .where(_document_parse_filter())
         .order_by(ApiModel.is_default_in_category.desc().nullslast(), ApiModel.created_at.asc())
         .limit(1)
     )
@@ -46,7 +50,7 @@ async def get_document_parse_vlm_defaults(db: AsyncSession) -> DocumentParseVlmD
 async def get_document_parse_vlm_defaults_for_cli(
     db: AsyncSession, requested_model_name: str | None
 ) -> DocumentParseVlmDefaults:
-    """If requested_model_name matches a vl/ocr ApiModel (by model_name or name), use it; else defaults."""
+    """If requested_model_name matches a document-parse ApiModel, use it; else defaults."""
     q = (requested_model_name or "").strip()
     if not q:
         return await get_document_parse_vlm_defaults(db)
@@ -55,7 +59,7 @@ async def get_document_parse_vlm_defaults_for_cli(
         select(ApiModel)
         .options(selectinload(ApiModel.provider_rel))
         .where(
-            ApiModel.category.in_(("vl", "ocr")),
+            _document_parse_filter(),
             or_(ApiModel.model_name == q, ApiModel.name == q),
         )
         .order_by(

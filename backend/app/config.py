@@ -213,6 +213,13 @@ class Settings(BaseSettings):
         validation_alias="OPENKMS_OIDC_REDIRECT_URI",
     )
     frontend_url: str = Field(default="http://localhost:5173", validation_alias="OPENKMS_FRONTEND_URL")
+    baidu_external_fetch_ttl_seconds: int = Field(
+        default=3600,
+        ge=300,
+        le=86_400,
+        validation_alias="OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS",
+        description="TTL for signed public document URLs passed to Baidu file_url (seconds).",
+    )
     oidc_post_logout_client_id: str = Field(
         default="openkms-frontend",
         validation_alias="OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID",

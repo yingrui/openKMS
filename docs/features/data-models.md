@@ -13,9 +13,10 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### ApiModel
 
-- `id`, `name`, `provider`, `category`, `is_default_in_category` (one model per category can be default), `base_url`, `api_key` (masked in API responses), `model_name`, `config` (JSONB), `created_at`, `updated_at`
-- Represents an external API endpoint (VLM, LLM, Embedding, etc.) that pipelines can reference
-- Categories: `ocr`, `vl`, `llm`, `embedding`, `text-classification`
+- `id`, `name`, `provider_id` (FK), `api_kind`, `capabilities` (`text[]` tags), `is_default_in_category` (one model per `api_kind` can be default), `model_name`, `config` (JSONB), `created_at`, `updated_at`; `base_url` / `api_key` come from the provider
+- Represents a registered model under a provider; pipelines and features select by `api_kind` and capability tags
+- `api_kind`: `chat-completions`, `embeddings`, `custom`
+- Capability tags (examples): `vision`, `tools`, `thinking`, `document-parse`
 
 ## Documents
 

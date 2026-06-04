@@ -46,7 +46,7 @@ async def resolve_judge_config(db: AsyncSession, kb: KnowledgeBase) -> tuple[str
         fallback = await db.execute(
             select(ApiModel)
             .options(selectinload(ApiModel.provider_rel))
-            .where(ApiModel.category == "llm")
+            .where(ApiModel.api_kind == "chat-completions")
             .order_by(ApiModel.is_default_in_category.desc().nullslast())
             .limit(1)
         )
