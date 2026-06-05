@@ -8,18 +8,46 @@ from openkms_cli.baidu_fetch_url import (
     request_baidu_file_url,
     resolve_baidu_upload_mode,
 )
-from openkms_cli.baidu_parser import BaiduParseError, MAX_FILE_DATA_BYTES
+from openkms_cli.baidu_parser import (
+    BAIDU_AUTO_FILE_DATA_MAX_BYTES,
+    BaiduParseError,
+    MAX_FILE_DATA_BYTES,
+)
 
 
-def test_resolve_upload_mode_auto_with_document_id():
+def test_resolve_upload_mode_auto_with_document_id_small_uses_file_data():
     assert (
         resolve_baidu_upload_mode(
             "auto",
             document_id="doc-1",
             file_bytes=b"x" * 100,
+            file_name="small.pdf",
+        )
+        == "file_data"
+    )
+
+
+def test_resolve_upload_mode_auto_with_document_id_over_5mb_uses_file_url():
+    assert (
+        resolve_baidu_upload_mode(
+            "auto",
+            document_id="doc-1",
+            file_bytes=b"x" * (BAIDU_AUTO_FILE_DATA_MAX_BYTES + 1),
             file_name="big.pdf",
         )
         == "file_url"
+    )
+
+
+def test_resolve_upload_mode_auto_with_document_id_at_5mb_uses_file_data():
+    assert (
+        resolve_baidu_upload_mode(
+            "auto",
+            document_id="doc-1",
+            file_bytes=b"x" * BAIDU_AUTO_FILE_DATA_MAX_BYTES,
+            file_name="at-limit.pdf",
+        )
+        == "file_data"
     )
 
 

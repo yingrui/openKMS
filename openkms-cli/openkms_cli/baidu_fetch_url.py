@@ -90,9 +90,12 @@ def resolve_baidu_upload_mode(
     """
     Resolve upload mode: auto | file_data | file_url.
 
-    auto: file_url when document_id is set; else file_data if within size limits.
+    auto: with document_id — file_data if size <= 5MB, else file_url; without document_id — file_data if within Baidu caps.
     """
-    from .baidu_parser import validate_file_data_size
+    from .baidu_parser import (
+        BAIDU_AUTO_FILE_DATA_MAX_BYTES,
+        validate_file_data_size,
+    )
 
     mode = (mode_setting or "auto").strip().lower()
     if mode not in ("auto", "file_data", "file_url"):
@@ -108,12 +111,24 @@ def resolve_baidu_upload_mode(
             )
         return "file_url"
     # auto
+    size = len(file_bytes)
     if document_id:
+        if size <= BAIDU_AUTO_FILE_DATA_MAX_BYTES:
+            validate_file_data_size(file_bytes, file_name)
+            logger.info(
+                "baidu_upload_mode=auto chose file_data document_id=%s file_name=%s size=%s threshold=%s",
+                document_id,
+                file_name,
+                size,
+                BAIDU_AUTO_FILE_DATA_MAX_BYTES,
+            )
+            return "file_data"
         logger.info(
-            "baidu_upload_mode=auto chose file_url document_id=%s file_name=%s size=%s",
+            "baidu_upload_mode=auto chose file_url document_id=%s file_name=%s size=%s threshold=%s",
             document_id,
             file_name,
-            len(file_bytes),
+            size,
+            BAIDU_AUTO_FILE_DATA_MAX_BYTES,
         )
         return "file_url"
     validate_file_data_size(file_bytes, file_name)

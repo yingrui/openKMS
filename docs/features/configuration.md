@@ -57,7 +57,7 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_INTERNAL_SERVICE_CLIENT_IDS` | `openkms-cli,qa-agent` | Comma-separated OIDC client ids allowed on `/internal-api`; first id is `local-cli` JWT `azp` |
 | `OPENKMS_FRONTEND_URL` | `http://localhost:5173` | SPA origin (CORS, redirects); **must be a URL Baidu can reach** when using **`baidu-doc-parse`** **`file_url`** (signed `GET /api/public/documents/.../original.{ext}`) |
 | `OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS` | `3600` | TTL for signed public document URLs minted for Baidu **`file_url`** |
-| `OPENKMS_BAIDU_UPLOAD_MODE` | `auto` (CLI/worker env) | **`auto`**: **`file_url`** when pipeline passes **`--document-id`**; **`file_data`**: base64; **`file_url`**: requires document id + API auth |
+| `OPENKMS_BAIDU_UPLOAD_MODE` | `auto` (CLI/worker env) | **`auto`**: with **`--document-id`**, **`file_data`** if ≤ **5MB**, else **`file_url`**; without document id, **`file_data`** within Baidu caps; **`file_data`** / **`file_url`** force one mode |
 
 ## Document parsing (VLM)
 

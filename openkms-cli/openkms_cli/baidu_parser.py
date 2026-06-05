@@ -28,6 +28,8 @@ _BAIDU_COORD_TO_PNG_SCALE = 2.0
 # Baidu file_data size limits (bytes). file_url supports larger documents (Baidu fetches URL).
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_FILE_DATA_BYTES = 50 * 1024 * 1024
+# auto mode with document_id: file_data when size <= this; file_url above (until Baidu file_data cap).
+BAIDU_AUTO_FILE_DATA_MAX_BYTES = 5 * 1024 * 1024
 BaiduUploadMode = Literal["file_data", "file_url"]
 
 _BAIDU_IMAGE_EXT = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"})
