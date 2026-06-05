@@ -36,12 +36,13 @@ export function MainLayout() {
   const showPathDenied =
     !isLoading && isAuthenticated && permissionPatternsReady && !canAccessPath(location.pathname);
 
+  const isAgentsWorkspace = /^\/agents\/[^/]+$/.test(location.pathname);
   const isDetailPage =
     location.pathname.startsWith('/documents/view') ||
     location.pathname.startsWith('/articles/view') ||
     location.pathname.startsWith('/knowledge-bases/') ||
     location.pathname.startsWith('/wikis/') ||
-    location.pathname.startsWith('/agents/');
+    isAgentsWorkspace;
   const isSearchPage = location.pathname === '/search';
   const isObjectExplorerPage = location.pathname === '/object-explorer';
 

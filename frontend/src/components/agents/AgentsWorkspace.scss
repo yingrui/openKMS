@@ -105,7 +105,7 @@ $agents-pane-header-height: 49px;
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-muted);
-  cursor: pointer;
+  text-decoration: none;
 
   &:hover {
     background: var(--color-bg-hover);

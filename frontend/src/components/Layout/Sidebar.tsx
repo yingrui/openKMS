@@ -443,7 +443,11 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             to="/agents"
             title={t('agents')}
             className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+              `sidebar-link ${
+                isActive || /^\/projects\/[^/]+\/settings$/.test(location.pathname)
+                  ? 'sidebar-link-active'
+                  : ''
+              }`
             }
           >
             <Bot size={18} strokeWidth={1.75} />

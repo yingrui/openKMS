@@ -59,6 +59,11 @@ function LegacyJobRunRedirect() {
   return <Navigate to={`/job-runs/${jobId}`} replace />;
 }
 
+function AgentProjectSettingsRedirect() {
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  return <Navigate to={`/projects/${projectId}/settings`} replace />;
+}
+
 function AppLoadingFallback() {
   const { t } = useTranslation('common');
   return (
@@ -99,6 +104,7 @@ const DatasetSettings = lazy(() => import('./pages/console/DatasetSettings').the
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));
 const ProjectWorkspace = lazy(() => import('./pages/agents/ProjectWorkspace').then((m) => ({ default: m.ProjectWorkspace })));
+const ProjectSettings = lazy(() => import('./pages/agents/ProjectSettings').then((m) => ({ default: m.ProjectSettings })));
 function EvaluationDatasetDetailPage() {
   const { id } = useParams();
   return <EvaluationDatasetDetail key={id ?? ''} />;
@@ -155,6 +161,8 @@ function App() {
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
+          <Route path="projects/:projectId/settings" element={<FeatureGate feature="agents"><ProjectSettings /></FeatureGate>} />
+          <Route path="agents/:projectId/settings" element={<AgentProjectSettingsRedirect />} />
           <Route path="agents/:projectId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
           <Route path="wikis" element={<WikiSpaceList />} />
           <Route path="wikis/:id/pages/graph" element={<WikiSpacePagesGate />} />

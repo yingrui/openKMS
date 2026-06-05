@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { AgentChatMain, type ChatMessage } from '../../components/agents/AgentChatMain';
 import { AgentFilesPanel } from '../../components/agents/AgentFilesPanel';
 import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
-import { ProjectSettingsPanel } from '../../components/agents/ProjectSettingsPanel';
 import {
   appendDeltaToStreamParts,
   updateToolInParts,
@@ -36,8 +35,6 @@ export function ProjectWorkspace() {
   const [planMode, setPlanMode] = useState(false);
   const [todos, setTodos] = useState<unknown[]>([]);
   const [interrupt, setInterrupt] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
   const loadProject = useCallback(async () => {
     const p = await getProject(projectId);
     setProject(p);
@@ -236,13 +233,13 @@ export function ProjectWorkspace() {
     <div className="agents-workspace">
       <div className="agents-workspace-body">
         <AgentSessionSidebar
+          projectId={projectId}
           projectName={project.name}
           projectSlug={project.slug}
           conversations={conversations}
           activeId={convId}
           onSelect={onSelectConv}
           onNewChat={onNewChat}
-          onOpenSettings={() => setSettingsOpen(true)}
           onDelete={convId ? onDeleteConv : undefined}
         />
         <AgentChatMain
@@ -263,13 +260,6 @@ export function ProjectWorkspace() {
           onGitChange={loadProject}
         />
       </div>
-      {settingsOpen && project ? (
-        <ProjectSettingsPanel
-          project={project}
-          onClose={() => setSettingsOpen(false)}
-          onSaved={(updated) => setProject(updated)}
-        />
-      ) : null}
     </div>
   );
 }

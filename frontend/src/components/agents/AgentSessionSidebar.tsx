@@ -11,24 +11,24 @@ function label(c: AgentConversationResponse): string {
 }
 
 interface Props {
+  projectId: string;
   projectName: string;
   projectSlug: string;
   conversations: AgentConversationResponse[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
-  onOpenSettings: () => void;
   onDelete?: () => void;
 }
 
 export function AgentSessionSidebar({
+  projectId,
   projectName,
   projectSlug,
   conversations,
   activeId,
   onSelect,
   onNewChat,
-  onOpenSettings,
   onDelete,
 }: Props) {
   const { t } = useTranslation('agents');
@@ -52,15 +52,14 @@ export function AgentSessionSidebar({
             <Plus size={15} strokeWidth={2} />
             {t('sessions.newChat')}
           </button>
-          <button
-            type="button"
+          <Link
+            to={`/projects/${projectId}/settings`}
             className="agents-sessions-settings"
-            onClick={onOpenSettings}
             title={t('settings.title')}
             aria-label={t('settings.title')}
           >
             <Settings size={16} strokeWidth={1.75} />
-          </button>
+          </Link>
         </div>
       </div>
       <div className="agents-sessions-scroll">
