@@ -1,0 +1,192 @@
+import type { ConnectorKindOut, ConnectorResponse } from '../../data/connectorsApi';
+import type { DatasetResponse } from '../../data/datasetsApi';
+
+export type KvRow = { id: string; key: string; value: string };
+
+export function newKvRow(): KvRow {
+  return { id: crypto.randomUUID(), key: '', value: '' };
+}
+
+export function settingsToRows(settings: Record<string, unknown> | null | undefined): KvRow[] {
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
+    return [newKvRow()];
+  }
+  const keys = Object.keys(settings);
+  if (keys.length === 0) return [newKvRow()];
+  return keys.map((key) => {
+    const v = settings[key];
+    const value =
+      v === null || v === undefined ? '' : typeof v === 'string' ? v : JSON.stringify(v);
+    return { id: crypto.randomUUID(), key, value };
+  });
+}
+
+export function parseSettingValue(raw: string): unknown {
+  const t = raw.trim();
+  if (t === '') return '';
+  if (t === 'true') return true;
+  if (t === 'false') return false;
+  if (/^-?\d+(\.\d+)?$/.test(t) && !Number.isNaN(Number(t))) return Number(t);
+  if ((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']'))) {
+    try {
+      return JSON.parse(t) as unknown;
+    } catch {
+      return raw;
+    }
+  }
+  return raw;
+}
+
+export function rowsToSettingsObject(rows: KvRow[]): { ok: true; value: Record<string, unknown> } | { ok: false } {
+  const out: Record<string, unknown> = {};
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const k = r.key.trim();
+    if (!k) continue;
+    if (seen.has(k)) return { ok: false };
+    seen.add(k);
+    if (r.value.trim() === '') continue;
+    out[k] = parseSettingValue(r.value);
+  }
+  return { ok: true, value: out };
+}
+
+export function rowsToSecretsMap(rows: KvRow[]): { ok: true; value: Record<string, string> } | { ok: false } {
+  const out: Record<string, string> = {};
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const k = r.key.trim();
+    if (!k || !r.value.trim()) continue;
+    if (seen.has(k)) return { ok: false };
+    seen.add(k);
+    out[k] = r.value;
+  }
+  return { ok: true, value: out };
+}
+
+export function applyKindToInputsOutputs(
+  meta: ConnectorKindOut | undefined,
+  existingInputs: Record<string, unknown> | null | undefined,
+  existingOutputs: Record<string, unknown> | null | undefined
+): { inputValues: Record<string, string>; outputDatasetIds: Record<string, string> } {
+  const inputValues: Record<string, string> = {};
+  if (meta?.input_fields?.length) {
+    for (const f of meta.input_fields) {
+      const v = existingInputs?.[f.key];
+      const s =
+        typeof v === 'string' ? v : v !== undefined && v !== null ? String(v) : '';
+      inputValues[f.key] = s.trim() ? s : (f.default ?? '');
+    }
+  }
+  const outputDatasetIds: Record<string, string> = {};
+  if (meta?.output_slots?.length) {
+    for (const o of meta.output_slots) {
+      const v = existingOutputs?.[o.slot];
+      outputDatasetIds[o.slot] = typeof v === 'string' ? v : '';
+    }
+  }
+  return { inputValues, outputDatasetIds };
+}
+
+export function secretRowsForKind(kinds: ConnectorKindOut[], kind: string): KvRow[] {
+  const meta = kinds.find((k) => k.kind === kind);
+  if (meta?.secret_keys.length) {
+    return meta.secret_keys.map((sk) => ({ id: crypto.randomUUID(), key: sk, value: '' }));
+  }
+  return [newKvRow()];
+}
+
+export function datasetOptionLabel(d: DatasetResponse): string {
+  const base = (d.display_name && d.display_name.trim()) || `${d.schema_name}.${d.table_name}`;
+  return d.data_source_name ? `${base} · ${d.data_source_name}` : base;
+}
+
+export function buildConnectorPayload(
+  selectedKindMeta: ConnectorKindOut | undefined,
+  formName: string,
+  formEnabled: boolean,
+  inputValues: Record<string, string>,
+  outputDatasetIds: Record<string, string>,
+  settingsRows: KvRow[],
+  secretRows: KvRow[],
+  options: { isCreate: boolean }
+):
+  | { ok: true; body: {
+      name: string;
+      enabled: boolean;
+      settings: Record<string, unknown>;
+      inputs?: Record<string, string>;
+      outputs?: Record<string, string>;
+      secrets?: Record<string, string>;
+      kind?: string;
+    } }
+  | { ok: false; error: 'required' | 'duplicate' | 'outputs' | 'secrets' } {
+  if (!formName.trim() || (options.isCreate && !selectedKindMeta)) {
+    return { ok: false, error: 'required' };
+  }
+
+  const settingsResult = rowsToSettingsObject(settingsRows);
+  if (!settingsResult.ok) return { ok: false, error: 'duplicate' };
+
+  const secretsResult = rowsToSecretsMap(secretRows);
+  if (!secretsResult.ok) return { ok: false, error: 'duplicate' };
+
+  const hasInputFields = (selectedKindMeta?.input_fields?.length ?? 0) > 0;
+  const hasOutputSlots = (selectedKindMeta?.output_slots?.length ?? 0) > 0;
+
+  const inputsObj: Record<string, string> = {};
+  if (hasInputFields && selectedKindMeta) {
+    for (const f of selectedKindMeta.input_fields) {
+      inputsObj[f.key] = (inputValues[f.key] ?? '').trim() || (f.default ?? '');
+    }
+  }
+
+  const outputsObj: Record<string, string> = {};
+  if (hasOutputSlots && selectedKindMeta) {
+    for (const o of selectedKindMeta.output_slots) {
+      const id = (outputDatasetIds[o.slot] ?? '').trim();
+      if (!id) return { ok: false, error: 'outputs' };
+      outputsObj[o.slot] = id;
+    }
+  }
+
+  const secrets = secretsResult.value;
+  if (options.isCreate) {
+    for (const req of selectedKindMeta?.secret_keys ?? []) {
+      if (!secrets[req]?.trim()) return { ok: false, error: 'secrets' };
+    }
+  }
+
+  const body: {
+    name: string;
+    enabled: boolean;
+    settings: Record<string, unknown>;
+    inputs?: Record<string, string>;
+    outputs?: Record<string, string>;
+    secrets?: Record<string, string>;
+    kind?: string;
+  } = {
+    name: formName.trim(),
+    enabled: formEnabled,
+    settings: settingsResult.value,
+  };
+  if (options.isCreate && selectedKindMeta) body.kind = selectedKindMeta.kind;
+  if (hasInputFields) body.inputs = inputsObj;
+  if (hasOutputSlots) body.outputs = outputsObj;
+  if (Object.keys(secrets).length > 0) body.secrets = secrets;
+  return { ok: true, body };
+}
+
+export function initFormFromConnector(kinds: ConnectorKindOut[], row: ConnectorResponse) {
+  const meta = kinds.find((k) => k.kind === row.kind);
+  const { inputValues, outputDatasetIds } = applyKindToInputsOutputs(meta, row.inputs, row.outputs);
+  return {
+    formName: row.name,
+    formKind: row.kind,
+    formEnabled: row.enabled,
+    inputValues,
+    outputDatasetIds,
+    settingsRows: settingsToRows(row.settings),
+    secretRows: secretRowsForKind(kinds, row.kind),
+  };
+}

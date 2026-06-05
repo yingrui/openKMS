@@ -38,6 +38,7 @@ import { ObjectTypeSettings } from './pages/ontology/ObjectTypeSettings';
 import { LinkTypeSettings } from './pages/ontology/LinkTypeSettings';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
+import { ConnectorDetailPage } from './pages/connectors/ConnectorDetailPage';
 import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
 import { ConsoleAccessGroups } from './pages/console/ConsoleAccessGroups';
@@ -162,7 +163,10 @@ function App() {
           <Route path="glossaries" element={<GlossaryList />} />
           <Route path="glossaries/:id/settings" element={<GlossarySettings />} />
           <Route path="glossaries/:id" element={<GlossaryDetail />} />
-          <Route path="connectors" element={<FeatureGate feature="connectors"><ConnectorsPage /></FeatureGate>} />
+          <Route path="connectors" element={<FeatureGate feature="connectors"><Outlet /></FeatureGate>}>
+            <Route index element={<ConnectorsPage />} />
+            <Route path=":id" element={<ConnectorDetailPage />} />
+          </Route>
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="pipelines" element={<Pipelines />} />

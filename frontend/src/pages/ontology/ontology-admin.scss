@@ -247,26 +247,63 @@
   padding: 20px;
 }
 
-.console-modal-body label {
+// Shared form controls (console modals + connector detail)
+.console-form-field {
+  margin-bottom: 16px;
+}
+
+.console-form-field > label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: 6px;
+}
+
+.console-form-control {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+select.console-form-control {
+  cursor: pointer;
+}
+
+// Legacy modal markup (label > span + control)
+.console-modal-body label:not(.console-modal-checkbox-row) {
   display: block;
   margin-bottom: 16px;
 }
 
-.console-modal-body label span {
+.console-modal-body label:not(.console-modal-checkbox-row) span:first-child {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
+  color: var(--color-text-secondary);
   margin-bottom: 6px;
 }
 
 .console-modal-body input[type='text'],
 .console-modal-body input[type='password'],
+.console-modal-body input[type='url'],
 .console-modal-body select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.9375rem;
+  @extend .console-form-control;
 }
 
 .console-modal-body label.console-modal-checkbox-row {
@@ -278,10 +315,30 @@
 .console-modal-body label.console-modal-checkbox-row span {
   display: inline;
   margin-bottom: 0;
+  color: var(--color-text);
 }
 
 .console-modal-body label.console-modal-checkbox-row input[type='checkbox'] {
   width: auto;
+}
+
+.connector-form-fields label.console-modal-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  margin-bottom: 0;
+  cursor: pointer;
+
+  span {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  input[type='checkbox'] {
+    width: auto;
+  }
 }
 
 .console-modal-section {
@@ -312,19 +369,31 @@
 .console-kv-key {
   flex: 1 1 120px;
   min-width: 100px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: 0.9375rem;
 }
 
 .console-kv-value {
   flex: 2 1 180px;
   min-width: 140px;
-  padding: 8px 12px;
+}
+
+.console-kv-key,
+.console-kv-value {
+  padding: 10px 14px;
+  font-size: 0.9375rem;
+  background: var(--color-bg-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.9375rem;
+  color: var(--color-text);
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
 }
 
 .console-kv-remove {
@@ -545,4 +614,57 @@
 .btn-sm {
   padding: 4px 10px;
   font-size: 0.8125rem;
+}
+
+.connector-list-name-link {
+  color: var(--color-text);
+  font-weight: 500;
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+}
+
+.connector-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-accent);
+  }
+}
+
+.connector-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.connector-detail-panel {
+  max-width: 720px;
+}
+
+.connector-detail-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.connector-form-fields .console-modal-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.connector-form-fields > .console-modal-hint {
+  margin: -8px 0 16px;
 }

@@ -65,6 +65,19 @@ export async function fetchConnectors(): Promise<ConnectorListResponse> {
   return res.json();
 }
 
+export async function fetchConnector(id: string): Promise<ConnectorResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || `Failed to fetch connector: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function createConnector(body: {
   name: string;
   kind: string;
