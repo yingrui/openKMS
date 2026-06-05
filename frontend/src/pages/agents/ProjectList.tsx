@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bot, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { ProjectSettingsPanel } from '../../components/agents/ProjectSettingsPanel';
 import { createProject, listProjects, type ProjectResponse } from '../../data/projectsApi';
 import './ProjectList.scss';
 
@@ -15,6 +16,7 @@ export function ProjectList() {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [settingsProject, setSettingsProject] = useState<ProjectResponse | null>(null);
   const emptyNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -129,8 +131,24 @@ export function ProjectList() {
         <div className="agents-grid">
           {projects.map((p) => (
             <Link key={p.id} to={`/agents/${p.id}`} className="agents-card">
-              <div className="agents-card-icon" aria-hidden>
-                <Bot size={26} strokeWidth={1.5} />
+              <div className="agents-card-top">
+                <div className="agents-card-icon" aria-hidden>
+                  <Bot size={26} strokeWidth={1.5} />
+                </div>
+                <div className="agents-card-actions">
+                  <button
+                    type="button"
+                    title={t('settings.title')}
+                    aria-label={t('settings.title')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setSettingsProject(p);
+                    }}
+                  >
+                    <Settings size={15} />
+                  </button>
+                </div>
               </div>
               <h3>{p.name}</h3>
               <p className="agents-card-desc">{p.description || t('list.noDescription')}</p>
@@ -138,6 +156,17 @@ export function ProjectList() {
             </Link>
           ))}
         </div>
+      ) : null}
+
+      {settingsProject ? (
+        <ProjectSettingsPanel
+          project={settingsProject}
+          onClose={() => setSettingsProject(null)}
+          onSaved={(updated) => {
+            setProjects((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+            setSettingsProject(null);
+          }}
+        />
       ) : null}
 
       {showCreate ? (

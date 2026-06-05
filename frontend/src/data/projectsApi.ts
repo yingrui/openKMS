@@ -107,6 +107,26 @@ export async function getProject(id: string): Promise<ProjectResponse> {
   return res.json();
 }
 
+export async function updateProject(
+  id: string,
+  body: {
+    name?: string;
+    description?: string | null;
+    slug?: string;
+    settings?: Record<string, unknown>;
+  },
+): Promise<ProjectResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${id}`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function listProjectFiles(projectId: string, path = ''): Promise<{ path: string; entries: ProjectFileEntry[] }> {
   const headers = await getAuthHeaders();
   const q = path ? `?path=${encodeURIComponent(path)}` : '';

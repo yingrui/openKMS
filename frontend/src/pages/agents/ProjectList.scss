@@ -170,6 +170,36 @@
   box-shadow: var(--shadow-md);
 }
 
+.agents-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.agents-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.agents-card-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.agents-card-actions button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
 .agents-card-icon {
   width: 48px;
   height: 48px;
@@ -179,7 +209,6 @@
   background: var(--color-accent-subtle);
   color: var(--color-accent);
   border-radius: var(--radius-md);
-  margin-bottom: 14px;
 }
 
 .agents-card h3 {

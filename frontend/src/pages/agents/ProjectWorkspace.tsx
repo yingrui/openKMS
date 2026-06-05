@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { AgentChatMain, type ChatMessage } from '../../components/agents/AgentChatMain';
 import { AgentFilesPanel } from '../../components/agents/AgentFilesPanel';
 import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
-import { AgentSettingsPanel } from '../../components/agents/AgentSettingsPanel';
+import { ProjectSettingsPanel } from '../../components/agents/ProjectSettingsPanel';
 import {
   appendDeltaToStreamParts,
   updateToolInParts,
@@ -263,12 +263,11 @@ export function ProjectWorkspace() {
           onGitChange={loadProject}
         />
       </div>
-      {settingsOpen ? (
-        <AgentSettingsPanel
-          projectId={projectId}
-          settings={project.settings}
+      {settingsOpen && project ? (
+        <ProjectSettingsPanel
+          project={project}
           onClose={() => setSettingsOpen(false)}
-          onSaved={(s) => setProject((p) => (p ? { ...p, settings: s } : p))}
+          onSaved={(updated) => setProject(updated)}
         />
       ) : null}
     </div>

@@ -66,8 +66,14 @@
     "reject": "Reject"
   },
   "settings": {
-    "title": "Agent settings",
-    "hint": "Configure subagents, skills, and defaults. Saved to the project and .openkms/config.json.",
+    "title": "Project settings",
+    "generalTitle": "General",
+    "agentTitle": "Agent",
+    "agentHint": "Subagents, skills, and runtime defaults. Saved to .openkms/config.json.",
+    "slug": "Slug",
+    "slugHint": "Display label in the session sidebar. Workspace folder uses the project ID.",
+    "invalidJson": "Agent settings must be valid JSON.",
+    "saveError": "Could not save project settings",
     "save": "Save",
     "cancel": "Cancel"
   },

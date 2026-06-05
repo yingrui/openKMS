@@ -66,8 +66,14 @@
     "reject": "拒绝"
   },
   "settings": {
-    "title": "智能体设置",
-    "hint": "配置子智能体、技能与默认项，会写入项目及 .openkms/config.json。",
+    "title": "项目设置",
+    "generalTitle": "基本信息",
+    "agentTitle": "智能体",
+    "agentHint": "子智能体、技能与运行时默认项。保存到 .openkms/config.json。",
+    "slug": "标识",
+    "slugHint": "在会话侧栏显示。工作区文件夹使用项目 ID。",
+    "invalidJson": "智能体设置必须是有效的 JSON。",
+    "saveError": "无法保存项目设置",
     "save": "保存",
     "cancel": "取消"
   },
