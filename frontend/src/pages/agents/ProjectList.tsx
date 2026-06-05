@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Bot, FolderOpen, MessageSquare, Plus, Search, Settings, Terminal, X } from 'lucide-react';
+import { Bot, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createProject, listProjects, type ProjectResponse } from '../../data/projectsApi';
 import './ProjectList.scss';
@@ -98,29 +98,13 @@ export function ProjectList() {
 
       {!loading && projects.length === 0 ? (
         <div className="agents-empty">
-          <div className="agents-empty-icon" aria-hidden>
-            <Bot size={36} strokeWidth={1.5} />
+          <div className="agents-empty-hero">
+            <div className="agents-empty-icon" aria-hidden>
+              <Bot size={36} strokeWidth={1.5} />
+            </div>
+            <h2>{t('list.emptyTitle')}</h2>
+            <p className="agents-empty-lead">{t('list.emptyLead')}</p>
           </div>
-          <h2>{t('list.emptyTitle')}</h2>
-          <p className="agents-empty-lead">{t('list.emptyLead')}</p>
-          <ul className="agents-empty-features">
-            <li>
-              <FolderOpen size={16} strokeWidth={1.75} aria-hidden />
-              {t('list.emptyFeatureFiles')}
-            </li>
-            <li>
-              <MessageSquare size={16} strokeWidth={1.75} aria-hidden />
-              {t('list.emptyFeatureChat')}
-            </li>
-            <li>
-              <Search size={16} strokeWidth={1.75} aria-hidden />
-              {t('list.emptyFeatureResearch')}
-            </li>
-            <li>
-              <Terminal size={16} strokeWidth={1.75} aria-hidden />
-              {t('list.emptyFeatureCode')}
-            </li>
-          </ul>
           <form className="agents-empty-card" onSubmit={onCreate}>
             <label>
               <span>{ts('shared.name')}</span>

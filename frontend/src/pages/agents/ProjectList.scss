@@ -7,8 +7,10 @@
 
 .agents-list--empty {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  min-height: calc(100vh - 120px);
+  min-height: 0;
+  width: 100%;
 }
 
 .agents-toolbar {
@@ -53,13 +55,25 @@
 }
 
 .agents-empty {
-  display: flex;
+  display: grid;
   flex: 1;
+  grid-template-rows: 1fr auto 1fr;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.agents-empty-hero {
+  grid-row: 1;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 48px 24px 64px;
-  text-align: center;
+  align-self: end;
+  width: 100%;
+  max-width: 420px;
+  padding-bottom: 20px;
 }
 
 .agents-empty-icon {
@@ -86,33 +100,11 @@
   color: var(--color-text-secondary);
   max-width: 28rem;
   line-height: 1.55;
-  margin: 0 0 24px;
-}
-
-.agents-empty-features {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px 20px;
-  margin-bottom: 28px;
-  padding: 0;
-  list-style: none;
-}
-
-.agents-empty-features li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.agents-empty-features svg {
-  color: var(--color-accent);
-  flex-shrink: 0;
+  margin: 0;
 }
 
 .agents-empty-card {
+  grid-row: 2;
   width: 100%;
   max-width: 420px;
   padding: 24px;

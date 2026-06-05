@@ -129,6 +129,15 @@
   padding-right: clamp(var(--space-4), 2.5vw, 28px);
 }
 
+/* Agents project list (empty): center onboarding in the main column below the header */
+.app-content:has(.agents-list--empty) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Object Explorer: fill main column height (no bottom dead band), tighter gutters */
 .app-content--object-explorer {
   display: flex;
