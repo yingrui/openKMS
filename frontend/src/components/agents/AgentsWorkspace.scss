@@ -18,6 +18,31 @@
   width: 100%;
 }
 
+.agents-pane-resize-handle {
+  flex-shrink: 0;
+  width: 6px;
+  margin: 0 -3px;
+  cursor: col-resize;
+  touch-action: none;
+  align-self: stretch;
+  border-radius: 2px;
+  background: transparent;
+  z-index: 1;
+
+  &:hover {
+    background: var(--color-bg-muted);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  &--inner {
+    margin: 0;
+  }
+}
+
 /* Shared pane header height across chat, file viewer, and file tree */
 $agents-pane-header-height: 49px;
 
@@ -354,25 +379,18 @@ $agents-pane-header-height: 49px;
 /* —— Files rail: viewer + tree (opencode-style) —— */
 .agents-files-rail {
   display: flex;
-  flex: 1;
+  flex-shrink: 0;
   min-width: 0;
-  max-width: 62%;
   min-height: 0;
   border-left: 1px solid var(--color-border);
 }
 
-.agents-files-rail:not(.agents-files-rail--open) {
-  flex: 0 0 240px;
-  max-width: 240px;
-}
-
 .agents-file-viewer {
   flex: 1;
-  min-width: 0;
+  min-width: 160px;
   display: flex;
   flex-direction: column;
   background: var(--color-bg);
-  border-right: 1px solid var(--color-border);
   min-height: 0;
 }
 
@@ -490,13 +508,16 @@ $agents-pane-header-height: 49px;
 }
 
 .agents-files-panel {
-  flex: 0 0 240px;
-  width: 240px;
-  min-width: 240px;
+  flex-shrink: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--color-bg-elevated);
   min-height: 0;
+}
+
+.agents-files-panel--split {
+  border-left: 1px solid var(--color-border);
 }
 
 .agents-files-head {
@@ -636,6 +657,10 @@ $agents-pane-header-height: 49px;
 }
 
 @include max-width(ds.$bp-sm-min) {
+  .agents-pane-resize-handle {
+    display: none;
+  }
+
   .agents-workspace-body {
     flex-direction: column;
   }
@@ -648,7 +673,8 @@ $agents-pane-header-height: 49px;
   }
 
   .agents-files-rail {
-    width: 100%;
+    width: 100% !important;
+    flex: 0 0 auto !important;
     flex-direction: column;
     border-left: none;
     border-top: 1px solid var(--color-border);
@@ -664,7 +690,8 @@ $agents-pane-header-height: 49px;
   }
 
   .agents-files-panel {
-    width: 100%;
+    width: 100% !important;
+    flex: 1 1 auto !important;
     min-width: 0;
     max-height: 50%;
   }

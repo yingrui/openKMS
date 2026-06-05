@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Folder, File, Upload, GitBranch } from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
@@ -17,13 +17,38 @@ import {
 } from '../../data/projectsApi';
 import './AgentsWorkspace.scss';
 
+const TREE_MIN_PX = 160;
+const TREE_MAX_PX = 480;
+const TREE_DEFAULT_PX = 240;
+const VIEWER_MIN_PX = 160;
+const TREE_WIDTH_KEY = 'openkms_agents_files_tree_width_px_v1';
+
+function readTreeWidth(): number {
+  try {
+    const raw = localStorage.getItem(TREE_WIDTH_KEY);
+    if (raw != null) {
+      const n = parseInt(raw, 10);
+      if (Number.isFinite(n)) return n;
+    }
+  } catch {
+    /* ignore */
+  }
+  return TREE_DEFAULT_PX;
+}
+
+function clampTreeWidth(w: number, railWidthPx: number): number {
+  const max = Math.max(TREE_MIN_PX, railWidthPx - VIEWER_MIN_PX - 8);
+  return Math.round(Math.min(Math.min(TREE_MAX_PX, max), Math.max(TREE_MIN_PX, w)));
+}
+
 interface Props {
   projectId: string;
   gitInitialized: boolean;
+  railWidthPx: number;
   onGitChange?: () => void;
 }
 
-export function AgentFilesPanel({ projectId, gitInitialized, onGitChange }: Props) {
+export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitChange }: Props) {
   const { t } = useTranslation('agents');
   const [cwd, setCwd] = useState('');
   const [entries, setEntries] = useState<ProjectFileEntry[]>([]);
@@ -36,6 +61,42 @@ export function AgentFilesPanel({ projectId, gitInitialized, onGitChange }: Prop
   const [commitOpen, setCommitOpen] = useState(false);
   const [commitMsg, setCommitMsg] = useState('');
   const uploadRef = useRef<HTMLInputElement>(null);
+  const [treeWidthPx, setTreeWidthPx] = useState(readTreeWidth);
+
+  useEffect(() => {
+    setTreeWidthPx((w) => clampTreeWidth(w, railWidthPx));
+  }, [railWidthPx]);
+
+  const onTreeResizePointerDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startW = treeWidthPx;
+      let latest = startW;
+      const prevUserSelect = document.body.style.userSelect;
+      document.body.style.userSelect = 'none';
+      const onMove = (ev: MouseEvent) => {
+        latest = clampTreeWidth(startW - (ev.clientX - startX), railWidthPx);
+        setTreeWidthPx(latest);
+      };
+      const onUp = () => {
+        document.body.style.userSelect = prevUserSelect;
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        const final = clampTreeWidth(latest, railWidthPx);
+        setTreeWidthPx(final);
+        try {
+          localStorage.setItem(TREE_WIDTH_KEY, String(final));
+        } catch {
+          /* ignore */
+        }
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    },
+    [treeWidthPx, railWidthPx],
+  );
 
   const refresh = useCallback(async () => {
     const data = await listProjectFiles(projectId, cwd);
@@ -115,9 +176,26 @@ export function AgentFilesPanel({ projectId, gitInitialized, onGitChange }: Prop
 
   const changeCount = gitEntries.length;
   const fileOpen = selected !== null;
+  const treeWidth = clampTreeWidth(treeWidthPx, railWidthPx);
+  const railStyle = {
+    flex: `0 0 ${railWidthPx}px`,
+    width: railWidthPx,
+  } as CSSProperties;
+  const treeStyle = fileOpen
+    ? ({
+        flex: `0 0 ${treeWidth}px`,
+        width: treeWidth,
+      } as CSSProperties)
+    : ({
+        flex: '1 1 auto',
+        width: '100%',
+      } as CSSProperties);
 
   return (
-    <div className={`agents-files-rail${fileOpen ? ' agents-files-rail--open' : ''}`}>
+    <div
+      className={`agents-files-rail${fileOpen ? ' agents-files-rail--open' : ''}`}
+      style={railStyle}
+    >
       {fileOpen ? (
         <AgentFileViewer
           path={selected}
@@ -127,7 +205,24 @@ export function AgentFilesPanel({ projectId, gitInitialized, onGitChange }: Prop
           onClose={closeFile}
         />
       ) : null}
-      <aside className="agents-files-panel" aria-label={t('files.title')}>
+      {fileOpen ? (
+        <div
+          className="agents-pane-resize-handle agents-pane-resize-handle--inner"
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={treeWidth}
+          aria-valuemin={TREE_MIN_PX}
+          aria-valuemax={clampTreeWidth(TREE_MAX_PX, railWidthPx)}
+          aria-label={t('workspace.resizeFileTree')}
+          title={t('workspace.resizeFileTreeHint')}
+          onMouseDown={onTreeResizePointerDown}
+        />
+      ) : null}
+      <aside
+        className={`agents-files-panel${fileOpen ? ' agents-files-panel--split' : ''}`}
+        style={treeStyle}
+        aria-label={t('files.title')}
+      >
         <div className="agents-files-head">
           <span className="agents-files-head-title">
             {gitInitialized ? t('files.changes', { count: changeCount }) : t('files.title')}

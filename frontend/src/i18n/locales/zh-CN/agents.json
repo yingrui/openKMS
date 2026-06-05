@@ -26,6 +26,12 @@
     "newChat": "新建会话",
     "delete": "删除会话"
   },
+  "workspace": {
+    "resizeFilesRail": "调整文件面板宽度",
+    "resizeFilesRailHint": "拖动以调整文件面板宽度",
+    "resizeFileTree": "调整文件树宽度",
+    "resizeFileTreeHint": "拖动以调整文件树宽度"
+  },
   "chat": {
     "hero": "让智能体浏览文件、制定计划或检索知识库。",
     "placeholder": "随便问…",

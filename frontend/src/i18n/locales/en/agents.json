@@ -26,6 +26,12 @@
     "newChat": "New session",
     "delete": "Delete session"
   },
+  "workspace": {
+    "resizeFilesRail": "Resize files panel",
+    "resizeFilesRailHint": "Drag to resize the files panel",
+    "resizeFileTree": "Resize file tree",
+    "resizeFileTreeHint": "Drag to resize the file tree"
+  },
   "chat": {
     "hero": "Ask the agent to explore files, plan work, or research your knowledge base.",
     "placeholder": "Ask anything…",
