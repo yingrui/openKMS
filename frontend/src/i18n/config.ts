@@ -38,6 +38,8 @@ import enWikiSpace from './locales/en/wikiSpace.json';
 import zhWikiSpace from './locales/zh-CN/wikiSpace.json';
 import enKnowledgeBase from './locales/en/knowledgeBase.json';
 import zhKnowledgeBase from './locales/zh-CN/knowledgeBase.json';
+import enAgents from './locales/en/agents.json';
+import zhAgents from './locales/zh-CN/agents.json';
 
 export const OPENKMS_LOCALE_STORAGE_KEY = 'openkms_locale';
 
@@ -96,6 +98,7 @@ void i18n
       'objectExplorer',
       'wikiSpace',
       'knowledgeBase',
+      'agents',
     ],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
@@ -124,6 +127,7 @@ void i18n
         objectExplorer: enObjectExplorer,
         wikiSpace: enWikiSpace,
         knowledgeBase: enKnowledgeBase,
+        agents: enAgents,
       },
       'zh-CN': {
         common: zhCommon,
@@ -144,6 +148,7 @@ void i18n
         objectExplorer: zhObjectExplorer,
         wikiSpace: zhWikiSpace,
         knowledgeBase: zhKnowledgeBase,
+        agents: zhAgents,
       },
     },
   });

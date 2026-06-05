@@ -3,7 +3,7 @@ import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import type { FeatureToggleKey } from '../../data/featureTogglesApi';
 import './ConsoleFeatureToggles.scss';
 
-const FEATURE_IDS: FeatureToggleKey[] = ['evaluations', 'connectors'];
+const FEATURE_IDS: FeatureToggleKey[] = ['evaluations', 'connectors', 'agents'];
 
 export function ConsoleFeatureToggles() {
   const { t } = useTranslation('console');

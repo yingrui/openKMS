@@ -35,6 +35,8 @@ from app.services.permission_catalog import (
     PERM_ONTOLOGY_WRITE,
     PERM_KNOWLEDGE_MAP_READ,
     PERM_KNOWLEDGE_MAP_WRITE,
+    PERM_PROJECTS_READ,
+    PERM_PROJECTS_WRITE,
 )
 
 # (frontend_route_patterns, backend_api_patterns)
@@ -332,6 +334,28 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
             "PUT /api/knowledge-map/*",
             "PATCH /api/knowledge-map/*",
             "DELETE /api/knowledge-map/*",
+        ],
+    ),
+    PERM_PROJECTS_READ: (
+        ["/agents", "/agents/*"],
+        [
+            "GET /api/projects",
+            "HEAD /api/projects",
+            "GET /api/projects/*",
+            "HEAD /api/projects/*",
+            "GET /api/user/git-credentials",
+            "HEAD /api/user/git-credentials",
+        ],
+    ),
+    PERM_PROJECTS_WRITE: (
+        ["/agents", "/agents/*"],
+        [
+            "POST /api/projects",
+            "PUT /api/projects/*",
+            "PATCH /api/projects/*",
+            "DELETE /api/projects/*",
+            "POST /api/user/git-credentials",
+            "DELETE /api/user/git-credentials/*",
         ],
     ),
 }

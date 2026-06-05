@@ -29,6 +29,7 @@ import {
   Library,
   FolderTree,
   Plug,
+  Bot,
 } from 'lucide-react';
 import { useCallback, useEffect, useState, startTransition } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -437,6 +438,18 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           <HomeIcon size={18} strokeWidth={1.75} />
           <span>{t('home')}</span>
         </NavLink>
+        {toggles.agents && canAccessPath('/agents') && (
+          <NavLink
+            to="/agents"
+            title={t('agents')}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <Bot size={18} strokeWidth={1.75} />
+            <span>{t('agents')}</span>
+          </NavLink>
+        )}
         {canAccessPath('/documents') && (
         <div className="sidebar-menu-group">
           <NavLink

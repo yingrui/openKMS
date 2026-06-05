@@ -46,6 +46,7 @@
   "links": "关联",
   "objectExplorer": "对象浏览器",
   "knowledgeBases": "知识库",
+  "agents": "智能体",
   "evaluation": "评测集",
   "pipelines": "流水线",
   "jobs": "任务运行",

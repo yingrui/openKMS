@@ -289,7 +289,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `hasNeo4jDataSource`; authenticated) |
+| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `agents`, `hasNeo4jDataSource`; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ## Articles
@@ -370,6 +370,37 @@ Used by the Wiki agent surface (and any other in-app assistant). Uses `OPENKMS_A
 | GET | `/api/agent/conversations/{id}/messages` | Paginated messages: query **`limit`** (default 100, max 500), **`offset`**; JSON **`{ items, total, limit, offset }`**. Requires **`wikis:read`** and wiki space scope. |
 | POST | `/api/agent/conversations/{id}/messages` | Send a user message (`content`, optional `stream`, optional `session_id` for Langfuse grouping on the embedded wiki agent). **`stream: true`** → **`application/x-ndjson`** lines: `user`, `delta`, `tool_*`, `done` / `error`; **`stream: false`** → JSON with user + assistant messages |
 | DELETE | `/api/agent/conversations/{id}/messages/from/{message_id}` | Delete this message and everything after it (used by "regenerate") |
+
+## Projects (Agents workspace)
+
+Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_PROJECTS_ROOT/{project_id}/`. Permissions: `projects:read`, `projects:write`. Feature toggle: `agents`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/projects` | List current user's projects |
+| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/config.json`) |
+| GET | `/api/projects/{id}` | Get project |
+| PATCH | `/api/projects/{id}` | Update name, description, slug, settings |
+| DELETE | `/api/projects/{id}` | Delete project and on-disk folder |
+| GET | `/api/projects/{id}/files?path=` | List directory |
+| GET | `/api/projects/{id}/files/content?path=` | Read file |
+| PUT | `/api/projects/{id}/files/content` | Write file |
+| POST | `/api/projects/{id}/files/upload` | Upload file (multipart, optional `path` query) |
+| DELETE | `/api/projects/{id}/files` | Delete file or directory |
+| GET/PATCH | `/api/projects/{id}/settings` | Project agent/subagent/skill settings |
+| GET/POST | `/api/projects/{id}/conversations` | List / create chat sessions (`surface=project`) |
+| PATCH/DELETE | `/api/projects/{id}/conversations/{cid}` | Update title / delete session |
+| GET/POST | `/api/projects/{id}/conversations/{cid}/messages` | History; POST with `stream: true` → NDJSON (`delta`, `tool_*`, `todo`, `interrupt`, `done`) |
+| POST | `/api/projects/{id}/conversations/{cid}/messages/resume` | HITL resume (`decision`: approve/reject/edit/respond) |
+| POST | `/api/projects/{id}/git/init` | Local `git init` |
+| GET | `/api/projects/{id}/git/status` | Porcelain status |
+| GET | `/api/projects/{id}/git/log` | Recent commits |
+| POST | `/api/projects/{id}/git/commit` | Commit (`message`, optional `paths`) |
+| POST | `/api/projects/{id}/git/clone` | Clone HTTPS URL into empty project (requires `credential_id`) |
+| POST | `/api/projects/{id}/git/remote` | Set `origin` (HTTPS only) |
+| POST | `/api/projects/{id}/git/pull` | Pull (PAT via `credential_id`) |
+| POST | `/api/projects/{id}/git/push` | Push (PAT via `credential_id`) |
+| GET/POST/DELETE | `/api/user/git-credentials` | Manage encrypted HTTPS PATs (Profile UI) |
 
 ## Knowledge map
 

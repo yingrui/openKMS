@@ -1,0 +1,68 @@
+{
+  "loading": "Loading…",
+  "list": {
+    "title": "Agents",
+    "pageTitle": "Projects",
+    "settings": "Settings",
+    "subtitle": "Create a project workspace and chat with an agent that can read and update files, research your knowledge, and run code.",
+    "namePlaceholder": "Project name",
+    "descPlaceholder": "What is this project for? (optional)",
+    "create": "New project",
+    "createFirst": "Create your first project",
+    "createError": "Could not create project",
+    "empty": "No projects yet. Create one to get started.",
+    "emptyTitle": "Start your first project",
+    "emptyLead": "Each project is a workspace folder with its own files, chat sessions, and agent instructions.",
+    "emptyFeatureFiles": "Files & uploads",
+    "emptyFeatureChat": "Agent chat",
+    "emptyFeatureResearch": "Knowledge research",
+    "emptyFeatureCode": "Run code",
+    "noDescription": "No description",
+    "updated": "Updated {{date}}",
+    "dialogNew": "New project"
+  },
+  "sessions": {
+    "back": "All projects",
+    "newChat": "New chat",
+    "delete": "Delete chat"
+  },
+  "chat": {
+    "hero": "Ask the agent to explore files, plan work, or research your knowledge base.",
+    "placeholder": "Message the agent…",
+    "planMode": "Plan mode (read-only)",
+    "thinking": "Thinking…",
+    "todos": "Plan",
+    "error": "Message failed"
+  },
+  "files": {
+    "title": "Project files",
+    "upload": "Upload",
+    "gitInit": "Initialize git",
+    "gitCommit": "Commit…",
+    "commitMessage": "Commit message",
+    "commit": "Commit",
+    "cancel": "Cancel",
+    "selectFile": "Select a file to preview",
+    "binaryPreview": "Binary file ({{size}} bytes)"
+  },
+  "interrupt": {
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "settings": {
+    "title": "Agent settings",
+    "hint": "Configure subagents, skills, and defaults. Saved to the project and .openkms/config.json.",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "gitCredentials": {
+    "title": "Git credentials",
+    "subtitle": "HTTPS personal access tokens for pull and push (never shown again after save).",
+    "provider": "Provider",
+    "label": "Label",
+    "username": "Username",
+    "token": "Token",
+    "add": "Add credential",
+    "delete": "Remove"
+  }
+}

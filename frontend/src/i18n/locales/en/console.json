@@ -91,7 +91,7 @@
   },
   "featureToggles": {
     "pageTitle": "Feature toggles",
-    "subtitle": "Enable or disable the Evaluation and Connectors areas for everyone. Disabled areas are hidden from the sidebar and navigation.",
+    "subtitle": "Enable or disable optional areas for everyone. Disabled areas are hidden from the sidebar and navigation.",
     "enableAria": "Enable {{feature}}",
     "features": {
       "evaluations": {
@@ -101,6 +101,10 @@
       "connectors": {
         "name": "Connectors",
         "description": "External integrations with encrypted credentials and dataset targets for sync jobs."
+      },
+      "agents": {
+        "name": "Agents",
+        "description": "Project workspaces with Deep Agents chat, files, git, and research tools."
       }
     }
   },

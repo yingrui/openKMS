@@ -273,11 +273,21 @@ Design and enforcement: [Data security](data-security.md).
 
 ### AgentConversation
 
-- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html`), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads), `title`, `created_at`, `updated_at`
+- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html` \| **`project`**), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "project_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads), `title`, `created_at`, `updated_at`
 
 ### AgentMessage
 
 - `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
+
+## Projects (Agents workspace)
+
+### Project (`projects`)
+
+- `id`, `user_sub`, `name`, `description`, `slug` (UI only; disk path is `{OPENKMS_PROJECTS_ROOT}/{id}/`), `settings` (JSONB: subagents, skills, git identity), `git_initialized`, `created_at`, `updated_at`
+
+### UserGitCredential (`user_git_credentials`)
+
+- `id`, `user_sub`, `provider`, `label`, `username`, `encrypted_pat`, `scopes_hint`, `created_at`, `updated_at` — HTTPS PAT for remote git; never stored on project disk.
 
 ## Knowledge map
 

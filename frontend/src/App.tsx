@@ -97,6 +97,8 @@ const ArticleChannelSettings = lazy(() =>
 const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
 const DatasetSettings = lazy(() => import('./pages/console/DatasetSettings').then((m) => ({ default: m.DatasetSettings })));
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
+const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));
+const ProjectWorkspace = lazy(() => import('./pages/agents/ProjectWorkspace').then((m) => ({ default: m.ProjectWorkspace })));
 function EvaluationDatasetDetailPage() {
   const { id } = useParams();
   return <EvaluationDatasetDetail key={id ?? ''} />;
@@ -152,6 +154,8 @@ function App() {
           </Route>
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
+          <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
+          <Route path="agents/:projectId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
           <Route path="wikis" element={<WikiSpaceList />} />
           <Route path="wikis/:id/pages/graph" element={<WikiSpacePagesGate />} />
           <Route path="wikis/:id/pages/:pageId" element={<WikiSpacePagesGate />} />

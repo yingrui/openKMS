@@ -48,6 +48,8 @@ import app.models.access_group  # noqa: F401 - register models with Base.metadat
 import app.models.resource_acl  # noqa: F401 - register models with Base.metadata
 import app.models.wiki_models  # noqa: F401 - register models with Base.metadata
 import app.models.agent_models  # noqa: F401 - register models with Base.metadata
+import app.models.project  # noqa: F401 - register models with Base.metadata
+import app.models.user_git_credential  # noqa: F401 - register models with Base.metadata
 import app.models.system_settings  # noqa: F401 - register models with Base.metadata
 import app.models.knowledge_map  # noqa: F401 - register models with Base.metadata
 import app.models.job_run_worker_log  # noqa: F401 - register models with Base.metadata

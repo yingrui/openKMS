@@ -1,0 +1,68 @@
+{
+  "loading": "加载中…",
+  "list": {
+    "title": "智能体",
+    "pageTitle": "项目",
+    "settings": "设置",
+    "subtitle": "创建项目工作区，与可读写文件、检索知识、运行代码的智能体对话。",
+    "namePlaceholder": "项目名称",
+    "descPlaceholder": "项目用途（可选）",
+    "create": "新建项目",
+    "createFirst": "创建第一个项目",
+    "createError": "无法创建项目",
+    "empty": "暂无项目，先创建一个吧。",
+    "emptyTitle": "开始你的第一个项目",
+    "emptyLead": "每个项目都有独立的工作区文件夹、对话会话和智能体说明。",
+    "emptyFeatureFiles": "文件与上传",
+    "emptyFeatureChat": "智能体对话",
+    "emptyFeatureResearch": "知识检索",
+    "emptyFeatureCode": "运行代码",
+    "noDescription": "暂无描述",
+    "updated": "更新于 {{date}}",
+    "dialogNew": "新建项目"
+  },
+  "sessions": {
+    "back": "全部项目",
+    "newChat": "新对话",
+    "delete": "删除对话"
+  },
+  "chat": {
+    "hero": "让智能体浏览文件、制定计划或检索知识库。",
+    "placeholder": "给智能体发消息…",
+    "planMode": "计划模式（只读）",
+    "thinking": "思考中…",
+    "todos": "计划",
+    "error": "发送失败"
+  },
+  "files": {
+    "title": "项目文件",
+    "upload": "上传",
+    "gitInit": "初始化 git",
+    "gitCommit": "提交…",
+    "commitMessage": "提交说明",
+    "commit": "提交",
+    "cancel": "取消",
+    "selectFile": "选择文件以预览",
+    "binaryPreview": "二进制文件（{{size}} 字节）"
+  },
+  "interrupt": {
+    "approve": "批准",
+    "reject": "拒绝"
+  },
+  "settings": {
+    "title": "智能体设置",
+    "hint": "配置子智能体、技能与默认项，会写入项目及 .openkms/config.json。",
+    "save": "保存",
+    "cancel": "取消"
+  },
+  "gitCredentials": {
+    "title": "Git 凭据",
+    "subtitle": "用于 pull/push 的 HTTPS 个人访问令牌（保存后不再显示）。",
+    "provider": "提供商",
+    "label": "标签",
+    "username": "用户名",
+    "token": "令牌",
+    "add": "添加凭据",
+    "delete": "删除"
+  }
+}

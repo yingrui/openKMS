@@ -3,11 +3,12 @@ import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 
 /** Keys operators may flip in Console → Feature toggles (not derived fields). */
-export type FeatureToggleKey = 'evaluations' | 'connectors';
+export type FeatureToggleKey = 'evaluations' | 'connectors' | 'agents';
 
 export interface FeatureToggles {
   evaluations: boolean;
   connectors: boolean;
+  agents: boolean;
   hasNeo4jDataSource?: boolean;
 }
 

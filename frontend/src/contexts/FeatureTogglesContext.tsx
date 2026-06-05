@@ -13,6 +13,7 @@ export type { FeatureToggles, FeatureToggleKey } from '../data/featureTogglesApi
 const defaults: FeatureToggles = {
   evaluations: false,
   connectors: true,
+  agents: true,
   hasNeo4jDataSource: false,
 };
 

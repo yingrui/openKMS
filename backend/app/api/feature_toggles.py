@@ -13,6 +13,7 @@ from app.models.feature_toggle import FeatureToggle
 DEFAULTS = {
     "evaluations": False,
     "connectors": True,
+    "agents": True,
 }
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
@@ -21,12 +22,14 @@ router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 class FeatureTogglesResponse(BaseModel):
     evaluations: bool = False
     connectors: bool = True
+    agents: bool = True
     hasNeo4jDataSource: bool = False
 
 
 class FeatureTogglesUpdate(BaseModel):
     evaluations: bool | None = None
     connectors: bool | None = None
+    agents: bool | None = None
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:

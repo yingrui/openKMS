@@ -101,6 +101,36 @@ class Settings(BaseSettings):
         description="Max prior messages loaded into the embedded wiki agent LLM context (tail of thread; GET /messages can paginate beyond this).",
     )
 
+    # --- Agent workspace projects (Deep Agents) ---
+    projects_root: str = Field(
+        default="data/projects",
+        validation_alias="OPENKMS_PROJECTS_ROOT",
+        description="Root directory for on-disk agent project workspaces ({root}/{project_id}/).",
+    )
+    deep_agent_model_id: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_DEEP_AGENT_MODEL_ID",
+        description="api_models.id for project Deep Agents; falls back to OPENKMS_AGENT_MODEL_ID.",
+    )
+    agent_web_search_enabled: bool = Field(
+        default=False,
+        validation_alias="OPENKMS_AGENT_WEB_SEARCH_ENABLED",
+    )
+    agent_web_search_api_key: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_AGENT_WEB_SEARCH_API_KEY",
+    )
+    agent_web_search_base_url: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_AGENT_WEB_SEARCH_BASE_URL",
+    )
+    agent_sandbox_timeout_seconds: int = Field(
+        default=60,
+        ge=5,
+        le=600,
+        validation_alias="OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS",
+    )
+
     agent_kb_qa_max_context_messages: int = Field(
         default=120,
         ge=20,

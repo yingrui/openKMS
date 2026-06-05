@@ -60,6 +60,7 @@ x-backend-env: &backend_env
   LANGFUSE_BASE_URL: ${LANGFUSE_BASE_URL:-}
   LANGFUSE_TRACE_STREAMING: ${LANGFUSE_TRACE_STREAMING:-true}
   LANGFUSE_HEALTHCHECK: ${LANGFUSE_HEALTHCHECK:-true}
+  OPENKMS_PROJECTS_ROOT: /data/projects
 
 # qa-agent: local service auth (OIDC: see docker/.env.example and backend/.env.example).
 x-qa-agent-env: &qa_agent_env
@@ -134,6 +135,8 @@ services:
         <<: *build_mirror_args
     environment:
       <<: *backend_env
+    volumes:
+      - projects_data:/data/projects
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,6 +157,8 @@ services:
         <<: *build_mirror_args
     environment:
       <<: *backend_env
+    volumes:
+      - projects_data:/data/projects
     depends_on:
       postgres:
         condition: service_healthy
@@ -198,3 +203,4 @@ volumes:
   openkms_postgres_pg16: {}
   minio_data: {}
   neo4j_data: {}
+  projects_data: {}

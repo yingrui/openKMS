@@ -10,13 +10,18 @@ from app.config import settings
 from app.models.api_model import ApiModel
 
 
-async def resolve_agent_llm_config(db: AsyncSession) -> dict[str, str] | None:
-    """Default chat-completions model, or explicit OPENKMS_AGENT_MODEL_ID."""
-    if settings.agent_model_id:
+async def resolve_agent_llm_config(
+    db: AsyncSession,
+    *,
+    model_id: str | None = None,
+) -> dict[str, str] | None:
+    """Default chat-completions model, or explicit model id."""
+    chosen = model_id or settings.deep_agent_model_id or settings.agent_model_id
+    if chosen:
         stmt = (
             select(ApiModel)
             .options(selectinload(ApiModel.provider_rel))
-            .where(ApiModel.id == settings.agent_model_id)
+            .where(ApiModel.id == chosen)
         )
     else:
         stmt = (

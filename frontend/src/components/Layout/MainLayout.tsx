@@ -40,7 +40,8 @@ export function MainLayout() {
     location.pathname.startsWith('/documents/view') ||
     location.pathname.startsWith('/articles/view') ||
     location.pathname.startsWith('/knowledge-bases/') ||
-    location.pathname.startsWith('/wikis/');
+    location.pathname.startsWith('/wikis/') ||
+    location.pathname.startsWith('/agents/');
   const isSearchPage = location.pathname === '/search';
   const isObjectExplorerPage = location.pathname === '/object-explorer';
 

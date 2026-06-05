@@ -40,6 +40,8 @@ PERM_KNOWLEDGE_MAP_READ = "knowledge_map:read"
 PERM_KNOWLEDGE_MAP_WRITE = "knowledge_map:write"
 PERM_CONNECTORS_READ = "connectors:read"
 PERM_CONNECTORS_WRITE = "connectors:write"
+PERM_PROJECTS_READ = "projects:read"
+PERM_PROJECTS_WRITE = "projects:write"
 
 DEFAULT_MEMBER_PERMISSIONS: frozenset[str] = frozenset({PERM_ALL})
 
@@ -231,6 +233,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_KNOWLEDGE_MAP_WRITE,
         "Manage Knowledge Map",
         "Create, update, delete map terms (nodes) and attach channels or wiki spaces.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_PROJECTS_READ,
+        "View agent projects",
+        "List projects, read workspace files, and use agent chat.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_PROJECTS_WRITE,
+        "Manage agent projects",
+        "Create/update projects, upload files, run agent tools, and git operations.",
         "content",
     ),
 )

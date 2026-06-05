@@ -3,6 +3,7 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { UserCircle } from 'lucide-react';
 import { fetchAuthMe, type AuthMeResponse } from '../data/authApi';
+import { GitCredentialsSection } from '../components/agents/GitCredentialsSection';
 import './Profile.scss';
 
 export function Profile() {
@@ -108,6 +109,7 @@ export function Profile() {
           </dl>
         </div>
       )}
+      {!loading && me ? <GitCredentialsSection /> : null}
     </div>
   );
 }

@@ -91,7 +91,7 @@
   },
   "featureToggles": {
     "pageTitle": "功能开关",
-    "subtitle": "为所有用户开启或关闭「评测」与「连接器」。关闭后对应入口将从侧栏与导航中隐藏。",
+    "subtitle": "为所有用户开启或关闭可选功能。关闭后对应入口将从侧栏与导航中隐藏。",
     "enableAria": "启用{{feature}}",
     "features": {
       "evaluations": {
@@ -101,6 +101,10 @@
       "connectors": {
         "name": "连接器",
         "description": "外部数据集成：加密凭据与用于同步任务的数据集绑定。"
+      },
+      "agents": {
+        "name": "智能体",
+        "description": "项目工作区：Deep Agents 对话、文件、git 与检索工具。"
       }
     }
   },

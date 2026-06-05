@@ -3,7 +3,7 @@ name = "openkms-backend"
 version = "0.1.0"
 description = "openKMS FastAPI backend - document management, pipelines, jobs"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -33,6 +33,8 @@ dependencies = [
     "langchain-core>=0.3.0",
     "langchain-openai>=0.2.0",
     "langfuse>=2.0.0",
+    "deepagents>=0.4.0",
+    "langgraph-checkpoint-postgres>=2.0.0",
     "openpyxl>=3.1.5",
     "nh3>=0.2.18",
 ]
