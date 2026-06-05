@@ -23,12 +23,13 @@
   },
   "sessions": {
     "back": "全部项目",
-    "newChat": "新对话",
-    "delete": "删除对话"
+    "newChat": "新建会话",
+    "delete": "删除会话"
   },
   "chat": {
     "hero": "让智能体浏览文件、制定计划或检索知识库。",
-    "placeholder": "给智能体发消息…",
+    "placeholder": "随便问…",
+    "send": "发送",
     "planMode": "计划模式（只读）",
     "thinking": "思考中…",
     "todos": "计划",
@@ -36,6 +37,8 @@
   },
   "files": {
     "title": "项目文件",
+    "allFiles": "全部文件",
+    "changes": "{{count}} 项变更",
     "upload": "上传",
     "gitInit": "初始化 git",
     "gitCommit": "提交…",
@@ -43,7 +46,20 @@
     "commit": "提交",
     "cancel": "取消",
     "selectFile": "选择文件以预览",
-    "binaryPreview": "二进制文件（{{size}} 字节）"
+    "viewer": "查看 {{name}}",
+    "closeFile": "关闭文件",
+    "loadError": "无法加载文件",
+    "binaryPreview": "二进制文件（{{size}} 字节）",
+    "gitStatus": {
+      "Untracked": "未跟踪",
+      "Modified": "已修改",
+      "Added": "已添加",
+      "Deleted": "已删除",
+      "Renamed": "已重命名",
+      "Copied": "已复制",
+      "Unmerged": "未合并",
+      "Ignored": "已忽略"
+    }
   },
   "interrupt": {
     "approve": "批准",

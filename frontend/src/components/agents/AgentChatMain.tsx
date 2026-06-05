@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Sparkles, Send } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 import { WikiAgentMessageBody } from '../wiki/WikiAgentMessageBody';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
@@ -15,7 +15,7 @@ export interface ChatMessage {
 }
 
 interface Props {
-  projectName: string;
+  sessionTitle: string | null;
   messages: ChatMessage[];
   loading: boolean;
   planMode: boolean;
@@ -28,7 +28,7 @@ interface Props {
 }
 
 export function AgentChatMain({
-  projectName,
+  sessionTitle,
   messages,
   loading,
   planMode,
@@ -42,22 +42,36 @@ export function AgentChatMain({
   const { t } = useTranslation('agents');
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const resizeTextarea = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+  };
+
+  const submit = (e?: React.FormEvent) => {
+    e?.preventDefault();
     const text = input.trim();
     if (!text || loading) return;
     setInput('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     onSend(text);
   };
 
   return (
     <main className="agents-chat-main">
+      {sessionTitle ? (
+        <header className="agents-chat-header">
+          <h1>{sessionTitle}</h1>
+        </header>
+      ) : null}
       {todos && todos.length > 0 ? (
         <div className="agents-todos">
           <strong>{t('chat.todos')}</strong>
@@ -66,54 +80,71 @@ export function AgentChatMain({
       ) : null}
       <div className="agents-chat-scroll" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--color-text-muted)' }}>
-            <Sparkles size={32} style={{ marginBottom: 12 }} />
-            <h2>{projectName}</h2>
-            <p>{t('chat.hero')}</p>
-          </div>
+          <p className="agents-chat-empty">{t('chat.hero')}</p>
         ) : (
           messages.map((m, i) => (
-            <div key={m.id ?? i} className={`kb-qa-msg kb-qa-msg--${m.role}`}>
-              <WikiAgentMessageBody text={m.content} variant={m.role} />
-              {m.streamParts?.map((p, j) =>
-                p.type === 'tool' ? (
-                  <div key={j} className="wiki-space-agent-panel__tool-pill">
-                    <span>{p.step.name}</span>
-                    <span>{p.step.status}</span>
-                  </div>
-                ) : null,
-              )}
+            <div key={m.id ?? i} className={`agents-chat-msg agents-chat-msg--${m.role}`}>
+              <div className="agents-chat-msg-body">
+                {m.role === 'assistant' ? (
+                  <>
+                    <WikiAgentMessageBody text={m.content} variant={m.role} />
+                    {m.streamParts?.map((p, j) =>
+                      p.type === 'tool' ? (
+                        <div key={j} className="wiki-space-agent-panel__tool-pill">
+                          <span>{p.step.name}</span>
+                          <span>{p.step.status}</span>
+                        </div>
+                      ) : null,
+                    )}
+                  </>
+                ) : (
+                  m.content
+                )}
+              </div>
             </div>
           ))
         )}
-        {loading ? <div className="kb-qa-typing">{t('chat.thinking')}</div> : null}
+        {loading ? <div className="agents-chat-typing">{t('chat.thinking')}</div> : null}
       </div>
       {interruptSummary && onInterruptApprove && onInterruptReject ? (
         <AgentInterruptBar summary={interruptSummary} onApprove={onInterruptApprove} onReject={onInterruptReject} />
       ) : null}
-      <form className="agents-composer" onSubmit={submit}>
-        <label className="agents-plan-toggle">
-          <input type="checkbox" checked={planMode} onChange={(e) => onPlanModeChange(e.target.checked)} />
-          {t('chat.planMode')}
-        </label>
-        <div className="agents-composer-row">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t('chat.placeholder')}
-            rows={2}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submit(e);
-              }
-            }}
-          />
-          <button type="submit" className="btn btn-primary" disabled={loading || !input.trim()}>
-            <Send size={16} />
-          </button>
-        </div>
-      </form>
+      <div className="agents-composer-wrap">
+        <form className="agents-composer-inner" onSubmit={submit}>
+          <div className="agents-composer-box">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                resizeTextarea();
+              }}
+              placeholder={t('chat.placeholder')}
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  submit(e);
+                }
+              }}
+            />
+            <button
+              type="submit"
+              className="agents-composer-send"
+              disabled={loading || !input.trim()}
+              aria-label={t('chat.send')}
+            >
+              <ArrowUp size={16} strokeWidth={2.25} />
+            </button>
+          </div>
+          <div className="agents-composer-meta">
+            <label className="agents-plan-toggle">
+              <input type="checkbox" checked={planMode} onChange={(e) => onPlanModeChange(e.target.checked)} />
+              {t('chat.planMode')}
+            </label>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }

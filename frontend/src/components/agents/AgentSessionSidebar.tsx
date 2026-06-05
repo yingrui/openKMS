@@ -1,14 +1,9 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Settings, Trash2 } from 'lucide-react';
 import type { AgentConversationResponse } from '../../data/agentApi';
 import './AgentsWorkspace.scss';
-
-function monthKey(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
 
 function label(c: AgentConversationResponse): string {
   if (c.title?.trim()) return c.title.trim();
@@ -17,31 +12,31 @@ function label(c: AgentConversationResponse): string {
 
 interface Props {
   projectName: string;
+  projectSlug: string;
   conversations: AgentConversationResponse[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onNewChat: () => void;
+  onOpenSettings: () => void;
   onDelete?: () => void;
 }
 
 export function AgentSessionSidebar({
   projectName,
+  projectSlug,
   conversations,
   activeId,
   onSelect,
   onNewChat,
+  onOpenSettings,
   onDelete,
 }: Props) {
   const { t } = useTranslation('agents');
-  const groups = useMemo(() => {
-    const m = new Map<string, AgentConversationResponse[]>();
-    for (const c of conversations) {
-      const k = monthKey(c.updated_at);
-      if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(c);
-    }
-    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0]));
-  }, [conversations]);
+
+  const sorted = useMemo(
+    () => [...conversations].sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    [conversations],
+  );
 
   return (
     <aside className="agents-sessions">
@@ -50,31 +45,40 @@ export function AgentSessionSidebar({
           <ArrowLeft size={14} />
           {t('sessions.back')}
         </Link>
-        <strong>{projectName}</strong>
-        <button type="button" className="btn btn-sm btn-primary" onClick={onNewChat}>
-          <Plus size={14} /> {t('sessions.newChat')}
-        </button>
+        <div className="agents-sessions-project">{projectName}</div>
+        <div className="agents-sessions-sub">{projectSlug}</div>
+        <div className="agents-sessions-head-actions">
+          <button type="button" className="agents-sessions-new" onClick={onNewChat}>
+            <Plus size={15} strokeWidth={2} />
+            {t('sessions.newChat')}
+          </button>
+          <button
+            type="button"
+            className="agents-sessions-settings"
+            onClick={onOpenSettings}
+            title={t('settings.title')}
+            aria-label={t('settings.title')}
+          >
+            <Settings size={16} strokeWidth={1.75} />
+          </button>
+        </div>
       </div>
       <div className="agents-sessions-scroll">
-        {groups.map(([month, items]) => (
-          <div key={month}>
-            <div style={{ padding: '6px 14px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{month}</div>
-            {items.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={`agents-session-item${activeId === c.id ? ' agents-session-item--active' : ''}`}
-                onClick={() => onSelect(c.id)}
-              >
-                {label(c)}
-              </button>
-            ))}
-          </div>
+        {sorted.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`agents-session-item${activeId === c.id ? ' agents-session-item--active' : ''}`}
+            onClick={() => onSelect(c.id)}
+          >
+            {label(c)}
+          </button>
         ))}
       </div>
       {activeId && onDelete ? (
-        <div style={{ padding: 10, borderTop: '1px solid var(--color-border)' }}>
-          <button type="button" className="btn btn-sm btn-danger" onClick={onDelete}>
+        <div className="agents-sessions-foot">
+          <button type="button" className="agents-sessions-delete" onClick={onDelete}>
+            <Trash2 size={13} />
             {t('sessions.delete')}
           </button>
         </div>

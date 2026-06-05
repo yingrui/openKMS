@@ -23,12 +23,13 @@
   },
   "sessions": {
     "back": "All projects",
-    "newChat": "New chat",
-    "delete": "Delete chat"
+    "newChat": "New session",
+    "delete": "Delete session"
   },
   "chat": {
     "hero": "Ask the agent to explore files, plan work, or research your knowledge base.",
-    "placeholder": "Message the agent…",
+    "placeholder": "Ask anything…",
+    "send": "Send",
     "planMode": "Plan mode (read-only)",
     "thinking": "Thinking…",
     "todos": "Plan",
@@ -36,6 +37,8 @@
   },
   "files": {
     "title": "Project files",
+    "allFiles": "All files",
+    "changes": "{{count}} changes",
     "upload": "Upload",
     "gitInit": "Initialize git",
     "gitCommit": "Commit…",
@@ -43,7 +46,20 @@
     "commit": "Commit",
     "cancel": "Cancel",
     "selectFile": "Select a file to preview",
-    "binaryPreview": "Binary file ({{size}} bytes)"
+    "viewer": "Viewing {{name}}",
+    "closeFile": "Close file",
+    "loadError": "Could not load file",
+    "binaryPreview": "Binary file ({{size}} bytes)",
+    "gitStatus": {
+      "Untracked": "Untracked",
+      "Modified": "Modified",
+      "Added": "Added",
+      "Deleted": "Deleted",
+      "Renamed": "Renamed",
+      "Copied": "Copied",
+      "Unmerged": "Unmerged",
+      "Ignored": "Ignored"
+    }
   },
   "interrupt": {
     "approve": "Approve",

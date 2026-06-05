@@ -227,24 +227,26 @@ export function ProjectWorkspace() {
 
   if (!project) return <div className="page-loading">{t('loading')}</div>;
 
+  const activeConv = conversations.find((c) => c.id === convId);
+  const sessionTitle = activeConv
+    ? activeConv.title?.trim() || new Date(activeConv.updated_at).toLocaleDateString()
+    : null;
+
   return (
     <div className="agents-workspace">
-      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
-        <button type="button" className="btn btn-sm" onClick={() => setSettingsOpen(true)}>
-          {t('settings.title')}
-        </button>
-      </div>
       <div className="agents-workspace-body">
         <AgentSessionSidebar
           projectName={project.name}
+          projectSlug={project.slug}
           conversations={conversations}
           activeId={convId}
           onSelect={onSelectConv}
           onNewChat={onNewChat}
+          onOpenSettings={() => setSettingsOpen(true)}
           onDelete={convId ? onDeleteConv : undefined}
         />
         <AgentChatMain
-          projectName={project.name}
+          sessionTitle={sessionTitle}
           messages={messages}
           loading={loading}
           planMode={planMode}

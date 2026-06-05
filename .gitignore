@@ -25,6 +25,9 @@ frontend/src/data/examples/
 .env.local
 .env.*.local
 
+# Agent workspace project files (OPENKMS_PROJECTS_ROOT)
+backend/data/projects/
+
 # Logs
 *.log
 npm-debug.log*
