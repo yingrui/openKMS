@@ -77,6 +77,12 @@ export function setStoredProjectConversationId(projectId: string, convId: string
   }
 }
 
+/** SPA route for a project workspace, optionally with an active session. */
+export function projectWorkspacePath(projectId: string, sessionId?: string | null): string {
+  if (sessionId) return `/projects/${projectId}/sessions/${sessionId}`;
+  return `/projects/${projectId}`;
+}
+
 export async function listProjects(): Promise<ProjectResponse[]> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/projects`, { headers, credentials: 'include' });

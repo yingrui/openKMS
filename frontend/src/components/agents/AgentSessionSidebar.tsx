@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Plus, Settings, Trash2 } from 'lucide-react';
 import type { AgentConversationResponse } from '../../data/agentApi';
+import { projectWorkspacePath } from '../../data/projectsApi';
 import './AgentsWorkspace.scss';
 
 function label(c: AgentConversationResponse): string {
@@ -16,9 +17,8 @@ interface Props {
   projectSlug: string;
   conversations: AgentConversationResponse[];
   activeId: string | null;
-  onSelect: (id: string) => void;
   onNewChat: () => void;
-  onDelete?: () => void;
+  onDelete?: (sessionId: string) => void;
 }
 
 export function AgentSessionSidebar({
@@ -27,7 +27,6 @@ export function AgentSessionSidebar({
   projectSlug,
   conversations,
   activeId,
-  onSelect,
   onNewChat,
   onDelete,
 }: Props) {
@@ -64,24 +63,34 @@ export function AgentSessionSidebar({
       </div>
       <div className="agents-sessions-scroll">
         {sorted.map((c) => (
-          <button
+          <div
             key={c.id}
-            type="button"
-            className={`agents-session-item${activeId === c.id ? ' agents-session-item--active' : ''}`}
-            onClick={() => onSelect(c.id)}
+            className={`agents-session-row${activeId === c.id ? ' agents-session-row--active' : ''}`}
           >
-            {label(c)}
-          </button>
+            <Link
+              to={projectWorkspacePath(projectId, c.id)}
+              className="agents-session-item"
+            >
+              {label(c)}
+            </Link>
+            {onDelete ? (
+              <button
+                type="button"
+                className="agents-session-delete"
+                aria-label={t('sessions.delete')}
+                title={t('sessions.delete')}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  void onDelete(c.id);
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
+            ) : null}
+          </div>
         ))}
       </div>
-      {activeId && onDelete ? (
-        <div className="agents-sessions-foot">
-          <button type="button" className="agents-sessions-delete" onClick={onDelete}>
-            <Trash2 size={13} />
-            {t('sessions.delete')}
-          </button>
-        </div>
-      ) : null}
     </aside>
   );
 }

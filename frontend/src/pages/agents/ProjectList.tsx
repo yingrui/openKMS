@@ -130,7 +130,7 @@ export function ProjectList() {
           {projects.map((p) => (
             <div key={p.id} className="agents-card">
               <div className="agents-card-top">
-                <Link to={`/agents/${p.id}`} className="agents-card-icon" aria-hidden>
+                <Link to={`/projects/${p.id}`} className="agents-card-icon" aria-hidden>
                   <Bot size={26} strokeWidth={1.5} />
                 </Link>
                 <div className="agents-card-actions">
@@ -143,7 +143,7 @@ export function ProjectList() {
                   </Link>
                 </div>
               </div>
-              <Link to={`/agents/${p.id}`} className="agents-card-body">
+              <Link to={`/projects/${p.id}`} className="agents-card-body">
                 <h3>{p.name}</h3>
                 <p className="agents-card-desc">{p.description || t('list.noDescription')}</p>
                 <span className="agents-card-meta">{t('list.updated', { date: formatUpdated(p.updated_at) })}</span>

@@ -4,7 +4,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 
 | Area | Status |
 |------|--------|
-| Sidebar + `/agents` (list) + `/agents/{id}` (workspace) | ✅ |
+| Sidebar + `/agents` (list) + `/projects/{id}/sessions/{sessionId}` (workspace) | ✅ |
 | Project settings page `/projects/{id}/settings` (General + Agent tabs) | ✅ |
 | Project CRUD + files API | ✅ |
 | Conversations + NDJSON stream | ✅ |
@@ -44,7 +44,7 @@ Docker: `projects_data` volume mounted on `backend` and `worker`.
 
 ## Permissions
 
-- `projects:read` — `/agents`, `/agents/*`, `/projects/*/settings`; list projects, read files, chat read
+- `projects:read` — `/agents`, `/agents/*`, `/projects/*`; list projects, read files, chat read
 - `projects:write` — same SPA paths; create/update projects, upload, agent messages, git
 
 Feature toggle: **`agents`** (Console → Feature toggles).

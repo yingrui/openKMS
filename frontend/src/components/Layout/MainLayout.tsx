@@ -36,7 +36,9 @@ export function MainLayout() {
   const showPathDenied =
     !isLoading && isAuthenticated && permissionPatternsReady && !canAccessPath(location.pathname);
 
-  const isAgentsWorkspace = /^\/agents\/[^/]+$/.test(location.pathname);
+  const isAgentsWorkspace =
+    /^\/projects\/[^/]+\/sessions\/[^/]+$/.test(location.pathname) ||
+    /^\/projects\/[^/]+$/.test(location.pathname);
   const isDetailPage =
     location.pathname.startsWith('/documents/view') ||
     location.pathname.startsWith('/articles/view') ||

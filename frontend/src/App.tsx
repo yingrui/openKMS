@@ -64,6 +64,11 @@ function AgentProjectSettingsRedirect() {
   return <Navigate to={`/projects/${projectId}/settings`} replace />;
 }
 
+function AgentProjectWorkspaceRedirect() {
+  const { projectId = '' } = useParams<{ projectId: string }>();
+  return <Navigate to={`/projects/${projectId}`} replace />;
+}
+
 function AppLoadingFallback() {
   const { t } = useTranslation('common');
   return (
@@ -162,8 +167,10 @@ function App() {
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
           <Route path="projects/:projectId/settings" element={<FeatureGate feature="agents"><ProjectSettings /></FeatureGate>} />
+          <Route path="projects/:projectId/sessions/:sessionId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
+          <Route path="projects/:projectId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
           <Route path="agents/:projectId/settings" element={<AgentProjectSettingsRedirect />} />
-          <Route path="agents/:projectId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
+          <Route path="agents/:projectId" element={<AgentProjectWorkspaceRedirect />} />
           <Route path="wikis" element={<WikiSpaceList />} />
           <Route path="wikis/:id/pages/graph" element={<WikiSpacePagesGate />} />
           <Route path="wikis/:id/pages/:pageId" element={<WikiSpacePagesGate />} />

@@ -24,7 +24,8 @@
   "sessions": {
     "back": "All projects",
     "newChat": "New session",
-    "delete": "Delete session"
+    "delete": "Delete session",
+    "deleteError": "Could not delete session"
   },
   "workspace": {
     "resizeFilesRail": "Resize files panel",

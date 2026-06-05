@@ -3,7 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Bot, Loader2, Settings } from 'lucide-react';
 import { toast } from 'sonner';
-import { getProject, updateProject, type ProjectResponse } from '../../data/projectsApi';
+import {
+  getProject,
+  getStoredProjectConversationId,
+  projectWorkspacePath,
+  updateProject,
+  type ProjectResponse,
+} from '../../data/projectsApi';
 import './ProjectSettings.scss';
 
 type TabId = 'general' | 'agent';
@@ -63,7 +69,7 @@ export function ProjectSettings() {
         settings,
       });
       toast.success(t('settings.saved'));
-      navigate(`/agents/${projectId}`);
+      navigate(projectWorkspacePath(projectId, getStoredProjectConversationId(projectId)));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('settings.saveError'));
     } finally {
@@ -92,7 +98,10 @@ export function ProjectSettings() {
 
   return (
     <div className="project-settings">
-      <Link to={`/agents/${projectId}`} className="project-settings-back">
+      <Link
+        to={projectWorkspacePath(projectId, getStoredProjectConversationId(projectId))}
+        className="project-settings-back"
+      >
         <ArrowLeft size={18} />
         <span>{t('settings.backToWorkspace')}</span>
       </Link>

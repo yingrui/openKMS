@@ -337,7 +337,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_PROJECTS_READ: (
-        ["/agents", "/agents/*", "/projects/*/settings"],
+        ["/agents", "/agents/*", "/projects/*"],
         [
             "GET /api/projects",
             "HEAD /api/projects",
@@ -348,7 +348,7 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
         ],
     ),
     PERM_PROJECTS_WRITE: (
-        ["/agents", "/agents/*", "/projects/*/settings"],
+        ["/agents", "/agents/*", "/projects/*"],
         [
             "POST /api/projects",
             "PUT /api/projects/*",

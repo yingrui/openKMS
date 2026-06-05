@@ -144,11 +144,40 @@ $agents-pane-header-height: 49px;
   padding: 4px 8px 8px;
 }
 
+.agents-session-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--radius-md);
+
+  &:hover {
+    background: var(--color-bg-hover);
+
+    .agents-session-delete {
+      opacity: 1;
+    }
+  }
+
+  &--active {
+    background: var(--color-bg-muted);
+
+    .agents-session-item {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+
+    .agents-session-delete {
+      opacity: 1;
+    }
+  }
+}
+
 .agents-session-item {
+  flex: 1;
+  min-width: 0;
   display: block;
-  width: 100%;
   text-align: left;
-  padding: 8px 10px;
+  padding: 8px 6px 8px 10px;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
@@ -157,36 +186,31 @@ $agents-pane-header-height: 49px;
   line-height: 1.35;
   color: var(--color-text-secondary);
   word-break: break-word;
+  text-decoration: none;
 
   &:hover {
-    background: var(--color-bg-hover);
     color: var(--color-text);
-  }
-
-  &--active {
-    background: var(--color-bg-muted);
-    color: var(--color-text);
-    font-weight: 500;
   }
 }
 
-.agents-sessions-foot {
-  padding: 8px 12px;
-  border-top: 1px solid var(--color-border);
-}
-
-.agents-sessions-delete {
+.agents-session-delete {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
   border: none;
-  background: none;
-  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
 
   &:hover {
+    background: var(--color-bg-muted);
     color: var(--color-error);
   }
 }

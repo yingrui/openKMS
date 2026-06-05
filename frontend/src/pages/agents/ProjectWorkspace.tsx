@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { AgentChatMain, type ChatMessage } from '../../components/agents/AgentChatMain';
@@ -18,6 +18,7 @@ import {
   listProjectConversations,
   listProjectMessages,
   postProjectMessageStream,
+  projectWorkspacePath,
   resumeProjectInterrupt,
   setStoredProjectConversationId,
   type ProjectResponse,
@@ -44,10 +45,12 @@ function readFilesRailWidth(): number {
 }
 
 export function ProjectWorkspace() {
-  const { projectId = '' } = useParams<{ projectId: string }>();
+  const { projectId = '', sessionId } = useParams<{ projectId: string; sessionId?: string }>();
+  const navigate = useNavigate();
   const { t } = useTranslation('agents');
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [conversations, setConversations] = useState<AgentConversationResponse[]>([]);
+  const [conversationsReady, setConversationsReady] = useState(false);
   const [convId, setConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,12 +109,11 @@ export function ProjectWorkspace() {
   }, [projectId]);
 
   const loadConversations = useCallback(async () => {
+    setConversationsReady(false);
     const list = await listProjectConversations(projectId);
     setConversations(list);
-    const stored = getStoredProjectConversationId(projectId);
-    const pick = stored && list.some((c) => c.id === stored) ? stored : list[0]?.id ?? null;
-    setConvId(pick);
-    setStoredProjectConversationId(projectId, pick);
+    setConversationsReady(true);
+    return list;
   }, [projectId]);
 
   const loadMessages = useCallback(async (id: string) => {
@@ -131,6 +133,34 @@ export function ProjectWorkspace() {
   }, [loadProject, loadConversations]);
 
   useEffect(() => {
+    if (!conversationsReady) return;
+
+    if (sessionId) {
+      if (conversations.some((c) => c.id === sessionId)) {
+        setConvId(sessionId);
+        setStoredProjectConversationId(projectId, sessionId);
+        return;
+      }
+      const next = conversations[0]?.id ?? null;
+      setConvId(next);
+      setMessages([]);
+      setStoredProjectConversationId(projectId, next);
+      navigate(projectWorkspacePath(projectId, next), { replace: true });
+      return;
+    }
+
+    if (conversations.length === 0) {
+      setConvId(null);
+      return;
+    }
+
+    const stored = getStoredProjectConversationId(projectId);
+    const pick =
+      stored && conversations.some((c) => c.id === stored) ? stored : conversations[0].id;
+    navigate(projectWorkspacePath(projectId, pick), { replace: true });
+  }, [conversationsReady, sessionId, conversations, projectId, navigate]);
+
+  useEffect(() => {
     if (convId) loadMessages(convId).catch(() => setMessages([]));
     else setMessages([]);
   }, [convId, loadMessages]);
@@ -143,32 +173,34 @@ export function ProjectWorkspace() {
   const onNewChat = async () => {
     const c = await createProjectConversation(projectId);
     setConversations((prev) => [c, ...prev]);
-    setConvId(c.id);
-    setStoredProjectConversationId(projectId, c.id);
-    setMessages([]);
+    navigate(projectWorkspacePath(projectId, c.id));
   };
 
-  const onSelectConv = (id: string) => {
-    setConvId(id);
-    setStoredProjectConversationId(projectId, id);
-  };
+  const onDeleteConv = async (id: string) => {
+    const deletingActive = sessionId === id || convId === id;
+    try {
+      await deleteProjectConversation(projectId, id);
+      const list = await listProjectConversations(projectId);
+      setConversations(list);
+      if (!deletingActive) return;
 
-  const onDeleteConv = async () => {
-    if (!convId) return;
-    await deleteProjectConversation(projectId, convId);
-    const list = await listProjectConversations(projectId);
-    setConversations(list);
-    const next = list[0]?.id ?? null;
-    setConvId(next);
-    setStoredProjectConversationId(projectId, next);
+      const next = list[0]?.id ?? null;
+      setConvId(next);
+      setMessages([]);
+      setTodos([]);
+      setInterrupt(null);
+      setStoredProjectConversationId(projectId, next);
+      navigate(projectWorkspacePath(projectId, next), { replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('sessions.deleteError'));
+    }
   };
 
   const ensureConv = async (): Promise<string> => {
     if (convId) return convId;
     const c = await createProjectConversation(projectId);
     setConversations((prev) => [c, ...prev]);
-    setConvId(c.id);
-    setStoredProjectConversationId(projectId, c.id);
+    navigate(projectWorkspacePath(projectId, c.id), { replace: !sessionId });
     return c.id;
   };
 
@@ -305,9 +337,8 @@ export function ProjectWorkspace() {
           projectSlug={project.slug}
           conversations={conversations}
           activeId={convId}
-          onSelect={onSelectConv}
           onNewChat={onNewChat}
-          onDelete={convId ? onDeleteConv : undefined}
+          onDelete={onDeleteConv}
         />
         <AgentChatMain
           sessionTitle={sessionTitle}
