@@ -59,6 +59,7 @@ export function ProjectWorkspace() {
   const [interrupt, setInterrupt] = useState<string | null>(null);
   const [filesRailWidthPx, setFilesRailWidthPx] = useState(readFilesRailWidth);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const streamingRef = useRef(false);
 
   const clampFilesRailWidth = useCallback((w: number) => {
     const bodyW = bodyRef.current?.clientWidth ?? window.innerWidth;
@@ -161,6 +162,7 @@ export function ProjectWorkspace() {
   }, [conversationsReady, sessionId, conversations, projectId, navigate]);
 
   useEffect(() => {
+    if (streamingRef.current) return;
     if (convId) loadMessages(convId).catch(() => setMessages([]));
     else setMessages([]);
   }, [convId, loadMessages]);
@@ -197,10 +199,11 @@ export function ProjectWorkspace() {
   };
 
   const ensureConv = async (): Promise<string> => {
-    if (convId) return convId;
+    const active = convId ?? sessionId ?? null;
+    if (active) return active;
     const c = await createProjectConversation(projectId);
     setConversations((prev) => [c, ...prev]);
-    navigate(projectWorkspacePath(projectId, c.id), { replace: !sessionId });
+    navigate(projectWorkspacePath(projectId, c.id), { replace: true });
     return c.id;
   };
 
@@ -208,9 +211,11 @@ export function ProjectWorkspace() {
     const cid = await ensureConv();
     const userTemp: ChatMessage = { role: 'user', content: text, id: `tmp-u-${Date.now()}` };
     const asstTemp: ChatMessage = { role: 'assistant', content: '', streamParts: [], id: `tmp-a-${Date.now()}` };
+    const asstStreamId = asstTemp.id!;
     setMessages((prev) => [...prev, userTemp, asstTemp]);
     setLoading(true);
     setInterrupt(null);
+    streamingRef.current = true;
     try {
       await postProjectMessageStream(
         projectId,
@@ -219,52 +224,60 @@ export function ProjectWorkspace() {
         { mode: planMode ? 'plan' : 'agent' },
         (ev) => {
           if (ev.type === 'delta') {
-            setMessages((prev) => {
-              const copy = [...prev];
-              const last = copy[copy.length - 1];
-              if (last?.role === 'assistant') {
-                last.content += ev.t;
-                last.streamParts = appendDeltaToStreamParts(last.streamParts ?? [], ev.t);
-              }
-              return copy;
-            });
+            if (!ev.t) return;
+            setMessages((prev) =>
+              prev.map((p) =>
+                p.id === asstStreamId && p.role === 'assistant'
+                  ? {
+                      ...p,
+                      content: p.content + ev.t,
+                      streamParts: appendDeltaToStreamParts(p.streamParts, ev.t),
+                    }
+                  : p,
+              ),
+            );
           } else if (ev.type === 'tool_start') {
-            setMessages((prev) => {
-              const copy = [...prev];
-              const last = copy[copy.length - 1];
-              if (last?.role === 'assistant') {
-                const parts = last.streamParts ?? [];
+            setMessages((prev) =>
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+                const parts = p.streamParts ?? [];
                 const { next, updated } = updateToolInParts(parts, ev.run_id, (s) => ({
                   ...s,
                   name: ev.name,
                   input: ev.input,
-                  status: 'running',
+                  status: 'running' as const,
                 }));
-                if (!updated) {
-                  last.streamParts = [
-                    ...parts,
-                    { type: 'tool', step: { runId: ev.run_id, name: ev.name, input: ev.input, status: 'running' } },
-                  ];
-                } else {
-                  last.streamParts = next;
-                }
-              }
-              return copy;
-            });
+                return {
+                  ...p,
+                  streamParts: updated
+                    ? next
+                    : [
+                        ...parts,
+                        {
+                          type: 'tool' as const,
+                          step: {
+                            runId: ev.run_id,
+                            name: ev.name,
+                            input: ev.input,
+                            status: 'running' as const,
+                          },
+                        },
+                      ],
+                };
+              }),
+            );
           } else if (ev.type === 'tool_end') {
-            setMessages((prev) => {
-              const copy = [...prev];
-              const last = copy[copy.length - 1];
-              if (last?.role === 'assistant') {
-                const { next } = updateToolInParts(last.streamParts ?? [], ev.run_id, (s) => ({
+            setMessages((prev) =>
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+                const { next } = updateToolInParts(p.streamParts ?? [], ev.run_id, (s) => ({
                   ...s,
                   output: ev.output,
-                  status: 'ok',
+                  status: 'ok' as const,
                 }));
-                last.streamParts = next;
-              }
-              return copy;
-            });
+                return { ...p, streamParts: next };
+              }),
+            );
           } else if (ev.type === 'todo') {
             setTodos(ev.todos);
           } else if (ev.type === 'interrupt') {
@@ -272,22 +285,30 @@ export function ProjectWorkspace() {
           } else if (ev.type === 'fatal') {
             toast.error(ev.message);
           } else if (ev.type === 'user') {
-            setMessages((prev) => {
-              const copy = prev.filter((m) => m.id !== userTemp.id);
-              return [...copy, { role: 'user', content: ev.message.content, id: ev.message.id }];
-            });
+            setMessages((prev) =>
+              prev.map((p) =>
+                p.id === userTemp.id
+                  ? { ...p, id: ev.message.id, content: ev.message.content }
+                  : p,
+              ),
+            );
           } else if (ev.type === 'done') {
-            setMessages((prev) => {
-              const copy = prev.filter((m) => m.id !== asstTemp.id);
-              return [...copy, { role: 'assistant', content: ev.assistant.content, id: ev.assistant.id }];
-            });
+            setMessages((prev) =>
+              prev.map((p) =>
+                p.id === asstStreamId
+                  ? { role: 'assistant', content: ev.assistant.content, id: ev.assistant.id }
+                  : p,
+              ),
+            );
           }
         },
       );
       await loadConversations();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('chat.error'));
+      setMessages((prev) => prev.filter((m) => m.id !== userTemp.id && m.id !== asstStreamId));
     } finally {
+      streamingRef.current = false;
       setLoading(false);
     }
   };

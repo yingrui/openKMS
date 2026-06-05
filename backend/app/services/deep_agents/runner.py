@@ -159,17 +159,21 @@ async def _build_agent(
     tools.extend(make_web_search_tools())
     skills = list_skill_paths(project_id)
     checkpointer = await get_checkpointer()
-    agent = create_deep_agent(
-        model=llm,
-        tools=tools,
-        system_prompt=build_project_system_prompt(project_id, plan_mode=plan_mode),
-        subagents=build_subagents(plan_mode=plan_mode, include_shell=not plan_mode),
-        skills=skills or None,
-        backend=backend,
-        permissions=plan_mode_permissions() if plan_mode else None,
-        interrupt_on=interrupt_map(plan_mode=plan_mode),
-        checkpointer=checkpointer,
-    )
+    try:
+        agent = create_deep_agent(
+            model=llm,
+            tools=tools,
+            system_prompt=build_project_system_prompt(project_id, plan_mode=plan_mode),
+            subagents=build_subagents(plan_mode=plan_mode, include_shell=not plan_mode),
+            skills=skills or None,
+            backend=backend,
+            permissions=plan_mode_permissions() if plan_mode else None,
+            interrupt_on=interrupt_map(plan_mode=plan_mode),
+            checkpointer=checkpointer,
+        )
+    except Exception as e:
+        logger.exception("create_deep_agent failed for project %s", project_id)
+        return None, str(e)
     return agent, None
 
 

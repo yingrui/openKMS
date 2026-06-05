@@ -236,40 +236,51 @@ async def post_message(
     if body.stream:
 
         async def stream() -> AsyncIterator[bytes]:
-            yield _ndjson_line({"type": "user", "message": _msg_to_out(user_msg).model_dump(mode="json")})
-            assistant_id = new_id()
-            text_parts: list[str] = []
-            async for part in iter_project_stream_parts(
-                db,
-                c,
-                jwt_payload,
-                bearer,
-                project_id,
-                project.settings or {},
-                plan_mode=plan_mode,
-            ):
-                if part.get("type") == "delta" and part.get("t"):
-                    text_parts.append(part["t"])
-                yield _ndjson_line(part)
-                if part.get("type") == "fatal":
-                    return
-            content = "".join(text_parts)
-            asst = AgentMessage(
-                id=assistant_id,
-                conversation_id=c.id,
-                role="assistant",
-                content=content,
-            )
-            db.add(asst)
-            await db.flush()
-            yield _ndjson_line(
-                {
-                    "type": "done",
-                    "assistant": _msg_to_out(asst).model_dump(mode="json"),
-                }
-            )
+            try:
+                yield _ndjson_line({"type": "user", "message": _msg_to_out(user_msg).model_dump(mode="json")})
+                assistant_id = new_id()
+                text_parts: list[str] = []
+                async for part in iter_project_stream_parts(
+                    db,
+                    c,
+                    jwt_payload,
+                    bearer,
+                    project_id,
+                    project.settings or {},
+                    plan_mode=plan_mode,
+                ):
+                    if part.get("type") == "delta" and part.get("t"):
+                        text_parts.append(part["t"])
+                    yield _ndjson_line(part)
+                    if part.get("type") == "fatal":
+                        return
+                content = "".join(text_parts)
+                asst = AgentMessage(
+                    id=assistant_id,
+                    conversation_id=c.id,
+                    role="assistant",
+                    content=content,
+                )
+                db.add(asst)
+                await db.flush()
+                yield _ndjson_line(
+                    {
+                        "type": "done",
+                        "assistant": _msg_to_out(asst).model_dump(mode="json"),
+                    }
+                )
+            except Exception as e:
+                yield _ndjson_line({"type": "fatal", "message": str(e)})
 
-        return StreamingResponse(stream(), media_type="application/x-ndjson")
+        return StreamingResponse(
+            stream(),
+            media_type="application/x-ndjson",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     content, tool_calls = await run_project_turn(
         db,
@@ -335,4 +346,12 @@ async def resume_message(
         await db.flush()
         yield _ndjson_line({"type": "done", "assistant": _msg_to_out(asst).model_dump(mode="json")})
 
-    return StreamingResponse(stream(), media_type="application/x-ndjson")
+    return StreamingResponse(
+        stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
