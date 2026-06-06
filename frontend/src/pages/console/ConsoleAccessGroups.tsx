@@ -6,7 +6,7 @@ import '../ontology/ontology-admin.scss';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONSOLE_GROUPS } from '../../config/permissions';
-import { fetchAdminUsersPage, type LocalUserRow } from '../../data/adminUsersApi';
+import { fetchAdminUsersPage, type AdminUserRow } from '../../data/adminUsersApi';
 import {
   createAccessGroup,
   deleteAccessGroup,
@@ -53,7 +53,7 @@ export function ConsoleAccessGroups() {
   const [members, setMembers] = useState<MemberBrief[]>([]);
   const [memberSubjects, setMemberSubjects] = useState<string[]>([]);
   const [sharedResources, setSharedResources] = useState<GroupSharedResourceOut[]>([]);
-  const [allUsers, setAllUsers] = useState<LocalUserRow[]>([]);
+  const [allUsers, setAllUsers] = useState<AdminUserRow[]>([]);
   const [userPickQuery, setUserPickQuery] = useState('');
   const [userPickOpen, setUserPickOpen] = useState(false);
   const [oidcSubjectInput, setOidcSubjectInput] = useState('');
@@ -126,8 +126,8 @@ export function ConsoleAccessGroups() {
           fetchAccessGroup(id),
           fetchGroupMemberSubjects(id),
           membershipLocal
-            ? fetchAdminUsersPage().catch(() => ({ users: [] as LocalUserRow[] }))
-            : Promise.resolve({ users: [] as LocalUserRow[] }),
+            ? fetchAdminUsersPage().catch(() => ({ users: [] as AdminUserRow[] }))
+            : Promise.resolve({ users: [] as AdminUserRow[] }),
         ]);
         setSelectedGroup(group);
         setMemberSubjects(subjects);
