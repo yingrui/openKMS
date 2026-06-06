@@ -24,7 +24,12 @@
   "sessions": {
     "back": "全部项目",
     "newChat": "新建会话",
-    "delete": "删除会话",
+    "actions": "会话操作",
+    "rename": "重命名",
+    "renameError": "无法重命名会话",
+    "autoRename": "自动命名",
+    "autoRenameError": "无法生成标题",
+    "delete": "删除",
     "deleteError": "无法删除会话"
   },
   "workspace": {

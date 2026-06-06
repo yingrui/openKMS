@@ -19,11 +19,14 @@ from app.api.agent import (
     _msg_to_out,
 )
 from app.api.auth import require_permission
+from app.config import settings
 from app.database import get_db
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.models.project import Project
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
+from app.services.agent.llm import resolve_agent_llm_config
+from app.services.conversation_title import suggest_conversation_title
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
@@ -146,6 +149,44 @@ async def patch_conversation(
     c = await _get_conv(db, conversation_id, sub, project_id)
     if body.title is not None:
         c.title = body.title
+    await db.flush()
+    await db.refresh(c)
+    return _conv_to_out(c)
+
+
+@router.post(
+    "/{project_id}/conversations/{conversation_id}/suggest-title",
+    response_model=AgentConversationResponse,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def suggest_conversation_title_route(
+    project_id: str,
+    conversation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = _get_sub(request)
+    c = await _get_conv(db, conversation_id, sub, project_id)
+    model_config = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
+    if not model_config:
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM model configured. Add an LLM in Console > Models.",
+        )
+    r = await db.execute(
+        select(AgentMessage)
+        .where(AgentMessage.conversation_id == conversation_id)
+        .order_by(AgentMessage.created_at.asc(), AgentMessage.id.asc())
+    )
+    messages = list(r.scalars().all())
+    try:
+        title = await suggest_conversation_title(messages, model_config)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM error: {e}") from e
+    c.title = title
+    _bump_conversation_timestamp(c)
     await db.flush()
     await db.refresh(c)
     return _conv_to_out(c)

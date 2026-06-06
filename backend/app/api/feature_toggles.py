@@ -9,12 +9,7 @@ from app.services.permission_catalog import PERM_CONSOLE_FEATURE_TOGGLES
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.feature_toggle import FeatureToggle
-
-DEFAULTS = {
-    "evaluations": False,
-    "connectors": True,
-    "agents": True,
-}
+from app.services.feature_toggles import DEFAULTS, load_feature_toggles
 
 router = APIRouter(prefix="/feature-toggles", tags=["feature-toggles"])
 
@@ -33,9 +28,7 @@ class FeatureTogglesUpdate(BaseModel):
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:
-    result = await db.execute(select(FeatureToggle))
-    rows = {row.key: row.enabled for row in result.scalars().all()}
-    return {k: rows.get(k, v) for k, v in DEFAULTS.items()}
+    return await load_feature_toggles(db)
 
 
 @router.get("", response_model=FeatureTogglesResponse, dependencies=[Depends(require_auth)])

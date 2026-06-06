@@ -165,7 +165,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### FeatureToggle
 
 - `key` (PK, string), `enabled` (boolean), `updated_at`
-- Stores feature flags shared across all users. Seeded defaults from `app/api/feature_toggles.py`: **`evaluations`** (disabled by default), **`connectors`** (enabled by default). Migration **`v4w5x6y7z8a0`** removes legacy keys (`articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `knowledge_map`) and adds **`connectors`**
+- Stores feature flags shared across all users. Seeded defaults from `app/services/feature_toggles.py`: **`evaluations`** (disabled by default), **`connectors`** (enabled by default), **`agents`** (enabled by default). Migration **`v4w5x6y7z8a0`** removes legacy keys (`articles`, `knowledgeBases`, `wikiSpaces`, `objectsAndLinks`, `knowledge_map`) and adds **`connectors`**; migration **`t9u0v1w2x3y4`** seeds **`agents`**
 - Read by all authenticated users; write restricted to admins
 
 ### SystemSettings

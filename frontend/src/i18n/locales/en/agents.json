@@ -24,7 +24,12 @@
   "sessions": {
     "back": "All projects",
     "newChat": "New session",
-    "delete": "Delete session",
+    "actions": "Session actions",
+    "rename": "Rename",
+    "renameError": "Could not rename session",
+    "autoRename": "Auto rename",
+    "autoRenameError": "Could not generate a title",
+    "delete": "Delete",
     "deleteError": "Could not delete session"
   },
   "workspace": {

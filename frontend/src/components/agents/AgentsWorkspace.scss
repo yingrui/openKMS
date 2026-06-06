@@ -150,10 +150,11 @@ $agents-pane-header-height: 49px;
   gap: 2px;
   border-radius: var(--radius-md);
 
-  &:hover {
+  &:hover,
+  &:focus-within {
     background: var(--color-bg-hover);
 
-    .agents-session-delete {
+    .agents-session-more {
       opacity: 1;
     }
   }
@@ -166,7 +167,7 @@ $agents-pane-header-height: 49px;
       font-weight: 500;
     }
 
-    .agents-session-delete {
+    .agents-session-more {
       opacity: 1;
     }
   }
@@ -193,14 +194,18 @@ $agents-pane-header-height: 49px;
   }
 }
 
-.agents-session-delete {
+.agents-session-actions {
+  position: relative;
+  flex-shrink: 0;
+  margin-right: 2px;
+}
+
+.agents-session-more {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   width: 28px;
   height: 28px;
-  margin-right: 4px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -209,10 +214,89 @@ $agents-pane-header-height: 49px;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s, background 0.15s;
 
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--color-bg-muted);
+    color: var(--color-text);
+    opacity: 1;
+  }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 1;
+  }
+}
+
+.agents-session-more-spinner {
+  animation: agents-session-spin 0.8s linear infinite;
+}
+
+@keyframes agents-session-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.agents-session-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--z-dropdown);
+  min-width: 148px;
+  padding: 4px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.agents-session-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+
   &:hover {
     background: var(--color-bg-muted);
-    color: var(--color-error);
+    color: var(--color-text);
   }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  &--danger {
+    color: var(--color-error);
+
+    &:hover {
+      background: var(--color-bg-muted);
+      color: var(--color-error);
+    }
+  }
+}
+
+.agents-session-rename {
+  flex: 1;
+  min-width: 0;
+  margin: 4px 6px 4px 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--color-accent-subtle);
 }
 
 /* —— Chat center —— */

@@ -21,6 +21,8 @@ import {
   projectWorkspacePath,
   resumeProjectInterrupt,
   setStoredProjectConversationId,
+  suggestProjectConversationTitle,
+  updateProjectConversation,
   type ProjectResponse,
 } from '../../data/projectsApi';
 import '../../components/agents/AgentsWorkspace.scss';
@@ -176,6 +178,24 @@ export function ProjectWorkspace() {
     const c = await createProjectConversation(projectId);
     setConversations((prev) => [c, ...prev]);
     navigate(projectWorkspacePath(projectId, c.id));
+  };
+
+  const onRenameConv = async (id: string, title: string) => {
+    try {
+      const updated = await updateProjectConversation(projectId, id, { title });
+      setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('sessions.renameError'));
+    }
+  };
+
+  const onAutoRenameConv = async (id: string) => {
+    try {
+      const updated = await suggestProjectConversationTitle(projectId, id);
+      setConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('sessions.autoRenameError'));
+    }
   };
 
   const onDeleteConv = async (id: string) => {
@@ -359,6 +379,8 @@ export function ProjectWorkspace() {
           conversations={conversations}
           activeId={convId}
           onNewChat={onNewChat}
+          onRename={onRenameConv}
+          onAutoRename={onAutoRenameConv}
           onDelete={onDeleteConv}
         />
         <AgentChatMain

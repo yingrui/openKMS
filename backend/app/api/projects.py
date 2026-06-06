@@ -26,6 +26,7 @@ from app.schemas.project import (
     ProjectUpdate,
 )
 from app.services.deep_agents import git_service
+from app.services.feature_toggles import require_agents_feature
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.project_fs import (
     delete_path,
@@ -39,7 +40,11 @@ from app.services.project_fs import (
 )
 from app.services.project_fs import upload_file as fs_upload
 
-router = APIRouter(prefix="/projects", tags=["projects"])
+router = APIRouter(
+    prefix="/projects",
+    tags=["projects"],
+    dependencies=[Depends(require_agents_feature)],
+)
 
 
 def _get_sub(request: Request) -> str:

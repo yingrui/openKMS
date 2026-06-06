@@ -207,6 +207,39 @@ export async function deleteProjectConversation(projectId: string, convId: strin
   if (!res.ok) throw new Error(await parseError(res));
 }
 
+export async function updateProjectConversation(
+  projectId: string,
+  convId: string,
+  body: { title: string },
+): Promise<AgentConversationResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/conversations/${convId}`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
+export async function suggestProjectConversationTitle(
+  projectId: string,
+  convId: string,
+): Promise<AgentConversationResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/suggest-title`,
+    {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+    },
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function listProjectMessages(
   projectId: string,
   convId: string,

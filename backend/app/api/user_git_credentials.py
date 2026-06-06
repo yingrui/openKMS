@@ -11,8 +11,13 @@ from app.database import get_db
 from app.models.user_git_credential import UserGitCredential
 from app.schemas.project import UserGitCredentialCreate, UserGitCredentialResponse
 from app.services.credential_crypto import encrypt_secret
+from app.services.feature_toggles import require_agents_feature
 
-router = APIRouter(prefix="/user/git-credentials", tags=["user-git-credentials"])
+router = APIRouter(
+    prefix="/user/git-credentials",
+    tags=["user-git-credentials"],
+    dependencies=[Depends(require_agents_feature)],
+)
 
 
 def _get_sub(request: Request) -> str:
