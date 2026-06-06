@@ -11,6 +11,11 @@
   gap: 4px;
 }
 
+.ds-table-row-action-wrap {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+
 .ds-table-row-action {
   display: flex;
   align-items: center;
@@ -22,7 +27,7 @@
   text-decoration: none;
 }
 
-.ds-table-row-action:hover {
+.ds-table-row-action:hover:not(:disabled) {
   background: var(--color-bg-muted);
   color: var(--color-text);
 }
@@ -32,8 +37,10 @@
 }
 
 .ds-table-row-action:disabled {
-  opacity: 0.5;
+  opacity: 0.35;
   cursor: not-allowed;
+  color: color-mix(in srgb, var(--color-text-muted) 65%, transparent);
+  background: transparent;
 }
 
 .ds-table-row-action__spinner {

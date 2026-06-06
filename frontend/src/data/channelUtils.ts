@@ -158,6 +158,32 @@ export function editorFieldsToJsonSchema(
   return { type: 'object', properties, required };
 }
 
+const STRUCTURED_NON_VLM_FILE_TYPES = new Set(['XLSX', 'XMIND']);
+
+/** PDF/images/Office/etc. need a channel pipeline; spreadsheets and mind maps do not. */
+export function documentTypeRequiresPipeline(fileType: string): boolean {
+  return !STRUCTURED_NON_VLM_FILE_TYPES.has(fileType.toUpperCase());
+}
+
+/** Whether a document in this channel can be queued for processing. */
+export function canQueueDocumentProcess(
+  status: string,
+  fileType: string,
+  channelPipelineId: string | null | undefined,
+): boolean {
+  if (status !== 'uploaded' && status !== 'failed') return false;
+  if (!documentTypeRequiresPipeline(fileType)) return true;
+  return Boolean(channelPipelineId?.trim());
+}
+
+/** True when the file type needs a pipeline but the channel has none set. */
+export function isProcessBlockedByMissingPipeline(
+  fileType: string,
+  channelPipelineId: string | null | undefined,
+): boolean {
+  return documentTypeRequiresPipeline(fileType) && !channelPipelineId?.trim();
+}
+
 /** Find a channel by ID in the tree. */
 export function findChannel(nodes: ChannelNode[], targetId: string): ChannelNode | null {
   for (const node of nodes) {

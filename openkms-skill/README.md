@@ -19,6 +19,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `wiki` | `list-pages`, `get-page`, **`pages semantic-matches`**, **`files list`** (vault `.md`/assets/uploads, not attachments-only) | `put-page`, **`files delete`** (same file store; can remove stored `.md`) |
 | `wiki-spaces` | `list`, **`documents list`** | `create`, **`documents link`**, **`documents unlink`** |
 | `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
+| `pipelines` | `list` (`--table` for id / name / active) | — |
 | `kb` | `list`, `get`, `search`, `ask` | — |
 | `kb-faq` | `list` | `create` |
 | `glossaries` | `list`, `get`, `export`, `terms list/get` | `create`, `update`, `delete`, `import`, `terms create/update/delete/suggest` |

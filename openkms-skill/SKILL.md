@@ -35,6 +35,7 @@ Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`http
    - `api_base_url` — backend origin only, e.g. `http://127.0.0.1:8102` (no trailing slash).
    - `api_key` — personal key from **Settings → API keys** in openKMS (user menu **Settings**; `okms.{uuid}.{secret}`).
    - Optional: `default_document_channel_id` / `default_article_channel_id` — UUID strings; when set, `documents list|upload` and `articles list|create|from-url` may omit `--channel-id` and use these defaults (see `config.yml.example`).
+   - Optional: `default_pipeline_id` — pipeline id string (e.g. `pipeline_baidu_doc_parse`); when set, `document-channels create` assigns it as the channel's default parse pipeline unless `--pipeline-id` is passed.
 
 2. **If either value is missing** — Ask the user for the backend URL and a new key from **Settings** (they see the full token once when creating it). Then **write or update** `config.yml` in this skill directory. Never echo the key back in full unless the user explicitly asks.
 
@@ -68,6 +69,7 @@ The skill is a thin Python CLI over openKMS's HTTP API. Every command JSON-print
 
 Some practical guidance:
 
+- **Document channels need a pipeline for PDF parse.** Uploading PDFs/images/Office to a channel without a default pipeline leaves documents stuck at `uploaded` — Process is disabled in the UI and `POST /api/jobs` fails. Before creating a channel for parseable files: run `pipelines list` (or `pipelines list --table`) to pick an **active** pipeline id, then `document-channels create --pipeline-id …` or set `default_pipeline_id` in `config.yml`. XLSX/XMind previews do not need a pipeline. To fix an existing channel: `document-channels update --id DC_ID --pipeline-id … --yes`.
 - **Discover before you fetch.** Most agent workflows start with `search` (or `documents list --search …` / `articles list --search …`) to find candidates by name, then a `get` / `markdown` to pull content. Don't fetch a whole channel just to grep — server-side `--search` is keyword-substring against names/titles.
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is now **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches* with confidence scores. Lexical tokens like product codes (e.g. `WWY`, `MIL`) are heavily weighted via BM25, so `kb search --q "WWY 年化收益"` returns WWY-specific chunks even when the embedding alone wouldn't. First call per KB cold-starts the BM25 index (paginates all chunks/FAQs); subsequent calls are fast. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
@@ -85,6 +87,7 @@ Some practical guidance:
 | Verify connectivity | `python scripts/cli.py ping` |
 | Global search across content | `python scripts/cli.py search --q "乳腺癌" --types documents,articles --limit 20` |
 | List document channels as indented tree (human-readable) | `python scripts/cli.py document-channels list --tree` |
+| List document processing pipelines | `python scripts/cli.py pipelines list` (or `--table` for id / name / active) |
 | List article channels as indented tree (human-readable) | `python scripts/cli.py article-channels list --tree` |
 | List documents (filter by channel/keyword) | `python scripts/cli.py documents list --channel-id ID --search "心梗" --limit 50` |
 | Get document metadata + body | `python scripts/cli.py documents get --id DOC_ID` |
@@ -133,7 +136,9 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 |------|---------|
 | List document channels (tree) | `python scripts/cli.py document-channels list` |
 | Create document channel | `python scripts/cli.py document-channels create --name "Inbox" --yes` |
+| Create document channel with parse pipeline | `python scripts/cli.py pipelines list --table` then `document-channels create --name "Insurance" --pipeline-id pipeline_baidu_doc_parse --yes` |
 | Update document channel | `python scripts/cli.py document-channels update --id DC_ID --name "Renamed" --yes` |
+| Set channel parse pipeline | `python scripts/cli.py document-channels update --id DC_ID --pipeline-id pipeline_baidu_doc_parse --yes` |
 | Upload a file to a channel | `python scripts/cli.py documents upload --channel-id ID --file /path/to/doc.pdf --yes` (or omit `--channel-id` if `default_document_channel_id` is set in `config.yml`) |
 | Patch document lifecycle (series, dates, status) | `python scripts/cli.py documents lifecycle patch --id DOC_ID --lifecycle-status in_force --series-id SER_UUID --yes` |
 | Add lineage edge (this doc → other) | `python scripts/cli.py documents relationships create --id DOC_ID --target-id OTHER_ID --relation-type supersedes --yes` |

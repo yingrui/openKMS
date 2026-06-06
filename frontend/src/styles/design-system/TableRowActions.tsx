@@ -53,13 +53,14 @@ export function TableRowActionButton({
   loading,
   variant = 'default',
 }: TableRowActionButtonProps) {
-  return (
+  const isDisabled = Boolean(disabled || loading);
+  const button = (
     <button
       type="button"
-      title={title}
+      title={isDisabled && !loading ? undefined : title}
       aria-label={ariaLabel}
       onClick={onClick}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       className={['ds-table-row-action', variant === 'danger' && 'ds-table-row-action--danger']
         .filter(Boolean)
         .join(' ')}
@@ -71,6 +72,16 @@ export function TableRowActionButton({
       )}
     </button>
   );
+
+  if (isDisabled && !loading && title) {
+    return (
+      <span className="ds-table-row-action-wrap" title={title}>
+        {button}
+      </span>
+    );
+  }
+
+  return button;
 }
 
 type TableRowActionLinkProps = {

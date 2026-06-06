@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { DocumentDetailSplitPanel } from './DocumentDetail.splitPanel';
 import { DocumentDetailInfoPanel } from './DocumentDetail.infoPanel';
 import { DocumentDetailVersionModals } from './DocumentDetail.modals';
+import { DocumentDetailLoading } from './DocumentDetail.loading';
 import { useDocumentDetail } from './useDocumentDetail';
 import './DocumentDetail.scss';
 
@@ -20,7 +21,7 @@ export function DocumentDetail() {
         <span>{v.t('common.backToDocuments')}</span>
       </Link>
       {v.loading ? (
-        <div className="document-detail-loading">{v.t('detail.loadingShort')}</div>
+        <DocumentDetailLoading />
       ) : (
         <>
           {v.document && !v.extendedPanel && (
@@ -35,6 +36,7 @@ export function DocumentDetail() {
               fileHash={v.fileHash}
               markdown={v.markdown}
               processing={v.processing}
+              processBlockedByMissingPipeline={v.processBlockedByMissingPipeline}
               forceFullReparse={v.forceFullReparse}
               resetting={v.resetting}
               versionSnapshotLoading={v.versionSnapshotLoading}

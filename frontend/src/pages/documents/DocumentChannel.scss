@@ -197,6 +197,10 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+
+  .ds-pagination {
+    border-radius: 0;
+  }
 }
 
 .documents-bulk-bar {
@@ -229,6 +233,19 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.documents-bulk-actions .btn:disabled {
+  opacity: 0.5;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  background: color-mix(in srgb, var(--color-bg-elevated) 85%, var(--color-bg-muted));
+  box-shadow: none;
+}
+
+.documents-bulk-action-wrap {
+  display: inline-flex;
+  cursor: not-allowed;
 }
 
 .documents-bulk-delete:hover:not(:disabled) {

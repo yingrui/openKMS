@@ -128,12 +128,8 @@ async def create_document_channel(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a document channel."""
-    allowed = await _scoped_channel_ids(request, db)
     if body.parent_id:
         await require_document_channel_write(request, db, body.parent_id)
-    elif allowed is not None:
-        raise HTTPException(status_code=403, detail="Not allowed to create top-level channels outside your write scope")
-    if body.parent_id:
         parent = await db.get(DocumentChannel, body.parent_id)
         if not parent:
             raise HTTPException(status_code=404, detail="Parent channel not found")

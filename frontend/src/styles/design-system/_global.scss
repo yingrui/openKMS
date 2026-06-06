@@ -84,8 +84,15 @@ textarea {
   border: none;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--color-accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: var(--color-bg-muted);
+  color: var(--color-text-muted);
 }
 
 .btn-secondary {
@@ -94,10 +101,18 @@ textarea {
   border: 1px solid var(--color-border);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: var(--color-bg-muted);
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  background: var(--color-bg-muted);
 }
 
 .btn-sm {

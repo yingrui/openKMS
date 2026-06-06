@@ -41,4 +41,5 @@ def load_config() -> dict[str, Any]:
         "raw": raw,
         "default_document_channel_id": _opt_channel_id("default_document_channel_id"),
         "default_article_channel_id": _opt_channel_id("default_article_channel_id"),
+        "default_pipeline_id": _opt_channel_id("default_pipeline_id"),
     }

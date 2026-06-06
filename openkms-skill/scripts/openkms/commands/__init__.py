@@ -14,6 +14,7 @@ from . import (
     kb_faq,
     knowledge_map,
     ontology,  # also nests `objects` and `links` under itself
+    pipelines,
     ping,
     search,
     wiki,
@@ -28,6 +29,7 @@ def register(sub: _SubParsersAction) -> None:
     document_channels.add_subparser(sub)
     article_channels.add_subparser(sub)
     documents.add_subparser(sub)
+    pipelines.add_subparser(sub)
     articles.add_subparser(sub)
     wiki_spaces.add_subparser(sub)
     wiki.add_subparser(sub)

@@ -34,7 +34,7 @@ import {
 import { fetchObjectType, fetchObjectInstances } from '../../data/ontologyApi';
 import { createJob } from '../../data/jobsApi';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
-import { findChannel, normalizeExtractionSchemaToFields, type LabelConfigItem } from '../../data/channelUtils';
+import { findChannel, normalizeExtractionSchemaToFields, type LabelConfigItem, isProcessBlockedByMissingPipeline } from '../../data/channelUtils';
 import type { PageBlock, ParsingResult } from './DocumentDetail.types';
 import {
   buildPageBlocks,
@@ -309,6 +309,10 @@ export function useDocumentDetail(id: string | undefined) {
 
   const channel = document?.channel_id ? findChannel(channels, document.channel_id) : null;
   const hasExtractionModel = !!channel?.extraction_model_id;
+  const processBlockedByMissingPipeline = Boolean(
+    document &&
+      isProcessBlockedByMissingPipeline(document.file_type, channel?.pipeline_id),
+  );
   const extractionSchemaFields = useMemo(
     () => normalizeExtractionSchemaToFields(channel?.extraction_schema ?? null),
     [channel?.extraction_schema]
@@ -394,7 +398,7 @@ export function useDocumentDetail(id: string | undefined) {
   }, [labelObjectTypes]);
 
   const handleProcess = useCallback(async () => {
-    if (!id || !document) return;
+    if (!id || !document || processBlockedByMissingPipeline) return;
     setProcessing(true);
     try {
       const fileType = document.file_type.toUpperCase();
@@ -411,7 +415,7 @@ export function useDocumentDetail(id: string | undefined) {
     } finally {
       setProcessing(false);
     }
-  }, [id, document, forceFullReparse, t]);
+  }, [id, document, forceFullReparse, processBlockedByMissingPipeline, t]);
 
   const handleReset = useCallback(async () => {
     if (!id || !document) return;
@@ -828,6 +832,7 @@ export function useDocumentDetail(id: string | undefined) {
     fileHash,
     markdown,
     processing,
+    processBlockedByMissingPipeline,
     forceFullReparse,
     resetting,
     versionSnapshotLoading,

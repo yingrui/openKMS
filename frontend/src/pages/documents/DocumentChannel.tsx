@@ -25,6 +25,9 @@ import {
   getDocumentChannelName,
   getDocumentChannelDescription,
   flattenChannels,
+  findChannel,
+  canQueueDocumentProcess,
+  isProcessBlockedByMissingPipeline,
 } from '../../data/channelUtils';
 import {
   fetchDocumentsByChannel,
@@ -40,9 +43,12 @@ import {
   TableRowActionCell,
   TableRowActions,
   tableRowActionCellClass,
+  Pagination,
 } from '../../styles/design-system';
 import { createJob } from '../../data/jobsApi';
 import './DocumentChannel.scss';
+
+const DOCS_PAGE_SIZE_DEFAULT = 25;
 
 const fileTypeIcons: Record<string, typeof FileText> = {
   PDF: FileText,
@@ -87,6 +93,9 @@ export function DocumentChannel() {
   );
 
   const [documents, setDocuments] = useState<DocumentListItemResponse[]>([]);
+  const [docsTotal, setDocsTotal] = useState(0);
+  const [docsPage, setDocsPage] = useState(0);
+  const [docsPageSize, setDocsPageSize] = useState(DOCS_PAGE_SIZE_DEFAULT);
   const [docsLoading, setDocsLoading] = useState(false);
   const [docsError, setDocsError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -107,6 +116,8 @@ export function DocumentChannel() {
   const channelName = getDocumentChannelName(channels, channelId);
   const channelOptions = flattenChannels(channels);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
+  const currentChannel = useMemo(() => findChannel(channels, channelId), [channels, channelId]);
+  const channelPipelineId = currentChannel?.pipeline_id;
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -120,15 +131,19 @@ export function DocumentChannel() {
     try {
       const res = await fetchDocumentsByChannel(channelId, {
         search: debouncedSearch || undefined,
+        offset: docsPage * docsPageSize,
+        limit: docsPageSize,
       });
       setDocuments(res.items);
+      setDocsTotal(res.total);
     } catch (e) {
       setDocsError(e instanceof Error ? e.message : t('channel.loadDocsFailed'));
       setDocuments([]);
+      setDocsTotal(0);
     } finally {
       setDocsLoading(false);
     }
-  }, [channelId, debouncedSearch, t]);
+  }, [channelId, debouncedSearch, docsPage, docsPageSize, t]);
 
   useEffect(() => {
     loadDocuments();
@@ -136,15 +151,14 @@ export function DocumentChannel() {
 
   useEffect(() => {
     setSelectedDocIds(new Set());
+    setDocsPage(0);
   }, [channelId, debouncedSearch]);
 
   useEffect(() => {
-    const ids = new Set(documents.map((d) => d.id));
-    setSelectedDocIds((prev) => {
-      const next = new Set([...prev].filter((id) => ids.has(id)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [documents]);
+    if (docsTotal === 0) return;
+    const maxPage = Math.max(0, Math.ceil(docsTotal / docsPageSize) - 1);
+    if (docsPage > maxPage) setDocsPage(maxPage);
+  }, [docsTotal, docsPageSize, docsPage]);
 
   const selectedCount = selectedDocIds.size;
   const allDocsSelected = documents.length > 0 && documents.every((d) => selectedDocIds.has(d.id));
@@ -158,6 +172,24 @@ export function DocumentChannel() {
   const selectedProcessableDocs = useMemo(
     () => selectedDocs.filter((d) => d.status === 'uploaded' || d.status === 'failed'),
     [selectedDocs],
+  );
+
+  const selectedRunnableDocs = useMemo(
+    () =>
+      selectedProcessableDocs.filter((d) =>
+        canQueueDocumentProcess(d.status ?? '', d.file_type, channelPipelineId),
+      ),
+    [selectedProcessableDocs, channelPipelineId],
+  );
+
+  const bulkProcessBlockedByPipeline = useMemo(
+    () =>
+      selectedProcessableDocs.length > 0 &&
+      selectedRunnableDocs.length === 0 &&
+      selectedProcessableDocs.some((d) =>
+        isProcessBlockedByMissingPipeline(d.file_type, channelPipelineId),
+      ),
+    [selectedProcessableDocs, selectedRunnableDocs, channelPipelineId],
   );
 
   const moveModalDocs = useMemo(() => {
@@ -252,6 +284,7 @@ export function DocumentChannel() {
 
   const handleProcessClick = async (e: React.MouseEvent, doc: DocumentListItemResponse) => {
     e.stopPropagation();
+    if (!canQueueDocumentProcess(doc.status ?? '', doc.file_type, channelPipelineId)) return;
     setProcessingId(doc.id);
     try {
       await createJob({ document_id: doc.id });
@@ -360,9 +393,11 @@ export function DocumentChannel() {
   };
 
   const handleBulkProcess = async () => {
-    const docs = selectedProcessableDocs;
+    const docs = selectedRunnableDocs;
     if (docs.length === 0) {
-      toast.error(t('channel.processBulkNone'));
+      toast.error(
+        bulkProcessBlockedByPipeline ? t('channel.processBulkNoPipeline') : t('channel.processBulkNone'),
+      );
       return;
     }
     setBulkBusy('process');
@@ -395,6 +430,13 @@ export function DocumentChannel() {
   };
 
   const bulkActionsDisabled = bulkBusy !== null || moveLoading;
+
+  const bulkProcessDisabled = bulkActionsDisabled || selectedRunnableDocs.length === 0;
+  const bulkProcessTitle = bulkProcessBlockedByPipeline
+    ? t('channel.processBulkNoPipeline')
+    : selectedRunnableDocs.length === 0
+      ? t('channel.processBulkNone')
+      : t('channel.bulkProcess');
 
   if (loading) {
     return (
@@ -500,24 +542,37 @@ export function DocumentChannel() {
           <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
             <span className="documents-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
             <div className="documents-bulk-actions">
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => void handleBulkProcess()}
-                disabled={bulkActionsDisabled || selectedProcessableDocs.length === 0}
-                title={
-                  selectedProcessableDocs.length === 0
-                    ? t('channel.processBulkNone')
-                    : t('channel.bulkProcess')
-                }
-              >
-                {bulkBusy === 'process' ? (
-                  <Loader2 size={16} className="documents-loading-spinner" />
-                ) : (
-                  <Play size={16} />
-                )}
-                <span>{t('channel.bulkProcess')}</span>
-              </button>
+              {bulkProcessDisabled ? (
+                <span className="documents-bulk-action-wrap" title={bulkProcessTitle}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled
+                    aria-label={bulkProcessTitle}
+                  >
+                    {bulkBusy === 'process' ? (
+                      <Loader2 size={16} className="documents-loading-spinner" />
+                    ) : (
+                      <Play size={16} />
+                    )}
+                    <span>{t('channel.bulkProcess')}</span>
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void handleBulkProcess()}
+                  title={bulkProcessTitle}
+                >
+                  {bulkBusy === 'process' ? (
+                    <Loader2 size={16} className="documents-loading-spinner" />
+                  ) : (
+                    <Play size={16} />
+                  )}
+                  <span>{t('channel.bulkProcess')}</span>
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -566,8 +621,9 @@ export function DocumentChannel() {
             <div className="documents-error">
               <p>{docsError}</p>
             </div>
-          ) : documents.length > 0 ? (
-            <table className="documents-table">
+          ) : docsTotal > 0 ? (
+            <>
+              <table className="documents-table">
               <thead>
                 <tr>
                   <th className="documents-table-select-col">
@@ -630,9 +686,14 @@ export function DocumentChannel() {
                         <TableRowActions>
                           {(doc.status === 'uploaded' || doc.status === 'failed') && (
                             <TableRowActionButton
-                              title={t('common.process')}
+                              title={
+                                isProcessBlockedByMissingPipeline(doc.file_type, channelPipelineId)
+                                  ? t('channel.processNoPipeline')
+                                  : t('common.process')
+                              }
                               aria-label={t('channel.ariaProcess', { name: doc.name })}
                               onClick={(e) => void handleProcessClick(e, doc)}
+                              disabled={isProcessBlockedByMissingPipeline(doc.file_type, channelPipelineId)}
                               loading={processingId === doc.id}
                               icon={<Play size={16} />}
                             />
@@ -667,7 +728,23 @@ export function DocumentChannel() {
                   );
                 })}
               </tbody>
-            </table>
+              </table>
+              <Pagination
+                total={docsTotal}
+                page={docsPage}
+                pageSize={docsPageSize}
+                loading={docsLoading}
+                onPageChange={(page) => {
+                  setDocsPage(page);
+                  setSelectedDocIds(new Set());
+                }}
+                onPageSizeChange={(size) => {
+                  setDocsPageSize(size);
+                  setDocsPage(0);
+                  setSelectedDocIds(new Set());
+                }}
+              />
+            </>
           ) : (
             <div className="documents-empty">
               <Folder size={48} />

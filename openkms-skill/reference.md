@@ -10,6 +10,8 @@ api_key: "okms.xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.your-secret"
 # optional: when set, documents list|upload and articles list|create|from-url may omit --channel-id
 # default_document_channel_id: "uuid"
 # default_article_channel_id: "uuid"
+# optional: default pipeline for document-channels create (see pipelines list --table)
+# default_pipeline_id: "pipeline_baidu_doc_parse"
 ```
 
 All mutating CLI commands accept `-y`/`--yes` and `--dry-run` (see `SKILL.md`). On a non-TTY, writes without `--yes` exit 2.
@@ -30,8 +32,9 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | CLI | Method | Path | Notes |
 |---|---|---|---|
 | `document-channels list` | GET | `/api/document-channels` | Default: JSON tree. Pass `--tree` for indented human-readable names + ids. |
-| `document-channels create` | POST | `/api/document-channels` | Body `{name, sort_order, description?, parent_id?}`. Requires `--yes` / `--dry-run` on non-TTY. |
+| `document-channels create` | POST | `/api/document-channels` | Body `{name, sort_order, description?, parent_id?}`. Optional CLI `--pipeline-id` (or `default_pipeline_id` in config) triggers a follow-up PUT to set `pipeline_id`. Requires `--yes` / `--dry-run` on non-TTY. |
 | `document-channels update` | PUT | `/api/document-channels/{id}` | Partial body: `name`, `description`, `parent_id`, `sort_order`, `pipeline_id`, `auto_process`, `extraction_model_id`, `extraction_schema` (CLI: `--extraction-schema-json`). Gated. |
+| `pipelines list` | GET | `/api/pipelines` | JSON `{items, total}`; each item has `id`, `name`, `description`, `is_active`, `command`, … CLI `--table` prints `id`, `name`, and active/inactive. Read-only. |
 | `article-channels list` | GET | `/api/article-channels` | Default: JSON. `--tree` for human-readable. |
 | `article-channels create` | POST | `/api/article-channels` | Same create shape as document channels. Gated. |
 | `article-channels update` | PUT | `/api/article-channels/{id}` | Partial: `name`, `description`, `parent_id`, `sort_order`. Gated. |
@@ -202,4 +205,4 @@ HTTP <status>
 - **422** — pydantic validation error; check argument shapes.
 - **502** — upstream LLM or Neo4j failure (mostly seen on `ontology *` and `kb ask`).
 
-For authoritative tables and extra routes the skill does not yet wrap (admin: providers, models, data sources, pipelines, jobs), see the repository file `docs/features/api-reference.md`.
+For authoritative tables and extra routes the skill does not yet wrap (admin: providers, models, data sources, jobs), see the repository file `docs/features/api-reference.md`.

@@ -8,3 +8,8 @@ api_key: ""
 # documents list|upload and articles list|create|from-url
 # default_document_channel_id: ""
 # default_article_channel_id: ""
+
+# Optional: default pipeline id for document-channels create when --pipeline-id is omitted.
+# Run `python scripts/cli.py pipelines list --table` to see ids (e.g. pipeline_paddleocr,
+# pipeline_baidu_doc_parse). PDF/images/Office need a channel pipeline before Process works.
+# default_pipeline_id: "pipeline_baidu_doc_parse"

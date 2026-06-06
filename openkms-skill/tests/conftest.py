@@ -17,6 +17,7 @@ _PATCHED_MODULES = (
     "openkms.commands.ping",
     "openkms.commands.search",
     "openkms.commands.document_channels",
+    "openkms.commands.pipelines",
     "openkms.commands.article_channels",
     "openkms.commands.documents",
     "openkms.commands.articles",

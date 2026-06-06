@@ -41,6 +41,7 @@ interface DocumentDetailInfoPanelProps {
   fileHash: string;
   markdown: string | null;
   processing: boolean;
+  processBlockedByMissingPipeline: boolean;
   forceFullReparse: boolean;
   resetting: boolean;
   versionSnapshotLoading: boolean;
@@ -118,6 +119,7 @@ export function DocumentDetailInfoPanel({
   fileHash,
   markdown,
   processing,
+  processBlockedByMissingPipeline,
   forceFullReparse,
   resetting,
   versionSnapshotLoading,
@@ -282,18 +284,31 @@ export function DocumentDetailInfoPanel({
                     <span className={`doc-status doc-status-${document.status || 'completed'}`}>
                       {document.status || 'completed'}
                     </span>
-                    {(document.status === 'uploaded' || document.status === 'failed') && (
-                      <button
-                        type="button"
-                        className="document-detail-process-btn"
-                        onClick={onProcess}
-                        disabled={processing}
-                        title={t('detail.titleProcessDoc')}
-                      >
-                        {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
-                        <span>{processing ? t('detail.processing') : t('detail.process')}</span>
-                      </button>
-                    )}
+                    {(document.status === 'uploaded' || document.status === 'failed') &&
+                      (processBlockedByMissingPipeline ? (
+                        <span className="document-detail-process-wrap" title={t('detail.processNoPipeline')}>
+                          <button
+                            type="button"
+                            className="document-detail-process-btn"
+                            disabled
+                            aria-label={t('detail.processNoPipeline')}
+                          >
+                            <Play size={14} />
+                            <span>{t('detail.process')}</span>
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="document-detail-process-btn"
+                          onClick={onProcess}
+                          disabled={processing}
+                          title={t('detail.titleProcessDoc')}
+                        >
+                          {processing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Play size={14} />}
+                          <span>{processing ? t('detail.processing') : t('detail.process')}</span>
+                        </button>
+                      ))}
                     {(document.status === 'uploaded' || document.status === 'failed') &&
                       !['XLSX', 'XMIND'].includes(document.file_type.toUpperCase()) && (
                         <label className="document-detail-force-reparse">
