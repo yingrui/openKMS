@@ -51,7 +51,7 @@ Feature toggle: **`agents`** (Console → Feature toggles).
 
 ## Git
 
-- **Local:** init, status, log, add, commit (UI + agent tools).
+- **Local:** init, status, log, add, commit via files rail; agent uses shell (`execute`) for git in the project folder.
 - **Remote:** HTTPS + PAT only; credentials in Profile → Git credentials (encrypted in DB, ephemeral `GIT_ASKPASS`). Clone / pull / push APIs on `/api/projects/{id}/git/*`.
 
 See [API reference — Projects](api-reference.md#projects).

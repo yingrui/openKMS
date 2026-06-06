@@ -321,7 +321,10 @@ export function DocumentDetailInfoPanel({
                           <span title={t('detail.forceFullReparseTitle')}>{t('detail.forceFullReparse')}</span>
                         </label>
                       )}
-                    {(document.status === 'pending' || document.status === 'failed') && (
+                    {(document.status === 'pending' ||
+                      document.status === 'failed' ||
+                      document.status === 'completed' ||
+                      document.status === 'running') && (
                       <button
                         type="button"
                         className="document-detail-reset-btn"

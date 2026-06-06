@@ -40,8 +40,34 @@
 }
 
 .agents-sk--project {
-  width: 140px;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
   height: 16px;
+}
+
+.agents-loading-project-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agents-loading-project-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agents-sk--project-sub {
+  width: 100px;
+  height: 12px;
+}
+
+.agents-sk--settings-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
 }
 
 .agents-sk--btn {

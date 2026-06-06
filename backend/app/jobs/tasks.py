@@ -107,6 +107,7 @@ async def run_pipeline(
     extraction_args = ""
     extraction_model_name = ""
     extraction_schema_val = ""
+    extraction_schema_data: list | dict | None = None
 
     from sqlalchemy.orm import selectinload
 
@@ -124,6 +125,7 @@ async def run_pipeline(
         if doc and doc.channel_id:
             channel = await session.get(DocumentChannel, doc.channel_id)
             if channel and channel.extraction_model_id and channel.extraction_schema:
+                extraction_schema_data = channel.extraction_schema
                 ext_result = await session.execute(
                     select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == channel.extraction_model_id)
                 )
@@ -208,26 +210,21 @@ async def run_pipeline(
 
         if not force_reparse and file_hash:
             cached = await asyncio.to_thread(_load_parse_cache_from_s3, file_hash)
-            if cached is not None:
+            async with async_session_maker() as session:
+                doc_row = await session.get(Document, document_id)
+                current_meta = dict(doc_row.doc_metadata) if doc_row and doc_row.doc_metadata else None
+            needs_metadata = _needs_metadata_extraction_after_parse_cache(
+                rendered, current_meta, extraction_schema_data
+            )
+            if cached is not None and not needs_metadata:
                 parsing_result, markdown = cached
-                async with async_session_maker() as session:
-                    doc_row = await session.get(Document, document_id)
-                    doc_name = doc_row.name if doc_row else None
-                    await session.execute(
-                        update(Document)
-                        .where(Document.id == document_id)
-                        .values(
-                            status=DocumentStatus.COMPLETED,
-                            parsing_result=parsing_result,
-                            markdown=markdown if (markdown or "").strip() else None,
-                        )
-                    )
-                    await session.commit()
-                await asyncio.to_thread(_upload_page_index_from_hash, file_hash, doc_name, markdown)
+                await _apply_cached_parse_to_document(document_id, file_hash, parsing_result, markdown)
                 log_out = (
                     f"Skipped openkms-cli: reused existing parse output on storage "
                     f"(prefix {file_hash}/). Document marked completed."
                 )
+                if _metadata_extraction_requested(rendered):
+                    log_out += " Metadata already has values."
                 logger.info(
                     "Skipped VLM re-parse for document %s; reused storage output under %s/",
                     document_id,
@@ -305,14 +302,28 @@ async def run_pipeline(
 
         parsing_result = _load_result_from_s3(file_hash)
         markdown = parsing_result.get("markdown", "")
+        extracted_metadata = _load_extracted_metadata_from_s3(file_hash)
 
         async with async_session_maker() as session:
+            doc = await session.get(Document, document_id)
+            values: dict = {
+                "status": DocumentStatus.COMPLETED,
+                "parsing_result": parsing_result,
+                "markdown": markdown,
+            }
+            if extracted_metadata and doc is not None:
+                current = dict(doc.doc_metadata) if doc.doc_metadata else {}
+                values["doc_metadata"] = {**current, **extracted_metadata}
             await session.execute(
-                update(Document)
-                .where(Document.id == document_id)
-                .values(status=DocumentStatus.COMPLETED, parsing_result=parsing_result, markdown=markdown)
+                update(Document).where(Document.id == document_id).values(**values)
             )
             await session.commit()
+            if extracted_metadata:
+                logger.info(
+                    "Applied extracted metadata from storage for document %s (%d keys)",
+                    document_id,
+                    len(extracted_metadata),
+                )
 
     except RuntimeError:
         raise
@@ -513,6 +524,52 @@ async def run_kb_index(
         await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
+def _metadata_extraction_requested(command: str) -> bool:
+    return "--extract-metadata" in command
+
+
+def _needs_metadata_extraction_after_parse_cache(
+    command: str,
+    doc_metadata: dict | None,
+    extraction_schema: list | dict | None,
+) -> bool:
+    """True when parse output can be reused but document metadata fields are still empty."""
+    if not _metadata_extraction_requested(command):
+        return False
+    from app.services.pipeline_metadata_state import document_metadata_needs_extraction
+
+    return document_metadata_needs_extraction(doc_metadata, extraction_schema)
+
+
+async def _apply_cached_parse_to_document(
+    document_id: str,
+    file_hash: str,
+    parsing_result: dict,
+    markdown: str,
+) -> None:
+    """Write cached parse (+ optional metadata sidecar) to the document row."""
+    from sqlalchemy import update
+
+    from app.database import async_session_maker
+    from app.models.document import Document
+
+    extracted_metadata = _load_extracted_metadata_from_s3(file_hash)
+    async with async_session_maker() as session:
+        doc_row = await session.get(Document, document_id)
+        doc_name = doc_row.name if doc_row else None
+        values: dict = {
+            "status": DocumentStatus.COMPLETED,
+            "parsing_result": parsing_result,
+            "markdown": markdown if (markdown or "").strip() else None,
+        }
+        if extracted_metadata and doc_row is not None:
+            current = dict(doc_row.doc_metadata) if doc_row.doc_metadata else {}
+            values["doc_metadata"] = {**current, **extracted_metadata}
+        await session.execute(update(Document).where(Document.id == document_id).values(**values))
+        await session.commit()
+    await asyncio.to_thread(_upload_page_index_from_hash, file_hash, doc_name, markdown)
+
+
 def _load_result_from_s3(file_hash: str) -> dict:
     """Load result.json from S3 after pipeline completes."""
     from app.services.storage import get_object
@@ -522,6 +579,22 @@ def _load_result_from_s3(file_hash: str) -> dict:
         return json.loads(data)
     except Exception:
         logger.warning("Could not load result.json for %s", file_hash)
+        return {}
+
+
+def _load_extracted_metadata_from_s3(file_hash: str) -> dict:
+    """Load channel-extraction output written by openkms-cli during pipeline run."""
+    from app.services.storage import get_object, object_exists
+
+    key = f"{file_hash}/extracted_metadata.json"
+    if not object_exists(key):
+        return {}
+    try:
+        data = get_object(key)
+        parsed = json.loads(data)
+        return parsed if isinstance(parsed, dict) else {}
+    except Exception:
+        logger.warning("Could not load extracted_metadata.json for %s", file_hash)
         return {}
 
 

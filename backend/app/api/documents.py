@@ -139,10 +139,11 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
     channel_id: str | None = None,
     search: str | None = None,
+    status: str | None = None,
     offset: int = 0,
     limit: int = 200,
 ):
-    """List documents, optionally filtered by channel and/or name search. Supports pagination."""
+    """List documents, optionally filtered by channel, name search, or status. Supports pagination."""
     base_query = select(Document).options(
         load_only(
             Document.id,
@@ -192,6 +193,17 @@ async def list_documents(
 
     if search:
         base_query = base_query.where(Document.name.ilike(f"%{search}%"))
+
+    if status:
+        status_val = status.strip().lower()
+        try:
+            DocumentStatus(status_val)
+        except ValueError as e:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid status {status!r}; expected one of: {', '.join(s.value for s in DocumentStatus)}",
+            ) from e
+        base_query = base_query.where(Document.status == status_val)
 
     count_query = select(func.count()).select_from(base_query.subquery())
     total_result = await db.execute(count_query)
@@ -333,7 +345,14 @@ async def reset_document_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Reset document status to 'uploaded' if no active jobs exist for it."""
-    if doc.status not in (DocumentStatus.PENDING, DocumentStatus.FAILED):
+    if doc.status == DocumentStatus.UPLOADED:
+        raise HTTPException(status_code=400, detail="Document is already uploaded")
+    if doc.status not in (
+        DocumentStatus.PENDING,
+        DocumentStatus.FAILED,
+        DocumentStatus.COMPLETED,
+        DocumentStatus.RUNNING,
+    ):
         raise HTTPException(
             status_code=400,
             detail=f"Cannot reset document with status '{doc.status}'",

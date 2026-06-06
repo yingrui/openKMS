@@ -1,5 +1,7 @@
 /** Human-readable labels for agent tool rows (Cursor-style). */
 
+const SHELL_TOOLS = new Set(['execute', 'bash', 'shell']);
+
 const TOOL_KIND: Record<string, string> = {
   run_python: 'Python',
   execute: 'Shell',
@@ -16,11 +18,6 @@ const TOOL_KIND: Record<string, string> = {
   search_wiki: 'Search',
   search_knowledge_bases: 'Search',
   web_search: 'Search',
-  git_status: 'Git',
-  git_add: 'Git',
-  git_commit: 'Git',
-  git_log: 'Git',
-  git_diff: 'Git',
   task: 'Subagent',
 };
 
@@ -36,6 +33,17 @@ function firstLine(text: string, max = 140): string {
 function basename(path: string): string {
   const parts = path.split(/[/\\]/);
   return parts[parts.length - 1] || path;
+}
+
+function looksLikeProjectRoot(path: string): boolean {
+  const p = path.trim();
+  return /data\/projects\/[a-f0-9-]+$/i.test(p) || /^[a-f0-9-]{36}$/i.test(basename(p));
+}
+
+function normalizePath(path: string): string {
+  const p = path.trim();
+  if (!p || looksLikeProjectRoot(p)) return '';
+  return basename(p) || p;
 }
 
 function extractCodeFromInput(input: string): string | null {
@@ -96,23 +104,116 @@ function summarizePythonCode(code: string): string {
   return lines > 1 ? `Run Python script (${lines} lines)` : 'Run Python script';
 }
 
+function pythonCodeHint(input?: string): string {
+  const code = extractCodeFromInput(input ?? '') ?? input?.trim();
+  if (!code) return 'python';
+  const line = code.split('\n').find((l) => {
+    const t = l.trim();
+    return t && !t.startsWith('#') && !t.startsWith('import ') && !t.startsWith('from ');
+  });
+  return firstLine((line ?? code).trim(), 88);
+}
+
+function shellCommandFromInput(input?: string): string {
+  if (!input?.trim()) return '';
+  try {
+    const obj = JSON.parse(input) as Record<string, unknown>;
+    if (typeof obj.command === 'string') return obj.command.trim();
+  } catch {
+    /* plain text */
+  }
+  return input.trim();
+}
+
+function gitShellActionTitle(parts: string[]): string {
+  switch (parts[1]) {
+    case 'status':
+      return 'Show git working tree status';
+    case 'add':
+      return parts.includes('-A') || parts.length <= 2 ? 'Stage all changes' : 'Stage selected files';
+    case 'commit':
+      return 'Create commit';
+    case 'log':
+      return 'Show recent commit history';
+    case 'diff':
+      return parts[2] ? `Show diff for ${normalizePath(parts[2]) || parts[2]}` : 'Show unstaged and staged diffs';
+    case 'init':
+      return 'Initialize git repository';
+    case 'push':
+      return 'Push to remote';
+    case 'pull':
+      return 'Pull from remote';
+    default:
+      return 'Run git command';
+  }
+}
+
+function shellActionTitle(command: string): string {
+  const parts = command.trim().split(/\s+/);
+  if (!parts[0]) return 'Run shell command';
+  if (parts[0] === 'git') return gitShellActionTitle(parts);
+  switch (parts[0]) {
+    case 'ls':
+      return 'List directory';
+    case 'cat':
+      return parts[1] ? `Read ${basename(parts[1])}` : 'Read file';
+    case 'mkdir':
+      return parts[1] ? `Create ${basename(parts[1])}` : 'Create directory';
+    case 'rm':
+      return 'Remove files';
+    case 'cp':
+      return 'Copy files';
+    case 'mv':
+      return 'Move files';
+    case 'touch':
+      return parts[1] ? `Create ${basename(parts[1])}` : 'Create file';
+    case 'chmod':
+      return 'Change permissions';
+    case 'find':
+      return 'Find files';
+    case 'grep':
+      return 'Search in files';
+    case 'curl':
+    case 'wget':
+      return 'Download';
+    case 'pip':
+    case 'npm':
+    case 'uv':
+      return 'Install packages';
+    default:
+      return 'Run shell command';
+  }
+}
+
+export function toolShowsCommandHint(name: string): boolean {
+  return name === 'run_python' || SHELL_TOOLS.has(name);
+}
+
+export function toolCommandHint(name: string, input?: string): string {
+  if (name === 'run_python') return pythonCodeHint(input);
+  if (SHELL_TOOLS.has(name)) {
+    const cmd = shellCommandFromInput(input);
+    return cmd ? firstLine(cmd, 88) : '';
+  }
+  return '';
+}
+
 function detailFromObject(name: string, obj: Record<string, unknown>): string {
   if (name === 'run_python' && typeof obj.code === 'string') {
     return summarizePythonCode(obj.code);
   }
-  if (name === 'git_commit' && typeof obj.message === 'string') {
-    return firstLine(obj.message.trim());
+  if (SHELL_TOOLS.has(name) && typeof obj.command === 'string') {
+    return shellActionTitle(obj.command);
   }
-  if (name === 'git_add' && typeof obj.paths === 'string') {
-    const paths = obj.paths.trim();
-    return paths ? firstLine(paths) : 'Stage all changes';
-  }
-  if ((name === 'read_file' || name === 'write_file' || name === 'git_diff') && typeof obj.path === 'string') {
-    return obj.path;
+  if ((name === 'read_file' || name === 'write_file') && typeof obj.path === 'string') {
+    return normalizePath(obj.path) || obj.path;
   }
   for (const key of ['command', 'description', 'prompt', 'task', 'query', 'path']) {
     const v = obj[key];
-    if (typeof v === 'string' && v.trim()) return firstLine(v.trim());
+    if (typeof v === 'string' && v.trim()) {
+      if (key === 'command' && SHELL_TOOLS.has(name)) return shellActionTitle(v.trim());
+      return firstLine(v.trim());
+    }
   }
   return '';
 }
@@ -122,6 +223,10 @@ export function toolKindLabel(name: string): string {
 }
 
 export function toolDetailFromInput(name: string, input?: string): string {
+  if (SHELL_TOOLS.has(name)) {
+    const cmd = shellCommandFromInput(input);
+    return cmd ? shellActionTitle(cmd) : 'Run shell command';
+  }
   if (!input?.trim()) return '';
   try {
     const parsed = JSON.parse(input) as unknown;
@@ -157,6 +262,27 @@ export function parseSubagentLabel(raw: string): string {
   return firstLine(trimmed);
 }
 
+export function unwrapToolMessageContent(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('content=')) return trimmed;
+
+  const quote = trimmed[8];
+  if (quote !== "'" && quote !== '"') return trimmed;
+
+  let out = '';
+  for (let i = 9; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (ch === '\\' && i + 1 < trimmed.length) {
+      out += trimmed[i + 1];
+      i += 1;
+      continue;
+    }
+    if (ch === quote) break;
+    out += ch;
+  }
+  return out.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+}
+
 export function formatToolInputForDisplay(name: string, input?: string): string | undefined {
   if (!input?.trim()) return undefined;
   if (name === 'run_python') {
@@ -179,21 +305,13 @@ export function formatToolInputForDisplay(name: string, input?: string): string 
   return input;
 }
 
-export function formatToolOutputForDisplay(_name: string, output?: string): string | undefined {
+export function formatToolOutputForDisplay(name: string, output?: string): string | undefined {
   if (!output?.trim()) return undefined;
-  const trimmed = output.trim();
-
-  const contentMatch = trimmed.match(/^content='((?:[^'\\]|\\.)*)'/);
-  if (contentMatch) {
-    return contentMatch[1].replace(/\\n/g, '\n').replace(/\\'/g, "'");
-  }
-  const contentDouble = trimmed.match(/^content="((?:[^"\\]|\\.)*)"/);
-  if (contentDouble) {
-    return contentDouble[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-  }
+  const content = unwrapToolMessageContent(output.trim());
+  if (!content.trim()) return undefined;
 
   try {
-    const j = JSON.parse(trimmed) as unknown;
+    const j = JSON.parse(content) as unknown;
     if (typeof j === 'string') return j;
     if (j && typeof j === 'object' && !Array.isArray(j)) {
       const obj = j as Record<string, unknown>;
@@ -205,14 +323,7 @@ export function formatToolOutputForDisplay(_name: string, output?: string): stri
     /* plain text */
   }
 
-  if (trimmed.includes("name='") && trimmed.startsWith('content=')) {
-    const cut = trimmed.indexOf("' name='");
-    if (cut > 8) {
-      return trimmed.slice(8, cut).replace(/\\n/g, '\n');
-    }
-  }
-
-  return output;
+  return content;
 }
 
 export function toolUsesCodeIcon(name: string): boolean {

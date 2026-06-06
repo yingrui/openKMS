@@ -48,6 +48,11 @@ def _git_identity(settings: dict, fallback_name: str = "openKMS User") -> dict[s
     return {"GIT_AUTHOR_NAME": name, "GIT_AUTHOR_EMAIL": email, "GIT_COMMITTER_NAME": name, "GIT_COMMITTER_EMAIL": email}
 
 
+def git_env_for_shell(settings: dict, fallback_name: str = "openKMS User") -> dict[str, str]:
+    """Author/committer env vars for agent shell git commands."""
+    return _git_identity(settings, fallback_name)
+
+
 def git_init(project_id: str, settings: dict) -> bool:
     root = project_root(project_id)
     if (root / ".git").exists():

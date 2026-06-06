@@ -17,7 +17,13 @@ export function AgentsWorkspaceSkeleton() {
       <div className="agents-workspace-body">
         <aside className="agents-loading-sessions">
           <Sk className="agents-sk--back" />
-          <Sk className="agents-sk--project" />
+          <div className="agents-loading-project-block">
+            <div className="agents-loading-project-line">
+              <Sk className="agents-sk--project" />
+              <Sk className="agents-sk--settings-icon" />
+            </div>
+            <Sk className="agents-sk--project-sub" />
+          </div>
           <Sk className="agents-sk--btn" />
           <div className="agents-loading-session-rows">
             {Array.from({ length: 5 }, (_, i) => (

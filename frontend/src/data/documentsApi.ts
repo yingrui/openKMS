@@ -116,6 +116,7 @@ export async function fetchDocumentStats(): Promise<{ total: number }> {
 export async function fetchDocuments(params?: {
   channel_id?: string;
   search?: string;
+  status?: string;
   offset?: number;
   limit?: number;
 }): Promise<DocumentListResponse> {
@@ -123,6 +124,7 @@ export async function fetchDocuments(params?: {
   const query = new URLSearchParams();
   if (params?.channel_id) query.set('channel_id', params.channel_id);
   if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
   if (params?.offset != null) query.set('offset', String(params.offset));
   if (params?.limit != null) query.set('limit', String(params.limit));
   const qs = query.toString() ? `?${query.toString()}` : '';
@@ -139,11 +141,12 @@ export async function fetchDocuments(params?: {
 
 export async function fetchDocumentsByChannel(
   channelId: string,
-  params?: { search?: string; offset?: number; limit?: number },
+  params?: { search?: string; status?: string; offset?: number; limit?: number },
 ): Promise<DocumentListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams({ channel_id: channelId });
   if (params?.search) query.set('search', params.search);
+  if (params?.status) query.set('status', params.status);
   if (params?.offset != null) query.set('offset', String(params.offset));
   if (params?.limit != null) query.set('limit', String(params.limit));
   const res = await authAwareFetch(`${config.apiUrl}/api/documents?${query.toString()}`, {

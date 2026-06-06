@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from uuid import uuid4
 
 from deepagents import create_deep_agent
-from deepagents.backends.filesystem import FilesystemBackend
+from deepagents.backends import LocalShellBackend
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
@@ -28,12 +28,12 @@ from app.services.agent.wiki_runner import (
 # Reuse wiki storage key for tool trace replay in history.
 PROJECT_TOOL_TRANSCRIPTS_KEY = WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.deep_agents.checkpointer import get_checkpointer
+from app.services.deep_agents.git_service import git_env_for_shell
 from app.services.deep_agents.hitl import interrupt_map
 from app.services.deep_agents.plan_mode import plan_mode_permissions
 from app.services.deep_agents.prompts import build_project_system_prompt
 from app.services.deep_agents.skills.loader import list_skill_paths
 from app.services.deep_agents.subagents.profiles import build_subagents
-from app.services.deep_agents.tools.git_local import make_git_tools
 from app.services.deep_agents.tools.openkms import make_openkms_tools
 from app.services.deep_agents.tools.web_search import make_web_search_tools
 from app.services.deep_agents.sandbox import make_sandbox_tools
@@ -143,7 +143,13 @@ async def _build_agent(
     if not llm:
         return None, "No LLM configured for agents"
     root = str(project_root(project_id))
-    backend = FilesystemBackend(root_dir=root, virtual_mode=True)
+    backend = LocalShellBackend(
+        root_dir=root,
+        virtual_mode=True,
+        inherit_env=True,
+        env={**git_env_for_shell(project_settings), "GIT_TERMINAL_PROMPT": "0"},
+        timeout=settings.agent_sandbox_timeout_seconds,
+    )
     perms = jwt_payload.get("realm_access", {}).get("roles", [])
     if isinstance(perms, list):
         perm_set = set(perms)
@@ -154,7 +160,6 @@ async def _build_agent(
     tools: list = []
     if not plan_mode:
         tools.extend(make_sandbox_tools(project_id))
-        tools.extend(make_git_tools(project_id, project_settings))
     tools.extend(make_openkms_tools(bearer_token, perm_set))
     tools.extend(make_web_search_tools())
     skills = list_skill_paths(project_id)

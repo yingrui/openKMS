@@ -1,12 +1,14 @@
-import { Bot, ChevronRight, Code2, Terminal } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { ToolPillHead } from './ToolPillHead';
 import {
   formatToolInputForDisplay,
   formatToolOutputForDisplay,
   shouldHideToolRow,
+  toolCommandHint,
   toolDetailFromInput,
   toolKindLabel,
-  toolUsesCodeIcon,
+  toolShowsCommandHint,
 } from '../wiki/agentStreamToolDisplay';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import { WikiAgentMessageBody } from '../wiki/WikiAgentMessageBody';
@@ -47,52 +49,11 @@ function ToolIoBlock({
   );
 }
 
-function ToolRowLine({
-  name,
-  kind,
-  detail,
-  running,
-  expandable,
-}: {
-  name: string;
-  kind: string;
-  detail?: string;
-  running?: boolean;
-  expandable?: boolean;
-}) {
-  const Icon = toolUsesCodeIcon(name) ? Code2 : Terminal;
-
-  return (
-    <>
-      <Icon
-        size={12}
-        strokeWidth={2}
-        className="wiki-space-agent-panel__tool-pill-ico"
-        aria-hidden
-      />
-      <span className="wiki-space-agent-panel__tool-pill-kind">{kind}</span>
-      {detail ? (
-        <span className="wiki-space-agent-panel__tool-pill-detail" title={detail}>
-          {detail}
-        </span>
-      ) : null}
-      {running ? <span className="wiki-space-agent-panel__tool-pill-running">…</span> : null}
-      {expandable ? (
-        <ChevronRight
-          size={12}
-          strokeWidth={2}
-          className="wiki-space-agent-panel__tool-pill-chevron"
-          aria-hidden
-        />
-      ) : null}
-    </>
-  );
-}
-
 function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }> }) {
   const { step } = part;
   const kind = toolKindLabel(step.name);
   const detail = toolDetailFromInput(step.name, step.input);
+  const hint = toolShowsCommandHint(step.name) ? toolCommandHint(step.name, step.input) : undefined;
   const hasIo = Boolean(step.input || step.output || step.error);
   const expandable = hasIo && (step.status !== 'running' || Boolean(step.input));
 
@@ -100,10 +61,11 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
     return (
       <div className="wiki-space-agent-panel__tool-row">
         <div className="wiki-space-agent-panel__tool-pill-line">
-          <ToolRowLine
+          <ToolPillHead
             name={step.name}
             kind={kind}
             detail={detail}
+            hint={hint}
             running={step.status === 'running'}
           />
         </div>
@@ -114,10 +76,11 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
   return (
     <details className="wiki-space-agent-panel__tool-row wiki-space-agent-panel__tool-row--expand">
       <summary className="wiki-space-agent-panel__tool-pill-line">
-        <ToolRowLine
+        <ToolPillHead
           name={step.name}
           kind={kind}
           detail={detail}
+          hint={hint}
           running={step.status === 'running'}
           expandable
         />

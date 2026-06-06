@@ -20,6 +20,11 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/internal-api/models/config-by-name` | **Internal service client only**; query **`model_name`** (required), **`api_kind`** (default `chat-completions`); JSON `base_url`, `model_name`, `api_key` for openkms-cli (e.g. pipeline metadata extraction) |
 | GET | `/internal-api/models/llm-defaults` | **Internal service client only**; JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`chat-completions`** model; same as embedded wiki agent) |
 | GET | `/internal-api/models/kb-embedding-credentials` | **Internal service client only**; query **`knowledge_base_id`** (required); **`local-cli`** may read any KB; OIDC service clients still require KB visibility like **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** |
+| GET | `/internal-api/documents/{id}` | **Internal service client only**; read document (incl. `metadata`) for pipeline |
+| GET | `/internal-api/documents/{id}/metadata-needs-extraction` | **Internal service client only**; `{ needs_extraction }` — true when channel schema fields are all empty |
+| PUT | `/internal-api/documents/{id}/markdown` | **Internal service client only**; sync parsed markdown during pipeline (no channel ACL) |
+| PUT | `/internal-api/documents/{id}/metadata` | **Internal service client only**; merge extracted metadata during pipeline (no channel ACL) |
+| POST | `/internal-api/documents/{id}/versions` | **Internal service client only**; snapshot markdown + metadata after pipeline (no channel ACL) |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/public/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
@@ -81,14 +86,14 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/document-channels/merge` | Merge source channel into target (move documents, delete source; optional include_descendants) |
 | DELETE | `/api/document-channels/{id}` | Delete channel (fails if has documents or sub-channels) |
 | POST | `/api/documents/upload` | Multipart: `file`, `channel_id`. Stores original to S3. **XLSX**: sheet preview + markdown in-process, `completed` or `failed` (no parse job). **XMIND**: outline markdown from archive `content.json` / `content.xml`, `completed` or `failed` (no parse job). **Other types** (PDF, images, DOCX, PPTX, EPUB, …): `uploaded`; if channel `auto_process` and pipeline, enqueues `run_pipeline` (not for XLSX/XMIND) |
-| GET | `/api/documents?channel_id=&search=&offset=&limit=` | List documents; channel_id optional (all if omitted, descendants included when filtering by channel); search filters by name; offset/limit for pagination. Returns lightweight list items only (no `markdown`, `parsing_result`, or `metadata`) |
+| GET | `/api/documents?channel_id=&search=&status=&offset=&limit=` | List documents; channel_id optional (all if omitted, descendants included when filtering by channel); search filters by name; **status** filters by processing status (`uploaded`, `pending`, `running`, `completed`, `failed`); offset/limit for pagination. Returns lightweight list items only (no `markdown`, `parsing_result`, or `metadata`) |
 | GET | `/api/documents/stats` | Get document counts (e.g. total) for index page |
 | GET | `/api/documents/{id}` | Get document by ID |
 | PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
 | GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
-| POST | `/api/documents/{id}/reset-status` | Reset document status to uploaded (if no active jobs) |
+| POST | `/api/documents/{id}/reset-status` | Reset processing status to **uploaded** when status is `pending`, `failed`, `completed`, or `running` (rejects if active jobs exist) |
 | PUT | `/api/documents/{id}/metadata` | Update document metadata (partial merge) |
 | PUT | `/api/documents/{id}/markdown` | Update document markdown and rebuild page index in S3 |
 | POST | `/api/documents/{id}/restore-markdown` | Restore markdown from S3 `{file_hash}/markdown.md` and rebuild page index |

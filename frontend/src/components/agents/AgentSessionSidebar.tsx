@@ -97,22 +97,24 @@ export function AgentSessionSidebar({
           <ArrowLeft size={14} />
           {t('sessions.back')}
         </Link>
-        <div className="agents-sessions-project">{projectName}</div>
-        <div className="agents-sessions-sub">{projectSlug}</div>
-        <div className="agents-sessions-head-actions">
-          <button type="button" className="agents-sessions-new" onClick={onNewChat}>
-            <Plus size={15} strokeWidth={2} />
-            {t('sessions.newChat')}
-          </button>
-          <Link
-            to={`/projects/${projectId}/settings`}
-            className="agents-sessions-settings"
-            title={t('settings.title')}
-            aria-label={t('settings.title')}
-          >
-            <Settings size={16} strokeWidth={1.75} />
-          </Link>
+        <div className="agents-sessions-project-block">
+          <div className="agents-sessions-project-line">
+            <div className="agents-sessions-project">{projectName}</div>
+            <Link
+              to={`/projects/${projectId}/settings`}
+              className="agents-sessions-settings"
+              title={t('settings.title')}
+              aria-label={t('settings.title')}
+            >
+              <Settings size={16} strokeWidth={1.75} />
+            </Link>
+          </div>
+          <div className="agents-sessions-sub">{projectSlug}</div>
         </div>
+        <button type="button" className="agents-sessions-new" onClick={onNewChat}>
+          <Plus size={15} strokeWidth={2} />
+          {t('sessions.newChat')}
+        </button>
       </div>
       <div className="agents-sessions-scroll">
         {sorted.map((c) => (

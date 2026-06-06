@@ -9,8 +9,6 @@ DEFAULT_INTERRUPT_ON: dict[str, bool | dict[str, Any]] = {
     "write_file": True,
     "edit_file": True,
     "execute": True,
-    "git_commit": True,
-    "git_push": True,
     "upsert_wiki_page": True,
     "upload_document": True,
     "create_article": True,

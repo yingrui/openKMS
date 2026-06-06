@@ -45,6 +45,26 @@ def test_require_document_write_denied_without_channel_write():
     asyncio.run(_run())
 
 
+def test_require_document_write_allows_local_cli_without_channel_acl():
+    """local-cli has scope_applies false; public /api write skips channel ACL check."""
+    doc = Document(id="doc-1", channel_id="ch-readonly", name="x.pdf")
+    request = MagicMock()
+    request.state.openkms_jwt_payload = {"sub": "local-cli"}
+    db = AsyncMock()
+
+    async def _run():
+        with patch(
+            "app.services.document_scope.channel_allowed_for_document_upload",
+            new_callable=AsyncMock,
+            return_value=False,
+        ) as upload_check:
+            out = await require_document_write(db, request, doc)
+            assert out is doc
+            upload_check.assert_not_awaited()
+
+    asyncio.run(_run())
+
+
 def test_load_document_scoped_write_checks_write_bit():
     doc = Document(id="doc-1", channel_id="ch-a", name="x.pdf")
     request = MagicMock()

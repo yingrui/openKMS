@@ -100,6 +100,37 @@ def _resolve_api_request_auth(*, required: bool = False) -> tuple[dict[str, str]
     return auth_headers, basic_auth, True
 
 
+def _persist_extracted_metadata_sidecar(
+    extracted: dict,
+    *,
+    hash_dir: Path,
+    prefix: str,
+    skip_upload: bool,
+    bucket: str,
+    endpoint_url: Optional[str],
+    access_key: str,
+    secret_key: str,
+    region: str,
+) -> None:
+    """Write extracted_metadata.json locally and to storage for worker DB merge."""
+    meta_path = hash_dir / "extracted_metadata.json"
+    meta_path.write_text(
+        json.dumps(extracted, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    if skip_upload:
+        console.print("[dim]Wrote extracted_metadata.json (local only)[/dim]")
+        return
+    client = _get_s3_client(endpoint_url, access_key, secret_key, region)
+    client.put_object(
+        Bucket=bucket,
+        Key=f"{prefix}/extracted_metadata.json",
+        Body=meta_path.read_bytes(),
+        ContentType="application/json",
+    )
+    console.print("[dim]extracted_metadata.json uploaded to storage[/dim]")
+
+
 def _put_document_markdown(
     api_url: str, document_id: str, markdown: str, auth_headers: dict, basic: tuple[str, str] | None
 ) -> tuple[bool, dict[str, str], Optional[tuple[str, str]]]:
@@ -107,7 +138,7 @@ def _put_document_markdown(
     from .auth import auth_expired_response, try_api_request_auth
 
     base = api_url.rstrip("/")
-    url = f"{base}/api/documents/{document_id}/markdown"
+    url = f"{base}/internal-api/documents/{document_id}/markdown"
     payload = {"markdown": markdown}
     for attempt in range(2):
         headers = {**auth_headers, "Content-Type": "application/json"}
@@ -121,6 +152,7 @@ def _put_document_markdown(
                 auth_headers, basic = cred
                 continue
         console.print(f"[yellow]PUT markdown failed: {r.status_code} {r.text[:200]}[/yellow]")
+        console.print(f"[dim]PUT {url}[/dim]")
         return False, auth_headers, basic
     return False, auth_headers, basic
 
@@ -132,7 +164,7 @@ def _post_pipeline_version(
     base = api_url.rstrip("/")
     headers = {**auth_headers, "Content-Type": "application/json"}
     r = requests.post(
-        f"{base}/api/documents/{document_id}/versions",
+        f"{base}/internal-api/documents/{document_id}/versions",
         json={"tag": "Pipeline", "note": None},
         headers=headers,
         auth=basic,
@@ -143,6 +175,218 @@ def _post_pipeline_version(
         return True
     console.print(f"[yellow]Save version failed: {r.status_code} {r.text[:200]}[/yellow]")
     return False
+
+
+def _cached_parse_usable(result: dict) -> bool:
+    """True when storage result.json is enough to skip VLM/Baidu re-parse."""
+    if not isinstance(result, dict) or not result:
+        return False
+    if result.get("document_kind") in ("spreadsheet", "mindmap"):
+        return False
+    if result.get("parsing_res_list") or result.get("layout_det_res"):
+        return True
+    if (result.get("markdown") or "").strip():
+        return True
+    return False
+
+
+def _load_cached_parse_from_storage(
+    client,
+    bucket: str,
+    prefix: str,
+    out_base: Path,
+) -> tuple[dict, Path] | None:
+    """Download existing parse output from storage for metadata-only reruns."""
+    prefix = prefix.rstrip("/")
+    rkey = f"{prefix}/result.json"
+    try:
+        raw = client.get_object(Bucket=bucket, Key=rkey)["Body"].read()
+        result = json.loads(raw)
+    except Exception:
+        return None
+    if not _cached_parse_usable(result):
+        return None
+    markdown = (result.get("markdown") or "").strip()
+    if not markdown:
+        mkey = f"{prefix}/markdown.md"
+        try:
+            markdown = client.get_object(Bucket=bucket, Key=mkey)["Body"].read().decode("utf-8")
+            result = {**result, "markdown": markdown}
+        except Exception:
+            markdown = ""
+    file_hash = result.get("file_hash") or prefix.split("/")[-1]
+    hash_dir = out_base / file_hash
+    hash_dir.mkdir(parents=True, exist_ok=True)
+    (hash_dir / "result.json").write_bytes(raw)
+    if markdown:
+        (hash_dir / "markdown.md").write_text(markdown, encoding="utf-8")
+    return result, hash_dir
+
+
+def _document_metadata_needs_extraction_via_api(
+    api_url: str,
+    document_id: str,
+    auth_headers: dict,
+    basic_auth: tuple[str, str] | None,
+) -> bool | None:
+    """Ask backend whether schema metadata fields are all empty (None if request fails)."""
+    from .auth import auth_expired_response, try_api_request_auth
+
+    base = api_url.rstrip("/")
+    url = f"{base}/internal-api/documents/{document_id}/metadata-needs-extraction"
+    for attempt in range(2):
+        resp = requests.get(url, headers={**auth_headers}, auth=basic_auth, timeout=30)
+        if resp.ok:
+            body = resp.json()
+            if isinstance(body.get("needs_extraction"), bool):
+                return body["needs_extraction"]
+            return None
+        if attempt == 0 and auth_expired_response(resp):
+            cred = try_api_request_auth()
+            if cred is not None:
+                auth_headers, basic_auth = cred
+                continue
+        break
+    return None
+
+
+def _run_pipeline_metadata_extraction(
+    *,
+    result: dict,
+    hash_dir: Path,
+    prefix: str,
+    extract_metadata: bool,
+    document_id: str | None,
+    extraction_schema: str | None,
+    extraction_model_name: str | None,
+    extraction_model_base_url: str | None,
+    api_url: str,
+    skip_upload: bool,
+    bucket: str,
+    endpoint_url: Optional[str],
+    access_key: str,
+    secret_key: str,
+    region: str,
+    progress,
+    task,
+    auth_headers: dict,
+    basic_auth: tuple[str, str] | None,
+) -> tuple[dict, tuple[str, str] | None]:
+    """Extract metadata when API reports empty schema fields; persist sidecar; PUT to internal API."""
+    if not extract_metadata or not document_id or not result.get("markdown"):
+        return auth_headers, basic_auth
+
+    auth_headers, basic_auth, has_api_auth = _resolve_api_request_auth(required=True)
+    if not has_api_auth:
+        return auth_headers, basic_auth
+
+    needs_extraction = _document_metadata_needs_extraction_via_api(
+        api_url, document_id, auth_headers, basic_auth
+    )
+    if needs_extraction is False:
+        console.print("[dim]Skipped metadata extraction: document metadata already has values[/dim]")
+        return auth_headers, basic_auth
+    if needs_extraction is None:
+        console.print(
+            "[yellow]Could not check document metadata via API; proceeding with extraction.[/yellow]"
+        )
+
+    progress.update(task, description="Extracting metadata...")
+    try:
+        schema_data = json.loads(extraction_schema or "[]")
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Invalid --extraction-schema JSON: {e}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        from .extract import extract_metadata_sync
+    except ImportError:
+        console.print("[red]Metadata extraction requires pip install openkms-cli[metadata][/red]")
+        raise typer.Exit(1)
+
+    if extraction_model_name:
+        from urllib.parse import quote
+
+        from .auth import auth_expired_response, try_api_request_auth
+
+        base = api_url.rstrip("/")
+        config_url = (
+            f"{base}/internal-api/models/config-by-name"
+            f"?model_name={quote(extraction_model_name)}"
+        )
+        config_resp = None
+        for attempt in range(2):
+            req_headers = {**auth_headers}
+            config_resp = requests.get(
+                config_url,
+                headers=req_headers,
+                auth=basic_auth,
+                timeout=30,
+            )
+            if config_resp.ok:
+                break
+            if attempt == 0 and auth_expired_response(config_resp):
+                cred = try_api_request_auth()
+                if cred is not None:
+                    auth_headers, basic_auth = cred
+                    continue
+            break
+        if config_resp is None or not config_resp.ok:
+            try:
+                err = config_resp.json().get("detail", config_resp.text)
+            except Exception:
+                err = config_resp.text or str(config_resp.status_code)
+            console.print(f"[red]Failed to fetch model config: {str(err)[:120]}[/red]")
+            raise typer.Exit(1)
+        model_config = config_resp.json()
+    else:
+        cfg = get_cli_settings()
+        model_config = {
+            "base_url": extraction_model_base_url,
+            "api_key": cfg.extraction_model_api_key,
+            "model_name": extraction_model_name or "gpt-4",
+        }
+
+    extracted: dict | None = None
+    try:
+        extracted = extract_metadata_sync(result["markdown"], model_config, schema_data)
+    except ValueError as e:
+        console.print(f"[yellow]Metadata extraction failed: {e}[/yellow]")
+        console.print(
+            "[dim]Document parse finished; fix the extraction model (e.g. 502 from chat/completions) "
+            "or use Extract on the document page when it is healthy.[/dim]"
+        )
+
+    if extracted is not None:
+        _persist_extracted_metadata_sidecar(
+            extracted,
+            hash_dir=hash_dir,
+            prefix=prefix,
+            skip_upload=skip_upload,
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+            access_key=access_key,
+            secret_key=secret_key,
+            region=region,
+        )
+        base = api_url.rstrip("/")
+        put_url = f"{base}/internal-api/documents/{document_id}/metadata"
+        headers = {**auth_headers, "Content-Type": "application/json"}
+        resp = requests.put(
+            put_url, json={"metadata": extracted}, headers=headers, auth=basic_auth, timeout=30
+        )
+        if not resp.ok:
+            console.print(
+                f"[yellow]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/yellow]"
+            )
+            console.print(f"[dim]PUT {put_url}[/dim]")
+            console.print(
+                "[dim]Metadata is on storage; the worker merges it when the job completes.[/dim]"
+            )
+        else:
+            console.print("[green]Metadata updated via API[/green]")
+
+    return auth_headers, basic_auth
 
 
 @pipeline_app.command("list")
@@ -468,6 +712,20 @@ def pipeline_run(
         console.print(f"[dim]Output: s3://{bucket}/{prefix_hint}/[/dim]")
     console.print(f"[dim]Local temp: {output_dir.resolve()}[/dim]")
 
+    storage_prefix = s3_prefix.rstrip("/") if s3_prefix else None
+    s3_client = None
+    parsed_from_cache = False
+    result: dict | None = None
+    hash_dir: Path | None = None
+    prefix: str | None = storage_prefix
+
+    if not skip_upload and storage_prefix and access_key and secret_key:
+        s3_client = _get_s3_client(endpoint_url, access_key, secret_key, region)
+        cached = _load_cached_parse_from_storage(s3_client, bucket, storage_prefix, out_base)
+        if cached is not None:
+            result, hash_dir = cached
+            parsed_from_cache = True
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -475,102 +733,108 @@ def pipeline_run(
     ) as progress:
         task = progress.add_task("Parsing...", total=None)
 
-        try:
-            if use_baidu:
-                from .baidu_parser import run_baidu_parser
-
-                def _baidu_status(status: str) -> None:
-                    progress.update(task, description=f"Baidu parse: {status}...")
-
-                fetch_ext = (
-                    parse_path.suffix.lower().lstrip(".")
-                    if parse_path.resolve() != stored_path.resolve()
-                    else stored_path.suffix.lower().lstrip(".")
-                ) or "bin"
-                result, _, _ = run_baidu_parser(
-                    input_path=parse_path,
-                    output_dir=out_base,
-                    api_key=cfg.baidu_cloud_api_key,
-                    secret_key=cfg.baidu_cloud_secret_key,
-                    content_hash_source=ch_source,
-                    document_id=document_id,
-                    original_file_ext=fetch_ext,
-                    poll_interval=baidu_poll_interval,
-                    max_wait=baidu_max_wait,
-                    on_status=_baidu_status,
-                )
-            else:
-                from .parser import run_parser
-
-                result, _, _ = run_parser(
-                    input_path=parse_path,
-                    output_dir=out_base,
-                    vlm_url=vlm_url,
-                    vlm_api_key=vlm_api_key,
-                    model=merged_vlm_model,
-                    content_hash_source=ch_source,
-                )
-        except ImportError:
-            dep = "requests (base)" if use_baidu else "openkms-cli[parse]"
-            console.print(f"[red]Parser not available. pip install {dep}[/red]")
-            raise typer.Exit(1)
-        except BaiduParseError as e:
-            console.print(f"[red]Baidu parse failed: {e}[/red]")
-            raise typer.Exit(1)
-        except requests.exceptions.RequestException as e:
-            console.print(f"[red]Baidu parse failed: network error ({e})[/red]")
-            raise typer.Exit(1)
-        file_hash = result["file_hash"]
-        hash_dir = out_base / file_hash
-
-        # Use file hash as s3 prefix when not specified (S3 input) or for consistency
-        prefix = (s3_prefix.rstrip("/") if s3_prefix else file_hash)
-
-        ext = Path(hash_src).suffix.lower().lstrip(".") or "pdf"
-        (hash_dir / f"original.{ext}").write_bytes(content)
-        result_json = json.dumps(result, indent=2, ensure_ascii=False)
-        (hash_dir / "result.json").write_text(result_json, encoding="utf-8")
-        if result.get("markdown"):
-            (hash_dir / "markdown.md").write_text(result["markdown"], encoding="utf-8")
-
-        if build_page_index and result.get("markdown"):
-            md_path = hash_dir / "markdown.md"
-            try:
-                from .page_index import build_page_index_from_markdown
-
-                progress.update(task, description="Building PageIndex...")
-                tree = build_page_index_from_markdown(md_path)
-                (hash_dir / "page_index.json").write_text(
-                    json.dumps(tree, indent=2, ensure_ascii=False), encoding="utf-8"
-                )
-                console.print("[dim]PageIndex built[/dim]")
-            except Exception as e:
-                console.print(f"[yellow]PageIndex build failed: {e}. Skipping.[/yellow]")
-
-        if skip_upload:
-            count = sum(1 for f in hash_dir.rglob("*") if f.is_file())
-            console.print(f"[green]Pipeline done. {count} files in {hash_dir}[/green]")
+        if parsed_from_cache and result is not None and hash_dir is not None:
+            progress.update(task, description="Reusing cached parse on storage...")
+            console.print(f"[dim]Skipped parse: reusing s3://{bucket}/{prefix}/[/dim]")
         else:
-            progress.update(task, description="Uploading to S3...")
-            client = _get_s3_client(endpoint_url, access_key, secret_key, region)
-            key_base = prefix
-            count = 0
-            for f in hash_dir.rglob("*"):
-                if f.is_file():
-                    rel = f.relative_to(hash_dir).as_posix()
-                    key = f"{key_base}/{rel}"
-                    ct = _content_type_for_path(rel)
-                    client.put_object(
-                        Bucket=bucket,
-                        Key=key,
-                        Body=f.read_bytes(),
-                        ContentType=ct,
-                    )
-                    count += 1
-            console.print(
-                f"[green]Uploaded {count} files to s3://{bucket}/{prefix}/[/green]"
-            )
+            try:
+                if use_baidu:
+                    from .baidu_parser import run_baidu_parser
 
+                    def _baidu_status(status: str) -> None:
+                        progress.update(task, description=f"Baidu parse: {status}...")
+
+                    fetch_ext = (
+                        parse_path.suffix.lower().lstrip(".")
+                        if parse_path.resolve() != stored_path.resolve()
+                        else stored_path.suffix.lower().lstrip(".")
+                    ) or "bin"
+                    result, _, _ = run_baidu_parser(
+                        input_path=parse_path,
+                        output_dir=out_base,
+                        api_key=cfg.baidu_cloud_api_key,
+                        secret_key=cfg.baidu_cloud_secret_key,
+                        content_hash_source=ch_source,
+                        document_id=document_id,
+                        original_file_ext=fetch_ext,
+                        poll_interval=baidu_poll_interval,
+                        max_wait=baidu_max_wait,
+                        on_status=_baidu_status,
+                    )
+                else:
+                    from .parser import run_parser
+
+                    result, _, _ = run_parser(
+                        input_path=parse_path,
+                        output_dir=out_base,
+                        vlm_url=vlm_url,
+                        vlm_api_key=vlm_api_key,
+                        model=merged_vlm_model,
+                        content_hash_source=ch_source,
+                    )
+            except ImportError:
+                dep = "requests (base)" if use_baidu else "openkms-cli[parse]"
+                console.print(f"[red]Parser not available. pip install {dep}[/red]")
+                raise typer.Exit(1)
+            except BaiduParseError as e:
+                console.print(f"[red]Baidu parse failed: {e}[/red]")
+                raise typer.Exit(1)
+            except requests.exceptions.RequestException as e:
+                console.print(f"[red]Baidu parse failed: network error ({e})[/red]")
+                raise typer.Exit(1)
+
+            file_hash = result["file_hash"]
+            hash_dir = out_base / file_hash
+            prefix = storage_prefix or file_hash
+
+            ext = Path(hash_src).suffix.lower().lstrip(".") or "pdf"
+            (hash_dir / f"original.{ext}").write_bytes(content)
+            result_json = json.dumps(result, indent=2, ensure_ascii=False)
+            (hash_dir / "result.json").write_text(result_json, encoding="utf-8")
+            if result.get("markdown"):
+                (hash_dir / "markdown.md").write_text(result["markdown"], encoding="utf-8")
+
+            if build_page_index and result.get("markdown"):
+                md_path = hash_dir / "markdown.md"
+                try:
+                    from .page_index import build_page_index_from_markdown
+
+                    progress.update(task, description="Building PageIndex...")
+                    tree = build_page_index_from_markdown(md_path)
+                    (hash_dir / "page_index.json").write_text(
+                        json.dumps(tree, indent=2, ensure_ascii=False), encoding="utf-8"
+                    )
+                    console.print("[dim]PageIndex built[/dim]")
+                except Exception as e:
+                    console.print(f"[yellow]PageIndex build failed: {e}. Skipping.[/yellow]")
+
+            if skip_upload:
+                count = sum(1 for f in hash_dir.rglob("*") if f.is_file())
+                console.print(f"[green]Pipeline done. {count} files in {hash_dir}[/green]")
+            else:
+                progress.update(task, description="Uploading to S3...")
+                upload_client = s3_client or _get_s3_client(endpoint_url, access_key, secret_key, region)
+                key_base = prefix
+                count = 0
+                for f in hash_dir.rglob("*"):
+                    if f.is_file():
+                        rel = f.relative_to(hash_dir).as_posix()
+                        key = f"{key_base}/{rel}"
+                        ct = _content_type_for_path(rel)
+                        upload_client.put_object(
+                            Bucket=bucket,
+                            Key=key,
+                            Body=f.read_bytes(),
+                            ContentType=ct,
+                        )
+                        count += 1
+                console.print(
+                    f"[green]Uploaded {count} files to s3://{bucket}/{prefix}/[/green]"
+                )
+
+        assert result is not None and hash_dir is not None and prefix is not None
+
+        has_api_auth = False
         markdown_synced = False
         if not skip_upload and document_id and result.get("markdown"):
             auth_headers, basic_auth, has_api_auth = _resolve_api_request_auth(required=extract_metadata)
@@ -580,86 +844,27 @@ def pipeline_run(
                     api_url, document_id, result["markdown"], auth_headers, basic_auth
                 )
 
-        if extract_metadata and document_id and result.get("markdown"):
-            auth_headers, basic_auth, has_api_auth = _resolve_api_request_auth(required=True)
-            progress.update(task, description="Extracting metadata...")
-            try:
-                from .extract import extract_metadata_sync
-            except ImportError:
-                console.print("[red]Metadata extraction requires pip install openkms-cli[metadata][/red]")
-                raise typer.Exit(1)
-
-            try:
-                schema_data = json.loads(extraction_schema)
-            except json.JSONDecodeError as e:
-                console.print(f"[red]Invalid --extraction-schema JSON: {e}[/red]")
-                raise typer.Exit(1)
-
-            if extraction_model_name:
-                from urllib.parse import quote
-
-                from .auth import auth_expired_response, try_api_request_auth
-
-                base = api_url.rstrip("/")
-                config_url = (
-                    f"{base}/internal-api/models/config-by-name"
-                    f"?model_name={quote(extraction_model_name)}"
-                )
-                config_resp = None
-                for attempt in range(2):
-                    req_headers = {**auth_headers}
-                    config_resp = requests.get(
-                        config_url,
-                        headers=req_headers,
-                        auth=basic_auth,
-                        timeout=30,
-                    )
-                    if config_resp.ok:
-                        break
-                    if attempt == 0 and auth_expired_response(config_resp):
-                        cred = try_api_request_auth()
-                        if cred is not None:
-                            auth_headers, basic_auth = cred
-                            continue
-                    break
-                if config_resp is None or not config_resp.ok:
-                    try:
-                        err = config_resp.json().get("detail", config_resp.text)
-                    except Exception:
-                        err = config_resp.text or str(config_resp.status_code)
-                    console.print(f"[red]Failed to fetch model config: {str(err)[:120]}[/red]")
-                    raise typer.Exit(1)
-                model_config = config_resp.json()
-            else:
-                model_config = {
-                    "base_url": extraction_model_base_url,
-                    "api_key": cfg.extraction_model_api_key,
-                    "model_name": extraction_model_name or "gpt-4",
-                }
-            extracted: dict | None = None
-            try:
-                extracted = extract_metadata_sync(result["markdown"], model_config, schema_data)
-            except ValueError as e:
-                # Do not fail the whole pipeline: parse + S3 + markdown already succeeded.
-                console.print(f"[yellow]Metadata extraction failed: {e}[/yellow]")
-                console.print(
-                    "[dim]Document parse finished; fix the extraction model (e.g. 502 from chat/completions) "
-                    "or use Extract on the document page when it is healthy.[/dim]"
-                )
-
-            if extracted is not None:
-                base = api_url.rstrip("/")
-                put_url = f"{base}/api/documents/{document_id}/metadata"
-                headers = {**auth_headers, "Content-Type": "application/json"}
-                resp = requests.put(
-                    put_url, json={"metadata": extracted}, headers=headers, auth=basic_auth, timeout=30
-                )
-                if not resp.ok:
-                    console.print(
-                        f"[yellow]PUT metadata failed: {resp.status_code} {resp.text[:200]}[/yellow]"
-                    )
-                else:
-                    console.print("[green]Metadata updated via API[/green]")
+        auth_headers, basic_auth = _run_pipeline_metadata_extraction(
+            result=result,
+            hash_dir=hash_dir,
+            prefix=prefix,
+            extract_metadata=extract_metadata,
+            document_id=document_id,
+            extraction_schema=extraction_schema,
+            extraction_model_name=extraction_model_name,
+            extraction_model_base_url=extraction_model_base_url,
+            api_url=api_url,
+            skip_upload=skip_upload,
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+            access_key=access_key,
+            secret_key=secret_key,
+            region=region,
+            progress=progress,
+            task=task,
+            auth_headers=auth_headers,
+            basic_auth=basic_auth,
+        )
 
         if (
             not skip_upload

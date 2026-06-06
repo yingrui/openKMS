@@ -19,6 +19,8 @@ import {
   Play,
   BookOpen,
   GitBranch,
+  RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import {
@@ -34,6 +36,7 @@ import {
   uploadDocument,
   deleteDocument,
   updateDocument,
+  resetDocumentStatus,
   isAcceptedFile,
   type DocumentListItemResponse,
 } from '../../data/documentsApi';
@@ -49,6 +52,17 @@ import { createJob } from '../../data/jobsApi';
 import './DocumentChannel.scss';
 
 const DOCS_PAGE_SIZE_DEFAULT = 25;
+
+const DOCUMENT_STATUS_FILTER_VALUES = [
+  '',
+  'uploaded',
+  'pending',
+  'running',
+  'completed',
+  'failed',
+] as const;
+
+type DocumentStatusFilter = (typeof DOCUMENT_STATUS_FILTER_VALUES)[number];
 
 const fileTypeIcons: Record<string, typeof FileText> = {
   PDF: FileText,
@@ -108,9 +122,10 @@ export function DocumentChannel() {
   const [moveModalDocIds, setMoveModalDocIds] = useState<string[] | null>(null);
   const [moveTargetChannelId, setMoveTargetChannelId] = useState('');
   const [moveLoading, setMoveLoading] = useState(false);
-  const [bulkBusy, setBulkBusy] = useState<'delete' | 'process' | 'move' | null>(null);
+  const [bulkBusy, setBulkBusy] = useState<'delete' | 'process' | 'move' | 'reset' | null>(null);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<DocumentStatusFilter>('');
 
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
@@ -131,6 +146,7 @@ export function DocumentChannel() {
     try {
       const res = await fetchDocumentsByChannel(channelId, {
         search: debouncedSearch || undefined,
+        status: statusFilter || undefined,
         offset: docsPage * docsPageSize,
         limit: docsPageSize,
       });
@@ -143,7 +159,7 @@ export function DocumentChannel() {
     } finally {
       setDocsLoading(false);
     }
-  }, [channelId, debouncedSearch, docsPage, docsPageSize, t]);
+  }, [channelId, debouncedSearch, statusFilter, docsPage, docsPageSize, t]);
 
   useEffect(() => {
     loadDocuments();
@@ -152,7 +168,7 @@ export function DocumentChannel() {
   useEffect(() => {
     setSelectedDocIds(new Set());
     setDocsPage(0);
-  }, [channelId, debouncedSearch]);
+  }, [channelId, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     if (docsTotal === 0) return;
@@ -180,6 +196,11 @@ export function DocumentChannel() {
         canQueueDocumentProcess(d.status ?? '', d.file_type, channelPipelineId),
       ),
     [selectedProcessableDocs, channelPipelineId],
+  );
+
+  const selectedResettableDocs = useMemo(
+    () => selectedDocs.filter((d) => d.status && d.status !== 'uploaded'),
+    [selectedDocs],
   );
 
   const bulkProcessBlockedByPipeline = useMemo(
@@ -429,6 +450,39 @@ export function DocumentChannel() {
     openMoveModal([...selectedDocIds]);
   };
 
+  const handleBulkResetStatus = async () => {
+    const docs = selectedResettableDocs;
+    if (docs.length === 0) {
+      toast.error(t('channel.resetBulkNone'));
+      return;
+    }
+    if (!window.confirm(t('channel.resetBulkConfirm', { count: docs.length }))) return;
+    setBulkBusy('reset');
+    let ok = 0;
+    try {
+      for (const doc of docs) {
+        try {
+          await resetDocumentStatus(doc.id);
+          ok += 1;
+        } catch {
+          /* continue with remaining */
+        }
+      }
+      const skipped = selectedCount - docs.length;
+      if (ok === docs.length && skipped === 0) {
+        toast.success(t('channel.resetBulkToast', { count: ok }));
+      } else if (ok > 0) {
+        toast.success(t('channel.resetBulkPartial', { ok, skipped, total: docs.length }));
+      } else {
+        toast.error(t('channel.resetBulkFailed'));
+      }
+      clearSelection();
+      await loadDocuments();
+    } finally {
+      setBulkBusy(null);
+    }
+  };
+
   const bulkActionsDisabled = bulkBusy !== null || moveLoading;
 
   const bulkProcessDisabled = bulkActionsDisabled || selectedRunnableDocs.length === 0;
@@ -437,6 +491,34 @@ export function DocumentChannel() {
     : selectedRunnableDocs.length === 0
       ? t('channel.processBulkNone')
       : t('channel.bulkProcess');
+
+  const bulkResetDisabled = bulkActionsDisabled || selectedResettableDocs.length === 0;
+  const bulkResetTitle =
+    selectedResettableDocs.length === 0
+      ? t('channel.resetBulkNone')
+      : t('channel.titleBulkResetStatus');
+
+  const statusFilterLabel = useCallback(
+    (value: DocumentStatusFilter) => {
+      switch (value) {
+        case '':
+          return t('channel.filterAllStatus');
+        case 'uploaded':
+          return t('channel.filterStatusUploaded');
+        case 'pending':
+          return t('channel.filterStatusPending');
+        case 'running':
+          return t('channel.filterStatusRunning');
+        case 'completed':
+          return t('channel.filterStatusCompleted');
+        case 'failed':
+          return t('channel.filterStatusFailed');
+        default:
+          return value;
+      }
+    },
+    [t],
+  );
 
   if (loading) {
     return (
@@ -530,13 +612,27 @@ export function DocumentChannel() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <select aria-label={t('channel.filterTypeAria')}>
-            <option>{t('channel.filterAll')}</option>
-            <option>{t('channel.filterPdf')}</option>
-            <option>{t('channel.filterHtml')}</option>
-            <option>{t('channel.filterZip')}</option>
-            <option>{t('channel.filterImage')}</option>
+          <select
+            aria-label={t('channel.filterStatusAria')}
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as DocumentStatusFilter)}
+          >
+            {DOCUMENT_STATUS_FILTER_VALUES.map((value) => (
+              <option key={value || 'all'} value={value}>
+                {statusFilterLabel(value)}
+              </option>
+            ))}
           </select>
+          <button
+            type="button"
+            className="btn btn-secondary documents-toolbar-refresh"
+            onClick={() => void loadDocuments()}
+            disabled={docsLoading}
+            title={t('channel.refreshTitle')}
+            aria-label={t('channel.refreshAria')}
+          >
+            <RefreshCw size={18} className={docsLoading ? 'documents-loading-spinner' : undefined} />
+          </button>
         </div>
         {selectedCount > 0 && (
           <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
@@ -571,6 +667,37 @@ export function DocumentChannel() {
                     <Play size={16} />
                   )}
                   <span>{t('channel.bulkProcess')}</span>
+                </button>
+              )}
+              {bulkResetDisabled ? (
+                <span className="documents-bulk-action-wrap" title={bulkResetTitle}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled
+                    aria-label={bulkResetTitle}
+                  >
+                    {bulkBusy === 'reset' ? (
+                      <Loader2 size={16} className="documents-loading-spinner" />
+                    ) : (
+                      <RotateCcw size={16} />
+                    )}
+                    <span>{t('channel.bulkResetStatus')}</span>
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void handleBulkResetStatus()}
+                  title={bulkResetTitle}
+                >
+                  {bulkBusy === 'reset' ? (
+                    <Loader2 size={16} className="documents-loading-spinner" />
+                  ) : (
+                    <RotateCcw size={16} />
+                  )}
+                  <span>{t('channel.bulkResetStatus')}</span>
                 </button>
               )}
               <button

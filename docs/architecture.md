@@ -374,7 +374,8 @@ sequenceDiagram
   VLM-->>CLI: Markdown, layout
   CLI->>S3: Upload result.json, markdown.md, images
   alt extraction enabled
-    CLI->>BE: PUT /api/documents/{id}/metadata
+    CLI->>BE: PUT /internal-api/documents/{id}/metadata
+    CLI->>BE: PUT /internal-api/documents/{id}/markdown
   end
   Q->>S3: Read result.json
   Q->>DB: status=completed, parsing_result, markdown
@@ -385,8 +386,8 @@ sequenceDiagram
 3. procrastinate worker picks up the job, renders the command template (substituting `{input}`, `{s3_prefix}`, `{vlm_url}`, `{model_name}`, etc.; model-linked values override defaults), sets `Document.status=running`
 4. If document's channel has extraction_model_id and extraction_schema, worker appends `--extract-metadata --document-id ... --api-url ... --extraction-schema-file ... --extraction-model-base-url ... --extraction-model-name ...` and passes `EXTRACTION_MODEL_API_KEY` in env
 5. Worker spawns the rendered command (e.g. `openkms-cli pipeline run --pipeline-name paddleocr-doc-parse --input s3://bucket/{file_hash}/original.{ext} --s3-prefix {file_hash}`)
-6. CLI authenticates to the API (OIDC client credentials Bearer token, or HTTP Basic in `OPENKMS_AUTH_MODE=local`), parses document via PaddleOCR-VL, uploads results to S3; if extraction enabled, extracts metadata via pydantic-ai and PUTs to `PUT /api/documents/{id}/metadata`
-7. Worker reads result.json from S3, updates Document (parsing_result, markdown, `status=completed`)
+6. CLI authenticates to the API (OIDC client credentials Bearer token, or HTTP Basic in `OPENKMS_AUTH_MODE=local`), parses document via PaddleOCR-VL, uploads results to S3; syncs markdown/metadata via **`PUT /internal-api/documents/{id}/markdown`** and **`PUT /internal-api/documents/{id}/metadata`** (internal service client only — no channel write ACL); optional **`POST /internal-api/documents/{id}/versions`** with tag Pipeline
+7. Worker reads result.json (and optional `{file_hash}/extracted_metadata.json`) from S3, updates Document (parsing_result, markdown, metadata merge, `status=completed`)
 8. On failure: `status=failed`; user can retry via `POST /api/jobs/{id}/retry`
 
 ### Document Detail

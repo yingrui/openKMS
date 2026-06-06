@@ -77,7 +77,19 @@ $agents-pane-header-height: 49px;
   }
 }
 
+.agents-sessions-project-block {
+  margin-top: 2px;
+}
+
+.agents-sessions-project-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .agents-sessions-project {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--color-text);
@@ -89,21 +101,17 @@ $agents-pane-header-height: 49px;
   font-size: 0.75rem;
   color: var(--color-text-muted);
   line-height: 1.4;
-}
-
-.agents-sessions-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 .agents-sessions-new {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 8px;
-  margin: 0 -8px;
+  width: 100%;
+  padding: 8px 12px;
+  margin: 8px 0 0;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
@@ -111,7 +119,6 @@ $agents-pane-header-height: 49px;
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
-  text-align: left;
 
   &:hover {
     background: var(--color-bg-hover);
@@ -123,9 +130,9 @@ $agents-pane-header-height: 49px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  margin-left: auto;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;

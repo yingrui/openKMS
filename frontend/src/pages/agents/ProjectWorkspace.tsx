@@ -442,7 +442,7 @@ export function ProjectWorkspace() {
         <AgentSessionSidebar
           projectId={projectId}
           projectName={project.name}
-          projectSlug={project.slug}
+          projectSlug={project.description?.trim() || project.slug}
           conversations={conversations}
           activeId={convId}
           onNewChat={onNewChat}
