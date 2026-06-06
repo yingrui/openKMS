@@ -12,6 +12,7 @@ from openkms_cli.baidu_parser import (
     _position_to_bbox,
     _rewrite_markdown_image_urls,
     _scale_layout_coordinates_to_preview,
+    _submit_parse_task_file_url_with_retries,
     create_parse_task,
     get_access_token,
     poll_parse_task,
@@ -44,25 +45,6 @@ def test_get_access_token_missing_credentials():
         get_access_token("", "")
 
 
-def test_create_parse_task_file_data_success():
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.headers = {"Content-Type": "application/json"}
-    mock_resp.url = "https://aip.baidubce.com/task"
-    mock_resp.text = '{"error_code": 0, "result": {"task_id": "task-abc"}}'
-    mock_resp.json.return_value = {
-        "error_code": 0,
-        "result": {"task_id": "task-abc"},
-    }
-    with patch("openkms_cli.baidu_parser.requests.post", return_value=mock_resp) as mock_post:
-        task_id = create_parse_task("tok", "doc.pdf", file_bytes=b"%PDF-1.4")
-    assert task_id == "task-abc"
-    payload = mock_post.call_args.kwargs.get("data") or mock_post.call_args[1].get("data")
-    assert "file_data" in payload
-    assert "file_url" not in payload
-    assert payload["file_name"] == "doc.pdf"
-
-
 def test_create_parse_task_file_url_success():
     mock_resp = MagicMock()
     mock_resp.status_code = 200
@@ -73,7 +55,7 @@ def test_create_parse_task_file_url_success():
         "error_code": 0,
         "result": {"task_id": "task-url-1"},
     }
-    file_url = "https://kms.example.com/api/public/documents/d1/original.pdf?exp=1&sig=abc"
+    file_url = "https://bucket.bj.bcebos.com/tmp/doc.pdf?authorization=bce-auth-v1/test"
     with patch("openkms_cli.baidu_parser.requests.post", return_value=mock_resp) as mock_post:
         task_id = create_parse_task("tok", "doc.pdf", file_url=file_url)
     assert task_id == "task-url-1"
@@ -82,8 +64,8 @@ def test_create_parse_task_file_url_success():
     assert "file_data" not in payload
 
 
-def test_create_parse_task_requires_input():
-    with pytest.raises(BaiduParseError, match="file_bytes or file_url"):
+def test_create_parse_task_requires_file_url():
+    with pytest.raises(TypeError):
         create_parse_task("tok", "doc.pdf")
 
 
@@ -108,24 +90,19 @@ def test_baidu_http_json_non_json_body():
         _baidu_http_json(mock_resp, "task_submit")
 
 
-def test_validate_file_data_size_image_too_large():
-    from openkms_cli.baidu_parser import validate_file_data_size
+def test_baidu_post_retries_on_ssl_error():
+    from openkms_cli.baidu_parser import _baidu_post
 
-    with pytest.raises(BaiduParseError, match="10MB"):
-        validate_file_data_size(b"x" * (11 * 1024 * 1024), "photo.jpg")
-
-
-def test_validate_file_data_size_document_over_50mb():
-    from openkms_cli.baidu_parser import MAX_FILE_DATA_BYTES, validate_file_data_size
-
-    with pytest.raises(BaiduParseError, match="50MB"):
-        validate_file_data_size(b"x" * (MAX_FILE_DATA_BYTES + 1), "report.pdf")
-
-
-def test_validate_file_data_size_document_at_limit_ok():
-    from openkms_cli.baidu_parser import MAX_FILE_DATA_BYTES, validate_file_data_size
-
-    validate_file_data_size(b"x" * MAX_FILE_DATA_BYTES, "report.pdf")
+    mock_http = MagicMock()
+    mock_http.post.side_effect = [
+        requests.exceptions.SSLError("eof"),
+        requests.exceptions.SSLError("eof"),
+        MagicMock(status_code=200, text='{"ok":1}', headers={}),
+    ]
+    with patch("openkms_cli.baidu_parser.time.sleep"):
+        resp = _baidu_post(mock_http, "https://example/task", operation="task_submit", timeout=10)
+    assert resp.status_code == 200
+    assert mock_http.post.call_count == 3
 
 
 def test_query_parse_task_error():
@@ -261,3 +238,63 @@ def test_scale_layout_coordinates_to_preview(tmp_path):
     assert layout_list[0]["boxes"][0]["coordinate"] == [0.0, 0.0, 200.0, 40.0]
     assert layout_list[0]["width"] == 1224.0
     assert layout_list[0]["height"] == 1584.0
+
+
+def test_submit_file_url_retries_on_baidu_download_timeout():
+    urls = [
+        "https://bucket.bj.bcebos.com/tmp/a.pdf?authorization=one",
+        "https://bucket.bj.bcebos.com/tmp/a.pdf?authorization=two",
+    ]
+    session = MagicMock()
+    call_count = {"n": 0}
+
+    def get_url():
+        url = urls[call_count["n"]]
+        call_count["n"] += 1
+        return url
+
+    with patch(
+        "openkms_cli.baidu_parser.create_parse_task",
+        side_effect=[
+            BaiduParseError("Baidu task submit failed: url download timeout (282112)"),
+            "task-retry-ok",
+        ],
+    ) as mock_submit:
+        with patch("openkms_cli.baidu_parser.time.sleep") as mock_sleep:
+            with patch(
+                "openkms_cli.baidu_parser._baidu_file_url_submit_settings",
+                return_value=(3, 20, 600),
+            ):
+                task_id = _submit_parse_task_file_url_with_retries(
+                    "tok",
+                    "doc.pdf",
+                    get_file_url=get_url,
+                    file_size=100,
+                    session=session,
+                )
+    assert task_id == "task-retry-ok"
+    assert mock_submit.call_count == 2
+    mock_sleep.assert_called_once_with(20)
+
+
+def test_submit_file_url_exhausted_retries_raises():
+    err = BaiduParseError("Baidu task submit failed: url download timeout (282112)")
+    session = MagicMock()
+
+    with patch(
+        "openkms_cli.baidu_parser.create_parse_task",
+        side_effect=err,
+    ):
+        with patch("openkms_cli.baidu_parser.time.sleep"):
+            with patch(
+                "openkms_cli.baidu_parser._baidu_file_url_submit_settings",
+                return_value=(2, 0, 600),
+            ):
+                with pytest.raises(BaiduParseError, match="after 2 attempts"):
+                    _submit_parse_task_file_url_with_retries(
+                        "tok",
+                        "doc.pdf",
+                        get_file_url=lambda: "https://bucket.bj.bcebos.com/tmp/a.pdf?authorization=x",
+                        file_size=100,
+                        session=session,
+                    )

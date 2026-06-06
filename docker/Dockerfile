@@ -66,7 +66,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY openkms-cli /openkms-cli
 
-RUN cd /openkms-cli && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb,parse]"
+RUN cd /openkms-cli && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb,parse,baidu]"
 
 WORKDIR /app
 

@@ -2395,7 +2395,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+baidu = [
+    { name = "bce-python-sdk" },
+]
 dev = [
+    { name = "jsonschema" },
     { name = "pytest" },
 ]
 kb = [
@@ -2423,7 +2427,9 @@ pipeline = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bce-python-sdk", marker = "extra == 'baidu'", specifier = ">=0.9.0" },
     { name = "boto3", marker = "extra == 'pipeline'", specifier = ">=1.26.0" },
+    { name = "jsonschema", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "numpy", marker = "extra == 'parse'", specifier = ">=2.0,<2.4" },
     { name = "openai", marker = "extra == 'kb'", specifier = ">=1.0.0" },
     { name = "openai", marker = "extra == 'metadata'", specifier = ">=1.0.0" },
@@ -2444,7 +2450,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.0.0" },
     { name = "typer", specifier = ">=0.9.0" },
 ]
-provides-extras = ["parse", "pipeline", "metadata", "kb", "dev"]
+provides-extras = ["parse", "pipeline", "baidu", "metadata", "kb", "dev"]
 
 [[package]]
 name = "openpyxl"

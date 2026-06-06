@@ -206,7 +206,6 @@ def parse_run(
                         api_key=s.baidu_cloud_api_key,
                         secret_key=s.baidu_cloud_secret_key,
                         content_hash_source=ch_source,
-                        upload_mode_setting=s.baidu_upload_mode,
                         poll_interval=baidu_poll_interval,
                         max_wait=baidu_max_wait,
                         on_status=_baidu_status,

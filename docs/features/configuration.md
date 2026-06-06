@@ -55,9 +55,16 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_OIDC_REDIRECT_URI` | `http://localhost:8102/login/oauth2/code/oidc` | Must match the IdP registration |
 | `OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID` | `openkms-frontend` | Sent on RP-initiated logout |
 | `OPENKMS_INTERNAL_SERVICE_CLIENT_IDS` | `openkms-cli,qa-agent` | Comma-separated OIDC client ids allowed on `/internal-api`; first id is `local-cli` JWT `azp` |
-| `OPENKMS_FRONTEND_URL` | `http://localhost:5173` | SPA origin (CORS, redirects); **must be a URL Baidu can reach** when using **`baidu-doc-parse`** **`file_url`** (signed `GET /api/public/documents/.../original.{ext}`) |
-| `OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS` | `3600` | TTL for signed public document URLs minted for Baidu **`file_url`** |
-| `OPENKMS_BAIDU_UPLOAD_MODE` | `auto` (CLI/worker env) | **`auto`**: **`file_data`** within Baidu caps (images 10MB, docs 50MB); **`file_url`** only when larger and **`--document-id`** is set; force with **`file_data`** / **`file_url`** |
+| `OPENKMS_FRONTEND_URL` | `http://localhost:5173` | SPA origin (CORS, redirects) |
+| `OPENKMS_BAIDU_BOS_BUCKET` | *(required for baidu-doc-parse)* | Private Baidu BOS bucket for temporary document staging |
+| `OPENKMS_BAIDU_BOS_ACCESS_KEY` | *(required)* | **IAM Access Key ID** for BOS (not the OCR API Key) |
+| `OPENKMS_BAIDU_BOS_SECRET_KEY` | *(required)* | **IAM Secret Access Key** for BOS |
+| `OPENKMS_BAIDU_BOS_ENDPOINT` | `bj.bcebos.com` | BOS region endpoint |
+| `OPENKMS_BAIDU_BOS_PREFIX` | `openkms-temp` | Object key prefix for staged files (keep short for presigned URL length) |
+| `OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS` | `3600` | Presigned GET URL TTL for Baidu **`file_url`** submit |
+| `OPENKMS_BAIDU_FILE_URL_SUBMIT_RETRIES` | `3` | On Baidu **`282112` / url download timeout**, re-mint presigned URL and re-submit |
+| `OPENKMS_BAIDU_FILE_URL_RETRY_DELAY_SECONDS` | `20` | Pause between **`file_url`** submit retries |
+| `OPENKMS_BAIDU_FILE_URL_SUBMIT_TIMEOUT_SECONDS` | `600` | HTTP timeout for task submit POST (Baidu-side download timeout is not configurable) |
 
 ## Document parsing (VLM)
 

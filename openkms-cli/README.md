@@ -12,7 +12,7 @@ Copy **`openkms-cli/.env.example`** and adjust. For auth against the API, match 
 
 **VLM (document parse / paddleocr pipeline):** When **`OPENKMS_VLM_URL`**, **`OPENKMS_VLM_MODEL`**, or **`OPENKMS_VLM_API_KEY`** are unset (and no key in settings), the CLI calls **`GET {OPENKMS_API_URL}/internal-api/models/document-parse-defaults`** with the same auth as other CLI API calls (**HTTP Basic** in local mode, **client credentials** in OIDC). If **`OPENKMS_VLM_MODEL`** is set in the environment, the request includes **`?model_name=...`** so the backend returns that model’s URL and key when it has the **`document-parse`** capability (matched by name), otherwise the default document-parse row (same as omitting the query). Merge **`base_url`**, **`model_name`**, and **`api_key`** from the JSON response. Override any value with **`OPENKMS_VLM_*`** in `.env` when needed.
 
-**Baidu Cloud (baidu-doc-parse pipeline):** Set **`OPENKMS_BAIDU_CLOUD_API_KEY`** and **`OPENKMS_BAIDU_CLOUD_SECRET_KEY`**. Optional endpoint overrides: **`BAIDU_TOKEN_URL`**, **`BAIDU_TASK_URL`**, **`BAIDU_QUERY_URL`**. With **`--document-id`** (worker pipeline), **`auto`** uses **`file_data`** when the file fits Baidu caps (images ≤10MB, other ≤50MB); larger files use a signed **`file_url`** on **`OPENKMS_FRONTEND_URL`**. Override with **`OPENKMS_BAIDU_UPLOAD_MODE`** (`auto` \| `file_data` \| `file_url`).
+**Baidu Cloud (baidu-doc-parse pipeline):** Set **`OPENKMS_BAIDU_CLOUD_API_KEY`**, **`OPENKMS_BAIDU_CLOUD_SECRET_KEY`**, and **`OPENKMS_BAIDU_BOS_BUCKET`** (private bucket; disable hotlink protection). The CLI uploads each document to BOS, submits a **presigned `file_url`** to paddle-vl-parser, then deletes the staged object. Optional: **`OPENKMS_BAIDU_BOS_ENDPOINT`**, **`OPENKMS_BAIDU_BOS_PREFIX`**, **`OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS`**, **`BAIDU_*_URL`**. Install the **`baidu`** extra: `pip install -e ".[baidu,pipeline]"`.
 
 ## Install
 
@@ -66,7 +66,7 @@ Wiki content is pulled only for **wiki spaces already linked** to that KB (`GET 
 
 ```bash
 openkms-cli pipeline run --input ./doc.pdf --s3-prefix <prefix>
-# Baidu Cloud (no local VLM): sends document as base64 file_data, polls Baidu API
+# Baidu Cloud (no local VLM): stages on BOS presigned file_url, polls Baidu API
 openkms-cli pipeline run --pipeline-name baidu-doc-parse --input ./doc.pdf --s3-prefix <prefix>
 ```
 

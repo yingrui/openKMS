@@ -26,6 +26,9 @@ parse = [
 pipeline = [
     "boto3>=1.26.0",
 ]
+baidu = [
+    "bce-python-sdk>=0.9.0",
+]
 metadata = [
     "pydantic-ai>=0.0.14",
     "openai>=1.0.0",

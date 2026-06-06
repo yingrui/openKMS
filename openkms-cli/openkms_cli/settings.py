@@ -41,7 +41,6 @@ class CliSettings(BaseSettings):
     # --- Backend API (pipeline metadata sync, kb-index, etc.) ---
     openkms_api_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_API_URL")
     frontend_url: str = Field(default="", validation_alias="OPENKMS_FRONTEND_URL")
-    baidu_upload_mode: str = Field(default="auto", validation_alias="OPENKMS_BAIDU_UPLOAD_MODE")
 
     # --- Embedding overrides (kb-index pipeline) ---
     embedding_model_base_url: str = Field(default="", validation_alias="OPENKMS_EMBEDDING_MODEL_BASE_URL")
@@ -71,6 +70,41 @@ class CliSettings(BaseSettings):
     baidu_query_url: str = Field(
         default="https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task/query",
         validation_alias="BAIDU_QUERY_URL",
+    )
+    baidu_file_url_submit_retries: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        validation_alias="OPENKMS_BAIDU_FILE_URL_SUBMIT_RETRIES",
+    )
+    baidu_file_url_retry_delay_seconds: int = Field(
+        default=20,
+        ge=0,
+        le=300,
+        validation_alias="OPENKMS_BAIDU_FILE_URL_RETRY_DELAY_SECONDS",
+    )
+    baidu_file_url_submit_timeout_seconds: int = Field(
+        default=600,
+        ge=60,
+        le=1800,
+        validation_alias="OPENKMS_BAIDU_FILE_URL_SUBMIT_TIMEOUT_SECONDS",
+    )
+    baidu_bos_bucket: str = Field(default="", validation_alias="OPENKMS_BAIDU_BOS_BUCKET")
+    baidu_bos_access_key: str = Field(default="", validation_alias="OPENKMS_BAIDU_BOS_ACCESS_KEY")
+    baidu_bos_secret_key: str = Field(default="", validation_alias="OPENKMS_BAIDU_BOS_SECRET_KEY")
+    baidu_bos_endpoint: str = Field(
+        default="bj.bcebos.com",
+        validation_alias="OPENKMS_BAIDU_BOS_ENDPOINT",
+    )
+    baidu_bos_prefix: str = Field(
+        default="openkms-temp",
+        validation_alias="OPENKMS_BAIDU_BOS_PREFIX",
+    )
+    baidu_bos_presign_ttl_seconds: int = Field(
+        default=3600,
+        ge=300,
+        le=86_400,
+        validation_alias="OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS",
     )
 
     # --- AWS / S3 (standard names) ---

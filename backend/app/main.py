@@ -14,9 +14,7 @@ from app.api.channels import router as channels_router
 from app.api.documents import router as documents_router
 from app.api.feature_toggles import router as feature_toggles_router
 from app.api.jobs import router as jobs_router
-from app.api.internal import documents_router as internal_documents_router
 from app.api.internal import models_router as internal_models_router
-from app.api.public_documents import public_router as public_documents_router
 from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.knowledge_bases import router as knowledge_bases_router
@@ -109,7 +107,6 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(api_auth_router)
 app.include_router(system_public_router, prefix="/api")
-app.include_router(public_documents_router, prefix="/api")
 app.include_router(system_settings_router, prefix="/api")
 app.include_router(knowledge_map_router, prefix="/api")
 app.include_router(home_hub_router, prefix="/api")
@@ -122,7 +119,6 @@ app.include_router(feature_toggles_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")
 app.include_router(models_router, prefix="/api")
 app.include_router(internal_models_router)
-app.include_router(internal_documents_router)
 app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")

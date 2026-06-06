@@ -40,7 +40,7 @@ Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_
 
 **VLM:** Start **`vlm-server`** on the host first (`vlm-server/`, default **8101**) for the PaddleOCR pipeline. Document parse fails without it. Override **`OPENKMS_VLM_URL`** in **`docker/.env`**.
 
-**Baidu Cloud parse:** For pipeline **`baidu-doc-parse`**, set **`OPENKMS_BAIDU_CLOUD_*`** in **`docker/.env`** (see **`docker/.env.example`**); no VLM required.
+**Baidu Cloud parse:** For pipeline **`baidu-doc-parse`**, set **`OPENKMS_BAIDU_CLOUD_*`** and **`OPENKMS_BAIDU_BOS_*`** in **`docker/.env`** (see **`docker/.env.example`**); worker uploads to private BOS then submits presigned **`file_url`**. No VLM required. Rebuild worker after changing Baidu env (`docker compose up -d --build worker`).
 
 **QA agent:** **http://localhost:8103** on the host; default LLM from Console → Models. Env from the same compose **`environment`** pattern as backend/worker.
 

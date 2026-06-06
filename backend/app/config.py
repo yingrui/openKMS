@@ -243,12 +243,40 @@ class Settings(BaseSettings):
         validation_alias="OPENKMS_OIDC_REDIRECT_URI",
     )
     frontend_url: str = Field(default="http://localhost:5173", validation_alias="OPENKMS_FRONTEND_URL")
-    baidu_external_fetch_ttl_seconds: int = Field(
+    baidu_file_url_submit_retries: int = Field(
+        default=3,
+        ge=1,
+        le=10,
+        validation_alias="OPENKMS_BAIDU_FILE_URL_SUBMIT_RETRIES",
+    )
+    baidu_file_url_retry_delay_seconds: int = Field(
+        default=20,
+        ge=0,
+        le=300,
+        validation_alias="OPENKMS_BAIDU_FILE_URL_RETRY_DELAY_SECONDS",
+    )
+    baidu_file_url_submit_timeout_seconds: int = Field(
+        default=600,
+        ge=60,
+        le=1800,
+        validation_alias="OPENKMS_BAIDU_FILE_URL_SUBMIT_TIMEOUT_SECONDS",
+    )
+    baidu_bos_bucket: str = Field(default="", validation_alias="OPENKMS_BAIDU_BOS_BUCKET")
+    baidu_bos_access_key: str = Field(default="", validation_alias="OPENKMS_BAIDU_BOS_ACCESS_KEY")
+    baidu_bos_secret_key: str = Field(default="", validation_alias="OPENKMS_BAIDU_BOS_SECRET_KEY")
+    baidu_bos_endpoint: str = Field(
+        default="bj.bcebos.com",
+        validation_alias="OPENKMS_BAIDU_BOS_ENDPOINT",
+    )
+    baidu_bos_prefix: str = Field(
+        default="openkms-temp",
+        validation_alias="OPENKMS_BAIDU_BOS_PREFIX",
+    )
+    baidu_bos_presign_ttl_seconds: int = Field(
         default=3600,
         ge=300,
         le=86_400,
-        validation_alias="OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS",
-        description="TTL for signed public document URLs passed to Baidu file_url (seconds).",
+        validation_alias="OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS",
     )
     oidc_post_logout_client_id: str = Field(
         default="openkms-frontend",

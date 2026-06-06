@@ -24,7 +24,7 @@ Document channels (folder tree), per-channel pipelines and metadata extraction, 
 ## Document parsing (PaddleOCR-VL and Baidu Cloud)
 
 - **PaddleOCR-VL** with mlx-vlm-server as VLM backend (`paddleocr-doc-parse` pipeline / default `parse run`)
-- **Baidu Cloud PaddleOCR-VL API** (`baidu-doc-parse` pipeline / `parse run --method baidu-doc-parse`) — **`auto`**: **`file_data`** when within Baidu caps (images 10MB, other 50MB); **`file_url`** (signed URL on **`OPENKMS_FRONTEND_URL`**) only for larger files with **`--document-id`**; credentials **`OPENKMS_BAIDU_CLOUD_*`** and optional **`BAIDU_*_URL`** in **`openkms-cli/.env`**; page preview PNGs and bbox coords use **2× `page_meta`** (same grid as local VLM)
+- **Baidu Cloud PaddleOCR-VL API** (`baidu-doc-parse` pipeline / `parse run --method baidu-doc-parse`) — uploads to **private Baidu BOS**, submits **presigned `file_url`** to paddle-vl-parser; credentials **`OPENKMS_BAIDU_CLOUD_*`**, bucket **`OPENKMS_BAIDU_BOS_BUCKET`**, optional **`BAIDU_*_URL`** in **`openkms-cli/.env`**; disable BOS **hotlink protection**; page preview PNGs and bbox coords use **2× `page_meta`** (same grid as local VLM)
 - Supports: PDF, PNG, JPG, JPEG, WEBP; **DOCX** and **PPTX** are converted to PDF with **LibreOffice** (`soffice` / `libreoffice`) in the worker/CLI; **EPUB** is converted to PDF with **MuPDF** (`mutool`; package `mupdf-tools` in the worker image), then parsed like PDF
 - Output: Markdown, layout detection, parsing result JSON
 - Configurable: server URL, model, max concurrency

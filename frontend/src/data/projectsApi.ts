@@ -163,18 +163,14 @@ function joinProjectPath(dir: string, filePath: string): string {
   return d ? `${d}/${f}` : f;
 }
 
-/** Relative path within the upload target; folder picks use webkitRelativePath minus the root folder name. */
+/** Relative path for upload; folder picks keep the selected folder name and nested paths. */
 export function projectUploadRelativePath(file: File, folderPick: boolean): string {
   const webkit =
     'webkitRelativePath' in file
       ? (file as File & { webkitRelativePath?: string }).webkitRelativePath
       : undefined;
   const raw = folderPick && webkit ? webkit : file.name;
-  const norm = raw.replace(/\\/g, '/').replace(/^\/+/, '');
-  if (!folderPick || !webkit) return norm;
-  const slash = norm.indexOf('/');
-  if (slash === -1) return norm;
-  return norm.slice(slash + 1);
+  return raw.replace(/\\/g, '/').replace(/^\/+/, '');
 }
 
 export async function uploadProjectFileAtPath(

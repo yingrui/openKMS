@@ -80,10 +80,6 @@ class StrictPermissionPatternMiddleware(BaseHTTPMiddleware):
         if (method, path) in _UNAUTH_EXACT:
             return await call_next(request)
 
-        # Signed temporary links for external parsers (Baidu file_url); no session auth.
-        if method == "GET" and path.startswith("/api/public/documents/") and "/original." in path:
-            return await call_next(request)
-
         try:
             async with async_session_maker() as db:
                 await authenticate_request(request, db)

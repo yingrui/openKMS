@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Folder, File, FolderUp, Upload, GitBranch, Loader2 } from 'lucide-react';
+import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft } from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
 import { gitStatusLabel } from './gitStatusLabel';
 import {
@@ -49,6 +49,13 @@ function clampTreeWidth(w: number, railWidthPx: number): number {
   return Math.round(Math.min(Math.min(TREE_MAX_PX, max), Math.max(TREE_MIN_PX, w)));
 }
 
+function parentPath(cwd: string): string {
+  const norm = cwd.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (!norm) return '';
+  const i = norm.lastIndexOf('/');
+  return i === -1 ? '' : norm.slice(0, i);
+}
+
 interface Props {
   projectId: string;
   gitInitialized: boolean;
@@ -73,6 +80,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   const uploadMenuRef = useRef<HTMLDivElement>(null);
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [treeWidthPx, setTreeWidthPx] = useState(readTreeWidth);
 
   useEffect(() => {
@@ -176,6 +184,22 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.refreshError'));
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const goUp = () => {
+    setCwd(parentPath(cwd));
+    closeFile();
+  };
+
   const onUploadPick = async (files: FileList | null, folderPick: boolean) => {
     setUploadMenuOpen(false);
     const list = files ? Array.from(files) : [];
@@ -220,6 +244,13 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
 
   const changeCount = gitEntries.length;
   const fileOpen = selected !== null;
+  const uploadTargetLabel = cwd || t('files.projectRoot');
+  const cwdLabel = cwd ? (cwd.split('/').pop() ?? cwd) : null;
+  const headTitle = cwdLabel
+    ? cwdLabel
+    : gitInitialized
+      ? t('files.changes', { count: changeCount })
+      : t('files.title');
   const treeWidth = clampTreeWidth(treeWidthPx, railWidthPx);
   const railStyle = {
     flex: `0 0 ${railWidthPx}px`,
@@ -268,9 +299,22 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
         aria-label={t('files.title')}
       >
         <div className="agents-files-head">
-          <span className="agents-files-head-title">
-            {gitInitialized ? t('files.changes', { count: changeCount }) : t('files.title')}
-          </span>
+          <div className="agents-files-head-title-row">
+            {cwd ? (
+              <button
+                type="button"
+                className="agents-files-back-btn"
+                onClick={goUp}
+                title={t('files.goUpHint')}
+                aria-label={t('files.goUp')}
+              >
+                <ChevronLeft size={16} />
+              </button>
+            ) : null}
+            <span className="agents-files-head-title" title={cwd || undefined}>
+              {headTitle}
+            </span>
+          </div>
           <div className="agents-files-head-actions">
             <div className="agents-files-upload" ref={uploadMenuOpen ? uploadMenuRef : undefined}>
               {uploadMenuOpen ? (
@@ -281,6 +325,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
                     className="agents-files-upload-menu-item"
                     disabled={uploading}
                     onClick={() => uploadFilesRef.current?.click()}
+                    title={t('files.uploadFilesHint', { path: uploadTargetLabel })}
                   >
                     <Upload size={14} />
                     <span>{t('files.uploadFiles')}</span>
@@ -291,6 +336,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
                     className="agents-files-upload-menu-item"
                     disabled={uploading}
                     onClick={() => uploadFolderRef.current?.click()}
+                    title={t('files.uploadFolderHint', { path: uploadTargetLabel })}
                   >
                     <FolderUp size={14} />
                     <span>{t('files.uploadFolder')}</span>
@@ -310,6 +356,20 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
                 {uploading ? <Loader2 size={15} className="agents-session-more-spinner" /> : <Upload size={15} />}
               </button>
             </div>
+            <button
+              type="button"
+              className="agents-files-icon-btn"
+              onClick={() => void onRefresh()}
+              title={t('files.refreshHint')}
+              aria-label={t('files.refresh')}
+              disabled={refreshing || uploading}
+            >
+              {refreshing ? (
+                <Loader2 size={15} className="agents-session-more-spinner" />
+              ) : (
+                <RefreshCw size={15} />
+              )}
+            </button>
             <input
               ref={uploadFilesRef}
               type="file"
@@ -346,12 +406,20 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
                 <GitBranch size={15} />
               </button>
             )}
-            {cwd ? (
-              <button type="button" className="agents-files-all-btn" onClick={() => setCwd('')}>
+            {!cwd ? (
+              <span className="agents-files-all-btn agents-files-all-btn--static">{t('files.allFiles')}</span>
+            ) : (
+              <button
+                type="button"
+                className="agents-files-all-btn"
+                onClick={() => {
+                  setCwd('');
+                  closeFile();
+                }}
+                title={t('files.allFilesHint')}
+              >
                 {t('files.allFiles')}
               </button>
-            ) : (
-              <span className="agents-files-all-btn agents-files-all-btn--static">{t('files.allFiles')}</span>
             )}
           </div>
         </div>

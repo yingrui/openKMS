@@ -29,7 +29,7 @@ SUPPORTED_PIPELINES: dict[str, tuple[str, str]] = {
     ),
     "baidu-doc-parse": (
         "Baidu Cloud Document Parse",
-        "Parse via Baidu PaddleOCR-VL API (file_url or file_data); output markdown and images to S3.",
+        "Parse via Baidu PaddleOCR-VL API (BOS presigned file_url); output markdown and images to S3.",
     ),
     "kb-index": (
         "Knowledge Base Index",
@@ -494,10 +494,6 @@ def pipeline_run(
                     secret_key=cfg.baidu_cloud_secret_key,
                     content_hash_source=ch_source,
                     document_id=document_id,
-                    api_url=api_url,
-                    auth_headers=baidu_auth_headers or None,
-                    basic_auth=baidu_basic_auth,
-                    upload_mode_setting=cfg.baidu_upload_mode,
                     original_file_ext=fetch_ext,
                     poll_interval=baidu_poll_interval,
                     max_wait=baidu_max_wait,
@@ -521,8 +517,8 @@ def pipeline_run(
         except BaiduParseError as e:
             console.print(f"[red]Baidu parse failed: {e}[/red]")
             raise typer.Exit(1)
-        except requests.exceptions.JSONDecodeError as e:
-            console.print(f"[red]Baidu parse failed: invalid JSON from API ({e})[/red]")
+        except requests.exceptions.RequestException as e:
+            console.print(f"[red]Baidu parse failed: network error ({e})[/red]")
             raise typer.Exit(1)
         file_hash = result["file_hash"]
         hash_dir = out_base / file_hash
