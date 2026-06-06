@@ -568,14 +568,16 @@ def _save_block_image(
     *,
     session: requests.Session | None = None,
 ) -> tuple[str, str] | None:
-    """Download image bytes; return (local filename, storage path {file_hash}/block_N.png)."""
+    """Download image bytes; return (markdown rel name, storage path under markdown_out/)."""
     try:
         img_bytes = _download_bytes(data_url, session=session)
     except Exception:
         return None
     name = f"block_{block_counter}.png"
-    (out_dir / name).write_bytes(img_bytes)
-    return name, f"{file_hash}/{name}"
+    md_dir = out_dir / "markdown_out"
+    md_dir.mkdir(parents=True, exist_ok=True)
+    (md_dir / name).write_bytes(img_bytes)
+    return name, f"{file_hash}/markdown_out/{name}"
 
 
 def _build_result_from_baidu_json(
@@ -848,6 +850,10 @@ def run_baidu_parser(
     md_dir.mkdir(parents=True, exist_ok=True)
     md_name = "input.md"
     (md_dir / md_name).write_text(result["markdown"], encoding="utf-8")
-    markdown_out_files = [(md_name, result["markdown"].encode("utf-8"))]
+    markdown_out_files: list[tuple[str, bytes]] = []
+    for f in md_dir.rglob("*"):
+        if f.is_file():
+            rel = f.relative_to(md_dir).as_posix()
+            markdown_out_files.append((rel, f.read_bytes()))
 
     return result, extra_files, markdown_out_files

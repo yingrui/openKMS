@@ -198,7 +198,8 @@ def test_build_result_from_baidu_json(tmp_path):
     assert box["block_index"] == 0
     assert result["parser"] == "baidu-cloud-paddle-vl"
     chart_block = next(b for b in result["parsing_res_list"] if b["label"] == "chart")
-    assert chart_block["image_path"] == f"{file_hash}/block_0.png"
+    assert chart_block["image_path"] == f"{file_hash}/markdown_out/block_0.png"
+    assert (tmp_path / "markdown_out" / "block_0.png").read_bytes() == b"\x89PNG\r\n"
 
 
 def test_build_result_from_baidu_json_requires_pages(tmp_path):
