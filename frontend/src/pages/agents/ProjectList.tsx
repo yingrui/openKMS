@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Bot, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createProject, listProjects, type ProjectResponse } from '../../data/projectsApi';
+import { AgentsListSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectList.scss';
 
 export function ProjectList() {
@@ -94,7 +95,7 @@ export function ProjectList() {
         </div>
       ) : null}
 
-      {loading ? <p className="agents-loading">{t('loading')}</p> : null}
+      {loading ? <AgentsListSkeleton /> : null}
 
       {!loading && projects.length === 0 ? (
         <div className="agents-empty">

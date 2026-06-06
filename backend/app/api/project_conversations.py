@@ -26,6 +26,7 @@ from app.models.project import Project
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
 from app.services.agent.llm import resolve_agent_llm_config
+from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.conversation_title import suggest_conversation_title
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
@@ -281,6 +282,8 @@ async def post_message(
                 yield _ndjson_line({"type": "user", "message": _msg_to_out(user_msg).model_dump(mode="json")})
                 assistant_id = new_id()
                 text_parts: list[str] = []
+                tool_traces: list[dict[str, str]] = []
+                tool_inputs: dict[str, str] = {}
                 async for part in iter_project_stream_parts(
                     db,
                     c,
@@ -290,17 +293,45 @@ async def post_message(
                     project.settings or {},
                     plan_mode=plan_mode,
                 ):
-                    if part.get("type") == "delta" and part.get("t"):
+                    ptype = part.get("type")
+                    if ptype == "delta" and part.get("t"):
                         text_parts.append(part["t"])
+                    elif ptype == "tool_start":
+                        run_id = str(part.get("run_id") or "")
+                        inp = part.get("input")
+                        if run_id and isinstance(inp, str):
+                            tool_inputs[run_id] = inp
+                    elif ptype == "tool_end":
+                        name = str(part.get("name") or "tool")
+                        trace: dict[str, str] = {
+                            "name": name,
+                            "output": str(part.get("output") or ""),
+                        }
+                        run_id = str(part.get("run_id") or "")
+                        if run_id and run_id in tool_inputs:
+                            trace["input"] = tool_inputs[run_id]
+                        tool_traces.append(trace)
+                    elif ptype == "tool_error":
+                        name = str(part.get("name") or "tool")
+                        trace = {
+                            "name": name,
+                            "error": str(part.get("error") or ""),
+                        }
+                        run_id = str(part.get("run_id") or "")
+                        if run_id and run_id in tool_inputs:
+                            trace["input"] = tool_inputs[run_id]
+                        tool_traces.append(trace)
                     yield _ndjson_line(part)
-                    if part.get("type") == "fatal":
+                    if ptype == "fatal":
                         return
                 content = "".join(text_parts)
+                tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: tool_traces} if tool_traces else None
                 asst = AgentMessage(
                     id=assistant_id,
                     conversation_id=c.id,
                     role="assistant",
                     content=content,
+                    tool_calls=tool_payload,
                 )
                 db.add(asst)
                 await db.flush()

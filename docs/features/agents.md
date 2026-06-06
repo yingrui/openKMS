@@ -18,7 +18,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 ## Layout
 
 - **Left:** conversation sessions (month-grouped), like KB Q&A.
-- **Center:** chat thread + plan toggle + composer.
+- **Center:** chat thread + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot).
 - **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize (chat ↔ files rail, and file viewer ↔ tree when a file is open); widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder (recursive; the selected folder name is preserved under the **current tree location**—open a subfolder first to upload elsewhere). Refresh, parent-folder navigation, and per-row delete (`.openkms` protected).
 
 ## Configuration

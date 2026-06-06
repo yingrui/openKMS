@@ -158,6 +158,7 @@
     "newDraftOption": "＋ 新消息（草稿）",
     "toolDone": "完成",
     "toolError": "错误",
-    "toolIoSummary": "输入 / 输出"
+    "toolIoSummary": "输入 / 输出",
+    "subagentLabel": "子代理"
   }
 }

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
+import { AgentsFileSkeleton } from './AgentsPageSkeleton';
 import './AgentsWorkspace.scss';
 
 function escapeHtml(text: string): string {
@@ -57,7 +58,7 @@ export function AgentFileViewer({ path, content, isBinary, loading, onClose }: P
       </div>
       <div className="agents-file-viewer-body">
         {loading ? (
-          <p className="agents-file-viewer-status">{t('loading')}</p>
+          <AgentsFileSkeleton />
         ) : isBinary ? (
           <p className="agents-file-viewer-status">{content}</p>
         ) : (

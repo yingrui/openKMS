@@ -27,7 +27,6 @@ import {
   Loader2,
   Filter,
   ChevronDown,
-  Terminal,
   ArrowUp,
   RefreshCw,
 } from 'lucide-react';
@@ -78,6 +77,7 @@ import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
+import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
 import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
 import {
   appendDeltaToStreamParts,
@@ -1613,70 +1613,11 @@ export function KnowledgeBaseDetail() {
                         {msg.role === 'user' ? t('detail.qaLabelYou') : t('detail.qaLabelAssistant')}
                       </span>
                       {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
-                        <div
-                          className="wiki-space-agent-panel__assistant-stream kb-qa-assistant-stream"
-                          aria-label={t('detail.qaReplyAria')}
-                        >
-                          {msg.streamParts.map((part, j) =>
-                            part.type === 'text' ? (
-                              <WikiAgentMessageBody
-                                key={`t-${i}-${j}`}
-                                text={part.text}
-                                variant="assistant"
-                              />
-                            ) : (
-                              <div
-                                key={
-                                  part.step.runId
-                                    ? `tool-${part.step.runId}-${j}`
-                                    : `tool-${i}-${j}`
-                                }
-                                className="wiki-space-agent-panel__tool-pill"
-                              >
-                                <div className="wiki-space-agent-panel__tool-pill-line">
-                                  <Terminal
-                                    size={12}
-                                    strokeWidth={2}
-                                    className="wiki-space-agent-panel__tool-pill-ico"
-                                    aria-hidden
-                                  />
-                                  <span className="wiki-space-agent-panel__tool-pill-name">
-                                    {part.step.name}
-                                  </span>
-                                  {part.step.status === 'running' ? (
-                                    <span className="wiki-space-agent-panel__tool-pill-badge">…</span>
-                                  ) : null}
-                                  {part.step.status === 'ok' ? (
-                                    <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--ok">
-                                      {t('detail.qaToolDone')}
-                                    </span>
-                                  ) : null}
-                                  {part.step.status === 'err' ? (
-                                    <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--err">
-                                      {t('detail.qaToolError')}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                {(part.step.input || part.step.output || part.step.error) &&
-                                (part.step.status !== 'running' || part.step.input) ? (
-                                  <details className="wiki-space-agent-panel__tool-details">
-                                    <summary>{t('detail.qaToolIoSummary')}</summary>
-                                    {part.step.input ? (
-                                      <pre className="wiki-space-agent-panel__tool-pre">{part.step.input}</pre>
-                                    ) : null}
-                                    {part.step.output ? (
-                                      <pre className="wiki-space-agent-panel__tool-pre">{part.step.output}</pre>
-                                    ) : null}
-                                    {part.step.error ? (
-                                      <pre className="wiki-space-agent-panel__tool-pre wiki-space-agent-panel__tool-pre--err">
-                                        {part.step.error}
-                                      </pre>
-                                    ) : null}
-                                  </details>
-                                ) : null}
-                              </div>
-                            )
-                          )}
+                        <div className="kb-qa-assistant-stream">
+                          <AgentAssistantStreamBody
+                            streamParts={msg.streamParts}
+                            fallbackText={msg.content}
+                          />
                         </div>
                       ) : msg.role === 'assistant' &&
                         !msg.content &&

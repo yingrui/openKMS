@@ -15,10 +15,17 @@ export type AgentToolCallStep = {
   status: 'running' | 'ok' | 'err';
 };
 
+export type SubagentStep = {
+  id: string;
+  label: string;
+  status: 'running' | 'ok';
+};
+
 /** Interleaved text + tool rows in stream order (assistant messages only; optional when loaded from API). */
 export type AssistantStreamPart =
   | { type: 'text'; text: string }
-  | { type: 'tool'; step: AgentToolCallStep };
+  | { type: 'tool'; step: AgentToolCallStep }
+  | { type: 'subagent'; step: SubagentStep };
 
 export function appendDeltaToStreamParts(
   parts: AssistantStreamPart[] | undefined,
@@ -68,6 +75,30 @@ export function updateToolInParts(
   return { next, updated: true };
 }
 
+export function appendSubagentStart(
+  parts: AssistantStreamPart[] | undefined,
+  label: string,
+): AssistantStreamPart[] {
+  const next = parts ? [...parts] : [];
+  next.push({
+    type: 'subagent',
+    step: { id: `sub-${next.length}-${Date.now()}`, label, status: 'running' },
+  });
+  return next;
+}
+
+export function completeSubagent(parts: AssistantStreamPart[] | undefined): AssistantStreamPart[] {
+  const next = parts ? [...parts] : [];
+  for (let i = next.length - 1; i >= 0; i--) {
+    const p = next[i];
+    if (p?.type === 'subagent' && p.step.status === 'running') {
+      next[i] = { type: 'subagent', step: { ...p.step, status: 'ok' } };
+      break;
+    }
+  }
+  return next;
+}
+
 function streamPartsFromPersistedToolCalls(toolCalls: unknown): AssistantStreamPart[] | undefined {
   if (!toolCalls || typeof toolCalls !== 'object' || Array.isArray(toolCalls)) return undefined;
   const raw = (toolCalls as Record<string, unknown>)[WIKI_TOOL_TRANSCRIPTS_KEY];
@@ -78,14 +109,18 @@ function streamPartsFromPersistedToolCalls(toolCalls: unknown): AssistantStreamP
     if (!row || typeof row !== 'object') continue;
     const o = row as Record<string, unknown>;
     const name = typeof o.name === 'string' ? o.name : 'tool';
-    const output = typeof o.output === 'string' ? o.output : '';
+    const output = typeof o.output === 'string' ? o.output : undefined;
+    const input = typeof o.input === 'string' ? o.input : undefined;
+    const error = typeof o.error === 'string' ? o.error : undefined;
     parts.push({
       type: 'tool',
       step: {
         runId: `persisted-${i}-${name}`,
         name,
+        input,
         output,
-        status: 'ok',
+        error,
+        status: error ? 'err' : 'ok',
       },
     });
   }

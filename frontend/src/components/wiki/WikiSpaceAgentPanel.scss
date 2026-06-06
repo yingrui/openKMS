@@ -165,28 +165,52 @@
 }
 
 /* Cursor-style compact tool / terminal rows */
+.wiki-space-agent-panel__tool-row {
+  align-self: stretch;
+  max-width: 100%;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.wiki-space-agent-panel__tool-row--expand > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.wiki-space-agent-panel__tool-row--expand > summary::-webkit-details-marker {
+  display: none;
+}
+
+.wiki-space-agent-panel__tool-row--expand[open] .wiki-space-agent-panel__tool-pill-chevron {
+  transform: rotate(90deg);
+}
+
 .wiki-space-agent-panel__tool-pill {
   align-self: stretch;
   max-width: 100%;
-  border-radius: 10px;
-  padding: 0.4rem 0.55rem;
-  background: color-mix(in srgb, var(--color-text) 6%, var(--color-bg-elevated));
-  border: 1px solid var(--color-border);
-  font-size: 0.7rem;
-  line-height: 1.35;
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .wiki-space-agent-panel__tool-pill-line {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   min-width: 0;
+  padding: 0.15rem 0;
   font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.wiki-space-agent-panel__tool-row--expand > summary:hover,
+.wiki-space-agent-panel__tool-row--expand > summary:focus-visible {
+  color: var(--color-text);
 }
 
 .wiki-space-agent-panel__tool-pill-ico {
   flex-shrink: 0;
   color: var(--color-text-muted);
+  opacity: 0.7;
 }
 
 .wiki-space-agent-panel__tool-pill-name {
@@ -196,6 +220,37 @@
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--color-text-secondary);
+}
+
+.wiki-space-agent-panel__tool-pill-kind {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.wiki-space-agent-panel__tool-pill-detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-agent-panel__tool-pill-chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  transition: transform 0.15s ease;
+}
+
+.wiki-space-agent-panel__tool-pill-running {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.wiki-space-agent-panel__tool-row--subagent .wiki-space-agent-panel__tool-pill-kind {
+  color: var(--color-accent);
 }
 
 .wiki-space-agent-panel__tool-pill-badge {
@@ -218,6 +273,10 @@
   background: var(--color-error-bg);
 }
 
+.wiki-space-agent-panel__tool-io {
+  margin: 0.15rem 0 0.35rem 1.1rem;
+}
+
 .wiki-space-agent-panel__tool-details {
   margin-top: 0.35rem;
 }
@@ -235,11 +294,11 @@
 }
 
 .wiki-space-agent-panel__tool-pre {
-  margin: 0.3rem 0 0;
-  max-height: 12rem;
+  margin: 0.25rem 0 0;
+  max-height: 10rem;
   overflow: auto;
-  padding: 0.45rem 0.5rem;
-  font-size: 0.65rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.68rem;
   line-height: 1.35;
   border-radius: 6px;
   background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));

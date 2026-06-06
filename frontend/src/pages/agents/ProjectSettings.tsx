@@ -10,6 +10,7 @@ import {
   updateProject,
   type ProjectResponse,
 } from '../../data/projectsApi';
+import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectSettings.scss';
 
 type TabId = 'general' | 'agent';
@@ -78,14 +79,7 @@ export function ProjectSettings() {
   };
 
   if (loading) {
-    return (
-      <div className="project-settings">
-        <p className="project-settings-loading">
-          <Loader2 size={16} className="project-settings-spinner" />
-          {t('loading')}
-        </p>
-      </div>
-    );
+    return <AgentsSettingsSkeleton />;
   }
 
   if (!project) {

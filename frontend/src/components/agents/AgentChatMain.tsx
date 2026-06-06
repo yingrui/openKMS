@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp } from 'lucide-react';
-import { WikiAgentMessageBody } from '../wiki/WikiAgentMessageBody';
+import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import '../wiki/WikiSpaceAgentPanel.scss';
@@ -86,17 +86,10 @@ export function AgentChatMain({
             <div key={m.id ?? i} className={`agents-chat-msg agents-chat-msg--${m.role}`}>
               <div className="agents-chat-msg-body">
                 {m.role === 'assistant' ? (
-                  <>
-                    <WikiAgentMessageBody text={m.content} variant={m.role} />
-                    {m.streamParts?.map((p, j) =>
-                      p.type === 'tool' ? (
-                        <div key={j} className="wiki-space-agent-panel__tool-pill">
-                          <span>{p.step.name}</span>
-                          <span>{p.step.status}</span>
-                        </div>
-                      ) : null,
-                    )}
-                  </>
+                  <AgentAssistantStreamBody
+                    streamParts={m.streamParts}
+                    fallbackText={m.content}
+                  />
                 ) : (
                   m.content
                 )}
@@ -123,6 +116,9 @@ export function AgentChatMain({
               rows={1}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.nativeEvent.isComposing || e.nativeEvent.keyCode === 229) {
+                    return;
+                  }
                   e.preventDefault();
                   submit(e);
                 }

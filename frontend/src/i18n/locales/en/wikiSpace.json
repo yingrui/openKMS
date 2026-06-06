@@ -158,6 +158,7 @@
     "newDraftOption": "＋ New message (draft)",
     "toolDone": "done",
     "toolError": "error",
-    "toolIoSummary": "Input / output"
+    "toolIoSummary": "Input / output",
+    "subagentLabel": "Subagent"
   }
 }

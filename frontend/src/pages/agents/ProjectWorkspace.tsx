@@ -5,10 +5,15 @@ import { toast } from 'sonner';
 import { AgentChatMain, type ChatMessage } from '../../components/agents/AgentChatMain';
 import { AgentFilesPanel } from '../../components/agents/AgentFilesPanel';
 import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
+import { AgentsWorkspaceSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import {
   appendDeltaToStreamParts,
+  appendSubagentStart,
+  assistantHistoryStreamParts,
+  completeSubagent,
   updateToolInParts,
 } from '../../components/wiki/wikiCopilotStreamParts';
+import { parseSubagentLabel } from '../../components/wiki/agentStreamToolDisplay';
 import type { AgentConversationResponse } from '../../data/agentApi';
 import {
   createProjectConversation,
@@ -126,6 +131,9 @@ export function ProjectWorkspace() {
         role: m.role as 'user' | 'assistant',
         content: m.content,
         id: m.id,
+        ...(m.role === 'assistant'
+          ? { streamParts: assistantHistoryStreamParts(m.content, m.tool_calls) }
+          : {}),
       })),
     );
   }, [projectId]);
@@ -298,6 +306,56 @@ export function ProjectWorkspace() {
                 return { ...p, streamParts: next };
               }),
             );
+          } else if (ev.type === 'tool_error') {
+            setMessages((prev) =>
+              prev.map((p) => {
+                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+                const { next, updated } = updateToolInParts(p.streamParts ?? [], ev.run_id, (s) => ({
+                  ...s,
+                  error: ev.error,
+                  status: 'err' as const,
+                }));
+                return {
+                  ...p,
+                  streamParts: updated
+                    ? next
+                    : [
+                        ...(p.streamParts ?? []),
+                        {
+                          type: 'tool' as const,
+                          step: {
+                            runId: ev.run_id,
+                            name: ev.name,
+                            error: ev.error,
+                            status: 'err' as const,
+                          },
+                        },
+                      ],
+                };
+              }),
+            );
+          } else if (ev.type === 'subagent_start') {
+            setMessages((prev) =>
+              prev.map((p) =>
+                p.id === asstStreamId && p.role === 'assistant'
+                  ? {
+                      ...p,
+                      streamParts: appendSubagentStart(
+                        p.streamParts,
+                        parseSubagentLabel(ev.name),
+                      ),
+                    }
+                  : p,
+              ),
+            );
+          } else if (ev.type === 'subagent_end') {
+            setMessages((prev) =>
+              prev.map((p) =>
+                p.id === asstStreamId && p.role === 'assistant'
+                  ? { ...p, streamParts: completeSubagent(p.streamParts) }
+                  : p,
+              ),
+            );
           } else if (ev.type === 'todo') {
             setTodos(ev.todos);
           } else if (ev.type === 'interrupt') {
@@ -314,11 +372,20 @@ export function ProjectWorkspace() {
             );
           } else if (ev.type === 'done') {
             setMessages((prev) =>
-              prev.map((p) =>
-                p.id === asstStreamId
-                  ? { role: 'assistant', content: ev.assistant.content, id: ev.assistant.id }
-                  : p,
-              ),
+              prev.map((p) => {
+                if (p.id !== asstStreamId) return p;
+                const historyParts = assistantHistoryStreamParts(
+                  ev.assistant.content,
+                  ev.assistant.tool_calls,
+                );
+                return {
+                  role: 'assistant',
+                  content: ev.assistant.content,
+                  id: ev.assistant.id,
+                  streamParts:
+                    p.streamParts && p.streamParts.length > 0 ? p.streamParts : historyParts,
+                };
+              }),
             );
           }
         },
@@ -360,7 +427,7 @@ export function ProjectWorkspace() {
     }
   };
 
-  if (!project) return <div className="page-loading">{t('loading')}</div>;
+  if (!project) return <AgentsWorkspaceSkeleton />;
 
   const activeConv = conversations.find((c) => c.id === convId);
   const sessionTitle = activeConv

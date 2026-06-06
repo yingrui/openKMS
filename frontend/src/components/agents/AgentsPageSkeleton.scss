@@ -1,0 +1,300 @@
+@use '../../styles/design-system/tokens' as ds;
+
+@keyframes agents-sk-shimmer {
+  0% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+
+.agents-page-skeleton {
+  pointer-events: none;
+}
+
+.agents-sk {
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 8%, var(--color-bg-muted));
+  animation: agents-sk-shimmer 1.35s ease-in-out infinite;
+}
+
+/* —— Workspace —— */
+.agents-loading-sessions {
+  width: 240px;
+  min-width: 240px;
+  padding: 14px 12px;
+  border-right: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agents-sk--back {
+  width: 72px;
+  height: 12px;
+}
+
+.agents-sk--project {
+  width: 140px;
+  height: 16px;
+}
+
+.agents-sk--btn {
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+}
+
+.agents-loading-session-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.agents-sk--session {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.agents-sk--session-active {
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-muted));
+}
+
+.agents-loading-chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+.agents-sk--chat-head {
+  width: 160px;
+  height: 18px;
+  margin: 16px 20px 0;
+}
+
+.agents-loading-chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 20px;
+}
+
+.agents-sk--bubble {
+  height: 44px;
+  border-radius: 12px;
+}
+
+.agents-sk--bubble-user {
+  width: min(280px, 55%);
+  align-self: flex-end;
+}
+
+.agents-sk--bubble-assistant {
+  width: min(420px, 75%);
+  align-self: flex-start;
+}
+
+.agents-sk--bubble-short {
+  width: min(320px, 60%);
+}
+
+.agents-sk--composer {
+  height: 52px;
+  margin: 0 16px 16px;
+  border-radius: 12px;
+}
+
+.agents-loading-files {
+  width: 300px;
+  min-width: 240px;
+  padding: 12px;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.agents-loading-files-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.agents-sk--files-title {
+  width: 72px;
+  height: 14px;
+}
+
+.agents-sk--icon-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.agents-sk--file-row {
+  width: 100%;
+  height: 22px;
+  margin-bottom: 8px;
+}
+
+.agents-sk--file-row-indent {
+  width: 78%;
+  margin-left: 14px;
+}
+
+/* —— Project list —— */
+.agents-loading-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.agents-sk--list-title {
+  width: 120px;
+  height: 28px;
+}
+
+.agents-loading-list-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.agents-sk--list-btn {
+  width: 100px;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+
+.agents-sk--list-btn-primary {
+  width: 120px;
+}
+
+.agents-loading-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
+  gap: 20px;
+}
+
+.agents-loading-card {
+  padding: 24px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.agents-loading-card-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.agents-sk--card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+}
+
+.agents-sk--card-actions {
+  width: 56px;
+  height: 24px;
+}
+
+.agents-sk--card-name {
+  width: 70%;
+  height: 18px;
+  margin-bottom: 10px;
+}
+
+.agents-sk--card-desc {
+  width: 100%;
+  height: 14px;
+  margin-bottom: 8px;
+}
+
+.agents-sk--card-meta {
+  width: 45%;
+  height: 12px;
+}
+
+/* —— Settings —— */
+.agents-sk--settings-back {
+  width: 88px;
+  height: 14px;
+  margin-bottom: 20px;
+}
+
+.agents-sk--settings-title {
+  width: 180px;
+  height: 28px;
+  margin-bottom: 8px;
+}
+
+.agents-sk--settings-sub {
+  width: 260px;
+  height: 14px;
+  margin-bottom: 24px;
+}
+
+.agents-loading-settings-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.agents-sk--tab {
+  width: 96px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.agents-loading-settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.agents-loading-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agents-sk--field-label {
+  width: 64px;
+  height: 12px;
+}
+
+.agents-sk--field-input {
+  width: 100%;
+  height: 40px;
+  border-radius: var(--radius-md);
+}
+
+/* —— File viewer —— */
+.agents-file-skeleton {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agents-sk--code-line {
+  width: 100%;
+  height: 12px;
+}
+
+.agents-sk--code-line-short {
+  width: 42%;
+}

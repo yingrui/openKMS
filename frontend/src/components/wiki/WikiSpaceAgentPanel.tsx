@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bot, ChevronsRight, MessageCirclePlus, RefreshCw, Send, Terminal, Trash2 } from 'lucide-react';
+import { Bot, ChevronsRight, MessageCirclePlus, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AgentAssistantStreamBody } from '../agents/AgentAssistantStreamBody';
 import {
   createAgentConversation,
   deleteAgentConversation,
@@ -653,76 +654,10 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
               <span className="wiki-space-agent-panel__msg-label">
                 {m.role === 'user' ? t('copilot.labelYou') : t('copilot.labelCopilot')}
               </span>
-              {m.role === 'assistant' && m.streamParts && m.streamParts.length > 0 ? (
-                <div className="wiki-space-agent-panel__assistant-stream" aria-label={t('copilot.replyAria')}>
-                  {m.streamParts.map((part, i) =>
-                    part.type === 'text' ? (
-                      <WikiAgentMessageBody
-                        key={`t-${i}`}
-                        text={part.text}
-                        variant="assistant"
-                      />
-                    ) : (
-                      <div
-                        key={part.step.runId ? `tool-${part.step.runId}-${i}` : `tool-${i}`}
-                        className="wiki-space-agent-panel__tool-pill"
-                      >
-                        <div className="wiki-space-agent-panel__tool-pill-line">
-                          <Terminal
-                            size={12}
-                            strokeWidth={2}
-                            className="wiki-space-agent-panel__tool-pill-ico"
-                            aria-hidden
-                          />
-                          <span className="wiki-space-agent-panel__tool-pill-name">
-                            {part.step.name}
-                          </span>
-                          {part.step.status === 'running' ? (
-                            <span className="wiki-space-agent-panel__tool-pill-badge">…</span>
-                          ) : null}
-                          {part.step.status === 'ok' ? (
-                            <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--ok">
-                              {t('copilot.toolDone')}
-                            </span>
-                          ) : null}
-                          {part.step.status === 'err' ? (
-                            <span className="wiki-space-agent-panel__tool-pill-badge wiki-space-agent-panel__tool-pill-badge--err">
-                              {t('copilot.toolError')}
-                            </span>
-                          ) : null}
-                        </div>
-                        {(part.step.input || part.step.output || part.step.error) &&
-                        (part.step.status !== 'running' || part.step.input) ? (
-                          <details className="wiki-space-agent-panel__tool-details">
-                            <summary>{t('copilot.toolIoSummary')}</summary>
-                            {part.step.input ? (
-                              <pre className="wiki-space-agent-panel__tool-pre">
-                                {part.step.input}
-                              </pre>
-                            ) : null}
-                            {part.step.output ? (
-                              <pre className="wiki-space-agent-panel__tool-pre">
-                                {part.step.output}
-                              </pre>
-                            ) : null}
-                            {part.step.error ? (
-                              <pre
-                                className="wiki-space-agent-panel__tool-pre wiki-space-agent-panel__tool-pre--err"
-                              >
-                                {part.step.error}
-                              </pre>
-                            ) : null}
-                          </details>
-                        ) : null}
-                      </div>
-                    )
-                  )}
-                </div>
+              {m.role === 'assistant' ? (
+                <AgentAssistantStreamBody streamParts={m.streamParts} fallbackText={m.text} />
               ) : (
-                <WikiAgentMessageBody
-                  text={m.text}
-                  variant={m.role === 'user' ? 'user' : 'assistant'}
-                />
+                <WikiAgentMessageBody text={m.text} variant="user" />
               )}
               {m.role === 'user' && PERSISTED_AGENT_MSG_ID.test(m.id) ? (
                 <div className="wiki-space-agent-panel__user-restart">
