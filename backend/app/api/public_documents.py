@@ -6,18 +6,39 @@ import logging
 import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import RedirectResponse
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.config import settings
 from app.database import get_db
 from app.models.document import Document
 from app.services.document_fetch_token import verify_document_fetch_token
-from app.services.storage import get_redirect_url, object_exists
+from app.services.storage import get_object, object_exists
 
 logger = logging.getLogger(__name__)
 
 public_router = APIRouter(prefix="/public/documents", tags=["public-documents"])
+
+_ORIGINAL_MEDIA_TYPES: dict[str, str] = {
+    "pdf": "application/pdf",
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "bmp": "image/bmp",
+    "tif": "image/tiff",
+    "tiff": "image/tiff",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "ppt": "application/vnd.ms-powerpoint",
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "txt": "text/plain",
+    "ofd": "application/octet-stream",
+}
+
+
+def _media_type_for_ext(ext: str) -> str:
+    return _ORIGINAL_MEDIA_TYPES.get(ext.lower().lstrip("."), "application/octet-stream")
 
 
 @public_router.get("/{document_id}/original.{file_ext}")
@@ -29,10 +50,11 @@ async def fetch_document_original_public(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Temporary public GET for original document bytes (302 → presigned S3 / bucket proxy).
+    Temporary public GET for original document bytes (200, streamed from storage).
 
     Used by Baidu Cloud ``file_url`` mode. No session auth; ``exp`` + ``sig`` must match
     values minted via ``GET /internal-api/documents/{id}/baidu-fetch-url``.
+    Returns file body directly (no redirect) so external fetchers need not follow presigned URLs.
     """
     ext = file_ext.lower().lstrip(".")
     doc = await db.get(Document, document_id)
@@ -58,13 +80,16 @@ async def fetch_document_original_public(
         )
         raise HTTPException(status_code=404, detail="File not found")
 
-    remaining = max(60, exp - int(time.time()))
-    redirect_url = get_redirect_url(key, expires_in=min(remaining, settings.baidu_external_fetch_ttl_seconds))
+    body = await run_in_threadpool(get_object, key)
     logger.info(
-        "public_fetch redirect document_id=%s file_hash_prefix=%s ext=%s remaining_ttl=%s",
+        "public_fetch stream document_id=%s file_hash_prefix=%s ext=%s bytes=%s",
         document_id,
         file_hash[:12],
         ext,
-        remaining,
+        len(body),
     )
-    return RedirectResponse(url=redirect_url, status_code=302)
+    return Response(
+        content=body,
+        media_type=_media_type_for_ext(ext),
+        headers={"Content-Length": str(len(body))},
+    )

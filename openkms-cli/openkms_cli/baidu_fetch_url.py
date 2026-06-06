@@ -13,13 +13,6 @@ from .baidu_parser import BaiduParseError
 logger = logging.getLogger("openkms_cli.baidu")
 
 
-def _redact_url(url: str) -> str:
-    if "sig=" not in url:
-        return url
-    parsed = urlparse(url)
-    return f"{parsed.scheme}://{parsed.netloc}{parsed.path}?exp=...&sig=<redacted>"
-
-
 def request_baidu_file_url(
     api_url: str,
     document_id: str,
@@ -75,7 +68,7 @@ def request_baidu_file_url(
         document_id,
         ext,
         data.get("expires_at"),
-        _redact_url(file_url),
+        file_url,
     )
     return file_url
 

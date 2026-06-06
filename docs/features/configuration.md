@@ -105,6 +105,7 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 |---|---|---|
 | `OPENKMS_OIDC_TOKEN_URL` | unset | Required when **`OPENKMS_AUTH_MODE=oidc`**; IdP `token_endpoint` |
 | `OPENKMS_CLI_OIDC_CLIENT_ID` / `OPENKMS_CLI_OIDC_CLIENT_SECRET` | `openkms-cli` / unset | Client credentials for `/internal-api` and other API calls |
+| `OPENKMS_CLI_LOG_LEVEL` | `INFO` | **`openkms_cli.*`** logs to stderr (visible in job Worker output); e.g. **`DEBUG`** for Baidu **`file_url`** diagnostics |
 | `OPENKMS_LLM_MODEL_BASE_URL` | unset | Override LLM base URL (skip backend fetch for this field) |
 | `OPENKMS_LLM_MODEL_NAME` | unset | Override model name |
 | `OPENKMS_LLM_MODEL_API_KEY` | unset | Override API key |

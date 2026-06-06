@@ -10,9 +10,11 @@ load_dotenv(_env)
 load_dotenv()  # also cwd
 
 from .app import app
+from .logging_config import configure_cli_logging
 
 
 def run() -> None:
+    configure_cli_logging()
     app()
 
 

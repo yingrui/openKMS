@@ -30,6 +30,8 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_FILE_DATA_BYTES = 50 * 1024 * 1024
 # auto mode with document_id: file_data when size <= this; file_url above (until Baidu file_data cap).
 BAIDU_AUTO_FILE_DATA_MAX_BYTES = 5 * 1024 * 1024
+# Baidu file_url URL length limit (bytes).
+BAIDU_MAX_FILE_URL_BYTES = 1024
 BaiduUploadMode = Literal["file_data", "file_url"]
 
 _BAIDU_IMAGE_EXT = frozenset({".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"})
@@ -40,6 +42,41 @@ _BAIDU_NATIVE_EXT = _BAIDU_IMAGE_EXT | _BAIDU_STREAMING_EXT | _BAIDU_LAYOUT_EXT
 
 class BaiduParseError(RuntimeError):
     """Raised when Baidu Cloud document parsing fails."""
+
+
+def _baidu_http_json(resp: requests.Response, operation: str) -> dict[str, Any]:
+    """Parse Baidu API JSON body; raise BaiduParseError with HTTP/body diagnostics."""
+    text = (resp.text or "").strip()
+    ctype = resp.headers.get("Content-Type", "")
+    if not text:
+        logger.error(
+            "baidu_%s empty_body status=%s content_type=%s url=%s",
+            operation,
+            resp.status_code,
+            ctype,
+            resp.url[:200] if resp.url else "",
+        )
+        raise BaiduParseError(
+            f"Baidu {operation} returned empty body (HTTP {resp.status_code}). "
+            f"Check BAIDU_*_URL, network egress, and OPENKMS_BAIDU_CLOUD_* credentials."
+        )
+    try:
+        data = resp.json()
+    except requests.exceptions.JSONDecodeError as e:
+        preview = text[:500].replace("\n", " ")
+        logger.error(
+            "baidu_%s non_json status=%s content_type=%s preview=%s",
+            operation,
+            resp.status_code,
+            ctype,
+            preview,
+        )
+        raise BaiduParseError(
+            f"Baidu {operation} returned non-JSON (HTTP {resp.status_code}): {preview}"
+        ) from e
+    if not isinstance(data, dict):
+        raise BaiduParseError(f"Baidu {operation} returned unexpected JSON: {type(data).__name__}")
+    return data
 
 
 def _baidu_urls() -> tuple[str, str, str]:
@@ -92,11 +129,19 @@ def get_access_token(api_key: str, secret_key: str, *, session: requests.Session
         },
         timeout=30,
     )
-    data = resp.json()
+    data = _baidu_http_json(resp, "access_token")
     if resp.status_code != 200 or "access_token" not in data:
         err = data.get("error_description") or data.get("error") or resp.text[:200]
         raise BaiduParseError(f"Baidu access_token request failed: {err}")
     return str(data["access_token"])
+
+
+def _worker_output(line: str) -> None:
+    """Emit a line via CLI logger (stderr → job worker output)."""
+    from .logging_config import configure_cli_logging
+
+    configure_cli_logging()
+    logger.info(line)
 
 
 def _redact_file_url(url: str) -> str:
@@ -122,7 +167,14 @@ def create_parse_task(
 
     if file_url:
         mode: BaiduUploadMode = "file_url"
-        payload["file_url"] = file_url.strip()
+        file_url = file_url.strip()
+        url_len = len(file_url.encode("utf-8"))
+        if url_len > BAIDU_MAX_FILE_URL_BYTES:
+            raise BaiduParseError(
+                f"Baidu file_url exceeds {BAIDU_MAX_FILE_URL_BYTES} bytes ({url_len}). "
+                f"Use a shorter OPENKMS_FRONTEND_URL or reduce signed URL length."
+            )
+        payload["file_url"] = file_url
         if file_bytes is not None:
             logger.info(
                 "baidu_task_submit mode=file_url file_name=%s size=%s url=%s",
@@ -157,13 +209,14 @@ def create_parse_task(
             payload[key] = str(val).lower() if isinstance(val, bool) else str(val)
 
     _, task_url, _ = _baidu_urls()
+    logger.info("baidu_task_submit POST %s mode=%s", task_url.split("?")[0], mode)
     resp = http.post(
         f"{task_url}?access_token={access_token}",
         data=payload,
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=300,
     )
-    data = resp.json()
+    data = _baidu_http_json(resp, "task_submit")
     if data.get("error_code") != 0:
         logger.error(
             "baidu_task_submit failed mode=%s error_code=%s msg=%s",
@@ -178,6 +231,8 @@ def create_parse_task(
     if not task_id:
         raise BaiduParseError(f"Baidu task submit returned no task_id: {data}")
     logger.info("baidu_task_submit ok mode=%s task_id=%s", mode, task_id)
+    if mode == "file_url":
+        _worker_output(f"baidu_task_id={task_id}")
     return str(task_id)
 
 
@@ -196,7 +251,7 @@ def query_parse_task(
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=60,
     )
-    data = resp.json()
+    data = _baidu_http_json(resp, "task_query")
     if data.get("error_code") != 0:
         raise BaiduParseError(
             f"Baidu task query failed ({data.get('error_code')}): {data.get('error_msg', resp.text[:200])}"
@@ -650,6 +705,10 @@ def run_baidu_parser(
         file_hash[:12],
         converted,
     )
+    _worker_output(
+        f"baidu_upload_mode={upload_mode} file_name={file_name} file_size={len(file_bytes)}"
+        + (f" document_id={document_id}" if document_id else "")
+    )
 
     session = requests.Session()
     token = get_access_token(api_key, secret_key, session=session)
@@ -665,6 +724,7 @@ def run_baidu_parser(
             basic_auth=basic_auth,
             session=session,
         )
+        _worker_output(f"baidu_file_url={file_url}")
 
     if upload_mode == "file_url" and file_url:
         task_id = create_parse_task(

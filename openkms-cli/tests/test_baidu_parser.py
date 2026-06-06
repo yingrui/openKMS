@@ -3,9 +3,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from openkms_cli.baidu_parser import (
     BaiduParseError,
+    _baidu_http_json,
     _build_result_from_baidu_json,
     _position_to_bbox,
     _rewrite_markdown_image_urls,
@@ -44,6 +46,10 @@ def test_get_access_token_missing_credentials():
 
 def test_create_parse_task_file_data_success():
     mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.headers = {"Content-Type": "application/json"}
+    mock_resp.url = "https://aip.baidubce.com/task"
+    mock_resp.text = '{"error_code": 0, "result": {"task_id": "task-abc"}}'
     mock_resp.json.return_value = {
         "error_code": 0,
         "result": {"task_id": "task-abc"},
@@ -59,6 +65,10 @@ def test_create_parse_task_file_data_success():
 
 def test_create_parse_task_file_url_success():
     mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.headers = {"Content-Type": "application/json"}
+    mock_resp.url = "https://aip.baidubce.com/rest/2.0/brain/online/v2/paddle-vl-parser/task"
+    mock_resp.text = '{"error_code": 0, "result": {"task_id": "task-url-1"}}'
     mock_resp.json.return_value = {
         "error_code": 0,
         "result": {"task_id": "task-url-1"},
@@ -75,6 +85,27 @@ def test_create_parse_task_file_url_success():
 def test_create_parse_task_requires_input():
     with pytest.raises(BaiduParseError, match="file_bytes or file_url"):
         create_parse_task("tok", "doc.pdf")
+
+
+def test_baidu_http_json_empty_body():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 502
+    mock_resp.text = ""
+    mock_resp.headers = {}
+    mock_resp.url = "https://example/task"
+    with pytest.raises(BaiduParseError, match="empty body"):
+        _baidu_http_json(mock_resp, "task_submit")
+
+
+def test_baidu_http_json_non_json_body():
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.text = "<html>gateway error</html>"
+    mock_resp.headers = {"Content-Type": "text/html"}
+    mock_resp.url = "https://example/task"
+    mock_resp.json.side_effect = requests.exceptions.JSONDecodeError("Expecting value", "", 0)
+    with pytest.raises(BaiduParseError, match="non-JSON"):
+        _baidu_http_json(mock_resp, "task_submit")
 
 
 def test_validate_file_data_size_image_too_large():

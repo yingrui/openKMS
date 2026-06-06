@@ -521,6 +521,9 @@ def pipeline_run(
         except BaiduParseError as e:
             console.print(f"[red]Baidu parse failed: {e}[/red]")
             raise typer.Exit(1)
+        except requests.exceptions.JSONDecodeError as e:
+            console.print(f"[red]Baidu parse failed: invalid JSON from API ({e})[/red]")
+            raise typer.Exit(1)
         file_hash = result["file_hash"]
         hash_dir = out_base / file_hash
 

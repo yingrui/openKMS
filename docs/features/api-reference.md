@@ -22,7 +22,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/internal-api/models/kb-embedding-credentials` | **Internal service client only**; query **`knowledge_base_id`** (required); **`local-cli`** may read any KB; OIDC service clients still require KB visibility like **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** |
 | GET | `/internal-api/documents/{document_id}/baidu-fetch-url` | **Internal service client only**; query **`file_ext`** (required); mints signed **`file_url`** on **`OPENKMS_FRONTEND_URL`** for Baidu **`baidu-doc-parse`** (`exp`/`sig` query params; TTL **`OPENKMS_BAIDU_EXTERNAL_FETCH_TTL_SECONDS`**) |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
-| GET | `/api/public/documents/{document_id}/original.{file_ext}` | No auth: query **`exp`**, **`sig`** (HMAC); 302 to presigned original object (Baidu **`file_url`** fetch) |
+| GET | `/api/public/documents/{document_id}/original.{file_ext}` | No auth: query **`exp`**, **`sig`** (HMAC); **200** with original bytes from storage (Baidu **`file_url`** fetch; no redirect) |
 | GET | `/api/public/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |
 | POST | `/api/auth/register` | Local mode only: create user, returns JWT + user |
