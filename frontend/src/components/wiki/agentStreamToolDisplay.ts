@@ -1,7 +1,5 @@
 /** Human-readable labels for agent tool rows (Cursor-style). */
 
-const SHELL_TOOLS = new Set(['execute', 'bash', 'shell']);
-
 const TOOL_KIND: Record<string, string> = {
   run_python: 'Python',
   execute: 'Shell',
@@ -139,7 +137,7 @@ export function formatToolInputForDisplay(name: string, input?: string): string 
   return input;
 }
 
-export function formatToolOutputForDisplay(name: string, output?: string): string | undefined {
+export function formatToolOutputForDisplay(_name: string, output?: string): string | undefined {
   if (!output?.trim()) return undefined;
   const content = unwrapToolMessageContent(output.trim());
   if (!content.trim()) return undefined;
