@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import logging
-import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.concurrency import run_in_threadpool
+from starlette.concurrency import iterate_in_threadpool
 
 from app.config import settings
 from app.database import get_db
 from app.models.document import Document
 from app.services.document_fetch_token import verify_document_fetch_token
-from app.services.storage import get_object, object_exists
+from app.services.storage import get_object_stream, object_exists
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +35,24 @@ _ORIGINAL_MEDIA_TYPES: dict[str, str] = {
     "ofd": "application/octet-stream",
 }
 
+_CHUNK_SIZE = 1024 * 1024
+
 
 def _media_type_for_ext(ext: str) -> str:
     return _ORIGINAL_MEDIA_TYPES.get(ext.lower().lstrip("."), "application/octet-stream")
+
+
+def _iter_object_chunks(key: str, chunk_size: int = _CHUNK_SIZE):
+    """Stream S3 object in chunks (sync generator; used from thread pool)."""
+    stream = get_object_stream(key)
+    try:
+        while True:
+            chunk = stream.read(chunk_size)
+            if not chunk:
+                break
+            yield chunk
+    finally:
+        stream.close()
 
 
 @public_router.get("/{document_id}/original.{file_ext}")
@@ -50,11 +64,10 @@ async def fetch_document_original_public(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Temporary public GET for original document bytes (200, streamed from storage).
+    Temporary public GET for original document bytes (200, chunked stream from storage).
 
     Used by Baidu Cloud ``file_url`` mode. No session auth; ``exp`` + ``sig`` must match
     values minted via ``GET /internal-api/documents/{id}/baidu-fetch-url``.
-    Returns file body directly (no redirect) so external fetchers need not follow presigned URLs.
     """
     ext = file_ext.lower().lstrip(".")
     doc = await db.get(Document, document_id)
@@ -80,16 +93,13 @@ async def fetch_document_original_public(
         )
         raise HTTPException(status_code=404, detail="File not found")
 
-    body = await run_in_threadpool(get_object, key)
     logger.info(
-        "public_fetch stream document_id=%s file_hash_prefix=%s ext=%s bytes=%s",
+        "public_fetch stream start document_id=%s file_hash_prefix=%s ext=%s",
         document_id,
         file_hash[:12],
         ext,
-        len(body),
     )
-    return Response(
-        content=body,
+    return StreamingResponse(
+        iterate_in_threadpool(_iter_object_chunks(key)),
         media_type=_media_type_for_ext(ext),
-        headers={"Content-Length": str(len(body))},
     )

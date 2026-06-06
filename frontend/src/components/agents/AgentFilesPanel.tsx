@@ -1,6 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type InputHTMLAttributes,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Folder, File, Upload, GitBranch } from 'lucide-react';
+import { toast } from 'sonner';
+import { Folder, File, FolderUp, Upload, GitBranch, Loader2 } from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
 import { gitStatusLabel } from './gitStatusLabel';
 import {
@@ -10,7 +18,7 @@ import {
   gitLog,
   gitStatus,
   listProjectFiles,
-  uploadProjectFile,
+  uploadProjectFiles,
   type GitLogEntry,
   type GitStatusEntry,
   type ProjectFileEntry,
@@ -60,8 +68,22 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   const [lastCommit, setLastCommit] = useState<GitLogEntry | null>(null);
   const [commitOpen, setCommitOpen] = useState(false);
   const [commitMsg, setCommitMsg] = useState('');
-  const uploadRef = useRef<HTMLInputElement>(null);
+  const uploadFilesRef = useRef<HTMLInputElement>(null);
+  const uploadFolderRef = useRef<HTMLInputElement>(null);
+  const uploadMenuRef = useRef<HTMLDivElement>(null);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [treeWidthPx, setTreeWidthPx] = useState(readTreeWidth);
+
+  useEffect(() => {
+    if (!uploadMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (uploadMenuRef.current?.contains(e.target as Node)) return;
+      setUploadMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocClick);
+    return () => document.removeEventListener('mousedown', onDocClick);
+  }, [uploadMenuOpen]);
 
   useEffect(() => {
     setTreeWidthPx((w) => clampTreeWidth(w, railWidthPx));
@@ -154,10 +176,32 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
     }
   };
 
-  const onUpload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    await uploadProjectFile(projectId, files[0], cwd);
-    await refresh();
+  const onUploadPick = async (files: FileList | null, folderPick: boolean) => {
+    setUploadMenuOpen(false);
+    const list = files ? Array.from(files) : [];
+    if (uploadFilesRef.current) uploadFilesRef.current.value = '';
+    if (uploadFolderRef.current) uploadFolderRef.current.value = '';
+    if (list.length === 0) return;
+
+    setUploading(true);
+    try {
+      const { uploaded, failed } = await uploadProjectFiles(projectId, list, cwd, folderPick);
+      await refresh();
+      if (uploaded > 0) {
+        toast.success(
+          folderPick
+            ? t('files.uploadFolderSuccess', { count: uploaded })
+            : t('files.uploadSuccess', { count: uploaded }),
+        );
+      }
+      if (failed > 0) {
+        toast.error(t('files.uploadPartialError', { failed, total: list.length }));
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.uploadError'));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const onGitInit = async () => {
@@ -228,16 +272,59 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
             {gitInitialized ? t('files.changes', { count: changeCount }) : t('files.title')}
           </span>
           <div className="agents-files-head-actions">
-            <button
-              type="button"
-              className="agents-files-icon-btn"
-              onClick={() => uploadRef.current?.click()}
-              title={t('files.upload')}
-              aria-label={t('files.upload')}
-            >
-              <Upload size={15} />
-            </button>
-            <input ref={uploadRef} type="file" hidden onChange={(e) => onUpload(e.target.files)} />
+            <div className="agents-files-upload" ref={uploadMenuOpen ? uploadMenuRef : undefined}>
+              {uploadMenuOpen ? (
+                <div className="agents-files-upload-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="agents-files-upload-menu-item"
+                    disabled={uploading}
+                    onClick={() => uploadFilesRef.current?.click()}
+                  >
+                    <Upload size={14} />
+                    <span>{t('files.uploadFiles')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="agents-files-upload-menu-item"
+                    disabled={uploading}
+                    onClick={() => uploadFolderRef.current?.click()}
+                  >
+                    <FolderUp size={14} />
+                    <span>{t('files.uploadFolder')}</span>
+                  </button>
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="agents-files-icon-btn"
+                onClick={() => setUploadMenuOpen((v) => !v)}
+                title={t('files.upload')}
+                aria-label={t('files.upload')}
+                aria-expanded={uploadMenuOpen}
+                aria-haspopup="menu"
+                disabled={uploading}
+              >
+                {uploading ? <Loader2 size={15} className="agents-session-more-spinner" /> : <Upload size={15} />}
+              </button>
+            </div>
+            <input
+              ref={uploadFilesRef}
+              type="file"
+              hidden
+              multiple
+              onChange={(e) => void onUploadPick(e.target.files, false)}
+            />
+            <input
+              ref={uploadFolderRef}
+              type="file"
+              hidden
+              multiple
+              {...({ webkitdirectory: '', directory: '' } as InputHTMLAttributes<HTMLInputElement>)}
+              onChange={(e) => void onUploadPick(e.target.files, true)}
+            />
             {!gitInitialized ? (
               <button
                 type="button"

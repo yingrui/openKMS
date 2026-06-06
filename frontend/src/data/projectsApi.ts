@@ -157,12 +157,35 @@ export async function getProjectFileContent(
   return res.json();
 }
 
-export async function uploadProjectFile(projectId: string, file: File, path = ''): Promise<{ path: string }> {
+function joinProjectPath(dir: string, filePath: string): string {
+  const d = dir.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  const f = filePath.replace(/\\/g, '/').replace(/^\/+/, '');
+  return d ? `${d}/${f}` : f;
+}
+
+/** Relative path within the upload target; folder picks use webkitRelativePath minus the root folder name. */
+export function projectUploadRelativePath(file: File, folderPick: boolean): string {
+  const webkit =
+    'webkitRelativePath' in file
+      ? (file as File & { webkitRelativePath?: string }).webkitRelativePath
+      : undefined;
+  const raw = folderPick && webkit ? webkit : file.name;
+  const norm = raw.replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!folderPick || !webkit) return norm;
+  const slash = norm.indexOf('/');
+  if (slash === -1) return norm;
+  return norm.slice(slash + 1);
+}
+
+export async function uploadProjectFileAtPath(
+  projectId: string,
+  file: File,
+  relativePath: string,
+): Promise<{ path: string }> {
   const headers = await getAuthHeaders();
   const fd = new FormData();
-  fd.append('file', file);
-  const q = path ? `?path=${encodeURIComponent(path)}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/files/upload${q}`, {
+  fd.append('file', file, relativePath.replace(/\\/g, '/'));
+  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/files/upload`, {
     method: 'POST',
     headers,
     credentials: 'include',
@@ -170,6 +193,31 @@ export async function uploadProjectFile(projectId: string, file: File, path = ''
   });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+export async function uploadProjectFile(projectId: string, file: File, path = ''): Promise<{ path: string }> {
+  const relativePath = joinProjectPath(path, projectUploadRelativePath(file, false));
+  return uploadProjectFileAtPath(projectId, file, relativePath);
+}
+
+export async function uploadProjectFiles(
+  projectId: string,
+  files: readonly File[],
+  cwd: string,
+  folderPick: boolean,
+): Promise<{ uploaded: number; failed: number }> {
+  let uploaded = 0;
+  let failed = 0;
+  for (const file of files) {
+    try {
+      const relativePath = joinProjectPath(cwd, projectUploadRelativePath(file, folderPick));
+      await uploadProjectFileAtPath(projectId, file, relativePath);
+      uploaded += 1;
+    } catch {
+      failed += 1;
+    }
+  }
+  return { uploaded, failed };
 }
 
 export async function listProjectConversations(projectId: string): Promise<AgentConversationResponse[]> {

@@ -146,17 +146,16 @@ def write_file(project_id: str, relative: str, content: str) -> None:
 
 
 async def upload_file(project_id: str, relative_dir: str, file: UploadFile) -> str:
-    name = Path(file.filename or "upload").name
-    if not name or name in (".", ".."):
+    raw_name = (file.filename or "upload").replace("\\", "/").lstrip("/")
+    if not raw_name or ".." in Path(raw_name).parts:
         raise HTTPException(status_code=400, detail="Invalid filename")
-    dest_dir = resolve_project_path(project_id, relative_dir)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    dest = (dest_dir / name).resolve()
-    base = project_root(project_id)
-    if not str(dest).startswith(str(base)):
-        raise HTTPException(status_code=400, detail="Invalid path")
+    rel_dir = (relative_dir or "").strip().replace("\\", "/").strip("/")
+    relative = f"{rel_dir}/{raw_name}" if rel_dir else raw_name
+    dest = resolve_project_path(project_id, relative)
+    dest.parent.mkdir(parents=True, exist_ok=True)
     data = await file.read()
     dest.write_bytes(data)
+    base = project_root(project_id)
     return str(dest.relative_to(base)).replace("\\", "/")
 
 

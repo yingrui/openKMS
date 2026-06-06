@@ -73,6 +73,17 @@ def request_baidu_file_url(
     return file_url
 
 
+def _fits_baidu_file_data(file_bytes: bytes, file_name: str) -> bool:
+    """True when Baidu accepts base64 file_data for this file (images 10MB, other docs 50MB)."""
+    from .baidu_parser import validate_file_data_size
+
+    try:
+        validate_file_data_size(file_bytes, file_name)
+        return True
+    except BaiduParseError:
+        return False
+
+
 def resolve_baidu_upload_mode(
     mode_setting: str,
     *,
@@ -83,13 +94,8 @@ def resolve_baidu_upload_mode(
     """
     Resolve upload mode: auto | file_data | file_url.
 
-    auto: with document_id — file_data if size <= 5MB, else file_url; without document_id — file_data if within Baidu caps.
+    auto: file_data when within Baidu caps; file_url only when larger and document_id is set.
     """
-    from .baidu_parser import (
-        BAIDU_AUTO_FILE_DATA_MAX_BYTES,
-        validate_file_data_size,
-    )
-
     mode = (mode_setting or "auto").strip().lower()
     if mode not in ("auto", "file_data", "file_url"):
         raise BaiduParseError(
@@ -103,31 +109,25 @@ def resolve_baidu_upload_mode(
                 "Baidu file_url mode requires --document-id (and backend auth for fetch URL)"
             )
         return "file_url"
-    # auto
+    # auto — prefer file_data whenever Baidu allows (more reliable than Baidu fetching file_url)
     size = len(file_bytes)
-    if document_id:
-        if size <= BAIDU_AUTO_FILE_DATA_MAX_BYTES:
-            validate_file_data_size(file_bytes, file_name)
-            logger.info(
-                "baidu_upload_mode=auto chose file_data document_id=%s file_name=%s size=%s threshold=%s",
-                document_id,
-                file_name,
-                size,
-                BAIDU_AUTO_FILE_DATA_MAX_BYTES,
-            )
-            return "file_data"
+    if _fits_baidu_file_data(file_bytes, file_name):
         logger.info(
-            "baidu_upload_mode=auto chose file_url document_id=%s file_name=%s size=%s threshold=%s",
-            document_id,
+            "baidu_upload_mode=auto chose file_data file_name=%s size=%s document_id=%s",
             file_name,
             size,
-            BAIDU_AUTO_FILE_DATA_MAX_BYTES,
+            document_id or "",
+        )
+        return "file_data"
+    if document_id:
+        logger.info(
+            "baidu_upload_mode=auto chose file_url (exceeds file_data cap) file_name=%s size=%s document_id=%s",
+            file_name,
+            size,
+            document_id,
         )
         return "file_url"
-    validate_file_data_size(file_bytes, file_name)
-    logger.info(
-        "baidu_upload_mode=auto chose file_data (no document_id) file_name=%s size=%s",
-        file_name,
-        len(file_bytes),
+    raise BaiduParseError(
+        f"Document too large for Baidu file_data ({size / (1024 * 1024):.1f}MB) and "
+        "no document_id for file_url. Pipeline jobs always pass --document-id."
     )
-    return "file_data"

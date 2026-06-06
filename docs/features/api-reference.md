@@ -385,7 +385,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | GET | `/api/projects/{id}/files?path=` | List directory |
 | GET | `/api/projects/{id}/files/content?path=` | Read file |
 | PUT | `/api/projects/{id}/files/content` | Write file |
-| POST | `/api/projects/{id}/files/upload` | Upload file (multipart, optional `path` query) |
+| POST | `/api/projects/{id}/files/upload` | Upload file (multipart; optional `path` query prefix; filename may include nested relative path for folder uploads) |
 | DELETE | `/api/projects/{id}/files` | Delete file or directory |
 | GET/PATCH | `/api/projects/{id}/settings` | Project agent/subagent/skill settings |
 | GET/POST | `/api/projects/{id}/conversations` | List / create chat sessions (`surface=project`) |
