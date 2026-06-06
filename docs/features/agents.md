@@ -19,7 +19,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 
 - **Left:** conversation sessions (month-grouped), like KB Q&A.
 - **Center:** chat thread + plan toggle + composer.
-- **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize (chat ↔ files rail, and file viewer ↔ tree when a file is open); widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder (recursive; the selected folder name is preserved under the **current tree location**—open a subfolder first to upload elsewhere).
+- **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize (chat ↔ files rail, and file viewer ↔ tree when a file is open); widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder (recursive; the selected folder name is preserved under the **current tree location**—open a subfolder first to upload elsewhere). Refresh, parent-folder navigation, and per-row delete (`.openkms` protected).
 
 ## Configuration
 

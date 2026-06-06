@@ -216,6 +216,17 @@ export async function uploadProjectFiles(
   return { uploaded, failed };
 }
 
+export async function deleteProjectFile(projectId: string, path: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/files`, {
+    method: 'DELETE',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ path }),
+  });
+  if (!res.ok) throw new Error(await parseError(res));
+}
+
 export async function listProjectConversations(projectId: string): Promise<AgentConversationResponse[]> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/conversations`, {

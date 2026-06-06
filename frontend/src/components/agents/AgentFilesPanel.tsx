@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft } from 'lucide-react';
+import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft, Trash2 } from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
 import { gitStatusLabel } from './gitStatusLabel';
 import {
@@ -17,6 +17,7 @@ import {
   gitInit,
   gitLog,
   gitStatus,
+  deleteProjectFile,
   listProjectFiles,
   uploadProjectFiles,
   type GitLogEntry,
@@ -56,6 +57,15 @@ function parentPath(cwd: string): string {
   return i === -1 ? '' : norm.slice(0, i);
 }
 
+function isPathUnder(path: string, ancestor: string): boolean {
+  return path === ancestor || path.startsWith(`${ancestor}/`);
+}
+
+function isProtectedProjectPath(path: string): boolean {
+  const norm = path.replace(/\\/g, '/').replace(/^\/+/, '');
+  return norm === '.openkms' || norm.startsWith('.openkms/');
+}
+
 interface Props {
   projectId: string;
   gitInitialized: boolean;
@@ -81,6 +91,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [treeWidthPx, setTreeWidthPx] = useState(readTreeWidth);
 
   useEffect(() => {
@@ -198,6 +209,35 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   const goUp = () => {
     setCwd(parentPath(cwd));
     closeFile();
+  };
+
+  const onDeleteEntry = async (entry: ProjectFileEntry, ev: React.MouseEvent) => {
+    ev.stopPropagation();
+    if (isProtectedProjectPath(entry.path)) {
+      toast.error(t('files.deleteProtected'));
+      return;
+    }
+    const msg = entry.is_dir
+      ? t('files.deleteFolderConfirm', { name: entry.name })
+      : t('files.deleteFileConfirm', { name: entry.name });
+    if (!window.confirm(msg)) return;
+
+    setDeletingPath(entry.path);
+    try {
+      await deleteProjectFile(projectId, entry.path);
+      if (selected && isPathUnder(selected, entry.path)) {
+        closeFile();
+      }
+      if (isPathUnder(cwd, entry.path)) {
+        setCwd(parentPath(entry.path));
+      }
+      await refresh();
+      toast.success(t('files.deleteSuccess', { name: entry.name }));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('files.deleteError'));
+    } finally {
+      setDeletingPath(null);
+    }
   };
 
   const onUploadPick = async (files: FileList | null, folderPick: boolean) => {
@@ -434,15 +474,33 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
               tabIndex={0}
             >
               {e.is_dir ? <Folder size={14} /> : <File size={14} />}
-              <span>{e.name}</span>
-              {(() => {
-                const badge = gitBadge(e.path);
-                return badge ? (
-                  <span className="agents-file-badge" title={badge.title}>
-                    {badge.short}
-                  </span>
-                ) : null;
-              })()}
+              <div className="agents-file-row-label">
+                <span className="agents-file-row-name">{e.name}</span>
+                {(() => {
+                  const badge = gitBadge(e.path);
+                  return badge ? (
+                    <span className="agents-file-badge" title={badge.title}>
+                      {badge.short}
+                    </span>
+                  ) : null;
+                })()}
+              </div>
+              {!isProtectedProjectPath(e.path) ? (
+                <button
+                  type="button"
+                  className="agents-file-delete"
+                  title={e.is_dir ? t('files.deleteFolder') : t('files.deleteFile')}
+                  aria-label={e.is_dir ? t('files.deleteFolder') : t('files.deleteFile')}
+                  disabled={deletingPath === e.path}
+                  onClick={(ev) => void onDeleteEntry(e, ev)}
+                >
+                  {deletingPath === e.path ? (
+                    <Loader2 size={14} className="agents-session-more-spinner" />
+                  ) : (
+                    <Trash2 size={14} />
+                  )}
+                </button>
+              ) : null}
             </div>
           ))}
         </div>
