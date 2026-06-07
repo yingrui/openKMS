@@ -54,6 +54,7 @@ from app.schemas.knowledge_base import (
     FAQResponse,
     FAQUpdate,
     KBDocumentAdd,
+    KBDocumentListResponse,
     KBDocumentResponse,
     KBWikiSpaceAdd,
     KBWikiSpaceResponse,
@@ -261,6 +262,46 @@ async def enqueue_knowledge_base_index_job(
     )
 
 
+@router.post("/{kb_id}/wiki-spaces/{wiki_space_id}/index-job", response_model=JobResponse, status_code=201)
+async def enqueue_knowledge_base_wiki_space_index_job(
+    kb_id: str,
+    wiki_space_id: str,
+    kb: KnowledgeBase = Depends(get_kb_scoped_write),
+    db: AsyncSession = Depends(get_db),
+):
+    """Queue a worker job that re-indexes wiki pages from one linked wiki space."""
+    if not (kb.embedding_model_id or "").strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Configure an embedding model on this knowledge base before indexing",
+        )
+    link = (
+        await db.execute(
+            select(KBWikiSpace.id).where(
+                KBWikiSpace.knowledge_base_id == kb_id,
+                KBWikiSpace.wiki_space_id == wiki_space_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
+
+    from app.jobs.tasks import run_kb_wiki_space_index
+
+    job_id = await run_kb_wiki_space_index.defer_async(
+        knowledge_base_id=kb.id,
+        wiki_space_id=wiki_space_id,
+    )
+    await db.commit()
+
+    return await read_job_response(
+        db,
+        job_id,
+        fallback_task_name="run_kb_wiki_space_index",
+        fallback_args={"knowledge_base_id": kb.id, "wiki_space_id": wiki_space_id},
+    )
+
+
 @router.delete("/{kb_id}", status_code=204)
 async def delete_knowledge_base(
     request: Request,
@@ -277,21 +318,27 @@ async def delete_knowledge_base(
 
 # --- KB Documents ---
 
-@router.get("/{kb_id}/documents", response_model=list[KBDocumentResponse])
+@router.get("/{kb_id}/documents", response_model=KBDocumentListResponse)
 async def list_kb_documents(
     kb_id: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
+    total = (await db.execute(
+        select(func.count()).select_from(KBDocument).where(KBDocument.knowledge_base_id == kb_id)
+    )).scalar_one()
     result = await db.execute(
         select(KBDocument, Document)
         .join(Document, KBDocument.document_id == Document.id)
         .where(KBDocument.knowledge_base_id == kb_id)
         .order_by(KBDocument.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
-    items = []
-    for kbd, doc in result.all():
-        items.append(KBDocumentResponse(
+    items = [
+        KBDocumentResponse(
             id=kbd.id,
             knowledge_base_id=kbd.knowledge_base_id,
             document_id=kbd.document_id,
@@ -299,8 +346,10 @@ async def list_kb_documents(
             document_file_type=doc.file_type,
             document_status=doc.status,
             created_at=kbd.created_at,
-        ))
-    return items
+        )
+        for kbd, doc in result.all()
+    ]
+    return KBDocumentListResponse(items=items, total=int(total), offset=offset, limit=limit)
 
 
 @router.post("/{kb_id}/documents", response_model=KBDocumentResponse, status_code=201)
@@ -445,11 +494,24 @@ async def list_wiki_pages_for_kb_index(
     request: Request,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    wiki_space_id: str | None = Query(None, min_length=1),
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated wiki pages (with body) from spaces linked to this KB. Used by the kb-index pipeline."""
     filters = [KBWikiSpace.knowledge_base_id == kb_id]
+    if wiki_space_id:
+        link = (
+            await db.execute(
+                select(KBWikiSpace.id).where(
+                    KBWikiSpace.knowledge_base_id == kb_id,
+                    KBWikiSpace.wiki_space_id == wiki_space_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not link:
+            raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
+        filters.append(WikiPage.wiki_space_id == wiki_space_id)
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
     if isinstance(sub, str) and scope_applies(p, sub):

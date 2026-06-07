@@ -91,11 +91,24 @@ async def internal_list_wiki_pages_for_kb_index(
     kb_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
+    wiki_space_id: str | None = Query(None, min_length=1),
     db: AsyncSession = Depends(get_db),
 ):
     """Paginated wiki pages from spaces linked to this KB (no wiki-space ACL filter)."""
     await _get_kb_or_404(db, kb_id)
     filters = [KBWikiSpace.knowledge_base_id == kb_id]
+    if wiki_space_id:
+        link = (
+            await db.execute(
+                select(KBWikiSpace.id).where(
+                    KBWikiSpace.knowledge_base_id == kb_id,
+                    KBWikiSpace.wiki_space_id == wiki_space_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if not link:
+            raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
+        filters.append(WikiPage.wiki_space_id == wiki_space_id)
     total = (await db.execute(
         select(func.count())
         .select_from(WikiPage)
@@ -176,6 +189,30 @@ async def internal_delete_all_chunks(
 ):
     await _get_kb_or_404(db, kb_id)
     await db.execute(delete(Chunk).where(Chunk.knowledge_base_id == kb_id))
+
+
+@router.delete("/{kb_id}/wiki-spaces/{wiki_space_id}/chunks", status_code=204)
+async def internal_delete_wiki_space_chunks(
+    kb_id: str,
+    wiki_space_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete KB chunks whose wiki_page_id belongs to pages in this linked wiki space."""
+    await _get_kb_or_404(db, kb_id)
+    link = (
+        await db.execute(
+            select(KBWikiSpace.id).where(
+                KBWikiSpace.knowledge_base_id == kb_id,
+                KBWikiSpace.wiki_space_id == wiki_space_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if not link:
+        raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
+    page_ids = select(WikiPage.id).where(WikiPage.wiki_space_id == wiki_space_id)
+    await db.execute(
+        delete(Chunk).where(Chunk.knowledge_base_id == kb_id, Chunk.wiki_page_id.in_(page_ids))
+    )
 
 
 @router.post("/{kb_id}/chunks/batch", response_model=ChunkListResponse)

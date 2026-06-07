@@ -150,6 +150,73 @@ def chunk_document(text: str, config: dict[str, Any] | None) -> list[dict[str, A
     return chunks
 
 
+_MARKDOWN_HEADER_LINE = re.compile(r"(?m)^(#{1,6}\s+.+)$")
+
+
+def _wiki_page_split_pos(text: str, max_size: int) -> int | None:
+    """Index to split before max_size at a header, paragraph, or line boundary."""
+    split_at: int | None = None
+    for m in _MARKDOWN_HEADER_LINE.finditer(text):
+        pos = m.start()
+        if 0 < pos <= max_size:
+            split_at = pos
+    if split_at is not None:
+        return split_at
+    window = text[:max_size]
+    min_first = min(200, max_size // 4)
+    para = window.rfind("\n\n")
+    if para >= min_first:
+        return para + 2
+    line = window.rfind("\n")
+    if line >= min_first:
+        return line + 1
+    return None
+
+
+def _split_wiki_page_at_last_header(text: str, max_size: int) -> list[str]:
+    """Split oversized wiki page text at the last markdown header before max_size."""
+    if len(text) <= max_size:
+        return [text] if text.strip() else []
+    split_at = _wiki_page_split_pos(text, max_size)
+    if split_at is not None:
+        first = text[:split_at].strip()
+        rest = text[split_at:].strip()
+        out: list[str] = []
+        if first:
+            out.extend(_split_wiki_page_at_last_header(first, max_size))
+        if rest:
+            out.extend(_split_wiki_page_at_last_header(rest, max_size))
+        return out
+    return _split_text_segments(text, max_size, 0)
+
+
+def _wiki_page_segments(text: str, max_size: int) -> list[str]:
+    """One wiki page → one chunk when it fits; otherwise split at last header before max_size."""
+    text = text.strip()
+    if not text:
+        return []
+    if len(text) <= max_size:
+        return [text]
+    return _split_wiki_page_at_last_header(text, max_size)
+
+
+def chunk_wiki_page(text: str, max_size: int = _DEFAULT_CHUNK_SIZE) -> list[dict[str, Any]]:
+    """Index a wiki page as one chunk when possible (ignores KB chunk_config)."""
+    segments = _wiki_page_segments(text, max_size)
+    total = len(segments)
+    return [
+        {
+            "content": seg,
+            "chunk_index": i,
+            "metadata": {
+                "strategy": "wiki_page",
+                **({"split_part": i, "split_parts": total} if total > 1 else {}),
+            },
+        }
+        for i, seg in enumerate(segments)
+    ]
+
+
 # --- Embedding generation ---
 
 
@@ -245,8 +312,235 @@ def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -
 # --- Main indexer ---
 
 
-def run_indexer(
+def _wiki_pages_params(
+    offset: int,
+    limit: int,
+    wiki_space_id: str | None = None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"offset": offset, "limit": limit}
+    if wiki_space_id:
+        params["wiki_space_id"] = wiki_space_id
+    return params
+
+
+def _build_wiki_page_chunks(
+    wp: dict[str, Any],
     knowledge_base_id: str,
+    metadata_keys: list,
+) -> list[dict[str, Any]]:
+    markdown = (wp.get("body") or "").strip()
+    if not markdown:
+        return []
+    page_meta = _propagate_metadata(wp.get("metadata"), metadata_keys)
+    page_id = wp["id"]
+    raw_chunks = chunk_wiki_page(markdown)
+    built: list[dict[str, Any]] = []
+    for rc in raw_chunks:
+        meta = rc.pop("metadata", None) or {}
+        if isinstance(meta, dict):
+            meta = {
+                **meta,
+                "wiki_space_id": wp.get("wiki_space_id"),
+                "wiki_path": wp.get("path"),
+            }
+        built.append({
+            **rc,
+            "id": str(uuid.uuid4()),
+            "knowledge_base_id": knowledge_base_id,
+            "document_id": None,
+            "wiki_page_id": page_id,
+            "chunk_metadata": meta,
+            "token_count": len(rc["content"].split()),
+            "doc_metadata": page_meta,
+        })
+    return built
+
+
+def _fetch_wiki_pages_for_index(
+    base: str,
+    knowledge_base_id: str,
+    headers: dict[str, str],
+    basic: tuple[str, str] | None,
+    wiki_space_id: str | None = None,
+) -> list[dict[str, Any]]:
+    pages: list[dict[str, Any]] = []
+    wiki_offset = 0
+    wiki_limit = 100
+    while True:
+        wp_resp = requests.get(
+            f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/wiki-pages-for-index",
+            params=_wiki_pages_params(wiki_offset, wiki_limit, wiki_space_id),
+            headers=headers,
+            auth=basic,
+            timeout=120,
+        )
+        if not wp_resp.ok:
+            raise RuntimeError(
+                f"Failed to fetch wiki pages for KB index: {wp_resp.status_code} {wp_resp.text[:300]}"
+            )
+        wp_data = wp_resp.json()
+        witems = wp_data.get("items") or []
+        total_wp = int(wp_data.get("total") or 0)
+        pages.extend(witems)
+        if wiki_offset + len(witems) >= total_wp or not witems:
+            break
+        wiki_offset += wiki_limit
+    return pages
+
+
+def _upload_chunks_to_backend(
+    base: str,
+    knowledge_base_id: str,
+    all_chunks: list[dict[str, Any]],
+    headers: dict[str, str],
+    basic: tuple[str, str] | None,
+    progress: Progress | None,
+    task: TaskID | None,
+) -> None:
+    if not all_chunks:
+        return
+    batch_items = [
+        {
+            "id": c["id"],
+            "document_id": c.get("document_id"),
+            "wiki_page_id": c.get("wiki_page_id"),
+            "content": c["content"],
+            "chunk_index": c["chunk_index"],
+            "token_count": c.get("token_count"),
+            "embedding": c["embedding"],
+            "chunk_metadata": c.get("chunk_metadata"),
+            "doc_metadata": c.get("doc_metadata"),
+        }
+        for c in all_chunks
+    ]
+    total_batches = (len(batch_items) + _CHUNK_UPLOAD_BATCH_SIZE - 1) // _CHUNK_UPLOAD_BATCH_SIZE
+    for batch_idx in range(total_batches):
+        start = batch_idx * _CHUNK_UPLOAD_BATCH_SIZE
+        batch = batch_items[start : start + _CHUNK_UPLOAD_BATCH_SIZE]
+        if progress and task is not None:
+            progress.update(task, description=f"Writing chunks batch {batch_idx + 1}/{total_batches} ({len(batch)} chunks)...")
+        create_resp = requests.post(
+            f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/chunks/batch",
+            headers=headers,
+            auth=basic,
+            json={"items": batch},
+            timeout=_chunk_upload_timeout(len(batch)),
+        )
+        if not create_resp.ok:
+            raise RuntimeError(
+                f"Failed to create chunks (batch {batch_idx + 1}/{total_batches}): "
+                f"{create_resp.status_code} {create_resp.text[:500]}"
+            )
+
+
+def _load_embedding_config(
+    base: str,
+    knowledge_base_id: str,
+    headers: dict[str, str],
+    basic: tuple[str, str] | None,
+) -> dict[str, Any]:
+    cred_resp = requests.get(
+        f"{base}{_INTERNAL_KB_EMBEDDING_CREDENTIALS}",
+        params={"knowledge_base_id": knowledge_base_id},
+        headers=headers,
+        auth=basic,
+        timeout=30,
+    )
+    if not cred_resp.ok:
+        raise RuntimeError(
+            "Failed to fetch embedding credentials "
+            f"(GET {_INTERNAL_KB_EMBEDDING_CREDENTIALS}): "
+            f"{cred_resp.status_code} {cred_resp.text[:400]}"
+        )
+    data = cred_resp.json()
+    model_config = {
+        "base_url": (data.get("base_url") or "").strip(),
+        "api_key": (data.get("api_key") or "").strip(),
+        "model_name": (data.get("model_name") or "").strip(),
+    }
+    model_config = _finalize_embedding_model_config(model_config)
+    _require_embedding_base_url(model_config)
+    _require_embedding_api_key(model_config)
+    return model_config
+
+
+def run_wiki_space_indexer(
+    knowledge_base_id: str,
+    wiki_space_id: str,
+    api_url: str,
+    auth_headers: Optional[dict[str, str]] = None,
+    basic: Optional[tuple[str, str]] = None,
+    progress: Optional[Progress] = None,
+    task: Optional[TaskID] = None,
+    output_dir: Path | str | None = None,
+) -> dict[str, int]:
+    """
+    Re-index wiki pages from one linked wiki space into this knowledge base.
+
+    Deletes existing chunks for pages in that space, then embeds each page as one chunk
+    when it fits within 8000 characters (otherwise splits at markdown headers).
+    """
+    headers = dict(auth_headers or {})
+    base = api_url.rstrip("/")
+
+    def _update(msg: str) -> None:
+        if progress and task is not None:
+            progress.update(task, description=msg)
+
+    _update("Fetching knowledge base config...")
+    kb_resp = requests.get(
+        f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}", headers=headers, auth=basic, timeout=30
+    )
+    if not kb_resp.ok:
+        raise RuntimeError(f"Failed to fetch KB: {kb_resp.status_code} {kb_resp.text[:200]}")
+    kb_data = kb_resp.json()
+    metadata_keys = kb_data.get("metadata_keys") or []
+
+    model_config = _load_embedding_config(base, knowledge_base_id, headers, basic)
+
+    _update("Fetching wiki pages...")
+    wiki_pages = _fetch_wiki_pages_for_index(
+        base, knowledge_base_id, headers, basic, wiki_space_id=wiki_space_id
+    )
+
+    all_chunks: list[dict[str, Any]] = []
+    for wp in wiki_pages:
+        page_label = wp.get("path") or wp["id"]
+        _update(f"Chunking wiki page {page_label}...")
+        all_chunks.extend(_build_wiki_page_chunks(wp, knowledge_base_id, metadata_keys))
+
+    if output_dir and all_chunks:
+        out = Path(output_dir) / f"kb_{knowledge_base_id}_wiki_{wiki_space_id}"
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "chunks.json").write_text(
+            json.dumps(all_chunks, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+    _update(f"Generating embeddings for {len(all_chunks)} chunks...")
+    if all_chunks:
+        embeddings = generate_embeddings([c["content"] for c in all_chunks], model_config)
+        for c, emb in zip(all_chunks, embeddings):
+            c["embedding"] = emb
+
+    _update("Removing previous wiki-space chunks...")
+    del_resp = requests.delete(
+        f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/wiki-spaces/{wiki_space_id}/chunks",
+        headers=headers,
+        auth=basic,
+        timeout=60,
+    )
+    if not del_resp.ok:
+        raise RuntimeError(
+            f"Failed to clear wiki-space chunks: {del_resp.status_code} {del_resp.text[:200]}"
+        )
+
+    _update("Writing to backend API...")
+    _upload_chunks_to_backend(base, knowledge_base_id, all_chunks, headers, basic, progress, task)
+
+    return {"chunks_created": len(all_chunks), "faqs_indexed": 0}
+
+
+def run_indexer(
     api_url: str,
     auth_headers: Optional[dict[str, str]] = None,
     basic: Optional[tuple[str, str]] = None,
@@ -282,29 +576,7 @@ def run_indexer(
     metadata_keys = kb_data.get("metadata_keys") or []
     lifecycle_index_mode = chunk_config.get("lifecycle_index_mode", "current_only")
 
-    cred_resp = requests.get(
-        f"{base}{_INTERNAL_KB_EMBEDDING_CREDENTIALS}",
-        params={"knowledge_base_id": knowledge_base_id},
-        headers=headers,
-        auth=basic,
-        timeout=30,
-    )
-    if not cred_resp.ok:
-        raise RuntimeError(
-            "Failed to fetch embedding credentials "
-            f"(GET {_INTERNAL_KB_EMBEDDING_CREDENTIALS}): "
-            f"{cred_resp.status_code} {cred_resp.text[:400]}"
-        )
-    data = cred_resp.json()
-    model_config = {
-        "base_url": (data.get("base_url") or "").strip(),
-        "api_key": (data.get("api_key") or "").strip(),
-        "model_name": (data.get("model_name") or "").strip(),
-    }
-
-    model_config = _finalize_embedding_model_config(model_config)
-    _require_embedding_base_url(model_config)
-    _require_embedding_api_key(model_config)
+    model_config = _load_embedding_config(base, knowledge_base_id, headers, basic)
 
     _update("Fetching documents...")
     docs_resp = requests.get(
@@ -344,51 +616,11 @@ def run_indexer(
         all_chunks.extend(raw_chunks)
 
     _update("Fetching wiki pages...")
-    wiki_offset = 0
-    wiki_limit = 100
-    while True:
-        wp_resp = requests.get(
-            f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/wiki-pages-for-index",
-            params={"offset": wiki_offset, "limit": wiki_limit},
-            headers=headers,
-            auth=basic,
-            timeout=120,
-        )
-        if not wp_resp.ok:
-            raise RuntimeError(
-                f"Failed to fetch wiki pages for KB index: {wp_resp.status_code} {wp_resp.text[:300]}"
-            )
-        wp_data = wp_resp.json()
-        witems = wp_data.get("items") or []
-        total_wp = int(wp_data.get("total") or 0)
-        for wp in witems:
-            page_id = wp["id"]
-            page_label = wp.get("path") or page_id
-            _update(f"Chunking wiki page {page_label}...")
-            markdown = (wp.get("body") or "").strip()
-            if not markdown:
-                continue
-            page_meta = _propagate_metadata(wp.get("metadata"), metadata_keys)
-            raw_chunks = chunk_document(markdown, chunk_config)
-            for rc in raw_chunks:
-                meta = rc.pop("metadata", None) or {}
-                if isinstance(meta, dict):
-                    meta = {
-                        **meta,
-                        "wiki_space_id": wp.get("wiki_space_id"),
-                        "wiki_path": wp.get("path"),
-                    }
-                rc["id"] = str(uuid.uuid4())
-                rc["knowledge_base_id"] = knowledge_base_id
-                rc["document_id"] = None
-                rc["wiki_page_id"] = page_id
-                rc["chunk_metadata"] = meta
-                rc["token_count"] = len(rc["content"].split())
-                rc["doc_metadata"] = page_meta
-            all_chunks.extend(raw_chunks)
-        if wiki_offset + len(witems) >= total_wp or not witems:
-            break
-        wiki_offset += wiki_limit
+    wiki_pages = _fetch_wiki_pages_for_index(base, knowledge_base_id, headers, basic)
+    for wp in wiki_pages:
+        page_label = wp.get("path") or wp["id"]
+        _update(f"Chunking wiki page {page_label}...")
+        all_chunks.extend(_build_wiki_page_chunks(wp, knowledge_base_id, metadata_keys))
 
     _update("Fetching FAQs...")
     faqs: list[dict[str, Any]] = []
@@ -501,38 +733,7 @@ def run_indexer(
     if not del_resp.ok:
         raise RuntimeError(f"Failed to clear chunks: {del_resp.status_code} {del_resp.text[:200]}")
 
-    if all_chunks:
-        batch_items = [
-            {
-                "id": c["id"],
-                "document_id": c.get("document_id"),
-                "wiki_page_id": c.get("wiki_page_id"),
-                "content": c["content"],
-                "chunk_index": c["chunk_index"],
-                "token_count": c.get("token_count"),
-                "embedding": c["embedding"],
-                "chunk_metadata": c.get("chunk_metadata"),
-                "doc_metadata": c.get("doc_metadata"),
-            }
-            for c in all_chunks
-        ]
-        total_batches = (len(batch_items) + _CHUNK_UPLOAD_BATCH_SIZE - 1) // _CHUNK_UPLOAD_BATCH_SIZE
-        for batch_idx in range(total_batches):
-            start = batch_idx * _CHUNK_UPLOAD_BATCH_SIZE
-            batch = batch_items[start : start + _CHUNK_UPLOAD_BATCH_SIZE]
-            _update(f"Writing chunks batch {batch_idx + 1}/{total_batches} ({len(batch)} chunks)...")
-            create_resp = requests.post(
-                f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/chunks/batch",
-                headers=headers,
-                auth=basic,
-                json={"items": batch},
-                timeout=_chunk_upload_timeout(len(batch)),
-            )
-            if not create_resp.ok:
-                raise RuntimeError(
-                    f"Failed to create chunks (batch {batch_idx + 1}/{total_batches}): "
-                    f"{create_resp.status_code} {create_resp.text[:500]}"
-                )
+    _upload_chunks_to_backend(base, knowledge_base_id, all_chunks, headers, basic, progress, task)
 
     if faq_updates:
         faq_emb_items = [

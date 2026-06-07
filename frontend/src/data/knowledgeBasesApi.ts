@@ -37,6 +37,13 @@ export interface KBWikiSpaceResponse {
   created_at: string;
 }
 
+export interface KBDocumentListResponse {
+  items: KBDocumentResponse[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
 export interface KBDocumentResponse {
   id: string;
   knowledge_base_id: string;
@@ -574,14 +581,35 @@ export async function deleteKnowledgeBase(kbId: string): Promise<void> {
 
 // --- KB Documents ---
 
-export async function fetchKBDocuments(kbId: string): Promise<KBDocumentResponse[]> {
+export async function fetchKBDocuments(
+  kbId: string,
+  params?: { offset?: number; limit?: number }
+): Promise<KBDocumentListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents`, {
+  const query = new URLSearchParams();
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(`Failed to fetch KB documents: ${res.status}`);
   return res.json();
+}
+
+/** Fetch every document linked to a KB (paginates until complete). */
+export async function fetchAllKBDocuments(kbId: string): Promise<KBDocumentResponse[]> {
+  const all: KBDocumentResponse[] = [];
+  const limit = 200;
+  let offset = 0;
+  while (true) {
+    const page = await fetchKBDocuments(kbId, { offset, limit });
+    all.push(...page.items);
+    if (offset + page.items.length >= page.total) break;
+    offset += limit;
+  }
+  return all;
 }
 
 export async function addKBDocument(kbId: string, documentId: string): Promise<KBDocumentResponse> {
@@ -911,6 +939,34 @@ export async function enqueueKnowledgeBaseIndexJob(kbId: string): Promise<JobRes
         : detail && typeof detail === 'object' && 'message' in detail
           ? String((detail as { message?: string }).message)
           : 'Failed to queue indexing job';
+    throw new Error(msg);
+  }
+  return res.json();
+}
+
+/** Re-index wiki pages from one linked wiki space (one page per chunk when possible). */
+export async function enqueueKnowledgeBaseWikiSpaceIndexJob(
+  kbId: string,
+  wikiSpaceId: string
+): Promise<JobResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}/index-job`,
+    {
+      method: 'POST',
+      headers: { ...headers },
+      credentials: 'include',
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const detail = err.detail;
+    const msg =
+      typeof detail === 'string'
+        ? detail
+        : detail && typeof detail === 'object' && 'message' in detail
+          ? String((detail as { message?: string }).message)
+          : 'Failed to queue wiki space indexing job';
     throw new Error(msg);
   }
   return res.json();

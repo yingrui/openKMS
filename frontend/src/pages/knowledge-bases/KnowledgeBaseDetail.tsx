@@ -34,6 +34,7 @@ import { toast } from 'sonner';
 import {
   fetchKnowledgeBase,
   fetchKBDocuments,
+  fetchAllKBDocuments,
   fetchKBWikiSpaces,
   fetchFAQs,
   fetchChunks,
@@ -51,6 +52,7 @@ import {
   updateKnowledgeBase,
   updateChunk,
   enqueueKnowledgeBaseIndexJob,
+  enqueueKnowledgeBaseWikiSpaceIndexJob,
   listKbAgentConversations,
   listAllKbAgentMessages,
   createKbAgentConversation,
@@ -387,6 +389,11 @@ export function KnowledgeBaseDetail() {
 
   // Documents
   const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
+  const [docTotal, setDocTotal] = useState(0);
+  const [docPage, setDocPage] = useState(0);
+  const [docPageSize, setDocPageSize] = useState(50);
+  const [linkedDocIds, setLinkedDocIds] = useState<Set<string>>(new Set());
+  const [genDocs, setGenDocs] = useState<KBDocumentResponse[]>([]);
   const [showDocPicker, setShowDocPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerResults, setPickerResults] = useState<DocumentListItemResponse[]>([]);
@@ -519,10 +526,26 @@ export function KnowledgeBaseDetail() {
     }
   }, [kbId, t]);
 
+  const refreshLinkedDocIds = useCallback(async () => {
+    if (!kbId) return;
+    try {
+      const all = await fetchAllKBDocuments(kbId);
+      setLinkedDocIds(new Set(all.map((d) => d.document_id)));
+    } catch { /* noop */ }
+  }, [kbId]);
+
   const loadDocs = useCallback(async () => {
     if (!kbId) return;
-    try { setDocs(await fetchKBDocuments(kbId)); } catch { /* noop */ }
-  }, [kbId]);
+    try {
+      const data = await fetchKBDocuments(kbId, { offset: docPage * docPageSize, limit: docPageSize });
+      setDocs(data.items);
+      setDocTotal(data.total);
+      setDocPage((p) => {
+        const maxP = data.total > 0 ? Math.ceil(data.total / docPageSize) - 1 : 0;
+        return Math.min(p, Math.max(0, maxP));
+      });
+    } catch { /* noop */ }
+  }, [kbId, docPage, docPageSize]);
 
   const loadKbWikiSpaces = useCallback(async () => {
     if (!kbId) return;
@@ -593,6 +616,10 @@ export function KnowledgeBaseDetail() {
       setActiveTab(q as TabId);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (kbId) void refreshLinkedDocIds();
+  }, [kbId, refreshLinkedDocIds]);
 
   useEffect(() => {
     if (activeTab === 'documents') void loadDocs();
@@ -677,7 +704,7 @@ export function KnowledgeBaseDetail() {
   }, [qaFullPage, kbId, t, loadKbQaMessagesForConversation]);
 
   // --- Document picker ---
-  const alreadyAddedIds = new Set(docs.map((d) => d.document_id));
+  const alreadyAddedIds = linkedDocIds;
 
   const openDocPicker = async () => {
     setShowDocPicker(true);
@@ -771,7 +798,8 @@ export function KnowledgeBaseDetail() {
     setShowDocPicker(false);
     if (added > 0) {
       toast.success(t('detail.toastDocumentsAdded', { count: added }));
-      loadDocs();
+      void loadDocs();
+      void refreshLinkedDocIds();
       loadKb();
     }
   };
@@ -787,7 +815,8 @@ export function KnowledgeBaseDetail() {
     try {
       await removeKBDocument(kbId, docId);
       toast.success(t('detail.toastDocRemoved'));
-      loadDocs();
+      void loadDocs();
+      void refreshLinkedDocIds();
       loadKb();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.toastRemoveDocFailed'));
@@ -838,6 +867,23 @@ export function KnowledgeBaseDetail() {
       await loadKb();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpaceRemoveFailed'));
+    } finally {
+      setWikiSpaceBusyId(null);
+    }
+  };
+
+  const handleIndexWikiSpace = async (wikiSpaceId: string) => {
+    if (!kbId) return;
+    if (!kb?.embedding_model_id) {
+      toast.error(t('detail.indexJobRequiresEmbedding'));
+      return;
+    }
+    setWikiSpaceBusyId(wikiSpaceId);
+    try {
+      const job = await enqueueKnowledgeBaseWikiSpaceIndexJob(kbId, wikiSpaceId);
+      toast.success(t('detail.wikiSpaceIndexJobQueued', { id: job.id }));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.wikiSpaceIndexJobFailed'));
     } finally {
       setWikiSpaceBusyId(null);
     }
@@ -915,8 +961,16 @@ export function KnowledgeBaseDetail() {
     }
   };
 
-  const openGenerateModal = () => {
-    setGenSelectedDocs(new Set(docs.map((d) => d.document_id)));
+  const openGenerateModal = async () => {
+    if (!kbId) return;
+    try {
+      const all = await fetchAllKBDocuments(kbId);
+      setGenDocs(all);
+      setGenSelectedDocs(new Set(all.map((d) => d.document_id)));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastLoadKbFailed'));
+      return;
+    }
     setGenModelId('');
     setGenPrompt(kb?.faq_prompt || '');
     setGenStep('config');
@@ -944,7 +998,7 @@ export function KnowledgeBaseDetail() {
       toast.error(t('detail.toastSelectDoc'));
       return;
     }
-    const docIdToName = new Map(docs.map((d) => [d.document_id, d.document_name || d.document_id]));
+    const docIdToName = new Map(genDocs.map((d) => [d.document_id, d.document_name || d.document_id]));
     setGenerating(true);
     setGenProgress(null);
     try {
@@ -1788,15 +1842,16 @@ export function KnowledgeBaseDetail() {
         {activeTab === 'documents' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>{t('detail.documentsTitle')}</h2>
+              <h2>{t('detail.documentsTitle', { count: docTotal })}</h2>
               <button type="button" className="btn btn-primary btn-sm" onClick={openDocPicker}>
                 <Plus size={16} />
                 <span>{t('detail.addDocument')}</span>
               </button>
             </div>
-            {docs.length === 0 ? (
+            {docTotal === 0 ? (
               <p className="kb-empty-text">{t('detail.emptyDocuments')}</p>
             ) : (
+              <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
@@ -1833,6 +1888,78 @@ export function KnowledgeBaseDetail() {
                   </tbody>
                 </table>
               </div>
+              {docTotal > 0 && (
+                <div className="kb-pagination">
+                  <div className="kb-pagination-info">
+                    <span>
+                      {t('detail.paginationRange', {
+                        start: docTotal === 0 ? 0 : docPage * docPageSize + 1,
+                        end: Math.min((docPage + 1) * docPageSize, docTotal),
+                        total: docTotal,
+                      })}
+                    </span>
+                    <label>
+                      <span>{t('detail.pageSize')}</span>
+                      <select
+                        value={docPageSize}
+                        onChange={(e) => {
+                          setDocPageSize(Number(e.target.value));
+                          setDocPage(0);
+                        }}
+                      >
+                        {[25, 50, 100, 200].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {Math.ceil(docTotal / docPageSize) > 1 && (
+                    <div className="kb-pagination-btns">
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setDocPage(0)}
+                        disabled={docPage === 0}
+                        title={t('detail.firstPage')}
+                      >
+                        «
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setDocPage((p) => Math.max(0, p - 1))}
+                        disabled={docPage === 0}
+                      >
+                        {t('detail.previous')}
+                      </button>
+                      <span className="kb-pagination-nums">
+                        {t('detail.pageOf', {
+                          current: docPage + 1,
+                          total: Math.ceil(docTotal / docPageSize) || 1,
+                        })}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setDocPage((p) => Math.min(Math.ceil(docTotal / docPageSize) - 1, p + 1))}
+                        disabled={docPage >= Math.ceil(docTotal / docPageSize) - 1}
+                      >
+                        {t('detail.next')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setDocPage(Math.ceil(docTotal / docPageSize) - 1)}
+                        disabled={docPage >= Math.ceil(docTotal / docPageSize) - 1}
+                        title={t('detail.lastPage')}
+                      >
+                        »
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              </>
             )}
           </section>
         )}
@@ -1870,6 +1997,19 @@ export function KnowledgeBaseDetail() {
                         </td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
+                            <button
+                              type="button"
+                              title={t('detail.indexWikiSpace')}
+                              aria-label={t('detail.indexWikiSpace')}
+                              disabled={wikiSpaceBusyId === ws.wiki_space_id || !kb?.embedding_model_id}
+                              onClick={() => void handleIndexWikiSpace(ws.wiki_space_id)}
+                            >
+                              {wikiSpaceBusyId === ws.wiki_space_id ? (
+                                <Loader2 size={16} className="kb-spinner-inline" aria-hidden />
+                              ) : (
+                                <RefreshCw size={16} aria-hidden />
+                              )}
+                            </button>
                             <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`} title={t('detail.view')} aria-label={t('detail.view')}>
                               <Eye size={16} />
                             </Link>
@@ -1899,7 +2039,7 @@ export function KnowledgeBaseDetail() {
             <div className="kb-section-header">
               <h2>{t('detail.faqsTitle', { count: faqTotal })}</h2>
               <div className="kb-section-header-btns">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={openGenerateModal}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openGenerateModal()}>
                   <Sparkles size={16} />
                   <span>{t('detail.generateFaq')}</span>
                 </button>
@@ -2630,21 +2770,21 @@ export function KnowledgeBaseDetail() {
                     type="button"
                     className="kb-gen-toggle-all"
                     onClick={() => {
-                      if (genSelectedDocs.size === docs.length) setGenSelectedDocs(new Set());
-                      else setGenSelectedDocs(new Set(docs.map((d) => d.document_id)));
+                      if (genSelectedDocs.size === genDocs.length) setGenSelectedDocs(new Set());
+                      else setGenSelectedDocs(new Set(genDocs.map((d) => d.document_id)));
                     }}
                   >
-                    {genSelectedDocs.size === docs.length ? t('detail.deselectAll') : t('detail.selectAll')}
+                    {genSelectedDocs.size === genDocs.length ? t('detail.deselectAll') : t('detail.selectAll')}
                   </button>
                 </div>
 
                 <div className="kb-doc-picker-list">
-                  {docs.length === 0 ? (
+                  {genDocs.length === 0 ? (
                     <div className="kb-doc-picker-empty">
                       <p>{t('detail.genNoDocs')}</p>
                     </div>
                   ) : (
-                    docs.map((doc) => {
+                    genDocs.map((doc) => {
                       const selected = genSelectedDocs.has(doc.document_id);
                       return (
                         <div

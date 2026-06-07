@@ -27,9 +27,10 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | POST | `/internal-api/documents/{id}/versions` | **Internal service client only**; snapshot markdown + metadata after pipeline (no channel ACL) |
 | GET | `/internal-api/knowledge-bases/{id}` | **Internal service client only**; read KB config for **`kb-index`** (no KB ACL) |
 | GET | `/internal-api/knowledge-bases/{id}/documents` | **Internal service client only**; list linked documents for **`kb-index`** |
-| GET | `/internal-api/knowledge-bases/{id}/wiki-pages-for-index` | **Internal service client only**; paginated wiki pages with body for **`kb-index`** |
+| GET | `/internal-api/knowledge-bases/{id}/wiki-pages-for-index` | **Internal service client only**; paginated wiki pages with body for **`kb-index`**; optional **`wiki_space_id`** filter |
 | GET | `/internal-api/knowledge-bases/{id}/faqs` | **Internal service client only**; paginated FAQs for **`kb-index`** |
-| DELETE | `/internal-api/knowledge-bases/{id}/chunks` | **Internal service client only**; clear all chunks before re-index |
+| DELETE | `/internal-api/knowledge-bases/{id}/chunks` | **Internal service client only**; clear all chunks before full re-index |
+| DELETE | `/internal-api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}/chunks` | **Internal service client only**; delete chunks for pages in one linked wiki space |
 | POST | `/internal-api/knowledge-bases/{id}/chunks/batch` | **Internal service client only**; bulk insert chunks with embeddings |
 | PUT | `/internal-api/knowledge-bases/{id}/faqs/batch-embeddings` | **Internal service client only**; bulk update FAQ embeddings |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
@@ -156,8 +157,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/knowledge-bases/{id}` | Get KB with stats |
 | PUT | `/api/knowledge-bases/{id}` | Update KB (name, description, agent_url, chunk_config, embedding_model_id, faq_prompt, metadata_keys) |
 | POST | `/api/knowledge-bases/{id}/index-job` | Queue **`run_kb_index`** worker job (openkms-cli kb-index); returns **`JobResponse`**; requires **`embedding_model_id`** on the KB |
+| POST | `/api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}/index-job` | Queue **`run_kb_wiki_space_index`** for one linked wiki space (replaces that space’s wiki chunks; one page per chunk when ≤ 8000 chars); returns **`JobResponse`** |
 | DELETE | `/api/knowledge-bases/{id}` | Delete KB (cascades documents, FAQs, chunks) |
-| GET | `/api/knowledge-bases/{id}/documents` | List documents in KB |
+| GET | `/api/knowledge-bases/{id}/documents` | Paginated list of documents in KB (`?offset=`, `limit` 1–200) |
 | POST | `/api/knowledge-bases/{id}/documents` | Add document to KB |
 | DELETE | `/api/knowledge-bases/{id}/documents/{doc_id}` | Remove document from KB |
 | GET | `/api/knowledge-bases/{id}/wiki-spaces` | List wiki spaces linked to the KB (for RAG indexing) |

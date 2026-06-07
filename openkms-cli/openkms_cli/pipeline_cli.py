@@ -406,7 +406,7 @@ def pipeline_list() -> None:
         "[dim]Doc parse (Baidu Cloud): pipeline run --pipeline-name baidu-doc-parse "
         "--input <uri> --s3-prefix <prefix>[/dim]"
     )
-    console.print("[dim]KB index:  pipeline run --pipeline-name kb-index --knowledge-base-id <id> --api-url <url>[/dim]")
+    console.print("[dim]KB index:  pipeline run --pipeline-name kb-index --knowledge-base-id <id> [--wiki-space-id <id>] --api-url <url>[/dim]")
 
 
 @pipeline_app.command("run")
@@ -425,6 +425,11 @@ def pipeline_run(
         None,
         "--knowledge-base-id",
         help="Knowledge base ID to index (required for kb-index pipeline)",
+    ),
+    wiki_space_id: Optional[str] = typer.Option(
+        None,
+        "--wiki-space-id",
+        help="When set with kb-index, re-index only this linked wiki space (one page per chunk)",
     ),
     s3_prefix: Optional[str] = typer.Option(
         None,
@@ -551,7 +556,10 @@ def pipeline_run(
             console.print("[red]kb-index pipeline requires --knowledge-base-id[/red]")
             raise typer.Exit(1)
         try:
-            from .kb_indexer import run_indexer
+            if wiki_space_id:
+                from .kb_indexer import run_wiki_space_indexer as _run_kb_index
+            else:
+                from .kb_indexer import run_indexer as _run_kb_index
         except ImportError as e:
             console.print(f"[red]Missing dependencies: {e}. Install with: pip install openkms-cli[kb][/red]")
             raise typer.Exit(1)
@@ -573,17 +581,23 @@ def pipeline_run(
             TextColumn("[progress.description]{task.description}"),
             console=console,
         ) as progress:
-            task = progress.add_task("Indexing knowledge base...", total=None)
+            task = progress.add_task(
+                "Indexing wiki space..." if wiki_space_id else "Indexing knowledge base...",
+                total=None,
+            )
             try:
-                stats = run_indexer(
-                    knowledge_base_id=knowledge_base_id,
-                    api_url=api_url,
-                    auth_headers=auth_headers,
-                    basic=basic_auth,
-                    progress=progress,
-                    task=task,
-                    output_dir=output_dir,
-                )
+                run_kwargs: dict = {
+                    "knowledge_base_id": knowledge_base_id,
+                    "api_url": api_url,
+                    "auth_headers": auth_headers,
+                    "basic": basic_auth,
+                    "progress": progress,
+                    "task": task,
+                    "output_dir": output_dir,
+                }
+                if wiki_space_id:
+                    run_kwargs["wiki_space_id"] = wiki_space_id
+                stats = _run_kb_index(**run_kwargs)
                 progress.update(task, description="Done!")
                 console.print(
                     f"[green]Indexing complete: "

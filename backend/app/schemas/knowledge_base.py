@@ -72,6 +72,13 @@ class KBDocumentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class KBDocumentListResponse(BaseModel):
+    items: list[KBDocumentResponse]
+    total: int
+    offset: int
+    limit: int
+
+
 # --- KB wiki spaces ---
 
 class KBWikiSpaceAdd(BaseModel):

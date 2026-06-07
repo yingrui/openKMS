@@ -32,6 +32,21 @@ export interface JobListResponse {
   offset: number;
 }
 
+const KB_INDEX_TASK_NAMES = new Set(['run_kb_index', 'run_kb_wiki_space_index']);
+
+/** Primary ID the job runs against (document or knowledge base). */
+export function jobRunTargetId(job: Pick<JobResponse, 'task_name' | 'args'>): string {
+  const args = job.args ?? {};
+  if (KB_INDEX_TASK_NAMES.has(job.task_name)) {
+    return String(args.knowledge_base_id ?? '');
+  }
+  return String(args.document_id ?? '');
+}
+
+export function isKbIndexingJob(taskName: string): boolean {
+  return KB_INDEX_TASK_NAMES.has(taskName);
+}
+
 export interface JobCreate {
   document_id: string;
   pipeline_id?: string | null;

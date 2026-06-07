@@ -524,6 +524,95 @@ async def run_kb_index(
         await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
 
 
+@job_app.task(name="run_kb_wiki_space_index", pass_context=True)
+async def run_kb_wiki_space_index(
+    context: JobContext,
+    knowledge_base_id: str,
+    wiki_space_id: str,
+) -> None:
+    """Re-index wiki pages from one linked wiki space (openkms-cli kb-index --wiki-space-id)."""
+    from sqlalchemy import select
+
+    from app.database import async_session_maker
+    from app.models.knowledge_base import KnowledgeBase
+    from app.models.kb_wiki_space import KBWikiSpace
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+
+    job_pk = context.job.id
+    log_cmd: str | None = (
+        f"run_kb_wiki_space_index knowledge_base_id={knowledge_base_id} wiki_space_id={wiki_space_id}"
+    )
+    log_out = ""
+    log_err = ""
+
+    try:
+        async with async_session_maker() as session:
+            kb = await session.get(KnowledgeBase, knowledge_base_id)
+            if not kb:
+                logger.error("Knowledge base %s not found", knowledge_base_id)
+                log_err = f"Knowledge base {knowledge_base_id} not found"
+                raise RuntimeError(f"Knowledge base {knowledge_base_id} not found")
+            link = (
+                await session.execute(
+                    select(KBWikiSpace.id).where(
+                        KBWikiSpace.knowledge_base_id == knowledge_base_id,
+                        KBWikiSpace.wiki_space_id == wiki_space_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            if not link:
+                log_err = f"Wiki space {wiki_space_id} not linked to KB {knowledge_base_id}"
+                raise RuntimeError(log_err)
+
+        base_api_url = settings.openkms_backend_url.rstrip("/")
+        cmd_str = (
+            f"openkms-cli pipeline run --pipeline-name kb-index"
+            f" --knowledge-base-id {knowledge_base_id}"
+            f" --wiki-space-id {wiki_space_id}"
+            f" --api-url {base_api_url}"
+        )
+
+        subprocess_env = {
+            **os.environ,
+            "OPENKMS_API_URL": base_api_url,
+            "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
+            "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,
+            "OPENKMS_CLI_BASIC_PASSWORD": settings.cli_basic_password,
+        }
+
+        cmd = shlex.split(cmd_str)
+        log_cmd = cmd_str
+        logger.info("Running KB wiki-space index for %s / %s: %s", knowledge_base_id, wiki_space_id, cmd_str)
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=1800,
+                env=subprocess_env,
+            )
+            log_out = result.stdout or ""
+            log_err = result.stderr or ""
+            if result.returncode != 0:
+                logger.error(
+                    "KB wiki-space indexing failed (exit %d): %s",
+                    result.returncode,
+                    result.stderr,
+                )
+                log_err = (log_err + f"\n\nexit code {result.returncode}").strip()
+                raise RuntimeError(
+                    f"KB wiki-space indexing exited with code {result.returncode}: {result.stderr[:500]}"
+                )
+            logger.info("KB wiki-space indexing completed for %s / %s", knowledge_base_id, wiki_space_id)
+        except subprocess.TimeoutExpired:
+            log_err = "KB wiki-space indexing subprocess timed out (1800s)."
+            logger.error("KB wiki-space indexing timed out for %s / %s", knowledge_base_id, wiki_space_id)
+            raise
+    finally:
+        await persist_job_run_worker_log_best_effort(job_pk, log_cmd, log_out, log_err)
+
+
 def _metadata_extraction_requested(command: str) -> bool:
     return "--extract-metadata" in command
 

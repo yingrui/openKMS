@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu, Terminal, CircleX, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchJobById, markJobFailed, retryJob, type JobResponse } from '../../data/jobsApi';
+import { fetchJobById, markJobFailed, retryJob, isKbIndexingJob, type JobResponse } from '../../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
 import './JobDetail.scss';
@@ -132,11 +132,12 @@ export function JobDetail() {
 
   const documentId = String(job.args?.document_id || '');
   const knowledgeBaseId = String(job.args?.knowledge_base_id || '');
+  const wikiSpaceId = String(job.args?.wiki_space_id || '');
   const pipelineId = String(job.args?.pipeline_id || '');
   const commandTemplate = String(job.args?.command || '');
   const renderedCommand = String(job.args?.rendered_command || '');
   const defaultArgs = job.args?.default_args as Record<string, unknown> | null | undefined;
-  const isKbIndex = job.task_name === 'run_kb_index';
+  const isKbIndexingTask = isKbIndexingJob(job.task_name);
 
   return (
     <div className="job-detail">
@@ -199,11 +200,11 @@ export function JobDetail() {
 
         <section className="job-detail-card">
           <h2>
-            {isKbIndex ? <BookOpen size={18} /> : <FileText size={18} />}{' '}
-            {isKbIndex ? t('jobDetail.knowledgeBase') : t('jobDetail.document')}
+            {isKbIndexingTask ? <BookOpen size={18} /> : <FileText size={18} />}{' '}
+            {isKbIndexingTask ? t('jobDetail.knowledgeBase') : t('jobDetail.document')}
           </h2>
           <dl className="job-detail-dl">
-            {isKbIndex ? (
+            {isKbIndexingTask ? (
               <>
                 <dt>{t('jobDetail.knowledgeBaseId')}</dt>
                 <dd>
@@ -215,6 +216,16 @@ export function JobDetail() {
                     dash
                   )}
                 </dd>
+                {wikiSpaceId && (
+                  <>
+                    <dt>{t('jobDetail.wikiSpaceId')}</dt>
+                    <dd>
+                      <Link to={`/wikis/${wikiSpaceId}/pages/graph`} className="job-detail-link">
+                        {wikiSpaceId}
+                      </Link>
+                    </dd>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -237,7 +248,7 @@ export function JobDetail() {
           </dl>
         </section>
 
-        {!isKbIndex && (
+        {!isKbIndexingTask && (
         <section className="job-detail-card">
           <h2>
             <GitBranch size={18} /> {t('jobDetail.pipeline')}

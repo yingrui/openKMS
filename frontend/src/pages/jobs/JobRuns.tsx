@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchJobs, createJob, retryJob, deleteJob, markJobFailed, type JobResponse } from '../../data/jobsApi';
+import { fetchJobs, createJob, retryJob, deleteJob, markJobFailed, jobRunTargetId, type JobResponse } from '../../data/jobsApi';
 import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { Pagination } from '../../styles/design-system';
 import './Jobs.scss';
@@ -189,7 +189,7 @@ export function JobRuns() {
                   <tr>
                     <th>{t('jobs.colId')}</th>
                     <th>{t('jobs.colTask')}</th>
-                    <th>{t('jobs.colDocument')}</th>
+                    <th>{t('jobs.colTargetId')}</th>
                     <th>{t('jobs.colPipeline')}</th>
                     <th>{t('jobs.colStatus')}</th>
                     <th>{t('jobs.colCreated')}</th>
@@ -208,10 +208,7 @@ export function JobRuns() {
                     </tr>
                   ) : (
                     jobs.map((job) => {
-                      const docId = String(job.args?.document_id || '');
-                      const kbId = String(job.args?.knowledge_base_id || '');
-                      const targetId =
-                        job.task_name === 'run_kb_index' ? kbId || dash : docId || dash;
+                      const targetId = jobRunTargetId(job) || dash;
                       const pipelineId = String(job.args?.pipeline_id || '');
                       const pipeline = pipelineMap.get(pipelineId);
                       return (
