@@ -43,12 +43,12 @@ async def ask(request: AskRequest):
 
     t0 = time.monotonic()
     logger.info(
-        "POST /ask kb=%s history=%d session=%s question=%r",
+        "POST /ask kb=%s history=%d session=%s",
         request.knowledge_base_id,
         len(request.conversation_history or []),
         request.session_id or "-",
-        preview_text(request.question, 200),
     )
+    logger.debug("POST /ask question=%r", preview_text(request.question, 200))
     result = invoke_agent(
         knowledge_base_id=request.knowledge_base_id,
         question=request.question,
@@ -84,12 +84,12 @@ async def ask_stream(request: AskRequest):
     from .agent import astream_agent_ndjson
 
     logger.info(
-        "POST /ask/stream kb=%s history=%d session=%s question=%r",
+        "POST /ask/stream kb=%s history=%d session=%s",
         request.knowledge_base_id,
         len(request.conversation_history or []),
         request.session_id or "-",
-        preview_text(request.question, 200),
     )
+    logger.debug("POST /ask/stream question=%r", preview_text(request.question, 200))
     return StreamingResponse(
         astream_agent_ndjson(
             knowledge_base_id=request.knowledge_base_id,

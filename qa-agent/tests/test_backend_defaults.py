@@ -90,3 +90,21 @@ def test_resolve_merges_when_fetch_returns(monkeypatch: pytest.MonkeyPatch) -> N
     assert u == "https://merged/"
     assert m == "MM"
     assert k == "kk"
+
+
+def test_resolve_propagates_oidc_auth_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENKMS_LLM_MODEL_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENKMS_LLM_MODEL_NAME", raising=False)
+    monkeypatch.delenv("OPENKMS_LLM_MODEL_API_KEY", raising=False)
+    cfg = Settings.model_construct(
+        openkms_backend_url="http://api.example",
+        llm_base_url="",
+        llm_model_name="",
+        llm_api_key="",
+    )
+    with patch(
+        "qa_agent.backend_defaults._fetch_agent_llm_defaults",
+        side_effect=RuntimeError("qa-agent service auth failed: OIDC token request timed out"),
+    ):
+        with pytest.raises(RuntimeError, match="OIDC token request timed out"):
+            resolve_llm_for_agent(cfg)

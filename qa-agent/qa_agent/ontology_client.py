@@ -81,7 +81,8 @@ def get_ontology_schema(access_token: str) -> dict[str, Any]:
         "link_types": link_types,
         "summary": (
             f"{len(object_types)} object types (node labels), {len(link_types)} link types (relationships). "
-            "Use neo4j_label for MATCH (n:Label) and neo4j_rel_type for MATCH ()-[r:REL_TYPE]->()."
+            "In Cypher, copy neo4j_label and neo4j_rel_type **verbatim** from this schema (case-sensitive). "
+            "Use key_property and property names from each object type; do not guess labels or uppercase rel types."
         ),
     }
 
@@ -91,7 +92,7 @@ def run_cypher(access_token: str, cypher: str) -> dict[str, Any]:
     base = settings.openkms_backend_url.rstrip("/")
     url = f"{base}/api/ontology/explore"
     t0 = time.monotonic()
-    logger.info("run_cypher query=%r", preview_text(cypher, 300))
+    logger.debug("run_cypher query=%r", preview_text(cypher, 300))
     with httpx.Client(timeout=30.0) as client:
         resp = client.post(
             url,
@@ -112,14 +113,14 @@ def run_cypher(access_token: str, cypher: str) -> dict[str, Any]:
 
 
 def _to_neo4j_label(name: str) -> str:
-    """Convert object type name to Neo4j-safe label (alphanumeric, underscore)."""
+    """Convert object type name to Neo4j-safe label (alphanumeric, underscore). Preserves case — matches backend ``_neo4j_safe_label``."""
     import re
     s = re.sub(r"[^a-zA-Z0-9_]", "_", name or "")
     return s.strip("_") or "Node"
 
 
 def _to_neo4j_rel_type(name: str) -> str:
-    """Convert link type name to Neo4j relationship type (uppercase, underscore)."""
+    """Sanitize link type name for Neo4j relationship type. Preserves case — matches backend ``_neo4j_safe_rel_type``."""
     import re
-    s = re.sub(r"[^a-zA-Z0-9_]", "_", name or "")
-    return (s.strip("_") or "RELATES_TO").upper()
+    s = re.sub(r"[^a-zA-Z0-9_]", "_", (name or "").strip())
+    return s.strip("_") or "relates_to"

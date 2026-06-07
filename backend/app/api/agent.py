@@ -28,12 +28,15 @@ from app.schemas.agent import (
 )
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
 from app.services.permission_catalog import PERM_WIKIS_READ
+from app.services.agent.assistant_stream_parts import (
+    WIKI_ASSISTANT_STREAM_PARTS_KEY,
+    AssistantStreamPartsBuilder,
+)
 from app.services.agent.wiki_runner import (
     WIKI_TOOL_TRANSCRIPTS_KEY,
     iter_wiki_conversation_stream_parts,
     new_id,
     run_wiki_conversation_turn,
-    truncate_wiki_tool_output_for_storage,
 )
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -331,6 +334,7 @@ async def _ndjson_wiki_message_response(
     yield _ndjson_line({"type": "user", "message": user_out.model_dump(mode="json")})
     acc: list[str] = []
     tool_traces: list[dict[str, str]] = []
+    stream_builder = AssistantStreamPartsBuilder()
     asst_m: AgentMessage
     try:
         async for part in iter_wiki_conversation_stream_parts(db, c, jwt_payload, session_id=session_id):
@@ -358,10 +362,22 @@ async def _ndjson_wiki_message_response(
             if ptype == "delta":
                 t = part.get("t") if isinstance(part, dict) else None
                 if t:
-                    acc.append(str(t))
+                    stream_builder.apply_stream_event(
+                        {"type": "delta", "t": str(t)}, acc, tool_traces
+                    )
                     yield _ndjson_line({"type": "delta", "t": str(t)})
                 continue
             if ptype == "tool_start" and isinstance(part, dict):
+                stream_builder.apply_stream_event(
+                    {
+                        "type": "tool_start",
+                        "run_id": str(part.get("run_id") or ""),
+                        "name": str(part.get("name") or "tool"),
+                        "input": str(part.get("input") or ""),
+                    },
+                    acc,
+                    tool_traces,
+                )
                 yield _ndjson_line(
                     {
                         "type": "tool_start",
@@ -374,8 +390,16 @@ async def _ndjson_wiki_message_response(
             if ptype == "tool_end" and isinstance(part, dict):
                 tname = str(part.get("name") or "tool")
                 tout = str(part.get("output") or "")
-                if tout.strip():
-                    tool_traces.append({"name": tname, "output": truncate_wiki_tool_output_for_storage(tout)})
+                stream_builder.apply_stream_event(
+                    {
+                        "type": "tool_end",
+                        "run_id": str(part.get("run_id") or ""),
+                        "name": tname,
+                        "output": tout,
+                    },
+                    acc,
+                    tool_traces,
+                )
                 yield _ndjson_line(
                     {
                         "type": "tool_end",
@@ -386,6 +410,16 @@ async def _ndjson_wiki_message_response(
                 )
                 continue
             if ptype == "tool_error" and isinstance(part, dict):
+                stream_builder.apply_stream_event(
+                    {
+                        "type": "tool_error",
+                        "run_id": str(part.get("run_id") or ""),
+                        "name": str(part.get("name") or "tool"),
+                        "error": str(part.get("error") or "Tool error"),
+                    },
+                    acc,
+                    tool_traces,
+                )
                 yield _ndjson_line(
                     {
                         "type": "tool_error",
@@ -396,9 +430,13 @@ async def _ndjson_wiki_message_response(
                 )
                 continue
         text = "".join(acc).strip()
-        tool_payload: dict[str, Any] | None = (
-            {WIKI_TOOL_TRANSCRIPTS_KEY: tool_traces} if tool_traces else None
-        )
+        tool_payload: dict[str, Any] | None = None
+        if tool_traces or stream_builder.parts:
+            tool_payload = {}
+            if tool_traces:
+                tool_payload[WIKI_TOOL_TRANSCRIPTS_KEY] = tool_traces
+            if stream_builder.parts:
+                tool_payload[WIKI_ASSISTANT_STREAM_PARTS_KEY] = stream_builder.parts
         asst_m = AgentMessage(
             id=new_id(),
             conversation_id=c.id,

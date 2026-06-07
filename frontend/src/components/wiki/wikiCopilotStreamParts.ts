@@ -6,6 +6,9 @@
 /** Matches backend `app.services.agent.wiki_runner.WIKI_TOOL_TRANSCRIPTS_KEY`. */
 export const WIKI_TOOL_TRANSCRIPTS_KEY = 'wiki_tool_traces_v1';
 
+/** Matches backend `app.services.agent.assistant_stream_parts.WIKI_ASSISTANT_STREAM_PARTS_KEY`. */
+export const WIKI_ASSISTANT_STREAM_PARTS_KEY = 'wiki_assistant_stream_parts_v1';
+
 export type AgentToolCallStep = {
   runId: string;
   name: string;
@@ -99,6 +102,37 @@ export function completeSubagent(parts: AssistantStreamPart[] | undefined): Assi
   return next;
 }
 
+function streamPartsFromPersistedInterleaved(toolCalls: unknown): AssistantStreamPart[] | undefined {
+  if (!toolCalls || typeof toolCalls !== 'object' || Array.isArray(toolCalls)) return undefined;
+  const raw = (toolCalls as Record<string, unknown>)[WIKI_ASSISTANT_STREAM_PARTS_KEY];
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const parts: AssistantStreamPart[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const row = raw[i];
+    if (!row || typeof row !== 'object') continue;
+    const o = row as Record<string, unknown>;
+    if (o.type === 'text' && typeof o.text === 'string') {
+      parts.push({ type: 'text', text: o.text });
+      continue;
+    }
+    if (o.type !== 'tool') continue;
+    const name = typeof o.name === 'string' ? o.name : 'tool';
+    const statusRaw = o.status;
+    const status: AgentToolCallStep['status'] =
+      statusRaw === 'running' ? 'running' : statusRaw === 'err' ? 'err' : 'ok';
+    const input = typeof o.input === 'string' ? o.input : undefined;
+    const output = typeof o.output === 'string' ? o.output : undefined;
+    const error = typeof o.error === 'string' ? o.error : undefined;
+    const runId =
+      typeof o.run_id === 'string' && o.run_id ? o.run_id : `persisted-${i}-${name}`;
+    parts.push({
+      type: 'tool',
+      step: { runId, name, input, output, error, status },
+    });
+  }
+  return parts.length ? parts : undefined;
+}
+
 function streamPartsFromPersistedToolCalls(toolCalls: unknown): AssistantStreamPart[] | undefined {
   if (!toolCalls || typeof toolCalls !== 'object' || Array.isArray(toolCalls)) return undefined;
   const raw = (toolCalls as Record<string, unknown>)[WIKI_TOOL_TRANSCRIPTS_KEY];
@@ -128,13 +162,15 @@ function streamPartsFromPersistedToolCalls(toolCalls: unknown): AssistantStreamP
 }
 
 /**
- * Rebuild assistant `streamParts` from stored `content` + `tool_calls` (no true interleaving in DB).
- * Order: completed tools, then final visible text (typical agent pattern).
+ * Rebuild assistant `streamParts` from stored `content` + `tool_calls`.
+ * Prefers persisted interleaved parts when present; otherwise tools first, then text.
  */
 export function assistantHistoryStreamParts(
   content: string,
   toolCalls: unknown
 ): AssistantStreamPart[] | undefined {
+  const interleaved = streamPartsFromPersistedInterleaved(toolCalls);
+  if (interleaved?.length) return interleaved;
   const toolParts = streamPartsFromPersistedToolCalls(toolCalls);
   const text = content;
   const parts: AssistantStreamPart[] = [];

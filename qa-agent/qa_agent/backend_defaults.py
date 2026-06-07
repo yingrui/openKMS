@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
@@ -9,6 +10,8 @@ import httpx
 
 from .auth import api_request_auth, auth_expired_response
 from .config import Settings
+
+logger = logging.getLogger(__name__)
 
 _INTERNAL_LLM_DEFAULTS = "/internal-api/models/llm-defaults"
 
@@ -45,12 +48,13 @@ def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
         return None
     try:
         headers, basic = api_request_auth()
-    except ValueError:
-        return None
+    except ValueError as exc:
+        raise RuntimeError(f"qa-agent service auth failed: {exc}") from exc
 
     url = f"{api.rstrip('/')}{_INTERNAL_LLM_DEFAULTS}"
     auth = httpx.BasicAuth(basic[0], basic[1]) if basic else None
     try:
+        logger.debug("GET %s", url)
         r = httpx.get(url, headers=headers, auth=auth, timeout=15.0)
         if auth_expired_response(r) and not basic:
             headers, basic = api_request_auth()
@@ -63,10 +67,8 @@ def _fetch_agent_llm_defaults(cfg: Settings) -> dict[str, Any] | None:
         raise RuntimeError(
             f"Backend llm-defaults returned HTTP {exc.response.status_code}: {detail}"
         ) from exc
-    except ValueError as exc:
-        raise RuntimeError(f"qa-agent service auth misconfigured: {exc}") from exc
     except httpx.HTTPError as exc:
-        raise RuntimeError(f"Could not reach backend at {api!r}: {exc}") from exc
+        raise RuntimeError(f"Could not reach backend llm-defaults at {url!r}: {exc}") from exc
 
 
 def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
@@ -95,17 +97,10 @@ def resolve_llm_for_agent(cfg: Settings) -> tuple[str, str, str]:
         data = _fetch_agent_llm_defaults(cfg)
     except RuntimeError:
         raise
-    except Exception as exc:
-        raise RuntimeError(
-            "Could not resolve LLM settings from the backend. Configure Models → set a default "
-            "chat-completions model, and set OPENKMS_QA_AGENT_BASIC_* (local) or "
-            "OPENKMS_QA_AGENT_OIDC_CLIENT_* (OIDC)."
-        ) from exc
     if not data:
         raise RuntimeError(
-            "Could not resolve LLM settings from the backend (empty response). Configure Models → "
-            "set a default chat-completions model, and set OPENKMS_QA_AGENT_BASIC_* (local) or "
-            "OPENKMS_QA_AGENT_OIDC_CLIENT_* (OIDC)."
+            "Could not resolve LLM settings: OPENKMS_BACKEND_URL is unset and no "
+            "OPENKMS_LLM_MODEL_* overrides are configured."
         )
 
     base_url, model_name, api_key = _merge_agent_llm_defaults_payload(

@@ -6,9 +6,17 @@ Local mode: ``OPENKMS_QA_AGENT_BASIC_*``. OIDC: ``OPENKMS_OIDC_TOKEN_URL`` and
 
 from __future__ import annotations
 
+import logging
+import time
+
 import httpx
 
 from .config import settings
+
+logger = logging.getLogger(__name__)
+
+_OIDC_TOKEN_ATTEMPTS = 3
+_OIDC_TOKEN_TIMEOUT_SECONDS = 30.0
 
 
 def _auth_error_message(resp: httpx.Response) -> str:
@@ -53,14 +61,39 @@ def get_access_token() -> str:
         "client_id": client_id,
         "client_secret": client_secret,
     }
-    resp = httpx.post(token_url, data=data, timeout=30.0)
-    if not resp.is_success:
-        raise ValueError(_auth_error_message(resp))
-    body = resp.json()
-    access_token = body.get("access_token")
-    if not access_token:
-        raise ValueError("No access_token in token response")
-    return access_token
+
+    last_err: Exception | None = None
+    for attempt in range(1, _OIDC_TOKEN_ATTEMPTS + 1):
+        try:
+            resp = httpx.post(token_url, data=data, timeout=_OIDC_TOKEN_TIMEOUT_SECONDS)
+            if not resp.is_success:
+                raise ValueError(_auth_error_message(resp))
+            body = resp.json()
+            access_token = body.get("access_token")
+            if not access_token:
+                raise ValueError("No access_token in token response")
+            if attempt > 1:
+                logger.info("OIDC token request succeeded on attempt %d", attempt)
+            return access_token
+        except ValueError:
+            raise
+        except httpx.HTTPError as exc:
+            last_err = exc
+            logger.warning(
+                "OIDC token request attempt %d/%d failed (%s): %s",
+                attempt,
+                _OIDC_TOKEN_ATTEMPTS,
+                token_url,
+                exc,
+            )
+            if attempt < _OIDC_TOKEN_ATTEMPTS:
+                time.sleep(float(attempt))
+                continue
+    assert last_err is not None
+    raise ValueError(
+        f"OIDC token request failed after {_OIDC_TOKEN_ATTEMPTS} attempts ({token_url}): {last_err}. "
+        "Check the IdP (e.g. Keycloak) is running and reachable."
+    ) from last_err
 
 
 def api_request_auth() -> tuple[dict[str, str], tuple[str, str] | None]:

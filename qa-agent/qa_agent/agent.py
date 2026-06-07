@@ -50,7 +50,6 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
         logger.debug("retrieve_node skip (context already set)")
         return {}
     kb_id = state["knowledge_base_id"]
-    logger.info("retrieve_node kb=%s question=%r", kb_id, preview_text(state.get("question"), 120))
     sources = retrieve(
         state["knowledge_base_id"],
         state["question"],
@@ -58,6 +57,7 @@ def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
         top_k=5,
     )
     logger.info("retrieve_node kb=%s hits=%d", kb_id, len(sources))
+    logger.debug("retrieve_node question=%r", preview_text(state.get("question"), 120))
     return {"context": sources}
 
 
@@ -117,11 +117,8 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
     tool_calls = getattr(response, "tool_calls", None) or []
     if not tool_calls:
         answer_text = text_from_lc_content(response.content)
-        logger.info(
-            "generate_node final answer_chars=%d preview=%r",
-            len(answer_text),
-            preview_text(answer_text, 120),
-        )
+        logger.info("generate_node final answer_chars=%d", len(answer_text))
+        logger.debug("generate_node answer preview=%r", preview_text(answer_text, 120))
         return {"answer": answer_text, "messages": messages + [response]}
 
     names = [tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "?") for tc in tool_calls]
@@ -199,12 +196,12 @@ def invoke_agent(
     h = set_request_access_token(access_token or "")
     t0 = time.monotonic()
     logger.info(
-        "invoke_agent start kb=%s history=%d session=%s question=%r",
+        "invoke_agent start kb=%s history=%d session=%s",
         knowledge_base_id,
         len(conversation_history or []),
         session_id or "-",
-        preview_text(question, 200),
     )
+    logger.debug("invoke_agent question=%r", preview_text(question, 200))
     try:
         agent = get_agent()
         config = build_langgraph_trace_config(session_id, streaming=False, include_callback=True)
@@ -312,12 +309,12 @@ async def astream_agent_ndjson(
     h = set_request_access_token(access_token or "")
     t0 = time.monotonic()
     logger.info(
-        "astream_agent_ndjson start kb=%s history=%d session=%s question=%r",
+        "astream_agent_ndjson start kb=%s history=%d session=%s",
         knowledge_base_id,
         len(conversation_history or []),
         session_id or "-",
-        preview_text(question, 200),
     )
+    logger.debug("astream_agent_ndjson question=%r", preview_text(question, 200))
     try:
         ctx = retrieve(
             knowledge_base_id,
@@ -381,12 +378,17 @@ async def astream_agent_ndjson(
                     data = ev.get("data") or {}
                     inp = data.get("input")
                     run_id = str(ev.get("run_id") or "")
+                    inp_preview = preview_text(_tool_io_preview(inp, 400), 400)
                     logger.info(
-                        "tool_start #%d name=%s run_id=%s input=%r",
+                        "tool_start #%d name=%s run_id=%s",
                         tool_starts,
                         name,
                         run_id[:8] if run_id else "-",
-                        preview_text(_tool_io_preview(inp, 400), 400),
+                    )
+                    logger.debug(
+                        "tool_start #%d input=%r",
+                        tool_starts,
+                        inp_preview,
                     )
                     yield _ndjson_line(
                         {
@@ -402,13 +404,18 @@ async def astream_agent_ndjson(
                     out = data.get("output")
                     run_id = str(ev.get("run_id") or "")
                     name = (ev.get("name") or "tool").split("/")[-1]
-                    out_preview = preview_text(_tool_io_preview(out, 500), 500)
+                    out_raw = _tool_io_preview(out, 500)
+                    out_preview = preview_text(out_raw, 500)
                     logger.info(
-                        "tool_end #%d name=%s run_id=%s output_chars=%d preview=%r",
+                        "tool_end #%d name=%s run_id=%s output_chars=%d",
                         tool_ends,
                         name,
                         run_id[:8] if run_id else "-",
-                        len(out_preview),
+                        len(out_raw),
+                    )
+                    logger.debug(
+                        "tool_end #%d preview=%r",
+                        tool_ends,
                         out_preview,
                     )
                     yield _ndjson_line(
@@ -441,10 +448,14 @@ async def astream_agent_ndjson(
                     run_id = str(ev.get("run_id") or "")
                     name = (ev.get("name") or "tool").split("/")[-1]
                     logger.warning(
-                        "tool_error #%d name=%s run_id=%s error=%r",
+                        "tool_error #%d name=%s run_id=%s",
                         tool_errors,
                         name,
                         run_id[:8] if run_id else "-",
+                    )
+                    logger.debug(
+                        "tool_error #%d error=%r",
+                        tool_errors,
                         preview_text(err_s, 300),
                     )
                     yield _ndjson_line(

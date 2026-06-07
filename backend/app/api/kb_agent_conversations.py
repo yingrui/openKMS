@@ -34,10 +34,13 @@ from app.schemas.agent import (
     AgentMessagePostResponse,
 )
 from app.schemas.knowledge_base import SearchResult
+from app.services.agent.assistant_stream_parts import (
+    WIKI_ASSISTANT_STREAM_PARTS_KEY,
+    AssistantStreamPartsBuilder,
+)
 from app.services.agent.wiki_runner import (
     WIKI_TOOL_TRANSCRIPTS_KEY,
     new_id,
-    truncate_wiki_tool_output_for_storage,
 )
 from app.services.permission_catalog import PERM_KB_READ
 
@@ -334,13 +337,17 @@ async def _run_kb_ask_non_stream(
 
 
 def _assistant_tool_payload(
-    tool_traces: list[dict[str, str]], sources: list[SearchResult]
+    tool_traces: list[dict[str, str]],
+    sources: list[SearchResult],
+    stream_parts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     tool_payload: dict[str, Any] = {}
     if tool_traces:
         tool_payload[WIKI_TOOL_TRANSCRIPTS_KEY] = tool_traces
     if sources:
         tool_payload[KB_QA_SOURCES_KEY] = _sources_to_json(sources)
+    if stream_parts:
+        tool_payload[WIKI_ASSISTANT_STREAM_PARTS_KEY] = stream_parts
     return tool_payload or None
 
 
@@ -382,6 +389,7 @@ async def _ndjson_kb_qa_stream_persist(
     agent_url = kb.agent_url.rstrip("/")
     acc: list[str] = []
     tool_traces: list[dict[str, str]] = []
+    stream_builder = AssistantStreamPartsBuilder()
     terminal = False
 
     async def _consume_parsed_line(raw_line: bytes, ev: dict[str, Any]) -> AsyncIterator[bytes]:
@@ -390,12 +398,13 @@ async def _ndjson_kb_qa_stream_persist(
         if typ == "done":
             answer = str(ev.get("answer", "") or "")
             sources = _parse_sources(ev.get("sources"))
+            stream_parts = stream_builder.parts or None
             asst_m = AgentMessage(
                 id=new_id(),
                 conversation_id=c.id,
                 role="assistant",
                 content=answer,
-                tool_calls=_assistant_tool_payload(tool_traces, sources),
+                tool_calls=_assistant_tool_payload(tool_traces, sources, stream_parts),
             )
             db.add(asst_m)
             _bump_conversation_timestamp(c)
@@ -415,12 +424,13 @@ async def _ndjson_kb_qa_stream_persist(
             detail = str(ev.get("detail") or "Error")
             partial = str(ev.get("answer") or "")
             content = partial.strip() or f"Error: {detail}"
+            stream_parts = stream_builder.parts or None
             asst_m = AgentMessage(
                 id=new_id(),
                 conversation_id=c.id,
                 role="assistant",
                 content=content,
-                tool_calls=_assistant_tool_payload(tool_traces, []),
+                tool_calls=_assistant_tool_payload(tool_traces, [], stream_parts),
             )
             db.add(asst_m)
             _bump_conversation_timestamp(c)
@@ -435,27 +445,8 @@ async def _ndjson_kb_qa_stream_persist(
             )
             terminal = True
             return
-        if typ == "delta" and isinstance(ev.get("t"), str):
-            acc.append(str(ev["t"]))
-        elif typ == "tool_end" and isinstance(ev.get("name"), str):
-            tname = str(ev.get("name") or "tool")
-            tout = str(ev.get("output") or "")
-            if tout.strip():
-                tool_traces.append(
-                    {
-                        "name": tname,
-                        "output": truncate_wiki_tool_output_for_storage(tout),
-                    }
-                )
-        elif typ == "tool_error" and isinstance(ev.get("name"), str):
-            tname = str(ev.get("name") or "tool")
-            terr = str(ev.get("error") or "Tool error")
-            tool_traces.append(
-                {
-                    "name": tname,
-                    "output": truncate_wiki_tool_output_for_storage(terr),
-                }
-            )
+        elif typ in ("delta", "tool_start", "tool_end", "tool_error"):
+            stream_builder.apply_stream_event(ev, acc, tool_traces)
         yield raw_line + b"\n"
 
     try:
@@ -554,12 +545,13 @@ async def _ndjson_kb_qa_stream_persist(
     text = "".join(acc).strip()
     if text or tool_traces:
         sources: list[SearchResult] = []
+        stream_parts = stream_builder.parts or None
         asst_m = AgentMessage(
             id=new_id(),
             conversation_id=c.id,
             role="assistant",
             content=text or "(Stream ended before a final summary.)",
-            tool_calls=_assistant_tool_payload(tool_traces, sources),
+            tool_calls=_assistant_tool_payload(tool_traces, sources, stream_parts),
         )
         db.add(asst_m)
         _bump_conversation_timestamp(c)

@@ -277,7 +277,7 @@ Design and enforcement: [Data security](data-security.md).
 
 ### AgentMessage
 
-- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
+- `id`, `conversation_id` (FK → agent_conversations, CASCADE), `role` (`user` / `assistant` / `tool`), `content` (user-visible text for assistant turns), `tool_calls` (JSONB; wiki Copilot may store `wiki_tool_traces_v1`: tool name + output for model replay without re-running tools, plus optional **`wiki_assistant_stream_parts_v1`** for interleaved tool/text UI replay on reload; **KB Q&A / evaluation / kb_faq** may add `kb_qa_sources_v1` and optional `wiki_tool_traces_v1` / `wiki_assistant_stream_parts_v1` when the qa-agent streams tools), `created_at` (DB default **`clock_timestamp()`** so rows inserted in the same transaction get distinct timestamps; list APIs use `ORDER BY created_at, id`)
 
 ## Projects (Agents workspace)
 

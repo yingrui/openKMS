@@ -66,7 +66,7 @@ The server starts on port 8103 by default.
 | `OPENKMS_RERANK_ENABLED` | false | Set **`true`** when your `OPENKMS_RERANK_BASE_URL` (or LLM base) implements `POST …/v1/rerank`; otherwise fused BM25+dense order only (no extra HTTP) |
 | `HOST` | 0.0.0.0 | Server bind host |
 | `PORT` | 8103 | Server port |
-| `OPENKMS_QA_AGENT_LOG_LEVEL` | INFO | **`DEBUG`** logs every LangGraph event + inter-event gaps; **INFO** logs tool start/end, Cypher, and turn summary |
+| `OPENKMS_QA_AGENT_LOG_LEVEL` | INFO | **INFO**: turn summary, tool name/count, Cypher row counts; **DEBUG**: tool I/O payloads, questions, LangGraph event gaps |
 | `OPENKMS_QA_AGENT_RECURSION_LIMIT` | 200 | Max LangGraph supersteps per turn (generate ↔ tools). **Alias:** `OPENKMS_AGENT_RECURSION_LIMIT` (same as wiki copilot). LangGraph default without this is **25**. |
 | `LANGFUSE_SECRET_KEY` | - | Langfuse secret key (optional; enables tracing **only** with public key + **`LANGFUSE_BASE_URL`**) |
 | `LANGFUSE_PUBLIC_KEY` | - | Langfuse public key |
