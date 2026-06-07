@@ -71,6 +71,11 @@ $agents-pane-header-height: 49px;
   color: var(--color-text-muted);
   text-decoration: none;
   margin-bottom: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
 
   &:hover {
     color: var(--color-text);
@@ -133,11 +138,14 @@ $agents-pane-header-height: 49px;
   flex-shrink: 0;
   width: 28px;
   height: 28px;
+  padding: 0;
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-muted);
   text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
 
   &:hover {
     background: var(--color-bg-hover);
@@ -149,6 +157,23 @@ $agents-pane-header-height: 49px;
   flex: 1;
   overflow-y: auto;
   padding: 4px 8px 8px;
+}
+
+.agents-sessions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 12px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.agents-sessions-empty {
+  margin: 16px 10px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.45;
 }
 
 .agents-session-row {
@@ -184,6 +209,7 @@ $agents-pane-header-height: 49px;
   flex: 1;
   min-width: 0;
   display: block;
+  width: 100%;
   text-align: left;
   padding: 8px 6px 8px 10px;
   border: none;
@@ -195,6 +221,7 @@ $agents-pane-header-height: 49px;
   color: var(--color-text-secondary);
   word-break: break-word;
   text-decoration: none;
+  font-family: inherit;
 
   &:hover {
     color: var(--color-text);

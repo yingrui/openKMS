@@ -55,6 +55,7 @@ import {
   listAllKbAgentMessages,
   createKbAgentConversation,
   deleteKbAgentConversation,
+  patchKbAgentConversation,
   postKbAgentMessageStream,
   getStoredKbQaConversationId,
   setStoredKbQaConversationId,
@@ -78,6 +79,8 @@ import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
+import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
+import '../../components/agents/AgentsWorkspace.scss';
 import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
 import {
   appendDeltaToStreamParts,
@@ -249,39 +252,6 @@ function kbQaLineId(): string {
     : `line_${Date.now()}`;
 }
 
-function groupKbConversationsByMonth(
-  items: AgentConversationResponse[]
-): { key: string; items: AgentConversationResponse[] }[] {
-  const map = new Map<string, AgentConversationResponse[]>();
-  for (const c of items) {
-    const d = new Date(c.updated_at || c.created_at);
-    if (Number.isNaN(d.getTime())) continue;
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(c);
-  }
-  const keys = [...map.keys()].sort((a, b) => b.localeCompare(a));
-  return keys.map((key) => ({
-    key,
-    items: (map.get(key) || []).sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    ),
-  }));
-}
-
-function formatKbQaMonthGroupLabel(key: string, locale: string): string {
-  const [ys, ms] = key.split('-');
-  const y = Number(ys);
-  const m = Number(ms);
-  if (!y || !m || m < 1 || m > 12) return key;
-  try {
-    const loc = locale.startsWith('zh') ? 'zh-CN' : 'en-US';
-    return new Date(y, m - 1, 1).toLocaleDateString(loc, { year: 'numeric', month: 'long' });
-  } catch {
-    return key;
-  }
-}
-
 function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
   const k = (sourceType || 'chunk').toLowerCase();
   if (k === 'ontology' || k === 'document_section' || k === 'faq' || k === 'chunk') return k;
@@ -409,7 +379,7 @@ export function KnowledgeBaseDetail() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { channels } = useDocumentChannels();
-  const { t, i18n } = useTranslation('knowledgeBase');
+  const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const initialTab = (searchParams.get('tab') as TabId) || 'documents';
   const [activeTab, setActiveTab] = useState<TabId>(TAB_ORDER.includes(initialTab) ? initialTab : 'documents');
@@ -663,30 +633,6 @@ export function KnowledgeBaseDetail() {
       setChatMessages(kbAgentItemsToChatMessages(msgs));
     },
     [kbId]
-  );
-
-  const kbQaConvLabel = useCallback(
-    (c: AgentConversationResponse) => {
-      const t0 = (c.title || '').trim();
-      if (t0) return t0.length > 60 ? `${t0.slice(0, 59)}…` : t0;
-      const raw = c.updated_at || c.created_at;
-      const d = raw ? new Date(raw) : null;
-      if (d && !Number.isNaN(d.getTime())) {
-        return `${t('detail.qaChatDatePrefix')} ${d.toLocaleString([], {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}`;
-      }
-      return t('detail.qaNewChat');
-    },
-    [t]
-  );
-
-  const kbQaConvMonthGroups = useMemo(
-    () => groupKbConversationsByMonth(kbQaConversations),
-    [kbQaConversations]
   );
 
   useEffect(() => {
@@ -1230,13 +1176,24 @@ export function KnowledgeBaseDetail() {
     }
   };
 
-  const onDeleteKbQaChat = async () => {
-    if (!kbId || !kbQaConvId) return;
-    if (!window.confirm(t('detail.qaConfirmDeleteChat'))) return;
+  const onRenameKbQaChat = async (id: string, title: string) => {
+    if (!kbId) return;
     try {
-      await deleteKbAgentConversation(kbId, kbQaConvId);
+      const updated = await patchKbAgentConversation(kbId, id, { title });
+      setKbQaConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.qaToastRenameChatFailed'));
+    }
+  };
+
+  const onDeleteKbQaChat = async (id: string) => {
+    if (!kbId) return;
+    const deletingActive = kbQaConvId === id;
+    try {
+      await deleteKbAgentConversation(kbId, id);
       const items = await listKbAgentConversations(kbId);
       setKbQaConversations(items);
+      if (!deletingActive) return;
       const next = items[0]?.id || null;
       setKbQaConvId(next);
       if (next) {
@@ -1246,7 +1203,6 @@ export function KnowledgeBaseDetail() {
         clearStoredKbQaConversationId(kbId);
         setChatMessages([]);
       }
-      toast.success(t('detail.qaToastChatDeleted'));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.qaToastDeleteChatFailed'));
     }
@@ -1522,76 +1478,31 @@ export function KnowledgeBaseDetail() {
       <div className="kb-detail kb-detail--qa-fullpage">
         <div className="kb-qa-shell">
           <div className="kb-qa-shell-body">
-            <aside className="kb-qa-sidebar" aria-label={t('detail.qaChatsAria')}>
-              <div className="kb-qa-sidebar-head">
-                <button
-                  type="button"
-                  className="kb-qa-sidebar-back"
-                  onClick={() => {
-                    qaTraceSessionRef.current = null;
-                    setQaFullPage(false);
-                  }}
-                  aria-label={t('detail.qaBackAria')}
-                  title={t('detail.qaBackToKb')}
-                >
-                  <ArrowLeft size={18} strokeWidth={2.25} aria-hidden />
-                </button>
-                <div className="kb-qa-sidebar-head-text">
-                  <span className="kb-qa-sidebar-kb-name">{kb.name}</span>
-                  <span className="kb-qa-sidebar-badge">{t('detail.qaTitle')}</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="kb-qa-sidebar-newchat"
-                onClick={() => void onNewKbQaChat()}
-                disabled={kbQaConvsLoading || qaLoading}
-              >
-                  <Plus size={16} strokeWidth={2} aria-hidden />
-                <span>{t('detail.qaNewChat')}</span>
-              </button>
-              <div className="kb-qa-sidebar-scroll">
-                {kbQaConvsLoading ? (
-                  <div className="kb-qa-sidebar-loading" role="status">
-                    <Loader2 className="kb-qa-sidebar-loading-ico" size={22} aria-hidden />
-                    <span>{t('detail.qaChatsLoading')}</span>
-                  </div>
-                ) : kbQaConvMonthGroups.length === 0 ? (
-                  <p className="kb-qa-sidebar-empty">{t('detail.qaNoChatsYet')}</p>
-                ) : (
-                  kbQaConvMonthGroups.map((group) => (
-                    <section key={group.key} className="kb-qa-sidebar-group">
-                      <h2 className="kb-qa-sidebar-month">{formatKbQaMonthGroupLabel(group.key, i18n.language)}</h2>
-                      <ul className="kb-qa-sidebar-list">
-                        {group.items.map((c) => (
-                          <li key={c.id}>
-                            <button
-                              type="button"
-                              className={`kb-qa-sidebar-item${kbQaConvId === c.id ? ' kb-qa-sidebar-item--active' : ''}`}
-                              onClick={() => void onSelectKbQaConversation(c.id)}
-                              title={kbQaConvLabel(c)}
-                            >
-                              <span className="kb-qa-sidebar-item-text">{kbQaConvLabel(c)}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  ))
-                )}
-              </div>
-              {kbQaConvId ? (
-                <button
-                  type="button"
-                  className="kb-qa-sidebar-footdel"
-                  onClick={() => void onDeleteKbQaChat()}
-                  disabled={kbQaConvsLoading || qaLoading}
-                >
-                  <Trash2 size={15} aria-hidden />
-                  <span>{t('detail.qaDeleteChatAction')}</span>
-                </button>
-              ) : null}
-            </aside>
+            <AgentSessionSidebar
+              backLabel={t('detail.qaBackToKb')}
+              onBack={() => {
+                qaTraceSessionRef.current = null;
+                setQaFullPage(false);
+              }}
+              contextTitle={kb.name}
+              contextSubtitle={t('detail.qaTitle')}
+              onSettingsClick={() => {
+                qaTraceSessionRef.current = null;
+                setQaFullPage(false);
+                setActiveTab('settings');
+              }}
+              conversations={kbQaConversations}
+              activeId={kbQaConvId}
+              onSelectSession={(id) => void onSelectKbQaConversation(id)}
+              onNewChat={() => void onNewKbQaChat()}
+              onRename={onRenameKbQaChat}
+              onDelete={(id) => void onDeleteKbQaChat(id)}
+              loading={kbQaConvsLoading}
+              loadingLabel={t('detail.qaChatsLoading')}
+              emptyLabel={t('detail.qaNoChatsYet')}
+              newChatLabel={t('detail.qaNewChat')}
+              disabled={qaLoading}
+            />
             <main className="kb-qa-main">
               <div className="kb-qa-main-scroll" ref={kbQaMainScrollRef}>
                 {chatMessages.length === 0 && !qaLoading ? (

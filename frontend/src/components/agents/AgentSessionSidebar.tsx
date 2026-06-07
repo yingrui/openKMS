@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Settings, Sparkles, Trash2 } from 'lucide-react';
 import type { AgentConversationResponse } from '../../data/agentApi';
-import { projectWorkspacePath } from '../../data/projectsApi';
 import './AgentsWorkspace.scss';
 
 function label(c: AgentConversationResponse): string {
@@ -11,29 +10,51 @@ function label(c: AgentConversationResponse): string {
   return new Date(c.updated_at).toLocaleDateString();
 }
 
-interface Props {
-  projectId: string;
-  projectName: string;
-  projectSlug: string;
+export interface AgentSessionSidebarProps {
   conversations: AgentConversationResponse[];
   activeId: string | null;
   onNewChat: () => void;
+  backLabel: string;
+  backHref?: string;
+  onBack?: () => void;
+  contextTitle: string;
+  contextSubtitle?: string;
+  settingsHref?: string;
+  onSettingsClick?: () => void;
+  sessionHref?: (conversationId: string) => string;
+  onSelectSession?: (conversationId: string) => void;
   onRename?: (sessionId: string, title: string) => void | Promise<void>;
   onAutoRename?: (sessionId: string) => void | Promise<void>;
   onDelete?: (sessionId: string) => void;
+  loading?: boolean;
+  loadingLabel?: string;
+  emptyLabel?: string;
+  newChatLabel?: string;
+  disabled?: boolean;
 }
 
 export function AgentSessionSidebar({
-  projectId,
-  projectName,
-  projectSlug,
   conversations,
   activeId,
   onNewChat,
+  backLabel,
+  backHref,
+  onBack,
+  contextTitle,
+  contextSubtitle,
+  settingsHref,
+  onSettingsClick,
+  sessionHref,
+  onSelectSession,
   onRename,
   onAutoRename,
   onDelete,
-}: Props) {
+  loading = false,
+  loadingLabel,
+  emptyLabel,
+  newChatLabel,
+  disabled = false,
+}: AgentSessionSidebarProps) {
   const { t } = useTranslation('agents');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -89,133 +110,202 @@ export function AgentSessionSidebar({
   };
 
   const showActions = Boolean(onRename || onAutoRename || onDelete);
+  const showSettings = Boolean(settingsHref || onSettingsClick);
+  const useLinkNav = Boolean(sessionHref);
+
+  const renderBack = () => {
+    if (backHref) {
+      return (
+        <Link to={backHref} className="agents-sessions-back">
+          <ArrowLeft size={14} />
+          {backLabel}
+        </Link>
+      );
+    }
+    if (onBack) {
+      return (
+        <button type="button" className="agents-sessions-back" onClick={onBack}>
+          <ArrowLeft size={14} />
+          {backLabel}
+        </button>
+      );
+    }
+    return null;
+  };
+
+  const renderSettings = () => {
+    if (!showSettings) return null;
+    if (settingsHref) {
+      return (
+        <Link
+          to={settingsHref}
+          className="agents-sessions-settings"
+          title={t('settings.title')}
+          aria-label={t('settings.title')}
+        >
+          <Settings size={16} strokeWidth={1.75} />
+        </Link>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className="agents-sessions-settings"
+        title={t('settings.title')}
+        aria-label={t('settings.title')}
+        onClick={onSettingsClick}
+      >
+        <Settings size={16} strokeWidth={1.75} />
+      </button>
+    );
+  };
+
+  const renderSessionItem = (c: AgentConversationResponse) => {
+    const text = label(c);
+    if (renamingId === c.id) {
+      return (
+        <input
+          ref={renameInputRef}
+          type="text"
+          className="agents-session-rename"
+          value={renameValue}
+          maxLength={512}
+          aria-label={t('sessions.rename')}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commitRename(c.id);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              cancelRename();
+            }
+          }}
+          onBlur={() => commitRename(c.id)}
+        />
+      );
+    }
+    if (useLinkNav && sessionHref) {
+      return (
+        <Link to={sessionHref(c.id)} className="agents-session-item">
+          {text}
+        </Link>
+      );
+    }
+    return (
+      <button
+        type="button"
+        className="agents-session-item"
+        onClick={() => onSelectSession?.(c.id)}
+      >
+        {text}
+      </button>
+    );
+  };
 
   return (
     <aside className="agents-sessions">
       <div className="agents-sessions-head">
-        <Link to="/agents" className="agents-sessions-back">
-          <ArrowLeft size={14} />
-          {t('sessions.back')}
-        </Link>
+        {renderBack()}
         <div className="agents-sessions-project-block">
           <div className="agents-sessions-project-line">
-            <div className="agents-sessions-project">{projectName}</div>
-            <Link
-              to={`/projects/${projectId}/settings`}
-              className="agents-sessions-settings"
-              title={t('settings.title')}
-              aria-label={t('settings.title')}
-            >
-              <Settings size={16} strokeWidth={1.75} />
-            </Link>
+            <div className="agents-sessions-project">{contextTitle}</div>
+            {renderSettings()}
           </div>
-          <div className="agents-sessions-sub">{projectSlug}</div>
+          {contextSubtitle ? <div className="agents-sessions-sub">{contextSubtitle}</div> : null}
         </div>
-        <button type="button" className="agents-sessions-new" onClick={onNewChat}>
+        <button
+          type="button"
+          className="agents-sessions-new"
+          onClick={onNewChat}
+          disabled={disabled || loading}
+        >
           <Plus size={15} strokeWidth={2} />
-          {t('sessions.newChat')}
+          {newChatLabel ?? t('sessions.newChat')}
         </button>
       </div>
       <div className="agents-sessions-scroll">
-        {sorted.map((c) => (
-          <div
-            key={c.id}
-            className={`agents-session-row${activeId === c.id ? ' agents-session-row--active' : ''}`}
-          >
-            {renamingId === c.id ? (
-              <input
-                ref={renameInputRef}
-                type="text"
-                className="agents-session-rename"
-                value={renameValue}
-                maxLength={512}
-                aria-label={t('sessions.rename')}
-                onChange={(e) => setRenameValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    commitRename(c.id);
-                  } else if (e.key === 'Escape') {
-                    e.preventDefault();
-                    cancelRename();
-                  }
-                }}
-                onBlur={() => commitRename(c.id)}
-              />
-            ) : (
-              <Link
-                to={projectWorkspacePath(projectId, c.id)}
-                className="agents-session-item"
-              >
-                {label(c)}
-              </Link>
-            )}
-            {showActions && renamingId !== c.id ? (
-              <div className="agents-session-actions" ref={menuOpenId === c.id ? menuRef : undefined}>
-                <button
-                  type="button"
-                  className="agents-session-more"
-                  aria-label={t('sessions.actions')}
-                  aria-expanded={menuOpenId === c.id}
-                  aria-haspopup="menu"
-                  disabled={autoRenamingId === c.id}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setMenuOpenId((prev) => (prev === c.id ? null : c.id));
-                  }}
-                >
-                  {autoRenamingId === c.id ? (
-                    <Loader2 size={15} className="agents-session-more-spinner" />
-                  ) : (
-                    <MoreHorizontal size={15} />
-                  )}
-                </button>
-                {menuOpenId === c.id ? (
-                  <div className="agents-session-menu" role="menu">
-                    {onAutoRename ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="agents-session-menu-item"
-                        disabled={Boolean(autoRenamingId)}
-                        onClick={() => runAutoRename(c.id)}
-                      >
-                        <Sparkles size={14} />
-                        <span>{t('sessions.autoRename')}</span>
-                      </button>
-                    ) : null}
-                    {onRename ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="agents-session-menu-item"
-                        onClick={() => startRename(c)}
-                      >
-                        <Pencil size={14} />
-                        <span>{t('sessions.rename')}</span>
-                      </button>
-                    ) : null}
-                    {onDelete ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="agents-session-menu-item agents-session-menu-item--danger"
-                        onClick={() => {
-                          setMenuOpenId(null);
-                          void onDelete(c.id);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        <span>{t('sessions.delete')}</span>
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+        {loading ? (
+          <div className="agents-sessions-loading" role="status">
+            <Loader2 size={20} className="agents-session-more-spinner" aria-hidden />
+            <span>{loadingLabel ?? t('loading')}</span>
           </div>
-        ))}
+        ) : sorted.length === 0 ? (
+          emptyLabel ? <p className="agents-sessions-empty">{emptyLabel}</p> : null
+        ) : (
+          sorted.map((c) => (
+            <div
+              key={c.id}
+              className={`agents-session-row${activeId === c.id ? ' agents-session-row--active' : ''}`}
+            >
+              {renderSessionItem(c)}
+              {showActions && renamingId !== c.id ? (
+                <div className="agents-session-actions" ref={menuOpenId === c.id ? menuRef : undefined}>
+                  <button
+                    type="button"
+                    className="agents-session-more"
+                    aria-label={t('sessions.actions')}
+                    aria-expanded={menuOpenId === c.id}
+                    aria-haspopup="menu"
+                    disabled={autoRenamingId === c.id}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMenuOpenId((prev) => (prev === c.id ? null : c.id));
+                    }}
+                  >
+                    {autoRenamingId === c.id ? (
+                      <Loader2 size={15} className="agents-session-more-spinner" />
+                    ) : (
+                      <MoreHorizontal size={15} />
+                    )}
+                  </button>
+                  {menuOpenId === c.id ? (
+                    <div className="agents-session-menu" role="menu">
+                      {onAutoRename ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="agents-session-menu-item"
+                          disabled={Boolean(autoRenamingId)}
+                          onClick={() => runAutoRename(c.id)}
+                        >
+                          <Sparkles size={14} />
+                          <span>{t('sessions.autoRename')}</span>
+                        </button>
+                      ) : null}
+                      {onRename ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="agents-session-menu-item"
+                          onClick={() => startRename(c)}
+                        >
+                          <Pencil size={14} />
+                          <span>{t('sessions.rename')}</span>
+                        </button>
+                      ) : null}
+                      {onDelete ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="agents-session-menu-item agents-session-menu-item--danger"
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            void onDelete(c.id);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                          <span>{t('sessions.delete')}</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ))
+        )}
       </div>
     </aside>
   );

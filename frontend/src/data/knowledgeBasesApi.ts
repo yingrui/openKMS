@@ -371,6 +371,30 @@ export async function deleteKbAgentConversation(kbId: string, conversationId: st
   if (!res.ok) throw new Error(`Failed to delete conversation: ${res.status}`);
 }
 
+export async function patchKbAgentConversation(
+  kbId: string,
+  conversationId: string,
+  body: { title: string }
+): Promise<AgentConversationResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+      conversationId
+    )}`,
+    {
+      method: 'PATCH',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(body),
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to update conversation');
+  }
+  return res.json();
+}
+
 export interface AgentMessageListResponse {
   items: AgentMessageItem[];
   total: number;
