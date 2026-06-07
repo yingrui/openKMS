@@ -1,5 +1,6 @@
 """FastAPI application for the QA Agent Service."""
 import logging
+import time
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,11 +8,13 @@ from fastapi.responses import StreamingResponse
 
 from .config import settings
 from .langfuse_client import silence_otel_export_loggers
+from .logging_config import configure_logging, preview_text
 from .schemas import AskRequest, AskResponse, RetrieveRequest, RetrieveResponse, SourceItem
 
-logging.basicConfig(level=logging.INFO)
+configure_logging(settings.log_level)
 silence_otel_export_loggers()
 logger = logging.getLogger(__name__)
+logger.info("qa-agent recursion_limit=%d", settings.agent_recursion_limit)
 
 app = FastAPI(
     title="openKMS QA Agent",
@@ -38,6 +41,14 @@ async def ask(request: AskRequest):
     """Answer a question using RAG + ontology tools against the knowledge base."""
     from .agent import invoke_agent
 
+    t0 = time.monotonic()
+    logger.info(
+        "POST /ask kb=%s history=%d session=%s question=%r",
+        request.knowledge_base_id,
+        len(request.conversation_history or []),
+        request.session_id or "-",
+        preview_text(request.question, 200),
+    )
     result = invoke_agent(
         knowledge_base_id=request.knowledge_base_id,
         question=request.question,
@@ -53,8 +64,16 @@ async def ask(request: AskRequest):
         else:
             sources.append(SourceItem.model_validate(s))
 
+    answer = result.get("answer", "")
+    logger.info(
+        "POST /ask done kb=%s elapsed=%.2fs answer_chars=%d sources=%d",
+        request.knowledge_base_id,
+        time.monotonic() - t0,
+        len(answer or ""),
+        len(sources),
+    )
     return AskResponse(
-        answer=result.get("answer", ""),
+        answer=answer,
         sources=sources,
     )
 
@@ -64,6 +83,13 @@ async def ask_stream(request: AskRequest):
     """Stream answer as NDJSON: delta lines {type, t}, then done {type, answer, sources}."""
     from .agent import astream_agent_ndjson
 
+    logger.info(
+        "POST /ask/stream kb=%s history=%d session=%s question=%r",
+        request.knowledge_base_id,
+        len(request.conversation_history or []),
+        request.session_id or "-",
+        preview_text(request.question, 200),
+    )
     return StreamingResponse(
         astream_agent_ndjson(
             knowledge_base_id=request.knowledge_base_id,

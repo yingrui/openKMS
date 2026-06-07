@@ -1,9 +1,14 @@
 """Ontology client: fetch object types, link types, and execute Cypher via backend API."""
+import logging
+import time
 from typing import Any
 
 import httpx
 
 from .config import settings
+from .logging_config import preview_text
+
+logger = logging.getLogger(__name__)
 
 
 def _headers(access_token: str) -> dict[str, str]:
@@ -62,8 +67,15 @@ def get_link_types(access_token: str) -> list[dict[str, Any]]:
 
 def get_ontology_schema(access_token: str) -> dict[str, Any]:
     """Get full ontology schema: object types and link types. Use this to understand the graph structure before writing Cypher."""
+    t0 = time.monotonic()
     object_types = get_object_types(access_token)
     link_types = get_link_types(access_token)
+    logger.info(
+        "get_ontology_schema object_types=%d link_types=%d elapsed=%.2fs",
+        len(object_types),
+        len(link_types),
+        time.monotonic() - t0,
+    )
     return {
         "object_types": object_types,
         "link_types": link_types,
@@ -78,6 +90,8 @@ def run_cypher(access_token: str, cypher: str) -> dict[str, Any]:
     """Execute a read-only Cypher query against Neo4j. Returns columns and rows."""
     base = settings.openkms_backend_url.rstrip("/")
     url = f"{base}/api/ontology/explore"
+    t0 = time.monotonic()
+    logger.info("run_cypher query=%r", preview_text(cypher, 300))
     with httpx.Client(timeout=30.0) as client:
         resp = client.post(
             url,
@@ -85,7 +99,16 @@ def run_cypher(access_token: str, cypher: str) -> dict[str, Any]:
             headers=_headers(access_token),
         )
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+    rows = data.get("rows") if isinstance(data, dict) else None
+    row_count = len(rows) if isinstance(rows, list) else 0
+    logger.info(
+        "run_cypher done rows=%d elapsed=%.2fs status=%d",
+        row_count,
+        time.monotonic() - t0,
+        resp.status_code,
+    )
+    return data
 
 
 def _to_neo4j_label(name: str) -> str:

@@ -89,6 +89,19 @@ class Settings(BaseSettings):
         validation_alias="LANGFUSE_HEALTHCHECK_RETRY_SECONDS",
     )
 
+    log_level: str = Field(default="INFO", validation_alias="OPENKMS_QA_AGENT_LOG_LEVEL")
+
+    #: LangGraph supersteps (generate ↔ tools loops). Default matches wiki copilot (200).
+    agent_recursion_limit: int = Field(
+        default=200,
+        ge=20,
+        le=10_000,
+        validation_alias=AliasChoices(
+            "OPENKMS_QA_AGENT_RECURSION_LIMIT",
+            "OPENKMS_AGENT_RECURSION_LIMIT",
+        ),
+    )
+
     model_config = {"env_file": _ENV_FILE, "extra": "ignore"}
 
     @property

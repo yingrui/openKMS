@@ -105,6 +105,8 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 | `OPENKMS_OIDC_TOKEN_URL` | unset | Required in OIDC mode; IdP `token_endpoint` (same name as openkms-cli) |
 | `OPENKMS_QA_AGENT_BASIC_USER` / `OPENKMS_QA_AGENT_BASIC_PASSWORD` | unset | Local mode HTTP Basic (must match backend **`OPENKMS_QA_AGENT_BASIC_*`**) |
 | `OPENKMS_QA_AGENT_OIDC_CLIENT_ID` / `OPENKMS_QA_AGENT_OIDC_CLIENT_SECRET` | `qa-agent` / unset | OIDC client credentials (id must appear in backend **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**) |
+| `OPENKMS_QA_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per KB Q&A turn (generate ↔ tools). **Alias:** `OPENKMS_AGENT_RECURSION_LIMIT`. Without this, LangGraph defaults to **25** (ontology-heavy questions hit it quickly). |
+| `OPENKMS_QA_AGENT_LOG_LEVEL` | `INFO` | **`DEBUG`**: every LangGraph event + gaps; **INFO**: tools + turn summary |
 
 ## openkms-cli (OIDC)
 

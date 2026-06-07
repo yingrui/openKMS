@@ -1,6 +1,8 @@
 """LangGraph RAG agent with skills: KB search, ontology (Cypher), page_index (document TOC)."""
 import asyncio
 import json
+import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Annotated, Any, Literal
 
@@ -13,6 +15,7 @@ from typing_extensions import TypedDict
 
 from .config import settings
 from .llm_config import get_effective_llm_config
+from .logging_config import preview_text
 from .kb_answer_sources import (
     ONTOLOGY_SCHEMA_TOOL_NAME,
     PAGE_SECTION_TOOL_NAME,
@@ -28,6 +31,8 @@ from .retriever import retrieve
 from .schemas import SourceItem
 from .skills import get_all_skill_tools, get_skill_prompt_fragments
 
+logger = logging.getLogger(__name__)
+
 
 class AgentState(TypedDict):
     knowledge_base_id: str
@@ -42,13 +47,17 @@ class AgentState(TypedDict):
 def retrieve_node(state: dict[str, Any]) -> dict[str, Any]:
     """Retrieve relevant context from the knowledge base via backend search API."""
     if state.get("context"):
+        logger.debug("retrieve_node skip (context already set)")
         return {}
+    kb_id = state["knowledge_base_id"]
+    logger.info("retrieve_node kb=%s question=%r", kb_id, preview_text(state.get("question"), 120))
     sources = retrieve(
         state["knowledge_base_id"],
         state["question"],
         access_token=state["access_token"],
         top_k=5,
     )
+    logger.info("retrieve_node kb=%s hits=%d", kb_id, len(sources))
     return {"context": sources}
 
 
@@ -105,9 +114,23 @@ def generate_node(state: dict[str, Any]) -> dict[str, Any]:
 
     response = llm_with_tools.invoke(messages)
 
-    if not response.tool_calls:
-        return {"answer": text_from_lc_content(response.content), "messages": messages + [response]}
+    tool_calls = getattr(response, "tool_calls", None) or []
+    if not tool_calls:
+        answer_text = text_from_lc_content(response.content)
+        logger.info(
+            "generate_node final answer_chars=%d preview=%r",
+            len(answer_text),
+            preview_text(answer_text, 120),
+        )
+        return {"answer": answer_text, "messages": messages + [response]}
 
+    names = [tc.get("name") if isinstance(tc, dict) else getattr(tc, "name", "?") for tc in tool_calls]
+    logger.info(
+        "generate_node tool_calls=%d names=%s graph_messages=%d",
+        len(tool_calls),
+        names,
+        len(messages),
+    )
     return {"messages": messages + [response]}
 
 
@@ -174,6 +197,14 @@ def invoke_agent(
     from .langfuse_client import build_langgraph_trace_config
 
     h = set_request_access_token(access_token or "")
+    t0 = time.monotonic()
+    logger.info(
+        "invoke_agent start kb=%s history=%d session=%s question=%r",
+        knowledge_base_id,
+        len(conversation_history or []),
+        session_id or "-",
+        preview_text(question, 200),
+    )
     try:
         agent = get_agent()
         config = build_langgraph_trace_config(session_id, streaming=False, include_callback=True)
@@ -197,7 +228,32 @@ def invoke_agent(
             result.get("context", []),
             messages=list(result.get("messages") or []),
         )
+        msgs = list(result.get("messages") or [])
+        logger.info(
+            "invoke_agent done kb=%s elapsed=%.2fs answer_chars=%d sources=%d graph_messages=%d",
+            knowledge_base_id,
+            time.monotonic() - t0,
+            len(answer or ""),
+            len(display),
+            len(msgs),
+        )
         return {"answer": answer, "context": display}
+    except GraphRecursionError:
+        logger.error(
+            "invoke_agent recursion_limit kb=%s elapsed=%.2fs",
+            knowledge_base_id,
+            time.monotonic() - t0,
+            exc_info=True,
+        )
+        raise
+    except Exception:
+        logger.error(
+            "invoke_agent failed kb=%s elapsed=%.2fs",
+            knowledge_base_id,
+            time.monotonic() - t0,
+            exc_info=True,
+        )
+        raise
     finally:
         reset_request_access_token(h)
 
@@ -254,6 +310,14 @@ async def astream_agent_ndjson(
     from .langfuse_client import build_langgraph_trace_config, get_langfuse_callback
 
     h = set_request_access_token(access_token or "")
+    t0 = time.monotonic()
+    logger.info(
+        "astream_agent_ndjson start kb=%s history=%d session=%s question=%r",
+        knowledge_base_id,
+        len(conversation_history or []),
+        session_id or "-",
+        preview_text(question, 200),
+    )
     try:
         ctx = retrieve(
             knowledge_base_id,
@@ -261,6 +325,7 @@ async def astream_agent_ndjson(
             access_token=access_token,
             top_k=5,
         )
+        logger.info("astream_agent_ndjson retrieve kb=%s hits=%d", knowledge_base_id, len(ctx))
         state: dict[str, Any] = {
             "knowledge_base_id": knowledge_base_id,
             "question": question,
@@ -285,9 +350,25 @@ async def astream_agent_ndjson(
         stream_schema_names: list[str] = []
         stream_schema_seen: set[str] = set()
         stream_cypher_runs: list[tuple[str, dict[str, Any]]] = []
+        graph_events = 0
+        tool_starts = 0
+        tool_ends = 0
+        tool_errors = 0
+        last_event_at = t0
         try:
             async for ev in agent.astream_events(state, config, version="v2"):  # type: ignore[union-attr]
+                graph_events += 1
+                now = time.monotonic()
                 ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug(
+                        "astream_events #%d event=%s name=%s gap=%.2fs",
+                        graph_events,
+                        ename,
+                        (ev.get("name") or "") if isinstance(ev, dict) else "",
+                        now - last_event_at,
+                    )
+                last_event_at = now
                 if ename == "on_chat_model_stream":
                     ch = (ev.get("data") or {}).get("chunk")
                     t = _stream_chunk_text(ch)
@@ -295,10 +376,18 @@ async def astream_agent_ndjson(
                         buf.append(t)
                         yield _ndjson_line({"type": "delta", "t": t})
                 elif ename == "on_tool_start":
+                    tool_starts += 1
                     name = (ev.get("name") or "tool").split("/")[-1]
                     data = ev.get("data") or {}
                     inp = data.get("input")
                     run_id = str(ev.get("run_id") or "")
+                    logger.info(
+                        "tool_start #%d name=%s run_id=%s input=%r",
+                        tool_starts,
+                        name,
+                        run_id[:8] if run_id else "-",
+                        preview_text(_tool_io_preview(inp, 400), 400),
+                    )
                     yield _ndjson_line(
                         {
                             "type": "tool_start",
@@ -308,10 +397,20 @@ async def astream_agent_ndjson(
                         }
                     )
                 elif ename == "on_tool_end":
+                    tool_ends += 1
                     data = ev.get("data") or {}
                     out = data.get("output")
                     run_id = str(ev.get("run_id") or "")
                     name = (ev.get("name") or "tool").split("/")[-1]
+                    out_preview = preview_text(_tool_io_preview(out, 500), 500)
+                    logger.info(
+                        "tool_end #%d name=%s run_id=%s output_chars=%d preview=%r",
+                        tool_ends,
+                        name,
+                        run_id[:8] if run_id else "-",
+                        len(out_preview),
+                        out_preview,
+                    )
                     yield _ndjson_line(
                         {
                             "type": "tool_end",
@@ -335,11 +434,19 @@ async def astream_agent_ndjson(
                         if pair is not None:
                             stream_cypher_runs.append(pair)
                 elif ename == "on_tool_error":
+                    tool_errors += 1
                     data = ev.get("data") or {}
                     err = data.get("error")
                     err_s = str(err) if err is not None else "Tool error"
                     run_id = str(ev.get("run_id") or "")
                     name = (ev.get("name") or "tool").split("/")[-1]
+                    logger.warning(
+                        "tool_error #%d name=%s run_id=%s error=%r",
+                        tool_errors,
+                        name,
+                        run_id[:8] if run_id else "-",
+                        preview_text(err_s, 300),
+                    )
                     yield _ndjson_line(
                         {
                             "type": "tool_error",
@@ -348,14 +455,54 @@ async def astream_agent_ndjson(
                             "error": _tool_io_preview(err_s, 2_000),
                         }
                     )
+                elif ename == "on_chain_error":
+                    data = ev.get("data") or {}
+                    err = data.get("error")
+                    logger.error(
+                        "astream_events chain_error event=%s error=%r",
+                        ename,
+                        preview_text(str(err) if err is not None else "", 500),
+                        exc_info=err if isinstance(err, BaseException) else False,
+                    )
         except GraphRecursionError as e:
-            yield _ndjson_line(
-                {"type": "error", "detail": f"Recursion limit exceeded: {e!s}", "answer": "".join(buf)}
+            elapsed = time.monotonic() - t0
+            limit = settings.agent_recursion_limit
+            logger.error(
+                "astream_agent_ndjson recursion_limit kb=%s limit=%d elapsed=%.2fs graph_events=%d "
+                "tool_starts=%d tool_ends=%d delta_chars=%d cypher_runs=%d: %s",
+                knowledge_base_id,
+                limit,
+                elapsed,
+                graph_events,
+                tool_starts,
+                tool_ends,
+                sum(len(x) for x in buf),
+                len(stream_cypher_runs),
+                e,
+                exc_info=True,
             )
+            detail = (
+                f"Recursion limit exceeded ({limit} steps, "
+                f"OPENKMS_QA_AGENT_RECURSION_LIMIT / OPENKMS_AGENT_RECURSION_LIMIT): {e!s}"
+            )
+            yield _ndjson_line({"type": "error", "detail": detail, "answer": "".join(buf)})
             if callback and hasattr(callback, "flush"):
                 callback.flush()
             return
         except Exception as e:
+            elapsed = time.monotonic() - t0
+            logger.error(
+                "astream_agent_ndjson failed kb=%s elapsed=%.2fs graph_events=%d "
+                "tool_starts=%d tool_ends=%d delta_chars=%d: %s",
+                knowledge_base_id,
+                elapsed,
+                graph_events,
+                tool_starts,
+                tool_ends,
+                sum(len(x) for x in buf),
+                e,
+                exc_info=True,
+            )
             yield _ndjson_line({"type": "error", "detail": str(e) or type(e).__name__, "answer": "".join(buf)})
             if callback and hasattr(callback, "flush"):
                 callback.flush()
@@ -370,6 +517,13 @@ async def astream_agent_ndjson(
             streamed_ontology_cypher_runs=stream_cypher_runs if stream_cypher_runs else None,
         )
         if not answer.strip():
+            logger.info(
+                "astream_agent_ndjson no streamed tokens; fallback invoke_agent kb=%s "
+                "(tool_starts=%d tool_ends=%d)",
+                knowledge_base_id,
+                tool_starts,
+                tool_ends,
+            )
             result = await asyncio.to_thread(
                 invoke_agent,
                 knowledge_base_id,
@@ -389,6 +543,20 @@ async def astream_agent_ndjson(
             if answer:
                 yield _ndjson_line({"type": "delta", "t": answer})
 
+        elapsed = time.monotonic() - t0
+        logger.info(
+            "astream_agent_ndjson done kb=%s elapsed=%.2fs graph_events=%d tool_starts=%d "
+            "tool_ends=%d tool_errors=%d answer_chars=%d sources=%d cypher_runs=%d",
+            knowledge_base_id,
+            elapsed,
+            graph_events,
+            tool_starts,
+            tool_ends,
+            tool_errors,
+            len(answer or ""),
+            len(sources_list),
+            len(stream_cypher_runs),
+        )
         yield _ndjson_line({"type": "done", "answer": answer, "sources": _sources_to_jsonable(sources_list)})
         if callback and hasattr(callback, "flush"):
             callback.flush()

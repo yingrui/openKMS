@@ -107,6 +107,7 @@ def build_langgraph_trace_config(
         meta["langfuse_session_id"] = session_id
     if cfg.get("callbacks") or session_id:
         cfg["metadata"] = meta
+    cfg["recursion_limit"] = settings.agent_recursion_limit
     return cfg
 
 
