@@ -19,12 +19,19 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 | GET | `/internal-api/models/document-parse-defaults` | **Internal service client only**; query `model_name` optional — named model with **`document-parse`** capability or default; JSON `base_url`, `model_name`, `api_key` for openkms-cli |
 | GET | `/internal-api/models/config-by-name` | **Internal service client only**; query **`model_name`** (required), **`api_kind`** (default `chat-completions`); JSON `base_url`, `model_name`, `api_key` for openkms-cli (e.g. pipeline metadata extraction) |
 | GET | `/internal-api/models/llm-defaults` | **Internal service client only**; JSON `base_url`, `model_name`, `api_key` for **qa-agent** (default **`chat-completions`** model; same as embedded wiki agent) |
-| GET | `/internal-api/models/kb-embedding-credentials` | **Internal service client only**; query **`knowledge_base_id`** (required); **`local-cli`** may read any KB; OIDC service clients still require KB visibility like **`GET /api/knowledge-bases/{id}`**; JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** |
+| GET | `/internal-api/models/kb-embedding-credentials` | **Internal service client only**; query **`knowledge_base_id`** (required); JSON `base_url`, `model_name`, `api_key` for **`openkms-cli`** **`kb-index`** (no KB ACL) |
 | GET | `/internal-api/documents/{id}` | **Internal service client only**; read document (incl. `metadata`) for pipeline |
 | GET | `/internal-api/documents/{id}/metadata-needs-extraction` | **Internal service client only**; `{ needs_extraction }` — true when channel schema fields are all empty |
 | PUT | `/internal-api/documents/{id}/markdown` | **Internal service client only**; sync parsed markdown during pipeline (no channel ACL) |
 | PUT | `/internal-api/documents/{id}/metadata` | **Internal service client only**; merge extracted metadata during pipeline (no channel ACL) |
 | POST | `/internal-api/documents/{id}/versions` | **Internal service client only**; snapshot markdown + metadata after pipeline (no channel ACL) |
+| GET | `/internal-api/knowledge-bases/{id}` | **Internal service client only**; read KB config for **`kb-index`** (no KB ACL) |
+| GET | `/internal-api/knowledge-bases/{id}/documents` | **Internal service client only**; list linked documents for **`kb-index`** |
+| GET | `/internal-api/knowledge-bases/{id}/wiki-pages-for-index` | **Internal service client only**; paginated wiki pages with body for **`kb-index`** |
+| GET | `/internal-api/knowledge-bases/{id}/faqs` | **Internal service client only**; paginated FAQs for **`kb-index`** |
+| DELETE | `/internal-api/knowledge-bases/{id}/chunks` | **Internal service client only**; clear all chunks before re-index |
+| POST | `/internal-api/knowledge-bases/{id}/chunks/batch` | **Internal service client only**; bulk insert chunks with embeddings |
+| PUT | `/internal-api/knowledge-bases/{id}/faqs/batch-embeddings` | **Internal service client only**; bulk update FAQ embeddings |
 | GET | `/api/public/system` | No auth: `{ "system_name" }` trimmed from DB (may be `""`; SPA shows `openKMS` when empty after load) |
 | GET | `/api/public/settings` | Authenticated `console:settings` (or admin): `system_name`, `default_timezone`, `api_base_url_note` |
 | PUT | `/api/public/settings` | Authenticated `console:settings` (or admin): update system-wide display settings |

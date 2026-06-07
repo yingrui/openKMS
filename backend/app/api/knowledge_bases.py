@@ -392,7 +392,7 @@ async def add_kb_wiki_space(
     kb: KnowledgeBase = Depends(get_kb_scoped_write),
     db: AsyncSession = Depends(get_db),
 ):
-    await load_wiki_space_scoped(db, request, body.wiki_space_id, PERM_WRITE)
+    ws = await load_wiki_space_scoped(db, request, body.wiki_space_id, PERM_WRITE)
     existing = await db.execute(
         select(KBWikiSpace).where(
             KBWikiSpace.knowledge_base_id == kb_id,

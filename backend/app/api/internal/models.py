@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_internal_client
+from app.api.auth import _is_internal_service_caller, require_internal_client
 from app.database import get_db
 from app.models.api_model import VALID_API_KINDS
 from app.models.knowledge_base import KnowledgeBase
@@ -100,7 +100,11 @@ async def get_kb_embedding_credentials(
         raise HTTPException(status_code=404, detail="Knowledge base not found")
     p = request.state.openkms_jwt_payload
     sub = p.get("sub")
-    if isinstance(sub, str) and not await knowledge_base_visible(db, p, sub, kb):
+    if (
+        isinstance(sub, str)
+        and not _is_internal_service_caller(p)
+        and not await knowledge_base_visible(db, p, sub, kb)
+    ):
         raise HTTPException(status_code=404, detail="Knowledge base not found")
 
     creds = await get_kb_embedding_credentials_for_cli(db, kb)

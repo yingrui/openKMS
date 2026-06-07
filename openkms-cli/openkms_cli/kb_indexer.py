@@ -103,6 +103,14 @@ def chunk_document(text: str, config: dict[str, Any] | None) -> list[dict[str, A
 
 
 _INTERNAL_KB_EMBEDDING_CREDENTIALS = "/internal-api/models/kb-embedding-credentials"
+_INTERNAL_KB_PREFIX = "/internal-api/knowledge-bases"
+_INTERNAL_DOC_PREFIX = "/internal-api/documents"
+_CHUNK_UPLOAD_BATCH_SIZE = 50
+
+
+def _chunk_upload_timeout(batch_size: int) -> int:
+    """Per-batch HTTP read timeout (seconds); scales with payload size."""
+    return max(120, 60 + batch_size * 4)
 
 
 def _finalize_embedding_model_config(model_config: dict[str, Any]) -> dict[str, Any]:
@@ -214,7 +222,7 @@ def run_indexer(
 
     _update("Fetching knowledge base config...")
     kb_resp = requests.get(
-        f"{base}/api/knowledge-bases/{knowledge_base_id}", headers=headers, auth=basic, timeout=30
+        f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}", headers=headers, auth=basic, timeout=30
     )
     if not kb_resp.ok:
         raise RuntimeError(f"Failed to fetch KB: {kb_resp.status_code} {kb_resp.text[:200]}")
@@ -249,7 +257,7 @@ def run_indexer(
 
     _update("Fetching documents...")
     docs_resp = requests.get(
-        f"{base}/api/knowledge-bases/{knowledge_base_id}/documents", headers=headers, auth=basic, timeout=30
+        f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/documents", headers=headers, auth=basic, timeout=30
     )
     if not docs_resp.ok:
         raise RuntimeError(f"Failed to fetch KB documents: {docs_resp.status_code}")
@@ -260,7 +268,7 @@ def run_indexer(
         doc_id = kbd["document_id"]
         doc_name = kbd.get("document_name", doc_id)
         _update(f"Chunking {doc_name}...")
-        doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, auth=basic, timeout=30)
+        doc_resp = requests.get(f"{base}{_INTERNAL_DOC_PREFIX}/{doc_id}", headers=headers, auth=basic, timeout=30)
         if not doc_resp.ok:
             continue
         doc_data = doc_resp.json()
@@ -289,7 +297,7 @@ def run_indexer(
     wiki_limit = 100
     while True:
         wp_resp = requests.get(
-            f"{base}/api/knowledge-bases/{knowledge_base_id}/wiki-pages-for-index",
+            f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/wiki-pages-for-index",
             params={"offset": wiki_offset, "limit": wiki_limit},
             headers=headers,
             auth=basic,
@@ -337,7 +345,7 @@ def run_indexer(
     limit = 200
     while True:
         faqs_resp = requests.get(
-            f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs",
+            f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/faqs",
             params={"offset": offset, "limit": limit},
             headers=headers,
             auth=basic,
@@ -359,7 +367,7 @@ def run_indexer(
             if not did:
                 kept_faqs.append(f)
                 continue
-            dr = requests.get(f"{base}/api/documents/{did}", headers=headers, auth=basic, timeout=30)
+            dr = requests.get(f"{base}{_INTERNAL_DOC_PREFIX}/{did}", headers=headers, auth=basic, timeout=30)
             if dr.ok and dr.json().get("is_current_for_rag") is False:
                 continue
             kept_faqs.append(f)
@@ -423,7 +431,7 @@ def run_indexer(
             item: dict[str, Any] = {"id": f["id"], "embedding": emb}
             doc_id = f.get("document_id")
             if doc_id and metadata_keys:
-                doc_resp = requests.get(f"{base}/api/documents/{doc_id}", headers=headers, auth=basic, timeout=30)
+                doc_resp = requests.get(f"{base}{_INTERNAL_DOC_PREFIX}/{doc_id}", headers=headers, auth=basic, timeout=30)
                 if doc_resp.ok:
                     doc_data = doc_resp.json()
                     dmeta = _propagate_metadata(doc_data.get("metadata"), metadata_keys)
@@ -437,7 +445,7 @@ def run_indexer(
 
     _update("Writing to backend API...")
     del_resp = requests.delete(
-        f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks", headers=headers, auth=basic, timeout=60
+        f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/chunks", headers=headers, auth=basic, timeout=60
     )
     if not del_resp.ok:
         raise RuntimeError(f"Failed to clear chunks: {del_resp.status_code} {del_resp.text[:200]}")
@@ -457,15 +465,23 @@ def run_indexer(
             }
             for c in all_chunks
         ]
-        create_resp = requests.post(
-            f"{base}/api/knowledge-bases/{knowledge_base_id}/chunks/batch",
-            headers=headers,
-            auth=basic,
-            json={"items": batch_items},
-            timeout=120,
-        )
-        if not create_resp.ok:
-            raise RuntimeError(f"Failed to create chunks: {create_resp.status_code} {create_resp.text[:500]}")
+        total_batches = (len(batch_items) + _CHUNK_UPLOAD_BATCH_SIZE - 1) // _CHUNK_UPLOAD_BATCH_SIZE
+        for batch_idx in range(total_batches):
+            start = batch_idx * _CHUNK_UPLOAD_BATCH_SIZE
+            batch = batch_items[start : start + _CHUNK_UPLOAD_BATCH_SIZE]
+            _update(f"Writing chunks batch {batch_idx + 1}/{total_batches} ({len(batch)} chunks)...")
+            create_resp = requests.post(
+                f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/chunks/batch",
+                headers=headers,
+                auth=basic,
+                json={"items": batch},
+                timeout=_chunk_upload_timeout(len(batch)),
+            )
+            if not create_resp.ok:
+                raise RuntimeError(
+                    f"Failed to create chunks (batch {batch_idx + 1}/{total_batches}): "
+                    f"{create_resp.status_code} {create_resp.text[:500]}"
+                )
 
     if faq_updates:
         faq_emb_items = [
@@ -473,7 +489,7 @@ def run_indexer(
             for fu in faq_updates
         ]
         faq_resp = requests.put(
-            f"{base}/api/knowledge-bases/{knowledge_base_id}/faqs/batch-embeddings",
+            f"{base}{_INTERNAL_KB_PREFIX}/{knowledge_base_id}/faqs/batch-embeddings",
             headers=headers,
             auth=basic,
             json={"items": faq_emb_items},
