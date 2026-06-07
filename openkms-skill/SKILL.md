@@ -9,7 +9,8 @@ description: >-
   and policy lifecycle fields; article↔article relationship list/create/delete; list evaluations, items, and runs (including wiki content coverage when a wiki space is linked); run Cypher (or natural-language questions) against the ontology graph.
   Write paths: create channels, upload documents,
   create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
-  wiki↔documents, create KB FAQs and evaluations (update evaluation metadata and items in place), trigger evaluation runs; glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
+  wiki↔documents, create KB FAQs and evaluations (update evaluation metadata and items in place), trigger evaluation runs;
+  **re-index one linked wiki space into a KB** (or queue full KB index); glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
   lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
   Use when the user wants an agent — or any external
   tool — to read content from or push content to openKMS without the web UI. Agents must use
@@ -72,6 +73,7 @@ Some practical guidance:
 - **Document channels need a pipeline for PDF parse.** Uploading PDFs/images/Office to a channel without a default pipeline leaves documents stuck at `uploaded` — Process is disabled in the UI and `POST /api/jobs` fails. Before creating a channel for parseable files: run `pipelines list` (or `pipelines list --table`) to pick an **active** pipeline id, then `document-channels create --pipeline-id …` or set `default_pipeline_id` in `config.yml`. XLSX/XMind previews do not need a pipeline. To fix an existing channel: `document-channels update --id DC_ID --pipeline-id … --yes`.
 - **Discover before you fetch.** Most agent workflows start with `search` (or `documents list --search …` / `articles list --search …`) to find candidates by name, then a `get` / `markdown` to pull content. Don't fetch a whole channel just to grep — server-side `--search` is keyword-substring against names/titles.
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is now **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches* with confidence scores. Lexical tokens like product codes (e.g. `WWY`, `MIL`) are heavily weighted via BM25, so `kb search --q "WWY 年化收益"` returns WWY-specific chunks even when the embedding alone wouldn't. First call per KB cold-starts the BM25 index (paginates all chunks/FAQs); subsequent calls are fast. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
+- **KB wiki indexing.** After **`wiki put-page`** (or bulk wiki edits), re-chunk into a linked KB with **`kb wiki-spaces reindex --kb-id KB_ID --space-id SP_ID --yes`** — replaces prior wiki chunks for that space only (one page ≈ one chunk when ≤8000 chars). Use **`kb wiki-spaces list --kb-id KB_ID`** to see linked spaces. Full document + all wiki spaces: **`kb index --id KB_ID --yes`**. Both return a **`JobResponse`** (`id`, `status`, …); poll **`/api/jobs/{id}`** or the Job runs UI for completion.
 - **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
 - **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope. Don't try to bypass — surface the error.
 - **Write commands and confirm gating.** Every mutating CLI subcommand uses the same pattern as ontology objects/links: `--dry-run` prints the planned `[METHOD] path + body` (upload uses a JSON summary with `channel_id` and `file` path, not file bytes) and exits 0 without HTTP; `-y` / `--yes` skips the prompt; without either on a TTY you get `Proceed? [y/N]`; **on a non-TTY without `--yes` the command exits 2** — agents must pass `--yes` deliberately.
@@ -102,6 +104,7 @@ Some practical guidance:
 | List channel documents linked to a wiki space (UI “linked documents”) | `python scripts/cli.py wiki-spaces documents list --space-id SP_ID` |
 | Get one wiki page by Obsidian path | `python scripts/cli.py wiki get-page --space-id SP_ID --path notes/onboarding` |
 | List knowledge bases | `python scripts/cli.py kb list` |
+| List wiki spaces linked to a KB | `python scripts/cli.py kb wiki-spaces list --kb-id KB_ID` |
 | Semantic search over KB chunks + FAQs | `python scripts/cli.py kb search --id KB_ID --q "既往症定义" --limit 10` |
 | Ask the KB a question (grounded answer) | `python scripts/cli.py kb ask --id KB_ID --question "..."` |
 | List FAQs on a KB | `python scripts/cli.py kb-faq list --kb-id KB_ID` |
@@ -155,6 +158,8 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Link a channel document to a wiki space | `python scripts/cli.py wiki-spaces documents link --space-id SP_ID --document-id DOC_ID --yes` |
 | Unlink a document from a wiki space (does not delete the document) | `python scripts/cli.py wiki-spaces documents unlink --space-id SP_ID --document-id DOC_ID --yes` |
 | Upsert wiki page from file | `python scripts/cli.py wiki put-page --space-id ID --path my/page --title "T" --file ./note.md --yes` |
+| Re-index one linked wiki space into a KB | `python scripts/cli.py kb wiki-spaces reindex --kb-id KB_ID --space-id SP_ID --yes` |
+| Queue full KB reindex (documents + all linked wiki spaces) | `python scripts/cli.py kb index --id KB_ID --yes` |
 | Delete one wiki stored file by id (vault .md or any stored path; DB + storage) | `python scripts/cli.py wiki files delete --space-id SP_ID --file-id FILE_ID --yes` |
 | Create FAQ on a KB | `python scripts/cli.py kb-faq create --kb-id ID --question "Q" --answer "A" --yes` |
 | List evaluations | `python scripts/cli.py evaluations list` |
@@ -225,6 +230,13 @@ python scripts/cli.py ontology ask --question "列出与'重疾豁免'触发条�
 python scripts/cli.py articles list --channel-id <ch_id> --limit 200 \
   | jq -r '.items[] | select(.name | test("乳腺癌")) | .id' \
   | while read id; do python scripts/cli.py articles markdown --id "$id" --out "./$id.md"; done
+```
+
+**E. After wiki page edits, refresh KB search for one linked space.**
+```bash
+python scripts/cli.py kb wiki-spaces list --kb-id <kb_id>
+python scripts/cli.py kb wiki-spaces reindex --kb-id <kb_id> --space-id <space_id> --yes
+# → JobResponse with "id"; worker runs kb-index --wiki-space-id …
 ```
 
 ## Reference

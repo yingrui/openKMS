@@ -20,7 +20,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `wiki-spaces` | `list`, **`documents list`** | `create`, **`documents link`**, **`documents unlink`** |
 | `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
 | `pipelines` | `list` (`--table` for id / name / active) | — |
-| `kb` | `list`, `get`, `search`, `ask` | — |
+| `kb` | `list`, `get`, `search`, `ask`, **`wiki-spaces list`**, **`index`** | **`wiki-spaces reindex`**, **`index`** |
 | `kb-faq` | `list` | `create` |
 | `glossaries` | `list`, `get`, `export`, `terms list/get` | `create`, `update`, `delete`, `import`, `terms create/update/delete/suggest` |
 | `knowledge-map` | **`nodes tree`**, **`resource-links list`** | **`nodes create`**, **`nodes patch`**, **`nodes delete`**, **`resource-links put`**, **`resource-links delete`** |
@@ -30,7 +30,7 @@ The skill covers **read + write** for every major resource. Top-level groups:
 | `evaluations` | `list`, `get`, `items list` | `create`, `update`, `run`, `items add` / `items update` / `items delete` |
 | `evaluation-runs` | `list`, `get`, `compare` | — |
 
-> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, KB FAQ, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`update`/`run` and **`evaluations items` add/update/delete**, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
+> **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, **`kb index`**, **`kb wiki-spaces reindex`**, KB FAQ, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`update`/`run` and **`evaluations items` add/update/delete**, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
 ## Quick examples
 

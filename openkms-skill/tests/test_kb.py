@@ -39,6 +39,41 @@ def test_kb_ask_body(mock_api):
     assert json.loads(req.content) == {"question": "what is X?"}
 
 
+def test_kb_wiki_spaces_list(mock_api):
+    recorded, _ = mock_api
+
+    from openkms.commands.kb import cmd_wiki_spaces_list
+    cmd_wiki_spaces_list(argparse.Namespace(kb_id="kb1"))
+
+    req = recorded[-1]
+    assert req.method == "GET"
+    assert req.url.path == "/api/knowledge-bases/kb1/wiki-spaces"
+
+
+def test_kb_wiki_spaces_reindex(mock_api):
+    recorded, _ = mock_api
+
+    from openkms.commands.kb import cmd_wiki_spaces_reindex
+    cmd_wiki_spaces_reindex(
+        argparse.Namespace(kb_id="kb1", space_id="ws9", yes=True, dry_run=False)
+    )
+
+    req = recorded[-1]
+    assert req.method == "POST"
+    assert req.url.path == "/api/knowledge-bases/kb1/wiki-spaces/ws9/index-job"
+
+
+def test_kb_index_job(mock_api):
+    recorded, _ = mock_api
+
+    from openkms.commands.kb import cmd_index
+    cmd_index(argparse.Namespace(id="kb1", yes=True, dry_run=False))
+
+    req = recorded[-1]
+    assert req.method == "POST"
+    assert req.url.path == "/api/knowledge-bases/kb1/index-job"
+
+
 def test_kb_faq_list_pagination(mock_api):
     recorded, _ = mock_api
 
