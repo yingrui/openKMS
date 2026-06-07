@@ -481,7 +481,7 @@ export function KnowledgeBaseDetail() {
   const [settingsEmbeddingModelId, setSettingsEmbeddingModelId] = useState('');
   const [settingsFaqPrompt, setSettingsFaqPrompt] = useState('');
   const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
-  const [settingsChunkSize, setSettingsChunkSize] = useState(512);
+  const [settingsChunkSize, setSettingsChunkSize] = useState(8000);
   const [settingsChunkOverlap, setSettingsChunkOverlap] = useState(50);
   const [settingsMetadataKeys, setSettingsMetadataKeys] = useState('');
   const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
@@ -508,7 +508,7 @@ export function KnowledgeBaseDetail() {
       setSettingsEmbeddingModelId(data.embedding_model_id || '');
       const cc = (data.chunk_config || {}) as Record<string, unknown>;
       setSettingsChunkStrategy((cc.strategy as string) || 'fixed_size');
-      setSettingsChunkSize((cc.chunk_size as number) || 512);
+      setSettingsChunkSize((cc.chunk_size as number) || 8000);
       setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
       setSettingsFaqPrompt(data.faq_prompt || '');
       setSettingsMetadataKeys(Array.isArray(data.metadata_keys) ? data.metadata_keys.join(', ') : '');
@@ -2477,30 +2477,26 @@ export function KnowledgeBaseDetail() {
                         <option value="paragraph">{t('detail.strategyParagraph')}</option>
                       </select>
                     </label>
-                    {settingsChunkStrategy === 'fixed_size' && (
-                      <>
-                        <label>
-                          <span>{t('detail.chunkSize')}</span>
-                          <input
-                            type="number"
-                            min={100}
-                            max={10000}
-                            value={settingsChunkSize}
-                            onChange={(e) => setSettingsChunkSize(Number(e.target.value))}
-                          />
-                        </label>
-                        <label>
-                          <span>{t('detail.chunkOverlap')}</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={1000}
-                            value={settingsChunkOverlap}
-                            onChange={(e) => setSettingsChunkOverlap(Number(e.target.value))}
-                          />
-                        </label>
-                      </>
-                    )}
+                    <label>
+                      <span>{t('detail.chunkSize')}</span>
+                      <input
+                        type="number"
+                        min={100}
+                        max={10000}
+                        value={settingsChunkSize}
+                        onChange={(e) => setSettingsChunkSize(Number(e.target.value))}
+                      />
+                    </label>
+                    <label>
+                      <span>{t('detail.chunkOverlap')}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={1000}
+                        value={settingsChunkOverlap}
+                        onChange={(e) => setSettingsChunkOverlap(Number(e.target.value))}
+                      />
+                    </label>
                   </fieldset>
                 </div>
 

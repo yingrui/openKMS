@@ -13,7 +13,7 @@ from rich.progress import Progress, TaskID
 # --- Chunking strategies ---
 
 
-def _chunk_fixed_size(text: str, chunk_size: int = 512, chunk_overlap: int = 50) -> list[dict[str, Any]]:
+def _chunk_fixed_size(text: str, chunk_size: int = 8000, chunk_overlap: int = 50) -> list[dict[str, Any]]:
     """Split text into fixed-size chunks by character count with overlap."""
     chunks = []
     start = 0
@@ -88,6 +88,52 @@ CHUNKERS = {
     "paragraph": _chunk_paragraph,
 }
 
+_DEFAULT_CHUNK_SIZE = 8000
+_DEFAULT_CHUNK_OVERLAP = 50
+
+
+def _split_text_segments(text: str, chunk_size: int, chunk_overlap: int) -> list[str]:
+    """Split long text into segments no longer than chunk_size (character count)."""
+    if chunk_size <= 0 or len(text) <= chunk_size:
+        return [text] if text.strip() else []
+    segments: list[str] = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        segment = text[start:end].strip()
+        if segment:
+            segments.append(segment)
+        if end >= len(text):
+            break
+        start = end - chunk_overlap if chunk_overlap < chunk_size else end
+    return segments
+
+
+def _enforce_max_chunk_size(
+    chunks: list[dict[str, Any]],
+    chunk_size: int,
+    chunk_overlap: int,
+) -> list[dict[str, Any]]:
+    """Further split chunks that exceed chunk_size (markdown_header / paragraph sections)."""
+    if chunk_size <= 0:
+        return chunks
+    out: list[dict[str, Any]] = []
+    idx = 0
+    for ch in chunks:
+        content = ch.get("content") or ""
+        base_meta = dict(ch.get("metadata") or {})
+        parts = _split_text_segments(content, chunk_size, chunk_overlap)
+        if not parts:
+            continue
+        for part_i, part in enumerate(parts):
+            meta = dict(base_meta)
+            if len(parts) > 1:
+                meta["split_part"] = part_i
+                meta["split_parts"] = len(parts)
+            out.append({"content": part, "chunk_index": idx, "metadata": meta})
+            idx += 1
+    return out
+
 
 def chunk_document(text: str, config: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Split document text into chunks based on configuration."""
@@ -96,7 +142,12 @@ def chunk_document(text: str, config: dict[str, Any] | None) -> list[dict[str, A
     strategy = config.get("strategy", "fixed_size")
     chunker = CHUNKERS.get(strategy, _chunk_fixed_size)
     kwargs = {k: v for k, v in config.items() if k != "strategy"}
-    return chunker(text, **kwargs)
+    chunks = chunker(text, **kwargs)
+    chunk_size = int(config.get("chunk_size") or _DEFAULT_CHUNK_SIZE)
+    chunk_overlap = int(config.get("chunk_overlap") or _DEFAULT_CHUNK_OVERLAP)
+    if strategy != "fixed_size":
+        chunks = _enforce_max_chunk_size(chunks, chunk_size, chunk_overlap)
+    return chunks
 
 
 # --- Embedding generation ---
