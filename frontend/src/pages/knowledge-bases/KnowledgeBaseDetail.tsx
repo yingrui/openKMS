@@ -79,8 +79,7 @@ import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
-import { AgentSessionSidebar } from '../../components/agents/AgentSessionSidebar';
-import '../../components/agents/AgentsWorkspace.scss';
+import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
 import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
 import {
   appendDeltaToStreamParts,
@@ -1478,30 +1477,25 @@ export function KnowledgeBaseDetail() {
       <div className="kb-detail kb-detail--qa-fullpage">
         <div className="kb-qa-shell">
           <div className="kb-qa-shell-body">
-            <AgentSessionSidebar
-              backLabel={t('detail.qaBackToKb')}
+            <KbQaSessionSidebar
+              kbName={kb.name}
+              conversations={kbQaConversations}
+              activeId={kbQaConvId}
+              loading={kbQaConvsLoading}
+              disabled={qaLoading}
               onBack={() => {
                 qaTraceSessionRef.current = null;
                 setQaFullPage(false);
               }}
-              contextTitle={kb.name}
-              contextSubtitle={t('detail.qaTitle')}
-              onSettingsClick={() => {
+              onOpenSettings={() => {
                 qaTraceSessionRef.current = null;
                 setQaFullPage(false);
                 setActiveTab('settings');
               }}
-              conversations={kbQaConversations}
-              activeId={kbQaConvId}
               onSelectSession={(id) => void onSelectKbQaConversation(id)}
               onNewChat={() => void onNewKbQaChat()}
               onRename={onRenameKbQaChat}
-              onDelete={(id) => void onDeleteKbQaChat(id)}
-              loading={kbQaConvsLoading}
-              loadingLabel={t('detail.qaChatsLoading')}
-              emptyLabel={t('detail.qaNoChatsYet')}
-              newChatLabel={t('detail.qaNewChat')}
-              disabled={qaLoading}
+              onDelete={onDeleteKbQaChat}
             />
             <main className="kb-qa-main">
               <div className="kb-qa-main-scroll" ref={kbQaMainScrollRef}>

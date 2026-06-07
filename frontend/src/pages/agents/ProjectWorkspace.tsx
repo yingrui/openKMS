@@ -440,12 +440,9 @@ export function ProjectWorkspace() {
     <div className="agents-workspace">
       <div className="agents-workspace-body" ref={bodyRef}>
         <AgentSessionSidebar
-          backLabel={t('sessions.back')}
-          backHref="/agents"
-          contextTitle={project.name}
-          contextSubtitle={project.description?.trim() || project.slug}
-          settingsHref={`/projects/${projectId}/settings`}
-          sessionHref={(id) => projectWorkspacePath(projectId, id)}
+          projectId={projectId}
+          projectName={project.name}
+          projectSlug={project.description?.trim() || project.slug}
           conversations={conversations}
           activeId={convId}
           onNewChat={onNewChat}
