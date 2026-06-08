@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Settings, Trash2, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchConnector,
@@ -15,6 +15,7 @@ import { fetchDatasets } from '../../data/datasetsApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONNECTORS_WRITE } from '../../config/permissions';
 import { ConnectorFormFields } from './ConnectorFormFields';
+import { ConnectorSearchPlayground } from './ConnectorSearchPlayground';
 import {
   applyKindToInputsOutputs,
   buildConnectorPayload,
@@ -23,6 +24,8 @@ import {
   type KvRow,
 } from './connectorFormUtils';
 import '../ontology/ontology-admin.scss';
+
+type SearchToolTabId = 'settings' | 'playground';
 
 function toastForPayloadError(
   t: (key: string) => string,
@@ -64,8 +67,11 @@ export function ConnectorDetailPage() {
   const [outputDatasetIds, setOutputDatasetIds] = useState<Record<string, string>>({});
   const [settingsRows, setSettingsRows] = useState<KvRow[]>([newKvRow()]);
   const [secretRows, setSecretRows] = useState<KvRow[]>([newKvRow()]);
+  const [playgroundBaseline, setPlaygroundBaseline] = useState<Record<string, string>>({});
+  const [activeTab, setActiveTab] = useState<SearchToolTabId>('settings');
 
   const selectedKindMeta = useMemo(() => kinds.find((k) => k.kind === formKind), [kinds, formKind]);
+  const isSearchTool = selectedKindMeta?.category === 'search_tool';
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -87,6 +93,7 @@ export function ConnectorDetailPage() {
       setOutputDatasetIds(init.outputDatasetIds);
       setSettingsRows(init.settingsRows);
       setSecretRows(init.secretRows);
+      setPlaygroundBaseline(init.inputValues);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('connectors.toastLoadFailed'));
       setConnector(null);
@@ -98,6 +105,10 @@ export function ConnectorDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setActiveTab('settings');
+  }, [id]);
 
   const handleSave = async () => {
     if (!canWrite || !id) return;
@@ -127,6 +138,8 @@ export function ConnectorDetailPage() {
     try {
       const updated = await updateConnector(id, patch);
       setConnector(updated);
+      const init = initFormFromConnector(kinds, updated);
+      setPlaygroundBaseline(init.inputValues);
       toast.success(t('connectors.toastUpdated'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('connectors.toastOperationFailed'));
@@ -186,43 +199,119 @@ export function ConnectorDetailPage() {
               <Trash2 size={18} />
               <span>{t('connectors.deleteTitle')}</span>
             </button>
-            <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
-              {saving ? t('connectors.saving') : t('connectors.save')}
-            </button>
+            {(!isSearchTool || activeTab === 'settings') ? (
+              <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+                {saving ? t('connectors.saving') : t('connectors.save')}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
 
-      <div className="ontology-admin-content connector-detail-panel">
-        <div className="connector-detail-card">
-        <ConnectorFormFields
-          kinds={kinds}
-          formName={formName}
-          onFormNameChange={setFormName}
-          formKind={formKind}
-          onFormKindChange={(next) => {
-            setFormKind(next);
-            const meta = kinds.find((k) => k.kind === next);
-            const { inputValues: iv, outputDatasetIds: od } = applyKindToInputsOutputs(meta, null, null);
-            setInputValues(iv);
-            setOutputDatasetIds(od);
-          }}
-          formEnabled={formEnabled}
-          onFormEnabledChange={setFormEnabled}
-          inputValues={inputValues}
-          onInputValuesChange={setInputValues}
-          outputDatasetIds={outputDatasetIds}
-          onOutputDatasetIdsChange={setOutputDatasetIds}
-          settingsRows={settingsRows}
-          onSettingsRowsChange={setSettingsRows}
-          secretRows={secretRows}
-          onSecretRowsChange={setSecretRows}
-          datasets={datasets}
-          kindLocked
-          isExisting
-          readOnly={!canWrite}
-        />
-        </div>
+      <div
+        className={`ontology-admin-content connector-detail-panel${isSearchTool ? ' connector-detail-panel--tabbed' : ''}`}
+      >
+        {isSearchTool ? (
+          <div className="connector-detail-tabs" role="tablist" aria-label={t('connectors.detailTabsAria')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'settings'}
+              className={`connector-detail-tab${activeTab === 'settings' ? ' active' : ''}`}
+              onClick={() => setActiveTab('settings')}
+            >
+              <Settings size={18} />
+              <span>{t('connectors.tabSettings')}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'playground'}
+              className={`connector-detail-tab${activeTab === 'playground' ? ' active' : ''}`}
+              onClick={() => setActiveTab('playground')}
+            >
+              <FlaskConical size={18} />
+              <span>{t('connectors.tabPlayground')}</span>
+            </button>
+          </div>
+        ) : null}
+
+        {isSearchTool ? (
+          <div
+            className={`connector-detail-tab-panel${activeTab === 'playground' ? ' connector-detail-tab-panel--playground' : ''}`}
+            role="tabpanel"
+          >
+            {activeTab === 'settings' ? (
+              <ConnectorFormFields
+                kinds={kinds}
+                formName={formName}
+                onFormNameChange={setFormName}
+                formKind={formKind}
+                onFormKindChange={(next) => {
+                  setFormKind(next);
+                  const meta = kinds.find((k) => k.kind === next);
+                  const { inputValues: iv, outputDatasetIds: od } = applyKindToInputsOutputs(meta, null, null);
+                  setInputValues(iv);
+                  setOutputDatasetIds(od);
+                }}
+                formEnabled={formEnabled}
+                onFormEnabledChange={setFormEnabled}
+                inputValues={inputValues}
+                onInputValuesChange={setInputValues}
+                outputDatasetIds={outputDatasetIds}
+                onOutputDatasetIdsChange={setOutputDatasetIds}
+                settingsRows={settingsRows}
+                onSettingsRowsChange={setSettingsRows}
+                secretRows={secretRows}
+                onSecretRowsChange={setSecretRows}
+                datasets={datasets}
+                kindLocked
+                isExisting
+                readOnly={!canWrite}
+              />
+            ) : null}
+            {activeTab === 'playground' && selectedKindMeta && id ? (
+              <ConnectorSearchPlayground
+                connectorId={id}
+                kindMeta={selectedKindMeta}
+                baselineInputs={playgroundBaseline}
+                inputValues={inputValues}
+                settingsRows={settingsRows}
+                embedded
+              />
+            ) : null}
+          </div>
+        ) : (
+          <div className="connector-detail-card">
+            <ConnectorFormFields
+              kinds={kinds}
+              formName={formName}
+              onFormNameChange={setFormName}
+              formKind={formKind}
+              onFormKindChange={(next) => {
+                setFormKind(next);
+                const meta = kinds.find((k) => k.kind === next);
+                const { inputValues: iv, outputDatasetIds: od } = applyKindToInputsOutputs(meta, null, null);
+                setInputValues(iv);
+                setOutputDatasetIds(od);
+              }}
+              formEnabled={formEnabled}
+              onFormEnabledChange={setFormEnabled}
+              inputValues={inputValues}
+              onInputValuesChange={setInputValues}
+              outputDatasetIds={outputDatasetIds}
+              onOutputDatasetIdsChange={setOutputDatasetIds}
+              settingsRows={settingsRows}
+              onSettingsRowsChange={setSettingsRows}
+              secretRows={secretRows}
+              onSecretRowsChange={setSecretRows}
+              datasets={datasets}
+              kindLocked
+              isExisting
+              readOnly={!canWrite}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

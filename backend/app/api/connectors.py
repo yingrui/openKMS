@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,18 +19,23 @@ from app.schemas.connector import (
     ConnectorKindOutputSlotOut,
     ConnectorListResponse,
     ConnectorResponse,
+    ConnectorSearchRequest,
+    ConnectorSearchResponse,
     ConnectorUpdate,
 )
 from app.services.connector_catalog import (
+    CATEGORY_SEARCH_TOOL,
     get_kind_spec,
     list_kind_specs,
     merge_secrets_encrypted,
     normalize_and_validate_inputs,
     normalize_and_validate_outputs,
+    normalize_and_validate_settings,
     secrets_status,
     validate_kind,
     validate_secrets_for_kind,
 )
+from app.services.connector_search.run import run_connector_search
 from app.services.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE
 
 router = APIRouter(
@@ -66,50 +71,65 @@ def _to_response(row: Connector) -> ConnectorResponse:
     )
 
 
+def _kind_to_out(s) -> ConnectorKindOut:
+    return ConnectorKindOut(
+        kind=s.kind,
+        category=s.category,
+        label=s.label,
+        description=s.description,
+        secret_keys=sorted(s.secret_keys),
+        input_fields=[
+            ConnectorKindInputFieldOut(
+                key=f.key,
+                label=f.label,
+                field_type=f.field_type,
+                required=f.required,
+                default=f.default,
+                placeholder=f.placeholder,
+                options=list(f.options),
+            )
+            for f in s.input_fields
+        ],
+        output_slots=[
+            ConnectorKindOutputSlotOut(
+                slot=o.slot,
+                label=o.label,
+                description=o.description,
+                resource=o.resource,
+            )
+            for o in s.output_slots
+        ],
+        output_schema=s.output_schema,
+        default_settings=s.default_settings,
+    )
+
+
 @router.get(
     "/kinds",
     response_model=list[ConnectorKindOut],
     dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))],
 )
-async def list_connector_kinds():
+async def list_connector_kinds(
+    category: str | None = Query(None, description="Filter by category: sync | search_tool"),
+):
     """Describe supported connector kinds for setup forms (no secrets)."""
-    out: list[ConnectorKindOut] = []
-    for s in list_kind_specs():
-        out.append(
-            ConnectorKindOut(
-                kind=s.kind,
-                label=s.label,
-                description=s.description,
-                secret_keys=sorted(s.secret_keys),
-                input_fields=[
-                    ConnectorKindInputFieldOut(
-                        key=f.key,
-                        label=f.label,
-                        field_type=f.field_type,
-                        required=f.required,
-                        default=f.default,
-                        placeholder=f.placeholder,
-                    )
-                    for f in s.input_fields
-                ],
-                output_slots=[
-                    ConnectorKindOutputSlotOut(
-                        slot=o.slot,
-                        label=o.label,
-                        description=o.description,
-                        resource=o.resource,
-                    )
-                    for o in s.output_slots
-                ],
-            )
-        )
-    return out
+    specs = list_kind_specs()
+    if category:
+        cat = category.strip()
+        specs = [s for s in specs if s.category == cat]
+    return [_kind_to_out(s) for s in specs]
 
 
 @router.get("", response_model=ConnectorListResponse, dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))])
-async def list_connectors(db: AsyncSession = Depends(get_db)):
+async def list_connectors(
+    db: AsyncSession = Depends(get_db),
+    category: str | None = Query(None, description="Filter by kind category"),
+):
     result = await db.execute(select(Connector).order_by(Connector.created_at.desc()))
     rows = result.scalars().all()
+    if category:
+        cat = category.strip()
+        rows = [r for r in rows if (spec := get_kind_spec(r.kind)) and spec.category == cat]
     return ConnectorListResponse(items=[_to_response(r) for r in rows], total=len(rows))
 
 
@@ -130,6 +150,7 @@ async def create_connector(body: ConnectorCreate, db: AsyncSession = Depends(get
                     raise ValueError(f"Secret '{k}' is required for kind '{body.kind}'.")
         inputs_norm = normalize_and_validate_inputs(body.kind, body.inputs)
         outputs_norm = normalize_and_validate_outputs(body.kind, body.outputs)
+        settings_norm = normalize_and_validate_settings(body.kind, body.settings)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -145,7 +166,7 @@ async def create_connector(body: ConnectorCreate, db: AsyncSession = Depends(get
         kind=body.kind.strip(),
         inputs=inputs_norm or None,
         outputs=outputs_norm or None,
-        settings=body.settings,
+        settings=settings_norm or None,
         secrets_encrypted=secrets_cipher,
         enabled=body.enabled,
     )
@@ -161,6 +182,33 @@ async def get_connector(connector_id: str, db: AsyncSession = Depends(get_db)):
     if not row:
         raise HTTPException(status_code=404, detail="Connector not found")
     return _to_response(row)
+
+
+@router.post(
+    "/{connector_id}/search",
+    response_model=ConnectorSearchResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))],
+)
+async def search_connector(connector_id: str, body: ConnectorSearchRequest, db: AsyncSession = Depends(get_db)):
+    """Run a search_tool connector (test from UI or same path Agents use internally)."""
+    row = await db.get(Connector, connector_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    spec = get_kind_spec(row.kind)
+    if not spec or spec.category != CATEGORY_SEARCH_TOOL:
+        raise HTTPException(status_code=400, detail="Connector kind does not support search")
+    try:
+        result = await run_connector_search(
+            row,
+            body.query,
+            param_overrides=body.params,
+            include_debug=True,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Search provider error: {e}") from e
+    return ConnectorSearchResponse(**result)
 
 
 @router.put("/{connector_id}", response_model=ConnectorResponse, dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))])
@@ -186,6 +234,11 @@ async def update_connector(connector_id: str, body: ConnectorUpdate, db: AsyncSe
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         await _ensure_datasets_exist(db, list(outputs_norm.values()))
+    if body.settings is not None:
+        try:
+            settings_norm = normalize_and_validate_settings(row.kind, body.settings)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     if body.name is not None:
         row.name = body.name.strip()
@@ -194,7 +247,7 @@ async def update_connector(connector_id: str, body: ConnectorUpdate, db: AsyncSe
     if body.outputs is not None:
         row.outputs = outputs_norm or None
     if body.settings is not None:
-        row.settings = body.settings
+        row.settings = settings_norm or None
     if body.enabled is not None:
         row.enabled = body.enabled
     if body.secrets is not None:

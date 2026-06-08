@@ -19,6 +19,7 @@ import {
   buildConnectorPayload,
   newKvRow,
   secretRowsForKind,
+  settingsRowsForKind,
   type KvRow,
 } from './connectorFormUtils';
 import '../ontology/ontology-admin.scss';
@@ -70,7 +71,7 @@ export function ConnectorsPage() {
     const { inputValues: iv, outputDatasetIds: od } = applyKindToInputsOutputs(meta, null, null);
     setInputValues(iv);
     setOutputDatasetIds(od);
-    setSettingsRows([newKvRow()]);
+    setSettingsRows(settingsRowsForKind(meta));
     setSecretRows(secretRowsForKind(kinds, k0));
     setShowCreate(true);
     void fetchDatasets()
@@ -158,6 +159,7 @@ export function ConnectorsPage() {
               <thead>
                 <tr>
                   <th>{t('connectors.colName')}</th>
+                  <th>{t('connectors.colCategory')}</th>
                   <th>{t('connectors.colKind')}</th>
                   <th>{t('connectors.colSecrets')}</th>
                   <th>{t('connectors.colEnabled')}</th>
@@ -166,12 +168,13 @@ export function ConnectorsPage() {
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="console-table-empty">
+                    <td colSpan={5} className="console-table-empty">
                       {t('connectors.empty')}
                     </td>
                   </tr>
                 ) : (
                   items.map((row) => {
+                    const kindMeta = kinds.find((k) => k.kind === row.kind);
                     const configured = row.secrets_configured ?? {};
                     const keys = Object.keys(configured);
                     const summary =
@@ -187,7 +190,8 @@ export function ConnectorsPage() {
                             {row.name}
                           </Link>
                         </td>
-                        <td>{row.kind}</td>
+                        <td>{kindMeta ? t(`connectors.category.${kindMeta.category}`) : '—'}</td>
+                        <td>{kindMeta?.label ?? row.kind}</td>
                         <td className="console-table-muted">{summary}</td>
                         <td>{row.enabled ? t('connectors.yes') : t('connectors.no')}</td>
                       </tr>
@@ -229,6 +233,7 @@ export function ConnectorsPage() {
                   const { inputValues: iv, outputDatasetIds: od } = applyKindToInputsOutputs(meta, null, null);
                   setInputValues(iv);
                   setOutputDatasetIds(od);
+                  setSettingsRows(settingsRowsForKind(meta));
                   setSecretRows(secretRowsForKind(kinds, next));
                 }}
                 formEnabled={formEnabled}

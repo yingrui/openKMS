@@ -15,6 +15,7 @@ class ConnectorKindInputFieldOut(BaseModel):
     required: bool = True
     default: str | None = None
     placeholder: str | None = None
+    options: list[str] = Field(default_factory=list)
 
 
 class ConnectorKindOutputSlotOut(BaseModel):
@@ -26,6 +27,7 @@ class ConnectorKindOutputSlotOut(BaseModel):
 
 class ConnectorKindOut(BaseModel):
     kind: str
+    category: str = Field(description="sync | search_tool")
     label: str
     description: str
     secret_keys: list[str] = Field(
@@ -34,6 +36,38 @@ class ConnectorKindOut(BaseModel):
     )
     input_fields: list[ConnectorKindInputFieldOut] = Field(default_factory=list)
     output_slots: list[ConnectorKindOutputSlotOut] = Field(default_factory=list)
+    output_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="JSON Schema for search_tool response shape (kind metadata; not stored per instance).",
+    )
+    default_settings: dict[str, Any] | None = Field(
+        default=None,
+        description="Default extra settings merged on create (e.g. web_search_url for Zhipu).",
+    )
+
+
+class ConnectorSearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    params: dict[str, Any] | None = Field(
+        default=None,
+        description="One-shot overrides for connector inputs (playground; not persisted).",
+    )
+
+
+class ConnectorSearchDebugOut(BaseModel):
+    method: str = "POST"
+    endpoint: str
+    request_body: dict[str, Any] = Field(default_factory=dict)
+    status_code: int | None = None
+    provider_response: dict[str, Any] | None = None
+
+
+class ConnectorSearchResponse(BaseModel):
+    query: str
+    provider: dict[str, Any] | None = None
+    search_intent: list[dict[str, Any]] = Field(default_factory=list)
+    results: list[dict[str, Any]] = Field(default_factory=list)
+    debug: ConnectorSearchDebugOut | None = None
 
 
 class ConnectorCreate(BaseModel):

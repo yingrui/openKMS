@@ -120,8 +120,22 @@
   margin-bottom: 6px;
 }
 
+.project-settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin-bottom: 0;
+
+  span {
+    color: var(--color-text);
+    font-weight: 500;
+  }
+}
+
 .project-settings-field input[type='text'],
-.project-settings-field textarea {
+.project-settings-field textarea,
+.project-settings-field select {
   width: 100%;
   padding: 10px 14px;
   font-size: 0.9375rem;

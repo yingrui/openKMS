@@ -35,6 +35,7 @@ _DEFAULT_CONFIG = {
     },
     "skills": [],
     "web_search": False,
+    "search_connector_id": None,
     "default_mode": "agent",
 }
 

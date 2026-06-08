@@ -87,6 +87,7 @@ Aligns with [Goals — retrieve and contribute](goals.md#goals-user-value) and [
 | Item | Notes |
 |------|--------|
 | Sync execution | org — Procrastinate (or pipeline) jobs per connector kind; write into configured **dataset** outputs; run history and failures in UI |
+| **search_tool** (Zhipu web search) | ✅ kind + `POST /api/connectors/{id}/search`; Agents project **`search_connector_id`** + `web_search` tool |
 | Operator UX | Manual **Run sync**, schedule/cron, last-success timestamp, row counts, retry |
 | Kind expansion | Beyond Tushare: additional catalogs and mapping docs per kind |
 | Downstream | Optional hooks: refresh datasets → re-index linked KBs or notify operators |

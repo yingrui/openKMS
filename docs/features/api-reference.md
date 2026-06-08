@@ -282,10 +282,11 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/connectors/kinds` | List connector kinds with **input field** and **output slot** metadata (for forms), plus secret key names |
-| GET | `/api/connectors` | List connector instances (`inputs`, `outputs`, `settings`, `secrets_configured`) |
-| POST | `/api/connectors` | Create connector: body may include `inputs`, `outputs` (slot → dataset id), `settings`, `secrets`; **Tushare** requires token, API URL input, and two dataset outputs |
+| GET | `/api/connectors/kinds` | List connector kinds (`category`: `sync` \| `search_tool`), **input fields**, **output slots** (sync only), **output_schema** (search_tool), secret key names; optional `?category=` |
+| GET | `/api/connectors` | List connector instances; optional `?category=` |
+| POST | `/api/connectors` | Create connector: **sync** kinds require `outputs` (slot → dataset id); **search_tool** kinds omit `outputs` |
 | GET | `/api/connectors/{id}` | Get one connector |
+| POST | `/api/connectors/{id}/search` | Run **search_tool** connector (`body`: `{ "query": "…", "params"?: { … } }` one-shot input overrides for playground); returns normalized `{ query, search_intent?, results[], debug? }` (`debug`: endpoint, request body, raw provider JSON) |
 | PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided; merge `secrets` or send `{}` to clear secrets |
 | DELETE | `/api/connectors/{id}` | Delete connector |
 | GET | `/api/datasets` | List datasets (`console:datasets` or `ontology:read`; filtered by dataset ACL) |

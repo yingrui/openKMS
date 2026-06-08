@@ -9,6 +9,7 @@ export interface ConnectorKindInputFieldOut {
   required: boolean;
   default?: string | null;
   placeholder?: string | null;
+  options?: string[];
 }
 
 export interface ConnectorKindOutputSlotOut {
@@ -20,11 +21,30 @@ export interface ConnectorKindOutputSlotOut {
 
 export interface ConnectorKindOut {
   kind: string;
+  category: 'sync' | 'search_tool';
   label: string;
   description: string;
   secret_keys: string[];
   input_fields: ConnectorKindInputFieldOut[];
   output_slots: ConnectorKindOutputSlotOut[];
+  output_schema?: Record<string, unknown> | null;
+  default_settings?: Record<string, unknown> | null;
+}
+
+export interface ConnectorSearchDebug {
+  method: string;
+  endpoint: string;
+  request_body: Record<string, unknown>;
+  status_code?: number;
+  provider_response?: Record<string, unknown>;
+}
+
+export interface ConnectorSearchResult {
+  query: string;
+  provider?: Record<string, unknown>;
+  search_intent: Array<Record<string, unknown>>;
+  results: Array<Record<string, unknown>>;
+  debug?: ConnectorSearchDebug;
 }
 
 export interface ConnectorResponse {
@@ -45,9 +65,10 @@ export interface ConnectorListResponse {
   total: number;
 }
 
-export async function fetchConnectorKinds(): Promise<ConnectorKindOut[]> {
+export async function fetchConnectorKinds(category?: string): Promise<ConnectorKindOut[]> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/kinds`, {
+  const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/kinds${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -55,9 +76,10 @@ export async function fetchConnectorKinds(): Promise<ConnectorKindOut[]> {
   return res.json();
 }
 
-export async function fetchConnectors(): Promise<ConnectorListResponse> {
+export async function fetchConnectors(category?: string): Promise<ConnectorListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors`, {
+  const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
@@ -137,4 +159,25 @@ export async function deleteConnector(id: string): Promise<void> {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || 'Failed to delete connector');
   }
+}
+
+export async function searchConnector(
+  id: string,
+  body: { query: string; params?: Record<string, unknown> }
+): Promise<ConnectorSearchResult> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}/search`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const message = (err as { detail?: string }).detail || 'Search failed';
+    const error = new Error(message) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
 }

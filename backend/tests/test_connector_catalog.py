@@ -3,11 +3,15 @@
 import pytest
 
 from app.services.connector_catalog import (
+    CATEGORY_SEARCH_TOOL,
+    CATEGORY_SYNC,
     merge_secrets_encrypted,
     normalize_and_validate_inputs,
     normalize_and_validate_outputs,
+    normalize_and_validate_settings,
     validate_kind,
     validate_secrets_for_kind,
+    get_kind_spec,
 )
 
 
@@ -15,13 +19,33 @@ def test_validate_kind_tushare():
     validate_kind("tushare")
 
 
+def test_validate_kind_zhipu():
+    validate_kind("zhipu_web_search")
+
+
 def test_validate_kind_unknown():
     with pytest.raises(ValueError, match="Unknown connector kind"):
         validate_kind("not_a_kind")
 
 
+def test_tushare_category_sync():
+    assert get_kind_spec("tushare").category == CATEGORY_SYNC
+
+
+def test_zhipu_category_search_tool():
+    spec = get_kind_spec("zhipu_web_search")
+    assert spec.category == CATEGORY_SEARCH_TOOL
+    assert spec.output_slots == ()
+    assert spec.output_schema is not None
+    assert "results" in spec.output_schema.get("properties", {})
+
+
 def test_validate_secrets_tushare_ok():
     validate_secrets_for_kind("tushare", {"TUSHARE_TOKEN": "tok"})
+
+
+def test_validate_secrets_zhipu_ok():
+    validate_secrets_for_kind("zhipu_web_search", {"ZHIPU_API_KEY": "key"})
 
 
 def test_validate_secrets_tushare_rejects_unknown_key():
@@ -60,3 +84,50 @@ def test_tushare_outputs_requires_both_slots():
         {"stock_trade_daily": "a" * 32, "trade_calendar": "b" * 32},
     )
     assert set(out.keys()) == {"stock_trade_daily", "trade_calendar"}
+
+
+def test_zhipu_outputs_must_be_empty():
+    assert normalize_and_validate_outputs("zhipu_web_search", None) == {}
+    assert normalize_and_validate_outputs("zhipu_web_search", {}) == {}
+    with pytest.raises(ValueError, match="does not use outputs"):
+        normalize_and_validate_outputs("zhipu_web_search", {"x": "y"})
+
+
+def test_zhipu_inputs_defaults():
+    out = normalize_and_validate_inputs("zhipu_web_search", None)
+    assert out["api_base_url"] == "https://open.bigmodel.cn/api/paas/v4"
+    assert out["search_engine"] == "search_std"
+    assert out["search_intent"] is False
+    assert out["count"] == 10
+
+
+def test_zhipu_settings_default_web_search_url():
+    out = normalize_and_validate_settings("zhipu_web_search", None)
+    assert out["web_search_url"] == "https://open.bigmodel.cn/api/paas/v4/web_search"
+
+
+def test_zhipu_settings_custom_web_search_url():
+    out = normalize_and_validate_settings(
+        "zhipu_web_search",
+        {"web_search_url": "https://open.bigmodel.cn/api/paas/v4/web_search"},
+    )
+    assert out["web_search_url"] == "https://open.bigmodel.cn/api/paas/v4/web_search"
+
+
+def test_zhipu_inputs_boolean_and_select():
+    out = normalize_and_validate_inputs(
+        "zhipu_web_search",
+        {
+            "search_intent": "true",
+            "search_engine": "search_pro",
+            "count": "5",
+            "content_size": "high",
+            "search_recency_filter": "oneWeek",
+        },
+    )
+    assert out["search_intent"] is True
+    assert out["search_engine"] == "search_pro"
+    assert out["count"] == 5
+    assert out["content_size"] == "high"
+    assert out["search_recency_filter"] == "oneWeek"
+

@@ -27,8 +27,10 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 |----------|---------|-------|
 | `OPENKMS_PROJECTS_ROOT` | `data/projects` (local) / `/data/projects` (Docker) | One folder per project UUID |
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
-| `OPENKMS_AGENT_WEB_SEARCH_ENABLED` | `false` | Optional Tavily-style search |
+| `OPENKMS_AGENT_WEB_SEARCH_ENABLED` | `false` | Legacy global Tavily-style search (used when project has no `search_connector_id`) |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
+
+**Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector (e.g. Zhipu web search). Stored as `web_search` and `search_connector_id` in `.openkms/config.json`. The agent registers a `web_search` tool that calls the connector server-side.
 
 Docker: `projects_data` volume mounted on `backend` and `worker`.
 

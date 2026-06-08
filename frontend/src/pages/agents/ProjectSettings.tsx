@@ -10,6 +10,7 @@ import {
   updateProject,
   type ProjectResponse,
 } from '../../data/projectsApi';
+import { fetchConnectors, type ConnectorResponse } from '../../data/connectorsApi';
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectSettings.scss';
 
@@ -27,6 +28,9 @@ export function ProjectSettings() {
   const [description, setDescription] = useState('');
   const [slug, setSlug] = useState('');
   const [agentJson, setAgentJson] = useState('{}');
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [searchConnectorId, setSearchConnectorId] = useState('');
+  const [searchConnectors, setSearchConnectors] = useState<ConnectorResponse[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,13 +44,19 @@ export function ProjectSettings() {
 
   useEffect(() => {
     setLoading(true);
-    getProject(projectId)
-      .then((p) => {
+    Promise.all([
+      getProject(projectId),
+      fetchConnectors('search_tool').catch(() => ({ items: [], total: 0 })),
+    ])
+      .then(([p, connectors]) => {
         setProject(p);
         setName(p.name);
         setDescription(p.description ?? '');
         setSlug(p.slug);
         setAgentJson(JSON.stringify(p.settings, null, 2));
+        setWebSearchEnabled(Boolean(p.settings?.web_search));
+        setSearchConnectorId(String(p.settings?.search_connector_id ?? ''));
+        setSearchConnectors(connectors.items.filter((c) => c.enabled));
       })
       .catch((e) => toast.error(String(e)))
       .finally(() => setLoading(false));
@@ -63,6 +73,8 @@ export function ProjectSettings() {
       } catch {
         throw new Error(t('settings.invalidJson'));
       }
+      settings.web_search = webSearchEnabled;
+      settings.search_connector_id = searchConnectorId.trim() || null;
       await updateProject(projectId, {
         name: name.trim(),
         description: description.trim() || null,
@@ -157,6 +169,37 @@ export function ProjectSettings() {
           <section className="project-settings-section">
             <h2>{t('settings.agentHeading')}</h2>
             <p className="project-settings-hint project-settings-hint--intro">{t('settings.agentHint')}</p>
+            <div className="project-settings-field">
+              <label className="project-settings-checkbox">
+                <input
+                  type="checkbox"
+                  checked={webSearchEnabled}
+                  onChange={(e) => setWebSearchEnabled(e.target.checked)}
+                />
+                <span>{t('settings.webSearchEnabled')}</span>
+              </label>
+              <p className="project-settings-hint">{t('settings.webSearchHint')}</p>
+            </div>
+            {webSearchEnabled ? (
+              <div className="project-settings-field">
+                <label htmlFor="project-search-connector">{t('settings.searchConnector')}</label>
+                <select
+                  id="project-search-connector"
+                  value={searchConnectorId}
+                  onChange={(e) => setSearchConnectorId(e.target.value)}
+                >
+                  <option value="">{t('settings.searchConnectorPlaceholder')}</option>
+                  {searchConnectors.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {searchConnectors.length === 0 ? (
+                  <p className="project-settings-hint">{t('settings.searchConnectorEmpty')}</p>
+                ) : null}
+              </div>
+            ) : null}
             <div className="project-settings-field">
               <label htmlFor="project-agent-json">{t('settings.agentJsonLabel')}</label>
               <textarea

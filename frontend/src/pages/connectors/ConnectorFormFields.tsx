@@ -50,8 +50,65 @@ export function ConnectorFormFields({
 }) {
   const { t } = useTranslation('console');
   const selectedKindMeta = kinds.find((k) => k.kind === formKind);
+  const isSearchTool = selectedKindMeta?.category === 'search_tool';
   const hasInputFields = (selectedKindMeta?.input_fields?.length ?? 0) > 0;
-  const hasOutputSlots = (selectedKindMeta?.output_slots?.length ?? 0) > 0;
+  const hasOutputSlots = !isSearchTool && (selectedKindMeta?.output_slots?.length ?? 0) > 0;
+
+  const renderInputControl = (f: ConnectorKindOut['input_fields'][0]) => {
+    const fieldId = `connector-input-${f.key}`;
+    const value = inputValues[f.key] ?? '';
+    const onChange = (next: string) => onInputValuesChange({ ...inputValues, [f.key]: next });
+
+    if (f.field_type === 'boolean') {
+      return (
+        <label className="console-modal-checkbox-row connector-input-boolean">
+          <input
+            id={fieldId}
+            type="checkbox"
+            checked={value === 'true' || value === '1'}
+            onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+            disabled={readOnly}
+          />
+          <span>{f.label}</span>
+        </label>
+      );
+    }
+    if (f.field_type === 'select' && (f.options?.length ?? 0) > 0) {
+      return (
+        <>
+          <label htmlFor={fieldId}>{f.label}</label>
+          <select
+            id={fieldId}
+            className="console-form-control"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={readOnly}
+          >
+            {f.options!.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </>
+      );
+    }
+    return (
+      <>
+        <label htmlFor={fieldId}>{f.label}</label>
+        <input
+          id={fieldId}
+          type={f.field_type === 'url' ? 'url' : f.field_type === 'integer' ? 'number' : 'text'}
+          className="console-form-control"
+          value={value}
+          placeholder={f.placeholder ?? undefined}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete="off"
+          disabled={readOnly}
+        />
+      </>
+    );
+  };
 
   const updateSettingsRow = (id: string, field: 'key' | 'value', value: string) => {
     onSettingsRowsChange(settingsRows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
@@ -86,7 +143,7 @@ export function ConnectorFormFields({
         >
           {kinds.map((k) => (
             <option key={k.kind} value={k.kind}>
-              {k.label} ({k.kind})
+              {k.label} ({k.category})
             </option>
           ))}
         </select>
@@ -98,23 +155,21 @@ export function ConnectorFormFields({
           <h3 className="console-modal-subheading">{t('connectors.sectionInputs')}</h3>
           <p className="console-modal-hint">{t('connectors.inputsHint')}</p>
           {selectedKindMeta.input_fields.map((f) => {
-            const fieldId = `connector-input-${f.key}`;
+            const isBoolean = f.field_type === 'boolean';
             return (
-              <div key={f.key} className="console-form-field">
-                <label htmlFor={fieldId}>{f.label}</label>
-                <input
-                  id={fieldId}
-                  type={f.field_type === 'url' ? 'url' : 'text'}
-                  className="console-form-control"
-                  value={inputValues[f.key] ?? ''}
-                  placeholder={f.placeholder ?? undefined}
-                  onChange={(e) => onInputValuesChange({ ...inputValues, [f.key]: e.target.value })}
-                  autoComplete="off"
-                  disabled={readOnly}
-                />
+              <div key={f.key} className={`console-form-field${isBoolean ? ' console-form-field--inline-check' : ''}`}>
+                {renderInputControl(f)}
               </div>
             );
           })}
+        </div>
+      ) : null}
+
+      {isSearchTool && selectedKindMeta?.output_schema ? (
+        <div className="console-modal-section">
+          <h3 className="console-modal-subheading">{t('connectors.sectionOutputSchema')}</h3>
+          <p className="console-modal-hint">{t('connectors.outputSchemaHint')}</p>
+          <pre className="connector-output-schema">{JSON.stringify(selectedKindMeta.output_schema, null, 2)}</pre>
         </div>
       ) : null}
 
@@ -152,7 +207,9 @@ export function ConnectorFormFields({
 
       <div className="console-modal-section">
         <h3 className="console-modal-subheading">{t('connectors.sectionExtraSettings')}</h3>
-        <p className="console-modal-hint">{t('connectors.settingsKvHint')}</p>
+        <p className="console-modal-hint">
+          {isSearchTool ? t('connectors.searchToolSettingsHint') : t('connectors.settingsKvHint')}
+        </p>
         <div className="console-kv-editor" role="group" aria-label={t('connectors.sectionExtraSettings')}>
           {settingsRows.map((r) => (
             <div key={r.id} className="console-kv-row">
