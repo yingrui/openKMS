@@ -18,9 +18,9 @@ def build_subagents(*, plan_mode: bool, include_shell: bool = True) -> list[dict
     }
     research: dict[str, Any] = {
         "name": "research",
-        "description": "Deep research using web search and openKMS tools.",
+        "description": "Deep research using web search and installed skills.",
         "system_prompt": (
-            "You perform deep research: web search, openKMS search, wiki and documents. "
+            "You perform deep research: web search and installed skill CLIs when relevant. "
             "Synthesize findings with citations. Do not mutate the project unless asked."
         ),
     }

@@ -1,11 +1,13 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, RefreshCw } from 'lucide-react';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import '../wiki/WikiSpaceAgentPanel.scss';
 import './AgentsWorkspace.scss';
+
+const PERSISTED_MSG_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -26,6 +28,10 @@ interface Props {
   interruptBusy?: boolean;
   onInterruptApprove?: () => void;
   onInterruptReject?: () => void;
+  prefillInput?: string | null;
+  onPrefillApplied?: () => void;
+  onRevertUserMessage?: (msg: ChatMessage) => void;
+  reverting?: boolean;
 }
 
 export function AgentChatMain({
@@ -40,11 +46,26 @@ export function AgentChatMain({
   interruptBusy = false,
   onInterruptApprove,
   onInterruptReject,
+  prefillInput,
+  onPrefillApplied,
+  onRevertUserMessage,
+  reverting = false,
 }: Props) {
   const { t } = useTranslation('agents');
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (prefillInput == null) return;
+    setInput(prefillInput);
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+    }
+    onPrefillApplied?.();
+  }, [prefillInput, onPrefillApplied]);
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -86,16 +107,32 @@ export function AgentChatMain({
         ) : (
           messages.map((m, i) => (
             <div key={m.id ?? i} className={`agents-chat-msg agents-chat-msg--${m.role}`}>
-              <div className="agents-chat-msg-body">
-                {m.role === 'assistant' ? (
+              {m.role === 'user' ? (
+                <div className="agents-chat-msg-user-col">
+                  <div className="agents-chat-msg-body">{m.content}</div>
+                  {onRevertUserMessage && m.id && PERSISTED_MSG_ID.test(m.id) ? (
+                    <div className="agents-chat-msg-revert">
+                      <button
+                        type="button"
+                        className="agents-chat-revert-btn"
+                        onClick={() => onRevertUserMessage(m)}
+                        disabled={loading || reverting}
+                        title={t('chat.revertTitle')}
+                        aria-label={t('chat.revertAria')}
+                      >
+                        <RefreshCw size={15} strokeWidth={2} aria-hidden />
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="agents-chat-msg-body">
                   <AgentAssistantStreamBody
                     streamParts={m.streamParts}
                     fallbackText={m.content}
                   />
-                ) : (
-                  m.content
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ))
         )}

@@ -30,6 +30,7 @@ from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.conversation_title import suggest_conversation_title
 from app.services.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
 from app.services.agent_skill_install import ensure_skills_materialized
+from app.services.deep_agents.checkpointer import delete_conversation_thread
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
@@ -242,6 +243,44 @@ async def list_messages(
         limit=limit,
         offset=offset,
     )
+
+
+@router.delete(
+    "/{project_id}/conversations/{conversation_id}/messages/from/{message_id}",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def delete_conversation_messages_from(
+    project_id: str,
+    conversation_id: str,
+    message_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """
+    Remove this message and all messages after it in chronological order.
+    Clears LangGraph checkpoint state so the next turn matches truncated history.
+    """
+    sub = _get_sub(request)
+    c = await _get_conv(db, conversation_id, sub, project_id)
+    r = await db.execute(
+        select(AgentMessage.id)
+        .where(AgentMessage.conversation_id == conversation_id)
+        .order_by(AgentMessage.created_at, AgentMessage.id)
+    )
+    ordered_ids = [row[0] for row in r.all()]
+    if message_id not in ordered_ids:
+        raise HTTPException(status_code=404, detail="Message not found in this conversation")
+    from_idx = ordered_ids.index(message_id)
+    to_delete = ordered_ids[from_idx:]
+    if not to_delete:
+        return {"deleted": 0}
+    res = await db.execute(delete(AgentMessage).where(AgentMessage.id.in_(to_delete)))
+    n = int(res.rowcount or 0)
+    if n:
+        _bump_conversation_timestamp(c)
+        await delete_conversation_thread(conversation_id)
+    await db.flush()
+    return {"deleted": n}
 
 
 @router.post(

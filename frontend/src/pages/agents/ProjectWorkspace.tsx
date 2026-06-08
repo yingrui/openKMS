@@ -27,6 +27,7 @@ import {
   resumeProjectInterrupt,
   setStoredProjectConversationId,
   suggestProjectConversationTitle,
+  truncateProjectMessagesFromMessage,
   updateProjectConversation,
   type ProjectResponse,
   type ProjectStreamEvent,
@@ -70,6 +71,8 @@ export function ProjectWorkspace() {
   const streamingRef = useRef(false);
   const hitlResumeRef = useRef(false);
   const [hitlBusy, setHitlBusy] = useState(false);
+  const [reverting, setReverting] = useState(false);
+  const [prefillInput, setPrefillInput] = useState<string | null>(null);
 
   const clampFilesRailWidth = useCallback((w: number) => {
     const bodyW = bodyRef.current?.clientWidth ?? window.innerWidth;
@@ -442,6 +445,32 @@ export function ProjectWorkspace() {
     void resumeInterrupt('reject');
   };
 
+  const onRevertUserMessage = useCallback(
+    (userLine: ChatMessage) => {
+      if (!convId || loading || reverting || streamingRef.current) return;
+      if (!userLine.id) return;
+      if (!window.confirm(t('chat.confirmRevert'))) return;
+      const saved = userLine.content;
+      setReverting(true);
+      setInterrupt(null);
+      setTodos([]);
+      void (async () => {
+        try {
+          await truncateProjectMessagesFromMessage(projectId, convId, userLine.id!);
+          setPrefillInput(saved);
+          await loadMessages(convId);
+          void loadConversations();
+          toast.success(t('chat.revertOk'));
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : t('chat.revertFailed'));
+        } finally {
+          setReverting(false);
+        }
+      })();
+    },
+    [convId, loadMessages, loadConversations, loading, projectId, reverting, t],
+  );
+
   if (!project) return <AgentsWorkspaceSkeleton />;
 
   const activeConv = conversations.find((c) => c.id === convId);
@@ -477,6 +506,10 @@ export function ProjectWorkspace() {
           interruptBusy={hitlBusy}
           onInterruptApprove={interrupt ? onInterruptApprove : undefined}
           onInterruptReject={interrupt ? onInterruptReject : undefined}
+          prefillInput={prefillInput}
+          onPrefillApplied={() => setPrefillInput(null)}
+          onRevertUserMessage={convId ? onRevertUserMessage : undefined}
+          reverting={reverting}
         />
         <div
           className="agents-pane-resize-handle"

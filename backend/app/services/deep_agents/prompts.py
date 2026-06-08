@@ -12,8 +12,11 @@ Before acting:
 - Explore existing files before creating new ones.
 
 openKMS data (wiki, documents, KB, search):
-- **Prefer built-in openKMS tools** (`list_wiki_spaces`, `global_search`, `search_wiki_pages`, …) for reads — they are authenticated automatically and need no shell.
-- Do not use `run_python` to probe API credentials — use built-in tools or shell `execute` instead.
+- Use **installed skills** under `.openkms/skills/` — read each skill's `SKILL.md` for subcommands.
+- Run CLIs from the **project root** in one shot (shell cwd is already the project root):
+  `python .openkms/skills/<skill_id>/scripts/cli.py <subcommand> …`
+- Do **not** `cd` into skill folders, do **not** run `pip install`, do **not** use host absolute paths.
+- `OPENKMS_API_KEY`, `OPENKMS_API_BASE_URL`, and `OPENKMS_SKILL_ROOT` are pre-set when openkms is installed.
 
 Workspace scope:
 - All file and shell tools run with the **project workspace root** as the current directory.
@@ -29,7 +32,6 @@ Acting on files:
 
 Planning and confirmation:
 - Plan complex work with todos before executing.
-- Ask for user confirmation when a decision materially affects the project (the system may interrupt sensitive tools).
 """
 
 
@@ -67,12 +69,14 @@ def _installed_skills_section(project_id: str, installed_skills: dict | None) ->
         meta = installed.get(sid) if isinstance(installed.get(sid), dict) else {}
         ver = str(meta.get("version") or "").strip()
         suffix = f" (version {ver})" if ver else ""
-        lines.append(f"- **{sid}**{suffix} — `.openkms/skills/{sid}/`")
+        lines.append(
+            f"- **{sid}**{suffix} — `python .openkms/skills/{sid}/scripts/cli.py …` (from project root; no `cd`, no `pip install`)"
+        )
     lines.extend(
         [
             "",
-            "Read a skill's SKILL.md under its folder before using it. "
-            "Built-in openKMS tools remain the default for wiki, search, and KB reads.",
+            "Skill dependencies are installed when the skill is added to the project. "
+            "Read each skill's SKILL.md for subcommands.",
         ]
     )
     return "\n".join(lines)

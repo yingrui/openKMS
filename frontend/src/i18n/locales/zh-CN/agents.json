@@ -110,7 +110,12 @@
     "planMode": "计划模式（只读）",
     "thinking": "思考中…",
     "todos": "计划",
-    "error": "发送失败"
+    "error": "发送失败",
+    "confirmRevert": "移除此条及之后的所有消息？你的文字会回到输入框以便编辑并重发。",
+    "revertTitle": "撤销消息",
+    "revertAria": "移除此条及之后的消息；文字回到输入框以便编辑并重发",
+    "revertOk": "已移除消息，可编辑后重新发送",
+    "revertFailed": "无法撤销消息"
   },
   "files": {
     "title": "项目文件",

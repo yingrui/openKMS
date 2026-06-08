@@ -1,6 +1,6 @@
 # Agents (project workspaces)
 
-In-product **Agents** area: personal **projects** with an on-disk workspace (`{OPENKMS_PROJECTS_ROOT}/{project_id}/`), Deep Agents chat, file tree, local git, optional openKMS research tools, and **global skills** registry.
+In-product **Agents** area: personal **projects** with an on-disk workspace (`{OPENKMS_PROJECTS_ROOT}/{project_id}/`), Deep Agents chat, file tree, local git, optional **skills**, and a global skills registry.
 
 | Area | Status |
 |------|--------|
@@ -12,7 +12,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Conversations + NDJSON stream | ✅ |
 | Plan mode toggle | ✅ |
 | HITL resume endpoint | ✅ |
-| Subagents (explore = workspace files; research = web + openKMS) | ✅ |
+| Subagents (explore = workspace files; research = web + skills) | ✅ |
 | Local git | ✅ |
 | Remote git (HTTPS + PAT) | ✅ |
 
@@ -30,13 +30,13 @@ Each project **conversation** (session) gets a dedicated personal API key (`purp
 - `OPENKMS_API_KEY`
 - `OPENKMS_API_BASE_URL`
 
-Built-in openKMS HTTP tools and **openkms-skill** CLI (when installed) use this key. Keys are revoked when the session is deleted. They do not appear in **Settings → API keys**.
+Installed **skills** (e.g. openkms) use this key when run via shell `execute`. Keys are revoked when the session is deleted. They do not appear in **Settings → API keys**.
 
-Built-in openKMS tools (`list_wiki_spaces`, `global_search`, …) are preferred for reads; tool availability follows the session creator's resolved permission keys (admin / `all` → full set).
+Run skill CLIs from the project root: `python .openkms/skills/<skill_id>/scripts/cli.py …` — no `cd`, no `pip install` (dependencies install with the skill).
 
 ## Human-in-the-loop (HITL)
 
-Shell (`execute`) and openKMS mutation tools may pause for approval. The interrupt bar shows pending actions; **Approve all (N)** sends one decision per batched tool call. Resume streams into the current assistant turn (no duplicate message). Reject stops the pending batch.
+HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar supports batched **Approve all (N)** when enabled. Resume streams into the current assistant turn.
 
 ## Skills
 

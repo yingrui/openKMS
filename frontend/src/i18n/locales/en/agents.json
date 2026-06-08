@@ -110,7 +110,12 @@
     "planMode": "Plan mode (read-only)",
     "thinking": "Thinking…",
     "todos": "Plan",
-    "error": "Message failed"
+    "error": "Message failed",
+    "confirmRevert": "Remove this message and everything after it? Your text will reappear in the input so you can edit and resend.",
+    "revertTitle": "Revert message",
+    "revertAria": "Remove this and later messages; your text returns to the input to edit and resend",
+    "revertOk": "Messages removed — edit and resend when ready",
+    "revertFailed": "Could not revert messages"
   },
   "files": {
     "title": "Project files",

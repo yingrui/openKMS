@@ -35,9 +35,7 @@ from app.services.deep_agents.prompts import build_project_system_prompt
 from app.services.deep_agents.sandbox import make_sandbox_tools
 from app.services.deep_agents.skills.loader import list_skill_paths
 from app.services.deep_agents.subagents.profiles import build_subagents
-from app.services.deep_agents.tools.openkms import make_openkms_tools
 from app.services.deep_agents.tools.web_search import make_web_search_tools
-from app.services.permission_resolution import resolve_agent_permission_keys
 from app.services.project_fs import project_root
 
 logger = logging.getLogger(__name__)
@@ -155,11 +153,9 @@ async def _build_agent(
         env=shell_env,
         timeout=settings.agent_sandbox_timeout_seconds,
     )
-    perm_set = await resolve_agent_permission_keys(db, jwt_payload)
     tools: list = []
     if not plan_mode:
         tools.extend(make_sandbox_tools(project_id, shell_env=shell_env))
-    tools.extend(make_openkms_tools(bearer_token, perm_set))
     connector_id = str(project_settings.get("search_connector_id") or "").strip()
     web_search_on = project_settings.get("web_search") in (True, "true", "True", 1, "1")
     if web_search_on and connector_id:

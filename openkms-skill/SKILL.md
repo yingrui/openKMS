@@ -24,7 +24,24 @@ description: >-
 
 Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [reference.md](reference.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
 
-**Every** read and write against this deployment must go through **`python scripts/cli.py …`** from this skill’s **`scripts/`** tree (after `pip install -r requirements.txt`). That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
+**Every** read and write against this deployment must go through **`python scripts/cli.py …`**. That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
+
+### Dependencies (`requirements.txt`)
+
+- **Installed into an openKMS project** (Agents → Skills → install): the platform runs `pip install -r requirements.txt` **once** when the skill is copied into `.openkms/skills/openkms/`. **Do not run `pip install` again** on each CLI call. If `python …/scripts/cli.py` fails with `ModuleNotFoundError`, ask the user to **reinstall or update** the skill in project settings — do not patch deps by hand.
+- **Standalone copy** (OpenCode, Claude Code, manual `install.sh`, or dev checkout): run `pip install -r requirements.txt` **once** after copying the skill tree, then use the CLI as usual. Still **not** before every command.
+- **Smoke check** — `python …/scripts/cli.py ping` verifies auth and that imports work; that is enough. No separate install step per session.
+
+### openKMS **project agents** (workspace under `{project_id}/`)
+
+When this skill is installed at `.openkms/skills/openkms/` inside a project workspace:
+
+- Shell **cwd is the project root**. Run one command — **no `cd`**, **no `pip install`**:
+  `python .openkms/skills/openkms/scripts/cli.py wiki-spaces list`
+- `OPENKMS_API_KEY`, `OPENKMS_API_BASE_URL`, and `OPENKMS_SKILL_ROOT` are injected by the agent runtime; `config.yml` is optional.
+- Example: `python .openkms/skills/openkms/scripts/cli.py ping`
+
+Standalone / OpenCode / Claude installs: see **Dependencies** above and **Before you act** §3.
 
 **Evaluations.** To change an evaluation’s name, description, or wiki link, use **`evaluations update`**. To add, edit, or remove question rows, use **`evaluations items add`**, **`evaluations items update`**, and **`evaluations items delete`**. Do **not** delete an evaluation and **`evaluations create`** a replacement just to “refresh” data—that drops **saved runs** and changes the evaluation id (bad for bookmarks, scripts, and comparisons). Reserve **`evaluations create`** for when the user explicitly wants a **new** evaluation.
 
@@ -38,13 +55,20 @@ Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`http
    - Optional: `default_document_channel_id` / `default_article_channel_id` — UUID strings; when set, `documents list|upload` and `articles list|create|from-url` may omit `--channel-id` and use these defaults (see `config.yml.example`).
    - Optional: `default_pipeline_id` — pipeline id string (e.g. `pipeline_baidu_doc_parse`); when set, `document-channels create` assigns it as the channel's default parse pipeline unless `--pipeline-id` is passed.
 
-2. **If either value is missing** — Ask the user for the backend URL and a new key from **Settings** (they see the full token once when creating it). Then **write or update** `config.yml` in this skill directory. Never echo the key back in full unless the user explicitly asks.
+2. **If either value is missing** — In a **project agent** session, `OPENKMS_API_KEY` and `OPENKMS_API_BASE_URL` are usually already set; you do not need `config.yml`. Otherwise ask the user for the backend URL and a new key from **Settings** (they see the full token once when creating it). Then **write or update** `config.yml` in this skill directory. Never echo the key back in full unless the user explicitly asks.
 
-3. **Run the bundled CLI** — From this skill directory (agents: use an absolute path to the skill root):
+3. **Run the bundled CLI**
+
+**Project agent** (skill at `.openkms/skills/openkms/`, cwd = project root; deps already installed — see **Dependencies**):
 
 ```bash
-cd "$(dirname "$0")"   # skill root when invoked from repo; agents use absolute path to skill dir
-pip install -q -r requirements.txt
+python .openkms/skills/openkms/scripts/cli.py ping
+```
+
+**Standalone install** (skill directory is cwd; run `pip install -r requirements.txt` **once** after copying — not before every command):
+
+```bash
+pip install -q -r requirements.txt   # first time only
 python scripts/cli.py ping
 ```
 

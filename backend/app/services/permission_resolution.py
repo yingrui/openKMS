@@ -53,7 +53,7 @@ def jwt_payload_is_admin(payload: dict[str, Any]) -> bool:
 
 
 async def resolve_agent_permission_keys(db: AsyncSession, jwt_payload: dict[str, Any]) -> set[str]:
-    """Permission keys for built-in openKMS tools on project agents."""
+    """Permission keys resolved from JWT for API callers (e.g. future agent tooling)."""
     if jwt_payload_is_admin(jwt_payload):
         return {PERM_ALL}
     sub = jwt_payload.get("sub")

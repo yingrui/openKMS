@@ -295,6 +295,23 @@ export async function suggestProjectConversationTitle(
   return res.json();
 }
 
+/** Remove this message and all later messages; user can resend from the input. */
+export async function truncateProjectMessagesFromMessage(
+  projectId: string,
+  convId: string,
+  messageId: string,
+): Promise<{ deleted: number }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/projects/${projectId}/conversations/${encodeURIComponent(
+      convId,
+    )}/messages/from/${encodeURIComponent(messageId)}`,
+    { method: 'DELETE', headers, credentials: 'include' },
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json() as Promise<{ deleted: number }>;
+}
+
 export async function listProjectMessages(
   projectId: string,
   convId: string,

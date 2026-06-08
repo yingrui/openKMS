@@ -408,6 +408,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | PATCH/DELETE | `/api/projects/{id}/conversations/{cid}` | Update title / delete session |
 | POST | `/api/projects/{id}/conversations/{cid}/suggest-title` | LLM title from message history |
 | GET/POST | `/api/projects/{id}/conversations/{cid}/messages` | History; POST with `stream: true` → NDJSON (`delta`, `tool_*`, `subagent_*`, `todo`, `interrupt`, `done`). Streamed assistant rows persist `tool_calls` (`wiki_tool_traces_v1`, incl. input/output) for UI replay |
+| DELETE | `/api/projects/{id}/conversations/{cid}/messages/from/{message_id}` | Delete this message and everything after it; clears LangGraph checkpoint thread (revert / regenerate) |
 | POST | `/api/projects/{id}/conversations/{cid}/messages/resume` | HITL resume (`decision`: approve/reject/edit/respond) |
 | POST | `/api/projects/{id}/git/init` | Local `git init` |
 | GET | `/api/projects/{id}/git/status` | Porcelain status |
