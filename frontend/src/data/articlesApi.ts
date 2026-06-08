@@ -296,3 +296,60 @@ export function articleFileUrl(articleId: string, relativePath: string): string 
   const enc = encodeURI(relativePath.replace(/^\/+/, ''));
   return `${config.apiUrl}/api/articles/${articleId}/files/${enc}`;
 }
+
+export interface ArticleReviewCriterionResult {
+  id: string;
+  label?: string | null;
+  score: number;
+  notes: string;
+}
+
+export interface ArticleReviewResult {
+  overall_score: number;
+  pass: boolean;
+  summary: string;
+  criteria: ArticleReviewCriterionResult[];
+  suggestions: string[];
+}
+
+export interface ArticleReviewOut {
+  id: string;
+  article_id: string;
+  review_model_id: string | null;
+  result: ArticleReviewResult;
+  created_by: string | null;
+  created_by_name: string | null;
+  created_at: string;
+}
+
+export async function runArticleReview(
+  articleId: string,
+  body?: { model_id?: string; prompt?: string },
+): Promise<ArticleReviewOut> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    credentials: 'include',
+    body: JSON.stringify(body ?? {}),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Review failed (${res.status})`));
+  }
+  return res.json();
+}
+
+export async function fetchLatestArticleReview(articleId: string): Promise<ArticleReviewOut | null> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/reviews/latest`, {
+    headers: { ...headers },
+    credentials: 'include',
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(parseApiError(err, `Failed to load review (${res.status})`));
+  }
+  return res.json();
+}

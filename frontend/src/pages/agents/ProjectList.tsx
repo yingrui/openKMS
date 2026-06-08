@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Bot, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { createProject, listProjects, type ProjectResponse } from '../../data/projectsApi';
+import { AgentsAreaNav } from '../../components/agents/AgentsAreaNav';
 import { AgentsListSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectList.scss';
 
@@ -71,6 +72,7 @@ export function ProjectList() {
 
   return (
     <div className={`agents-list page${!loading && projects.length === 0 ? ' agents-list--empty' : ''}`}>
+      <AgentsAreaNav />
       {hasProjects ? (
         <div className="page-header agents-toolbar">
           <h1>{t('list.pageTitle')}</h1>

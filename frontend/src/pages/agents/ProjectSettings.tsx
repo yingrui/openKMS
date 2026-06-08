@@ -11,6 +11,15 @@ import {
   type ProjectResponse,
 } from '../../data/projectsApi';
 import {
+  installProjectSkill,
+  listAgentSkills,
+  listProjectSkills,
+  shortHash,
+  uninstallProjectSkill,
+  type AgentSkill,
+  type ProjectInstalledSkill,
+} from '../../data/agentSkillsApi';
+import {
   fetchConnectorKinds,
   fetchConnectors,
   type ConnectorKindOut,
@@ -39,6 +48,10 @@ export function ProjectSettings() {
   const [connectorKinds, setConnectorKinds] = useState<ConnectorKindOut[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registrySkills, setRegistrySkills] = useState<AgentSkill[]>([]);
+  const [installedSkills, setInstalledSkills] = useState<ProjectInstalledSkill[]>([]);
+  const [openkmsVersion, setOpenkmsVersion] = useState('');
+  const [skillActionLoading, setSkillActionLoading] = useState(false);
 
   const connectorKindLabels = useMemo(() => {
     const map = new Map<string, string>();
@@ -60,8 +73,10 @@ export function ProjectSettings() {
       getProject(projectId),
       fetchConnectors('search_tool').catch(() => ({ items: [], total: 0 })),
       fetchConnectorKinds('search_tool').catch(() => []),
+      listAgentSkills().catch(() => []),
+      listProjectSkills(projectId).catch(() => []),
     ])
-      .then(([p, connectors, kinds]) => {
+      .then(([p, connectors, kinds, skills, installed]) => {
         setProject(p);
         setName(p.name);
         setDescription(p.description ?? '');
@@ -71,10 +86,54 @@ export function ProjectSettings() {
         setSearchConnectorId(String(p.settings?.search_connector_id ?? ''));
         setSearchConnectors(connectors.items.filter((c) => c.enabled));
         setConnectorKinds(kinds);
+        setRegistrySkills(skills);
+        setInstalledSkills(installed);
+        const openkms = installed.find((s) => s.skill_id === 'openkms');
+        setOpenkmsVersion(openkms?.version ?? '');
       })
       .catch((e) => toast.error(String(e)))
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  const openkmsRegistry = registrySkills.find((s) => s.id === 'openkms');
+  const openkmsInstalled = installedSkills.find((s) => s.skill_id === 'openkms');
+
+  const refreshInstalled = async () => {
+    const installed = await listProjectSkills(projectId);
+    setInstalledSkills(installed);
+    const openkms = installed.find((s) => s.skill_id === 'openkms');
+    setOpenkmsVersion(openkms?.version ?? '');
+    const p = await getProject(projectId);
+    setProject(p);
+    setAgentJson(JSON.stringify(p.settings, null, 2));
+  };
+
+  const onInstallOpenkms = async () => {
+    setSkillActionLoading(true);
+    try {
+      await installProjectSkill(projectId, 'openkms', openkmsVersion || undefined);
+      toast.success(t('settings.skills.installSuccess', { skill: 'openkms' }));
+      await refreshInstalled();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('settings.skills.installError'));
+    } finally {
+      setSkillActionLoading(false);
+    }
+  };
+
+  const onUninstallOpenkms = async () => {
+    if (!window.confirm(t('settings.skills.uninstallConfirm', { skill: 'openkms' }))) return;
+    setSkillActionLoading(true);
+    try {
+      await uninstallProjectSkill(projectId, 'openkms');
+      toast.success(t('settings.skills.uninstallSuccess', { skill: 'openkms' }));
+      await refreshInstalled();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('settings.skills.uninstallError'));
+    } finally {
+      setSkillActionLoading(false);
+    }
+  };
 
   const save = async () => {
     if (!name.trim()) return;
@@ -221,6 +280,54 @@ export function ProjectSettings() {
                 ) : null}
               </div>
             ) : null}
+            <div className="project-settings-field project-settings-skills">
+              <h3>{t('settings.skills.heading')}</h3>
+              <p className="project-settings-hint">{t('settings.skills.openkmsHint')}</p>
+              {openkmsInstalled ? (
+                <p className="project-settings-skills-status">
+                  {t('settings.skills.installed', {
+                    version: openkmsInstalled.version,
+                    hash: shortHash(openkmsInstalled.content_hash),
+                  })}
+                </p>
+              ) : (
+                <p className="project-settings-skills-status">{t('settings.skills.notInstalled')}</p>
+              )}
+              <div className="project-settings-skills-row">
+                <label htmlFor="openkms-version">{t('settings.skills.version')}</label>
+                <select
+                  id="openkms-version"
+                  value={openkmsVersion}
+                  onChange={(e) => setOpenkmsVersion(e.target.value)}
+                  disabled={!openkmsRegistry?.versions.length}
+                >
+                  <option value="">{t('settings.skills.defaultVersion')}</option>
+                  {(openkmsRegistry?.versions ?? []).map((v) => (
+                    <option key={v.id} value={v.version}>
+                      {v.version}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={skillActionLoading}
+                  onClick={() => void onInstallOpenkms()}
+                >
+                  {openkmsInstalled ? t('settings.skills.update') : t('settings.skills.install')}
+                </button>
+                {openkmsInstalled ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={skillActionLoading}
+                    onClick={() => void onUninstallOpenkms()}
+                  >
+                    {t('settings.skills.uninstall')}
+                  </button>
+                ) : null}
+              </div>
+            </div>
             <div className="project-settings-field">
               <label htmlFor="project-agent-json">{t('settings.agentJsonLabel')}</label>
               <textarea

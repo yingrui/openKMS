@@ -17,6 +17,7 @@ from app.models.article import Article
 from app.models.article_attachment import ArticleAttachment
 from app.models.article_channel import ArticleChannel
 from app.models.article_relationship import ArticleRelationship
+from app.models.article_review import ArticleReview
 from app.models.article_version import ArticleVersion
 from app.schemas.article import (
     ArticleAttachmentOut,
@@ -37,6 +38,11 @@ from app.schemas.article import (
     ArticleVersionListItem,
     ArticleVersionListResponse,
     ArticleVersionRestoreBody,
+)
+from app.schemas.article_review import (
+    ArticleReviewListResponse,
+    ArticleReviewRequest,
+    ArticleReviewResponse,
 )
 from app.services.article_scope import (
     article_list_predicate,
@@ -686,3 +692,105 @@ async def restore_article_version(
     await db.refresh(row)
     persist_markdown_to_storage(row)
     return ArticleResponse.model_validate(row)
+
+
+@router.post("/{article_id}/review", response_model=ArticleReviewResponse)
+async def review_article(
+    article_id: str,
+    body: ArticleReviewRequest,
+    request: Request,
+    row: Article = Depends(get_scoped_article_write),
+    db: AsyncSession = Depends(get_db),
+    claims: dict = Depends(get_jwt_payload),
+):
+    """Run an LLM content review using the article channel's review configuration."""
+    from app.models.api_model import ApiModel
+    from app.services.article_review import run_article_review
+    from sqlalchemy.orm import selectinload
+
+    channel = await db.get(ArticleChannel, row.channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Article channel not found")
+
+    model_id = body.model_id or channel.review_model_id
+    if not model_id:
+        raise HTTPException(
+            status_code=400,
+            detail="No review model configured. Set a review model on the article channel or pass model_id.",
+        )
+
+    model_result = await db.execute(
+        select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)
+    )
+    model = model_result.scalar_one_or_none()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+
+    model_config = {
+        "base_url": model.provider_rel.base_url,
+        "api_key": model.provider_rel.api_key,
+        "model_name": model.model_name or model.name,
+    }
+
+    effective_prompt = body.prompt if body.prompt is not None else channel.review_prompt
+    try:
+        result = await run_article_review(
+            title=row.name,
+            markdown=row.markdown or "",
+            model_config=model_config,
+            custom_prompt=effective_prompt,
+            criteria=channel.review_criteria,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    sub = claims.get("sub")
+    uname = claims.get("preferred_username") or claims.get("name")
+    review = ArticleReview(
+        id=str(uuid4()),
+        article_id=article_id,
+        review_model_id=model_id,
+        result=result,
+        created_by=sub if isinstance(sub, str) else None,
+        created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+    )
+    db.add(review)
+    await db.commit()
+    await db.refresh(review)
+    return ArticleReviewResponse.model_validate(review)
+
+
+@router.get("/{article_id}/reviews", response_model=ArticleReviewListResponse)
+async def list_article_reviews(
+    article_id: str,
+    row: Article = Depends(get_scoped_article),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 20,
+):
+    limit = max(1, min(limit, 50))
+    result = await db.execute(
+        select(ArticleReview)
+        .where(ArticleReview.article_id == article_id)
+        .order_by(ArticleReview.created_at.desc())
+        .limit(limit)
+    )
+    rows = list(result.scalars().all())
+    return ArticleReviewListResponse(items=[ArticleReviewResponse.model_validate(r) for r in rows])
+
+
+@router.get("/{article_id}/reviews/latest", response_model=ArticleReviewResponse)
+async def get_latest_article_review(
+    article_id: str,
+    row: Article = Depends(get_scoped_article),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ArticleReview)
+        .where(ArticleReview.article_id == article_id)
+        .order_by(ArticleReview.created_at.desc())
+        .limit(1)
+    )
+    review = result.scalar_one_or_none()
+    if not review:
+        raise HTTPException(status_code=404, detail="No review found")
+    return ArticleReviewResponse.model_validate(review)

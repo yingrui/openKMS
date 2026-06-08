@@ -107,6 +107,11 @@ class Settings(BaseSettings):
         validation_alias="OPENKMS_PROJECTS_ROOT",
         description="Root directory for on-disk agent project workspaces ({root}/{project_id}/).",
     )
+    agent_skills_root: str = Field(
+        default="data/agent-skills",
+        validation_alias="OPENKMS_AGENT_SKILLS_ROOT",
+        description="Global agent skills registry ({root}/{skill_id}/{version}/).",
+    )
     deep_agent_model_id: str | None = Field(
         default=None,
         validation_alias="OPENKMS_DEEP_AGENT_MODEL_ID",

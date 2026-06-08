@@ -1,5 +1,35 @@
 {
   "loading": "Loading…",
+  "nav": {
+    "areaLabel": "Agents area",
+    "projects": "Projects",
+    "skills": "Skills"
+  },
+  "skills": {
+    "pageTitle": "Skills",
+    "uploadHeading": "Upload skill package",
+    "skillId": "Skill ID",
+    "version": "Version",
+    "displayName": "Display name",
+    "notes": "Notes",
+    "uploadZip": "Upload zip…",
+    "uploadFolder": "Upload folder…",
+    "uploadFieldsRequired": "Skill ID and version are required",
+    "uploadSuccess": "Skill uploaded",
+    "uploadError": "Upload failed",
+    "patchError": "Could not update skill",
+    "empty": "No skills registered yet.",
+    "createdBy": "Created by {{name}}",
+    "defaultForNewProjects": "Install on new projects",
+    "defaultVersion": "Default version",
+    "latestVersion": "Latest upload",
+    "uploadedBy": "Uploaded by",
+    "hash": "Hash",
+    "deleteVersion": "Delete version",
+    "deleteVersionConfirm": "Delete {{skillId}} version {{version}}?",
+    "deleteSuccess": "Version deleted",
+    "deleteError": "Could not delete version"
+  },
   "list": {
     "title": "Agents",
     "pageTitle": "Projects",
@@ -124,7 +154,23 @@
     "notFound": "Project not found",
     "backToWorkspace": "Back to workspace",
     "save": "Save changes",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "skills": {
+      "heading": "Installed skills",
+      "openkmsHint": "openkms skill provides CLI access to your knowledge base. API credentials are injected per chat session.",
+      "installed": "Installed version {{version}} (hash {{hash}})",
+      "notInstalled": "Not installed",
+      "version": "Registry version",
+      "defaultVersion": "Skill default / latest",
+      "install": "Install",
+      "update": "Update",
+      "uninstall": "Uninstall",
+      "installSuccess": "{{skill}} installed",
+      "installError": "Install failed",
+      "uninstallConfirm": "Remove {{skill}} from this project?",
+      "uninstallSuccess": "{{skill}} removed",
+      "uninstallError": "Uninstall failed"
+    }
   },
   "gitCredentials": {
     "title": "Git credentials",

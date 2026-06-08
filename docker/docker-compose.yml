@@ -70,6 +70,7 @@ x-backend-env: &backend_env
   LANGFUSE_TRACE_STREAMING: ${LANGFUSE_TRACE_STREAMING:-true}
   LANGFUSE_HEALTHCHECK: ${LANGFUSE_HEALTHCHECK:-true}
   OPENKMS_PROJECTS_ROOT: /data/projects
+  OPENKMS_AGENT_SKILLS_ROOT: /data/agent-skills
 
 # qa-agent: local service auth (OIDC: see docker/.env.example and backend/.env.example).
 x-qa-agent-env: &qa_agent_env
@@ -146,6 +147,7 @@ services:
       <<: *backend_env
     volumes:
       - projects_data:/data/projects
+      - agent_skills_data:/data/agent-skills
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,6 +170,7 @@ services:
       <<: *backend_env
     volumes:
       - projects_data:/data/projects
+      - agent_skills_data:/data/agent-skills
     depends_on:
       postgres:
         condition: service_healthy
@@ -213,3 +216,4 @@ volumes:
   minio_data: {}
   neo4j_data: {}
   projects_data: {}
+  agent_skills_data: {}

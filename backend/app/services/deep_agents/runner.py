@@ -37,7 +37,7 @@ from app.services.deep_agents.subagents.profiles import build_subagents
 from app.services.deep_agents.tools.openkms import make_openkms_tools
 from app.services.deep_agents.tools.web_search import make_web_search_tools
 from app.services.deep_agents.sandbox import make_sandbox_tools
-from app.services.project_fs import project_root
+from app.services.project_fs import project_root, resolve_project_path
 
 logger = logging.getLogger(__name__)
 
@@ -143,11 +143,23 @@ async def _build_agent(
     if not llm:
         return None, "No LLM configured for agents"
     root = str(project_root(project_id))
+    shell_env: dict[str, str] = {
+        **git_env_for_shell(project_settings),
+        "GIT_TERMINAL_PROMPT": "0",
+        "OPENKMS_API_KEY": bearer_token,
+        "OPENKMS_API_BASE_URL": settings.openkms_backend_url.rstrip("/"),
+    }
+    openkms_skill = resolve_project_path(project_id, ".openkms/skills/openkms")
+    if openkms_skill.is_dir():
+        scripts_dir = str(openkms_skill / "scripts")
+        shell_env["OPENKMS_SKILL_ROOT"] = str(openkms_skill)
+        existing_pp = shell_env.get("PYTHONPATH", "")
+        shell_env["PYTHONPATH"] = f"{scripts_dir}:{existing_pp}" if existing_pp else scripts_dir
     backend = LocalShellBackend(
         root_dir=root,
         virtual_mode=True,
         inherit_env=True,
-        env={**git_env_for_shell(project_settings), "GIT_TERMINAL_PROMPT": "0"},
+        env=shell_env,
         timeout=settings.agent_sandbox_timeout_seconds,
     )
     perms = jwt_payload.get("realm_access", {}).get("roles", [])

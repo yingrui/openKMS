@@ -1,11 +1,14 @@
 # Agents (project workspaces)
 
-In-product **Agents** area: personal **projects** with an on-disk workspace (`{OPENKMS_PROJECTS_ROOT}/{project_id}/`), Deep Agents chat, file tree, local git, and optional openKMS research tools.
+In-product **Agents** area: personal **projects** with an on-disk workspace (`{OPENKMS_PROJECTS_ROOT}/{project_id}/`), Deep Agents chat, file tree, local git, optional openKMS research tools, and **global skills** registry.
 
 | Area | Status |
 |------|--------|
-| Sidebar + `/agents` (list) + `/projects/{id}/sessions/{sessionId}` (workspace) | ✅ |
+| Sidebar + `/agents` (Projects) + `/agents/skills` (Skills) + `/projects/{id}/sessions/{sessionId}` | ✅ |
 | Project settings page `/projects/{id}/settings` (General + Agent tabs) | ✅ |
+| Session API key (per conversation, creator identity) | ✅ |
+| Global skills registry + project install | ✅ |
+| Default skills auto-install on new project | ✅ |
 | Project CRUD + files API | ✅ |
 | Conversations + NDJSON stream | ✅ |
 | Plan mode toggle | ✅ |
@@ -13,47 +16,70 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Subagents (explore, research, shell) | ✅ |
 | Local git | ✅ |
 | Remote git (HTTPS + PAT) | ✅ |
-| Agent config (subagents, skills JSON) | ✅ |
 
 ## Layout
 
+- **Agents area:** **Projects | Skills** tabs at `/agents` and `/agents/skills`.
 - **Left:** conversation sessions (month-grouped), like KB Q&A.
 - **Center:** chat thread + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot).
-- **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize (chat ↔ files rail, and file viewer ↔ tree when a file is open); widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder (recursive; the selected folder name is preserved under the **current tree location**—open a subfolder first to upload elsewhere). Refresh, parent-folder navigation, and per-row delete (`.openkms` and `.openkms/skills` folders protected; other paths including files under `.openkms/` may be deleted).
+- **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize; widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder. Refresh, parent-folder navigation, and per-row delete (`.openkms` and `.openkms/skills` folders protected; other paths including files under `.openkms/` may be deleted).
+
+## Session API key
+
+Each project **conversation** (session) gets a dedicated personal API key (`purpose=agent_session`) owned by the session creator (`user_sub`). The plaintext token is stored encrypted in `agent_conversations.context` and injected into the agent shell as:
+
+- `OPENKMS_API_KEY`
+- `OPENKMS_API_BASE_URL`
+
+Built-in openKMS HTTP tools and **openkms-skill** CLI (when installed) use this key. Keys are revoked when the session is deleted. They do not appear in **Settings → API keys**.
+
+## Skills
+
+| Layer | Location |
+|-------|----------|
+| **Registry** (global) | `{OPENKMS_AGENT_SKILLS_ROOT}/{skill_id}/{version}/` + DB tables `agent_skills`, `agent_skill_versions` |
+| **Installed** (per project) | `{project_id}/.openkms/skills/{skill_id}/` + `projects.settings.installed_skills` |
+
+- Upload zip or folder on **Agents → Skills** (`POST /api/agent-skills`). Each version stores a **content hash** (per-file SHA-256, sorted, aggregated).
+- Mark a skill **default** → auto-installed when creating a new project (version = `default_version` or latest).
+- **Project settings → Agent → Installed skills:** install/update/uninstall **openkms** from the registry.
+
+Bundled **`openkms/bundled`** is seeded from repo `openkms-skill/` on first registry access.
 
 ## Configuration
 
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `OPENKMS_PROJECTS_ROOT` | `data/projects` (local) / `/data/projects` (Docker) | One folder per project UUID |
+| `OPENKMS_AGENT_SKILLS_ROOT` | `data/agent-skills` | Global skills registry |
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
 
-**Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector (e.g. Zhipu web search). Stored as `web_search` and `search_connector_id` in `projects.settings` (PostgreSQL). When both are set, the agent gets a single abstract **`web_search(query)`** tool (provider-specific parameters stay on the connector). If web search is off or no connector is selected, the tool is **not** registered.
+**Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector. Stored as `web_search` and `search_connector_id` in `projects.settings`.
 
-Docker: `projects_data` volume mounted on `backend` and `worker`.
+Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills` under the same volume or a sibling mount).
 
 ## Project folder
 
 ```
 {project_id}/
   AGENTS.md
-  .openkms/skills/
-  .git/          # optional
+  .openkms/skills/     # installed skills (e.g. openkms/)
+  .git/                # optional
 ```
 
-Agent runtime settings (web search, git identity, subagent toggles) live in **`projects.settings`** in the database, not on disk.
+Runtime settings (web search, git identity, `installed_skills`) live in **`projects.settings`** (PostgreSQL).
 
 ## Permissions
 
-- `projects:read` — `/agents`, `/agents/*`, `/projects/*`; list projects, read files, chat read
-- `projects:write` — same SPA paths; create/update projects, upload, agent messages, git
+- `projects:read` — list projects/skills, read files, chat read
+- `projects:write` — create/update projects, upload skills, agent messages, git, install skills
 
 Feature toggle: **`agents`** (Console → Feature toggles).
 
 ## Git
 
 - **Local:** init, status, log, add, commit via files rail; agent uses shell (`execute`) for git in the project folder.
-- **Remote:** HTTPS + PAT only; credentials in Profile → Git credentials (encrypted in DB, ephemeral `GIT_ASKPASS`). Clone / pull / push APIs on `/api/projects/{id}/git/*`.
+- **Remote:** HTTPS + PAT only; credentials in Profile → Git credentials. Clone / pull / push APIs on `/api/projects/{id}/git/*`.
 
-See [API reference — Projects](api-reference.md#projects).
+See [API reference — Projects](api-reference.md#projects-agents-workspace) and [API reference — Agent skills](api-reference.md#agent-skills-global-registry).

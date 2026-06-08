@@ -42,8 +42,8 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### Article Channel
 
-- `id`, `name`, `description`, `parent_id`, `sort_order`, `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable; username at create time), `created_at`
-- Tree structure like document channels; **no** `pipeline_id`, `auto_process`, or extraction fields (articles are not processed by the document VLM pipeline)
+- `id`, `name`, `description`, `parent_id`, `sort_order`, `review_model_id` (FK → api_models, nullable), `review_prompt` (TEXT, optional system prompt for LLM article review), `review_criteria` (JSONB array of `{ id, label, description }`; empty → built-in five dimensions at review time), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable; username at create time), `created_at`
+- Tree structure like document channels; **no** `pipeline_id`, `auto_process`, or document extraction fields (articles are not processed by the document VLM pipeline)
 
 ### Article
 
@@ -55,10 +55,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 - Same shape as **document_relationships**: `id`, `source_article_id`, `target_article_id`, `relation_type`, `note`, `created_at`; unique `(source, target, type)`
 
-### ArticleVersion / ArticleAttachment
+### ArticleVersion / ArticleAttachment / ArticleReview
 
 - **ArticleVersion**: `id`, `article_id`, `version_number`, `tag`, `note`, `markdown`, `metadata` (JSONB snapshot), `created_at`, `created_by_sub`, `created_by_name`
 - **ArticleAttachment**: `id`, `article_id`, `storage_path` (relative under article prefix), `original_filename`, `size_bytes`, `content_type`, `created_at`
+- **ArticleReview**: `id`, `article_id` (FK → articles, cascade delete), `review_model_id` (FK → api_models, nullable), `result` (JSONB: `overall_score`, `pass`, `summary`, `criteria[]`, `suggestions[]`), `created_by`, `created_by_name`, `created_at`
 
 ## Knowledge bases and search
 
@@ -281,9 +282,24 @@ Design and enforcement: [Data security](data-security.md).
 
 ## Projects (Agents workspace)
 
+### AgentSkill (`agent_skills`)
+
+- `id` (skill slug, PK), `display_name`, `created_by`, `created_by_name`, `is_default` (auto-install on new project), `default_version` (nullable; else latest upload), `created_at`
+
+### AgentSkillVersion (`agent_skill_versions`)
+
+- `id`, `skill_id` (FK → agent_skills), `version` (unique per skill), `uploaded_by`, `uploaded_by_name`, `content_hash` (SHA-256 of sorted per-file SHA-256 digests), `notes`, `created_at`
+
 ### Project (`projects`)
 
-- `id`, `user_sub`, `name`, `description`, `slug` (UI only; disk path is `{OPENKMS_PROJECTS_ROOT}/{id}/`), `settings` (JSONB: subagents, skills, git identity), `git_initialized`, `created_at`, `updated_at`
+- `id`, `user_sub`, `name`, `description`, `slug` (UI only; disk path is `{OPENKMS_PROJECTS_ROOT}/{id}/`), `settings` (JSONB: `web_search`, `search_connector_id`, `git`, `installed_skills`), `git_initialized`, `created_at`, `updated_at`
+
+`installed_skills` shape: `{ [skill_id]: { version, content_hash, installed_at, installed_by, installed_by_name } }`.
+
+### UserApiKey session keys
+
+- `user_api_keys.purpose`: `personal` (Settings UI) \| `agent_session` (per `agent_conversations` row; hidden from list API)
+- `user_api_keys.agent_conversation_id`: links session key to conversation; revoked on session delete
 
 ### UserGitCredential (`user_git_credentials`)
 

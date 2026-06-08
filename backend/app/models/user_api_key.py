@@ -44,6 +44,11 @@ class UserApiKey(Base):
     display_username: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     display_email: Mapped[str] = mapped_column(String(320), nullable=False, default="")
 
+    purpose: Mapped[str] = mapped_column(String(32), nullable=False, default="personal", index=True)
+    """personal | agent_session"""
+
+    agent_conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

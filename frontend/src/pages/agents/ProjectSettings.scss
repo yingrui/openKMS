@@ -217,3 +217,35 @@
     transform: rotate(360deg);
   }
 }
+
+.project-settings-skills h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.project-settings-skills-status {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.project-settings-skills-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.8125rem;
+    min-width: 180px;
+  }
+
+  select {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+  }
+}

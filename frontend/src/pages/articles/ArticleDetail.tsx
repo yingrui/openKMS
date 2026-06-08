@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
   Edit3,
   Eye,
   EyeOff,
@@ -19,6 +20,7 @@ import {
   Upload,
   X as XIcon,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -37,6 +39,8 @@ import {
   fetchArticle,
   fetchArticleAttachments,
   fetchArticleRelationships,
+  fetchLatestArticleReview,
+  runArticleReview,
   patchArticle,
   putArticleMarkdown,
   uploadArticleAttachment,
@@ -44,7 +48,9 @@ import {
   type ArticleAttachmentOut,
   type ArticleOut,
   type ArticleRelationshipsResponse,
+  type ArticleReviewOut,
 } from '../../data/articlesApi';
+import { findChannel } from '../../data/channelUtils';
 import '../documents/DocumentDetail.scss';
 import './ArticleDetail.scss';
 
@@ -75,6 +81,7 @@ const MARKDOWN_SPLIT_EDITOR_FR_MIN = 18;
 const MARKDOWN_SPLIT_EDITOR_FR_MAX = 82;
 
 export function ArticleDetail() {
+  const { t } = useTranslation('articles');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { channels } = useArticleChannels();
@@ -103,6 +110,10 @@ export function ArticleDetail() {
   const [newRelNote, setNewRelNote] = useState('');
   const [relSaving, setRelSaving] = useState(false);
   const [attachmentsSectionOpen, setAttachmentsSectionOpen] = useState(false);
+  const [reviewSectionOpen, setReviewSectionOpen] = useState(false);
+  const [latestReview, setLatestReview] = useState<ArticleReviewOut | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewRunning, setReviewRunning] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -181,6 +192,44 @@ export function ArticleDetail() {
     if (!relSectionOpen || !id) return;
     void refreshRelationships();
   }, [relSectionOpen, id, refreshRelationships]);
+
+  const refreshLatestReview = useCallback(async () => {
+    if (!id) return;
+    setReviewLoading(true);
+    try {
+      const data = await fetchLatestArticleReview(id);
+      setLatestReview(data);
+    } catch {
+      setLatestReview(null);
+    } finally {
+      setReviewLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (!reviewSectionOpen || !id) return;
+    void refreshLatestReview();
+  }, [reviewSectionOpen, id, refreshLatestReview]);
+
+  const channelReviewConfigured = useMemo(() => {
+    if (!article?.channel_id) return false;
+    const ch = findChannel(channels, article.channel_id);
+    return Boolean(ch?.review_model_id);
+  }, [article?.channel_id, channels]);
+
+  const handleRunReview = async () => {
+    if (!id) return;
+    setReviewRunning(true);
+    try {
+      const result = await runArticleReview(id);
+      setLatestReview(result);
+      toast.success(t('articleDetail.reviewDone'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('articleDetail.reviewFailed'));
+    } finally {
+      setReviewRunning(false);
+    }
+  };
 
   const mdComponents = useMemo(() => {
     if (!id) return undefined;
@@ -846,6 +895,120 @@ export function ArticleDetail() {
                           </>
                         )}
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="document-detail-lineage document-detail-lineage--article">
+                  <button
+                    type="button"
+                    className="document-detail-lineage-header"
+                    onClick={() => setReviewSectionOpen((o) => !o)}
+                    aria-expanded={reviewSectionOpen}
+                    aria-controls="article-review-panel"
+                    id="article-review-heading"
+                  >
+                    <ClipboardCheck size={16} aria-hidden />
+                    <span>{t('articleDetail.reviewTitle')}</span>
+                    {latestReview && !reviewSectionOpen && (
+                      <span
+                        className={`article-review-badge article-review-badge--${latestReview.result.pass ? 'pass' : 'fail'}`}
+                      >
+                        {latestReview.result.pass ? t('articleDetail.reviewPass') : t('articleDetail.reviewFail')}
+                      </span>
+                    )}
+                    {reviewSectionOpen ? <ChevronUp size={18} aria-hidden /> : <ChevronDown size={18} aria-hidden />}
+                  </button>
+                  {!reviewSectionOpen && (
+                    <p className="document-detail-lineage-hint document-detail-muted">
+                      {t('articleDetail.reviewCollapsedHint')}
+                    </p>
+                  )}
+                  {reviewSectionOpen && (
+                    <div
+                      id="article-review-panel"
+                      className="document-detail-lineage-panel article-review-panel"
+                      role="region"
+                      aria-labelledby="article-review-heading"
+                    >
+                      {!channelReviewConfigured && (
+                        <p className="document-detail-muted article-review-config-hint">
+                          {t('articleDetail.reviewNotConfigured')}{' '}
+                          {article.channel_id && (
+                            <Link to={`/articles/channels/${article.channel_id}/settings?tab=review`}>
+                              {t('articleDetail.reviewConfigureLink')}
+                            </Link>
+                          )}
+                        </p>
+                      )}
+                      <div className="article-review-actions">
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => void handleRunReview()}
+                          disabled={reviewRunning || !channelReviewConfigured}
+                        >
+                          {reviewRunning ? <Loader2 size={12} className="doc-detail-spinner" /> : null}
+                          {reviewRunning ? t('articleDetail.reviewRunning') : t('articleDetail.reviewRun')}
+                        </button>
+                      </div>
+                      {reviewLoading ? (
+                        <p className="document-detail-muted">{t('articleDetail.reviewLoading')}</p>
+                      ) : latestReview ? (
+                        <div className="article-review-result">
+                          <div className="article-review-summary-row">
+                            <span
+                              className={`article-review-badge article-review-badge--${latestReview.result.pass ? 'pass' : 'fail'}`}
+                            >
+                              {latestReview.result.pass ? t('articleDetail.reviewPass') : t('articleDetail.reviewFail')}
+                            </span>
+                            <span className="article-review-score">
+                              {t('articleDetail.reviewScore', {
+                                score: Math.round(latestReview.result.overall_score * 100),
+                              })}
+                            </span>
+                            <span className="document-detail-muted article-review-meta">
+                              {new Date(latestReview.created_at).toLocaleString()}
+                              {latestReview.created_by_name ? ` · ${latestReview.created_by_name}` : ''}
+                            </span>
+                          </div>
+                          {latestReview.result.summary && (
+                            <p className="article-review-summary">{latestReview.result.summary}</p>
+                          )}
+                          {latestReview.result.criteria.length > 0 && (
+                            <table className="document-detail-lineage-table article-review-criteria-table">
+                              <thead>
+                                <tr>
+                                  <th>{t('articleDetail.reviewCriterion')}</th>
+                                  <th>{t('articleDetail.reviewCriterionScore')}</th>
+                                  <th>{t('articleDetail.reviewCriterionNotes')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {latestReview.result.criteria.map((c) => (
+                                  <tr key={c.id}>
+                                    <td>{c.label || c.id}</td>
+                                    <td>{c.score.toFixed(1)}</td>
+                                    <td>{c.notes || '—'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                          {latestReview.result.suggestions.length > 0 && (
+                            <div className="article-review-suggestions">
+                              <div className="document-detail-lineage-dir">{t('articleDetail.reviewSuggestions')}</div>
+                              <ul>
+                                {latestReview.result.suggestions.map((s, i) => (
+                                  <li key={i}>{s}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="document-detail-muted">{t('articleDetail.reviewEmpty')}</p>
+                      )}
                     </div>
                   )}
                 </div>

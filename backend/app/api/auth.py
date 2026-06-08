@@ -735,38 +735,18 @@ async def create_api_key(
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_auth),
 ):
+    from app.services.user_api_key_service import mint_user_api_key
+
     sub = _current_owner_sub(request)
     p = request.state.openkms_jwt_payload
-    key_id = str(uuid4())
-    secret = secrets.token_urlsafe(32)
-    full_token = f"okms.{key_id}.{secret}"
     name = (body.name or "").strip() or "default"
-
-    if settings.auth_mode == "local":
-        u = await db.get(User, sub)
-        disp_u = u.username if u else ""
-        disp_e = u.email if u else ""
-        oidc_roles = None
-        mode = "local"
-    else:
-        disp_u = str(p.get("preferred_username") or p.get("name") or "user")
-        de = p.get("email")
-        disp_e = str(de) if isinstance(de, str) else ""
-        oidc_roles = sorted(jwt_realm_role_names(p))
-        mode = "oidc"
-
-    row = UserApiKey(
-        id=key_id,
+    row, full_token = await mint_user_api_key(
+        db,
         owner_sub=sub,
-        auth_mode=mode,
-        name=name[:128],
-        key_prefix=f"okms.{key_id[:8]}",
-        secret_hash=_hash_api_key_secret(secret),
-        oidc_realm_roles=oidc_roles,
-        display_username=disp_u[:256],
-        display_email=disp_e[:320],
+        jwt_payload=p,
+        name=name,
+        purpose="personal",
     )
-    db.add(row)
     await db.commit()
     await db.refresh(row)
     return ApiKeyCreatedResponse(
@@ -786,7 +766,11 @@ async def list_api_keys(
     include_revoked: bool = False,
 ):
     sub = _current_owner_sub(request)
-    q = select(UserApiKey).where(UserApiKey.owner_sub == sub).order_by(UserApiKey.created_at.desc())
+    q = (
+        select(UserApiKey)
+        .where(UserApiKey.owner_sub == sub, UserApiKey.purpose == "personal")
+        .order_by(UserApiKey.created_at.desc())
+    )
     if not include_revoked:
         q = q.where(UserApiKey.revoked_at.is_(None))
     result = await db.execute(q)

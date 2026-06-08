@@ -445,6 +445,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             className={({ isActive }) =>
               `sidebar-link ${
                 isActive ||
+                /^\/agents\/skills$/.test(location.pathname) ||
                 /^\/projects\/[^/]+(\/(sessions\/[^/]+|settings))?$/.test(location.pathname)
                   ? 'sidebar-link-active'
                   : ''

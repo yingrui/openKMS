@@ -110,6 +110,7 @@ const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').the
 const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));
 const ProjectWorkspace = lazy(() => import('./pages/agents/ProjectWorkspace').then((m) => ({ default: m.ProjectWorkspace })));
 const ProjectSettings = lazy(() => import('./pages/agents/ProjectSettings').then((m) => ({ default: m.ProjectSettings })));
+const AgentSkillsPage = lazy(() => import('./pages/agents/AgentSkillsPage').then((m) => ({ default: m.AgentSkillsPage })));
 function EvaluationDatasetDetailPage() {
   const { id } = useParams();
   return <EvaluationDatasetDetail key={id ?? ''} />;
@@ -166,6 +167,7 @@ function App() {
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
           <Route path="agents" element={<FeatureGate feature="agents"><ProjectList /></FeatureGate>} />
+          <Route path="agents/skills" element={<FeatureGate feature="agents"><AgentSkillsPage /></FeatureGate>} />
           <Route path="projects/:projectId/settings" element={<FeatureGate feature="agents"><ProjectSettings /></FeatureGate>} />
           <Route path="projects/:projectId/sessions/:sessionId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
           <Route path="projects/:projectId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />

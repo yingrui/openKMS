@@ -28,6 +28,7 @@ from app.schemas.project import ProjectConversationCreate, ProjectConversationPa
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.conversation_title import suggest_conversation_title
+from app.services.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
@@ -40,13 +41,6 @@ def _get_sub(request: Request) -> str:
     if not isinstance(sub, str) or not sub.strip():
         raise HTTPException(status_code=401, detail="Not authenticated")
     return sub
-
-
-def _get_bearer(request: Request) -> str:
-    auth = request.headers.get("Authorization") or ""
-    if auth.startswith("Bearer "):
-        return auth[7:]
-    return ""
 
 
 def _ndjson_line(obj: dict) -> bytes:
@@ -130,6 +124,8 @@ async def create_conversation(
     )
     db.add(c)
     await db.flush()
+    jwt_payload = request.state.openkms_jwt_payload
+    await ensure_session_api_key(db, c, jwt_payload)
     await db.refresh(c)
     return _conv_to_out(c)
 
@@ -205,7 +201,8 @@ async def delete_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     sub = _get_sub(request)
-    await _get_conv(db, conversation_id, sub, project_id)
+    c = await _get_conv(db, conversation_id, sub, project_id)
+    await revoke_session_api_key(db, c)
     await db.execute(delete(AgentMessage).where(AgentMessage.conversation_id == conversation_id))
     await db.execute(delete(AgentConversation).where(AgentConversation.id == conversation_id))
     await db.flush()
@@ -273,7 +270,7 @@ async def post_message(
     await db.refresh(c, attribute_names=["messages"])
     plan_mode = (body.mode or "").strip().lower() == "plan"
     jwt_payload = request.state.openkms_jwt_payload
-    bearer = _get_bearer(request)
+    bearer = await ensure_session_api_key(db, c, jwt_payload)
 
     if body.stream:
 
@@ -390,7 +387,7 @@ async def resume_message(
     project = await _get_project(db, project_id, sub)
     c = await _get_conv(db, conversation_id, sub, project_id)
     jwt_payload = request.state.openkms_jwt_payload
-    bearer = _get_bearer(request)
+    bearer = await ensure_session_api_key(db, c, jwt_payload)
 
     async def stream() -> AsyncIterator[bytes]:
         text_parts: list[str] = []

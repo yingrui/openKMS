@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_auth, require_permission
 from app.database import get_db
 from app.models.project import Project
+from app.schemas.agent_skill import ProjectInstalledSkillOut, ProjectSkillInstallBody, ProjectSkillsOut
 from app.schemas.project import (
     GitCommitRequest,
     GitInitResponse,
@@ -25,6 +26,12 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
+from app.services.agent_skill_install import (
+    install_default_skills_for_project,
+    install_skill_to_project,
+    uninstall_skill_from_project,
+)
+from app.services.agent_skills_registry import ensure_registry_bootstrapped, validate_skill_id
 from app.services.deep_agents import git_service
 from app.services.feature_toggles import require_agents_feature
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
@@ -102,6 +109,16 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
     db.add(p)
     await db.flush()
     scaffold_project_dir(p.id)
+    await ensure_registry_bootstrapped(db)
+    p_jwt = request.state.openkms_jwt_payload
+    uname = p_jwt.get("preferred_username") or p_jwt.get("name")
+    created_by_name = str(uname)[:256] if isinstance(uname, str) and uname.strip() else None
+    await install_default_skills_for_project(
+        db,
+        p,
+        installed_by=sub,
+        installed_by_name=created_by_name,
+    )
     await db.refresh(p)
     return _to_out(p)
 
@@ -322,6 +339,84 @@ async def git_commit(
         git_service.git_add(project_id, None)
     out = git_service.git_commit(project_id, body.message, p.settings or {})
     return {"ok": True, "output": out}
+
+
+def _creator_from_request(request: Request) -> tuple[str | None, str | None]:
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    uname = p.get("preferred_username") or p.get("name")
+    created_by = sub if isinstance(sub, str) and sub.strip() else None
+    created_by_name = str(uname)[:256] if isinstance(uname, str) and uname.strip() else None
+    return created_by, created_by_name
+
+
+@router.get(
+    "/{project_id}/skills",
+    response_model=ProjectSkillsOut,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
+)
+async def list_project_skills(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+    sub = _get_sub(request)
+    project = await _get_owned_project(db, project_id, sub)
+    installed = (project.settings or {}).get("installed_skills") or {}
+    items: list[ProjectInstalledSkillOut] = []
+    if isinstance(installed, dict):
+        for skill_id, meta in installed.items():
+            if not isinstance(meta, dict):
+                continue
+            items.append(
+                ProjectInstalledSkillOut(
+                    skill_id=str(skill_id),
+                    version=str(meta.get("version") or ""),
+                    content_hash=str(meta.get("content_hash") or ""),
+                    installed_at=meta.get("installed_at"),
+                    installed_by=meta.get("installed_by"),
+                    installed_by_name=meta.get("installed_by_name"),
+                )
+            )
+    return ProjectSkillsOut(installed=items)
+
+
+@router.post(
+    "/{project_id}/skills/{skill_id}/install",
+    response_model=ProjectInstalledSkillOut,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def install_project_skill(
+    project_id: str,
+    skill_id: str,
+    body: ProjectSkillInstallBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = _get_sub(request)
+    project = await _get_owned_project(db, project_id, sub)
+    created_by, created_by_name = _creator_from_request(request)
+    meta = await install_skill_to_project(
+        db,
+        project,
+        validate_skill_id(skill_id),
+        version=body.version,
+        installed_by=created_by,
+        installed_by_name=created_by_name,
+    )
+    return ProjectInstalledSkillOut(skill_id=skill_id, **meta)
+
+
+@router.delete(
+    "/{project_id}/skills/{skill_id}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def uninstall_project_skill(
+    project_id: str,
+    skill_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = _get_sub(request)
+    project = await _get_owned_project(db, project_id, sub)
+    await uninstall_skill_from_project(db, project, validate_skill_id(skill_id))
 
 
 # Nested conversation routes

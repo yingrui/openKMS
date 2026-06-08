@@ -312,7 +312,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/article-channels` | List article channels (tree) |
 | GET | `/api/article-channels/{id}` | Get channel by ID |
 | POST | `/api/article-channels` | Create channel |
-| PUT | `/api/article-channels/{id}` | Update channel (name, description, parent_id) |
+| PUT | `/api/article-channels/{id}` | Update channel (name, description, parent_id, `review_model_id`, `review_prompt`, `review_criteria`) |
 | POST | `/api/article-channels/{id}/reorder` | Move channel up or down among siblings (body: `{ direction }`) |
 | POST | `/api/article-channels/merge` | Merge source channel into target (move articles, delete source; optional include_descendants) |
 | DELETE | `/api/article-channels/{id}` | Delete channel (fails if has articles or sub-channels) |
@@ -391,7 +391,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/projects` | List current user's projects |
-| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`) |
+| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`; auto-installs skills where `agent_skills.is_default=true`) |
 | GET | `/api/projects/{id}` | Get project |
 | PATCH | `/api/projects/{id}` | Update name, description, slug, settings |
 | DELETE | `/api/projects/{id}` | Delete project and on-disk folder |
@@ -400,7 +400,10 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | PUT | `/api/projects/{id}/files/content` | Write file |
 | POST | `/api/projects/{id}/files/upload` | Upload file (multipart; optional `path` query prefix; filename may include nested relative path for folder uploads) |
 | DELETE | `/api/projects/{id}/files` | Delete file or directory |
-| GET/PATCH | `/api/projects/{id}/settings` | Project agent/subagent/skill settings |
+| GET | `/api/projects/{id}/skills` | Installed skills metadata from `projects.settings.installed_skills` |
+| POST | `/api/projects/{id}/skills/{skill_id}/install` | Install registry version into `.openkms/skills/{skill_id}/` (body: optional `version`) |
+| DELETE | `/api/projects/{id}/skills/{skill_id}` | Uninstall skill from project |
+| GET/PATCH | `/api/projects/{id}/settings` | Project agent settings (web search, git identity, `installed_skills`) |
 | GET/POST | `/api/projects/{id}/conversations` | List / create chat sessions (`surface=project`) |
 | PATCH/DELETE | `/api/projects/{id}/conversations/{cid}` | Update title / delete session |
 | POST | `/api/projects/{id}/conversations/{cid}/suggest-title` | LLM title from message history |
@@ -415,6 +418,19 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | POST | `/api/projects/{id}/git/pull` | Pull (PAT via `credential_id`) |
 | POST | `/api/projects/{id}/git/push` | Push (PAT via `credential_id`) |
 | GET/POST/DELETE | `/api/user/git-credentials` | Manage encrypted HTTPS PATs (Profile UI) |
+
+## Agent skills (global registry)
+
+Disk root: `OPENKMS_AGENT_SKILLS_ROOT/{skill_id}/{version}/`. Permissions: same as projects (`projects:read` / `projects:write`). UI: **Agents → Skills**.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/agent-skills` | List skills and versions (bootstraps `openkms/bundled` from repo if empty) |
+| POST | `/api/agent-skills` | Upload skill package (multipart: `skill_id`, `version`, optional `display_name`/`notes`, and either `archive` zip or `files[]` + `relative_paths[]`) |
+| PATCH | `/api/agent-skills/{skill_id}` | Update `display_name`, `is_default`, `default_version` |
+| DELETE | `/api/agent-skills/{skill_id}/versions/{version}` | Delete version (409 if default or installed in a project) |
+
+Each `agent_skill_versions` row includes `content_hash`, `uploaded_by`, `uploaded_by_name`.
 
 ## Knowledge map
 

@@ -438,3 +438,71 @@
 [data-theme='dark'] .article-detail-delete-btn:hover:not(:disabled) {
   background: rgba(248, 113, 113, 0.12);
 }
+
+.article-review-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.article-review-badge--pass {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.article-review-badge--fail {
+  background: rgba(234, 88, 12, 0.12);
+  color: #c2410c;
+}
+
+.article-review-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.article-review-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.article-review-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.article-review-summary-row .article-review-badge {
+  margin-left: 0;
+}
+
+.article-review-score {
+  font-weight: 600;
+}
+
+.article-review-meta {
+  font-size: 0.85rem;
+}
+
+.article-review-summary {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.article-review-criteria-table {
+  margin-top: 4px;
+}
+
+.article-review-suggestions ul {
+  margin: 6px 0 0;
+  padding-left: 1.25rem;
+}
+
+.article-review-config-hint a {
+  text-decoration: underline;
+}

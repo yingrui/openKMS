@@ -32,6 +32,12 @@ export interface LabelConfigItem {
   type?: 'object_type' | 'list[object_type]';
 }
 
+export interface ReviewCriterionItem {
+  id: string;
+  label: string;
+  description?: string;
+}
+
 export interface ChannelNode {
   id: string;
   name: string;
@@ -44,6 +50,9 @@ export interface ChannelNode {
   extraction_schema?: ExtractionSchemaValue | null;
   label_config?: LabelConfigItem[] | null;
   object_type_extraction_max_instances?: number | null;
+  review_model_id?: string | null;
+  review_prompt?: string | null;
+  review_criteria?: ReviewCriterionItem[] | null;
   children?: ChannelNode[];
 }
 

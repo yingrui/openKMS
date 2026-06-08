@@ -36,19 +36,23 @@ def _require_ac_channel_in_scope(allowed: set[str] | None, channel_id: str) -> N
     require_article_channel_in_scope(allowed, channel_id)
 
 
+def _channel_node(channel: ArticleChannel, children: list[ArticleChannelNode] | None = None) -> ArticleChannelNode:
+    return ArticleChannelNode(
+        id=channel.id,
+        name=channel.name,
+        description=channel.description,
+        sort_order=channel.sort_order,
+        review_model_id=channel.review_model_id,
+        review_prompt=channel.review_prompt,
+        review_criteria=channel.review_criteria,
+        children=children or [],
+    )
+
+
 def _build_tree(channels: list[ArticleChannel], parent_id: str | None = None) -> list[ArticleChannelNode]:
     nodes = [c for c in channels if c.parent_id == parent_id]
     nodes.sort(key=lambda c: (c.sort_order, c.name))
-    return [
-        ArticleChannelNode(
-            id=c.id,
-            name=c.name,
-            description=c.description,
-            sort_order=c.sort_order,
-            children=_build_tree(channels, c.id),
-        )
-        for c in nodes
-    ]
+    return [_channel_node(c, _build_tree(channels, c.id)) for c in nodes]
 
 
 def _collect_descendant_ids(channels: list[ArticleChannel], channel_id: str, out: set[str]) -> None:
@@ -69,13 +73,7 @@ async def get_article_channel(
     channel = await db.get(ArticleChannel, channel_id)
     if not channel:
         raise HTTPException(status_code=404, detail="Channel not found")
-    return ArticleChannelNode(
-        id=channel.id,
-        name=channel.name,
-        description=channel.description,
-        sort_order=channel.sort_order,
-        children=[],
-    )
+    return _channel_node(channel)
 
 
 @router.get("", response_model=list[ArticleChannelNode])
@@ -126,13 +124,7 @@ async def create_article_channel(
         await bootstrap_owner_acl(db, RT_ARTICLE_CHANNEL, channel.id, sub)
     await db.commit()
     await db.refresh(channel)
-    return ArticleChannelNode(
-        id=channel.id,
-        name=channel.name,
-        description=channel.description,
-        sort_order=channel.sort_order,
-        children=[],
-    )
+    return _channel_node(channel)
 
 
 @router.post("/merge", status_code=204)
@@ -296,10 +288,4 @@ async def update_article_channel(
 
     await db.commit()
     await db.refresh(channel)
-    return ArticleChannelNode(
-        id=channel.id,
-        name=channel.name,
-        description=channel.description,
-        sort_order=channel.sort_order,
-        children=[],
-    )
+    return _channel_node(channel)

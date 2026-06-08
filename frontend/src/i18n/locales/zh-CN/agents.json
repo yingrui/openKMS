@@ -1,5 +1,35 @@
 {
   "loading": "加载中…",
+  "nav": {
+    "areaLabel": "智能体区域",
+    "projects": "项目",
+    "skills": "技能"
+  },
+  "skills": {
+    "pageTitle": "技能",
+    "uploadHeading": "上传技能包",
+    "skillId": "技能 ID",
+    "version": "版本",
+    "displayName": "显示名称",
+    "notes": "说明",
+    "uploadZip": "上传 zip…",
+    "uploadFolder": "上传文件夹…",
+    "uploadFieldsRequired": "请填写技能 ID 和版本",
+    "uploadSuccess": "技能已上传",
+    "uploadError": "上传失败",
+    "patchError": "无法更新技能",
+    "empty": "尚未注册任何技能。",
+    "createdBy": "创建者 {{name}}",
+    "defaultForNewProjects": "新建项目时自动安装",
+    "defaultVersion": "默认版本",
+    "latestVersion": "最新上传",
+    "uploadedBy": "上传者",
+    "hash": "哈希",
+    "deleteVersion": "删除版本",
+    "deleteVersionConfirm": "删除 {{skillId}} 版本 {{version}}？",
+    "deleteSuccess": "版本已删除",
+    "deleteError": "无法删除版本"
+  },
   "list": {
     "title": "智能体",
     "pageTitle": "项目",
@@ -124,7 +154,23 @@
     "notFound": "未找到项目",
     "backToWorkspace": "返回工作区",
     "save": "保存更改",
-    "cancel": "取消"
+    "cancel": "取消",
+    "skills": {
+      "heading": "已安装技能",
+      "openkmsHint": "openkms 技能通过 CLI 访问知识库。每个会话会自动注入 API 凭据。",
+      "installed": "已安装版本 {{version}}（哈希 {{hash}}）",
+      "notInstalled": "未安装",
+      "version": "注册表版本",
+      "defaultVersion": "技能默认 / 最新",
+      "install": "安装",
+      "update": "更新",
+      "uninstall": "卸载",
+      "installSuccess": "已安装 {{skill}}",
+      "installError": "安装失败",
+      "uninstallConfirm": "从本项目移除 {{skill}}？",
+      "uninstallSuccess": "已移除 {{skill}}",
+      "uninstallError": "卸载失败"
+    }
   },
   "gitCredentials": {
     "title": "Git 凭据",

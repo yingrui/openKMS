@@ -18,6 +18,7 @@ import app.models.article  # noqa: F401 - register models with Base.metadata
 import app.models.article_version  # noqa: F401 - register models with Base.metadata
 import app.models.article_attachment  # noqa: F401 - register models with Base.metadata
 import app.models.article_relationship  # noqa: F401 - register models with Base.metadata
+import app.models.article_review  # noqa: F401 - register models with Base.metadata
 import app.models.pipeline  # noqa: F401 - register models with Base.metadata
 import app.models.api_model  # noqa: F401 - register models with Base.metadata
 import app.models.api_provider  # noqa: F401 - register models with Base.metadata
@@ -49,6 +50,7 @@ import app.models.resource_acl  # noqa: F401 - register models with Base.metadat
 import app.models.wiki_models  # noqa: F401 - register models with Base.metadata
 import app.models.agent_models  # noqa: F401 - register models with Base.metadata
 import app.models.project  # noqa: F401 - register models with Base.metadata
+import app.models.agent_skill  # noqa: F401 - register models with Base.metadata
 import app.models.user_git_credential  # noqa: F401 - register models with Base.metadata
 import app.models.system_settings  # noqa: F401 - register models with Base.metadata
 import app.models.knowledge_map  # noqa: F401 - register models with Base.metadata

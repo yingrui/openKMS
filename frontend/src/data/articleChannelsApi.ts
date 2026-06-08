@@ -9,6 +9,9 @@ export interface ArticleChannelNodeRaw {
   name: string;
   description?: string | null;
   sort_order?: number;
+  review_model_id?: string | null;
+  review_prompt?: string | null;
+  review_criteria?: { id: string; label: string; description?: string }[] | null;
   children: ArticleChannelNodeRaw[];
 }
 
@@ -24,6 +27,9 @@ function toChannelNode(raw: ArticleChannelNodeRaw): ChannelNode {
     extraction_schema: null,
     label_config: null,
     object_type_extraction_max_instances: null,
+    review_model_id: raw.review_model_id ?? null,
+    review_prompt: raw.review_prompt ?? null,
+    review_criteria: raw.review_criteria ?? null,
     children: (raw.children ?? []).map(toChannelNode),
   };
 }
@@ -69,7 +75,15 @@ export async function createArticleChannel(params: {
 
 export async function updateArticleChannel(
   channelId: string,
-  params: { name?: string; description?: string | null; parent_id?: string | null; sort_order?: number },
+  params: {
+    name?: string;
+    description?: string | null;
+    parent_id?: string | null;
+    sort_order?: number;
+    review_model_id?: string | null;
+    review_prompt?: string | null;
+    review_criteria?: { id: string; label: string; description?: string }[] | null;
+  },
 ): Promise<ChannelNode> {
   const authHeaders = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/article-channels/${channelId}`, {
