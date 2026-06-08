@@ -1,11 +1,9 @@
-@use '../../styles/design-system/tokens' as ds;
-
 .agents-area-nav {
   display: flex;
   gap: 4px;
   margin-bottom: 24px;
   padding: 4px;
-  background: ds.$color-surface-muted;
+  background: var(--color-bg-muted);
   border-radius: 10px;
   width: fit-content;
 }
@@ -15,17 +13,17 @@
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: ds.$color-text-secondary;
+  color: var(--color-text-secondary);
   text-decoration: none;
   transition: background 0.15s, color 0.15s;
 
   &:hover {
-    color: ds.$color-text-primary;
+    color: var(--color-text);
   }
 
   &.active {
-    background: ds.$color-surface;
-    color: ds.$color-text-primary;
+    background: var(--color-surface);
+    color: var(--color-text);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   }
 }

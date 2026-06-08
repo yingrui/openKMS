@@ -101,22 +101,3 @@ async def uninstall_skill_from_project(db: AsyncSession, project: Project, skill
     settings_json["installed_skills"] = installed
     project.settings = settings_json
     await db.flush()
-
-
-async def install_default_skills_for_project(
-    db: AsyncSession,
-    project: Project,
-    *,
-    installed_by: str | None,
-    installed_by_name: str | None,
-) -> None:
-    r = await db.execute(select(AgentSkill).where(AgentSkill.is_default.is_(True)))
-    for skill in r.scalars().all():
-        await install_skill_to_project(
-            db,
-            project,
-            skill.id,
-            version=None,
-            installed_by=installed_by,
-            installed_by_name=installed_by_name,
-        )

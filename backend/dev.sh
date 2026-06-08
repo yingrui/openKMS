@@ -60,4 +60,5 @@ else
   exit 1
 fi
 
-exec python -m uvicorn app.main:app --reload --port 8102
+exec python -m uvicorn app.main:app --reload --port 8102 \
+  --reload-exclude 'data/*'

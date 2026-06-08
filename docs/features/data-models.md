@@ -284,7 +284,7 @@ Design and enforcement: [Data security](data-security.md).
 
 ### AgentSkill (`agent_skills`)
 
-- `id` (skill slug, PK), `display_name`, `created_by`, `created_by_name`, `is_default` (auto-install on new project), `default_version` (nullable; else latest upload), `created_at`
+- `id` (skill slug, PK), `display_name`, `created_by`, `created_by_name`, `is_default` (reserved; unused), `default_version` (nullable; used when installing without a version), `created_at`
 
 ### AgentSkillVersion (`agent_skill_versions`)
 

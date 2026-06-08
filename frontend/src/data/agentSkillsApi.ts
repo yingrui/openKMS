@@ -50,6 +50,15 @@ export async function listAgentSkills(): Promise<AgentSkill[]> {
   return res.json();
 }
 
+export async function fetchAgentSkill(skillId: string): Promise<AgentSkill> {
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/agent-skills/${encodeURIComponent(skillId)}`,
+    { headers: await getAuthHeaders() },
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  return res.json();
+}
+
 export async function uploadAgentSkillZip(params: {
   skillId: string;
   version: string;

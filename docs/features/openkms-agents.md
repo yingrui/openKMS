@@ -8,7 +8,6 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Project settings page `/projects/{id}/settings` (General + Agent tabs) | ✅ |
 | Session API key (per conversation, creator identity) | ✅ |
 | Global skills registry + project install | ✅ |
-| Default skills auto-install on new project | ✅ |
 | Project CRUD + files API | ✅ |
 | Conversations + NDJSON stream | ✅ |
 | Plan mode toggle | ✅ |
@@ -41,10 +40,9 @@ Built-in openKMS HTTP tools and **openkms-skill** CLI (when installed) use this 
 | **Installed** (per project) | `{project_id}/.openkms/skills/{skill_id}/` + `projects.settings.installed_skills` |
 
 - Upload zip or folder on **Agents → Skills** (`POST /api/agent-skills`). Each version stores a **content hash** (per-file SHA-256, sorted, aggregated).
-- Mark a skill **default** → auto-installed when creating a new project (version = `default_version` or latest).
-- **Project settings → Agent → Installed skills:** install/update/uninstall **openkms** from the registry.
-
-Bundled **`openkms/bundled`** is seeded from repo `openkms-skill/` on first registry access.
+- **Skill settings** (`/agents/skills/{skill_id}/settings`): general metadata and version upload/delete (same layout as channel settings).
+- Set **default version** per skill (used when installing without picking a version).
+- **Project settings → Agent → Installed skills:** install/update/uninstall skills from the registry.
 
 ## Configuration
 

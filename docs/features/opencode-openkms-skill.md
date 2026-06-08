@@ -19,7 +19,7 @@ pip install -r ~/.config/opencode/skills/openkms/requirements.txt
 - `api_base_url` — backend origin (e.g. `http://127.0.0.1:8102`)
 - `api_key` — full `okms.{uuid}.{secret}` string from **Settings → API keys**
 
-**In-product Agents (project workspace):** install **openkms** from **Agents → Skills** into the project (or rely on default auto-install). The runner injects environment variables per chat session (no `api_key` in `config.yml` on disk):
+**In-product Agents (project workspace):** upload **openkms** on **Agents → Skills**, then install it under **Project settings → Agent**. The runner injects environment variables per chat session (no `api_key` in `config.yml` on disk):
 
 - `OPENKMS_API_KEY` — session-scoped key for the conversation creator
 - `OPENKMS_API_BASE_URL` — backend origin

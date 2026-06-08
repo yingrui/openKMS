@@ -1,46 +1,11 @@
-@use '../../styles/design-system/tokens' as ds;
-
-.agent-skills-page {
-  width: 100%;
-}
-
-.agent-skills-upload {
-  margin-bottom: 32px;
-  padding: 20px;
-  border: 1px solid ds.$color-border;
-  border-radius: 12px;
-  background: ds.$color-surface;
-
-  h2 {
-    margin: 0 0 16px;
-    font-size: 1rem;
-  }
-}
-
-.agent-skills-upload-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+.agent-skills-empty-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
   margin-bottom: 16px;
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.8125rem;
-    color: ds.$color-text-secondary;
-  }
-
-  input {
-    padding: 8px 10px;
-    border: 1px solid ds.$color-border;
-    border-radius: 8px;
-    font-size: 0.875rem;
-  }
-}
-
-.agent-skills-upload-notes {
-  grid-column: 1 / -1;
 }
 
 .agent-skills-upload-actions {
@@ -55,110 +20,38 @@
   }
 }
 
-.agent-skills-list {
-  display: flex;
+.agent-skills-upload-actions--stacked {
   flex-direction: column;
-  gap: 20px;
-}
 
-.agent-skills-empty {
-  color: ds.$color-text-secondary;
-}
+  .btn-primary {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 16px;
+  }
 
-.agent-skills-card {
-  border: 1px solid ds.$color-border;
-  border-radius: 12px;
-  padding: 20px;
-  background: ds.$color-surface;
-}
-
-.agent-skills-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 12px;
-
-  h3 {
-    margin: 0 0 4px;
-    font-size: 1.125rem;
+  .btn-secondary {
+    width: 100%;
+    justify-content: center;
   }
 }
 
-.agent-skills-meta {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: ds.$color-text-secondary;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+.agent-skills-dialog .agents-dialog-body textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: 0.9375rem;
+  resize: vertical;
+  min-height: 4rem;
 }
 
-.agent-skills-default-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  white-space: nowrap;
+.agent-skills-dialog .agents-dialog-body textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
 }
 
-.agent-skills-default-version {
-  margin-bottom: 12px;
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.8125rem;
-    max-width: 240px;
-  }
-
-  select {
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid ds.$color-border;
-  }
-}
-
-.agent-skills-versions {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-
-  th,
-  td {
-    text-align: left;
-    padding: 8px 10px;
-    border-bottom: 1px solid ds.$color-border;
-  }
-
-  th {
-    font-weight: 500;
-    color: ds.$color-text-secondary;
-    font-size: 0.8125rem;
-  }
-
-  td:last-child {
-    width: 40px;
-    text-align: right;
-  }
-}
-
-.agent-skills-delete {
-  border: none;
-  background: transparent;
-  color: ds.$color-text-secondary;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
-
-  &:hover {
-    color: ds.$color-danger;
-    background: rgba(220, 38, 38, 0.08);
-  }
-}
-
-.spin {
+.agent-skills-spin {
   animation: agent-skills-spin 0.8s linear infinite;
 }
 

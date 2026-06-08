@@ -22,7 +22,6 @@ from app.schemas.agent_skill import (
 )
 from app.services.agent_skill_hash import compute_content_hash
 from app.services.agent_skills_registry import (
-    ensure_registry_bootstrapped,
     extract_folder_upload,
     extract_zip_upload,
     validate_skill_id,
@@ -73,11 +72,18 @@ def _skill_to_out(skill: AgentSkill) -> AgentSkillOut:
 
 @router.get("", response_model=list[AgentSkillOut], dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
 async def list_agent_skills(request: Request, db: AsyncSession = Depends(get_db)):
-    await ensure_registry_bootstrapped(db)
     r = await db.execute(
         select(AgentSkill).options(selectinload(AgentSkill.versions)).order_by(AgentSkill.id.asc())
     )
     return [_skill_to_out(s) for s in r.scalars().all()]
+
+
+@router.get("/{skill_id}", response_model=AgentSkillOut, dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
+async def get_agent_skill(skill_id: str, db: AsyncSession = Depends(get_db)):
+    skill = await db.get(AgentSkill, skill_id, options=[selectinload(AgentSkill.versions)])
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return _skill_to_out(skill)
 
 
 @router.post("", response_model=AgentSkillOut, status_code=201, dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))])
@@ -92,7 +98,6 @@ async def upload_agent_skill(
     files: list[UploadFile] | None = File(None),
     relative_paths: list[str] | None = Form(None),
 ):
-    await ensure_registry_bootstrapped(db)
     sid = validate_skill_id(skill_id)
     ver = (version or "").strip()
     if not ver:

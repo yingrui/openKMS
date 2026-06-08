@@ -1,0 +1,77 @@
+.agent-skill-settings-upload {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.agent-skill-settings-upload-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.agent-skill-settings-versions {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+  }
+
+  td:last-child {
+    width: 40px;
+    text-align: right;
+  }
+}
+
+.agent-skill-settings-default-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.agent-skill-settings-delete {
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+
+  &:hover {
+    color: var(--color-danger);
+    background: var(--color-error-bg);
+  }
+}
+
+.agent-skill-settings-spin {
+  animation: agent-skill-settings-spin 0.8s linear infinite;
+}
+
+@keyframes agent-skill-settings-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
