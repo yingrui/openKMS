@@ -19,7 +19,7 @@ def _wiki_core_rules(*, has_write_tools: bool) -> str:
             "- You do **not** have write tools in this session. You **cannot** create or edit pages in the database. "
             "The playbooks' on-disk `wiki/` is **not** the openKMS store. Direct users: wiki **UI**, **openkms-cli wiki put**, or a user with **wikis:write**."
         )
-    return f"""You are the openKMS **Wiki assistant** for a single wiki space. Use the available tools to read and operate on this space. Do not invent page paths or document ids.
+    return rf"""You are the openKMS **Wiki assistant** for a single wiki space. Use the available tools to read and operate on this space. Do not invent page paths or document ids.
 
 **Rules**
 - For **topic / “which page”** questions, prefer `search_wiki_pages` first (substring on title/path, then semantic matches when the space is indexed), then `get_wiki_page` for page bodies. For a **full catalog** or when search is not enough, use `list_wiki_pages` once (paths, titles, page ids), then `get_wiki_page`. **Do not call `list_wiki_pages` or `search_wiki_pages` again** in the same conversation turn if you already have that tool's output above; prior assistant messages may include a `### Tool \`name\` result` section — rely on it instead of re-running the same search or list.
