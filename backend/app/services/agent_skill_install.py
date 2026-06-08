@@ -103,6 +103,28 @@ async def uninstall_skill_from_project(db: AsyncSession, project: Project, skill
     await db.flush()
 
 
+async def ensure_skills_materialized(db: AsyncSession, project: Project) -> None:
+    """Re-copy skill files when settings say installed but workspace copy is missing."""
+    installed = (project.settings or {}).get("installed_skills") or {}
+    if not isinstance(installed, dict):
+        return
+    for skill_id, meta in installed.items():
+        if not isinstance(skill_id, str) or not skill_id.strip():
+            continue
+        dest = resolve_project_path(project.id, f".openkms/skills/{skill_id}")
+        if (dest / "SKILL.md").is_file():
+            continue
+        ver = meta.get("version") if isinstance(meta, dict) else None
+        await install_skill_to_project(
+            db,
+            project,
+            skill_id,
+            version=ver if isinstance(ver, str) else None,
+            installed_by=meta.get("installed_by") if isinstance(meta, dict) else None,
+            installed_by_name=meta.get("installed_by_name") if isinstance(meta, dict) else None,
+        )
+
+
 async def install_default_skills_for_project(
     db: AsyncSession,
     project: Project,

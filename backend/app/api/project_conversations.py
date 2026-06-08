@@ -29,6 +29,7 @@ from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.conversation_title import suggest_conversation_title
 from app.services.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
+from app.services.agent_skill_install import ensure_skills_materialized
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
@@ -271,6 +272,7 @@ async def post_message(
     plan_mode = (body.mode or "").strip().lower() == "plan"
     jwt_payload = request.state.openkms_jwt_payload
     bearer = await ensure_session_api_key(db, c, jwt_payload)
+    await ensure_skills_materialized(db, project)
 
     if body.stream:
 
@@ -287,6 +289,9 @@ async def post_message(
                     jwt_payload,
                     bearer,
                     project_id,
+                    project.name,
+                    project.slug,
+                    project.description,
                     project.settings or {},
                     plan_mode=plan_mode,
                 ):
@@ -357,6 +362,9 @@ async def post_message(
         jwt_payload,
         bearer,
         project_id,
+        project.name,
+        project.slug,
+        project.description,
         project.settings or {},
         plan_mode=plan_mode,
     )
@@ -388,32 +396,99 @@ async def resume_message(
     c = await _get_conv(db, conversation_id, sub, project_id)
     jwt_payload = request.state.openkms_jwt_payload
     bearer = await ensure_session_api_key(db, c, jwt_payload)
+    await ensure_skills_materialized(db, project)
 
     async def stream() -> AsyncIterator[bytes]:
-        text_parts: list[str] = []
-        async for part in resume_project_interrupt(
-            db,
-            c,
-            project_id,
-            project.settings or {},
-            jwt_payload,
-            bearer,
-            decision=body.decision,
-            edited_args=body.edited_args,
-            message=body.message,
-        ):
-            if part.get("type") == "delta" and part.get("t"):
-                text_parts.append(part["t"])
-            yield _ndjson_line(part)
-        asst = AgentMessage(
-            id=new_id(),
-            conversation_id=c.id,
-            role="assistant",
-            content="".join(text_parts),
-        )
-        db.add(asst)
-        await db.flush()
-        yield _ndjson_line({"type": "done", "assistant": _msg_to_out(asst).model_dump(mode="json")})
+        try:
+            await db.refresh(c, attribute_names=["messages"])
+            rows = sorted(c.messages, key=lambda m: (m.created_at, m.id))
+            last_asst = next((m for m in reversed(rows) if m.role == "assistant"), None)
+            existing_traces: list[dict[str, str]] = []
+            if last_asst and isinstance(last_asst.tool_calls, dict):
+                raw = last_asst.tool_calls.get(WIKI_TOOL_TRANSCRIPTS_KEY)
+                if isinstance(raw, list):
+                    existing_traces = [t for t in raw if isinstance(t, dict)]
+
+            text_parts: list[str] = []
+            tool_traces: list[dict[str, str]] = []
+            tool_inputs: dict[str, str] = {}
+            interrupted = False
+            async for part in resume_project_interrupt(
+                db,
+                c,
+                project_id,
+                project.name,
+                project.slug,
+                project.description,
+                project.settings or {},
+                jwt_payload,
+                bearer,
+                decision=body.decision,
+                edited_args=body.edited_args,
+                message=body.message,
+            ):
+                ptype = part.get("type")
+                if ptype == "delta" and part.get("t"):
+                    text_parts.append(part["t"])
+                elif ptype == "tool_start":
+                    run_id = str(part.get("run_id") or "")
+                    inp = part.get("input")
+                    if run_id and isinstance(inp, str):
+                        tool_inputs[run_id] = inp
+                elif ptype == "tool_end":
+                    name = str(part.get("name") or "tool")
+                    trace: dict[str, str] = {
+                        "name": name,
+                        "output": str(part.get("output") or ""),
+                    }
+                    run_id = str(part.get("run_id") or "")
+                    if run_id and run_id in tool_inputs:
+                        trace["input"] = tool_inputs[run_id]
+                    tool_traces.append(trace)
+                elif ptype == "tool_error":
+                    name = str(part.get("name") or "tool")
+                    trace = {
+                        "name": name,
+                        "error": str(part.get("error") or ""),
+                    }
+                    run_id = str(part.get("run_id") or "")
+                    if run_id and run_id in tool_inputs:
+                        trace["input"] = tool_inputs[run_id]
+                    tool_traces.append(trace)
+                elif ptype == "interrupt":
+                    interrupted = True
+                elif ptype == "fatal":
+                    yield _ndjson_line(part)
+                    return
+                yield _ndjson_line(part)
+
+            if interrupted:
+                return
+
+            resume_text = "".join(text_parts)
+            merged_traces = existing_traces + tool_traces if tool_traces else existing_traces
+            tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: merged_traces} if merged_traces else None
+
+            if last_asst is not None:
+                last_asst.content = (last_asst.content or "") + resume_text
+                if tool_payload is not None:
+                    last_asst.tool_calls = tool_payload
+                await db.flush()
+                asst = last_asst
+            else:
+                asst = AgentMessage(
+                    id=new_id(),
+                    conversation_id=c.id,
+                    role="assistant",
+                    content=resume_text,
+                    tool_calls=tool_payload,
+                )
+                db.add(asst)
+                await db.flush()
+            _bump_conversation_timestamp(c)
+            yield _ndjson_line({"type": "done", "assistant": _msg_to_out(asst).model_dump(mode="json")})
+        except Exception as e:
+            yield _ndjson_line({"type": "fatal", "message": str(e)})
 
     return StreamingResponse(
         stream(),

@@ -25,6 +25,10 @@ Describe what this project is for and how the agent should work here.
 - 
 """
 
+_DEFAULT_GITIGNORE = """# Installed agent skills (managed by openKMS)
+.openkms/skills/
+"""
+
 def _slugify(name: str) -> str:
     s = name.lower().strip()
     s = re.sub(r"[^\w\s-]", "", s, flags=re.UNICODE)
@@ -62,12 +66,20 @@ def resolve_project_path(project_id: str, relative: str = "") -> Path:
     return target
 
 
+def ensure_project_gitignore(project_id: str) -> None:
+    root = project_root(project_id)
+    gitignore = root / ".gitignore"
+    if not gitignore.exists():
+        gitignore.write_text(_DEFAULT_GITIGNORE, encoding="utf-8")
+
+
 def scaffold_project_dir(project_id: str) -> Path:
     root = project_root(project_id)
     root.mkdir(parents=True, exist_ok=True)
     agents_md = root / "AGENTS.md"
     if not agents_md.exists():
         agents_md.write_text(_DEFAULT_AGENTS_MD, encoding="utf-8")
+    ensure_project_gitignore(project_id)
     openkms = root / ".openkms"
     openkms.mkdir(exist_ok=True)
     (openkms / "skills").mkdir(exist_ok=True)

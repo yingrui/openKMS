@@ -162,6 +162,7 @@
   },
   "interrupt": {
     "approve": "批准",
+    "approveMultiple": "全部批准（{{count}} 项）",
     "reject": "拒绝"
   },
   "settings": {

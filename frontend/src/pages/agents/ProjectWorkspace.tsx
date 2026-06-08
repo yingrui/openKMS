@@ -29,6 +29,7 @@ import {
   suggestProjectConversationTitle,
   updateProjectConversation,
   type ProjectResponse,
+  type ProjectStreamEvent,
 } from '../../data/projectsApi';
 import '../../components/agents/AgentsWorkspace.scss';
 
@@ -67,6 +68,8 @@ export function ProjectWorkspace() {
   const [filesRailWidthPx, setFilesRailWidthPx] = useState(readFilesRailWidth);
   const bodyRef = useRef<HTMLDivElement>(null);
   const streamingRef = useRef(false);
+  const hitlResumeRef = useRef(false);
+  const [hitlBusy, setHitlBusy] = useState(false);
 
   const clampFilesRailWidth = useCallback((w: number) => {
     const bodyW = bodyRef.current?.clientWidth ?? window.innerWidth;
@@ -235,6 +238,144 @@ export function ProjectWorkspace() {
     return c.id;
   };
 
+  const applyStreamEvent = useCallback(
+    (ev: ProjectStreamEvent, asstStreamId: string, userTempId?: string) => {
+      if (ev.type === 'delta') {
+        if (!ev.t) return;
+        setMessages((prev) =>
+          prev.map((p) =>
+            p.id === asstStreamId && p.role === 'assistant'
+              ? {
+                  ...p,
+                  content: p.content + ev.t,
+                  streamParts: appendDeltaToStreamParts(p.streamParts, ev.t),
+                }
+              : p,
+          ),
+        );
+      } else if (ev.type === 'tool_start') {
+        setMessages((prev) =>
+          prev.map((p) => {
+            if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+            const parts = p.streamParts ?? [];
+            const { next, updated } = updateToolInParts(parts, ev.run_id, (s) => ({
+              ...s,
+              name: ev.name,
+              input: ev.input,
+              status: 'running' as const,
+            }));
+            return {
+              ...p,
+              streamParts: updated
+                ? next
+                : [
+                    ...parts,
+                    {
+                      type: 'tool' as const,
+                      step: {
+                        runId: ev.run_id,
+                        name: ev.name,
+                        input: ev.input,
+                        status: 'running' as const,
+                      },
+                    },
+                  ],
+            };
+          }),
+        );
+      } else if (ev.type === 'tool_end') {
+        setMessages((prev) =>
+          prev.map((p) => {
+            if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+            const { next } = updateToolInParts(p.streamParts ?? [], ev.run_id, (s) => ({
+              ...s,
+              output: ev.output,
+              status: 'ok' as const,
+            }));
+            return { ...p, streamParts: next };
+          }),
+        );
+      } else if (ev.type === 'tool_error') {
+        setMessages((prev) =>
+          prev.map((p) => {
+            if (p.id !== asstStreamId || p.role !== 'assistant') return p;
+            const { next, updated } = updateToolInParts(p.streamParts ?? [], ev.run_id, (s) => ({
+              ...s,
+              error: ev.error,
+              status: 'err' as const,
+            }));
+            return {
+              ...p,
+              streamParts: updated
+                ? next
+                : [
+                    ...(p.streamParts ?? []),
+                    {
+                      type: 'tool' as const,
+                      step: {
+                        runId: ev.run_id,
+                        name: ev.name,
+                        error: ev.error,
+                        status: 'err' as const,
+                      },
+                    },
+                  ],
+            };
+          }),
+        );
+      } else if (ev.type === 'subagent_start') {
+        setMessages((prev) =>
+          prev.map((p) =>
+            p.id === asstStreamId && p.role === 'assistant'
+              ? {
+                  ...p,
+                  streamParts: appendSubagentStart(p.streamParts, parseSubagentLabel(ev.name)),
+                }
+              : p,
+          ),
+        );
+      } else if (ev.type === 'subagent_end') {
+        setMessages((prev) =>
+          prev.map((p) =>
+            p.id === asstStreamId && p.role === 'assistant'
+              ? { ...p, streamParts: completeSubagent(p.streamParts) }
+              : p,
+          ),
+        );
+      } else if (ev.type === 'todo') {
+        setTodos(ev.todos);
+      } else if (ev.type === 'interrupt') {
+        setInterrupt(JSON.stringify(ev.interrupt ?? {}));
+      } else if (ev.type === 'fatal') {
+        toast.error(ev.message);
+      } else if (ev.type === 'user' && userTempId) {
+        setMessages((prev) =>
+          prev.map((p) =>
+            p.id === userTempId ? { ...p, id: ev.message.id, content: ev.message.content } : p,
+          ),
+        );
+      } else if (ev.type === 'done') {
+        setMessages((prev) =>
+          prev.map((p) => {
+            if (p.id !== asstStreamId) return p;
+            const historyParts = assistantHistoryStreamParts(
+              ev.assistant.content,
+              ev.assistant.tool_calls,
+            );
+            return {
+              role: 'assistant',
+              content: ev.assistant.content,
+              id: ev.assistant.id,
+              streamParts:
+                p.streamParts && p.streamParts.length > 0 ? p.streamParts : historyParts,
+            };
+          }),
+        );
+      }
+    },
+    [],
+  );
+
   const onSend = async (text: string) => {
     const cid = await ensureConv();
     const userTemp: ChatMessage = { role: 'user', content: text, id: `tmp-u-${Date.now()}` };
@@ -250,145 +391,7 @@ export function ProjectWorkspace() {
         cid,
         text,
         { mode: planMode ? 'plan' : 'agent' },
-        (ev) => {
-          if (ev.type === 'delta') {
-            if (!ev.t) return;
-            setMessages((prev) =>
-              prev.map((p) =>
-                p.id === asstStreamId && p.role === 'assistant'
-                  ? {
-                      ...p,
-                      content: p.content + ev.t,
-                      streamParts: appendDeltaToStreamParts(p.streamParts, ev.t),
-                    }
-                  : p,
-              ),
-            );
-          } else if (ev.type === 'tool_start') {
-            setMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                const parts = p.streamParts ?? [];
-                const { next, updated } = updateToolInParts(parts, ev.run_id, (s) => ({
-                  ...s,
-                  name: ev.name,
-                  input: ev.input,
-                  status: 'running' as const,
-                }));
-                return {
-                  ...p,
-                  streamParts: updated
-                    ? next
-                    : [
-                        ...parts,
-                        {
-                          type: 'tool' as const,
-                          step: {
-                            runId: ev.run_id,
-                            name: ev.name,
-                            input: ev.input,
-                            status: 'running' as const,
-                          },
-                        },
-                      ],
-                };
-              }),
-            );
-          } else if (ev.type === 'tool_end') {
-            setMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                const { next } = updateToolInParts(p.streamParts ?? [], ev.run_id, (s) => ({
-                  ...s,
-                  output: ev.output,
-                  status: 'ok' as const,
-                }));
-                return { ...p, streamParts: next };
-              }),
-            );
-          } else if (ev.type === 'tool_error') {
-            setMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                const { next, updated } = updateToolInParts(p.streamParts ?? [], ev.run_id, (s) => ({
-                  ...s,
-                  error: ev.error,
-                  status: 'err' as const,
-                }));
-                return {
-                  ...p,
-                  streamParts: updated
-                    ? next
-                    : [
-                        ...(p.streamParts ?? []),
-                        {
-                          type: 'tool' as const,
-                          step: {
-                            runId: ev.run_id,
-                            name: ev.name,
-                            error: ev.error,
-                            status: 'err' as const,
-                          },
-                        },
-                      ],
-                };
-              }),
-            );
-          } else if (ev.type === 'subagent_start') {
-            setMessages((prev) =>
-              prev.map((p) =>
-                p.id === asstStreamId && p.role === 'assistant'
-                  ? {
-                      ...p,
-                      streamParts: appendSubagentStart(
-                        p.streamParts,
-                        parseSubagentLabel(ev.name),
-                      ),
-                    }
-                  : p,
-              ),
-            );
-          } else if (ev.type === 'subagent_end') {
-            setMessages((prev) =>
-              prev.map((p) =>
-                p.id === asstStreamId && p.role === 'assistant'
-                  ? { ...p, streamParts: completeSubagent(p.streamParts) }
-                  : p,
-              ),
-            );
-          } else if (ev.type === 'todo') {
-            setTodos(ev.todos);
-          } else if (ev.type === 'interrupt') {
-            setInterrupt(JSON.stringify(ev.interrupt ?? {}));
-          } else if (ev.type === 'fatal') {
-            toast.error(ev.message);
-          } else if (ev.type === 'user') {
-            setMessages((prev) =>
-              prev.map((p) =>
-                p.id === userTemp.id
-                  ? { ...p, id: ev.message.id, content: ev.message.content }
-                  : p,
-              ),
-            );
-          } else if (ev.type === 'done') {
-            setMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId) return p;
-                const historyParts = assistantHistoryStreamParts(
-                  ev.assistant.content,
-                  ev.assistant.tool_calls,
-                );
-                return {
-                  role: 'assistant',
-                  content: ev.assistant.content,
-                  id: ev.assistant.id,
-                  streamParts:
-                    p.streamParts && p.streamParts.length > 0 ? p.streamParts : historyParts,
-                };
-              }),
-            );
-          }
-        },
+        (ev) => applyStreamEvent(ev, asstStreamId, userTemp.id),
       );
       await loadConversations();
     } catch (e) {
@@ -400,31 +403,43 @@ export function ProjectWorkspace() {
     }
   };
 
-  const onInterruptApprove = async () => {
-    if (!convId) return;
+  const resumeInterrupt = async (decision: 'approve' | 'reject') => {
+    if (!convId || hitlResumeRef.current) return;
+    const lastAsst = [...messages].reverse().find((m) => m.role === 'assistant');
+    if (!lastAsst?.id) {
+      toast.error(t('chat.error'));
+      return;
+    }
+    hitlResumeRef.current = true;
+    setHitlBusy(true);
+    setInterrupt(null);
     setLoading(true);
+    streamingRef.current = true;
+    const asstStreamId = lastAsst.id;
     try {
-      await resumeProjectInterrupt(projectId, convId, { decision: 'approve' });
-      setInterrupt(null);
-      await loadMessages(convId);
+      await resumeProjectInterrupt(
+        projectId,
+        convId,
+        { decision },
+        (ev) => applyStreamEvent(ev, asstStreamId),
+      );
+      await loadConversations();
     } catch (e) {
-      toast.error(String(e));
+      toast.error(e instanceof Error ? e.message : t('chat.error'));
     } finally {
+      hitlResumeRef.current = false;
+      setHitlBusy(false);
+      streamingRef.current = false;
       setLoading(false);
     }
   };
 
-  const onInterruptReject = async () => {
-    if (!convId) return;
-    setLoading(true);
-    try {
-      await resumeProjectInterrupt(projectId, convId, { decision: 'reject' });
-      setInterrupt(null);
-    } catch (e) {
-      toast.error(String(e));
-    } finally {
-      setLoading(false);
-    }
+  const onInterruptApprove = () => {
+    void resumeInterrupt('approve');
+  };
+
+  const onInterruptReject = () => {
+    void resumeInterrupt('reject');
   };
 
   if (!project) return <AgentsWorkspaceSkeleton />;
@@ -459,6 +474,7 @@ export function ProjectWorkspace() {
           onSend={onSend}
           todos={todos}
           interruptSummary={interrupt}
+          interruptBusy={hitlBusy}
           onInterruptApprove={interrupt ? onInterruptApprove : undefined}
           onInterruptReject={interrupt ? onInterruptReject : undefined}
         />

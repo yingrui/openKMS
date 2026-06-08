@@ -5,14 +5,14 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Area | Status |
 |------|--------|
 | Sidebar + `/agents` (Projects) + `/agents/skills` (Skills) + `/projects/{id}/sessions/{sessionId}` | ✅ |
-| Project settings page `/projects/{id}/settings` (General + Agent tabs) | ✅ |
+| Project settings page `/projects/{id}/settings` (General + Agent + Skills tabs) | ✅ |
 | Session API key (per conversation, creator identity) | ✅ |
 | Global skills registry + project install | ✅ |
 | Project CRUD + files API | ✅ |
 | Conversations + NDJSON stream | ✅ |
 | Plan mode toggle | ✅ |
 | HITL resume endpoint | ✅ |
-| Subagents (explore, research, shell) | ✅ |
+| Subagents (explore = workspace files; research = web + openKMS) | ✅ |
 | Local git | ✅ |
 | Remote git (HTTPS + PAT) | ✅ |
 
@@ -31,6 +31,12 @@ Each project **conversation** (session) gets a dedicated personal API key (`purp
 - `OPENKMS_API_BASE_URL`
 
 Built-in openKMS HTTP tools and **openkms-skill** CLI (when installed) use this key. Keys are revoked when the session is deleted. They do not appear in **Settings → API keys**.
+
+Built-in openKMS tools (`list_wiki_spaces`, `global_search`, …) are preferred for reads; tool availability follows the session creator's resolved permission keys (admin / `all` → full set).
+
+## Human-in-the-loop (HITL)
+
+Shell (`execute`) and openKMS mutation tools may pause for approval. The interrupt bar shows pending actions; **Approve all (N)** sends one decision per batched tool call. Resume streams into the current assistant turn (no duplicate message). Reject stops the pending batch.
 
 ## Skills
 
@@ -63,11 +69,14 @@ Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills`
 ```
 {project_id}/
   AGENTS.md
+  .gitignore           # ignores .openkms/skills/ (installed skills)
   .openkms/skills/     # installed skills (e.g. openkms/)
   .git/                # optional
 ```
 
 Runtime settings (web search, git identity, `installed_skills`) live in **`projects.settings`** (PostgreSQL).
+
+The project agent system prompt includes the project name, slug, description, workspace scope (paths relative to project root), installed skills under `.openkms/skills/`, and the contents of `AGENTS.md`. SkillsMiddleware loads `SKILL.md` from each installed skill (parent source path `.openkms/skills/`).
 
 ## Permissions
 

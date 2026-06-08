@@ -162,6 +162,7 @@
   },
   "interrupt": {
     "approve": "Approve",
+    "approveMultiple": "Approve all ({{count}})",
     "reject": "Reject"
   },
   "settings": {

@@ -9,10 +9,11 @@ def build_subagents(*, plan_mode: bool, include_shell: bool = True) -> list[dict
     """Dictionary-based subagents for create_deep_agent."""
     explore: dict[str, Any] = {
         "name": "explore",
-        "description": "Read-only exploration of project files and openKMS read APIs.",
+        "description": "Read-only exploration of project workspace files.",
         "system_prompt": (
-            "You explore the project workspace and openKMS corpus. Read files and search; "
-            "do not write or execute. Return concise findings."
+            "You explore the current project's workspace files only. "
+            "File paths are relative to the project root. Read and search only; "
+            "Do not write or execute destructive commands. Return concise findings."
         ),
     }
     research: dict[str, Any] = {
@@ -30,7 +31,7 @@ def build_subagents(*, plan_mode: bool, include_shell: bool = True) -> list[dict
                 "name": "shell",
                 "description": "Run sandboxed Python and shell commands in the project folder.",
                 "system_prompt": (
-                    "You run short Python scripts and shell commands scoped to the project. "
+                    "You run short Python scripts and shell commands in the current project's workspace root. "
                     "Prefer Python for data work. Report stdout/stderr clearly."
                 ),
             }

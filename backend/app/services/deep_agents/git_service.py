@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import HTTPException
 
 from app.services.credential_crypto import decrypt_secret
-from app.services.project_fs import project_root, resolve_project_path
+from app.services.project_fs import ensure_project_gitignore, project_root, resolve_project_path
 
 
 def _run_git(
@@ -57,6 +57,7 @@ def git_init(project_id: str, settings: dict) -> bool:
     root = project_root(project_id)
     if (root / ".git").exists():
         return True
+    ensure_project_gitignore(project_id)
     env = _git_identity(settings)
     result = _run_git(project_id, ["init"], env_extra=env)
     if result.returncode != 0:

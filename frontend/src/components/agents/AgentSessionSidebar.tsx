@@ -146,6 +146,7 @@ export function AgentSessionSidebar({
               <Link
                 to={projectWorkspacePath(projectId, c.id)}
                 className="agents-session-item"
+                title={label(c)}
               >
                 {label(c)}
               </Link>

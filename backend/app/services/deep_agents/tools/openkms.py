@@ -47,6 +47,12 @@ def make_openkms_tools(bearer_token: str, permissions: set[str]) -> list:
     if "wikis:read" in permissions or "all" in permissions:
 
         @tool
+        def list_wiki_spaces() -> str:
+            """List wiki spaces in openKMS (id, name, description)."""
+            data = _get("/api/wiki-spaces", token=bearer_token)
+            return json.dumps(data, ensure_ascii=False, default=str)[:48_000]
+
+        @tool
         def search_wiki_pages(space_id: str, query: str) -> str:
             """Semantic/substring search wiki pages in a space."""
             data = _get(
@@ -62,7 +68,7 @@ def make_openkms_tools(bearer_token: str, permissions: set[str]) -> list:
             data = _get(f"/api/wiki-spaces/{space_id}/pages/{page_id}", token=bearer_token)
             return json.dumps(data, ensure_ascii=False, default=str)[:48_000]
 
-        tools.extend([search_wiki_pages, get_wiki_page])
+        tools.extend([list_wiki_spaces, search_wiki_pages, get_wiki_page])
 
     if "knowledge_bases:read" in permissions or "all" in permissions:
 

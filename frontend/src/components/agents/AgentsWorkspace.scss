@@ -193,7 +193,9 @@ $agents-pane-header-height: 49px;
   font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--color-text-secondary);
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-decoration: none;
 
   &:hover {
@@ -321,6 +323,7 @@ $agents-pane-header-height: 49px;
   display: flex;
   align-items: center;
   min-height: $agents-pane-header-height;
+  min-width: 0;
   padding: 0 20px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
@@ -332,6 +335,10 @@ $agents-pane-header-height: 49px;
   font-weight: 600;
   color: var(--color-text);
   line-height: 1.35;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .agents-chat-scroll {

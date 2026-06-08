@@ -23,6 +23,7 @@ interface Props {
   onSend: (text: string) => void;
   todos?: unknown[];
   interruptSummary?: string | null;
+  interruptBusy?: boolean;
   onInterruptApprove?: () => void;
   onInterruptReject?: () => void;
 }
@@ -36,6 +37,7 @@ export function AgentChatMain({
   onSend,
   todos,
   interruptSummary,
+  interruptBusy = false,
   onInterruptApprove,
   onInterruptReject,
 }: Props) {
@@ -69,7 +71,7 @@ export function AgentChatMain({
     <main className="agents-chat-main">
       {sessionTitle ? (
         <header className="agents-chat-header">
-          <h1>{sessionTitle}</h1>
+          <h1 title={sessionTitle}>{sessionTitle}</h1>
         </header>
       ) : null}
       {todos && todos.length > 0 ? (
@@ -100,7 +102,12 @@ export function AgentChatMain({
         {loading ? <div className="agents-chat-typing">{t('chat.thinking')}</div> : null}
       </div>
       {interruptSummary && onInterruptApprove && onInterruptReject ? (
-        <AgentInterruptBar summary={interruptSummary} onApprove={onInterruptApprove} onReject={onInterruptReject} />
+        <AgentInterruptBar
+          summary={interruptSummary}
+          busy={interruptBusy}
+          onApprove={onInterruptApprove}
+          onReject={onInterruptReject}
+        />
       ) : null}
       <div className="agents-composer-wrap">
         <form className="agents-composer-inner" onSubmit={submit}>

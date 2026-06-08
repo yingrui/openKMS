@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import textwrap
-from pathlib import Path
 
 from langchain_core.tools import tool
 
@@ -13,10 +13,14 @@ from app.config import settings
 from app.services.project_fs import project_root
 
 
-def run_python_in_project(project_id: str, code: str) -> str:
+def run_python_in_project(project_id: str, code: str, *, shell_env: dict[str, str] | None = None) -> str:
     root = project_root(project_id)
     timeout = settings.agent_sandbox_timeout_seconds
     script = textwrap.dedent(code)
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(root)
+    if shell_env:
+        env.update(shell_env)
     try:
         result = subprocess.run(
             [sys.executable, "-c", script],
@@ -24,7 +28,7 @@ def run_python_in_project(project_id: str, code: str) -> str:
             capture_output=True,
             text=True,
             timeout=timeout,
-            env={"PYTHONPATH": str(root), "PATH": "/usr/bin:/bin"},
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return f"Execution timed out after {timeout}s"
@@ -36,10 +40,10 @@ def run_python_in_project(project_id: str, code: str) -> str:
     return out
 
 
-def make_sandbox_tools(project_id: str) -> list:
+def make_sandbox_tools(project_id: str, *, shell_env: dict[str, str] | None = None) -> list:
     @tool
     def run_python(code: str) -> str:
-        """Run Python code in the project workspace (no network)."""
-        return run_python_in_project(project_id, code)
+        """Run Python code in the project workspace. OPENKMS_* env vars are set when available."""
+        return run_python_in_project(project_id, code, shell_env=shell_env)
 
     return [run_python]
