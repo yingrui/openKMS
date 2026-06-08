@@ -107,7 +107,7 @@
     "hero": "让智能体浏览文件、制定计划或检索知识库。",
     "placeholder": "随便问…",
     "send": "发送",
-    "planMode": "计划模式（只读）",
+    "planMode": "计划模式",
     "thinking": "思考中…",
     "todos": "计划",
     "error": "发送失败",

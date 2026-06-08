@@ -107,7 +107,7 @@
     "hero": "Ask the agent to explore files, plan work, or research your knowledge base.",
     "placeholder": "Ask anything…",
     "send": "Send",
-    "planMode": "Plan mode (read-only)",
+    "planMode": "Plan mode",
     "thinking": "Thinking…",
     "todos": "Plan",
     "error": "Message failed",
