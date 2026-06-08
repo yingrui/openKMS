@@ -10,7 +10,12 @@ import {
   updateProject,
   type ProjectResponse,
 } from '../../data/projectsApi';
-import { fetchConnectors, type ConnectorResponse } from '../../data/connectorsApi';
+import {
+  fetchConnectorKinds,
+  fetchConnectors,
+  type ConnectorKindOut,
+  type ConnectorResponse,
+} from '../../data/connectorsApi';
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectSettings.scss';
 
@@ -31,8 +36,15 @@ export function ProjectSettings() {
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [searchConnectorId, setSearchConnectorId] = useState('');
   const [searchConnectors, setSearchConnectors] = useState<ConnectorResponse[]>([]);
+  const [connectorKinds, setConnectorKinds] = useState<ConnectorKindOut[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const connectorKindLabels = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const k of connectorKinds) map.set(k.kind, k.label);
+    return map;
+  }, [connectorKinds]);
 
   const tabs = useMemo(
     () => [
@@ -47,8 +59,9 @@ export function ProjectSettings() {
     Promise.all([
       getProject(projectId),
       fetchConnectors('search_tool').catch(() => ({ items: [], total: 0 })),
+      fetchConnectorKinds('search_tool').catch(() => []),
     ])
-      .then(([p, connectors]) => {
+      .then(([p, connectors, kinds]) => {
         setProject(p);
         setName(p.name);
         setDescription(p.description ?? '');
@@ -57,6 +70,7 @@ export function ProjectSettings() {
         setWebSearchEnabled(Boolean(p.settings?.web_search));
         setSearchConnectorId(String(p.settings?.search_connector_id ?? ''));
         setSearchConnectors(connectors.items.filter((c) => c.enabled));
+        setConnectorKinds(kinds);
       })
       .catch((e) => toast.error(String(e)))
       .finally(() => setLoading(false));
@@ -73,8 +87,11 @@ export function ProjectSettings() {
       } catch {
         throw new Error(t('settings.invalidJson'));
       }
+      if (webSearchEnabled && !searchConnectorId.trim()) {
+        throw new Error(t('settings.searchConnectorRequired'));
+      }
       settings.web_search = webSearchEnabled;
-      settings.search_connector_id = searchConnectorId.trim() || null;
+      settings.search_connector_id = webSearchEnabled ? searchConnectorId.trim() : null;
       await updateProject(projectId, {
         name: name.trim(),
         description: description.trim() || null,
@@ -189,11 +206,15 @@ export function ProjectSettings() {
                   onChange={(e) => setSearchConnectorId(e.target.value)}
                 >
                   <option value="">{t('settings.searchConnectorPlaceholder')}</option>
-                  {searchConnectors.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {searchConnectors.map((c) => {
+                    const kindLabel = connectorKindLabels.get(c.kind);
+                    const label = kindLabel ? `${c.name} · ${kindLabel}` : c.name;
+                    return (
+                      <option key={c.id} value={c.id}>
+                        {label}
+                      </option>
+                    );
+                  })}
                 </select>
                 {searchConnectors.length === 0 ? (
                   <p className="project-settings-hint">{t('settings.searchConnectorEmpty')}</p>

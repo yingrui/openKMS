@@ -112,18 +112,6 @@ class Settings(BaseSettings):
         validation_alias="OPENKMS_DEEP_AGENT_MODEL_ID",
         description="api_models.id for project Deep Agents; falls back to OPENKMS_AGENT_MODEL_ID.",
     )
-    agent_web_search_enabled: bool = Field(
-        default=False,
-        validation_alias="OPENKMS_AGENT_WEB_SEARCH_ENABLED",
-    )
-    agent_web_search_api_key: str | None = Field(
-        default=None,
-        validation_alias="OPENKMS_AGENT_WEB_SEARCH_API_KEY",
-    )
-    agent_web_search_base_url: str | None = Field(
-        default=None,
-        validation_alias="OPENKMS_AGENT_WEB_SEARCH_BASE_URL",
-    )
     agent_sandbox_timeout_seconds: int = Field(
         default=60,
         ge=5,

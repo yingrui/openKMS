@@ -35,7 +35,6 @@ from app.services.deep_agents.prompts import build_project_system_prompt
 from app.services.deep_agents.skills.loader import list_skill_paths
 from app.services.deep_agents.subagents.profiles import build_subagents
 from app.services.deep_agents.tools.openkms import make_openkms_tools
-from app.services.deep_agents.tools.connector_search import make_connector_search_tools
 from app.services.deep_agents.tools.web_search import make_web_search_tools
 from app.services.deep_agents.sandbox import make_sandbox_tools
 from app.services.project_fs import project_root
@@ -165,9 +164,7 @@ async def _build_agent(
     connector_id = str(project_settings.get("search_connector_id") or "").strip()
     web_search_on = project_settings.get("web_search") in (True, "true", "True", 1, "1")
     if web_search_on and connector_id:
-        tools.extend(await make_connector_search_tools(db, connector_id))
-    else:
-        tools.extend(make_web_search_tools())
+        tools.extend(await make_web_search_tools(db, connector_id))
     skills = list_skill_paths(project_id)
     checkpointer = await get_checkpointer()
     try:
