@@ -7,11 +7,7 @@ from typing import Any
 import httpx
 
 from app.models.connector import Connector
-from app.services.connector_catalog import (
-    CATEGORY_SEARCH_TOOL,
-    ZHIPU_API_BASE_URL,
-    decrypt_secrets_blob,
-)
+from app.services.connector_catalog import ZHIPU_API_BASE_URL, decrypt_secrets_blob
 
 _SEARCH_ENGINES = frozenset(
     {"search_std", "search_pro", "search_pro_sogou", "search_pro_quark"}
@@ -35,7 +31,7 @@ def _merged_inputs(connector: Connector, param_overrides: dict[str, Any] | None)
     return merged
 
 
-def _search_endpoint(connector: Connector) -> str:
+def search_endpoint(connector: Connector) -> str:
     settings = connector.settings or {}
     url = str(settings.get("web_search_url") or "").strip()
     if url:
@@ -141,6 +137,19 @@ def _build_zhipu_payload(inp: dict[str, Any], query: str) -> dict[str, Any]:
     return payload
 
 
+def _provider_error_message(resp: httpx.Response) -> str:
+    detail = resp.text[:500]
+    try:
+        err_body = resp.json()
+        if isinstance(err_body, dict):
+            err_obj = err_body.get("error")
+            if isinstance(err_obj, dict) and err_obj.get("message"):
+                return str(err_obj["message"])
+    except Exception:
+        pass
+    return detail
+
+
 async def run_zhipu_web_search(
     connector: Connector,
     query: str,
@@ -154,7 +163,7 @@ async def run_zhipu_web_search(
         raise ValueError("ZHIPU_API_KEY is not configured for this connector")
 
     inp = _merged_inputs(connector, param_overrides)
-    endpoint = _search_endpoint(connector)
+    endpoint = search_endpoint(connector)
     payload = _build_zhipu_payload(inp, query)
 
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -164,16 +173,7 @@ async def run_zhipu_web_search(
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         )
     if resp.status_code >= 400:
-        detail = resp.text[:500]
-        try:
-            err_body = resp.json()
-            if isinstance(err_body, dict):
-                err_obj = err_body.get("error")
-                if isinstance(err_obj, dict) and err_obj.get("message"):
-                    detail = str(err_obj["message"])
-        except Exception:
-            pass
-        raise ValueError(f"Zhipu web search failed ({resp.status_code}): {detail}")
+        raise ValueError(f"Zhipu web search failed ({resp.status_code}): {_provider_error_message(resp)}")
 
     data = resp.json()
     if not isinstance(data, dict):

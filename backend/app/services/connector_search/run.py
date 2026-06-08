@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from app.models.connector import Connector
 from app.services.connector_catalog import CATEGORY_SEARCH_TOOL, get_kind_spec
 from app.services.connector_search.zhipu import run_zhipu_web_search
+
+SearchHandler = Callable[..., Awaitable[dict[str, Any]]]
+
+_SEARCH_HANDLERS: dict[str, SearchHandler] = {
+    "zhipu_web_search": run_zhipu_web_search,
+}
 
 
 async def run_connector_search(
@@ -24,11 +31,12 @@ async def run_connector_search(
     if spec.category != CATEGORY_SEARCH_TOOL:
         raise ValueError(f"Connector kind '{connector.kind}' is not a search_tool")
 
-    if connector.kind == "zhipu_web_search":
-        return await run_zhipu_web_search(
-            connector,
-            query,
-            param_overrides=param_overrides,
-            include_debug=include_debug,
-        )
-    raise ValueError(f"No search handler for kind '{connector.kind}'")
+    handler = _SEARCH_HANDLERS.get(connector.kind)
+    if not handler:
+        raise ValueError(f"No search handler for kind '{connector.kind}'")
+    return await handler(
+        connector,
+        query,
+        param_overrides=param_overrides,
+        include_debug=include_debug,
+    )

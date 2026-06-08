@@ -656,52 +656,8 @@ select.console-form-control {
   }
 }
 
-.connector-detail-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 0;
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-bottom: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: 4px 12px 0;
-}
-
-.connector-detail-tab {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-
-  &:hover {
-    color: var(--color-text);
-  }
-
-  &.active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
-  }
-}
-
-.connector-detail-tab-panel {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  padding: 24px;
-
-  &--playground {
-    padding: 0;
-  }
+.connector-detail-tab-panel--playground {
+  padding: 0;
 }
 
 .connector-detail-card {
