@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import mimetypes
 import re
 import shutil
@@ -25,20 +24,6 @@ Describe what this project is for and how the agent should work here.
 
 - 
 """
-
-_DEFAULT_CONFIG = {
-    "agents": {},
-    "subagents": {
-        "explore": {"enabled": True},
-        "research": {"enabled": True},
-        "shell": {"enabled": True},
-    },
-    "skills": [],
-    "web_search": False,
-    "search_connector_id": None,
-    "default_mode": "agent",
-}
-
 
 def _slugify(name: str) -> str:
     s = name.lower().strip()
@@ -85,18 +70,8 @@ def scaffold_project_dir(project_id: str) -> Path:
         agents_md.write_text(_DEFAULT_AGENTS_MD, encoding="utf-8")
     openkms = root / ".openkms"
     openkms.mkdir(exist_ok=True)
-    config_path = openkms / "config.json"
-    if not config_path.exists():
-        config_path.write_text(json.dumps(_DEFAULT_CONFIG, indent=2), encoding="utf-8")
-    skills = openkms / "skills"
-    skills.mkdir(exist_ok=True)
+    (openkms / "skills").mkdir(exist_ok=True)
     return root
-
-
-def sync_settings_to_disk(project_id: str, settings_dict: dict) -> None:
-    config_path = resolve_project_path(project_id, ".openkms/config.json")
-    config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(json.dumps(settings_dict, indent=2), encoding="utf-8")
 
 
 def list_dir(project_id: str, relative: str = "") -> list[dict]:
@@ -160,7 +135,14 @@ async def upload_file(project_id: str, relative_dir: str, file: UploadFile) -> s
     return str(dest.relative_to(base)).replace("\\", "/")
 
 
+def _is_protected_delete_path(relative: str) -> bool:
+    norm = relative.strip().replace("\\", "/").lstrip("/").rstrip("/")
+    return norm in (".openkms", ".openkms/skills")
+
+
 def delete_path(project_id: str, relative: str) -> None:
+    if _is_protected_delete_path(relative):
+        raise HTTPException(status_code=400, detail="Cannot delete required project folder")
     path = resolve_project_path(project_id, relative)
     if not path.exists():
         raise HTTPException(status_code=404, detail="Path not found")

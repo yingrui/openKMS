@@ -107,7 +107,7 @@
     "tabAgent": "Agent",
     "generalHeading": "General",
     "agentHeading": "Agent configuration",
-    "agentHint": "Subagents, skills, and runtime defaults. Saved to .openkms/config.json.",
+    "agentHint": "Subagents, skills, and runtime defaults. Stored in project settings.",
     "agentJsonLabel": "Settings JSON",
     "webSearchEnabled": "Enable web search tool",
     "webSearchHint": "Registers a web_search tool that uses the selected connector. Provider-specific options stay on the connector; the agent only passes a query. Without a connector, web search is unavailable.",

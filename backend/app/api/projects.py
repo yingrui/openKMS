@@ -35,7 +35,6 @@ from app.services.project_fs import (
     project_root,
     read_file,
     scaffold_project_dir,
-    sync_settings_to_disk,
     write_file,
 )
 from app.services.project_fs import upload_file as fs_upload
@@ -103,7 +102,6 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
     db.add(p)
     await db.flush()
     scaffold_project_dir(p.id)
-    sync_settings_to_disk(p.id, p.settings or {})
     await db.refresh(p)
     return _to_out(p)
 
@@ -137,7 +135,6 @@ async def update_project(
         p.slug = new_slug
     if body.settings is not None:
         p.settings = body.settings
-        sync_settings_to_disk(p.id, p.settings)
     await db.flush()
     await db.refresh(p)
     return _to_out(p)
@@ -261,7 +258,6 @@ async def patch_settings(
     p = await _get_owned_project(db, project_id, sub)
     merged = {**(p.settings or {}), **body}
     p.settings = merged
-    sync_settings_to_disk(p.id, merged)
     await db.flush()
     return merged
 

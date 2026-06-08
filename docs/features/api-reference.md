@@ -391,7 +391,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/projects` | List current user's projects |
-| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/config.json`) |
+| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`) |
 | GET | `/api/projects/{id}` | Get project |
 | PATCH | `/api/projects/{id}` | Update name, description, slug, settings |
 | DELETE | `/api/projects/{id}` | Delete project and on-disk folder |

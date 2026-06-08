@@ -107,7 +107,7 @@
     "tabAgent": "智能体",
     "generalHeading": "基本信息",
     "agentHeading": "智能体配置",
-    "agentHint": "子智能体、技能与运行时默认项。保存到 .openkms/config.json。",
+    "agentHint": "子智能体、技能与运行时默认项。保存在项目设置中。",
     "agentJsonLabel": "设置 JSON",
     "webSearchEnabled": "启用网络搜索工具",
     "webSearchHint": "注册 web_search 工具并使用所选连接器。供应商参数在连接器上配置，Agent 只传查询词。未选连接器则无法使用网络搜索。",

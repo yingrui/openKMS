@@ -19,7 +19,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 
 - **Left:** conversation sessions (month-grouped), like KB Q&A.
 - **Center:** chat thread + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot).
-- **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize (chat ↔ files rail, and file viewer ↔ tree when a file is open); widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder (recursive; the selected folder name is preserved under the **current tree location**—open a subfolder first to upload elsewhere). Refresh, parent-folder navigation, and per-row delete (`.openkms` protected).
+- **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize (chat ↔ files rail, and file viewer ↔ tree when a file is open); widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder (recursive; the selected folder name is preserved under the **current tree location**—open a subfolder first to upload elsewhere). Refresh, parent-folder navigation, and per-row delete (`.openkms` and `.openkms/skills` folders protected; other paths including files under `.openkms/` may be deleted).
 
 ## Configuration
 
@@ -29,7 +29,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
 
-**Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector (e.g. Zhipu web search). Stored as `web_search` and `search_connector_id` in `.openkms/config.json`. When both are set, the agent gets a single abstract **`web_search(query)`** tool (provider-specific parameters stay on the connector). If web search is off or no connector is selected, the tool is **not** registered.
+**Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector (e.g. Zhipu web search). Stored as `web_search` and `search_connector_id` in `projects.settings` (PostgreSQL). When both are set, the agent gets a single abstract **`web_search(query)`** tool (provider-specific parameters stay on the connector). If web search is off or no connector is selected, the tool is **not** registered.
 
 Docker: `projects_data` volume mounted on `backend` and `worker`.
 
@@ -38,10 +38,11 @@ Docker: `projects_data` volume mounted on `backend` and `worker`.
 ```
 {project_id}/
   AGENTS.md
-  .openkms/config.json
   .openkms/skills/
   .git/          # optional
 ```
+
+Agent runtime settings (web search, git identity, subagent toggles) live in **`projects.settings`** in the database, not on disk.
 
 ## Permissions
 

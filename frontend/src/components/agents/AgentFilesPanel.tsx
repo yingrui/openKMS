@@ -61,9 +61,10 @@ function isPathUnder(path: string, ancestor: string): boolean {
   return path === ancestor || path.startsWith(`${ancestor}/`);
 }
 
+/** Block delete for openKMS-managed dirs only; files under them (e.g. legacy config.json) may be removed. */
 function isProtectedProjectPath(path: string): boolean {
-  const norm = path.replace(/\\/g, '/').replace(/^\/+/, '');
-  return norm === '.openkms' || norm.startsWith('.openkms/');
+  const norm = path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+  return norm === '.openkms' || norm === '.openkms/skills';
 }
 
 interface Props {
