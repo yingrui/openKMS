@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Layers, Loader2, Plus, Settings, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  deleteAgentSkill,
   deleteAgentSkillVersion,
   fetchAgentSkill,
   patchAgentSkill,
@@ -29,7 +30,9 @@ export function AgentSkillSettings() {
   const [loading, setLoading] = useState(true);
   const [displayName, setDisplayName] = useState('');
   const [defaultVersion, setDefaultVersion] = useState('');
+  const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [newVersion, setNewVersion] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -52,6 +55,7 @@ export function AgentSkillSettings() {
       setSkill(data);
       setDisplayName(data.display_name);
       setDefaultVersion(data.default_version ?? '');
+      setIsDefault(data.is_default);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('skills.settings.loadFailed'));
       setSkill(null);
@@ -95,10 +99,12 @@ export function AgentSkillSettings() {
       const updated = await patchAgentSkill(skillId, {
         display_name: name,
         default_version: defaultVersion.trim() || null,
+        is_default: isDefault,
       });
       setSkill(updated);
       setDisplayName(updated.display_name);
       setDefaultVersion(updated.default_version ?? '');
+      setIsDefault(updated.is_default);
       toast.success(t('skills.settings.saveSuccess'));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('skills.settings.saveFailed'));
@@ -156,6 +162,21 @@ export function AgentSkillSettings() {
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('skills.deleteError'));
+    }
+  };
+
+  const handleDeleteSkill = async () => {
+    if (!skillId || !skill) return;
+    if (!window.confirm(t('skills.deleteSkillConfirm', { name: skill.display_name, skillId }))) return;
+    setDeleting(true);
+    try {
+      await deleteAgentSkill(skillId);
+      toast.success(t('skills.deleteSkillSuccess'));
+      navigate('/agents/skills');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('skills.deleteSkillError'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -250,6 +271,17 @@ export function AgentSkillSettings() {
                 ))}
               </select>
               <p className="document-channel-settings-hint">{t('skills.settings.defaultVersionHint')}</p>
+            </div>
+            <div className="document-channel-settings-field">
+              <label className="agent-skill-settings-default-install">
+                <input
+                  type="checkbox"
+                  checked={isDefault}
+                  onChange={(e) => setIsDefault(e.target.checked)}
+                />
+                <span>{t('skills.defaultForNewProjects')}</span>
+              </label>
+              <p className="document-channel-settings-hint">{t('skills.settings.defaultInstallHint')}</p>
             </div>
             {skill.created_by_name ? (
               <p className="document-channel-settings-hint">
@@ -381,6 +413,19 @@ export function AgentSkillSettings() {
           </section>
         ) : null}
       </div>
+
+      <section className="agent-skill-settings-danger document-channel-settings-form">
+        <h2>{t('skills.settings.dangerZone')}</h2>
+        <p className="document-channel-settings-hint">{t('skills.settings.dangerHint')}</p>
+        <button
+          type="button"
+          className="btn agent-skill-settings-delete-skill"
+          disabled={deleting}
+          onClick={() => void handleDeleteSkill()}
+        >
+          {deleting ? t('skills.settings.deleting') : t('skills.settings.deleteSkill')}
+        </button>
+      </section>
     </div>
   );
 }

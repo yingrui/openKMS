@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Puzzle, Settings, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Puzzle, Settings, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AgentsAreaNav } from '../../components/agents/AgentsAreaNav';
 import { AgentsListSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import {
+  deleteAgentSkill,
   listAgentSkills,
   uploadAgentSkillFolder,
   uploadAgentSkillZip,
@@ -56,6 +57,19 @@ export function AgentSkillsPage() {
   };
 
   const canUpload = skillId.trim() && version.trim();
+
+  const handleDeleteSkill = async (skill: AgentSkill, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(t('skills.deleteSkillConfirm', { name: skill.display_name, skillId: skill.id }))) return;
+    try {
+      await deleteAgentSkill(skill.id);
+      toast.success(t('skills.deleteSkillSuccess'));
+      setSkills((prev) => prev.filter((s) => s.id !== skill.id));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('skills.deleteSkillError'));
+    }
+  };
 
   const runUpload = async (mode: 'zip' | 'folder', file?: File, fileList?: FileList) => {
     if (!canUpload) {
@@ -256,6 +270,15 @@ export function AgentSkillsPage() {
                   >
                     <Settings size={15} />
                   </Link>
+                  <button
+                    type="button"
+                    className="agent-skills-card-delete"
+                    title={t('skills.settings.deleteSkill')}
+                    aria-label={t('skills.settings.deleteSkill')}
+                    onClick={(e) => void handleDeleteSkill(skill, e)}
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               </div>
               <Link to={`/agents/skills/${skill.id}/settings`} className="agents-card-body">
@@ -265,6 +288,7 @@ export function AgentSkillsPage() {
                 </p>
                 <span className="agents-card-meta">
                   {t('skills.versionCount', { count: skill.versions.length })}
+                  {skill.is_default ? ` · ${t('skills.defaultForNewProjects')}` : ''}
                   {skill.created_by_name ? ` · ${t('skills.createdBy', { name: skill.created_by_name })}` : ''}
                 </span>
               </Link>

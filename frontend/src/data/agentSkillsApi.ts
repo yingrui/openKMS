@@ -130,6 +130,15 @@ export async function deleteAgentSkillVersion(skillId: string, version: string):
   if (!res.ok) throw new Error(await parseError(res));
 }
 
+export async function deleteAgentSkill(skillId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/agent-skills/${encodeURIComponent(skillId)}`,
+    { method: 'DELETE', headers },
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+}
+
 export async function listProjectSkills(projectId: string): Promise<ProjectInstalledSkill[]> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/skills`, { headers });

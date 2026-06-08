@@ -28,6 +28,10 @@ def version_dir(skill_id: str, version: str) -> Path:
     return agent_skills_root() / skill_id / version
 
 
+def skill_dir(skill_id: str) -> Path:
+    return agent_skills_root() / skill_id
+
+
 def validate_skill_id(skill_id: str) -> str:
     sid = (skill_id or "").strip().lower()
     if not sid or not _SKILL_ID_RE.match(sid):

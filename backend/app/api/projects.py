@@ -27,6 +27,7 @@ from app.schemas.project import (
     ProjectUpdate,
 )
 from app.services.agent_skill_install import (
+    install_default_skills_for_project,
     install_skill_to_project,
     uninstall_skill_from_project,
 )
@@ -108,6 +109,15 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
     db.add(p)
     await db.flush()
     scaffold_project_dir(p.id)
+    p_jwt = request.state.openkms_jwt_payload
+    uname = p_jwt.get("preferred_username") or p_jwt.get("name")
+    created_by_name = str(uname)[:256] if isinstance(uname, str) and uname.strip() else None
+    await install_default_skills_for_project(
+        db,
+        p,
+        installed_by=sub,
+        installed_by_name=created_by_name,
+    )
     await db.refresh(p)
     return _to_out(p)
 

@@ -42,6 +42,7 @@ Built-in openKMS HTTP tools and **openkms-skill** CLI (when installed) use this 
 - Upload zip or folder on **Agents → Skills** (`POST /api/agent-skills`). Each version stores a **content hash** (per-file SHA-256, sorted, aggregated).
 - **Skill settings** (`/agents/skills/{skill_id}/settings`): general metadata and version upload/delete (same layout as channel settings).
 - Set **default version** per skill (used when installing without picking a version).
+- Toggle **install on new projects** in skill settings (`is_default`); matching skills auto-install when creating a project.
 - **Project settings → Agent → Installed skills:** install/update/uninstall skills from the registry.
 
 ## Configuration

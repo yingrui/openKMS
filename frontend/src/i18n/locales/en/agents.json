@@ -31,9 +31,14 @@
       "generalHeading": "General",
       "generalHint": "Name and default version used when installing this skill into a project.",
       "defaultVersionHint": "Used when a project install does not specify a version.",
+      "defaultInstallHint": "When enabled, this skill is installed automatically into new agent projects.",
       "versionsHeading": "Versions",
       "versionsHint": "Upload a zip or folder with SKILL.md at the root. Each version is stored separately.",
-      "noVersions": "No versions uploaded yet."
+      "noVersions": "No versions uploaded yet.",
+      "dangerZone": "Danger zone",
+      "dangerHint": "Permanently delete this skill and all version files from the registry. Uninstall it from projects first.",
+      "deleteSkill": "Delete skill",
+      "deleting": "Deleting…"
     },
     "skillId": "Skill ID",
     "version": "Version",
@@ -55,7 +60,10 @@
     "deleteVersion": "Delete version",
     "deleteVersionConfirm": "Delete {{skillId}} version {{version}}?",
     "deleteSuccess": "Version deleted",
-    "deleteError": "Could not delete version"
+    "deleteError": "Could not delete version",
+    "deleteSkillConfirm": "Delete skill \"{{name}}\" ({{skillId}}) and all versions? This cannot be undone.",
+    "deleteSkillSuccess": "Skill deleted",
+    "deleteSkillError": "Could not delete skill"
   },
   "list": {
     "title": "Agents",

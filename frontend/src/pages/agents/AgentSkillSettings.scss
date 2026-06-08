@@ -1,3 +1,20 @@
+.agent-skill-settings-default-install {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+
+  input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    cursor: pointer;
+  }
+}
+
 .agent-skill-settings-upload {
   margin-bottom: 24px;
   padding-bottom: 24px;
@@ -73,5 +90,28 @@
 @keyframes agent-skill-settings-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+.agent-skill-settings-danger {
+  margin-top: 24px;
+  border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
+}
+
+.agent-skill-settings-danger h2 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0 0 12px;
+  color: var(--color-error);
+}
+
+.agent-skill-settings-delete-skill {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--color-error);
+  border: 1px solid color-mix(in srgb, var(--color-error) 50%, var(--color-border));
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-error) 12%, transparent);
   }
 }

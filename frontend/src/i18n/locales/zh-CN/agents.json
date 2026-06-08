@@ -31,9 +31,14 @@
       "generalHeading": "常规",
       "generalHint": "名称与默认版本；在项目设置中安装技能时使用。",
       "defaultVersionHint": "项目安装未指定版本时使用。",
+      "defaultInstallHint": "开启后，新建智能体项目时会自动安装此技能。",
       "versionsHeading": "版本",
       "versionsHint": "上传 zip 或文件夹，根目录需包含 SKILL.md。每个版本单独保存。",
-      "noVersions": "尚未上传任何版本。"
+      "noVersions": "尚未上传任何版本。",
+      "dangerZone": "危险操作",
+      "dangerHint": "从注册表永久删除此技能及全部版本文件。请先从项目中卸载。",
+      "deleteSkill": "删除技能",
+      "deleting": "删除中…"
     },
     "skillId": "技能 ID",
     "version": "版本",
@@ -55,7 +60,10 @@
     "deleteVersion": "删除版本",
     "deleteVersionConfirm": "删除 {{skillId}} 版本 {{version}}？",
     "deleteSuccess": "版本已删除",
-    "deleteError": "无法删除版本"
+    "deleteError": "无法删除版本",
+    "deleteSkillConfirm": "删除技能「{{name}}」（{{skillId}}）及所有版本？此操作不可撤销。",
+    "deleteSkillSuccess": "技能已删除",
+    "deleteSkillError": "无法删除技能"
   },
   "list": {
     "title": "智能体",

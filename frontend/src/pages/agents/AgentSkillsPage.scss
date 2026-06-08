@@ -1,3 +1,26 @@
+.agents-card-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.agents-card-actions button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.agent-skills-card-delete:hover {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
 .agent-skills-empty-card label {
   display: flex;
   flex-direction: column;

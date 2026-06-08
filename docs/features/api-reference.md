@@ -391,7 +391,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/projects` | List current user's projects |
-| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`) |
+| POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`; auto-installs skills where `agent_skills.is_default=true`) |
 | GET | `/api/projects/{id}` | Get project |
 | PATCH | `/api/projects/{id}` | Update name, description, slug, settings |
 | DELETE | `/api/projects/{id}` | Delete project and on-disk folder |
@@ -429,6 +429,7 @@ Disk root: `OPENKMS_AGENT_SKILLS_ROOT/{skill_id}/{version}/`. Permissions: same 
 | GET | `/api/agent-skills/{skill_id}` | Get one skill and its versions |
 | POST | `/api/agent-skills` | Upload skill package (multipart: `skill_id`, `version`, optional `display_name`/`notes`, and either `archive` zip or `files[]` + `relative_paths[]`) |
 | PATCH | `/api/agent-skills/{skill_id}` | Update `display_name`, `is_default`, `default_version` |
+| DELETE | `/api/agent-skills/{skill_id}` | Delete skill and all version files (409 if installed in a project) |
 | DELETE | `/api/agent-skills/{skill_id}/versions/{version}` | Delete version (409 if default or installed in a project) |
 
 Each `agent_skill_versions` row includes `content_hash`, `uploaded_by`, `uploaded_by_name`.

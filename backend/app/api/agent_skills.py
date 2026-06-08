@@ -24,6 +24,7 @@ from app.services.agent_skill_hash import compute_content_hash
 from app.services.agent_skills_registry import (
     extract_folder_upload,
     extract_zip_upload,
+    skill_dir,
     validate_skill_id,
     version_dir,
 )
@@ -198,6 +199,28 @@ async def patch_agent_skill(
         skill.default_version = dv
     await db.refresh(skill)
     return _skill_to_out(skill)
+
+
+@router.delete(
+    "/{skill_id}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def delete_agent_skill(skill_id: str, db: AsyncSession = Depends(get_db)):
+    skill = await db.get(AgentSkill, skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+
+    pr = await db.execute(select(Project))
+    for project in pr.scalars().all():
+        installed = (project.settings or {}).get("installed_skills") or {}
+        if isinstance(installed, dict) and skill_id in installed:
+            raise HTTPException(status_code=409, detail="Skill is installed in a project")
+
+    dest = skill_dir(skill_id)
+    if dest.exists():
+        shutil.rmtree(dest)
+    await db.delete(skill)
 
 
 @router.delete(
