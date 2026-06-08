@@ -2,6 +2,7 @@
 import { config } from '../config';
 import { getAuthHeaders, authAwareFetch } from './apiClient';
 import type { AgentConversationResponse, AgentMessageItem } from './agentApi';
+import { readNdjsonStream } from './ndjsonStream';
 
 async function parseError(res: Response): Promise<string> {
   try {
@@ -362,24 +363,12 @@ export async function postProjectMessageStream(
     },
   );
   if (!res.ok) throw new Error(await parseError(res));
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error('No response body');
-  const dec = new TextDecoder();
-  let buf = '';
+  if (!res.body) throw new Error('No response body');
   let assistant: AgentMessageItem | null = null;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split('\n');
-    buf = lines.pop() ?? '';
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const ev = JSON.parse(line) as ProjectStreamEvent;
-      onEvent?.(ev);
-      if (ev.type === 'done') assistant = ev.assistant;
-    }
-  }
+  await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
+    onEvent?.(ev);
+    if (ev.type === 'done') assistant = ev.assistant;
+  });
   return assistant;
 }
 
@@ -400,24 +389,12 @@ export async function resumeProjectInterrupt(
     },
   );
   if (!res.ok) throw new Error(await parseError(res));
-  const reader = res.body?.getReader();
-  if (!reader) throw new Error('No response body');
-  const dec = new TextDecoder();
-  let buf = '';
+  if (!res.body) throw new Error('No response body');
   let assistant: AgentMessageItem | null = null;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const lines = buf.split('\n');
-    buf = lines.pop() ?? '';
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      const ev = JSON.parse(line) as ProjectStreamEvent;
-      onEvent?.(ev);
-      if (ev.type === 'done') assistant = ev.assistant;
-    }
-  }
+  await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
+    onEvent?.(ev);
+    if (ev.type === 'done') assistant = ev.assistant;
+  });
   return assistant;
 }
 

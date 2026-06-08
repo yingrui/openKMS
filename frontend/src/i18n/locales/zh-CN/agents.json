@@ -117,6 +117,10 @@
     "revertOk": "已移除消息，可编辑后重新发送",
     "revertFailed": "无法撤销消息"
   },
+  "stream": {
+    "replyAria": "助手回复",
+    "subagentLabel": "子代理"
+  },
   "files": {
     "title": "项目文件",
     "allFiles": "全部文件",

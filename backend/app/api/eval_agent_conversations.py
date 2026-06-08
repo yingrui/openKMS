@@ -12,12 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth
 from app.api.evaluations import get_evaluation_scoped
+from app.api.deps import get_jwt_sub
 from app.api.kb_agent_conversations import (
     KbAgentConversationCreate,
     KbAgentConversationPatch,
     KbAgentMessageCreate,
     _conv_to_out,
-    _get_sub,
     _history_before_new_user,
     _msg_to_out,
     _ndjson_kb_qa_stream_persist,
@@ -76,7 +76,7 @@ async def list_eval_agent_conversations(
     db: AsyncSession = Depends(get_db),
 ):
     _ = ev
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     r = await db.execute(
         select(AgentConversation)
         .where(
@@ -104,7 +104,7 @@ async def create_eval_agent_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     _ = ev
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     kb = await _kb_for_evaluation(request, db, ev)
     if not kb.agent_url:
         raise HTTPException(
@@ -137,7 +137,7 @@ async def delete_eval_agent_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     _ = ev
-    c = await _get_eval_conversation(db, conversation_id, _get_sub(request), evaluation_id)
+    c = await _get_eval_conversation(db, conversation_id, get_jwt_sub(request), evaluation_id)
     await db.delete(c)
     await db.flush()
 
@@ -156,7 +156,7 @@ async def patch_eval_agent_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     _ = ev
-    c = await _get_eval_conversation(db, conversation_id, _get_sub(request), evaluation_id)
+    c = await _get_eval_conversation(db, conversation_id, get_jwt_sub(request), evaluation_id)
     if body.title is not None:
         c.title = body.title
     await db.flush()
@@ -179,7 +179,7 @@ async def list_eval_agent_messages(
     db: AsyncSession = Depends(get_db),
 ):
     _ = ev
-    await _get_eval_conversation(db, conversation_id, _get_sub(request), evaluation_id)
+    await _get_eval_conversation(db, conversation_id, get_jwt_sub(request), evaluation_id)
     total = (
         await db.execute(
             select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation_id)
@@ -217,7 +217,7 @@ async def delete_eval_agent_messages_from(
     from app.api.agent import _bump_conversation_timestamp
 
     _ = ev
-    c = await _get_eval_conversation(db, conversation_id, _get_sub(request), evaluation_id)
+    c = await _get_eval_conversation(db, conversation_id, get_jwt_sub(request), evaluation_id)
     r = await db.execute(
         select(AgentMessage.id)
         .where(AgentMessage.conversation_id == conversation_id)
@@ -258,7 +258,7 @@ async def post_eval_agent_message(
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 
-    c = await _get_eval_conversation(db, conversation_id, _get_sub(request), evaluation_id)
+    c = await _get_eval_conversation(db, conversation_id, get_jwt_sub(request), evaluation_id)
 
     r = await db.execute(
         select(AgentMessage)

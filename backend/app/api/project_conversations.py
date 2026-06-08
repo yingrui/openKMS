@@ -19,6 +19,7 @@ from app.api.agent import (
     _msg_to_out,
 )
 from app.api.auth import require_permission
+from app.api.deps import get_jwt_sub
 from app.config import settings
 from app.database import get_db
 from app.models.agent_models import AgentConversation, AgentMessage
@@ -28,21 +29,14 @@ from app.schemas.project import ProjectConversationCreate, ProjectConversationPa
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.conversation_title import suggest_conversation_title
-from app.services.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
+from app.services.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
 from app.services.agent_skill_install import ensure_skills_materialized
 from app.services.deep_agents.checkpointer import delete_conversation_thread
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
+from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
 router = APIRouter()
-
-
-def _get_sub(request: Request) -> str:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not sub.strip():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return sub
 
 
 def _ndjson_line(obj: dict) -> bytes:
@@ -88,7 +82,7 @@ async def list_conversations(
     limit: int = Query(default=50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_project(db, project_id, sub)
     r = await db.execute(
         select(AgentConversation)
@@ -115,7 +109,7 @@ async def create_conversation(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_project(db, project_id, sub)
     c = AgentConversation(
         id=str(uuid.uuid4()),
@@ -144,7 +138,7 @@ async def patch_conversation(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
     if body.title is not None:
         c.title = body.title
@@ -164,7 +158,7 @@ async def suggest_conversation_title_route(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
     model_config = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
     if not model_config:
@@ -202,7 +196,7 @@ async def delete_conversation(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
     await revoke_session_api_key(db, c)
     await db.execute(delete(AgentMessage).where(AgentMessage.conversation_id == conversation_id))
@@ -223,7 +217,7 @@ async def list_messages(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_conv(db, conversation_id, sub, project_id)
     total = (
         await db.execute(
@@ -260,7 +254,7 @@ async def delete_conversation_messages_from(
     Remove this message and all messages after it in chronological order.
     Clears LangGraph checkpoint state so the next turn matches truncated history.
     """
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
     r = await db.execute(
         select(AgentMessage.id)
@@ -294,7 +288,7 @@ async def post_message(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     project = await _get_project(db, project_id, sub)
     c = await _get_conv(db, conversation_id, sub, project_id)
     user_msg = AgentMessage(
@@ -319,9 +313,7 @@ async def post_message(
             try:
                 yield _ndjson_line({"type": "user", "message": _msg_to_out(user_msg).model_dump(mode="json")})
                 assistant_id = new_id()
-                text_parts: list[str] = []
-                tool_traces: list[dict[str, str]] = []
-                tool_inputs: dict[str, str] = {}
+                acc = ProjectStreamAccumulator()
                 async for part in iter_project_stream_parts(
                     db,
                     c,
@@ -334,39 +326,12 @@ async def post_message(
                     project.settings or {},
                     plan_mode=plan_mode,
                 ):
-                    ptype = part.get("type")
-                    if ptype == "delta" and part.get("t"):
-                        text_parts.append(part["t"])
-                    elif ptype == "tool_start":
-                        run_id = str(part.get("run_id") or "")
-                        inp = part.get("input")
-                        if run_id and isinstance(inp, str):
-                            tool_inputs[run_id] = inp
-                    elif ptype == "tool_end":
-                        name = str(part.get("name") or "tool")
-                        trace: dict[str, str] = {
-                            "name": name,
-                            "output": str(part.get("output") or ""),
-                        }
-                        run_id = str(part.get("run_id") or "")
-                        if run_id and run_id in tool_inputs:
-                            trace["input"] = tool_inputs[run_id]
-                        tool_traces.append(trace)
-                    elif ptype == "tool_error":
-                        name = str(part.get("name") or "tool")
-                        trace = {
-                            "name": name,
-                            "error": str(part.get("error") or ""),
-                        }
-                        run_id = str(part.get("run_id") or "")
-                        if run_id and run_id in tool_inputs:
-                            trace["input"] = tool_inputs[run_id]
-                        tool_traces.append(trace)
-                    yield _ndjson_line(part)
-                    if ptype == "fatal":
+                    if acc.absorb(part) == "fatal":
+                        yield _ndjson_line(part)
                         return
-                content = "".join(text_parts)
-                tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: tool_traces} if tool_traces else None
+                    yield _ndjson_line(part)
+                content = acc.assistant_text
+                tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: acc.tool_traces} if acc.tool_traces else None
                 asst = AgentMessage(
                     id=assistant_id,
                     conversation_id=c.id,
@@ -430,7 +395,7 @@ async def resume_message(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     project = await _get_project(db, project_id, sub)
     c = await _get_conv(db, conversation_id, sub, project_id)
     jwt_payload = request.state.openkms_jwt_payload
@@ -448,10 +413,7 @@ async def resume_message(
                 if isinstance(raw, list):
                     existing_traces = [t for t in raw if isinstance(t, dict)]
 
-            text_parts: list[str] = []
-            tool_traces: list[dict[str, str]] = []
-            tool_inputs: dict[str, str] = {}
-            interrupted = False
+            acc = ProjectStreamAccumulator()
             async for part in resume_project_interrupt(
                 db,
                 c,
@@ -466,46 +428,17 @@ async def resume_message(
                 edited_args=body.edited_args,
                 message=body.message,
             ):
-                ptype = part.get("type")
-                if ptype == "delta" and part.get("t"):
-                    text_parts.append(part["t"])
-                elif ptype == "tool_start":
-                    run_id = str(part.get("run_id") or "")
-                    inp = part.get("input")
-                    if run_id and isinstance(inp, str):
-                        tool_inputs[run_id] = inp
-                elif ptype == "tool_end":
-                    name = str(part.get("name") or "tool")
-                    trace: dict[str, str] = {
-                        "name": name,
-                        "output": str(part.get("output") or ""),
-                    }
-                    run_id = str(part.get("run_id") or "")
-                    if run_id and run_id in tool_inputs:
-                        trace["input"] = tool_inputs[run_id]
-                    tool_traces.append(trace)
-                elif ptype == "tool_error":
-                    name = str(part.get("name") or "tool")
-                    trace = {
-                        "name": name,
-                        "error": str(part.get("error") or ""),
-                    }
-                    run_id = str(part.get("run_id") or "")
-                    if run_id and run_id in tool_inputs:
-                        trace["input"] = tool_inputs[run_id]
-                    tool_traces.append(trace)
-                elif ptype == "interrupt":
-                    interrupted = True
-                elif ptype == "fatal":
+                status = acc.absorb(part)
+                if status == "fatal":
                     yield _ndjson_line(part)
                     return
                 yield _ndjson_line(part)
 
-            if interrupted:
+            if acc.interrupted:
                 return
 
-            resume_text = "".join(text_parts)
-            merged_traces = existing_traces + tool_traces if tool_traces else existing_traces
+            resume_text = acc.assistant_text
+            merged_traces = existing_traces + acc.tool_traces if acc.tool_traces else existing_traces
             tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: merged_traces} if merged_traces else None
 
             if last_asst is not None:

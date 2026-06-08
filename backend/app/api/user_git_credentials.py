@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_jwt_sub
 from app.api.auth import require_auth
 from app.database import get_db
 from app.models.user_git_credential import UserGitCredential
@@ -18,14 +19,6 @@ router = APIRouter(
     tags=["user-git-credentials"],
     dependencies=[Depends(require_agents_feature)],
 )
-
-
-def _get_sub(request: Request) -> str:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not sub.strip():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return sub
 
 
 def _to_out(row: UserGitCredential) -> UserGitCredentialResponse:
@@ -42,7 +35,7 @@ def _to_out(row: UserGitCredential) -> UserGitCredentialResponse:
 
 @router.get("", response_model=list[UserGitCredentialResponse], dependencies=[Depends(require_auth)])
 async def list_credentials(request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     r = await db.execute(
         select(UserGitCredential).where(UserGitCredential.user_sub == sub).order_by(UserGitCredential.created_at.desc())
     )
@@ -55,7 +48,7 @@ async def create_credential(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     row = UserGitCredential(
         user_sub=sub,
         provider=body.provider.strip(),
@@ -72,7 +65,7 @@ async def create_credential(
 
 @router.delete("/{credential_id}", status_code=204, dependencies=[Depends(require_auth)])
 async def delete_credential(credential_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     row = await db.get(UserGitCredential, credential_id)
     if not row or row.user_sub != sub:
         raise HTTPException(status_code=404, detail="Credential not found")

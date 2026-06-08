@@ -14,19 +14,14 @@ export function ToolPillHead({ name, kind, running, expandable, icon }: Props) {
 
   return (
     <>
-      <Icon
-        size={12}
-        strokeWidth={2}
-        className="wiki-space-agent-panel__tool-pill-ico"
-        aria-hidden
-      />
-      <span className="wiki-space-agent-panel__tool-pill-kind">{kind}</span>
-      {running ? <span className="wiki-space-agent-panel__tool-pill-running">…</span> : null}
+      <Icon size={12} strokeWidth={2} className="agents-stream__tool-pill-ico" aria-hidden />
+      <span className="agents-stream__tool-pill-kind">{kind}</span>
+      {running ? <span className="agents-stream__tool-pill-running">…</span> : null}
       {expandable ? (
         <ChevronRight
           size={12}
           strokeWidth={2}
-          className="wiki-space-agent-panel__tool-pill-chevron"
+          className="agents-stream__tool-pill-chevron"
           aria-hidden
         />
       ) : null}

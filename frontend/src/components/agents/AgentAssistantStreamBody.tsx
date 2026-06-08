@@ -9,6 +9,7 @@ import {
 } from '../wiki/agentStreamToolDisplay';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import { WikiAgentMessageBody } from '../wiki/WikiAgentMessageBody';
+import './AgentStream.scss';
 
 interface Props {
   streamParts?: AssistantStreamPart[];
@@ -30,17 +31,11 @@ function ToolIoBlock({
   const displayOutput = formatToolOutputForDisplay(name, output);
 
   return (
-    <div className="wiki-space-agent-panel__tool-io">
-      {displayInput ? (
-        <pre className="wiki-space-agent-panel__tool-pre">{displayInput}</pre>
-      ) : null}
-      {displayOutput ? (
-        <pre className="wiki-space-agent-panel__tool-pre">{displayOutput}</pre>
-      ) : null}
+    <div className="agents-stream__tool-io">
+      {displayInput ? <pre className="agents-stream__tool-pre">{displayInput}</pre> : null}
+      {displayOutput ? <pre className="agents-stream__tool-pre">{displayOutput}</pre> : null}
       {error ? (
-        <pre className="wiki-space-agent-panel__tool-pre wiki-space-agent-panel__tool-pre--err">
-          {error}
-        </pre>
+        <pre className="agents-stream__tool-pre agents-stream__tool-pre--err">{error}</pre>
       ) : null}
     </div>
   );
@@ -54,21 +49,17 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
 
   if (!expandable) {
     return (
-      <div className="wiki-space-agent-panel__tool-row">
-        <div className="wiki-space-agent-panel__tool-pill-line">
-          <ToolPillHead
-            name={step.name}
-            kind={kind}
-            running={step.status === 'running'}
-          />
+      <div className="agents-stream__tool-row">
+        <div className="agents-stream__tool-pill-line">
+          <ToolPillHead name={step.name} kind={kind} running={step.status === 'running'} />
         </div>
       </div>
     );
   }
 
   return (
-    <details className="wiki-space-agent-panel__tool-row wiki-space-agent-panel__tool-row--expand">
-      <summary className="wiki-space-agent-panel__tool-pill-line">
+    <details className="agents-stream__tool-row agents-stream__tool-row--expand">
+      <summary className="agents-stream__tool-pill-line">
         <ToolPillHead
           name={step.name}
           kind={kind}
@@ -82,24 +73,19 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
 }
 
 function SubagentRow({ part }: { part: Extract<AssistantStreamPart, { type: 'subagent' }> }) {
-  const { t } = useTranslation('wikiSpace');
+  const { t } = useTranslation('agents');
   const { step } = part;
 
   return (
-    <div className="wiki-space-agent-panel__tool-row wiki-space-agent-panel__tool-row--subagent">
-      <div className="wiki-space-agent-panel__tool-pill-line">
-        <Bot
-          size={12}
-          strokeWidth={2}
-          className="wiki-space-agent-panel__tool-pill-ico"
-          aria-hidden
-        />
-        <span className="wiki-space-agent-panel__tool-pill-kind">{t('copilot.subagentLabel')}</span>
-        <span className="wiki-space-agent-panel__tool-pill-detail" title={step.label}>
+    <div className="agents-stream__tool-row agents-stream__tool-row--subagent">
+      <div className="agents-stream__tool-pill-line">
+        <Bot size={12} strokeWidth={2} className="agents-stream__tool-pill-ico" aria-hidden />
+        <span className="agents-stream__tool-pill-kind">{t('stream.subagentLabel')}</span>
+        <span className="agents-stream__tool-pill-detail" title={step.label}>
           {step.label}
         </span>
         {step.status === 'running' ? (
-          <span className="wiki-space-agent-panel__tool-pill-running">…</span>
+          <span className="agents-stream__tool-pill-running">…</span>
         ) : null}
       </div>
     </div>
@@ -107,19 +93,17 @@ function SubagentRow({ part }: { part: Extract<AssistantStreamPart, { type: 'sub
 }
 
 export function AgentAssistantStreamBody({ streamParts, fallbackText = '' }: Props) {
-  const { t } = useTranslation('wikiSpace');
+  const { t } = useTranslation('agents');
 
   if (!streamParts?.length) {
     return <WikiAgentMessageBody text={fallbackText} variant="assistant" />;
   }
 
   return (
-    <div className="wiki-space-agent-panel__assistant-stream" aria-label={t('copilot.replyAria')}>
+    <div className="agents-stream__body" aria-label={t('stream.replyAria')}>
       {streamParts.map((part, i) => {
         if (part.type === 'text') {
-          return (
-            <WikiAgentMessageBody key={`t-${i}`} text={part.text} variant="assistant" />
-          );
+          return <WikiAgentMessageBody key={`t-${i}`} text={part.text} variant="assistant" />;
         }
         if (part.type === 'subagent') {
           return <SubagentRow key={part.step.id} part={part} />;

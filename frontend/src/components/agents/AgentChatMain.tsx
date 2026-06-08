@@ -2,12 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, RefreshCw } from 'lucide-react';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
+import { PERSISTED_AGENT_MESSAGE_ID } from './agentConstants';
 import { AgentInterruptBar } from './AgentInterruptBar';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
-import '../wiki/WikiSpaceAgentPanel.scss';
 import './AgentsWorkspace.scss';
-
-const PERSISTED_MSG_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -110,7 +108,7 @@ export function AgentChatMain({
               {m.role === 'user' ? (
                 <div className="agents-chat-msg-user-col">
                   <div className="agents-chat-msg-body">{m.content}</div>
-                  {onRevertUserMessage && m.id && PERSISTED_MSG_ID.test(m.id) ? (
+                  {onRevertUserMessage && m.id && PERSISTED_AGENT_MESSAGE_ID.test(m.id) ? (
                     <div className="agents-chat-msg-revert">
                       <button
                         type="button"

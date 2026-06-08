@@ -22,6 +22,7 @@ from app.api.agent import (
     _msg_to_out,
     _ndjson_line,
 )
+from app.api.deps import get_jwt_sub
 from app.api.auth import require_auth, require_permission
 from app.api.knowledge_bases import get_kb_scoped
 from app.config import settings
@@ -51,14 +52,6 @@ router = APIRouter(tags=["knowledge-bases"])
 KB_READ_DEPS = [Depends(require_permission(PERM_KB_READ))]
 
 KB_QA_SOURCES_KEY = "kb_qa_sources_v1"
-
-
-def _get_sub(request: Request) -> str:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not sub.strip():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return sub
 
 
 def _conv_to_out(c: AgentConversation) -> AgentConversationResponse:
@@ -147,7 +140,7 @@ async def list_kb_agent_conversations(
     db: AsyncSession = Depends(get_db),
 ):
     _ = kb
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     r = await db.execute(
         select(AgentConversation)
         .where(
@@ -175,7 +168,7 @@ async def create_kb_agent_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     _ = kb
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     c = AgentConversation(
         id=str(uuid.uuid4()),
         user_sub=sub,
@@ -202,7 +195,7 @@ async def delete_kb_agent_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     _ = kb
-    c = await _get_kb_conversation(db, conversation_id, _get_sub(request), kb_id)
+    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
     await db.delete(c)
     await db.flush()
 
@@ -221,7 +214,7 @@ async def patch_kb_agent_conversation(
     db: AsyncSession = Depends(get_db),
 ):
     _ = kb
-    c = await _get_kb_conversation(db, conversation_id, _get_sub(request), kb_id)
+    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
     if body.title is not None:
         c.title = body.title
     await db.flush()
@@ -244,7 +237,7 @@ async def list_kb_agent_messages(
     db: AsyncSession = Depends(get_db),
 ):
     _ = kb
-    await _get_kb_conversation(db, conversation_id, _get_sub(request), kb_id)
+    await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
     total = (
         await db.execute(
             select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation_id)
@@ -280,7 +273,7 @@ async def delete_kb_agent_messages_from(
     db: AsyncSession = Depends(get_db),
 ):
     _ = kb
-    c = await _get_kb_conversation(db, conversation_id, _get_sub(request), kb_id)
+    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
     r = await db.execute(
         select(AgentMessage.id)
         .where(AgentMessage.conversation_id == conversation_id)
@@ -601,7 +594,7 @@ async def post_kb_agent_message(
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    c = await _get_kb_conversation(db, conversation_id, _get_sub(request), kb_id)
+    c = await _get_kb_conversation(db, conversation_id, get_jwt_sub(request), kb_id)
     if not kb.agent_url:
         raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
 

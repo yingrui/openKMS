@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_jwt_sub
 from app.api.auth import require_auth, require_permission
 from app.database import get_db
 from app.models.project import Project
@@ -53,14 +54,6 @@ router = APIRouter(
 )
 
 
-def _get_sub(request: Request) -> str:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not sub.strip():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return sub
-
-
 def _to_out(p: Project) -> ProjectResponse:
     return ProjectResponse(
         id=p.id,
@@ -84,7 +77,7 @@ async def _get_owned_project(db: AsyncSession, project_id: str, sub: str) -> Pro
 
 @router.get("", response_model=list[ProjectResponse], dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
 async def list_projects(request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     r = await db.execute(
         select(Project).where(Project.user_sub == sub).order_by(Project.updated_at.desc())
     )
@@ -93,7 +86,7 @@ async def list_projects(request: Request, db: AsyncSession = Depends(get_db)):
 
 @router.post("", response_model=ProjectResponse, status_code=201, dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))])
 async def create_project(request: Request, body: ProjectCreate, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     r = await db.execute(select(Project.slug).where(Project.user_sub == sub))
     existing = {row[0] for row in r.all()}
     slug = body.slug.strip() if body.slug else make_slug(body.name, existing)
@@ -124,7 +117,7 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
 
 @router.get("/{project_id}", response_model=ProjectResponse, dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
 async def get_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     return _to_out(await _get_owned_project(db, project_id, sub))
 
 
@@ -135,7 +128,7 @@ async def update_project(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     if body.name is not None:
         p.name = body.name.strip()
@@ -158,7 +151,7 @@ async def update_project(
 
 @router.delete("/{project_id}", status_code=204, dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))])
 async def delete_project(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     root = project_root(project_id)
     if root.exists():
@@ -178,7 +171,7 @@ async def list_files(
     path: str = Query(default=""),
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     entries = list_dir(project_id, path)
     return ProjectFileListResponse(path=path, entries=entries)
@@ -195,7 +188,7 @@ async def get_file_content(
     path: str = Query(min_length=1),
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     data = read_file(project_id, path)
     return ProjectFileContentResponse(**data)
@@ -211,7 +204,7 @@ async def put_file_content(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     write_file(project_id, body.path, body.content)
     return {"ok": True, "path": body.path}
@@ -228,7 +221,7 @@ async def upload_project_file(
     path: str = Query(default=""),
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     saved = await fs_upload(project_id, path, file)
     return {"path": saved}
@@ -244,7 +237,7 @@ async def delete_project_file(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     delete_path(project_id, body.path)
     return {"ok": True}
@@ -255,7 +248,7 @@ async def delete_project_file(
     dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
 )
 async def get_settings(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     return p.settings or {}
 
@@ -270,7 +263,7 @@ async def patch_settings(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     merged = {**(p.settings or {}), **body}
     p.settings = merged
@@ -284,7 +277,7 @@ async def patch_settings(
     dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
 )
 async def git_init(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     git_service.git_init(project_id, p.settings or {})
     p.git_initialized = True
@@ -298,7 +291,7 @@ async def git_init(project_id: str, request: Request, db: AsyncSession = Depends
     dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
 )
 async def git_status(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     data = git_service.git_status(project_id)
     return GitStatusResponse(**data)
@@ -315,7 +308,7 @@ async def git_log(
     limit: int = Query(default=10, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_owned_project(db, project_id, sub)
     return GitLogResponse(entries=git_service.git_log(project_id, limit=limit))
 
@@ -330,7 +323,7 @@ async def git_commit(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_owned_project(db, project_id, sub)
     if body.paths:
         git_service.git_add(project_id, body.paths)
@@ -355,7 +348,7 @@ def _creator_from_request(request: Request) -> tuple[str | None, str | None]:
     dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
 )
 async def list_project_skills(project_id: str, request: Request, db: AsyncSession = Depends(get_db)):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     project = await _get_owned_project(db, project_id, sub)
     installed = (project.settings or {}).get("installed_skills") or {}
     items: list[ProjectInstalledSkillOut] = []
@@ -388,7 +381,7 @@ async def install_project_skill(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     project = await _get_owned_project(db, project_id, sub)
     created_by, created_by_name = _creator_from_request(request)
     meta = await install_skill_to_project(
@@ -413,7 +406,7 @@ async def uninstall_project_skill(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     project = await _get_owned_project(db, project_id, sub)
     await uninstall_skill_from_project(db, project, validate_skill_id(skill_id))
 

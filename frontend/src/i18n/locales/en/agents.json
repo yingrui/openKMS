@@ -117,6 +117,10 @@
     "revertOk": "Messages removed — edit and resend when ready",
     "revertFailed": "Could not revert messages"
   },
+  "stream": {
+    "replyAria": "Agent reply",
+    "subagentLabel": "Subagent"
+  },
   "files": {
     "title": "Project files",
     "allFiles": "All files",

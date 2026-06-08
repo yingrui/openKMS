@@ -81,15 +81,13 @@ import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
+import { applyCopilotStreamEvent } from '../../components/agents/agentStreamState';
 import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
 import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
 import {
-  appendDeltaToStreamParts,
-  updateToolInParts,
   assistantHistoryStreamParts,
   type AssistantStreamPart,
 } from '../../components/wiki/wikiCopilotStreamParts';
-import '../../components/wiki/WikiSpaceAgentPanel.scss';
 import './KnowledgeBaseDetail.scss';
 
 type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'settings';
@@ -1301,129 +1299,8 @@ export function KnowledgeBaseDetail() {
           if (startedKb !== kbIdRef.current) return;
           if (ev.type === 'user') {
             streamPersistedUserId = ev.message.id;
-            setChatMessages((prev) =>
-              prev.map((p) => (p.id === tempUserId ? { ...p, id: ev.message.id } : p))
-            );
-            return;
           }
-          if (ev.type === 'tool_start') {
-            setChatMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                return {
-                  ...p,
-                  streamParts: [
-                    ...(p.streamParts || []),
-                    {
-                      type: 'tool' as const,
-                      step: {
-                        runId: ev.run_id,
-                        name: ev.name,
-                        input: ev.input,
-                        status: 'running' as const,
-                      },
-                    },
-                  ],
-                };
-              })
-            );
-            return;
-          }
-          if (ev.type === 'tool_end') {
-            setChatMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                const { next, updated } = updateToolInParts(p.streamParts, ev.run_id, (s) => ({
-                  ...s,
-                  name: ev.name,
-                  output: ev.output,
-                  status: 'ok' as const,
-                }));
-                const sp = updated
-                  ? next
-                  : [
-                      ...next,
-                      {
-                        type: 'tool' as const,
-                        step: {
-                          runId: ev.run_id,
-                          name: ev.name,
-                          output: ev.output,
-                          status: 'ok' as const,
-                        },
-                      },
-                    ];
-                return { ...p, streamParts: sp };
-              })
-            );
-            return;
-          }
-          if (ev.type === 'tool_error') {
-            setChatMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                const { next, updated } = updateToolInParts(p.streamParts, ev.run_id, (s) => ({
-                  ...s,
-                  name: ev.name,
-                  error: ev.error,
-                  status: 'err' as const,
-                }));
-                const sp = updated
-                  ? next
-                  : [
-                      ...next,
-                      {
-                        type: 'tool' as const,
-                        step: {
-                          runId: ev.run_id,
-                          name: ev.name,
-                          error: ev.error,
-                          status: 'err' as const,
-                        },
-                      },
-                    ];
-                return { ...p, streamParts: sp };
-              })
-            );
-            return;
-          }
-          if (ev.type === 'delta') {
-            if (!ev.t) return;
-            setChatMessages((prev) =>
-              prev.map((p) => {
-                if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                return {
-                  ...p,
-                  content: p.content + ev.t,
-                  streamParts: appendDeltaToStreamParts(p.streamParts, ev.t),
-                };
-              })
-            );
-            return;
-          }
-          if (ev.type === 'done' && 'message' in ev && 'user' in ev) {
-            setChatMessages((prev) => {
-              const without = prev.filter(
-                (p) => p.id !== asstStreamId && p.id !== ev.user.id && p.id !== tempUserId
-              );
-              const streamed = prev.find((p) => p.id === asstStreamId);
-              const parts = streamed?.role === 'assistant' ? streamed.streamParts : undefined;
-              return [
-                ...without,
-                { id: ev.user.id, role: 'user' as const, content: userText },
-                {
-                  id: ev.message.id,
-                  role: 'assistant' as const,
-                  content: ev.message.content,
-                  sources: ev.sources,
-                  streamParts: parts && parts.length > 0 ? parts : undefined,
-                  replyKey: ev.message.id,
-                },
-              ];
-            });
-            return;
-          }
-          if (ev.type === 'done') {
+          if (ev.type === 'done' && !('user' in ev)) {
             setChatMessages((prev) => {
               const next = [...prev];
               for (let i = next.length - 1; i >= 0; i--) {
@@ -1453,8 +1330,8 @@ export function KnowledgeBaseDetail() {
                         content: ev.message.content,
                         replyKey: ev.message.id,
                       }
-                    : p
-                )
+                    : p,
+                ),
               );
               return;
             }
@@ -1469,7 +1346,36 @@ export function KnowledgeBaseDetail() {
               }
               return next;
             });
+            return;
           }
+          applyCopilotStreamEvent<ChatMessage>(ev, { asstStreamId, userTempId: tempUserId, userText }, {
+            setLines: setChatMessages,
+            getText: (p) => p.content,
+            setText: (p, text) => ({ ...p, content: text }),
+            onDone: (prev, { userText: savedText, streamed, ev: doneEv, asstStreamId: aId, userTempId: uId }) => {
+              const kbDone = doneEv as Extract<typeof ev, { type: 'done' }> & {
+                user: { id: string };
+                message: { id: string; content: string };
+                sources?: SearchResult[];
+              };
+              const without = prev.filter(
+                (p) => p.id !== aId && p.id !== kbDone.user.id && (uId == null || p.id !== uId),
+              );
+              const parts = streamed?.role === 'assistant' ? streamed.streamParts : undefined;
+              return [
+                ...without,
+                { id: kbDone.user.id, role: 'user' as const, content: savedText },
+                {
+                  id: kbDone.message.id,
+                  role: 'assistant' as const,
+                  content: kbDone.message.content,
+                  sources: kbDone.sources,
+                  streamParts: parts && parts.length > 0 ? parts : undefined,
+                  replyKey: kbDone.message.id,
+                },
+              ];
+            },
+          });
         },
         { signal: ac.signal, session_id: qaTraceSessionRef.current ?? undefined }
       );

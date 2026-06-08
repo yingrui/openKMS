@@ -11,7 +11,6 @@ theme:
   name: material
   language: en
   features:
-    - navigation.instant
     - navigation.tracking
     - navigation.indexes
     - navigation.top
@@ -45,6 +44,71 @@ theme:
     view: material/eye
 
 plugins:
+  - i18n:
+      fallback_to_default: true
+      reconfigure_material: true
+      reconfigure_search: true
+      languages:
+        - locale: en
+          name: English
+          default: true
+          build: true
+        - locale: zh
+          name: 简体中文
+          build: true
+          site_name: openKMS
+          site_description: 开放知识管理系统 — 文档、文章、知识库、维基与问答。
+          theme:
+            language: zh
+            palette:
+              - media: "(prefers-color-scheme: light)"
+                toggle:
+                  name: 切换到深色模式
+              - media: "(prefers-color-scheme: dark)"
+                toggle:
+                  name: 切换到浅色模式
+          nav_translations:
+            Home: 首页
+            Goals (vision): 目标与愿景
+            Quickstart: 快速开始
+            Architecture: 架构
+            Features: 功能
+            Index: 索引
+            Knowledge types: 知识类型
+            Infrastructure & quality: 基础设施与质量
+            Documents: 文档
+            Articles: 文章
+            Knowledge bases: 知识库
+            Wiki spaces: 维基空间
+            Evaluation: 评测
+            Glossaries: 术语表
+            Knowledge map & home: 知识地图与首页
+            Global search: 全局搜索
+            Ontology — objects, links, datasets: 本体 — 对象、关系与数据集
+            Pipelines, jobs & models: 流水线、任务与模型
+            Data security: 数据安全
+            Console & authentication: 控制台与认证
+            Agents (project workspaces): Agent（项目工作区）
+            OpenCode skill (openkms): OpenCode 技能（openkms）
+            API reference: API 参考
+            Data models: 数据模型
+            Configuration: 配置
+            Security: 安全
+            Operations: 运维
+            Docker: Docker
+            Developer: 开发者
+            Setup: 环境搭建
+            Doc conventions for AI agents: AI 代理文档规范
+            Roadmap: 路线图
+            Development plan: 开发计划
+            Tech debt: 技术债
+            Wiki agent prototype: 维基 Agent 原型
+            Research: 研究
+            LLM wiki vs openKMS: LLM wiki 与 openKMS
+            RAGFlow vs openKMS: RAGFlow 与 openKMS
+            Confluence AI vs openKMS: Confluence AI 与 openKMS
+            KM dimension — Operational Knowledge Fitness: 知识管理维度 — 运营知识健康度
+            Text content evaluation: 文本内容评测
   - search
 
 markdown_extensions:

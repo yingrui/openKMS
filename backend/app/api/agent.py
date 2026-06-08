@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_jwt_sub
 from app.api.auth import require_permission
 from app.database import get_db
 from app.models.agent_models import AgentConversation, AgentMessage
@@ -40,14 +41,6 @@ from app.services.agent.wiki_runner import (
 )
 
 router = APIRouter(prefix="/agent", tags=["agent"])
-
-
-def _get_sub(request: Request) -> str:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not sub.strip():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return sub
 
 
 async def _ensure_wiki_in_context(
@@ -123,7 +116,7 @@ async def create_conversation(
     body: AgentConversationCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     if body.surface != "wiki_space":
         raise HTTPException(status_code=400, detail="Only surface 'wiki_space' is supported")
     w_id = (body.context or {}).get("wiki_space_id")
@@ -162,7 +155,7 @@ async def list_conversations(
     if not w:
         raise HTTPException(status_code=400, detail="wiki_space_id is required")
     await _ensure_wiki_in_context(request, db, w)
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     r = await db.execute(
         select(AgentConversation)
         .where(
@@ -186,7 +179,7 @@ async def delete_conversation(
     conversation_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    c = await _get_conversation_for_user(db, conversation_id, get_jwt_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if isinstance(w_id, str) and w_id:
         await _ensure_wiki_in_context(request, db, w_id)
@@ -205,7 +198,7 @@ async def patch_conversation(
     body: AgentConversationUpdate,
     db: AsyncSession = Depends(get_db),
 ):
-    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    c = await _get_conversation_for_user(db, conversation_id, get_jwt_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if isinstance(w_id, str) and w_id:
         await _ensure_wiki_in_context(request, db, w_id)
@@ -235,7 +228,7 @@ async def get_conversation(
     conversation_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    c = await _get_conversation_for_user(db, conversation_id, get_jwt_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if isinstance(w_id, str) and w_id:
         await _ensure_wiki_in_context(request, db, w_id)
@@ -254,7 +247,7 @@ async def list_conversation_messages(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    c = await _get_conversation_for_user(db, conversation_id, get_jwt_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if isinstance(w_id, str) and w_id:
         await _ensure_wiki_in_context(request, db, w_id)
@@ -294,7 +287,7 @@ async def delete_conversation_messages_from(
     Remove this message and all messages after it in chronological order.
     The user can then re-send (text is pre-filled in the client from the removed user line).
     """
-    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    c = await _get_conversation_for_user(db, conversation_id, get_jwt_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if isinstance(w_id, str) and w_id:
         await _ensure_wiki_in_context(request, db, w_id)
@@ -486,7 +479,7 @@ async def post_conversation_message(
     body: AgentMessageCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    c = await _get_conversation_for_user(db, conversation_id, _get_sub(request))
+    c = await _get_conversation_for_user(db, conversation_id, get_jwt_sub(request))
     w_id = (c.context or {}).get("wiki_space_id")
     if not isinstance(w_id, str) or not w_id.strip():
         raise HTTPException(status_code=400, detail="Invalid conversation context")

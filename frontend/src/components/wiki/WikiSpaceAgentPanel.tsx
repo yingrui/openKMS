@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { Bot, ChevronsRight, MessageCirclePlus, RefreshCw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AgentAssistantStreamBody } from '../agents/AgentAssistantStreamBody';
+import { PERSISTED_AGENT_MESSAGE_ID } from '../agents/agentConstants';
+import { applyCopilotStreamEvent } from '../agents/agentStreamState';
 import {
   createAgentConversation,
   deleteAgentConversation,
@@ -22,9 +24,7 @@ import {
   type WikiAgentSkill,
 } from './wikiAgentSkills';
 import {
-  appendDeltaToStreamParts,
   assistantHistoryStreamParts,
-  updateToolInParts,
   type AssistantStreamPart,
 } from './wikiCopilotStreamParts';
 import './WikiSpaceAgentPanel.scss';
@@ -46,7 +46,7 @@ const INTRO: ChatLine = {
 };
 
 /** Server-persisted agent row ids (uuid from API). */
-const PERSISTED_AGENT_MSG_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const PERSISTED_AGENT_MSG_ID = PERSISTED_AGENT_MESSAGE_ID;
 
 export type WikiSpaceAgentPanelProps = {
   spaceId: string;
@@ -387,149 +387,13 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
             if (startedInSpace !== spaceIdRef.current) return;
             if (e.type === 'user') {
               streamPersistedUserIdRef.current = e.message.id;
-              setLines((prev) =>
-                prev.map((p) => (p.id === tempUserId ? { ...p, id: e.message.id } : p))
-              );
-              return;
             }
-            if (e.type === 'tool_start') {
-              setLines((prev) =>
-                prev.map((p) => {
-                  if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                  return {
-                    ...p,
-                    streamParts: [
-                      ...(p.streamParts || []),
-                      {
-                        type: 'tool' as const,
-                        step: {
-                          runId: e.run_id,
-                          name: e.name,
-                          input: e.input,
-                          status: 'running' as const,
-                        },
-                      },
-                    ],
-                  };
-                })
-              );
-              return;
-            }
-            if (e.type === 'tool_end') {
-              setLines((prev) =>
-                prev.map((p) => {
-                  if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                  const { next, updated } = updateToolInParts(
-                    p.streamParts,
-                    e.run_id,
-                    (s) => ({
-                      ...s,
-                      name: e.name,
-                      output: e.output,
-                      status: 'ok' as const,
-                    })
-                  );
-                  const sp = updated
-                    ? next
-                    : [
-                        ...next,
-                        {
-                          type: 'tool' as const,
-                          step: {
-                            runId: e.run_id,
-                            name: e.name,
-                            output: e.output,
-                            status: 'ok' as const,
-                          },
-                        },
-                      ];
-                  return { ...p, role: 'assistant' as const, streamParts: sp };
-                })
-              );
-              return;
-            }
-            if (e.type === 'tool_error') {
-              setLines((prev) =>
-                prev.map((p) => {
-                  if (p.id !== asstStreamId || p.role !== 'assistant') return p;
-                  const { next, updated } = updateToolInParts(
-                    p.streamParts,
-                    e.run_id,
-                    (s) => ({
-                      ...s,
-                      name: e.name,
-                      error: e.error,
-                      status: 'err' as const,
-                    })
-                  );
-                  const sp = updated
-                    ? next
-                    : [
-                        ...next,
-                        {
-                          type: 'tool' as const,
-                          step: {
-                            runId: e.run_id,
-                            name: e.name,
-                            error: e.error,
-                            status: 'err' as const,
-                          },
-                        },
-                      ];
-                  return { ...p, role: 'assistant' as const, streamParts: sp };
-                })
-              );
-              return;
-            }
-            if (e.type === 'delta') {
-              if (!e.t) return;
-              setLines((prev) =>
-                prev.map((p) => {
-                  if (p.id !== asstStreamId) return p;
-                  if (p.role !== 'assistant') return p;
-                  return {
-                    ...p,
-                    text: p.text + e.t,
-                    streamParts: appendDeltaToStreamParts(p.streamParts, e.t),
-                  };
-                })
-              );
-              return;
-            }
-            if (e.type === 'done') {
-              setLines((prev) => {
-                // After `user`, the optimistic user row uses `e.user.id`, not `tempUserId`; strip both
-                // so we do not append a duplicate user beside the streamed placeholder.
-                const without = prev.filter(
-                  (p) =>
-                    p.id !== asstStreamId && p.id !== e.user.id && p.id !== tempUserId
-                );
-                const streamed = prev.find((p) => p.id === asstStreamId);
-                const parts =
-                  streamed && streamed.role === 'assistant' ? streamed.streamParts : undefined;
-                return [
-                  ...without,
-                  { id: e.user.id, role: 'user', text: userText },
-                  {
-                    id: e.message.id,
-                    role: 'assistant',
-                    text: e.message.content,
-                    streamParts: parts,
-                  },
-                ];
-              });
-              return;
-            }
-            if (e.type === 'error') {
-              setLines((prev) =>
-                prev.map((p) =>
-                  p.id === asstStreamId
-                    ? { ...p, id: e.message.id, text: e.message.content }
-                    : p
-                )
-              );
-            }
-        },
+            applyCopilotStreamEvent(e, { asstStreamId, userTempId: tempUserId, userText }, {
+              setLines,
+              getText: (p) => p.text,
+              setText: (p, text) => ({ ...p, text }),
+            });
+          },
           { signal: ac.signal }
         );
         if (startedInSpace === spaceIdRef.current) void loadConversations();

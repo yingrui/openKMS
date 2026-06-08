@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_jwt_sub
 from app.api.auth import require_permission
 from app.database import get_db
 from app.models.project import Project
@@ -14,14 +15,6 @@ from app.services.deep_agents import git_service
 from app.services.permission_catalog import PERM_PROJECTS_WRITE
 
 router = APIRouter()
-
-
-def _get_sub(request: Request) -> str:
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if not isinstance(sub, str) or not sub.strip():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    return sub
 
 
 async def _get_project(db: AsyncSession, project_id: str, sub: str) -> Project:
@@ -53,7 +46,7 @@ async def git_clone(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     p = await _get_project(db, project_id, sub)
     username, token = await _resolve_credential(db, sub, body.credential_id)
     git_service.git_clone_into_project(project_id, body.url, username=username, token=token)
@@ -72,7 +65,7 @@ async def git_remote(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_project(db, project_id, sub)
     if not body.url.startswith("https://"):
         raise HTTPException(status_code=400, detail="Only HTTPS remotes are supported")
@@ -90,7 +83,7 @@ async def git_pull(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_project(db, project_id, sub)
     username, token = await _resolve_credential(db, sub, body.credential_id)
     out = git_service.git_pull(project_id, username, token)
@@ -107,7 +100,7 @@ async def git_push(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    sub = _get_sub(request)
+    sub = get_jwt_sub(request)
     await _get_project(db, project_id, sub)
     username, token = await _resolve_credential(db, sub, body.credential_id)
     out = git_service.git_push(project_id, username, token)
