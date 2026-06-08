@@ -88,7 +88,9 @@ install_to() {
   fi
   mkdir -p "$(dirname "${dest}")"
   rm -rf "${dest}"
-  cp -R "${ROOT}" "${dest}"
+  # shellcheck source=sync-skill-tree.sh
+  source "${ROOT}/sync-skill-tree.sh"
+  sync_skill_tree "${ROOT}" "${dest}"
   if [[ -n "${config_backup}" ]]; then
     mv "${config_backup}" "${dest}/config.yml"
     echo "Restored existing ${dest}/config.yml"

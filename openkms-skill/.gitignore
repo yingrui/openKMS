@@ -5,3 +5,6 @@ config.yml
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# package output
+dist/

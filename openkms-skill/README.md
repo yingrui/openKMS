@@ -2,7 +2,8 @@
 
 Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills), [Claude Code](https://claude.com/claude-code), or any LLM agent talk to an **openKMS** deployment over its public HTTP API. One personal API key in `config.yml`, every command JSON-prints the raw response so the agent can chain calls.
 
-- **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; pass `--target opencode|claude-code|both` or `--dest <path>` to override). Re-running upgrades the tree but **preserves your `config.yml`**.
+- **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
+- **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
 - **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). [`reference.md`](reference.md) maps each CLI to HTTP for operators and code review, not for agents to bypass the CLI.
 

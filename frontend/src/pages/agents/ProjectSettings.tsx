@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bot, Loader2, Settings } from 'lucide-react';
+import { ArrowLeft, Bot, Loader2, Puzzle, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getProject,
@@ -28,7 +28,7 @@ import {
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectSettings.scss';
 
-type TabId = 'general' | 'agent';
+type TabId = 'general' | 'agent' | 'skills';
 
 export function ProjectSettings() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -50,8 +50,8 @@ export function ProjectSettings() {
   const [error, setError] = useState<string | null>(null);
   const [registrySkills, setRegistrySkills] = useState<AgentSkill[]>([]);
   const [installedSkills, setInstalledSkills] = useState<ProjectInstalledSkill[]>([]);
-  const [openkmsVersion, setOpenkmsVersion] = useState('');
-  const [skillActionLoading, setSkillActionLoading] = useState(false);
+  const [selectedVersions, setSelectedVersions] = useState<Record<string, string>>({});
+  const [skillActionLoading, setSkillActionLoading] = useState<string | null>(null);
 
   const connectorKindLabels = useMemo(() => {
     const map = new Map<string, string>();
@@ -63,6 +63,7 @@ export function ProjectSettings() {
     () => [
       { id: 'general' as const, label: t('settings.tabGeneral'), icon: Settings },
       { id: 'agent' as const, label: t('settings.tabAgent'), icon: Bot },
+      { id: 'skills' as const, label: t('settings.tabSkills'), icon: Puzzle },
     ],
     [t],
   );
@@ -88,50 +89,55 @@ export function ProjectSettings() {
         setConnectorKinds(kinds);
         setRegistrySkills(skills);
         setInstalledSkills(installed);
-        const openkms = installed.find((s) => s.skill_id === 'openkms');
-        setOpenkmsVersion(openkms?.version ?? '');
+        const versions: Record<string, string> = {};
+        for (const row of installed) {
+          versions[row.skill_id] = row.version;
+        }
+        setSelectedVersions(versions);
       })
       .catch((e) => toast.error(String(e)))
       .finally(() => setLoading(false));
   }, [projectId]);
 
-  const openkmsRegistry = registrySkills.find((s) => s.id === 'openkms');
-  const openkmsInstalled = installedSkills.find((s) => s.skill_id === 'openkms');
-
   const refreshInstalled = async () => {
     const installed = await listProjectSkills(projectId);
     setInstalledSkills(installed);
-    const openkms = installed.find((s) => s.skill_id === 'openkms');
-    setOpenkmsVersion(openkms?.version ?? '');
+    setSelectedVersions((prev) => {
+      const next = { ...prev };
+      for (const row of installed) {
+        next[row.skill_id] = row.version;
+      }
+      return next;
+    });
     const p = await getProject(projectId);
     setProject(p);
     setAgentJson(JSON.stringify(p.settings, null, 2));
   };
 
-  const onInstallOpenkms = async () => {
-    setSkillActionLoading(true);
+  const onInstallSkill = async (skill: AgentSkill) => {
+    setSkillActionLoading(skill.id);
     try {
-      await installProjectSkill(projectId, 'openkms', openkmsVersion || undefined);
-      toast.success(t('settings.skills.installSuccess', { skill: 'openkms' }));
+      await installProjectSkill(projectId, skill.id, selectedVersions[skill.id] || undefined);
+      toast.success(t('settings.skills.installSuccess', { skill: skill.display_name }));
       await refreshInstalled();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('settings.skills.installError'));
     } finally {
-      setSkillActionLoading(false);
+      setSkillActionLoading(null);
     }
   };
 
-  const onUninstallOpenkms = async () => {
-    if (!window.confirm(t('settings.skills.uninstallConfirm', { skill: 'openkms' }))) return;
-    setSkillActionLoading(true);
+  const onUninstallSkill = async (skill: AgentSkill) => {
+    if (!window.confirm(t('settings.skills.uninstallConfirm', { skill: skill.display_name }))) return;
+    setSkillActionLoading(skill.id);
     try {
-      await uninstallProjectSkill(projectId, 'openkms');
-      toast.success(t('settings.skills.uninstallSuccess', { skill: 'openkms' }));
+      await uninstallProjectSkill(projectId, skill.id);
+      toast.success(t('settings.skills.uninstallSuccess', { skill: skill.display_name }));
       await refreshInstalled();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('settings.skills.uninstallError'));
     } finally {
-      setSkillActionLoading(false);
+      setSkillActionLoading(null);
     }
   };
 
@@ -280,54 +286,6 @@ export function ProjectSettings() {
                 ) : null}
               </div>
             ) : null}
-            <div className="project-settings-field project-settings-skills">
-              <h3>{t('settings.skills.heading')}</h3>
-              <p className="project-settings-hint">{t('settings.skills.openkmsHint')}</p>
-              {openkmsInstalled ? (
-                <p className="project-settings-skills-status">
-                  {t('settings.skills.installed', {
-                    version: openkmsInstalled.version,
-                    hash: shortHash(openkmsInstalled.content_hash),
-                  })}
-                </p>
-              ) : (
-                <p className="project-settings-skills-status">{t('settings.skills.notInstalled')}</p>
-              )}
-              <div className="project-settings-skills-row">
-                <label htmlFor="openkms-version">{t('settings.skills.version')}</label>
-                <select
-                  id="openkms-version"
-                  value={openkmsVersion}
-                  onChange={(e) => setOpenkmsVersion(e.target.value)}
-                  disabled={!openkmsRegistry?.versions.length}
-                >
-                  <option value="">{t('settings.skills.defaultVersion')}</option>
-                  {(openkmsRegistry?.versions ?? []).map((v) => (
-                    <option key={v.id} value={v.version}>
-                      {v.version}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  disabled={skillActionLoading}
-                  onClick={() => void onInstallOpenkms()}
-                >
-                  {openkmsInstalled ? t('settings.skills.update') : t('settings.skills.install')}
-                </button>
-                {openkmsInstalled ? (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    disabled={skillActionLoading}
-                    onClick={() => void onUninstallOpenkms()}
-                  >
-                    {t('settings.skills.uninstall')}
-                  </button>
-                ) : null}
-              </div>
-            </div>
             <div className="project-settings-field">
               <label htmlFor="project-agent-json">{t('settings.agentJsonLabel')}</label>
               <textarea
@@ -342,20 +300,126 @@ export function ProjectSettings() {
           </section>
         ) : null}
 
+        {activeTab === 'skills' ? (
+          <section className="project-settings-section project-settings-skills-tab">
+            <h2>{t('settings.skills.heading')}</h2>
+            <p className="project-settings-hint project-settings-hint--intro">{t('settings.skills.hint')}</p>
+            {registrySkills.length === 0 ? (
+              <p className="project-settings-skills-empty">
+                {t('settings.skills.registryEmpty')}{' '}
+                <Link to="/agents/skills">{t('settings.skills.uploadSkills')}</Link>
+              </p>
+            ) : (
+              <div className="project-settings-skills-table-wrap">
+                <table className="project-settings-skills-table">
+                  <thead>
+                    <tr>
+                      <th>{t('settings.skills.colSkill')}</th>
+                      <th>{t('settings.skills.colStatus')}</th>
+                      <th>{t('settings.skills.colVersion')}</th>
+                      <th>{t('settings.skills.colActions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registrySkills.map((skill) => {
+                      const installed = installedSkills.find((s) => s.skill_id === skill.id);
+                      const loading = skillActionLoading === skill.id;
+                      return (
+                        <tr key={skill.id}>
+                          <td className="project-settings-skills-table-skill">
+                            <span className="project-settings-skills-table-name">{skill.display_name}</span>
+                            <code>{skill.id}</code>
+                          </td>
+                          <td>
+                            {installed ? (
+                              <span className="project-settings-skills-badge project-settings-skills-badge--installed">
+                                {t('settings.skills.statusInstalled')}
+                              </span>
+                            ) : (
+                              <span className="project-settings-skills-badge project-settings-skills-badge--missing">
+                                {t('settings.skills.statusNotInstalled')}
+                              </span>
+                            )}
+                            {installed ? (
+                              <span className="project-settings-skills-table-installed-meta">
+                                {t('settings.skills.installedMeta', {
+                                  version: installed.version,
+                                  hash: shortHash(installed.content_hash),
+                                })}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td>
+                            <select
+                              id={`skill-version-${skill.id}`}
+                              className="project-settings-skills-table-select"
+                              value={selectedVersions[skill.id] ?? ''}
+                              onChange={(e) =>
+                                setSelectedVersions((prev) => ({ ...prev, [skill.id]: e.target.value }))
+                              }
+                              disabled={!skill.versions.length || loading}
+                              aria-label={t('settings.skills.versionFor', { skill: skill.display_name })}
+                            >
+                              <option value="">{t('settings.skills.defaultVersion')}</option>
+                              {skill.versions.map((v) => (
+                                <option key={v.id} value={v.version}>
+                                  {v.version}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="project-settings-skills-table-actions">
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              disabled={loading || skill.versions.length === 0}
+                              onClick={() => void onInstallSkill(skill)}
+                            >
+                              {loading ? (
+                                <Loader2 size={14} className="project-settings-spinner" />
+                              ) : installed ? (
+                                t('settings.skills.update')
+                              ) : (
+                                t('settings.skills.install')
+                              )}
+                            </button>
+                            {installed ? (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                disabled={loading}
+                                onClick={() => void onUninstallSkill(skill)}
+                              >
+                                {t('settings.skills.uninstall')}
+                              </button>
+                            ) : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        ) : null}
+
         {error ? <p className="project-settings-error">{error}</p> : null}
 
-        <div className="project-settings-actions">
-          <button type="button" className="btn btn-primary" disabled={saving || !name.trim()} onClick={() => void save()}>
-            {saving ? (
-              <>
-                <Loader2 size={16} className="project-settings-spinner" />
-                {t('settings.saving')}
-              </>
-            ) : (
-              t('settings.save')
-            )}
-          </button>
-        </div>
+        {activeTab !== 'skills' ? (
+          <div className="project-settings-actions">
+            <button type="button" className="btn btn-primary" disabled={saving || !name.trim()} onClick={() => void save()}>
+              {saving ? (
+                <>
+                  <Loader2 size={16} className="project-settings-spinner" />
+                  {t('settings.saving')}
+                </>
+              ) : (
+                t('settings.save')
+              )}
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

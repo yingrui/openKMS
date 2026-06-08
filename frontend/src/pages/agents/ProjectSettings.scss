@@ -218,34 +218,95 @@
   }
 }
 
-.project-settings-skills h3 {
-  margin: 0 0 8px;
-  font-size: 1rem;
-}
-
-.project-settings-skills-status {
-  margin: 0 0 12px;
+.project-settings-skills-empty {
+  margin: 0;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
 }
 
-.project-settings-skills-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 10px;
+.project-settings-skills-table-wrap {
+  overflow-x: auto;
+}
 
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.8125rem;
-    min-width: 180px;
+.project-settings-skills-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
   }
 
-  select {
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--color-border);
+  th {
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+}
+
+.project-settings-skills-table-skill {
+  min-width: 160px;
+
+  .project-settings-skills-table-name {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  code {
+    font-size: 0.8125rem;
+    color: var(--color-text-secondary);
+  }
+}
+
+.project-settings-skills-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.project-settings-skills-badge--installed {
+  color: var(--color-success, #15803d);
+  background: color-mix(in srgb, var(--color-success, #15803d) 12%, transparent);
+}
+
+.project-settings-skills-badge--missing {
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+}
+
+.project-settings-skills-table-installed-meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.project-settings-skills-table-select {
+  min-width: 140px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.875rem;
+}
+
+.project-settings-skills-table-actions {
+  white-space: nowrap;
+
+  .btn {
+    margin-right: 8px;
+
+    &:last-child {
+      margin-right: 0;
+    }
   }
 }

@@ -25,8 +25,9 @@ frontend/src/data/examples/
 .env.local
 .env.*.local
 
-# Agent workspace project files (OPENKMS_PROJECTS_ROOT)
+# Agent runtime data (OPENKMS_PROJECTS_ROOT / OPENKMS_AGENT_SKILLS_ROOT)
 backend/data/projects/
+backend/data/agent-skills/
 
 # Logs
 *.log
