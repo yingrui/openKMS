@@ -83,7 +83,7 @@ import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
 import { applyCopilotStreamEvent } from '../../components/agents/agentStreamState';
 import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
-import { WikiAgentMessageBody } from '../../components/wiki/WikiAgentMessageBody';
+import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
 import {
   assistantHistoryStreamParts,
   type AssistantStreamPart,
@@ -1498,7 +1498,7 @@ export function KnowledgeBaseDetail() {
                             msg.role === 'user' ? 'kb-qa-msg-bubble kb-qa-msg-bubble--user' : 'kb-qa-msg-bubble kb-qa-msg-bubble--assistant'
                           }
                         >
-                          <WikiAgentMessageBody
+                          <AgentMessageBody
                             text={msg.content}
                             variant={msg.role === 'user' ? 'user' : 'assistant'}
                           />

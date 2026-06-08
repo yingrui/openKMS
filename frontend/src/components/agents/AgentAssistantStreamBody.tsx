@@ -1,6 +1,7 @@
 import { Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ToolPillHead } from './ToolPillHead';
+import { AgentMessageBody } from './AgentMessageBody';
 import {
   formatToolInputForDisplay,
   formatToolOutputForDisplay,
@@ -8,8 +9,7 @@ import {
   toolKindLabel,
 } from '../wiki/agentStreamToolDisplay';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
-import { WikiAgentMessageBody } from '../wiki/WikiAgentMessageBody';
-import './AgentStream.scss';
+import './AgentMessage.scss';
 
 interface Props {
   streamParts?: AssistantStreamPart[];
@@ -96,14 +96,14 @@ export function AgentAssistantStreamBody({ streamParts, fallbackText = '' }: Pro
   const { t } = useTranslation('agents');
 
   if (!streamParts?.length) {
-    return <WikiAgentMessageBody text={fallbackText} variant="assistant" />;
+    return <AgentMessageBody text={fallbackText} variant="assistant" />;
   }
 
   return (
-    <div className="agents-stream__body" aria-label={t('stream.replyAria')}>
+    <div className="agents-stream__assistant" aria-label={t('stream.replyAria')}>
       {streamParts.map((part, i) => {
         if (part.type === 'text') {
-          return <WikiAgentMessageBody key={`t-${i}`} text={part.text} variant="assistant" />;
+          return <AgentMessageBody key={`t-${i}`} text={part.text} variant="assistant" />;
         }
         if (part.type === 'subagent') {
           return <SubagentRow key={part.step.id} part={part} />;

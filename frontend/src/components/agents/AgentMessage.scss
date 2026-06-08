@@ -1,0 +1,295 @@
+/* Shared agent message markdown + stream/tool UI (project, KB Q&A; wiki copilot imports until removed). */
+
+.agents-msg__text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agents-msg__text--plain {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.agents-stream__assistant {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.agents-stream__tool-row {
+  align-self: stretch;
+  max-width: 100%;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.agents-stream__tool-row--expand > summary {
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.agents-stream__tool-row--expand > summary::-webkit-details-marker {
+  display: none;
+}
+
+.agents-stream__tool-row--expand[open] .agents-stream__tool-pill-chevron {
+  transform: rotate(90deg);
+}
+
+.agents-stream__tool-pill {
+  align-self: stretch;
+  max-width: 100%;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.agents-stream__tool-pill-line {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.15rem 0;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.agents-stream__tool-row--expand > summary:hover,
+.agents-stream__tool-row--expand > summary:focus-visible {
+  color: var(--color-text);
+}
+
+.agents-stream__tool-pill-ico {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  opacity: 0.7;
+}
+
+.agents-stream__tool-pill-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-secondary);
+}
+
+.agents-stream__tool-pill-kind {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.agents-stream__tool-pill-detail {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text-muted);
+}
+
+.agents-stream__tool-pill-hint {
+  flex-shrink: 0;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  opacity: 0.9;
+}
+
+.agents-stream__tool-pill-chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  transition: transform 0.15s ease;
+}
+
+.agents-stream__tool-pill-running {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.agents-stream__tool-row--subagent .agents-stream__tool-pill-kind {
+  color: var(--color-accent);
+}
+
+.agents-stream__tool-pill-badge {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: lowercase;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  color: var(--color-text-muted);
+}
+
+.agents-stream__tool-pill-badge--ok {
+  color: var(--color-accent-hover);
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+}
+
+.agents-stream__tool-pill-badge--err {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.agents-stream__tool-io {
+  margin: 0.15rem 0 0.35rem 1.1rem;
+}
+
+.agents-stream__tool-details {
+  margin-top: 0.35rem;
+}
+
+.agents-stream__tool-details > summary {
+  cursor: pointer;
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+  user-select: none;
+  list-style: none;
+}
+
+.agents-stream__tool-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.agents-stream__tool-pre {
+  margin: 0.25rem 0 0;
+  max-height: 10rem;
+  overflow: auto;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));
+  border: 1px solid var(--color-border);
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+.agents-stream__tool-pre--err {
+  color: var(--color-error);
+  border-color: var(--color-error-border);
+  background: var(--color-error-bg);
+}
+
+.agents-md {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.agents-md p:first-child,
+.agents-md p.agents-md__p:first-child {
+  margin-top: 0;
+}
+
+.agents-md p:last-child,
+.agents-md p.agents-md__p:last-child {
+  margin-bottom: 0;
+}
+
+.agents-md__p,
+.agents-md p {
+  margin: 0.4em 0;
+}
+
+.agents-md--user .agents-md__p:first-child,
+.agents-md--user p:first-child {
+  margin-top: 0;
+}
+
+.agents-md__a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.agents-md__pre {
+  margin: 0.45rem 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  overflow: auto;
+  max-width: 100%;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border: 1px solid var(--color-border);
+}
+
+.agents-md__code--inline {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+
+.agents-md__code--block {
+  display: block;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.78em;
+  white-space: pre;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.agents-md__ul,
+.agents-md__ol {
+  margin: 0.4em 0;
+  padding-left: 1.2rem;
+}
+
+.agents-md__li {
+  margin: 0.15em 0;
+}
+
+.agents-md__h1,
+.agents-md__h2,
+.agents-md__h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0.5em 0 0.25em;
+  line-height: 1.25;
+}
+
+.agents-md__h1 {
+  font-size: 0.95rem;
+}
+
+.agents-md__quote {
+  margin: 0.45rem 0;
+  padding: 0.4rem 0.55rem;
+  border-left: 3px solid var(--color-accent);
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.agents-md__table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0.4rem 0;
+}
+
+.agents-md__table {
+  width: 100%;
+  font-size: 0.75rem;
+  border-collapse: collapse;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.agents-md__th,
+.agents-md__td {
+  border: 1px solid var(--color-border);
+  padding: 0.3rem 0.45rem;
+  text-align: left;
+  vertical-align: top;
+}

@@ -1147,11 +1147,11 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   max-width: 100%;
 }
 
-.kb-qa-msg-bubble--user .wiki-agent-md {
+.kb-qa-msg-bubble--user .agents-md {
   color: inherit;
 }
 
-.kb-qa-msg-bubble--user .wiki-agent-md__a {
+.kb-qa-msg-bubble--user .agents-md__a {
   color: inherit;
   text-decoration: underline;
 }
@@ -1168,11 +1168,11 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 /* KB Q&A: keep tool rows compact and avoid full-thread-width “huge bars” */
-.kb-qa-assistant-stream.wiki-space-agent-panel__assistant-stream {
+.kb-qa-assistant-stream .agents-stream__assistant {
   gap: 0.35rem;
 }
 
-.kb-qa-assistant-stream .wiki-space-agent-panel__tool-pill {
+.kb-qa-assistant-stream .agents-stream__tool-pill {
   align-self: flex-start;
   max-width: min(100%, 42rem);
   padding: 0.3rem 0.45rem;
@@ -1180,7 +1180,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   font-size: 0.65rem;
 }
 
-.kb-qa-assistant-stream .wiki-space-agent-panel__tool-pill-name {
+.kb-qa-assistant-stream .agents-stream__tool-pill-name {
   font-size: 0.65rem;
 }
 

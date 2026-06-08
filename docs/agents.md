@@ -61,6 +61,17 @@ If a commit touches several layers, **stage the doc updates with the code commit
 3. Link to it from the closest existing page (usually [`index.md`](index.md) or [`functionalities.md`](functionalities.md)).
 4. Build locally (see below) before committing.
 
+## Multilingual docs (`mkdocs-static-i18n`)
+
+The site is built in **English** (default, served at `/`) and **简体中文** (served at `/zh/`). The [`i18n`](https://ultrabug.github.io/mkdocs-static-i18n/) plugin uses the **suffix** structure: English sources stay as `page.md`; add `page.zh.md` for a Chinese translation.
+
+- **Links** in markdown always omit the locale suffix — write `[Quickstart](quickstart.md)` in both `index.md` and `index.zh.md`; the plugin resolves the correct locale at build time.
+- **Untranslated pages** fall back to the English source on the `/zh/` site (`fallback_to_default: true`). Prefer translating entry pages (`index`, `quickstart`, `goals`) first; feature pages can follow incrementally.
+- **Navigation labels** for Chinese are in `mkdocs.yml` under `plugins → i18n → languages → zh → nav_translations`. Add a key there when you add a new `nav:` title.
+- **Do not** enable `theme.features: navigation.instant` — it breaks the Material language switcher with this plugin.
+
+When you add or rename a page, update English first, then add or refresh the matching `.zh.md` if one exists.
+
 ## Build the site locally
 
 ```bash

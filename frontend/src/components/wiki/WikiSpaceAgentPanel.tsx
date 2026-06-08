@@ -17,7 +17,7 @@ import {
   truncateAgentMessagesFromMessage,
   type AgentConversationResponse,
 } from '../../data/agentApi';
-import { WikiAgentMessageBody } from './WikiAgentMessageBody';
+import { AgentMessageBody } from '../agents/AgentMessageBody';
 import {
   filterWikiAgentSkills,
   getActiveSlash,
@@ -506,7 +506,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
                 className="wiki-space-agent-panel__msg wiki-space-agent-panel__msg--assistant wiki-space-agent-panel__msg--intro"
               >
                 <span className="wiki-space-agent-panel__msg-label">{t('copilot.labelCopilot')}</span>
-                <WikiAgentMessageBody text={t('copilot.intro')} variant="plain" />
+                <AgentMessageBody text={t('copilot.intro')} variant="plain" />
               </div>
             );
           }
@@ -521,7 +521,7 @@ export function WikiSpaceAgentPanel({ spaceId, spaceName, onRequestCollapse }: W
               {m.role === 'assistant' ? (
                 <AgentAssistantStreamBody streamParts={m.streamParts} fallbackText={m.text} />
               ) : (
-                <WikiAgentMessageBody text={m.text} variant="user" />
+                <AgentMessageBody text={m.text} variant="user" />
               )}
               {m.role === 'user' && PERSISTED_AGENT_MSG_ID.test(m.id) ? (
                 <div className="wiki-space-agent-panel__user-restart">

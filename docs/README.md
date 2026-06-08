@@ -1,6 +1,6 @@
 # openKMS docs
 
-The full, navigable docs are published at **<https://yingrui.github.io/openKMS/>**.
+The full, navigable docs are published at **<https://yingrui.github.io/openKMS/>** (English) and **<https://yingrui.github.io/openKMS/zh/>** (简体中文). Use the language switcher in the site header, or add a `.zh.md` suffix file next to any English page to translate it (see [Doc conventions — Multilingual docs](agents.md#multilingual-docs-mkdocs-static-i18n)).
 
 If you are reading this on GitHub, jump to:
 
