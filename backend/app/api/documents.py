@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, not_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
@@ -52,6 +52,7 @@ from app.services.document_scope import (
     load_document_scoped,
     require_document_read,
 )
+from app.services.document_lifecycle import document_current_sql
 from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
@@ -140,10 +141,11 @@ async def list_documents(
     channel_id: str | None = None,
     search: str | None = None,
     status: str | None = None,
+    applicable: bool | None = None,
     offset: int = 0,
     limit: int = 200,
 ):
-    """List documents, optionally filtered by channel, name search, or status. Supports pagination."""
+    """List documents, optionally filtered by channel, name search, status, or applicability. Supports pagination."""
     base_query = select(Document).options(
         load_only(
             Document.id,
@@ -166,8 +168,6 @@ async def list_documents(
     scope_pred = await document_list_predicate(db, request)
 
     if channel_id:
-        from sqlalchemy import and_
-
         try:
             ids_to_include = await channel_subtree_ids_for_list(
                 db,
@@ -204,6 +204,11 @@ async def list_documents(
                 detail=f"Invalid status {status!r}; expected one of: {', '.join(s.value for s in DocumentStatus)}",
             ) from e
         base_query = base_query.where(Document.status == status_val)
+
+    if applicable is not None:
+        at_expr = func.now()
+        current = document_current_sql(at_expr)
+        base_query = base_query.where(current if applicable else not_(current))
 
     count_query = select(func.count()).select_from(base_query.subquery())
     total_result = await db.execute(count_query)

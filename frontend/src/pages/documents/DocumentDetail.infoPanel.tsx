@@ -879,7 +879,7 @@ export function DocumentDetailInfoPanel({
                                         <tr key={r.id}>
                                           <td>{r.relation_type}</td>
                                           <td>
-                                            <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
+                                            <Link to={`/documents/view/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
                                           </td>
                                           <td>
                                             <button
@@ -914,7 +914,7 @@ export function DocumentDetailInfoPanel({
                                         <tr key={r.id}>
                                           <td>{r.relation_type}</td>
                                           <td>
-                                            <Link to={`/documents/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
+                                            <Link to={`/documents/view/${r.peer_document_id}`}>{r.peer_document_name || r.peer_document_id}</Link>
                                           </td>
                                         </tr>
                                       ))}

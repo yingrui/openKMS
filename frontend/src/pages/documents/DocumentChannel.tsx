@@ -64,6 +64,9 @@ const DOCUMENT_STATUS_FILTER_VALUES = [
 
 type DocumentStatusFilter = (typeof DOCUMENT_STATUS_FILTER_VALUES)[number];
 
+const APPLICABLE_FILTER_VALUES = ['', 'yes', 'no'] as const;
+type ApplicableFilter = (typeof APPLICABLE_FILTER_VALUES)[number];
+
 const fileTypeIcons: Record<string, typeof FileText> = {
   PDF: FileText,
   HTML: FileCode,
@@ -126,6 +129,7 @@ export function DocumentChannel() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<DocumentStatusFilter>('');
+  const [applicableFilter, setApplicableFilter] = useState<ApplicableFilter>('');
 
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
@@ -147,6 +151,8 @@ export function DocumentChannel() {
       const res = await fetchDocumentsByChannel(channelId, {
         search: debouncedSearch || undefined,
         status: statusFilter || undefined,
+        applicable:
+          applicableFilter === 'yes' ? true : applicableFilter === 'no' ? false : undefined,
         offset: docsPage * docsPageSize,
         limit: docsPageSize,
       });
@@ -159,7 +165,7 @@ export function DocumentChannel() {
     } finally {
       setDocsLoading(false);
     }
-  }, [channelId, debouncedSearch, statusFilter, docsPage, docsPageSize, t]);
+  }, [channelId, debouncedSearch, statusFilter, applicableFilter, docsPage, docsPageSize, t]);
 
   useEffect(() => {
     loadDocuments();
@@ -168,7 +174,7 @@ export function DocumentChannel() {
   useEffect(() => {
     setSelectedDocIds(new Set());
     setDocsPage(0);
-  }, [channelId, debouncedSearch, statusFilter]);
+  }, [channelId, debouncedSearch, statusFilter, applicableFilter]);
 
   useEffect(() => {
     if (docsTotal === 0) return;
@@ -520,6 +526,22 @@ export function DocumentChannel() {
     [t],
   );
 
+  const applicableFilterLabel = useCallback(
+    (value: ApplicableFilter) => {
+      switch (value) {
+        case '':
+          return t('channel.filterAllApplicable');
+        case 'yes':
+          return t('channel.filterApplicableYes');
+        case 'no':
+          return t('channel.filterApplicableNo');
+        default:
+          return value;
+      }
+    },
+    [t],
+  );
+
   if (loading) {
     return (
       <div className="documents">
@@ -620,6 +642,17 @@ export function DocumentChannel() {
             {DOCUMENT_STATUS_FILTER_VALUES.map((value) => (
               <option key={value || 'all'} value={value}>
                 {statusFilterLabel(value)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={t('channel.filterApplicableAria')}
+            value={applicableFilter}
+            onChange={(e) => setApplicableFilter(e.target.value as ApplicableFilter)}
+          >
+            {APPLICABLE_FILTER_VALUES.map((value) => (
+              <option key={value || 'all-applicable'} value={value}>
+                {applicableFilterLabel(value)}
               </option>
             ))}
           </select>
