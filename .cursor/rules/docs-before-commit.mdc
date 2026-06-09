@@ -17,4 +17,16 @@ If the user asks for a commit (or you are committing), review staged changes and
 
 `docs/functionalities.md` is the routing index — only edit it when adding or removing a feature page.
 
+## Multilingual docs (mkdocs-static-i18n)
+
+English pages (`docs/**/*.md` without a locale suffix) are the **source of truth**. Chinese pages (`*.zh.md`) are **translations** — update English first, then refresh the matching `.zh.md` when one exists. Markdown links omit the locale suffix (write `goals.md`, not `goals.zh.md`).
+
+## Verify before commit
+
+If staged changes touch `docs/**`, `mkdocs.yml`, or `docs/requirements.txt`, run before committing:
+
+```bash
+mkdocs build --strict --site-dir _site
+```
+
 Stage doc updates with the code commit.
