@@ -1,158 +1,154 @@
-# openKMS 的目标与要解决的业务问题
+# openKMS goals and business problems
 
-**北极星：** 让一线敢用、专家愿写、组织可管、Agent 可用。
+**North star:** *Frontline confidence · Expert contribution · Organizational governance · Agent readiness.*
 
-*North star:* *Frontline confidence · Expert contribution · Organizational governance · Agent readiness.*
+**Agent-ready** means discoverable, retrievable, answerable, and traceable—on knowledge that stays current, accurate, and permission-aware.
 
-**Agent 可用**指在知识保鲜、内容准确、安全可信的前提下，Agent 可发现、可检索、可作答、可溯源。
+This page explains openKMS direction from a **business and knowledge-engineering** perspective. Capabilities and implementation paths live in [Functionalities](functionalities.md), [Architecture](architecture.md), and [Development plan](development_plan.md) (shipped index, strategic priorities, backlog). Doc entry: [Home](index.md).
 
-*Agent-ready* means discoverable, retrievable, answerable, and traceable—on knowledge that stays current, accurate, and permission-aware.
+The narrative below has two layers—the same problem from two angles:
 
-本文从**业务与知识工程**角度说明 openKMS 希望达成的方向；具体能力与实现路径见 [Functionalities](functionalities.md)、[Architecture](architecture.md) 与 [Development plan](development_plan.md)（已交付索引、战略重点与 backlog）。文档入口见 [Home](index.md)。英文路线图见 [Development plan](development_plan.md)。
+| Lens | Question | In this doc |
+|------|----------|-------------|
+| **User** | What do I save daily, dare to use, and want to contribute? | [User perspective: pains and value](#goals-user-value) |
+| **Organization** | How does the company turn knowledge into governed, AI-ready assets? | [Organization: knowledge engineering and governance](#goals-organization) |
 
-下文分两层叙述，对应同一件事的两个视角：
+These are not separate “consumer vs enterprise” products—they are two demands on **one knowledge network**: individuals need **usability, trust, and time saved**; the organization needs **governance, traceability, and scale for agents**. Satisfying only one side undermines the whole.
 
-| 视角 | 问的是 | 本文中的位置 |
-|------|--------|----------------|
-| **用户侧** | 我（或我这个岗位）每天省了什么、敢用什么、愿意贡献什么 | [用户视角：痛点与价值](#goals-user-value) |
-| **组织侧** | 公司如何把知识变成可治理、可衔接 AI 的资产 | [组织侧：知识工程与治理](#goals-organization) |
+**Why both must hold**
 
-二者不是「先 C 端、后 B 端」的两套产品，而是**同一张知识网络**上的两种诉求：个人要**好用、可信、省时间**；组织要**可管、可追溯、可规模化给 Agent 用**。只满足一边，另一边会拖垮整体。
+- **Organization-only, users won’t adopt** — The library grows but maintenance stays with a few people; staff still ask colleagues or private AI chat.
+- **User-only, organization can’t underwrite** — Search feels fine, but without versions, lineage, and quality metrics, answers **can’t be used for compliance or rollout**; agents may cite stale material.
 
-**为什么必须同时成立**
+**How they reinforce each other**
 
-- **只有组织视角、用户不愿用** — 库在增长，维护却集中在少数人身上，业务人员仍问同事、问私聊 AI。
-- **只有用户视角、组织无法托底** — 体验上「搜得到」，但缺版本、血缘与质量度量时，**不敢用于合规、不能推广**，Agent 也可能引用过期材料。
-
-**二者如何互相支撑**
-
-- **取用**依赖组织侧的汇聚、结构、索引与权限；**贡献**依赖低摩擦工具与反馈（解析、评估、生命周期）。
-- **治理与 AI 就绪**必须落在真实工作流里；若专家与一线不日常进入系统，规则会与现实脱节。
+- **Retrieval** depends on org-side aggregation, structure, indexing, and permissions; **contribution** depends on low-friction tools and feedback (parsing, evaluation, lifecycle).
+- **Governance and AI readiness** must live in real workflows; if experts and frontline staff don’t enter the system daily, rules drift from reality.
 
 ---
 
-## 用户视角：痛点与价值 {#goals-user-value}
+## User perspective: pains and value {#goals-user-value}
 
-### 用户真正烦什么
+### What users actually struggle with
 
-| 痛点 | 日常表现 |
-|------|----------|
-| **遍寻无果** | 问同事、翻邮件、多个系统各搜一遍，仍不确定哪份是最新、最全的 |
-| **无征不信** | 检索结果或 AI 回答没有出处、版本不明，不敢用于对外解释或合规场景 |
-| **不知就里** | 新人/转岗不知道「这类事该看哪几份材料、术语什么意思、流程怎么走」 |
-| **无暇沉淀** | 专家心里有数，但写成 SOP/维基成本高，知识留在口头和私人文档里 |
-| **失效未觉** | 政策或产品规则已变，手里的培训稿、检查表、FAQ 是否仍有效，无人系统提醒 |
-| **秘而不宣** | 自己问 AI 得了答案，团队却仍在重复问；知识没有变成可复用资产 |
-
-这些多是**个人时间与风险**的问题，而不只是「公司缺一个 KMS」。
-
-### 按角色看价值主张（示例）
-
-| 角色 | 更关心的价值 |
+| Pain | Daily symptom |
 |------|----------------|
-| **业务人员**（销售、运营、客服、关务、单证等一线与后台支持岗） | 少问人、少重复劳动；**答案有出处、版本可信**；能分清「当前有效」与历史材料 |
-| **业务专家**（条线牵头人、SOP / 制度主责人、资深专家） | **低负担沉淀**（上传即解析、助手辅助起草）；贡献一次、多人与 Agent 复用 |
-| **知识管理员**（含 KM 运营、部门知识联络人 / Knowledge Champion） | **结构与运营**：通道与地图清晰、可评测、可治理；变更能波及待审；权限与共享可控 |
-| **法务合规人员** | 对外口径与制度依据可追溯；版本与生效区间清晰；避免引用失效条款 |
-| **内控与风险管理岗** | 审计线索、权限边界、关键材料可核查；降低「AI 或员工误用过时规定」的风险 |
-| **体系与标准管理岗**（质量、ISO、行业规范与程序文件主责） | **受控文件体系**：程序文件修订可追踪、与现场作业指导一致；与知识管理员的「运营编目」分工不同、需同一平台衔接 |
+| **Can’t find it** | Ask colleagues, search email, try multiple systems—still unsure which copy is latest or complete |
+| **No evidence to trust** | Search hits or AI answers lack sources or version clarity; can’t use them externally or for compliance |
+| **Don’t know the context** | New hires or role changes don’t know which materials apply, what terms mean, or how the process runs |
+| **No time to publish** | Experts know the answer but SOP/wiki authoring is costly; knowledge stays verbal or in private files |
+| **Stale without notice** | Policies or product rules changed; training decks, checklists, FAQs may be invalid—no system alert |
+| **Answers stay private** | Got an answer from AI alone; the team keeps asking the same thing; knowledge never becomes reusable |
 
-Console、连接器、评估等主要服务 **知识管理员** 及 **法务合规、内控、体系管理** 等岗位；**业务人员与业务专家** 的默认路径是否够短（例如问完能否沉淀为 FAQ/维基段落——见 [Development plan](development_plan.md)）决定系统能否持续有人贡献。
+These are mostly **personal time and risk** problems—not simply “the company needs a KMS.”
 
-### 取用知识，也要贡献知识
+### Value by role (examples)
 
-日常知识工作可以粗分为两类动作：
+| Role | Primary value |
+|------|----------------|
+| **Business staff** (sales, ops, support, customs, documentation, etc.) | Fewer interruptions; **answers with sources and trusted versions**; clear “currently valid” vs historical |
+| **Domain experts** (process owners, SOP/policy leads, senior specialists) | **Low-burden capture** (upload-and-parse, assistant-assisted drafting); contribute once, reuse by people and agents |
+| **Knowledge administrators** (KM ops, department champions) | **Structure and operations**: clear channels and map, evaluable and governable; changes trigger review; permissions and sharing |
+| **Legal & compliance** | Traceable external messaging and policy basis; clear version and effective intervals; avoid citing expired clauses |
+| **Internal control & risk** | Audit trails, permission boundaries, verifiable key materials; reduce “AI or staff applied obsolete rules” |
+| **Quality & standards** (ISO, industry norms, controlled procedures) | **Controlled document system**: traceable procedure revisions aligned with work instructions; complements admin “operational cataloging” on one platform |
 
-- **取用** — 找到材料、弄清背景、在权限范围内提问并核对依据  
-- **贡献** — 把结论写成可维护正文、校对解析结果、建立材料之间的关联、交付可引用的对外/对内内容、发现并修补语料缺口  
+Console, connectors, and evaluation mainly serve **knowledge administrators** and **legal, control, and standards** roles. Whether **business staff and experts** have short default paths (e.g. turn a Q&A into FAQ/wiki—see [Development plan](development_plan.md)) determines sustained contribution.
 
-只做好「取用」，系统会越用越空；只强调「贡献」，又缺反馈 loop，作者不知道写进去有没有人用、准不准。openKMS 需要两条线都短。
+### Retrieve knowledge—and contribute it
 
-| 动作 | 主要缓解的痛点 | 用户想完成的事 | openKMS 中的落点（已交付或方向） |
-|------|----------------|----------------|----------------------------------|
-| 查找 | 遍寻无果 | 有没有、在哪、哪条通道 | 全局搜索、通道与列表、知识地图入口、混合检索 |
-| 理解 | 不知就里 | 术语含义、领域结构、入门路径 | 维基、文章、术语表、知识地图、本体浏览 |
-| 提问 | 无征不信 | 带权限与出处的问答 | 知识库 Q&A、维基 Copilot |
-| 沉淀 | 无暇沉淀、秘而不宣 | 经验与结论进入可维护正文 | 维基、文章、文档解析后的可编辑 Markdown；共享与 ACL |
-| 校对 | 无征不信 | 机器读错时人工兜底、留版本 | 文档/文章版本、元数据编辑 |
-| 关联 | 失效未觉 | 说明替代、修订、参见等关系 | 文档血缘与生命周期、知识地图、本体 |
-| 交付 | 无征不信 | 对内培训或对外说明时有据可查 | 文章发布、可打印阅读视图、带引用的答复 |
-| 提质 | 失效未觉、无暇沉淀 | 知道哪里缺、哪里错、改完是否变好 | 评测集与对比运行（→ 改稿与补洞闭环见 [Development plan](development_plan.md)） |
+Daily knowledge work splits roughly into:
 
-### 用户痛点与组织侧支柱 {#goals-pain-map}
+- **Retrieve** — Find material, understand context, ask within permissions and verify basis  
+- **Contribute** — Write maintainable text, fix parse errors, link materials, deliver citable internal/external content, find and fill corpus gaps  
 
-| 用户痛点 | 组织侧主要落点 |
-|----------|----------------|
-| 遍寻无果 | [打破信息孤岛](#goals-unified-source)、[图书馆与导航](#goals-library) |
-| 无征不信 | [智能体知识服务](#goals-agent-service)、评测与出处（[Development plan](development_plan.md)） |
-| 不知就里 | [图书馆与导航](#goals-library)、术语表与知识地图 |
-| 无暇沉淀、秘而不宣 | [隐性经验显性化](#goals-tacit)、[应用内 Agent](#goals-agent-service) |
-| 失效未觉 | [规则保鲜与溯源](#goals-lifecycle) |
+Optimize retrieval alone and the system empties; push contribution alone without feedback loops and authors don’t know if anyone uses or trusts what they wrote. openKMS needs both paths short.
 
----
+| Action | Main pain relieved | User goal | openKMS surface (shipped or direction) |
+|--------|-------------------|-----------|----------------------------------------|
+| Find | Can’t find it | Does it exist, where, which channel | Global search, channels and lists, knowledge map entry, hybrid retrieval |
+| Understand | Don’t know context | Terms, domain structure, onboarding path | Wiki, articles, glossaries, knowledge map, ontology browse |
+| Ask | No evidence | Q&A with permissions and provenance | Knowledge base Q&A, Wiki Copilot |
+| Capture | No time / private answers | Experience and conclusions in maintainable text | Wiki, articles, editable Markdown after doc parse; sharing and ACL |
+| Correct | No evidence | Human fallback when machine misreads; keep versions | Document/article versions, metadata edit |
+| Relate | Stale without notice | Supersedes, amends, see-also relationships | Document lineage and lifecycle, knowledge map, ontology |
+| Deliver | No evidence | Training or external messaging with citations | Article publish, print views, cited replies |
+| Improve quality | Stale / no time | Know gaps, errors, whether fixes helped | Evaluation sets and compare runs (→ edit/ fill loop in [Development plan](development_plan.md)) |
 
-## 组织侧：知识工程与治理 {#goals-organization}
+### User pains vs organization pillars {#goals-pain-map}
 
-以下按 **知识从哪来 → 如何入库与编目 → 如何保鲜与加深使用 → 如何交付给人与 Agent** 展开，与上一节用户价值及 [痛点对照表](#goals-pain-map) 对应。
-
-### 打破组织级信息孤岛，成为 Data for AI 的统一知识源 {#goals-unified-source}
-
-**问题：** 邮件、网盘、旧 KMS、工单备注各自为政，高质量知识无法复用，模型与 Agent 缺少可信单一来源。
-
-**方向：** **汇聚多源内容、统一权限与血缘**，在合规前提下成为组织面向 **Data for AI** 的**统一知识层**之一——不替代所有业务库，而是把「可被 AI 安全消费的解释性知识与文档」集中编目与治理。
-
-**产品缺口：** [连接器](development_plan.md#connectors-high) — 实例与密钥可配置，**同步写入数据集的作业尚未交付**。
-
----
-
-### 海量非标业务文档的理解 {#goals-documents}
-
-**问题：** 企业里大量 **PDF、PPT、扫描件、混排图文** 格式不统一；机器要「读懂」需要版式与表格理解，且须有人工审阅闭环。
-
-**方向：** 文档通道、VLM 解析流水线与可编辑 Markdown，使「机器先读、人再兜底」成为常态。图像、音视频等证据型媒体的编目与检索见 [Development plan — Multimodal](development_plan.md#multimodal-models--media-high) 与 [Knowledge types — Rich media](features/knowledge-types.md#rich-media-and-3d)。
+| User pain | Organization pillar |
+|-----------|---------------------|
+| Can’t find it | [Break silos](#goals-unified-source), [Library and navigation](#goals-library) |
+| No evidence | [Agent knowledge service](#goals-agent-service), evaluation and provenance ([Development plan](development_plan.md)) |
+| Don’t know context | [Library and navigation](#goals-library), glossaries and knowledge map |
+| No time / private answers | [Tacit knowledge externalized](#goals-tacit), [In-product agents](#goals-agent-service) |
+| Stale without notice | [Lifecycle and provenance](#goals-lifecycle) |
 
 ---
 
-### 图书馆与导航员：AI 就绪的知识工程 {#goals-library}
+## Organization: knowledge engineering and governance {#goals-organization}
 
-**问题：** 「在知识的海洋里遨游」对人尚可碰运气，对 **AI Agent** 则需要**可导航的结构**。
+Below follows **where knowledge comes from → how it enters and is cataloged → how it stays fresh and is used → how it is delivered to people and agents**, aligned with user value above and the [pain map](#goals-pain-map).
 
-**方向：** 通道（channel）、文档/文章/维基/知识库分工、知识地图与本体，让人与机器都能**尽快定位到「这一类」知识**——**Agent 可用**的结构基础：有边界、有类型、有入口。
+### Break organizational silos; unified layer for Data for AI {#goals-unified-source}
 
----
+**Problem:** Email, file shares, legacy KMS, ticket notes stay separate—high-quality knowledge can’t be reused; models and agents lack a trusted single source.
 
-### 隐性经验的萃取与显性化 {#goals-tacit}
+**Direction:** **Aggregate multi-source content with unified permissions and lineage**—become one **unified knowledge layer** for **Data for AI** under compliance. Not replacing every business database, but cataloging and governing “explanatory knowledge and documents safe for AI consumption.”
 
-**问题：** 高价值知识仍在专家脑中（手感、例外、组合条件）；传统访谈写 SOP 成本高且滞后。
-
-**方向：** 在**不显著增加专家负担**的前提下，通过入库、解析、索引、评估与 Agent 辅助，把邮件、报告、纪要中的经验**沉淀为可检索、可版本化、可关联的结构**。
-
-**产品缺口：** [评估与质量改进](development_plan.md#evaluation--knowledge-quality-high) — 从失败项到改稿/补洞闭环仍在演进。
+**Product gap:** [Connectors](development_plan.md#connectors-high) — instances and secrets configurable; **sync jobs writing to datasets not shipped**.
 
 ---
 
-### 规则的动态保鲜与溯源 {#goals-lifecycle}
+### Understanding massive non-standard business documents {#goals-documents}
 
-**问题：** 政策、法规、合同条款一变，依赖它们的 SOP、清单、培训材料若不同步，**Agent 会按过时条文指挥**，风险比「不知道」更大。
+**Problem:** Enterprises hold **PDFs, decks, scans, mixed layouts** in inconsistent formats; machines need layout/table understanding plus human review loops.
 
-**方向：** 文档血缘与生命周期、生效区间与「当前是否可用于 RAG」；**一处变更，驱动关联材料被看见、更新或待审**（海关政策等场景为代表）。
-
-**产品缺口：** [规则变更影响](development_plan.md#policy--lifecycle-medium) — 生命周期字段已有，**变更影响工作流尚未产品化**。
+**Direction:** Document channels, VLM parse pipelines, editable Markdown—“machine reads first, human corrects” as default. Image/audio/video evidence cataloging: [Development plan — Multimodal](development_plan.md#multimodal-models--media-high) and [Knowledge types — Rich media](features/knowledge-types.md#rich-media-and-3d).
 
 ---
 
-### 从检索资料到驱动决策 {#goals-decision}
+### Library and navigator: AI-ready knowledge engineering {#goals-library}
 
-**问题：** Agent 不仅需要一段话，还要区分概念性、事实性、程序性知识，并对齐业务逻辑与动态数据。
+**Problem:** “Browsing the ocean of knowledge” may work for humans by luck; **AI agents** need **navigable structure**.
 
-**方向：** 检索为底座；**本体、知识地图、与业务数据的边界与接口**支撑从「查到」走向「能据此做判断」。
+**Direction:** Channels, document/article/wiki/KB division, knowledge map and ontology—people and machines **reach the right class of knowledge quickly**. Structural basis for **agent readiness**: boundaries, types, entry points.
 
 ---
 
-### 为智能体提供精准的知识服务 {#goals-agent-service}
+### Extract and externalize tacit expertise {#goals-tacit}
 
-**问题：** 同一问题在多个系统各问一遍，上下文碎片化，幻觉与反复追问增多。
+**Problem:** High-value knowledge stays in experts’ heads (heuristics, exceptions, compound conditions); traditional interview-to-SOP is slow and late.
 
-**方向：** 在权限范围内 **快、准、全** 地交付上下文：统一索引、混合检索、元数据过滤、API/工具（个人 API Key、CLI、[OpenCode skill](features/opencode-openkms-skill.md)）。**优先应用内助手**（维基 Copilot、知识库问答），外部技能作补充。
+**Direction:** Without heavy expert burden, use ingest, parse, index, evaluation, and agent assist to turn email, reports, and notes into **retrievable, versioned, linked structure**.
 
-**产品缺口：** [应用内 Agent](development_plan.md#in-product-agents-high) — 分场景助手已有，**尚无统一跨资源全局助手**（用户侧见 [User experience](development_plan.md#user-experience-high)）。
+**Product gap:** [Evaluation and quality improvement](development_plan.md#evaluation--knowledge-quality-high) — failure-item → edit/fill loop still evolving.
+
+---
+
+### Keep rules fresh and traceable {#goals-lifecycle}
+
+**Problem:** When policy, regulation, or contract terms change, dependent SOPs, checklists, and training that don’t sync mean **agents may act on obsolete text**—worse than not knowing.
+
+**Direction:** Document lineage and lifecycle, effective intervals, “currently usable for RAG”; **one change surfaces related material for update or review** (customs policy scenarios as exemplar).
+
+**Product gap:** [Policy change impact](development_plan.md#policy--lifecycle-medium) — lifecycle fields exist; **change-impact workflow not productized**.
+
+---
+
+### From retrieval to decisions {#goals-decision}
+
+**Problem:** Agents need more than a paragraph—conceptual vs factual vs procedural knowledge, aligned with business logic and live data.
+
+**Direction:** Retrieval as foundation; **ontology, knowledge map, and boundaries with operational data** support moving from “found it” to “can decide from it.”
+
+---
+
+### Precise knowledge service for agents {#goals-agent-service}
+
+**Problem:** Same question asked across systems; fragmented context, hallucination, repeated clarification.
+
+**Direction:** Within permissions, deliver context **fast, accurate, and complete**: unified index, hybrid search, metadata filters, API/tools (personal API keys, CLI, [OpenCode skill](features/opencode-openkms-skill.md)). **In-product assistants first** (Wiki Copilot, KB Q&A); external skills as supplement.
+
+**Product gap:** [In-product agents](development_plan.md#in-product-agents-high) — scenario assistants exist; **no unified cross-resource global assistant yet** (user side: [User experience](development_plan.md#user-experience-high)).

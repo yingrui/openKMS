@@ -20,7 +20,7 @@ Most organizations already have files, wikis, and AI chat. The gap is **one plac
 
 openKMS treats those as **one network**, not separate “KM for humans” and “RAG for bots.” If governance exists but nobody uses the system—or if search works but answers cannot be trusted for compliance—both sides fail.
 
-North star: [Goals](goals.md) — *Frontline confidence · Expert contribution · Organizational governance · Agent readiness* (让一线敢用、专家愿写、组织可管、Agent 可用).
+North star: [Goals](goals.md) — *Frontline confidence · Expert contribution · Organizational governance · Agent readiness*.
 
 ## What you build in openKMS
 
@@ -40,7 +40,7 @@ Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
 
 | If you want to… | Read |
 |---|---|
-| Understand **why** openKMS exists (vision & business problems; Chinese) | [Goals & vision](goals.md) |
+| Understand **why** openKMS exists (vision & business problems) | [Goals & vision](goals.md) |
 | Try it locally with Docker or on the host | [Quickstart](quickstart.md) |
 | Understand the system | [Architecture](architecture.md) · [Functionalities](functionalities.md) |
 | Find a specific feature or API | [Functionalities](functionalities.md) → `features/*.md` |

@@ -1,6 +1,6 @@
 # openKMS Development Plan
 
-Business **why** and long-form narrative: [Goals (vision)](goals.md) (Chinese) — [user vs organization](goals.md) framing (same knowledge network; personal **retrieve / contribute** vs enterprise **governance / AI-ready**). This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
+Business **why** and long-form narrative: [Goals (vision)](goals.md) — [user vs organization](goals.md) framing (same knowledge network; personal **retrieve / contribute** vs enterprise **governance / AI-ready**). This page tracks **what is shipped**, **strategic priorities**, and **backlog**.
 
 ## How priorities map to Goals {#goals-mapping}
 

@@ -282,7 +282,7 @@ flowchart TB
 
 - Not a systematic review on par with arXiv:2310.02235; focused on strands most relevant to **markdown articles/wiki + RAG**.  
 - LLM-judge reliability varies by model, language, and domain—always calibrate on local gold samples.  
-- **Multilingual** enterprise content: Wikipedia models trained primarily on English; Chinese or mixed corpora need separate validation ([Goals](../goals.md) is Chinese; eval copy may be EN/zh-CN in UI).
+- **Multilingual** enterprise content: Wikipedia models trained primarily on English; Chinese or mixed corpora need separate validation (see [Goals](../goals.md) / [Goals (zh)](../goals.zh.md); eval copy may be EN/zh-CN in UI).
 
 ---
 

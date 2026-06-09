@@ -239,7 +239,7 @@ Without implying implementation commitment:
 | RAGFlow roadmap 2026 | https://github.com/infiniflow/ragflow/issues/12241 |
 | openKMS architecture | [architecture.md](../architecture.md) |
 | openKMS knowledge bases | [knowledge-bases.md](../features/knowledge-bases.md) |
-| openKMS goals (中文) | [goals.md](../goals.md) |
+| openKMS goals | [goals.md](../goals.md) |
 
 ---
 

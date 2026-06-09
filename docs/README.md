@@ -5,7 +5,7 @@ The full, navigable docs are published at **<https://yingrui.github.io/openKMS/>
 If you are reading this on GitHub, jump to:
 
 - [Home (index)](index.md) — entry, ports, where to read what, and research index.
-- [Goals (vision)](goals.md) — product direction (中文).
+- [Goals (vision)](goals.md) — product direction and north star.
 - [Quickstart](quickstart.md) — get it running locally.
 - [Architecture](architecture.md) — how the pieces fit together.
 - [Functionalities](functionalities.md) — every feature and API.
