@@ -15,7 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import invalidate_permission_catalog_cache, require_permission
 from app.database import get_db
 from app.models.security_permission import SecurityPermission
-from app.services.permission_catalog import PERM_CONSOLE_PERMISSIONS, PERM_ALL
+from app.services.permission_catalog import OPERATION_KEY_HINTS, PERM_CONSOLE_PERMISSIONS, PERM_ALL
+from app.services.permission_default_patterns import default_patterns_for_key
 from app.services.permission_pattern_cache import invalidate_permission_pattern_cache
 from app.services.security_permission_service import (
     get_permission_by_key,
@@ -82,11 +83,18 @@ def _normalize_key(raw: str) -> str:
     return raw.strip()
 
 
+def _hint_keys_for_category(category: str) -> list[str]:
+    return [h.key for h in OPERATION_KEY_HINTS if h.category == category]
+
+
 def _category_filter(category: str):
     if category == "admin":
         return SecurityPermission.key == PERM_ALL
     if category == "other":
         return ~SecurityPermission.key.contains(":")
+    hint_keys = _hint_keys_for_category(category)
+    if hint_keys:
+        return SecurityPermission.key.in_(hint_keys)
     return SecurityPermission.key.startswith(f"{category}:")
 
 
@@ -164,8 +172,12 @@ async def create_security_permission(
     _validate_key(key)
     if await get_permission_by_key(db, key):
         raise HTTPException(status_code=409, detail="A permission with this key already exists")
-    _validate_pattern_list("frontend_route_patterns", body.frontend_route_patterns)
-    _validate_pattern_list("backend_api_patterns", body.backend_api_patterns)
+    fe_patterns = list(body.frontend_route_patterns)
+    be_patterns = list(body.backend_api_patterns)
+    if not fe_patterns and not be_patterns:
+        fe_patterns, be_patterns = default_patterns_for_key(key)
+    _validate_pattern_list("frontend_route_patterns", fe_patterns)
+    _validate_pattern_list("backend_api_patterns", be_patterns)
     sort_order = body.sort_order
     if sort_order is None:
         sort_order = await next_sort_order(db)
@@ -174,8 +186,8 @@ async def create_security_permission(
         key=key,
         label=body.label.strip(),
         description=(body.description or "").strip() or None,
-        frontend_route_patterns=list(body.frontend_route_patterns),
-        backend_api_patterns=list(body.backend_api_patterns),
+        frontend_route_patterns=fe_patterns,
+        backend_api_patterns=be_patterns,
         sort_order=sort_order,
     )
     db.add(row)

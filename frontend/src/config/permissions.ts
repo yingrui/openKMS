@@ -12,3 +12,5 @@ export const PERM_CONSOLE_LINK_TYPES = 'console:link_types';
 export const PERM_CONSOLE_SETTINGS = 'console:settings';
 export const PERM_CONSOLE_GROUPS = 'console:groups';
 export const PERM_CONSOLE_PERMISSIONS = 'console:permissions';
+export const PERM_PROJECTS_READ = 'projects:read';
+export const PERM_PROJECTS_WRITE = 'projects:write';

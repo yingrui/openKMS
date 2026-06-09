@@ -32,6 +32,7 @@ Defined in [`backend/app/services/permission_catalog.py`](https://github.com/yin
 | Wiki | `wikis:read`, `wikis:write` |
 | Ontology | `ontology:read`, `ontology:write` |
 | Knowledge map | `knowledge_map:read`, `knowledge_map:write` |
+| Agents | `projects:read`, `projects:write` (projects, skills registry, agent chat; feature toggle `agents`) |
 | Catch-all | `all` (built-in admin key; cannot be edited or deleted) |
 
 ## Authentication

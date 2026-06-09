@@ -237,15 +237,15 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
     ),
     OperationKeyHint(
         PERM_PROJECTS_READ,
-        "View agent projects",
-        "List projects, read workspace files, and use agent chat.",
-        "content",
+        "View agents",
+        "List projects and skills, read workspace files, and use agent chat.",
+        "agents",
     ),
     OperationKeyHint(
         PERM_PROJECTS_WRITE,
-        "Manage agent projects",
-        "Create/update projects, upload files, run agent tools, and git operations.",
-        "content",
+        "Manage agents",
+        "Create/update projects and skills, upload files, run agent tools, and git operations.",
+        "agents",
     ),
 )
 
