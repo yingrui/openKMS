@@ -3,12 +3,12 @@ name: openkms
 description: >-
   Operates and queries an openKMS deployment over its HTTP API using a personal API key.
   Read paths: global search across documents/articles/wiki/KBs; list & fetch markdown for
-  documents and articles; list & get wiki pages by path; **wiki page substring/semantic search**; list wiki space stored files (vault .md, assets, uploads) and linked
+  documents and articles; list & get markdown for articles; **article LLM content review** (latest rubric scores + suggestions); list & get wiki pages by path; **wiki page substring/semantic search**; list wiki space stored files (vault .md, assets, uploads) and linked
   channel documents; KB semantic search and grounded
   Q&A; list glossaries and terms, export/import term payloads; Knowledge Map tree and resource links; document lineage (relationships)
   and policy lifecycle fields; article↔article relationship list/create/delete; list evaluations, items, and runs (including wiki content coverage when a wiki space is linked); run Cypher (or natural-language questions) against the ontology graph.
   Write paths: create channels, upload documents,
-  create articles (incl. from URL), upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
+  create articles (incl. from URL), **run article content review**, upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
   wiki↔documents, create KB FAQs and evaluations (update evaluation metadata and items in place), trigger evaluation runs;
   **re-index one linked wiki space into a KB** (or queue full KB index); glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
   lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
@@ -96,6 +96,7 @@ Some practical guidance:
 
 - **Document channels need a pipeline for PDF parse.** Uploading PDFs/images/Office to a channel without a default pipeline leaves documents stuck at `uploaded` — Process is disabled in the UI and `POST /api/jobs` fails. Before creating a channel for parseable files: run `pipelines list` (or `pipelines list --table`) to pick an **active** pipeline id, then `document-channels create --pipeline-id …` or set `default_pipeline_id` in `config.yml`. XLSX/XMind previews do not need a pipeline. To fix an existing channel: `document-channels update --id DC_ID --pipeline-id … --yes`.
 - **Discover before you fetch.** Most agent workflows start with `search` (or `documents list --search …` / `articles list --search …`) to find candidates by name, then a `get` / `markdown` to pull content. Don't fetch a whole channel just to grep — server-side `--search` is keyword-substring against names/titles.
+- **Article content review.** Channels can configure an LLM rubric (`review_model_id`, `review_prompt`, `review_criteria`). After a review exists, **`articles reviews latest --id ART_ID`** returns `result.pass`, `result.overall_score`, per-criterion scores/notes, and **`result.suggestions`** — use these to revise markdown. 404 means no review yet; run **`articles review run --id ART_ID --yes`** (needs channel review model). Review does not edit the article; you apply suggestions yourself.
 - **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is now **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches* with confidence scores. Lexical tokens like product codes (e.g. `WWY`, `MIL`) are heavily weighted via BM25, so `kb search --q "WWY 年化收益"` returns WWY-specific chunks even when the embedding alone wouldn't. First call per KB cold-starts the BM25 index (paginates all chunks/FAQs); subsequent calls are fast. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
 - **KB wiki indexing.** After **`wiki put-page`** (or bulk wiki edits), re-chunk into a linked KB with **`kb wiki-spaces reindex --kb-id KB_ID --space-id SP_ID --yes`** — replaces prior wiki chunks for that space only (one page ≈ one chunk when ≤8000 chars). Use **`kb wiki-spaces list --kb-id KB_ID`** to see linked spaces. Full document + all wiki spaces: **`kb index --id KB_ID --yes`**. Both return a **`JobResponse`** (`id`, `status`, …); poll **`/api/jobs/{id}`** or the Job runs UI for completion.
 - **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
@@ -122,6 +123,8 @@ Some practical guidance:
 | List articles (filter by channel/keyword) | `python scripts/cli.py articles list --channel-id ID --search "豁免"` |
 | List article lineage (outgoing + incoming edges) | `python scripts/cli.py articles relationships list --id ART_ID` |
 | Get article markdown | `python scripts/cli.py articles markdown --id ART_ID` |
+| Latest LLM content review (scores + suggestions) | `python scripts/cli.py articles reviews latest --id ART_ID` |
+| List recent content reviews | `python scripts/cli.py articles reviews list --id ART_ID --limit 10` |
 | List wiki pages in a space | `python scripts/cli.py wiki list-pages --space-id SP_ID` |
 | Search wiki pages (substring or semantic when indexed) | `python scripts/cli.py wiki pages semantic-matches --space-id SP_ID --q "onboarding" --top-k 10` |
 | List wiki space stored files (vault .md, assets, uploads; not attachments-only) | `python scripts/cli.py wiki files list --space-id SP_ID` |
@@ -175,6 +178,7 @@ Mutating commands below use `-y`/`--yes` and `--dry-run` like ontology writes (n
 | Update article channel | `python scripts/cli.py article-channels update --id AC_ID --parent-id PARENT_UUID --yes` |
 | Create article from a markdown file | `python scripts/cli.py articles create --channel-id ID --name "Title" --markdown-file ./x.md --yes` |
 | Import article from a URL (HTML → text heuristic) | `python scripts/cli.py articles from-url --channel-id ID --url https://example.com/a --yes` |
+| Run LLM content review (persist) | `python scripts/cli.py articles review run --id ART_ID --yes` |
 | Add article lineage edge (this article → other) | `python scripts/cli.py articles relationships create --id ART_ID --target-id OTHER_ID --relation-type supersedes --yes` |
 | Remove an outgoing article lineage edge | `python scripts/cli.py articles relationships delete --id ART_ID --relationship-id REL_ID --yes` |
 | List wiki spaces | `python scripts/cli.py wiki-spaces list` |
@@ -261,6 +265,15 @@ python scripts/cli.py articles list --channel-id <ch_id> --limit 200 \
 python scripts/cli.py kb wiki-spaces list --kb-id <kb_id>
 python scripts/cli.py kb wiki-spaces reindex --kb-id <kb_id> --space-id <space_id> --yes
 # → JobResponse with "id"; worker runs kb-index --wiki-space-id …
+```
+
+**F. Improve an article using the latest content review.**
+```bash
+python scripts/cli.py articles reviews latest --id <art_id>
+# → .result.suggestions[], .result.criteria[] (scores + notes), .result.pass, .result.summary
+# If 404: channel needs review_model_id — run review first:
+python scripts/cli.py articles review run --id <art_id> --yes
+python scripts/cli.py articles markdown --id <art_id>   # read body, apply suggestions, edit locally
 ```
 
 ## Reference

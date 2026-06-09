@@ -61,6 +61,9 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `articles markdown` | GET | `/api/articles/{id}` | Extracts `.markdown` for stdout/file. |
 | `articles create` | POST | `/api/articles` | Body `{channel_id, name, markdown, origin_article_id?}`. CLI accepts `--markdown` inline or `--markdown-file`. |
 | `articles from-url` | GET (external) + POST | `/api/articles` | CLI fetches the URL, simplifies HTML to text via regex heuristic, then POSTs. Sets `origin_article_id` to the source URL (truncated 512). |
+| `articles reviews latest` | GET | `/api/articles/{id}/reviews/latest` | Latest persisted LLM rubric review. `result`: `{overall_score, pass, summary, criteria[{id,label,score,notes}], suggestions[]}`. 404 when none yet. |
+| `articles reviews list` | GET | `/api/articles/{id}/reviews` | Query `limit?` (1–50, default 20). `{items:[ArticleReviewResponse…]}`. |
+| `articles review run` *(write)* | POST | `/api/articles/{id}/review` | Body optional `{model_id?, prompt?}`; uses channel `review_model_id` / `review_prompt` / `review_criteria` when omitted. Returns saved `ArticleReviewResponse`. |
 | `articles relationships list` | GET | `/api/articles/{id}/relationships` | `{outgoing:[{id, relation_type, peer_article_id, peer_article_name, note, created_at}], incoming:[…]}`. |
 | `articles relationships create` *(write)* | POST | `/api/articles/{id}/relationships` | Body `{target_article_id, relation_type, note?}`. Same `relation_type` set as documents (`supersedes`, `amends`, `implements`, `see_also`). |
 | `articles relationships delete` *(write)* | DELETE | `/api/articles/{id}/relationships/{relationship_id}` | **Outgoing only** (same rule as `documents relationships delete`). 204. |

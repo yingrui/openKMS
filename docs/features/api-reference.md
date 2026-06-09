@@ -328,6 +328,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/articles/{id}/relationships` | List outgoing and incoming article relationships |
 | POST | `/api/articles/{id}/relationships` | Create outgoing edge (`target_article_id`, `relation_type`, optional `note`) |
 | DELETE | `/api/articles/{id}/relationships/{relationship_id}` | Delete an outgoing relationship |
+| POST | `/api/articles/{id}/review` | Run LLM rubric review (channel `review_model_id` / `review_prompt` / `review_criteria`; optional body `model_id`, `prompt`); persists to `article_reviews` |
+| GET | `/api/articles/{id}/reviews` | List recent reviews (`limit` 1–50) |
+| GET | `/api/articles/{id}/reviews/latest` | Latest review (`result`: `overall_score`, `pass`, `summary`, `criteria[]`, `suggestions[]`); 404 if none |
 | GET | `/api/articles/{id}/attachments` | List attachments for an article |
 | POST | `/api/articles/{id}/attachments` | Upload attachment (multipart) |
 | DELETE | `/api/articles/{id}/attachments/{attachment_id}` | Delete attachment from MinIO + DB |

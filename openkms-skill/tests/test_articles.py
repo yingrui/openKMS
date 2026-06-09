@@ -110,6 +110,46 @@ def test_articles_create_with_inline_markdown(mock_api):
     assert body == {"channel_id": "c1", "name": "Title", "markdown": "# md"}
 
 
+def test_articles_reviews_latest(mock_api):
+    recorded, responses = mock_api
+    responses[("GET", "/api/articles/a1/reviews/latest")] = (
+        200,
+        {
+            "id": "rev1",
+            "article_id": "a1",
+            "result": {
+                "pass": False,
+                "overall_score": 0.55,
+                "summary": "Needs citations.",
+                "criteria": [{"id": "clarity", "label": "Clarity", "score": 3, "notes": "ok"}],
+                "suggestions": ["Add sources"],
+            },
+            "created_at": "2026-01-01T00:00:00Z",
+        },
+    )
+
+    from openkms.commands.articles import cmd_reviews_latest
+
+    cmd_reviews_latest(argparse.Namespace(id="a1"))
+    assert recorded[-1].url.path == "/api/articles/a1/reviews/latest"
+
+
+def test_articles_review_run_yes(mock_api):
+    recorded, responses = mock_api
+    responses[("POST", "/api/articles/a1/review")] = (
+        200,
+        {"id": "rev2", "article_id": "a1", "result": {"pass": True, "overall_score": 0.9}},
+    )
+
+    from openkms.commands.articles import cmd_review_run
+
+    cmd_review_run(
+        argparse.Namespace(id="a1", model_id="", prompt="", yes=True, dry_run=False)
+    )
+    assert recorded[-1].url.path == "/api/articles/a1/review"
+    assert recorded[-1].content is None or recorded[-1].content == b""
+
+
 def test_articles_markdown(mock_api, capsys):
     _, responses = mock_api
     responses[("GET", "/api/articles/a9")] = (200, {"id": "a9", "markdown": "## hi"})

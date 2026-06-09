@@ -154,6 +154,44 @@ def cmd_relationships_create(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_reviews_latest(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/articles/{ns.id}/reviews/latest")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_reviews_list(ns: argparse.Namespace) -> None:
+    params: dict[str, int] = {}
+    if ns.limit:
+        params["limit"] = ns.limit
+    with client() as s:
+        r = s.get(f"/api/articles/{ns.id}/reviews", params=params or None)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_review_run(ns: argparse.Namespace) -> None:
+    path = f"/api/articles/{ns.id}/review"
+    body: dict[str, Any] = {}
+    if ns.model_id:
+        body["model_id"] = ns.model_id
+    if ns.prompt:
+        body["prompt"] = ns.prompt
+    confirm_or_abort(
+        "run article content review (LLM rubric)",
+        "POST",
+        path,
+        body or None,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(path, json=body or None)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def cmd_relationships_delete(ns: argparse.Namespace) -> None:
     path = f"/api/articles/{ns.id}/relationships/{ns.relationship_id}"
     confirm_or_abort(
@@ -220,6 +258,28 @@ def add_subparser(sub) -> None:
     md.add_argument("--id", required=True)
     md.add_argument("--out", default="", help="Output file path; omit to print to stdout")
     md.set_defaults(fn=cmd_markdown)
+
+    rev = sp.add_parser(
+        "review",
+        help="LLM content review (channel rubric; requires review model on article channel)",
+    )
+    rvr = rev.add_subparsers(dest="ar_review_cmd", required=True)
+    rrun = rvr.add_parser("run", help="Run a new review and persist result")
+    rrun.add_argument("--id", required=True, dest="id", help="article id")
+    rrun.add_argument("--model-id", default="", help="override channel review_model_id")
+    rrun.add_argument("--prompt", default="", help="override channel review_prompt")
+    add_write_flags(rrun)
+    rrun.set_defaults(fn=cmd_review_run)
+
+    revs = sp.add_parser("reviews", help="Persisted content review history")
+    rvsp = revs.add_subparsers(dest="ar_reviews_cmd", required=True)
+    rvlatest = rvsp.add_parser("latest", help="Latest rubric review for an article")
+    rvlatest.add_argument("--id", required=True, dest="id", help="article id")
+    rvlatest.set_defaults(fn=cmd_reviews_latest)
+    rvlist = rvsp.add_parser("list", help="Recent reviews (newest first)")
+    rvlist.add_argument("--id", required=True, dest="id", help="article id")
+    rvlist.add_argument("--limit", type=int, default=0, help="max rows (server default 20, cap 50)")
+    rvlist.set_defaults(fn=cmd_reviews_list)
 
     rel = sp.add_parser(
         "relationships",
