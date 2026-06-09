@@ -197,7 +197,7 @@ async def patch_agent_skill(
             if r.scalar_one_or_none() is None:
                 raise HTTPException(status_code=400, detail="default_version does not exist")
         skill.default_version = dv
-    await db.refresh(skill)
+    await db.flush()
     return _skill_to_out(skill)
 
 
