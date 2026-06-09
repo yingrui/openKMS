@@ -60,6 +60,8 @@ HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar 
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
 
+**Langfuse (optional):** Same variables as [qa-agent](../features/knowledge-bases.md): **`LANGFUSE_SECRET_KEY`**, **`LANGFUSE_PUBLIC_KEY`**, and **`LANGFUSE_BASE_URL`** must all be set or tracing is off. Pass optional **`session_id`** on `POST …/messages` to group turns in one Langfuse **Session** (defaults to conversation id). Tags: `deep-agent`, `project-stream` \| `project-sync`, and `plan-mode` when applicable. **`LANGFUSE_HEALTHCHECK`** (default true) probes the host before callbacks; **`LANGFUSE_TRACE_STREAMING`** (default true) controls streaming turns.
+
 **Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector. Stored as `web_search` and `search_connector_id` in `projects.settings`.
 
 Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills` under the same volume or a sibling mount).

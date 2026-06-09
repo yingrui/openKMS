@@ -325,6 +325,7 @@ async def post_message(
                     project.description,
                     project.settings or {},
                     plan_mode=plan_mode,
+                    session_id=body.session_id,
                 ):
                     if acc.absorb(part) == "fatal":
                         yield _ndjson_line(part)
@@ -371,6 +372,7 @@ async def post_message(
         project.description,
         project.settings or {},
         plan_mode=plan_mode,
+        session_id=body.session_id,
     )
     asst = AgentMessage(
         id=new_id(),

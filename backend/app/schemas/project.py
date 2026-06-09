@@ -73,7 +73,11 @@ class ProjectConversationPatch(BaseModel):
 class ProjectMessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=48000)
     stream: bool = False
-    session_id: str | None = Field(default=None, max_length=256)
+    session_id: str | None = Field(
+        default=None,
+        max_length=256,
+        description="Opaque id for optional Langfuse Session grouping on Deep Agents; defaults to conversation id.",
+    )
     mode: str | None = Field(default=None, max_length=32)  # "plan" | "agent"
 
 

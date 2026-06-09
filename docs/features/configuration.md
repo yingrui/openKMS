@@ -87,10 +87,12 @@ Documents land under `{file_hash}/`; articles under `articles/{id}/`; wiki space
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies). Used by **Wiki Copilot** (LangChain) and **Knowledge Map Designer** (native OpenAI SDK + tool loop). **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 | `OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES` | `120` | Max prior `agent_messages` rows loaded into one embedded wiki agent turn (tail). |
 | `OPENKMS_AGENT_KB_QA_MAX_CONTEXT_MESSAGES` | `120` | Max prior messages included in **`conversation_history`** for one KB / evaluation / FAQ-assist qa-agent call. |
-| `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`**, also enables Langfuse on the **embedded wiki** agent (same keys as qa-agent). |
-| `LANGFUSE_PUBLIC_KEY` | unset | Langfuse public key (shared by wiki + qa-agent when both run in the same environment). |
-| `LANGFUSE_BASE_URL` / `LANGFUSE_HOST` | unset | Langfuse server URL. |
-| `LANGFUSE_TRACE_STREAMING` | `true` | Wiki agent: attach Langfuse callback to **streaming** turns when keys are set; set **false** to trace only non-streaming if OTel noise. |
+| `LANGFUSE_SECRET_KEY` | unset | With **`LANGFUSE_PUBLIC_KEY`** and **`LANGFUSE_BASE_URL`**, enables Langfuse on **Deep Agents** and the embedded wiki agent (same keys as qa-agent). |
+| `LANGFUSE_PUBLIC_KEY` | unset | Langfuse public key (shared by backend agents + qa-agent when both run in the same environment). |
+| `LANGFUSE_BASE_URL` / `LANGFUSE_HOST` | unset | Langfuse server URL. **Required** for tracing (same rule as qa-agent); if unset, no traces are sent. |
+| `LANGFUSE_TRACE_STREAMING` | `true` | Attach Langfuse callback to **streaming** agent turns when tracing is enabled; set **false** to trace only non-streaming if OTel noise. |
+| `LANGFUSE_HEALTHCHECK` | `true` | Probe `{base}/api/public/health` before attaching callbacks; also used by Console health. |
+| `LANGFUSE_HEALTHCHECK_RETRY_SECONDS` | `60` | Backoff between health probes while Langfuse is considered down. |
 
 ## QA agent (standalone ``qa-agent/`` service)
 

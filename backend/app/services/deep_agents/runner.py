@@ -25,6 +25,7 @@ from app.services.agent.wiki_runner import (
 from app.services.deep_agents.checkpointer import get_checkpointer
 from app.services.deep_agents.env import build_project_shell_env
 from app.services.deep_agents.hitl import interrupt_map
+from app.services.deep_agents.langfuse import build_deep_agent_langgraph_config
 from app.services.deep_agents.plan_mode import plan_mode_permissions
 from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
 from app.services.deep_agents.prompts import build_project_system_prompt
@@ -146,11 +147,21 @@ async def _build_agent(
     return agent, None
 
 
-def _runnable_config(conversation_id: str, *, thread_id: str | None = None) -> dict:
-    return {
-        "configurable": {"thread_id": thread_id or conversation_id},
-        "recursion_limit": settings.agent_recursion_limit,
-    }
+def _runnable_config(
+    conversation_id: str,
+    *,
+    thread_id: str | None = None,
+    session_id: str | None = None,
+    streaming: bool = False,
+    plan_mode: bool = False,
+) -> dict:
+    return build_deep_agent_langgraph_config(
+        conversation_id=conversation_id,
+        session_id=session_id,
+        streaming=streaming,
+        plan_mode=plan_mode,
+        thread_id=thread_id,
+    )
 
 
 def _interrupt_payload(value: Any) -> dict[str, Any]:
@@ -210,8 +221,9 @@ async def iter_project_stream_parts(
     project_settings: dict,
     *,
     plan_mode: bool = False,
+    session_id: str | None = None,
 ) -> AsyncIterator[ProjectStreamPart]:
-    del jwt_payload  # reserved for future tracing hooks
+    del jwt_payload
     rows = list(conversation.messages)
     rows.sort(key=lambda m: (m.created_at, m.id))
     messages = _lc_messages_from_db(rows)
@@ -228,7 +240,12 @@ async def iter_project_stream_parts(
     if err or not agent:
         yield {"type": "fatal", "message": err or "Agent failed to initialize"}
         return
-    cfg = _runnable_config(conversation.id)
+    cfg = _runnable_config(
+        conversation.id,
+        session_id=session_id,
+        streaming=True,
+        plan_mode=plan_mode,
+    )
     any_text = False
     try:
         async for part in iter_langgraph_stream_parts(agent, {"messages": messages}, cfg):
@@ -268,6 +285,7 @@ async def run_project_turn(
     project_settings: dict,
     *,
     plan_mode: bool = False,
+    session_id: str | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     del jwt_payload
     rows = list(conversation.messages)
@@ -285,7 +303,12 @@ async def run_project_turn(
     )
     if err or not agent:
         return err or "Agent failed to initialize", None
-    cfg = _runnable_config(conversation.id)
+    cfg = _runnable_config(
+        conversation.id,
+        session_id=session_id,
+        streaming=False,
+        plan_mode=plan_mode,
+    )
     try:
         out = await agent.ainvoke({"messages": messages}, cfg)
     except GraphRecursionError as e:
@@ -316,6 +339,7 @@ async def resume_project_interrupt(
     decision: str,
     edited_args: dict | None = None,
     message: str | None = None,
+    session_id: str | None = None,
 ) -> AsyncIterator[ProjectStreamPart]:
     from langgraph.types import Command
 
@@ -333,7 +357,7 @@ async def resume_project_interrupt(
     if err or not agent:
         yield {"type": "fatal", "message": err or "Agent failed to initialize"}
         return
-    cfg = _runnable_config(conversation.id)
+    cfg = _runnable_config(conversation.id, session_id=session_id, streaming=True)
     snap = await agent.aget_state(cfg)
     decision_count = _count_pending_hitl_decisions(snap.interrupts)
     resume_payload = _build_hitl_resume_payload(

@@ -132,19 +132,26 @@ class Settings(BaseSettings):
         description="Max prior messages sent as ``conversation_history`` to the external qa-agent for one KB turn (tail of thread).",
     )
 
-    # --- Optional Langfuse (embedded wiki agent; same env names as qa-agent for shared .env) ---
+    # --- Optional Langfuse (wiki + Deep Agents; same env names as qa-agent for shared .env) ---
     langfuse_secret_key: str | None = Field(default=None, validation_alias="LANGFUSE_SECRET_KEY")
     langfuse_public_key: str | None = Field(default=None, validation_alias="LANGFUSE_PUBLIC_KEY")
     langfuse_base_url: str | None = Field(default=None, validation_alias="LANGFUSE_BASE_URL")
     langfuse_trace_streaming: bool = Field(
         default=True,
         validation_alias="LANGFUSE_TRACE_STREAMING",
-        description="When Langfuse keys are set, attach callback to wiki **streaming** turns; set false to trace only non-streaming if OTel noise.",
+        description="When Langfuse is enabled, attach callback to **streaming** agent turns; set false to trace only non-streaming if OTel noise.",
     )
     langfuse_healthcheck: bool = Field(
         default=True,
         validation_alias="LANGFUSE_HEALTHCHECK",
-        description="When true and LANGFUSE_BASE_URL is set, GET /api/admin/health-status probes {base}/api/public/health for the Console.",
+        description="When true and LANGFUSE_BASE_URL is set, probe {base}/api/public/health before tracing callbacks and for Console health.",
+    )
+    langfuse_healthcheck_retry_seconds: int = Field(
+        default=60,
+        ge=5,
+        le=86400,
+        validation_alias="LANGFUSE_HEALTHCHECK_RETRY_SECONDS",
+        description="Seconds between Langfuse health probes while the host is considered down.",
     )
 
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
@@ -329,6 +336,15 @@ class Settings(BaseSettings):
         return (
             f"postgresql://{self.database_user}:{self.database_password}"
             f"@{self.database_host}:{self.database_port}/{self.database_name}"
+        )
+
+    @property
+    def langfuse_enabled(self) -> bool:
+        """Tracing requires secret, public key, and base URL (same rule as qa-agent)."""
+        return bool(
+            (self.langfuse_secret_key or "").strip()
+            and (self.langfuse_public_key or "").strip()
+            and (self.langfuse_base_url or "").strip()
         )
 
     @property
