@@ -40,8 +40,31 @@ def validate_skill_id(skill_id: str) -> str:
 
 
 def validate_skill_tree(root: Path) -> None:
+    root = unwrap_single_skill_root(root)
     if not (root / "SKILL.md").is_file():
         raise HTTPException(status_code=400, detail="Skill package must contain SKILL.md at the root")
+
+
+def unwrap_single_skill_root(root: Path) -> Path:
+    """If every file sits under one subdirectory, hoist that directory to the staging root."""
+    if (root / "SKILL.md").is_file():
+        return root
+    entries = [p for p in root.iterdir() if p.name not in {".DS_Store", "__MACOSX"}]
+    if len(entries) != 1 or not entries[0].is_dir():
+        return root
+    inner = entries[0]
+    if not (inner / "SKILL.md").is_file():
+        return root
+    for child in inner.iterdir():
+        dest = root / child.name
+        if dest.exists():
+            if dest.is_dir():
+                shutil.rmtree(dest)
+            else:
+                dest.unlink()
+        shutil.move(str(child), str(root))
+    inner.rmdir()
+    return root
 
 
 def _safe_zip_extract(archive: Path, dest: Path) -> None:
