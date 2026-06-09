@@ -35,6 +35,7 @@ export function useProjectAgentStream({
 }: Params) {
   const [loading, setLoading] = useState(false);
   const [todos, setTodos] = useState<unknown[]>([]);
+  const [todoRevision, setTodoRevision] = useState(0);
   const [interrupt, setInterrupt] = useState<string | null>(null);
   const hitlResumeRef = useRef(false);
   const [hitlBusy, setHitlBusy] = useState(false);
@@ -43,6 +44,9 @@ export function useProjectAgentStream({
 
   const applyStreamEvent = useCallback(
     (ev: Parameters<typeof applyProjectStreamEvent>[0], asstStreamId: string, userTempId?: string) => {
+      if (ev.type === 'todo') {
+        setTodoRevision((n) => n + 1);
+      }
       applyProjectStreamEvent(
         ev,
         { asstStreamId, userTempId },
@@ -70,6 +74,8 @@ export function useProjectAgentStream({
     setMessages((prev) => [...prev, userTemp, asstTemp]);
     setLoading(true);
     setInterrupt(null);
+    setTodos([]);
+    setTodoRevision(0);
     streamingRef.current = true;
     try {
       await postProjectMessageStream(
@@ -129,6 +135,7 @@ export function useProjectAgentStream({
       setReverting(true);
       setInterrupt(null);
       setTodos([]);
+      setTodoRevision(0);
       void (async () => {
         try {
           await truncateProjectMessagesFromMessage(projectId, convId, userLine.id!);
@@ -149,6 +156,11 @@ export function useProjectAgentStream({
   return {
     loading,
     todos,
+    todoRevision,
+    dismissPlan: () => {
+      setTodos([]);
+      setTodoRevision(0);
+    },
     interrupt,
     hitlBusy,
     reverting,
@@ -156,6 +168,7 @@ export function useProjectAgentStream({
     setPrefillInput,
     clearStreamUi: () => {
       setTodos([]);
+      setTodoRevision(0);
       setInterrupt(null);
     },
     onSend,

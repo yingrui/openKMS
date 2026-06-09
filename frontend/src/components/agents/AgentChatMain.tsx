@@ -4,6 +4,7 @@ import { ArrowUp, RefreshCw } from 'lucide-react';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
 import { PERSISTED_AGENT_MESSAGE_ID } from './agentConstants';
 import { AgentInterruptBar } from './AgentInterruptBar';
+import { AgentPlanPanel } from './AgentPlanPanel';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import './AgentsWorkspace.scss';
 
@@ -22,6 +23,8 @@ interface Props {
   onPlanModeChange: (v: boolean) => void;
   onSend: (text: string) => void;
   todos?: unknown[];
+  todoRevision?: number;
+  onDismissPlan?: () => void;
   interruptSummary?: string | null;
   interruptBusy?: boolean;
   onInterruptApprove?: () => void;
@@ -40,6 +43,8 @@ export function AgentChatMain({
   onPlanModeChange,
   onSend,
   todos,
+  todoRevision,
+  onDismissPlan,
   interruptSummary,
   interruptBusy = false,
   onInterruptApprove,
@@ -94,10 +99,12 @@ export function AgentChatMain({
         </header>
       ) : null}
       {todos && todos.length > 0 ? (
-        <div className="agents-todos">
-          <strong>{t('chat.todos')}</strong>
-          <pre style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>{JSON.stringify(todos, null, 2)}</pre>
-        </div>
+        <AgentPlanPanel
+          todos={todos}
+          loading={loading}
+          revision={todoRevision}
+          onDismiss={onDismissPlan}
+        />
       ) : null}
       <div className="agents-chat-scroll" ref={scrollRef}>
         {messages.length === 0 ? (

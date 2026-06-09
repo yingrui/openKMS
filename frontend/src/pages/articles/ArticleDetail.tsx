@@ -155,7 +155,9 @@ export function ArticleDetail() {
   useEffect(() => {
     setRelSectionOpen(false);
     setAttachmentsSectionOpen(false);
+    setReviewSectionOpen(false);
     setLineageRels(null);
+    setLatestReview(null);
   }, [id]);
 
   useEffect(() => {
@@ -207,9 +209,9 @@ export function ArticleDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (!reviewSectionOpen || !id) return;
+    if (!id) return;
     void refreshLatestReview();
-  }, [reviewSectionOpen, id, refreshLatestReview]);
+  }, [id, refreshLatestReview]);
 
   const channelReviewConfigured = useMemo(() => {
     if (!article?.channel_id) return false;

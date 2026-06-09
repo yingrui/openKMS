@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from collections.abc import AsyncIterator
 from typing import Any, Literal, TypedDict
@@ -42,6 +43,37 @@ def _tool_io_preview(x: Any, max_len: int) -> str:
     return s[: max_len - 18] + "…[truncated]" if len(s) > max_len else s
 
 
+def _extract_todos_from_tool_data(data: dict[str, Any]) -> list[Any] | None:
+    """Parse todo list from ``write_todos`` tool input or ToolMessage output."""
+    inp = data.get("input")
+    if isinstance(inp, dict):
+        todos = inp.get("todos")
+        if isinstance(todos, list) and todos:
+            return todos
+    if isinstance(inp, list) and inp:
+        return inp
+
+    out = data.get("output")
+    if isinstance(out, dict):
+        for candidate in (out.get("update"), out):
+            if isinstance(candidate, dict):
+                todos = candidate.get("todos")
+                if isinstance(todos, list) and todos:
+                    return todos
+
+    if isinstance(out, str):
+        marker = "Updated todo list to "
+        if marker in out:
+            tail = out.split(marker, 1)[1].strip()
+            try:
+                parsed = ast.literal_eval(tail)
+            except (ValueError, SyntaxError):
+                parsed = None
+            if isinstance(parsed, list) and parsed:
+                return parsed
+    return None
+
+
 def _message_to_stream_text_raw(chunk: Any) -> str:
     if chunk is None:
         return ""
@@ -80,46 +112,45 @@ class LangGraphStreamAdapter:
                 out.append({"type": "delta", "t": t})
             return out
 
-        if ename == "on_tool_start":
+        if ename in ("on_tool_start", "on_tool_end"):
             name = (ev.get("name") or "tool").split("/")[-1]
             if name == "write_todos":
-                inp = data.get("input")
-                if isinstance(inp, dict) and inp.get("todos"):
-                    out.append({"type": "todo", "todos": inp["todos"]})
-            if name == "task":
-                label = str(data.get("input") or "")[:200]
-                self._pending_subagent = label
-                out.append({"type": "subagent_start", "name": label})
-            run_id = str(ev.get("run_id") or "")
-            out.append(
-                {
-                    "type": "tool_start",
-                    "run_id": run_id,
-                    "name": name,
-                    "input": _tool_io_preview(data.get("input"), 6000),
-                }
-            )
-            return out
-
-        if ename == "on_tool_end":
-            name = (ev.get("name") or "tool").split("/")[-1]
-            if name == "task":
+                todos = _extract_todos_from_tool_data(data)
+                if todos:
+                    out.append({"type": "todo", "todos": todos})
+            if ename == "on_tool_end":
+                if name == "task":
+                    out.append(
+                        {
+                            "type": "subagent_end",
+                            "name": self._pending_subagent or name,
+                        }
+                    )
+                    self._pending_subagent = None
+                run_id = str(ev.get("run_id") or "")
                 out.append(
                     {
-                        "type": "subagent_end",
-                        "name": self._pending_subagent or name,
+                        "type": "tool_end",
+                        "run_id": run_id,
+                        "name": name,
+                        "output": _tool_io_preview(data.get("output"), 10000),
                     }
                 )
-                self._pending_subagent = None
-            run_id = str(ev.get("run_id") or "")
-            out.append(
-                {
-                    "type": "tool_end",
-                    "run_id": run_id,
-                    "name": name,
-                    "output": _tool_io_preview(data.get("output"), 10000),
-                }
-            )
+                return out
+            if ename == "on_tool_start":
+                if name == "task":
+                    label = str(data.get("input") or "")[:200]
+                    self._pending_subagent = label
+                    out.append({"type": "subagent_start", "name": label})
+                run_id = str(ev.get("run_id") or "")
+                out.append(
+                    {
+                        "type": "tool_start",
+                        "run_id": run_id,
+                        "name": name,
+                        "input": _tool_io_preview(data.get("input"), 6000),
+                    }
+                )
             return out
 
         if ename == "on_tool_error":

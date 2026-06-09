@@ -30,6 +30,28 @@ def test_subagent_end_uses_start_label():
     assert subagent_end["name"] == "research insurance products"
 
 
+def test_write_todos_emits_on_tool_end_output():
+    adapter = LangGraphStreamAdapter()
+    parts = adapter.parts_from_event(
+        {
+            "event": "on_tool_end",
+            "name": "write_todos",
+            "run_id": "r1",
+            "data": {
+                "output": (
+                    "Updated todo list to "
+                    "[{'content': 'Search', 'status': 'completed'}, "
+                    "{'content': 'Download', 'status': 'in_progress'}]"
+                ),
+            },
+        }
+    )
+    todo_parts = [p for p in parts if p.get("type") == "todo"]
+    assert len(todo_parts) == 1
+    assert todo_parts[0]["todos"][0]["status"] == "completed"
+    assert todo_parts[0]["todos"][1]["status"] == "in_progress"
+
+
 def test_accumulator_collects_tool_input_on_end():
     acc = ProjectStreamAccumulator()
     acc.absorb(

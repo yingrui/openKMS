@@ -20,7 +20,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 
 - **Agents area:** **Projects | Skills** tabs at `/agents` and `/agents/skills`.
 - **Left:** conversation sessions (month-grouped), like KB Q&A.
-- **Center:** chat thread + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot).
+- **Center:** chat thread + collapsible **Plan** checklist (from `write_todos`, dismissible) + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot).
 - **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize; widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder. Refresh, parent-folder navigation, and per-row delete (`.openkms` and `.openkms/skills` folders protected; other paths including files under `.openkms/` may be deleted).
 
 ## Session API key

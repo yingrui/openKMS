@@ -144,6 +144,8 @@ export function ProjectWorkspace() {
           onPlanModeChange={setPlanMode}
           onSend={stream.onSend}
           todos={stream.todos}
+          todoRevision={stream.todoRevision}
+          onDismissPlan={stream.dismissPlan}
           interruptSummary={stream.interrupt}
           interruptBusy={stream.hitlBusy}
           onInterruptApprove={stream.interrupt ? stream.onInterruptApprove : undefined}
