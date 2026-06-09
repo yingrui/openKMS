@@ -1204,7 +1204,49 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-qa-msg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   margin-top: 0.5rem;
+}
+
+.kb-qa-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.kb-qa-feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.kb-qa-feedback-btn:hover {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.kb-qa-feedback-btn--active.kb-qa-feedback-btn--up {
+  color: var(--color-success, #15803d);
+  border-color: var(--color-success, #15803d);
+  background: color-mix(in srgb, var(--color-success, #15803d) 12%, var(--color-bg-muted));
+}
+
+.kb-qa-feedback-btn--active.kb-qa-feedback-btn--down {
+  color: var(--color-danger, #b91c1c);
+  border-color: var(--color-danger, #b91c1c);
+  background: color-mix(in srgb, var(--color-danger, #b91c1c) 12%, var(--color-bg-muted));
 }
 
 .kb-qa-sources-toolbar {
@@ -1942,6 +1984,58 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   flex-direction: column;
   gap: 16px;
   padding: 24px;
+}
+
+.kb-faq-dialog-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.kb-faq-answer-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0.35rem;
+}
+
+.kb-faq-polish-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.kb-faq-polish-btn:hover:not(:disabled) {
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.kb-faq-polish-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.kb-faq-polish-btn__spin {
+  animation: kb-faq-spin 0.8s linear infinite;
+}
+
+@keyframes kb-faq-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .kb-faq-dialog-form label {

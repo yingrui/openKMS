@@ -168,6 +168,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated wiki pages with body from linked spaces (`?offset=`, `limit` 1–500); used by `kb-index` |
 | GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=, ?current_for_rag_only=) |
 | POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |
+| POST | `/api/knowledge-bases/{id}/faqs/polish` | Polish a draft FAQ answer with the KB judge model (preview only; body: `question`, `answer`) |
 | PUT | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Update FAQ |
 | DELETE | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Delete FAQ |
 | POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |

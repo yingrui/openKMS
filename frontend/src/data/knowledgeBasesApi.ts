@@ -702,6 +702,24 @@ export async function fetchFAQs(
   return res.json();
 }
 
+export async function polishFAQAnswer(
+  kbId: string,
+  data: { question: string; answer: string }
+): Promise<{ answer: string }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/polish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(data),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to polish FAQ answer');
+  }
+  return res.json();
+}
+
 export async function createFAQ(
   kbId: string,
   data: {

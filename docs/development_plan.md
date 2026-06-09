@@ -80,7 +80,7 @@ Aligns with [Goals — retrieve and contribute](goals.md#goals-user-value) and [
 | Item | Tags | Addresses (Goals pains / actions) |
 |------|------|-----------------------------------|
 | Source citations everywhere | user | **Can’t trust without evidence** — KB Q&A, search, agent replies consistently show version + link |
-| Ask → contribute shortcut | user | **Partial:** KB Q&A **Save as FAQ** (review in dialog, then create); wiki paragraph promote still open |
+| Ask → contribute shortcut | user | **Partial:** KB Q&A thumbs-up → **Save as FAQ** (review in dialog, then create); wiki paragraph promote still open |
 | Onboarding paths | user | **Don’t know where to start** — role- or map-guided “start here” for new hires / role changes |
 | Trust indicators in UI | user | **Can’t trust**, **obsolete unnoticed** — “current for RAG”, effective dates visible in consumer surfaces |
 

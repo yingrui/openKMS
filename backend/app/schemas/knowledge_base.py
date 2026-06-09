@@ -128,6 +128,15 @@ class FAQUpdate(BaseModel):
     doc_metadata: dict[str, Any] | None = None
 
 
+class FAQPolishRequest(BaseModel):
+    question: str
+    answer: str
+
+
+class FAQPolishResponse(BaseModel):
+    answer: str
+
+
 class FAQGenerateRequest(BaseModel):
     document_ids: list[str]
     model_id: str

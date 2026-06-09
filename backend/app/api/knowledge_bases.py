@@ -52,6 +52,8 @@ from app.schemas.knowledge_base import (
     FAQGenerateRequest,
     FAQGenerateResult,
     FAQListResponse,
+    FAQPolishRequest,
+    FAQPolishResponse,
     FAQResponse,
     FAQUpdate,
     KBDocumentAdd,
@@ -696,6 +698,30 @@ async def delete_faq(
     if not faq or faq.knowledge_base_id != kb_id:
         raise HTTPException(status_code=404, detail="FAQ not found")
     await db.delete(faq)
+
+
+@router.post("/{kb_id}/faqs/polish", response_model=FAQPolishResponse)
+async def polish_faq(
+    kb_id: str,
+    body: FAQPolishRequest,
+    kb: KnowledgeBase = Depends(get_kb_scoped),
+    db: AsyncSession = Depends(get_db),
+):
+    """Polish a draft FAQ answer with the KB judge model (or default LLM). Does not persist."""
+    from app.services.evaluation.execute import resolve_judge_config
+    from app.services.faq_generation import polish_faq_answer
+
+    _, model_config = await resolve_judge_config(db, kb)
+    try:
+        polished = await polish_faq_answer(
+            body.question,
+            body.answer,
+            model_config,
+            style_prompt=kb.faq_prompt,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    return FAQPolishResponse(answer=polished)
 
 
 @router.post("/{kb_id}/faqs/generate", response_model=list[FAQGenerateResult])

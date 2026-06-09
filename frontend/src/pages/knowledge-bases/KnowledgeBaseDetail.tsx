@@ -29,6 +29,8 @@ import {
   ChevronDown,
   ArrowUp,
   RefreshCw,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -44,6 +46,7 @@ import {
   addKBWikiSpace,
   removeKBWikiSpace,
   createFAQ,
+  polishFAQAnswer,
   updateFAQ,
   deleteFAQ,
   generateFAQs,
@@ -251,6 +254,12 @@ function kbQaLineId(): string {
     : `line_${Date.now()}`;
 }
 
+function kbQaFeedbackKey(msg: ChatMessage, index: number): string {
+  return msg.replyKey ?? msg.id ?? `idx-${index}`;
+}
+
+type KbQaFeedbackVote = 'up' | 'down';
+
 function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
   const k = (sourceType || 'chunk').toLowerCase();
   if (k === 'ontology' || k === 'document_section' || k === 'faq' || k === 'chunk') return k;
@@ -418,6 +427,8 @@ export function KnowledgeBaseDetail() {
   const [faqPage, setFaqPage] = useState(0);
   const [faqPageSize, setFaqPageSize] = useState(50);
   const [showFaqDialog, setShowFaqDialog] = useState(false);
+  const [faqDialogSource, setFaqDialogSource] = useState<'manual' | 'from_qa'>('manual');
+  const [faqPolishing, setFaqPolishing] = useState(false);
   const [editFaq, setEditFaq] = useState<FAQResponse | null>(null);
   const [faqQuestion, setFaqQuestion] = useState('');
   const [faqAnswer, setFaqAnswer] = useState('');
@@ -467,6 +478,7 @@ export function KnowledgeBaseDetail() {
   // QA
   const [qaInput, setQaInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [qaFeedback, setQaFeedback] = useState<Record<string, KbQaFeedbackVote>>({});
   const [qaLoading, setQaLoading] = useState(false);
   const qaStreamAbortRef = useRef<AbortController | null>(null);
   /** Langfuse session id for KB Q&A turns while this full-page chat is open (opaque UUID). */
@@ -655,6 +667,7 @@ export function KnowledgeBaseDetail() {
       if (!kbId) return;
       const msgs = await listAllKbAgentMessages(kbId, conversationId);
       setChatMessages(kbAgentItemsToChatMessages(msgs));
+      setQaFeedback({});
     },
     [kbId]
   );
@@ -918,8 +931,27 @@ export function KnowledgeBaseDetail() {
 
   const kbQaAssistantText = (msg: ChatMessage): string => msg.content?.trim() ?? '';
 
+  const setKbQaFeedbackVote = (key: string, vote: KbQaFeedbackVote) => {
+    setQaFeedback((prev) => {
+      if (prev[key] === vote) {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: vote };
+    });
+  };
+
+  const closeFaqDialog = () => {
+    setShowFaqDialog(false);
+    setEditFaq(null);
+    setFaqDialogSource('manual');
+    setFaqPolishing(false);
+  };
+
   const openFaqFromQa = (question: string, answer: string) => {
     setEditFaq(null);
+    setFaqDialogSource('from_qa');
     setFaqQuestion(question.trim());
     setFaqAnswer(answer.trim());
     setFaqLabelsValues({});
@@ -927,6 +959,23 @@ export function KnowledgeBaseDetail() {
     setFaqLabelAllowMultiple({});
     setFaqMetadataIsArray({});
     setShowFaqDialog(true);
+  };
+
+  const handlePolishFaqAnswer = async () => {
+    if (!kbId || !faqQuestion.trim() || !faqAnswer.trim() || faqPolishing) return;
+    setFaqPolishing(true);
+    try {
+      const res = await polishFAQAnswer(kbId, {
+        question: faqQuestion.trim(),
+        answer: faqAnswer.trim(),
+      });
+      setFaqAnswer(res.answer);
+      toast.success(t('detail.toastFaqPolished'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastFaqPolishFailed'));
+    } finally {
+      setFaqPolishing(false);
+    }
   };
 
   const handleSaveFaq = async () => {
@@ -945,8 +994,7 @@ export function KnowledgeBaseDetail() {
         await createFAQ(kbId, payload);
         toast.success(t('detail.toastFaqCreated'));
       }
-      setShowFaqDialog(false);
-      setEditFaq(null);
+      closeFaqDialog();
       setFaqQuestion('');
       setFaqAnswer('');
       setFaqLabelsValues({});
@@ -1235,6 +1283,7 @@ export function KnowledgeBaseDetail() {
       setStoredKbQaConversationId(kbId, c.id);
       setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
       setChatMessages([]);
+      setQaFeedback({});
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.qaToastNewChatFailed'));
     }
@@ -1445,27 +1494,37 @@ export function KnowledgeBaseDetail() {
   if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
   if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
 
+  const faqDialogTitle = editFaq
+    ? t('detail.faqDialogEdit')
+    : faqDialogSource === 'from_qa'
+      ? t('detail.faqDialogSaveFromQa')
+      : t('detail.faqDialogAdd');
+
   const faqDialog = showFaqDialog ? (
     <div
       className="kb-doc-picker-overlay"
-      onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
+      onClick={() => { if (!faqPolishing) closeFaqDialog(); }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="faq-dialog-title"
     >
       <div className="kb-doc-picker kb-faq-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="kb-doc-picker-header">
-          <h2 id="faq-dialog-title">{editFaq ? t('detail.faqDialogEdit') : t('detail.faqDialogAdd')}</h2>
+          <h2 id="faq-dialog-title">{faqDialogTitle}</h2>
           <button
             type="button"
             className="kb-doc-picker-close"
-            onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
+            onClick={closeFaqDialog}
+            disabled={faqPolishing}
             aria-label={t('detail.closeAria')}
           >
             <X size={20} />
           </button>
         </div>
         <div className="kb-faq-dialog-form">
+          {faqDialogSource === 'from_qa' ? (
+            <p className="kb-faq-dialog-hint">{t('detail.faqDialogSaveFromQaHint')}</p>
+          ) : null}
           <label>
             <span>{t('detail.question')}</span>
             <input
@@ -1473,16 +1532,34 @@ export function KnowledgeBaseDetail() {
               placeholder={t('detail.placeholderQuestion')}
               value={faqQuestion}
               onChange={(e) => setFaqQuestion(e.target.value)}
+              disabled={faqPolishing}
               autoFocus
             />
           </label>
           <label>
-            <span>{t('detail.answer')}</span>
+            <div className="kb-faq-answer-header">
+              <span>{t('detail.answer')}</span>
+              <button
+                type="button"
+                className="kb-faq-polish-btn"
+                onClick={() => void handlePolishFaqAnswer()}
+                disabled={faqPolishing || !faqQuestion.trim() || !faqAnswer.trim()}
+                aria-label={t('detail.faqPolishAnswerAria')}
+              >
+                {faqPolishing ? (
+                  <Loader2 size={14} className="kb-faq-polish-btn__spin" aria-hidden />
+                ) : (
+                  <Sparkles size={14} aria-hidden />
+                )}
+                <span>{faqPolishing ? t('detail.faqPolishing') : t('detail.faqPolishAnswer')}</span>
+              </button>
+            </div>
             <textarea
               placeholder={t('detail.placeholderAnswer')}
               value={faqAnswer}
               onChange={(e) => setFaqAnswer(e.target.value)}
-              rows={5}
+              disabled={faqPolishing}
+              rows={8}
             />
           </label>
 
@@ -1509,10 +1586,15 @@ export function KnowledgeBaseDetail() {
           <div className="kb-doc-picker-footer">
             <div />
             <div className="kb-doc-picker-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}>
+              <button type="button" className="btn btn-secondary" onClick={closeFaqDialog} disabled={faqPolishing}>
                 {t('detail.cancel')}
               </button>
-              <button type="button" className="btn btn-primary" onClick={handleSaveFaq} disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveFaq}
+                disabled={faqPolishing || !faqQuestion.trim() || !faqAnswer.trim()}
+              >
                 {editFaq ? t('detail.update') : t('detail.create')}
               </button>
             </div>
@@ -1598,19 +1680,40 @@ export function KnowledgeBaseDetail() {
                         kbQaAssistantText(msg) &&
                         !(qaLoading && isLast) &&
                         (() => {
+                          const feedbackKey = kbQaFeedbackKey(msg, i);
+                          const feedback = qaFeedback[feedbackKey];
                           const prev = chatMessages[i - 1];
                           const question = prev?.role === 'user' ? prev.content.trim() : '';
-                          if (!question) return null;
                           return (
-                            <div className="kb-qa-msg-actions">
+                            <div className="kb-qa-msg-actions kb-qa-msg-feedback">
                               <button
                                 type="button"
-                                className="kb-qa-sources-action-btn"
-                                aria-label={t('detail.qaSaveAsFaqAria')}
-                                onClick={() => openFaqFromQa(question, kbQaAssistantText(msg))}
+                                className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''}`}
+                                aria-label={t('detail.qaFeedbackUpAria')}
+                                aria-pressed={feedback === 'up'}
+                                onClick={() => setKbQaFeedbackVote(feedbackKey, 'up')}
                               >
-                                {t('detail.qaSaveAsFaq')}
+                                <ThumbsUp size={16} strokeWidth={2} aria-hidden />
                               </button>
+                              <button
+                                type="button"
+                                className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''}`}
+                                aria-label={t('detail.qaFeedbackDownAria')}
+                                aria-pressed={feedback === 'down'}
+                                onClick={() => setKbQaFeedbackVote(feedbackKey, 'down')}
+                              >
+                                <ThumbsDown size={16} strokeWidth={2} aria-hidden />
+                              </button>
+                              {feedback === 'up' && question ? (
+                                <button
+                                  type="button"
+                                  className="kb-qa-sources-action-btn"
+                                  aria-label={t('detail.qaSaveAsFaqAria')}
+                                  onClick={() => openFaqFromQa(question, kbQaAssistantText(msg))}
+                                >
+                                  {t('detail.qaSaveAsFaq')}
+                                </button>
+                              ) : null}
                             </div>
                           );
                         })()}
@@ -2062,7 +2165,9 @@ export function KnowledgeBaseDetail() {
                 </button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => {
                   setEditFaq(null);
+                  setFaqDialogSource('manual');
                   setFaqQuestion('');
+                  setFaqAnswer('');
                   setFaqLabelsValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
                   setFaqDocMetadataValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
                   setFaqLabelAllowMultiple({});
@@ -2111,6 +2216,7 @@ export function KnowledgeBaseDetail() {
                           <div className="kb-table-btns">
                             <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={async () => {
                               setEditFaq(faq);
+                              setFaqDialogSource('manual');
                               setFaqQuestion(faq.question);
                               setFaqAnswer(faq.answer);
                               const metaValues = objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined);
