@@ -163,6 +163,8 @@
     "qaToastChatDeleted": "Chat deleted",
     "qaToastDeleteChatFailed": "Could not delete chat",
     "qaToastRenameChatFailed": "Could not rename chat",
+    "qaSaveAsFaq": "Save as FAQ",
+    "qaSaveAsFaqAria": "Save this answer as a new FAQ",
     "qaHeroTitle": "Start chatting with {{name}}",
     "qaHeroSubtitle": "Ask questions about documents, linked wiki pages, and FAQs in this knowledge base.",
     "qaComposerHint": "Enter to send · Shift+Enter for a new line",

@@ -22,6 +22,7 @@ from app.database import get_db
 from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
 from app.services.data_resource_policy import knowledge_base_visible
 from app.services.document_scope import require_document_by_id_read
+from app.services.document_lifecycle import source_current_for_rag_sql
 from app.services.kb_scope import (
     load_knowledge_base_scoped,
     require_knowledge_base_manage,
@@ -561,18 +562,28 @@ async def list_faqs(
     kb_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    current_for_rag_only: bool = Query(
+        False,
+        description="When true, exclude FAQs tied to superseded or out-of-window documents (same rule as default KB search).",
+    ),
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
+    faq_where = [FAQ.knowledge_base_id == kb_id]
+    if current_for_rag_only:
+        faq_where.append(source_current_for_rag_sql(FAQ.document_id))
     total = (await db.execute(
-        select(func.count()).select_from(FAQ).where(FAQ.knowledge_base_id == kb_id)
+        select(func.count())
+        .select_from(FAQ)
+        .outerjoin(Document, FAQ.document_id == Document.id)
+        .where(*faq_where)
     )).scalar_one()
     # Exclude embedding column to avoid pgvector dependency when extension is not installed
     result = await db.execute(
         select(FAQ, Document.name)
         .options(load_only(FAQ.id, FAQ.knowledge_base_id, FAQ.document_id, FAQ.question, FAQ.answer, FAQ.doc_metadata, FAQ.created_at, FAQ.updated_at))
         .outerjoin(Document, FAQ.document_id == Document.id)
-        .where(FAQ.knowledge_base_id == kb_id)
+        .where(*faq_where)
         .order_by(FAQ.created_at.desc())
         .offset(offset)
         .limit(limit)
@@ -780,11 +791,21 @@ async def list_chunks(
     kb_id: str,
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    current_for_rag_only: bool = Query(
+        False,
+        description="When true, exclude chunks tied to superseded or out-of-window documents (same rule as default KB search).",
+    ),
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
+    chunk_where = [Chunk.knowledge_base_id == kb_id]
+    if current_for_rag_only:
+        chunk_where.append(source_current_for_rag_sql(Chunk.document_id))
     total = (await db.execute(
-        select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
+        select(func.count())
+        .select_from(Chunk)
+        .outerjoin(Document, Chunk.document_id == Document.id)
+        .where(*chunk_where)
     )).scalar_one()
     name_expr = func.coalesce(Document.name, WikiPage.title, WikiPage.path)
     # Exclude embedding column from load to avoid transferring vector data; check IS NOT NULL for has_embedding
@@ -802,7 +823,7 @@ async def list_chunks(
         ))
         .outerjoin(Document, Chunk.document_id == Document.id)
         .outerjoin(WikiPage, Chunk.wiki_page_id == WikiPage.id)
-        .where(Chunk.knowledge_base_id == kb_id)
+        .where(*chunk_where)
         .order_by(Chunk.document_id.asc().nulls_last(), Chunk.wiki_page_id, Chunk.chunk_index)
         .offset(offset)
         .limit(limit)

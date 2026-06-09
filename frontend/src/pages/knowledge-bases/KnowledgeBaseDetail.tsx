@@ -916,6 +916,19 @@ export function KnowledgeBaseDetail() {
     );
   };
 
+  const kbQaAssistantText = (msg: ChatMessage): string => msg.content?.trim() ?? '';
+
+  const openFaqFromQa = (question: string, answer: string) => {
+    setEditFaq(null);
+    setFaqQuestion(question.trim());
+    setFaqAnswer(answer.trim());
+    setFaqLabelsValues({});
+    setFaqDocMetadataValues({});
+    setFaqLabelAllowMultiple({});
+    setFaqMetadataIsArray({});
+    setShowFaqDialog(true);
+  };
+
   const handleSaveFaq = async () => {
     if (!kbId || !faqQuestion.trim() || !faqAnswer.trim()) return;
     try {
@@ -1432,6 +1445,83 @@ export function KnowledgeBaseDetail() {
   if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
   if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
 
+  const faqDialog = showFaqDialog ? (
+    <div
+      className="kb-doc-picker-overlay"
+      onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="faq-dialog-title"
+    >
+      <div className="kb-doc-picker kb-faq-dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="kb-doc-picker-header">
+          <h2 id="faq-dialog-title">{editFaq ? t('detail.faqDialogEdit') : t('detail.faqDialogAdd')}</h2>
+          <button
+            type="button"
+            className="kb-doc-picker-close"
+            onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
+            aria-label={t('detail.closeAria')}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <div className="kb-faq-dialog-form">
+          <label>
+            <span>{t('detail.question')}</span>
+            <input
+              type="text"
+              placeholder={t('detail.placeholderQuestion')}
+              value={faqQuestion}
+              onChange={(e) => setFaqQuestion(e.target.value)}
+              autoFocus
+            />
+          </label>
+          <label>
+            <span>{t('detail.answer')}</span>
+            <textarea
+              placeholder={t('detail.placeholderAnswer')}
+              value={faqAnswer}
+              onChange={(e) => setFaqAnswer(e.target.value)}
+              rows={5}
+            />
+          </label>
+
+          {kb.metadata_keys && kb.metadata_keys.length > 0 && (
+            <div className="kb-kv-editor">
+              <span className="kb-kv-editor-label">{t('detail.metadata')}</span>
+              <small className="kb-kv-editor-hint">
+                {Object.values(faqMetadataIsArray).some(Boolean) ? t('detail.kvHintArray') : t('detail.kvHintSingle')}
+              </small>
+              {kb.metadata_keys.map((key) => (
+                <div key={key} className="kb-kv-row kb-kv-row-config">
+                  <span className="kb-kv-key-label">{key}{faqMetadataIsArray[key] ? t('detail.arraySuffix') : ''}</span>
+                  <input
+                    type="text"
+                    placeholder={faqMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
+                    value={faqDocMetadataValues[key] ?? ''}
+                    onChange={(e) => setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="kb-doc-picker-footer">
+            <div />
+            <div className="kb-doc-picker-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}>
+                {t('detail.cancel')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleSaveFaq} disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
+                {editFaq ? t('detail.update') : t('detail.create')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   if (qaFullPage && kb.agent_url) {
     return (
       <div className="kb-detail kb-detail--qa-fullpage">
@@ -1504,6 +1594,26 @@ export function KnowledgeBaseDetail() {
                           />
                         </div>
                       )}
+                      {msg.role === 'assistant' &&
+                        kbQaAssistantText(msg) &&
+                        !(qaLoading && isLast) &&
+                        (() => {
+                          const prev = chatMessages[i - 1];
+                          const question = prev?.role === 'user' ? prev.content.trim() : '';
+                          if (!question) return null;
+                          return (
+                            <div className="kb-qa-msg-actions">
+                              <button
+                                type="button"
+                                className="kb-qa-sources-action-btn"
+                                aria-label={t('detail.qaSaveAsFaqAria')}
+                                onClick={() => openFaqFromQa(question, kbQaAssistantText(msg))}
+                              >
+                                {t('detail.qaSaveAsFaq')}
+                              </button>
+                            </div>
+                          );
+                        })()}
                       {msg.sources && msg.sources.length > 0 && (() => {
                         const rk = msg.replyKey ?? `legacy-${i}`;
                         const expandedSet = qaSourcesExpanded[rk];
@@ -1671,6 +1781,7 @@ export function KnowledgeBaseDetail() {
             </main>
           </div>
         </div>
+        {faqDialog}
       </div>
     );
   }
@@ -3149,82 +3260,7 @@ export function KnowledgeBaseDetail() {
         </div>
       )}
 
-      {showFaqDialog && (
-        <div
-          className="kb-doc-picker-overlay"
-          onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="faq-dialog-title"
-        >
-          <div className="kb-doc-picker kb-faq-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-doc-picker-header">
-              <h2 id="faq-dialog-title">{editFaq ? t('detail.faqDialogEdit') : t('detail.faqDialogAdd')}</h2>
-              <button
-                type="button"
-                className="kb-doc-picker-close"
-                onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}
-                aria-label={t('detail.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="kb-faq-dialog-form">
-              <label>
-                <span>{t('detail.question')}</span>
-                <input
-                  type="text"
-                  placeholder={t('detail.placeholderQuestion')}
-                  value={faqQuestion}
-                  onChange={(e) => setFaqQuestion(e.target.value)}
-                  autoFocus
-                />
-              </label>
-              <label>
-                <span>{t('detail.answer')}</span>
-                <textarea
-                  placeholder={t('detail.placeholderAnswer')}
-                  value={faqAnswer}
-                  onChange={(e) => setFaqAnswer(e.target.value)}
-                  rows={5}
-                />
-              </label>
-
-              {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
-                <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">{t('detail.metadata')}</span>
-                  <small className="kb-kv-editor-hint">
-                    {Object.values(faqMetadataIsArray).some(Boolean) ? t('detail.kvHintArray') : t('detail.kvHintSingle')}
-                  </small>
-                  {kb.metadata_keys.map((key) => (
-                    <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{faqMetadataIsArray[key] ? t('detail.arraySuffix') : ''}</span>
-                      <input
-                        type="text"
-                        placeholder={faqMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
-                        value={faqDocMetadataValues[key] ?? ''}
-                        onChange={(e) => setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="kb-doc-picker-footer">
-                <div />
-                <div className="kb-doc-picker-actions">
-                  <button type="button" className="btn btn-secondary" onClick={() => { setShowFaqDialog(false); setEditFaq(null); }}>
-                    {t('detail.cancel')}
-                  </button>
-                  <button type="button" className="btn btn-primary" onClick={handleSaveFaq} disabled={!faqQuestion.trim() || !faqAnswer.trim()}>
-                    {editFaq ? t('detail.update') : t('detail.create')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {faqDialog}
     </div>
   );
 }

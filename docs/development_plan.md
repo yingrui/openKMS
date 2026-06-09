@@ -7,7 +7,7 @@ Business **why** and long-form narrative: [Goals (vision)](goals.md) — [user v
 | [Goals](goals.md) lens | What “done” looks like in product | Where tracked here |
 |------------------------|-----------------------------------|--------------------|
 | **User** — [pains](goals.md#goals-user-value) (e.g. can’t find, can’t trust) | Shorter paths to **find, trust, learn, contribute** | [Backlog](#backlog) rows tagged **user** below |
-| **User** — [retrieve / contribute](goals.md#goals-user-value) | Retrieve with provenance; deposit without heavy authoring | Shipped: search, KB Q&A, wiki, parse+edit; gaps: unified agent, eval→fix loop |
+| **User** — [retrieve / contribute](goals.md#goals-user-value) | Retrieve with provenance; deposit without heavy authoring | Shipped: search, KB Q&A, wiki, parse+edit, **KB Q&A → Save as FAQ**; gaps: unified agent, eval→fix loop, wiki promote |
 | **User** — [enterprise roles](goals.md#goals-user-value) | Frontline staff and experts adopt daily; admins and compliance can govern | Console, ACL, eval, connectors (partial) in **Current State** |
 | **Organization** — [organization pillar](goals.md#goals-organization) | Structure, lifecycle, multimodal ingest, unified layer for agents | **Strategic priorities** + org-tagged backlog |
 
@@ -32,11 +32,13 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |
 | [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, Object Explorer, data sources, datasets |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
-| [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement |
+| [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement; **resource ACL** on evaluations, glossaries, and ontology types (object/link/dataset) |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
 | [Connectors](features/console-and-auth.md#console-admin) | **Partial:** `/connectors` CRUD, kinds, secrets, dataset output slots — sync jobs **not shipped** ([backlog](#connectors-high)) |
-| [Agents in openKMS](features/wiki-spaces.md) | **Partial:** Wiki Copilot, KB Q&A, map designer, eval assist — broader in-app assistant planned ([backlog](#in-product-agents-high)) |
+| [Wiki Copilot & KB Q&A](features/wiki-spaces.md) | Wiki Copilot, KB Q&A (persisted threads, provenance), knowledge map HTML Copilot |
+| [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat per project (files, git, plan mode, openKMS research tools, optional `web_search` via connector) |
 | [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | **External:** agent skill + CLI for third-party tools (`openkms-skill/`); complements but does not replace in-app agents |
+| In-app agents (cross-cutting) | **Partial:** per-surface assistants above; **eval assist** API only (no evaluation UI yet); **no** unified cross-resource assistant ([backlog](#in-product-agents-high)) |
 
 ### Cross-cutting reference
 
@@ -78,7 +80,7 @@ Aligns with [Goals — retrieve and contribute](goals.md#goals-user-value) and [
 | Item | Tags | Addresses (Goals pains / actions) |
 |------|------|-----------------------------------|
 | Source citations everywhere | user | **Can’t trust without evidence** — KB Q&A, search, agent replies consistently show version + link |
-| Ask → contribute shortcut | user | **Answers kept private**, **no time to contribute** — e.g. promote Q&A hit to FAQ / wiki paragraph in one flow |
+| Ask → contribute shortcut | user | **Partial:** KB Q&A **Save as FAQ** (review in dialog, then create); wiki paragraph promote still open |
 | Onboarding paths | user | **Don’t know where to start** — role- or map-guided “start here” for new hires / role changes |
 | Trust indicators in UI | user | **Can’t trust**, **obsolete unnoticed** — “current for RAG”, effective dates visible in consumer surfaces |
 
@@ -98,7 +100,8 @@ API/UI today: [Connectors](features/console-and-auth.md#console-admin), [API ref
 
 | Item | Notes |
 |------|--------|
-| Unified assistant entry | user — One discoverable pattern across documents, wiki, KB, ontology (search friction, answers kept private) |
+| Unified assistant entry | user — One discoverable pattern across documents, wiki, KB, ontology (search friction, answers kept private). **Today:** Wiki Copilot, KB Q&A, map designer, [Deep Agents projects](features/openkms-agents.md) — separate entry points |
+| Eval assist UI | user · org — Wire [eval agent conversations](features/evaluation.md) into evaluation pages (API shipped) |
 | Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
 | Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (quality loop, contribution feedback) |
 | Parity with external skill | user — [openkms-skill](features/opencode-openkms-skill.md) capabilities reachable in-app where permissions allow |
@@ -137,7 +140,7 @@ Aligns with [Goals — lifecycle and provenance](goals.md#goals-lifecycle) (e.g.
 | Visibility | Home hub or channel dashboards: stale / affected counts after a known change |
 | Notifications | Optional hooks (email/webhook) when `lifecycle_status` or `effective_to` changes — org-specific |
 
-Today: [Documents](features/documents.md) lifecycle + relationships; `is_current_for_rag` on KB search — **no** automated impact workflow.
+Today: [Documents](features/documents.md) lifecycle + relationships; `is_current_for_rag` on default KB search (dense + hybrid BM25 corpus via `current_for_rag_only`) — **no** automated impact workflow.
 
 ### Other
 

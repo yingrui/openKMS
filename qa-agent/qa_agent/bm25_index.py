@@ -1,4 +1,4 @@
-"""Per-KB in-memory BM25 index, lazy-built from backend /chunks + /faqs.
+"""Per-KB in-memory BM25 index, lazy-built from backend /chunks + /faqs (current_for_rag_only).
 
 Index keyed by knowledge_base_id. Entries are rebuilt when older than
 `settings.bm25_ttl_seconds`. Tokenization uses `jieba` (Chinese-aware) so
@@ -62,7 +62,7 @@ class BM25Cache:
             while True:
                 resp = client.get(
                     url,
-                    params={"offset": offset, "limit": page},
+                    params={"offset": offset, "limit": page, "current_for_rag_only": True},
                     headers=headers,
                 )
                 resp.raise_for_status()

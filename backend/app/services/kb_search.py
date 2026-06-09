@@ -11,7 +11,7 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
 from app.models.wiki_models import WikiPage
-from app.services.document_lifecycle import document_current_sql
+from app.services.document_lifecycle import source_current_for_rag_sql
 from app.models.knowledge_base import KnowledgeBase
 from app.models.api_model import ApiModel
 from app.schemas.knowledge_base import SearchResponse, SearchResult
@@ -106,8 +106,8 @@ async def search_knowledge_base(
 
     if not include_historical_documents:
         at_expr = func.now()
-        chunk_where.append(or_(Chunk.document_id.is_(None), document_current_sql(at_expr)))
-        faq_where.append(or_(FAQ.document_id.is_(None), document_current_sql(at_expr)))
+        chunk_where.append(source_current_for_rag_sql(Chunk.document_id, at_expr))
+        faq_where.append(source_current_for_rag_sql(FAQ.document_id, at_expr))
 
     try:
         if search_type in ("all", "chunks"):

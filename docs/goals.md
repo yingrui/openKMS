@@ -69,7 +69,7 @@ Optimize retrieval alone and the system empties; push contribution alone without
 | Find | Can’t find it | Does it exist, where, which channel | Global search, channels and lists, knowledge map entry, hybrid retrieval |
 | Understand | Don’t know context | Terms, domain structure, onboarding path | Wiki, articles, glossaries, knowledge map, ontology browse |
 | Ask | No evidence | Q&A with permissions and provenance | Knowledge base Q&A, Wiki Copilot |
-| Capture | No time / private answers | Experience and conclusions in maintainable text | Wiki, articles, editable Markdown after doc parse; sharing and ACL |
+| Capture | No time / private answers | Experience and conclusions in maintainable text | Wiki, articles, editable Markdown after doc parse; **KB Q&A → Save as FAQ**; sharing and ACL |
 | Correct | No evidence | Human fallback when machine misreads; keep versions | Document/article versions, metadata edit |
 | Relate | Stale without notice | Supersedes, amends, see-also relationships | Document lineage and lifecycle, knowledge map, ontology |
 | Deliver | No evidence | Training or external messaging with citations | Article publish, print views, cited replies |
@@ -149,6 +149,6 @@ Below follows **where knowledge comes from → how it enters and is cataloged �
 
 **Problem:** Same question asked across systems; fragmented context, hallucination, repeated clarification.
 
-**Direction:** Within permissions, deliver context **fast, accurate, and complete**: unified index, hybrid search, metadata filters, API/tools (personal API keys, CLI, [OpenCode skill](features/opencode-openkms-skill.md)). **In-product assistants first** (Wiki Copilot, KB Q&A); external skills as supplement.
+**Direction:** Within permissions, deliver context **fast, accurate, and complete**: unified index, hybrid search, metadata filters, API/tools (personal API keys, CLI, [OpenCode skill](features/opencode-openkms-skill.md)). **In-product assistants first** — [Wiki Copilot & KB Q&A](features/wiki-spaces.md), knowledge map designer, and [Deep Agents project workspaces](features/openkms-agents.md) for research-style tasks; external skills as supplement.
 
-**Product gap:** [In-product agents](development_plan.md#in-product-agents-high) — scenario assistants exist; **no unified cross-resource global assistant yet** (user side: [User experience](development_plan.md#user-experience-high)).
+**Product gap:** [In-product agents](development_plan.md#in-product-agents-high) — per-surface assistants exist; **eval assist** is API-only (no evaluation UI); **no unified cross-resource global assistant yet** (user side: [User experience](development_plan.md#user-experience-high)).

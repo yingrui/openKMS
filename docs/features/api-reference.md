@@ -166,13 +166,13 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/knowledge-bases/{id}/wiki-spaces` | Link a wiki space (`{ "wiki_space_id": "…" }`); pages are included on next `kb-index` |
 | DELETE | `/api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}` | Unlink wiki space and delete KB chunks whose `wiki_page_id` belongs to that space |
 | GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated wiki pages with body from linked spaces (`?offset=`, `limit` 1–500); used by `kb-index` |
-| GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=) |
+| GET | `/api/knowledge-bases/{id}/faqs` | List FAQs (paginated; ?offset=, ?limit=, ?current_for_rag_only=) |
 | POST | `/api/knowledge-bases/{id}/faqs` | Create FAQ |
 | PUT | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Update FAQ |
 | DELETE | `/api/knowledge-bases/{id}/faqs/{faq_id}` | Delete FAQ |
 | POST | `/api/knowledge-bases/{id}/faqs/generate` | Generate FAQ preview from documents via LLM (no DB save) |
 | POST | `/api/knowledge-bases/{id}/faqs/batch` | Save selected FAQ pairs to KB |
-| GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated; ?offset=, ?limit=) |
+| GET | `/api/knowledge-bases/{id}/chunks` | List chunks (paginated; ?offset=, ?limit=, ?current_for_rag_only=) |
 | GET | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Get one chunk (same shape as list rows; for deep links from Q&A / search) |
 | PUT | `/api/knowledge-bases/{id}/chunks/{chunk_id}` | Update chunk (`content`, `doc_metadata`). If **`content`** changes, the stored **embedding is cleared** until the next indexing job refreshes vectors |
 | DELETE | `/api/knowledge-bases/{id}/chunks` | Delete all chunks |

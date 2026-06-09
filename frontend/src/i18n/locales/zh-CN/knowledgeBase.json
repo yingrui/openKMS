@@ -163,6 +163,8 @@
     "qaToastChatDeleted": "已删除会话",
     "qaToastDeleteChatFailed": "无法删除会话",
     "qaToastRenameChatFailed": "无法重命名会话",
+    "qaSaveAsFaq": "存为常见问题",
+    "qaSaveAsFaqAria": "将本条问答保存为新的常见问题",
     "qaHeroTitle": "与 {{name}} 开始对话",
     "qaHeroSubtitle": "就本知识库中的文档、已关联 wiki 页面与常见问题提问。",
     "qaComposerHint": "Enter 发送 · Shift+Enter 换行",
