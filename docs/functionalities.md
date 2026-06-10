@@ -21,7 +21,7 @@ Per-feature reference, split by topic. The full content used to live in this sin
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
 | [Connectors](features/console-and-auth.md#console-admin) | **Partial:** `/connectors` CRUD, kinds, secrets, dataset output slots — sync jobs **not shipped** ([development plan](development_plan.md#connectors-high)) |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat, files, local/remote git, plan mode, openKMS research tools |
-| [Wiki Copilot & KB Q&A](features/wiki-spaces.md) | Embedded assistants on wiki spaces and knowledge bases |
+| [Wiki Copilot](features/wiki-spaces.md) | In-app LangGraph assistant per wiki space (distinct from qa-agent) |
 | [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | External agent skill + CLI (`openkms-skill/`); not a substitute for in-app agents |
 
 ## Cross-cutting reference

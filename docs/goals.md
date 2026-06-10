@@ -149,6 +149,18 @@ Below follows **where knowledge comes from → how it enters and is cataloged �
 
 **Problem:** Same question asked across systems; fragmented context, hallucination, repeated clarification.
 
-**Direction:** Within permissions, deliver context **fast, accurate, and complete**: unified index, hybrid search, metadata filters, API/tools (personal API keys, CLI, [OpenCode skill](features/opencode-openkms-skill.md)). **In-product assistants first** — [Wiki Copilot & KB Q&A](features/wiki-spaces.md), knowledge map designer, and [Deep Agents project workspaces](features/openkms-agents.md) for research-style tasks; external skills as supplement.
+Two **separate** product lanes (do not merge into one “global chat”):
 
-**Product gap:** [In-product agents](development_plan.md#in-product-agents-high) — per-surface assistants exist; **eval assist** is API-only (no evaluation UI); **no unified cross-resource global assistant yet** (user side: [User experience](development_plan.md#user-experience-high)).
+| Lane | Purpose | Examples in openKMS |
+|------|---------|---------------------|
+| **KB Q&A delivery** | Per–knowledge-base **retrieval + answer service** for people, apps, and external agents — **Agent-ready** (permission-aware, sourced) | [`qa-agent`](features/knowledge-bases.md) via `kb.agent_url`; `POST …/search`, `…/ask`, `…/retrieve`; API keys, [openkms-skill](features/opencode-openkms-skill.md). SPA full-page Q&A is an **operator/consumer UI** for that service, not an in-app maintenance copilot. |
+| **In-app agents** | **Build and maintain** corpus inside openKMS (draft, curate, research workflows) | [Wiki Copilot](features/wiki-spaces.md), knowledge map HTML designer, [Deep Agents project workspaces](features/openkms-agents.md) |
+
+**Direction (delivery):** Unified index, hybrid search, lifecycle-aware corpus, provenance on answers, stable HTTP API for embedders and integrators.
+
+**Direction (in-app):** Short paths for experts to search, draft, and fix content **within** documents, wiki, articles, and maps — without replacing per-KB Q&A services.
+
+**Product gaps:**
+
+- **Delivery** — Connector sync into governed datasets; broader embed/integration patterns ([Connectors](development_plan.md#connectors-high)).
+- **In-app** — [In-product agents](development_plan.md#in-product-agents-high): per-surface copilots exist; **eval assist** is API-only; **no unified maintenance assistant** across wiki / documents / map (excludes merging KB Q&A delivery into that shell).

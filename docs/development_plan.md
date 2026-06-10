@@ -7,11 +7,22 @@ Business **why** and long-form narrative: [Goals (vision)](goals.md) — [user v
 | [Goals](goals.md) lens | What “done” looks like in product | Where tracked here |
 |------------------------|-----------------------------------|--------------------|
 | **User** — [pains](goals.md#goals-user-value) (e.g. can’t find, can’t trust) | Shorter paths to **find, trust, learn, contribute** | [Backlog](#backlog) rows tagged **user** below |
-| **User** — [retrieve / contribute](goals.md#goals-user-value) | Retrieve with provenance; deposit without heavy authoring | Shipped: search, KB Q&A, wiki, parse+edit, **KB Q&A → Save as FAQ**; gaps: unified agent, eval→fix loop, wiki promote |
+| **User** — [retrieve / contribute](goals.md#goals-user-value) | Retrieve with provenance; deposit without heavy authoring | Shipped: KB delivery (search/Q&A), wiki, parse+edit, **KB Q&A → Save as FAQ**; gaps: in-app maintenance assistant, eval→fix loop, wiki promote |
 | **User** — [enterprise roles](goals.md#goals-user-value) | Frontline staff and experts adopt daily; admins and compliance can govern | Console, ACL, eval, connectors (partial) in **Current State** |
 | **Organization** — [organization pillar](goals.md#goals-organization) | Structure, lifecycle, multimodal ingest, unified layer for agents | **Strategic priorities** + org-tagged backlog |
 
 If a release improves only org tooling but not **frontline staff / domain experts** daily paths, pains such as **keeping answers private** and **no time to contribute** will persist (see [Goals](goals.md)).
+
+## Agent lanes (delivery vs in-app) {#agent-lanes}
+
+Track these **separately** — see [Goals — agent service](goals.md#goals-agent-service).
+
+| Lane | What it is | Tracked under |
+|------|------------|---------------|
+| **KB Q&A delivery** | Per-KB **qa-agent** service: hybrid search, `/ask`, `/retrieve`, sourced answers for apps and agents | [Knowledge bases](features/knowledge-bases.md) (API + optional SPA Q&A UI) |
+| **In-app agents** | Copilots and workspaces to **author and maintain** content inside openKMS | [Wiki Copilot](features/wiki-spaces.md), [openkms-agents](features/openkms-agents.md), map designer; backlog [#in-product-agents-high](#in-product-agents-high) |
+
+**Not in scope for “unified in-app assistant”:** merging KB Q&A delivery with Wiki Copilot or a single global chat shell.
 
 ## Current State (as of 2026-06) {#current-state-as-of-2026-06}
 
@@ -24,8 +35,8 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Infrastructure & quality](features/infrastructure.md) | Compose, tests, error handling, code splitting, typecheck |
 | [Documents](features/documents.md) | Document channels, upload, parsing pipeline (PaddleOCR-VL, Baidu Cloud), `openkms-cli` |
 | [Articles](features/articles.md) | Article channels, CRUD, relationships, lifecycle, attachments, bulk import |
-| [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, QA proxy, kb-index |
-| [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view, Wiki Copilot agent |
+| [Knowledge bases](features/knowledge-bases.md) | KB CRUD, FAQs, chunks, semantic search, **Q&A delivery** (qa-agent proxy, `/ask` / `/retrieve`, agent threads; SPA Q&A is one consumer), kb-index |
+| [Wiki spaces](features/wiki-spaces.md) | Wiki content (path-addressed pages, files, vault), import, graph view, **Wiki Copilot** (in-app) |
 | [Evaluation](features/evaluation.md) | Evaluations, items, runs, compare (experimental toggle; quality-improvement workflows still evolving) |
 | [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |
 | [Knowledge map & home](features/knowledge-map.md) | Knowledge Map terms, resource links, home hub graph |
@@ -35,10 +46,10 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement; **resource ACL** on evaluations, glossaries, and ontology types (object/link/dataset) |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
 | [Connectors](features/console-and-auth.md#console-admin) | **Partial:** `/connectors` CRUD, kinds, secrets, dataset output slots — sync jobs **not shipped** ([backlog](#connectors-high)) |
-| [Wiki Copilot & KB Q&A](features/wiki-spaces.md) | Wiki Copilot, KB Q&A (persisted threads, provenance), knowledge map HTML Copilot |
+| [Wiki Copilot & map designer](features/wiki-spaces.md) | Wiki Copilot, knowledge map HTML Copilot (**in-app**; distinct from qa-agent) |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat per project (files, git, plan mode, openKMS research tools, optional `web_search` via connector) |
-| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | **External:** agent skill + CLI for third-party tools (`openkms-skill/`); complements but does not replace in-app agents |
-| In-app agents (cross-cutting) | **Partial:** per-surface assistants above; **eval assist** API only (no evaluation UI yet); **no** unified cross-resource assistant ([backlog](#in-product-agents-high)) |
+| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | **External:** agent skill + CLI for third-party tools (`openkms-skill/`); complements delivery APIs and in-app agents |
+| In-app agents (cross-cutting) | **Partial:** wiki/map/project copilots above; **eval assist** API only; **no** unified **maintenance** assistant across wiki/documents/map ([backlog](#in-product-agents-high)) — **excludes** KB Q&A delivery |
 
 ### Cross-cutting reference
 
@@ -58,13 +69,13 @@ Product direction (not a commitment order). Shipped basics live under **Current 
 | Priority | Organization ([Goals — organization](goals.md#goals-organization)) | User outcomes ([Goals — user value](goals.md#goals-user-value)) |
 |----------|---------------------------------------------------------------------|------------------------------------------------------------------|
 | 1. Connectors | [Breaking silos](goals.md#goals-unified-source) · [Retrieval to decisions](goals.md#goals-decision) | Less **search friction**; operational data and documents in one trusted layer |
-| 2. In-product agents | [Agent knowledge service](goals.md#goals-agent-service) · [Tacit knowledge externalized](goals.md#goals-tacit) | Less **answers kept private**; ask and draft in one application |
+| 2. In-product agents | [Tacit knowledge externalized](goals.md#goals-tacit) | Shorter **authoring/maintenance** paths for experts (wiki, map, projects) — not KB Q&A delivery |
 | 3. Multimodal knowledge | [Non-standard documents](goals.md#goals-documents) | Image/audio/video findable and auditable, not attachments only |
 | 4. Evaluation for quality | [Tacit knowledge externalized](goals.md#goals-tacit) · measurable corpus | Feedback after contribution: what is wrong and what to fix |
 | 5. Policy impact (medium) | [Lifecycle and provenance](goals.md#goals-lifecycle) | Less **obsolete unnoticed**; compliance and standards roles can drive review |
 
 1. **Connectors** — Finish the loop: external sources → **reliable sync jobs** → ontology **datasets** (and downstream KB/wiki), not only credential storage and output wiring.
-2. **In-product agents** — **Frontline staff and domain experts** get capable assistants **inside openKMS** (curate, search, Q&A, maintenance), not only [OpenCode skill](features/opencode-openkms-skill.md) in an external IDE.
+2. **In-product agents** — **Domain experts and knowledge admins** get capable **maintenance** assistants inside openKMS (wiki Copilot, map designer, Deep Agents projects), not only [OpenCode skill](features/opencode-openkms-skill.md) in an external IDE. **Per-KB Q&A** remains a separate [delivery lane](#agent-lanes) (`qa-agent`), not part of this unification.
 3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **knowledge administrators** and **legal/compliance / standards** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
@@ -98,9 +109,11 @@ API/UI today: [Connectors](features/console-and-auth.md#console-admin), [API ref
 
 ### In-product agents (high) {#in-product-agents-high}
 
+**Scope:** Wiki, documents, articles, map, and project workspaces — **not** [KB Q&A delivery](#agent-lanes) (`qa-agent`).
+
 | Item | Notes |
 |------|--------|
-| Unified assistant entry | user — One discoverable pattern across documents, wiki, KB, ontology (search friction, answers kept private). **Today:** Wiki Copilot, KB Q&A, map designer, [Deep Agents projects](features/openkms-agents.md) — separate entry points |
+| Unified maintenance assistant | user — One discoverable pattern to **curate** across documents, wiki, ontology (draft, fix, link). **Today:** Wiki Copilot, map designer, [Deep Agents projects](features/openkms-agents.md) — separate entry points |
 | Eval assist UI | user · org — Wire [eval agent conversations](features/evaluation.md) into evaluation pages (API shipped) |
 | Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
 | Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (quality loop, contribution feedback) |
@@ -170,6 +183,6 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 
 1. **All documents view** – Show documents from all channels when no channel selected?
 2. **Default channel** – Auto-select first channel or require explicit selection?
-3. **Global in-app agent** – Single chat shell vs contextual Copilot per surface (wiki, KB, documents)?
+3. **Global in-app agent** – Single maintenance chat shell vs contextual Copilot per surface (wiki, documents, articles)? *(KB Q&A delivery stays per-KB `qa-agent` — out of scope.)*
 4. **Media vs documents** – New **Recordings/Media** functionality vs extend [Documents](features/documents.md) + model registry — [knowledge-types](./features/knowledge-types.md#rich-media-and-3d)
 5. **Connector vs pipeline** – Is every external sync a **connector job**, or some as generic `openkms-cli` pipelines only?
