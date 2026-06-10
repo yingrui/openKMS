@@ -33,18 +33,26 @@ export interface JobListResponse {
 }
 
 const KB_INDEX_TASK_NAMES = new Set(['run_kb_index', 'run_kb_wiki_space_index']);
+const CONNECTOR_SYNC_TASK_NAMES = new Set(['run_connector_sync']);
 
-/** Primary ID the job runs against (document or knowledge base). */
+/** Primary ID the job runs against (document, knowledge base, or connector). */
 export function jobRunTargetId(job: Pick<JobResponse, 'task_name' | 'args'>): string {
   const args = job.args ?? {};
   if (KB_INDEX_TASK_NAMES.has(job.task_name)) {
     return String(args.knowledge_base_id ?? '');
+  }
+  if (CONNECTOR_SYNC_TASK_NAMES.has(job.task_name)) {
+    return String(args.connector_id ?? '');
   }
   return String(args.document_id ?? '');
 }
 
 export function isKbIndexingJob(taskName: string): boolean {
   return KB_INDEX_TASK_NAMES.has(taskName);
+}
+
+export function isConnectorSyncJob(taskName: string): boolean {
+  return CONNECTOR_SYNC_TASK_NAMES.has(taskName);
 }
 
 export interface JobCreate {
@@ -57,6 +65,7 @@ export interface JobCreate {
 export async function fetchJobs(params?: {
   document_id?: string;
   knowledge_base_id?: string;
+  connector_id?: string;
   status?: string;
   search?: string;
   limit?: number;
@@ -66,6 +75,7 @@ export async function fetchJobs(params?: {
   const query = new URLSearchParams();
   if (params?.document_id) query.set('document_id', params.document_id);
   if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
+  if (params?.connector_id) query.set('connector_id', params.connector_id);
   if (params?.status) query.set('status', params.status);
   if (params?.search?.trim()) query.set('search', params.search.trim());
   if (params?.limit != null) query.set('limit', String(params.limit));

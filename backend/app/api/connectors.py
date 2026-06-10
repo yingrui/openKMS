@@ -25,10 +25,14 @@ from app.schemas.connector import (
     ConnectorResponse,
     ConnectorSearchRequest,
     ConnectorSearchResponse,
+    ConnectorSyncScheduleOut,
+    ConnectorSyncTriggerRequest,
+    ConnectorSyncTriggerResponse,
     ConnectorUpdate,
 )
 from app.services.connector_catalog import (
     CATEGORY_SEARCH_TOOL,
+    CATEGORY_SYNC,
     get_kind_spec,
     list_kind_specs,
     merge_secrets_encrypted,
@@ -44,6 +48,8 @@ from app.services.connector_sync.provision import (
     provision_dataset_for_slot,
     validate_connector_outputs,
 )
+from app.services.connector_sync.schedule import sync_schedule_to_response
+from app.services.connector_sync.sync_range import parse_sync_date_range
 from app.services.permission_catalog import (
     PERM_CONNECTORS_READ,
     PERM_CONNECTORS_WRITE,
@@ -69,6 +75,8 @@ def _to_response(row: Connector) -> ConnectorResponse:
     configured: dict[str, bool] = {}
     if spec:
         configured = secrets_status(spec, row.secrets_encrypted)
+    sched_raw = sync_schedule_to_response(row.settings)
+    sched = ConnectorSyncScheduleOut(**sched_raw) if sched_raw else None
     return ConnectorResponse(
         id=row.id,
         name=row.name,
@@ -76,6 +84,7 @@ def _to_response(row: Connector) -> ConnectorResponse:
         inputs=row.inputs,
         outputs=row.outputs,
         settings=row.settings,
+        sync_schedule=sched,
         enabled=row.enabled,
         secrets_configured=configured,
         created_at=row.created_at,
@@ -259,6 +268,46 @@ async def get_connector(connector_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post(
+    "/{connector_id}/sync",
+    response_model=ConnectorSyncTriggerResponse,
+    status_code=202,
+    dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))],
+)
+async def trigger_connector_sync(
+    connector_id: str,
+    body: ConnectorSyncTriggerRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Queue a sync job. Manual runs pass start_date + end_date; omit both for connector-defined defaults."""
+    row = await db.get(Connector, connector_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    spec = get_kind_spec(row.kind)
+    if not spec or spec.category != CATEGORY_SYNC:
+        raise HTTPException(status_code=400, detail="Connector kind does not support sync")
+    if not row.enabled:
+        raise HTTPException(status_code=400, detail="Connector is disabled")
+    if not row.outputs:
+        raise HTTPException(status_code=400, detail="Connector has no dataset outputs configured")
+
+    req = body or ConnectorSyncTriggerRequest()
+    try:
+        parse_sync_date_range(req.start_date, req.end_date)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    from app.jobs.tasks import run_connector_sync
+
+    defer_kwargs: dict[str, str] = {"connector_id": row.id}
+    if req.start_date is not None and req.end_date is not None:
+        defer_kwargs["start_date"] = req.start_date.isoformat()
+        defer_kwargs["end_date"] = req.end_date.isoformat()
+    job_id = await run_connector_sync.defer_async(**defer_kwargs)
+    await db.commit()
+    return ConnectorSyncTriggerResponse(job_id=int(job_id))
+
+
+@router.post(
     "/{connector_id}/search",
     response_model=ConnectorSearchResponse,
     dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))],
@@ -314,7 +363,7 @@ async def update_connector(connector_id: str, body: ConnectorUpdate, db: AsyncSe
             raise HTTPException(status_code=400, detail=str(e)) from e
     if body.settings is not None:
         try:
-            settings_norm = normalize_and_validate_settings(row.kind, body.settings)
+            settings_norm = normalize_and_validate_settings(row.kind, dict(body.settings))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
 

@@ -86,6 +86,8 @@
     "attempts": "尝试次数",
     "document": "文档",
     "documentId": "文档 ID",
+    "connector": "连接器",
+    "connectorId": "连接器 ID",
     "knowledgeBase": "知识库",
     "knowledgeBaseId": "知识库 ID",
     "wikiSpaceId": "Wiki 空间 ID",

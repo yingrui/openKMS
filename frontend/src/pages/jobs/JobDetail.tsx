@@ -3,7 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu, Terminal, CircleX, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchJobById, markJobFailed, retryJob, isKbIndexingJob, type JobResponse } from '../../data/jobsApi';
+import {
+  fetchJobById,
+  markJobFailed,
+  retryJob,
+  isKbIndexingJob,
+  isConnectorSyncJob,
+  type JobResponse,
+} from '../../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
 import './JobDetail.scss';
@@ -138,6 +145,8 @@ export function JobDetail() {
   const renderedCommand = String(job.args?.rendered_command || '');
   const defaultArgs = job.args?.default_args as Record<string, unknown> | null | undefined;
   const isKbIndexingTask = isKbIndexingJob(job.task_name);
+  const isConnectorSyncTask = isConnectorSyncJob(job.task_name);
+  const connectorId = String(job.args?.connector_id || '');
 
   return (
     <div className="job-detail">
@@ -200,11 +209,28 @@ export function JobDetail() {
 
         <section className="job-detail-card">
           <h2>
-            {isKbIndexingTask ? <BookOpen size={18} /> : <FileText size={18} />}{' '}
-            {isKbIndexingTask ? t('jobDetail.knowledgeBase') : t('jobDetail.document')}
+            {isConnectorSyncTask ? <ListTodo size={18} /> : isKbIndexingTask ? <BookOpen size={18} /> : <FileText size={18} />}{' '}
+            {isConnectorSyncTask
+              ? t('jobDetail.connector')
+              : isKbIndexingTask
+                ? t('jobDetail.knowledgeBase')
+                : t('jobDetail.document')}
           </h2>
           <dl className="job-detail-dl">
-            {isKbIndexingTask ? (
+            {isConnectorSyncTask ? (
+              <>
+                <dt>{t('jobDetail.connectorId')}</dt>
+                <dd>
+                  {connectorId ? (
+                    <Link to={`/connectors/${connectorId}`} className="job-detail-link">
+                      {connectorId}
+                    </Link>
+                  ) : (
+                    dash
+                  )}
+                </dd>
+              </>
+            ) : isKbIndexingTask ? (
               <>
                 <dt>{t('jobDetail.knowledgeBaseId')}</dt>
                 <dd>

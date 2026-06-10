@@ -4,7 +4,7 @@ from app.services.connector_sync.provision import (
     build_create_table_ddl,
     validate_table_columns,
 )
-from app.services.connector_sync.schemas import TUSHARE_TRADE_CALENDAR_COLUMNS
+from app.services.connector_sync.tushare.schemas import TUSHARE_TRADE_CALENDAR_COLUMNS
 
 
 def test_build_create_table_ddl_trade_calendar():

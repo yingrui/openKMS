@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import {
   fetchConnector,
   fetchConnectorKinds,
+  triggerConnectorSync,
   updateConnector,
   type ConnectorKindOut,
   type ConnectorResponse,
 } from '../../data/connectorsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchSystemSettings } from '../../data/systemApi';
 import {
   applyKindToInputsOutputs,
   buildConnectorPayload,
@@ -17,8 +19,10 @@ import {
   newKvRow,
   type KvRow,
 } from './connectorFormUtils';
+import { defaultSyncScheduleForm, parseSyncScheduleForm, type SyncScheduleFormState } from './connectorScheduleUtils';
+import type { ConnectorSyncDateRange } from './connectorSyncUtils';
 
-export type ConnectorDetailTabId = 'settings' | 'playground';
+export type ConnectorDetailTabId = 'general' | 'cron' | 'playground';
 
 type PayloadError = 'required' | 'duplicate' | 'outputs' | 'secrets';
 
@@ -45,7 +49,11 @@ export function useConnectorDetailForm(
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<ConnectorDetailTabId>('settings');
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncJobId, setLastSyncJobId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<ConnectorDetailTabId>('general');
+  const [defaultTimezone, setDefaultTimezone] = useState('UTC');
+  const [syncSchedule, setSyncSchedule] = useState<SyncScheduleFormState>(() => defaultSyncScheduleForm('UTC'));
 
   const [formName, setFormName] = useState('');
   const [formKind, setFormKind] = useState('');
@@ -58,8 +66,10 @@ export function useConnectorDetailForm(
 
   const selectedKindMeta = useMemo(() => kinds.find((k) => k.kind === formKind), [kinds, formKind]);
   const isSearchTool = selectedKindMeta?.category === 'search_tool';
+  const isSyncConnector = selectedKindMeta?.category === 'sync';
+  const isTabbedDetail = isSearchTool || isSyncConnector;
 
-  const applyInit = useCallback((kindList: ConnectorKindOut[], row: ConnectorResponse) => {
+  const applyInit = useCallback((kindList: ConnectorKindOut[], row: ConnectorResponse, tz: string) => {
     const init = initFormFromConnector(kindList, row);
     setFormName(init.formName);
     setFormKind(init.formKind);
@@ -69,23 +79,31 @@ export function useConnectorDetailForm(
     setSettingsRows(init.settingsRows);
     setSecretRows(init.secretRows);
     setPlaygroundBaseline(init.inputValues);
+    setSyncSchedule(parseSyncScheduleForm(row.sync_schedule, tz));
   }, []);
 
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const [kRes, cRes, dRes, dsRes] = await Promise.all([
+      const [kRes, cRes, dRes, dsRes, sysRes] = await Promise.all([
         fetchConnectorKinds(),
         fetchConnector(id),
         fetchDatasets().catch(() => ({ items: [], total: 0 })),
         fetchDataSources().catch(() => ({ items: [], total: 0 })),
+        fetchSystemSettings().catch(() => ({
+          default_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+          system_name: '',
+          api_base_url_note: null,
+        })),
       ]);
+      const tz = sysRes.default_timezone?.trim() || 'UTC';
+      setDefaultTimezone(tz);
       setKinds(kRes);
       setConnector(cRes);
       setDatasets(dRes.items);
       setDataSources(dsRes.items);
-      applyInit(kRes, cRes);
+      applyInit(kRes, cRes, tz);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('connectors.toastLoadFailed'));
       setConnector(null);
@@ -99,7 +117,7 @@ export function useConnectorDetailForm(
   }, [load]);
 
   useEffect(() => {
-    setActiveTab('settings');
+    setActiveTab('general');
   }, [id]);
 
   const handleKindChange = useCallback(
@@ -123,7 +141,7 @@ export function useConnectorDetailForm(
       outputDatasetIds,
       settingsRows,
       secretRows,
-      { isCreate: false }
+      { isCreate: false, syncSchedule: isSyncConnector ? syncSchedule : null }
     );
     if (!built.ok) {
       toastForPayloadError(t, built.error);
@@ -140,7 +158,7 @@ export function useConnectorDetailForm(
         secrets: built.body.secrets,
       });
       setConnector(updated);
-      applyInit(kinds, updated);
+      applyInit(kinds, updated, defaultTimezone);
       toast.success(t('connectors.toastUpdated'));
       return true;
     } catch (e) {
@@ -161,12 +179,40 @@ export function useConnectorDetailForm(
     secretRows,
     kinds,
     applyInit,
+    defaultTimezone,
+    isSyncConnector,
+    syncSchedule,
     t,
   ]);
 
   const handleDatasetProvisioned = useCallback((dataset: DatasetResponse) => {
     setDatasets((prev) => (prev.some((d) => d.id === dataset.id) ? prev : [...prev, dataset]));
   }, []);
+
+  const handleRunSync = useCallback(
+    async (range: ConnectorSyncDateRange): Promise<number | null> => {
+      if (!canWrite || !id || !isSyncConnector) return null;
+      setSyncing(true);
+      try {
+        const { job_id: jobId } = await triggerConnectorSync(id, {
+          start_date: range.startDate,
+          end_date: range.endDate,
+        });
+        setLastSyncJobId(jobId);
+        toast.success(t('connectors.syncStarted', { jobId }));
+        const refreshed = await fetchConnector(id);
+        setConnector(refreshed);
+        applyInit(kinds, refreshed, defaultTimezone);
+        return jobId;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t('connectors.syncFailed'));
+        return null;
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [canWrite, id, isSyncConnector, kinds, applyInit, defaultTimezone, t]
+  );
 
   const formFieldsProps = useMemo(
     () => ({
@@ -214,9 +260,13 @@ export function useConnectorDetailForm(
   return {
     loading,
     saving,
+    syncing,
+    lastSyncJobId,
     connector,
     selectedKindMeta,
     isSearchTool,
+    isSyncConnector,
+    isTabbedDetail,
     activeTab,
     setActiveTab,
     formName,
@@ -224,7 +274,10 @@ export function useConnectorDetailForm(
     playgroundBaseline,
     inputValues,
     settingsRows,
+    syncSchedule,
+    setSyncSchedule,
     handleSave,
+    handleRunSync,
     reload: load,
   };
 }

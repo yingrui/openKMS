@@ -141,10 +141,10 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | PUT | `/api/models/{id}` | Update model |
 | DELETE | `/api/models/{id}` | Delete model |
 | POST | `/api/models/{id}/test` | Test model (proxies to provider; chat-completions with optional vision image) |
-| GET | `/api/jobs` | List job runs (`items`, `total`, `limit`, `offset`; optional `?document_id=`, `?knowledge_base_id=`, `?status=`, `?search=`, `?limit=`, `?offset=`) |
+| GET | `/api/jobs` | List job runs (`items`, `total`, `limit`, `offset`; optional `?document_id=`, `?knowledge_base_id=`, `?connector_id=`, `?status=`, `?search=`, `?limit=`, `?offset=`) |
 | GET | `/api/jobs/{id}` | Get job run detail (includes `events`, and when the worker persisted output: `worker_log` merged command/stderr/stdout as plain text, `worker_log_truncated`, `worker_log_char_limit`; list endpoint omits log fields) |
 | POST | `/api/jobs` | Queue processing run (`{ document_id, pipeline_id?, force_reparse? }`). **`force_reparse`** (default `false`): for pipeline document types, if storage already has `{file_hash}/result.json` from a prior successful parse, the worker reuses it and skips VLM (set `true` to always run the CLI). **`.xlsx`**: defers `run_spreadsheet_preview` (no `pipeline_id`; `force_reparse` ignored). **`.xmind`**: defers `run_mindmap_preview` (no `pipeline_id`; `force_reparse` ignored). **Other extensions**: requires channel or body `pipeline_id`; defers `run_pipeline` |
-| POST | `/api/jobs/{id}/retry` | Retry a failed run; **`run_pipeline`** retries always set **`force_reparse`** so the VLM CLI runs again; **`run_kb_index`** re-queues the same **`knowledge_base_id`** |
+| POST | `/api/jobs/{id}/retry` | Retry a failed run; **`run_pipeline`** retries always set **`force_reparse`** so the VLM CLI runs again; **`run_kb_index`** re-queues the same **`knowledge_base_id`**; **`run_connector_sync`** re-queues the same **`connector_id`** (and **`start_date`** / **`end_date`** when present) |
 | POST | `/api/jobs/{id}/mark-failed` | Mark a pending or running run failed when the worker stopped without finishing; reconciles linked document processing status from all runs for that document (does not downgrade `completed` when a later run succeeded) |
 | DELETE | `/api/jobs/{id}` | Delete a run (not running) |
 
@@ -287,9 +287,10 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/connectors` | List connector instances; optional `?category=` |
 | POST | `/api/connectors/provision-dataset` | Create a PostgreSQL table matching a sync slot schema and register a **Dataset** row (`body`: `kind`, `slot`, `data_source_id`, optional `schema_name`, `table_name`, `display_name`); requires **`connectors:write`** and **`console:datasets`** |
 | POST | `/api/connectors` | Create connector: **sync** kinds require `outputs` (slot → dataset id); bound datasets must match the slot `dataset_schema` when defined; **search_tool** kinds omit `outputs` |
-| GET | `/api/connectors/{id}` | Get one connector |
+| GET | `/api/connectors/{id}` | Get one connector (`sync_schedule` derived from `settings` for sync kinds: `enabled`, `cron`, `timezone`, plus read-only `next_run_at` preview) |
+| POST | `/api/connectors/{id}/sync` | Queue a **sync** connector job (`run_connector_sync`); returns `{ job_id }` (202). Body optional: `{ start_date, end_date }` (ISO dates, inclusive). **Manual:** pass both dates. **No dates:** each connector kind resolves its own default window (Tushare: incremental from last row in target tables through today). **Tushare:** respects `settings.sync_api_min_interval_seconds` (default **61**) and `sync_trade_cal_min_interval_seconds` (default **3661**); daily bars use open dates from the synced `trade_calendar` table |
 | POST | `/api/connectors/{id}/search` | Run **search_tool** connector (`body`: `{ "query": "…", "params"?: { … } }` one-shot input overrides for playground); returns normalized `{ query, search_intent?, results[], debug? }` (`debug`: endpoint, request body, raw provider JSON) |
-| PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided (output datasets validated against slot schema); merge `secrets` or send `{}` to clear secrets |
+| PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided (output datasets validated against slot schema; **sync** kinds may store `settings.sync_schedule`: `{ enabled, cron, timezone }` as schedule metadata — not auto-run by the worker yet); merge `secrets` or send `{}` to clear secrets |
 | DELETE | `/api/connectors/{id}` | Delete connector |
 | GET | `/api/datasets` | List datasets (`console:datasets` or `ontology:read`; filtered by dataset ACL) |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |

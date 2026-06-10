@@ -162,14 +162,11 @@ export function ConnectorFormFields({
         <div className="console-modal-section">
           <h3 className="console-modal-subheading">{t('connectors.sectionInputs')}</h3>
           <p className="console-modal-hint">{t('connectors.inputsHint')}</p>
-          {selectedKindMeta.input_fields.map((f) => {
-            const isBoolean = f.field_type === 'boolean';
-            return (
-              <div key={f.key} className={`console-form-field${isBoolean ? ' console-form-field--inline-check' : ''}`}>
-                {renderInputControl(f)}
-              </div>
-            );
-          })}
+          {selectedKindMeta.input_fields.map((f) => (
+            <div key={f.key} className="console-form-field">
+              {renderInputControl(f)}
+            </div>
+          ))}
         </div>
       ) : null}
 

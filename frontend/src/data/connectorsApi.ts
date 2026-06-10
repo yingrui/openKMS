@@ -75,6 +75,18 @@ export interface ConnectorSearchResult {
   debug?: ConnectorSearchDebug;
 }
 
+export interface ConnectorSyncSchedule {
+  enabled: boolean;
+  cron: string | null;
+  timezone: string;
+  next_run_at: string | null;
+}
+
+export interface ConnectorSyncTriggerBody {
+  start_date: string;
+  end_date: string;
+}
+
 export interface ConnectorResponse {
   id: string;
   name: string;
@@ -82,6 +94,7 @@ export interface ConnectorResponse {
   inputs: Record<string, unknown> | null;
   outputs: Record<string, unknown> | null;
   settings: Record<string, unknown> | null;
+  sync_schedule: ConnectorSyncSchedule | null;
   enabled: boolean;
   secrets_configured: Record<string, boolean>;
   created_at: string;
@@ -202,6 +215,24 @@ export async function provisionConnectorDataset(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || 'Failed to provision dataset');
+  }
+  return res.json();
+}
+
+export async function triggerConnectorSync(
+  connectorId: string,
+  body: ConnectorSyncTriggerBody
+): Promise<{ job_id: number }> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${connectorId}/sync`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to start sync');
   }
   return res.json();
 }

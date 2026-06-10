@@ -3,7 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
-import { fetchJobs, createJob, retryJob, deleteJob, markJobFailed, jobRunTargetId, type JobResponse } from '../../data/jobsApi';
+import { Link } from 'react-router-dom';
+import {
+  fetchJobs,
+  createJob,
+  retryJob,
+  deleteJob,
+  markJobFailed,
+  jobRunTargetId,
+  isConnectorSyncJob,
+  type JobResponse,
+} from '../../data/jobsApi';
 import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { Pagination } from '../../styles/design-system';
 import './Jobs.scss';
@@ -225,7 +235,17 @@ export function JobRuns() {
                             </div>
                           </td>
                           <td className="jobs-table-docid" title={targetId}>
-                            {targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId}
+                            {isConnectorSyncJob(job.task_name) && targetId !== dash ? (
+                              <Link
+                                to={`/connectors/${targetId}`}
+                                className="jobs-table-target-link"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId}
+                              </Link>
+                            ) : (
+                              targetId.length > 12 ? `${targetId.slice(0, 10)}…` : targetId
+                            )}
                           </td>
                           <td>{pipeline?.name || pipelineId || dash}</td>
                           <td>

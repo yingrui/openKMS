@@ -8,11 +8,11 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.services.connector_search.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
-from app.services.connector_sync.schemas import (
+from app.services.connector_sync.schemas import ConnectorDatasetColumn
+from app.services.connector_sync.tushare.schemas import (
     TUSHARE_PG_SCHEMA,
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
-    ConnectorDatasetColumn,
 )
 from app.services.credential_encryption import decrypt, encrypt
 
@@ -101,6 +101,11 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
                 default_table_name="trade_calendar",
             ),
         ),
+        default_settings={
+            "sync_start_date": "19900101",
+            "sync_api_min_interval_seconds": 61,
+            "sync_trade_cal_min_interval_seconds": 3661,
+        },
     ),
     "zhipu_web_search": ConnectorKindSpec(
         kind="zhipu_web_search",
@@ -265,8 +270,11 @@ def merge_kind_settings(kind: str, settings: dict[str, Any] | None) -> dict[str,
 
 
 def normalize_and_validate_settings(kind: str, settings: dict[str, Any] | None) -> dict[str, Any]:
-    """Merge kind defaults and validate search_tool settings when applicable."""
+    """Merge kind defaults and validate kind-specific settings when applicable."""
+    from app.services.connector_sync.schedule import normalize_sync_schedule_in_settings
+
     merged = merge_kind_settings(kind, settings)
+    merged = normalize_sync_schedule_in_settings(kind, merged)
     if kind == "zhipu_web_search":
         url = str(merged.get("web_search_url") or "").strip()
         if not url:

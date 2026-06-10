@@ -1,5 +1,6 @@
 import type { ConnectorKindOut, ConnectorResponse } from '../../data/connectorsApi';
 import type { DatasetResponse } from '../../data/datasetsApi';
+import { stripSyncScheduleFromSettings, syncScheduleToSettingsPayload, type SyncScheduleFormState } from './connectorScheduleUtils';
 
 export type KvRow = { id: string; key: string; value: string };
 
@@ -136,7 +137,7 @@ export function buildConnectorPayload(
   outputDatasetIds: Record<string, string>,
   settingsRows: KvRow[],
   secretRows: KvRow[],
-  options: { isCreate: boolean }
+  options: { isCreate: boolean; syncSchedule?: SyncScheduleFormState | null }
 ):
   | { ok: true; body: {
       name: string;
@@ -185,6 +186,11 @@ export function buildConnectorPayload(
     }
   }
 
+  const settings: Record<string, unknown> = { ...settingsResult.value };
+  if (options.syncSchedule && selectedKindMeta?.category === 'sync') {
+    settings.sync_schedule = syncScheduleToSettingsPayload(options.syncSchedule);
+  }
+
   const body: {
     name: string;
     enabled: boolean;
@@ -196,7 +202,7 @@ export function buildConnectorPayload(
   } = {
     name: formName.trim(),
     enabled: formEnabled,
-    settings: settingsResult.value,
+    settings,
   };
   if (options.isCreate && selectedKindMeta) body.kind = selectedKindMeta.kind;
   if (hasInputFields) body.inputs = inputsObj;
@@ -215,8 +221,8 @@ export function initFormFromConnector(kinds: ConnectorKindOut[], row: ConnectorR
     inputValues,
     outputDatasetIds,
     settingsRows:
-      row.settings && Object.keys(row.settings).length > 0
-        ? settingsToRows(row.settings)
+      row.settings && Object.keys(stripSyncScheduleFromSettings(row.settings) ?? {}).length > 0
+        ? settingsToRows(stripSyncScheduleFromSettings(row.settings))
         : settingsRowsForKind(meta),
     secretRows: secretRowsForKind(kinds, row.kind),
   };

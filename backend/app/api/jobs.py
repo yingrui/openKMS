@@ -99,6 +99,7 @@ def _jobs_list_filters(
     *,
     document_id: str | None,
     knowledge_base_id: str | None,
+    connector_id: str | None,
     status: str | None,
     search: str | None,
 ) -> tuple[str, dict]:
@@ -111,6 +112,9 @@ def _jobs_list_filters(
     if knowledge_base_id:
         clauses.append("args->>'knowledge_base_id' = :knowledge_base_id")
         params["knowledge_base_id"] = knowledge_base_id
+    if connector_id:
+        clauses.append("args->>'connector_id' = :connector_id")
+        params["connector_id"] = connector_id
     if status and (st := status.strip()):
         proc = _PROCRASTINATE_STATUSES_FOR_API.get(st)
         if proc:
@@ -122,7 +126,8 @@ def _jobs_list_filters(
         params["search"] = f"%{q}%"
         clauses.append(
             "(task_name ILIKE :search OR COALESCE(args->>'document_id', '') ILIKE :search "
-            "OR COALESCE(args->>'knowledge_base_id', '') ILIKE :search)"
+            "OR COALESCE(args->>'knowledge_base_id', '') ILIKE :search "
+            "OR COALESCE(args->>'connector_id', '') ILIKE :search)"
         )
 
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
@@ -186,6 +191,7 @@ async def list_jobs(
     request: Request,
     document_id: str | None = None,
     knowledge_base_id: str | None = None,
+    connector_id: str | None = None,
     status: str | None = Query(None, description="API status: pending, running, completed, failed, cancelled"),
     search: str | None = Query(None),
     limit: int = Query(25, ge=1, le=200),
@@ -199,6 +205,7 @@ async def list_jobs(
     where, params = _jobs_list_filters(
         document_id=document_id,
         knowledge_base_id=knowledge_base_id,
+        connector_id=connector_id,
         status=status,
         search=search,
     )
@@ -363,6 +370,26 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
             new_job_id,
             fallback_task_name="run_kb_index",
             fallback_args={"knowledge_base_id": kb_id},
+        )
+
+    if task_name == "run_connector_sync":
+        cid = args.get("connector_id")
+        if not cid or not isinstance(cid, str):
+            raise HTTPException(status_code=400, detail="Job has no connector_id in args")
+        from app.jobs.tasks import run_connector_sync
+
+        defer_kwargs: dict[str, str] = {"connector_id": cid}
+        for key in ("start_date", "end_date"):
+            val = args.get(key)
+            if isinstance(val, str) and val.strip():
+                defer_kwargs[key] = val.strip()
+        new_job_id = await run_connector_sync.defer_async(**defer_kwargs)
+        await db.commit()
+        return await read_job_response(
+            db,
+            new_job_id,
+            fallback_task_name="run_connector_sync",
+            fallback_args=defer_kwargs,
         )
 
     if not document_id:

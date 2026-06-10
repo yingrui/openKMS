@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -74,6 +74,28 @@ class ConnectorKindOut(BaseModel):
     )
 
 
+class ConnectorSyncTriggerRequest(BaseModel):
+    start_date: date | None = Field(
+        default=None,
+        description="Inclusive sync start (YYYY-MM-DD). Required together with end_date for manual sync.",
+    )
+    end_date: date | None = Field(
+        default=None,
+        description="Inclusive sync end (YYYY-MM-DD). Omit both dates so the connector kind picks its default window.",
+    )
+
+
+class ConnectorSyncTriggerResponse(BaseModel):
+    job_id: int
+
+
+class ConnectorSyncScheduleOut(BaseModel):
+    enabled: bool = False
+    cron: str | None = None
+    timezone: str = "UTC"
+    next_run_at: datetime | None = None
+
+
 class ConnectorSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     params: dict[str, Any] | None = Field(
@@ -124,6 +146,7 @@ class ConnectorResponse(BaseModel):
     inputs: dict[str, Any] | None = None
     outputs: dict[str, Any] | None = None
     settings: dict[str, Any] | None = None
+    sync_schedule: ConnectorSyncScheduleOut | None = None
     enabled: bool
     secrets_configured: dict[str, bool] = Field(
         default_factory=dict,

@@ -1,0 +1,1 @@
+"""Tushare sync connector implementation."""

@@ -86,6 +86,8 @@
     "attempts": "Attempts",
     "document": "Document",
     "documentId": "Document ID",
+    "connector": "Connector",
+    "connectorId": "Connector ID",
     "knowledgeBase": "Knowledge base",
     "knowledgeBaseId": "Knowledge base ID",
     "wikiSpaceId": "Wiki space ID",

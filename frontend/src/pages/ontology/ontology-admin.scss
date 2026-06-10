@@ -302,8 +302,16 @@ select.console-form-control {
 .console-modal-body input[type='text'],
 .console-modal-body input[type='password'],
 .console-modal-body input[type='url'],
+.console-modal-body input[type='date'],
+.console-modal-body input[type='time'],
 .console-modal-body select {
   @extend .console-form-control;
+}
+
+.console-form-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-error);
 }
 
 .console-modal-body label.console-modal-checkbox-row {
@@ -334,10 +342,21 @@ select.console-form-control {
     font-size: 0.9375rem;
     font-weight: 500;
     color: var(--color-text);
+    line-height: 1.4;
   }
 
   input[type='checkbox'] {
-    width: auto;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: var(--color-accent);
+  }
+
+  &:has(input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.7;
   }
 }
 
@@ -748,8 +767,120 @@ select.console-form-control {
   flex-wrap: wrap;
 }
 
-.connector-form-field--inline-check {
-  margin-bottom: 12px;
+.connector-cron-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 560px;
+
+  label.console-modal-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 0;
+    cursor: pointer;
+
+    input[type='checkbox'] {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+      accent-color: var(--color-accent);
+    }
+
+    span {
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: var(--color-text);
+      line-height: 1.4;
+    }
+
+    &:has(input:disabled) {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+  }
+}
+
+.connector-sync-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.connector-sync-presets-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.connector-sync-presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.connector-sync-preset-btn {
+  min-width: 4.5rem;
+}
+
+.connector-sync-date-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  .console-form-field {
+    margin-bottom: 0;
+  }
+}
+
+.connector-cron-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+
+  &--disabled {
+    opacity: 0.55;
+  }
+
+  .console-form-field {
+    margin-bottom: 0;
+  }
+}
+
+.connector-cron-cron-preview {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.connector-cron-status {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: 10px;
+
+  div {
+    display: grid;
+    gap: 2px;
+  }
+
+  dt {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.875rem;
+  }
 }
 
 .connector-test-search {

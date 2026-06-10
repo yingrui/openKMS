@@ -754,3 +754,61 @@ def _pipeline_exit_human_hint(code: int) -> str:
     if code == 143:
         return "Exit 143 (SIGTERM): subprocess was terminated."
     return ""
+
+
+@job_app.task(name="run_connector_sync", pass_context=True)
+async def run_connector_sync(
+    context: JobContext,
+    connector_id: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> None:
+    """Run a sync connector job (Tushare and other sync kinds)."""
+    from app.database import async_session_maker
+    from app.models.connector import Connector
+    from app.services.connector_catalog import CATEGORY_SYNC, get_kind_spec
+    from app.services.connector_sync.run import run_connector_sync_for_row
+    from app.services.connector_sync.sync_range import parse_sync_date_range
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+
+    job_id = int(context.job.id) if context.job and context.job.id else None
+    log_lines: list[str] = []
+    requested = parse_sync_date_range(start_date, end_date)
+
+    async with async_session_maker() as session:
+        row = await session.get(Connector, connector_id)
+        if not row or not row.enabled:
+            logger.info("Skipping connector sync for missing or disabled connector %s", connector_id)
+            return
+        spec = get_kind_spec(row.kind)
+        if not spec or spec.category != CATEGORY_SYNC:
+            logger.warning("Connector %s kind %s is not sync; skipping", connector_id, row.kind)
+            return
+        logger.info("Connector sync started for %s (%s)", row.name, row.kind)
+        log_lines.append(f"Connector sync started: {row.name} ({row.kind})")
+        if requested.is_explicit:
+            assert requested.start is not None and requested.end is not None
+            log_lines.append(
+                f"Requested sync window: {requested.start.isoformat()} → {requested.end.isoformat()}"
+            )
+        else:
+            log_lines.append("No date window in job args; connector kind applies its default range")
+        try:
+            stats = await run_connector_sync_for_row(
+                session, row, start_date=start_date, end_date=end_date
+            )
+            for slot, count in stats.items():
+                log_lines.append(f"{slot}: {count} rows upserted")
+            await session.commit()
+            logger.info("Connector sync finished for %s: %s", connector_id, stats)
+            log_lines.append(f"Connector sync finished: {stats}")
+        except Exception as exc:
+            logger.exception("Connector sync failed for %s", connector_id)
+            await session.commit()
+            log_lines.append(f"Connector sync failed: {exc}")
+            if job_id is not None:
+                await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
+            raise
+
+    if job_id is not None:
+        await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")

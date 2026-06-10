@@ -1,13 +1,17 @@
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Settings, Trash2, FlaskConical } from 'lucide-react';
+import { ArrowLeft, Clock, Loader2, Play, Settings, Trash2, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteConnector } from '../../data/connectorsApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONNECTORS_WRITE, PERM_CONSOLE_DATASETS } from '../../config/permissions';
+import { ConnectorCronSettings } from './ConnectorCronSettings';
 import { ConnectorFormFields } from './ConnectorFormFields';
 import { ConnectorSearchPlayground } from './ConnectorSearchPlayground';
+import { ConnectorSyncDialog } from './ConnectorSyncDialog';
 import { useConnectorDetailForm } from './useConnectorDetailForm';
+import type { ConnectorSyncDateRange } from './connectorSyncUtils';
 import '../documents/DocumentChannelSettings.scss';
 import '../ontology/ontology-admin.scss';
 
@@ -22,9 +26,12 @@ export function ConnectorDetailPage() {
   const {
     loading,
     saving,
+    syncing,
     connector,
     selectedKindMeta,
     isSearchTool,
+    isSyncConnector,
+    isTabbedDetail,
     activeTab,
     setActiveTab,
     formName,
@@ -32,8 +39,22 @@ export function ConnectorDetailPage() {
     playgroundBaseline,
     inputValues,
     settingsRows,
+    syncSchedule,
+    setSyncSchedule,
     handleSave,
+    handleRunSync,
   } = useConnectorDetailForm(id, canWrite, canProvisionDatasets);
+
+  const [syncDialogOpen, setSyncDialogOpen] = useState(false);
+
+  const openSyncDialog = () => setSyncDialogOpen(true);
+
+  const confirmSync = async (range: ConnectorSyncDateRange) => {
+    const jobId = await handleRunSync(range);
+    if (jobId != null) {
+      setSyncDialogOpen(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!canWrite || !id) return;
@@ -70,6 +91,16 @@ export function ConnectorDetailPage() {
   }
 
   const formContent = <ConnectorFormFields {...formFieldsProps} />;
+  const cronContent = (
+    <ConnectorCronSettings
+      value={syncSchedule}
+      onChange={setSyncSchedule}
+      savedSchedule={connector.sync_schedule}
+      readOnly={!canWrite}
+    />
+  );
+
+  const showSave = canWrite && activeTab !== 'playground';
 
   return (
     <div className="ontology-admin">
@@ -88,7 +119,18 @@ export function ConnectorDetailPage() {
               <Trash2 size={18} />
               <span>{t('connectors.deleteTitle')}</span>
             </button>
-            {(!isSearchTool || activeTab === 'settings') ? (
+            {isSyncConnector ? (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={syncing}
+                onClick={openSyncDialog}
+              >
+                {syncing ? <Loader2 size={18} className="console-loading-spinner" /> : <Play size={18} />}
+                <span>{syncing ? t('connectors.syncRunning') : t('connectors.syncRunNow')}</span>
+              </button>
+            ) : null}
+            {showSave ? (
               <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
                 {saving ? t('connectors.saving') : t('connectors.save')}
               </button>
@@ -98,38 +140,55 @@ export function ConnectorDetailPage() {
       </div>
 
       <div
-        className={`ontology-admin-content connector-detail-panel${isSearchTool ? ' connector-detail-panel--tabbed' : ''}`}
+        className={`ontology-admin-content connector-detail-panel${isTabbedDetail ? ' connector-detail-panel--tabbed' : ''}`}
       >
-        {isSearchTool ? (
+        {isTabbedDetail ? (
           <>
             <div className="document-channel-settings-tabs" role="tablist" aria-label={t('connectors.detailTabsAria')}>
               <button
                 type="button"
                 role="tab"
-                aria-selected={activeTab === 'settings'}
-                className={`document-channel-settings-tab${activeTab === 'settings' ? ' active' : ''}`}
-                onClick={() => setActiveTab('settings')}
+                aria-selected={activeTab === 'general'}
+                className={`document-channel-settings-tab${activeTab === 'general' ? ' active' : ''}`}
+                onClick={() => setActiveTab('general')}
               >
                 <Settings size={18} />
-                <span>{t('connectors.tabSettings')}</span>
+                <span>{t(isSyncConnector ? 'connectors.tabGeneral' : 'connectors.tabSettings')}</span>
               </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeTab === 'playground'}
-                className={`document-channel-settings-tab${activeTab === 'playground' ? ' active' : ''}`}
-                onClick={() => setActiveTab('playground')}
-              >
-                <FlaskConical size={18} />
-                <span>{t('connectors.tabPlayground')}</span>
-              </button>
+              {isSyncConnector ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'cron'}
+                  className={`document-channel-settings-tab${activeTab === 'cron' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('cron')}
+                >
+                  <Clock size={18} />
+                  <span>{t('connectors.tabCron')}</span>
+                </button>
+              ) : null}
+              {isSearchTool ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'playground'}
+                  className={`document-channel-settings-tab${activeTab === 'playground' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('playground')}
+                >
+                  <FlaskConical size={18} />
+                  <span>{t('connectors.tabPlayground')}</span>
+                </button>
+              ) : null}
             </div>
             <div
-              className={`document-channel-settings-form${activeTab === 'playground' ? ' connector-detail-tab-panel--playground' : ''}`}
+              className={`document-channel-settings-form${
+                activeTab === 'playground' ? ' connector-detail-tab-panel--playground' : ''
+              }`}
               role="tabpanel"
             >
-              {activeTab === 'settings' ? formContent : null}
-              {activeTab === 'playground' && selectedKindMeta && id ? (
+              {activeTab === 'general' ? formContent : null}
+              {activeTab === 'cron' && isSyncConnector ? cronContent : null}
+              {activeTab === 'playground' && isSearchTool && selectedKindMeta && id ? (
                 <ConnectorSearchPlayground
                   connectorId={id}
                   kindMeta={selectedKindMeta}
@@ -145,6 +204,15 @@ export function ConnectorDetailPage() {
           <div className="connector-detail-card">{formContent}</div>
         )}
       </div>
+
+      {isSyncConnector ? (
+        <ConnectorSyncDialog
+          open={syncDialogOpen}
+          syncing={syncing}
+          onClose={() => setSyncDialogOpen(false)}
+          onConfirm={confirmSync}
+        />
+      ) : null}
     </div>
   );
 }
