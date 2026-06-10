@@ -71,7 +71,7 @@ Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills`
 ```
 {project_id}/
   AGENTS.md
-  .gitignore           # ignores .openkms/skills/ (installed skills)
+  .gitignore           # ignores .openkms/skills/, conversation_history/, large_tool_results/
   .openkms/skills/     # installed skills (e.g. openkms/)
   .git/                # optional
 ```

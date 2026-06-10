@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, Settings, Trash2, FlaskConical } from 'lucide-react
 import { toast } from 'sonner';
 import { deleteConnector } from '../../data/connectorsApi';
 import { useAuth } from '../../contexts/AuthContext';
-import { PERM_CONNECTORS_WRITE } from '../../config/permissions';
+import { PERM_CONNECTORS_WRITE, PERM_CONSOLE_DATASETS } from '../../config/permissions';
 import { ConnectorFormFields } from './ConnectorFormFields';
 import { ConnectorSearchPlayground } from './ConnectorSearchPlayground';
 import { useConnectorDetailForm } from './useConnectorDetailForm';
@@ -17,6 +17,7 @@ export function ConnectorDetailPage() {
   const { t } = useTranslation('console');
   const { hasPermission } = useAuth();
   const canWrite = hasPermission(PERM_CONNECTORS_WRITE);
+  const canProvisionDatasets = canWrite && hasPermission(PERM_CONSOLE_DATASETS);
 
   const {
     loading,
@@ -32,7 +33,7 @@ export function ConnectorDetailPage() {
     inputValues,
     settingsRows,
     handleSave,
-  } = useConnectorDetailForm(id, canWrite);
+  } = useConnectorDetailForm(id, canWrite, canProvisionDatasets);
 
   const handleDelete = async () => {
     if (!canWrite || !id) return;

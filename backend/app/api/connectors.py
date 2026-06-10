@@ -4,20 +4,24 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_any_permission, require_permission
 from app.database import get_db
 from app.models.connector import Connector
+from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.connector import (
     ConnectorCreate,
+    ConnectorDatasetColumnOut,
     ConnectorKindInputFieldOut,
     ConnectorKindOut,
     ConnectorKindOutputSlotOut,
     ConnectorListResponse,
+    ConnectorProvisionDatasetRequest,
+    ConnectorProvisionDatasetResponse,
     ConnectorResponse,
     ConnectorSearchRequest,
     ConnectorSearchResponse,
@@ -36,7 +40,15 @@ from app.services.connector_catalog import (
     validate_secrets_for_kind,
 )
 from app.services.connector_search.run import run_connector_search
-from app.services.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE
+from app.services.connector_sync.provision import (
+    provision_dataset_for_slot,
+    validate_connector_outputs,
+)
+from app.services.permission_catalog import (
+    PERM_CONNECTORS_READ,
+    PERM_CONNECTORS_WRITE,
+    PERM_CONSOLE_DATASETS,
+)
 
 router = APIRouter(
     prefix="/connectors",
@@ -96,6 +108,17 @@ def _kind_to_out(s) -> ConnectorKindOut:
                 label=o.label,
                 description=o.description,
                 resource=o.resource,
+                dataset_schema=[
+                    ConnectorDatasetColumnOut(
+                        name=c.name,
+                        pg_type=c.pg_type,
+                        nullable=c.nullable,
+                        primary_key=c.primary_key,
+                    )
+                    for c in o.dataset_columns
+                ],
+                default_pg_schema=o.default_pg_schema,
+                default_table_name=o.default_table_name,
             )
             for o in s.output_slots
         ],
@@ -118,6 +141,53 @@ async def list_connector_kinds(
         cat = category.strip()
         specs = [s for s in specs if s.category == cat]
     return [_kind_to_out(s) for s in specs]
+
+
+@router.post(
+    "/provision-dataset",
+    response_model=ConnectorProvisionDatasetResponse,
+    status_code=201,
+    dependencies=[
+        Depends(require_permission(PERM_CONNECTORS_WRITE)),
+        Depends(require_permission(PERM_CONSOLE_DATASETS)),
+    ],
+)
+async def provision_connector_dataset(
+    request: Request,
+    body: ConnectorProvisionDatasetRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a PostgreSQL table and dataset row matching a sync connector output slot schema."""
+    try:
+        validate_kind(body.kind)
+        p = request.state.openkms_jwt_payload
+        sub = p.get("sub")
+        uname = p.get("preferred_username") or p.get("name")
+        dataset = await provision_dataset_for_slot(
+            db,
+            kind=body.kind.strip(),
+            slot=body.slot.strip(),
+            data_source_id=body.data_source_id.strip(),
+            schema_name=body.schema_name,
+            table_name=body.table_name,
+            display_name=body.display_name,
+            created_by=sub if isinstance(sub, str) else None,
+            created_by_name=str(uname)[:256] if isinstance(uname, str) and uname.strip() else None,
+        )
+        await db.commit()
+        await db.refresh(dataset)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    ds = await db.get(DataSource, dataset.data_source_id)
+    return ConnectorProvisionDatasetResponse(
+        id=dataset.id,
+        data_source_id=dataset.data_source_id,
+        data_source_name=ds.name if ds else None,
+        schema_name=dataset.schema_name,
+        table_name=dataset.table_name,
+        display_name=dataset.display_name,
+    )
 
 
 @router.get("", response_model=ConnectorListResponse, dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))])
@@ -155,6 +225,10 @@ async def create_connector(body: ConnectorCreate, db: AsyncSession = Depends(get
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     await _ensure_datasets_exist(db, list(outputs_norm.values()))
+    try:
+        await validate_connector_outputs(db, body.kind, outputs_norm)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     secrets_cipher = None
     if body.secrets:
@@ -234,6 +308,10 @@ async def update_connector(connector_id: str, body: ConnectorUpdate, db: AsyncSe
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         await _ensure_datasets_exist(db, list(outputs_norm.values()))
+        try:
+            await validate_connector_outputs(db, row.kind, outputs_norm)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
     if body.settings is not None:
         try:
             settings_norm = normalize_and_validate_settings(row.kind, body.settings)

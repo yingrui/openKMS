@@ -1,8 +1,10 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ConnectorKindOut } from '../../data/connectorsApi';
+import type { DataSourceResponse } from '../../data/dataSourcesApi';
 import type { DatasetResponse } from '../../data/datasetsApi';
-import { datasetOptionLabel, newKvRow, type KvRow } from './connectorFormUtils';
+import { newKvRow, type KvRow } from './connectorFormUtils';
+import { ConnectorOutputSlotField } from './ConnectorOutputSlotField';
 
 const nameFieldId = 'connector-field-name';
 const kindFieldId = 'connector-field-kind';
@@ -24,6 +26,9 @@ export function ConnectorFormFields({
   secretRows,
   onSecretRowsChange,
   datasets,
+  dataSources,
+  canProvisionDatasets,
+  onDatasetProvisioned,
   kindLocked,
   isExisting,
   readOnly,
@@ -44,6 +49,9 @@ export function ConnectorFormFields({
   secretRows: KvRow[];
   onSecretRowsChange: (rows: KvRow[]) => void;
   datasets: DatasetResponse[];
+  dataSources: DataSourceResponse[];
+  canProvisionDatasets: boolean;
+  onDatasetProvisioned: (dataset: DatasetResponse) => void;
   kindLocked: boolean;
   isExisting: boolean;
   readOnly: boolean;
@@ -177,31 +185,22 @@ export function ConnectorFormFields({
         <div className="console-modal-section">
           <h3 className="console-modal-subheading">{t('connectors.sectionOutputs')}</h3>
           <p className="console-modal-hint">{t('connectors.outputsHint')}</p>
-          {selectedKindMeta.output_slots.map((o) => {
-            const fieldId = `connector-output-${o.slot}`;
-            return (
-              <div key={o.slot} className="console-form-field">
-                <label htmlFor={fieldId}>{o.label}</label>
-                {o.description ? (
-                  <p className="console-modal-hint console-modal-hint--block">{o.description}</p>
-                ) : null}
-                <select
-                  id={fieldId}
-                  className="console-form-control"
-                  value={outputDatasetIds[o.slot] ?? ''}
-                  onChange={(e) => onOutputDatasetIdsChange({ ...outputDatasetIds, [o.slot]: e.target.value })}
-                  disabled={readOnly}
-                >
-                  <option value="">{t('connectors.outputDatasetPlaceholder')}</option>
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {datasetOptionLabel(d)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            );
-          })}
+          {selectedKindMeta.output_slots.map((o) => (
+            <ConnectorOutputSlotField
+              key={o.slot}
+              slot={o}
+              kind={formKind}
+              value={outputDatasetIds[o.slot] ?? ''}
+              datasets={datasets}
+              dataSources={dataSources}
+              readOnly={readOnly}
+              canProvision={canProvisionDatasets}
+              onSelect={(datasetId) =>
+                onOutputDatasetIdsChange({ ...outputDatasetIds, [o.slot]: datasetId })
+              }
+              onProvisioned={onDatasetProvisioned}
+            />
+          ))}
         </div>
       ) : null}
 

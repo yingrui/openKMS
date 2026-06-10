@@ -12,11 +12,39 @@ export interface ConnectorKindInputFieldOut {
   options?: string[];
 }
 
+export interface ConnectorDatasetColumnOut {
+  name: string;
+  pg_type: string;
+  nullable: boolean;
+  primary_key: boolean;
+}
+
 export interface ConnectorKindOutputSlotOut {
   slot: string;
   label: string;
   description: string;
   resource: string;
+  dataset_schema?: ConnectorDatasetColumnOut[];
+  default_pg_schema?: string | null;
+  default_table_name?: string | null;
+}
+
+export interface ConnectorProvisionDatasetBody {
+  kind: string;
+  slot: string;
+  data_source_id: string;
+  schema_name?: string;
+  table_name?: string;
+  display_name?: string;
+}
+
+export interface ConnectorProvisionDatasetResponse {
+  id: string;
+  data_source_id: string;
+  data_source_name: string | null;
+  schema_name: string;
+  table_name: string;
+  display_name: string | null;
 }
 
 export interface ConnectorKindOut {
@@ -159,6 +187,23 @@ export async function deleteConnector(id: string): Promise<void> {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail || 'Failed to delete connector');
   }
+}
+
+export async function provisionConnectorDataset(
+  body: ConnectorProvisionDatasetBody
+): Promise<ConnectorProvisionDatasetResponse> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/provision-dataset`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string }).detail || 'Failed to provision dataset');
+  }
+  return res.json();
 }
 
 export async function searchConnector(

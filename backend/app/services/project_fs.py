@@ -27,6 +27,10 @@ Describe what this project is for and how the agent should work here.
 
 _DEFAULT_GITIGNORE = """# Installed agent skills (managed by openKMS)
 .openkms/skills/
+
+# Deep Agents runtime (context offloading / summarization)
+conversation_history/
+large_tool_results/
 """
 
 def _slugify(name: str) -> str:
@@ -66,11 +70,24 @@ def resolve_project_path(project_id: str, relative: str = "") -> Path:
     return target
 
 
+_STANDARD_GITIGNORE_PATHS = (
+    ".openkms/skills/",
+    "conversation_history/",
+    "large_tool_results/",
+)
+
+
 def ensure_project_gitignore(project_id: str) -> None:
     root = project_root(project_id)
     gitignore = root / ".gitignore"
     if not gitignore.exists():
         gitignore.write_text(_DEFAULT_GITIGNORE, encoding="utf-8")
+        return
+    text = gitignore.read_text(encoding="utf-8")
+    missing = [path for path in _STANDARD_GITIGNORE_PATHS if path not in text]
+    if not missing:
+        return
+    gitignore.write_text(text.rstrip() + "\n\n" + "\n".join(missing) + "\n", encoding="utf-8")
 
 
 def scaffold_project_dir(project_id: str) -> Path:

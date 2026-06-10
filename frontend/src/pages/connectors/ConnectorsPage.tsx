@@ -10,9 +10,10 @@ import {
   type ConnectorKindOut,
   type ConnectorResponse,
 } from '../../data/connectorsApi';
-import { fetchDatasets } from '../../data/datasetsApi';
+import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
+import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { useAuth } from '../../contexts/AuthContext';
-import { PERM_CONNECTORS_WRITE } from '../../config/permissions';
+import { PERM_CONNECTORS_WRITE, PERM_CONSOLE_DATASETS } from '../../config/permissions';
 import { ConnectorFormFields } from './ConnectorFormFields';
 import {
   applyKindToInputsOutputs,
@@ -29,9 +30,11 @@ export function ConnectorsPage() {
   const { t } = useTranslation('console');
   const { hasPermission } = useAuth();
   const canWrite = hasPermission(PERM_CONNECTORS_WRITE);
+  const canProvisionDatasets = canWrite && hasPermission(PERM_CONSOLE_DATASETS);
   const [kinds, setKinds] = useState<ConnectorKindOut[]>([]);
   const [items, setItems] = useState<ConnectorResponse[]>([]);
-  const [datasets, setDatasets] = useState<Awaited<ReturnType<typeof fetchDatasets>>['items']>([]);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [formName, setFormName] = useState('');
@@ -74,12 +77,23 @@ export function ConnectorsPage() {
     setSettingsRows(settingsRowsForKind(meta));
     setSecretRows(secretRowsForKind(kinds, k0));
     setShowCreate(true);
-    void fetchDatasets()
-      .then((r) => setDatasets(r.items))
+    void Promise.all([
+      fetchDatasets(),
+      fetchDataSources().catch(() => ({ items: [], total: 0 })),
+    ])
+      .then(([dRes, dsRes]) => {
+        setDatasets(dRes.items);
+        setDataSources(dsRes.items);
+      })
       .catch(() => {
         setDatasets([]);
+        setDataSources([]);
         toast.error(t('connectors.toastDatasetsLoadFailed'));
       });
+  };
+
+  const handleDatasetProvisioned = (dataset: DatasetResponse) => {
+    setDatasets((prev) => (prev.some((d) => d.id === dataset.id) ? prev : [...prev, dataset]));
   };
 
   const handleCreate = async () => {
@@ -247,6 +261,9 @@ export function ConnectorsPage() {
                 secretRows={secretRows}
                 onSecretRowsChange={setSecretRows}
                 datasets={datasets}
+                dataSources={dataSources}
+                canProvisionDatasets={canProvisionDatasets}
+                onDatasetProvisioned={handleDatasetProvisioned}
                 kindLocked={false}
                 isExisting={false}
                 readOnly={false}

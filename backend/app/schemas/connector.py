@@ -18,11 +18,39 @@ class ConnectorKindInputFieldOut(BaseModel):
     options: list[str] = Field(default_factory=list)
 
 
+class ConnectorDatasetColumnOut(BaseModel):
+    name: str
+    pg_type: str
+    nullable: bool = False
+    primary_key: bool = False
+
+
 class ConnectorKindOutputSlotOut(BaseModel):
     slot: str
     label: str
     description: str
     resource: str
+    dataset_schema: list[ConnectorDatasetColumnOut] = Field(default_factory=list)
+    default_pg_schema: str | None = None
+    default_table_name: str | None = None
+
+
+class ConnectorProvisionDatasetRequest(BaseModel):
+    kind: str = Field(..., min_length=1, max_length=64)
+    slot: str = Field(..., min_length=1, max_length=64)
+    data_source_id: str = Field(..., min_length=1, max_length=64)
+    schema_name: str | None = Field(None, max_length=128)
+    table_name: str | None = Field(None, max_length=256)
+    display_name: str | None = Field(None, max_length=256)
+
+
+class ConnectorProvisionDatasetResponse(BaseModel):
+    id: str
+    data_source_id: str
+    data_source_name: str | None = None
+    schema_name: str
+    table_name: str
+    display_name: str | None = None
 
 
 class ConnectorKindOut(BaseModel):

@@ -8,7 +8,8 @@ import {
   type ConnectorKindOut,
   type ConnectorResponse,
 } from '../../data/connectorsApi';
-import { fetchDatasets } from '../../data/datasetsApi';
+import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
+import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import {
   applyKindToInputsOutputs,
   buildConnectorPayload,
@@ -31,12 +32,17 @@ function toastForPayloadError(t: (key: string) => string, error: PayloadError) {
   toast.error(t(keyByError[error]));
 }
 
-export function useConnectorDetailForm(id: string | undefined, canWrite: boolean) {
+export function useConnectorDetailForm(
+  id: string | undefined,
+  canWrite: boolean,
+  canProvisionDatasets: boolean
+) {
   const { t } = useTranslation('console');
 
   const [kinds, setKinds] = useState<ConnectorKindOut[]>([]);
   const [connector, setConnector] = useState<ConnectorResponse | null>(null);
-  const [datasets, setDatasets] = useState<Awaited<ReturnType<typeof fetchDatasets>>['items']>([]);
+  const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
+  const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<ConnectorDetailTabId>('settings');
@@ -69,14 +75,16 @@ export function useConnectorDetailForm(id: string | undefined, canWrite: boolean
     if (!id) return;
     setLoading(true);
     try {
-      const [kRes, cRes, dRes] = await Promise.all([
+      const [kRes, cRes, dRes, dsRes] = await Promise.all([
         fetchConnectorKinds(),
         fetchConnector(id),
         fetchDatasets().catch(() => ({ items: [], total: 0 })),
+        fetchDataSources().catch(() => ({ items: [], total: 0 })),
       ]);
       setKinds(kRes);
       setConnector(cRes);
       setDatasets(dRes.items);
+      setDataSources(dsRes.items);
       applyInit(kRes, cRes);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('connectors.toastLoadFailed'));
@@ -156,6 +164,10 @@ export function useConnectorDetailForm(id: string | undefined, canWrite: boolean
     t,
   ]);
 
+  const handleDatasetProvisioned = useCallback((dataset: DatasetResponse) => {
+    setDatasets((prev) => (prev.some((d) => d.id === dataset.id) ? prev : [...prev, dataset]));
+  }, []);
+
   const formFieldsProps = useMemo(
     () => ({
       kinds,
@@ -174,6 +186,9 @@ export function useConnectorDetailForm(id: string | undefined, canWrite: boolean
       secretRows,
       onSecretRowsChange: setSecretRows,
       datasets,
+      dataSources,
+      canProvisionDatasets,
+      onDatasetProvisioned: handleDatasetProvisioned,
       kindLocked: true as const,
       isExisting: true as const,
       readOnly: !canWrite,
@@ -189,7 +204,10 @@ export function useConnectorDetailForm(id: string | undefined, canWrite: boolean
       settingsRows,
       secretRows,
       datasets,
+      dataSources,
       canWrite,
+      canProvisionDatasets,
+      handleDatasetProvisioned,
     ]
   );
 

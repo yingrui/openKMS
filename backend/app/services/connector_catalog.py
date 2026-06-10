@@ -8,6 +8,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.services.connector_search.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
+from app.services.connector_sync.schemas import (
+    TUSHARE_PG_SCHEMA,
+    TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
+    TUSHARE_TRADE_CALENDAR_COLUMNS,
+    ConnectorDatasetColumn,
+)
 from app.services.credential_encryption import decrypt, encrypt
 
 CATEGORY_SYNC = "sync"
@@ -38,6 +44,9 @@ class ConnectorOutputSlot:
     label: str
     description: str
     resource: str  # "dataset"
+    dataset_columns: tuple[ConnectorDatasetColumn, ...] = ()
+    default_pg_schema: str | None = None
+    default_table_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,12 +87,18 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
                 label="Daily stock data",
                 description="Tabular target for daily quotes, adj factor, and dividends (per trading day), aligned with a stock_trade_daily-style pipeline.",
                 resource="dataset",
+                dataset_columns=TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="stock_trade_daily",
             ),
             ConnectorOutputSlot(
                 slot="trade_calendar",
                 label="Trade calendar",
                 description="Tabular target for exchange trade calendars (e.g. SSE/SZSE cal_date / is_open), aligned with a trade_calendar-style pipeline.",
                 resource="dataset",
+                dataset_columns=TUSHARE_TRADE_CALENDAR_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="trade_calendar",
             ),
         ),
     ),

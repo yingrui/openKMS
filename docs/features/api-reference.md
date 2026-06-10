@@ -283,12 +283,13 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/connectors/kinds` | List connector kinds (`category`: `sync` \| `search_tool`), **input fields**, **output slots** (sync only), **output_schema** (search_tool), secret key names; optional `?category=` |
+| GET | `/api/connectors/kinds` | List connector kinds (`category`: `sync` \| `search_tool`), **input fields**, **output slots** (sync only; each slot may include `dataset_schema`, `default_pg_schema`, `default_table_name`), **output_schema** (search_tool), secret key names; optional `?category=` |
 | GET | `/api/connectors` | List connector instances; optional `?category=` |
-| POST | `/api/connectors` | Create connector: **sync** kinds require `outputs` (slot → dataset id); **search_tool** kinds omit `outputs` |
+| POST | `/api/connectors/provision-dataset` | Create a PostgreSQL table matching a sync slot schema and register a **Dataset** row (`body`: `kind`, `slot`, `data_source_id`, optional `schema_name`, `table_name`, `display_name`); requires **`connectors:write`** and **`console:datasets`** |
+| POST | `/api/connectors` | Create connector: **sync** kinds require `outputs` (slot → dataset id); bound datasets must match the slot `dataset_schema` when defined; **search_tool** kinds omit `outputs` |
 | GET | `/api/connectors/{id}` | Get one connector |
 | POST | `/api/connectors/{id}/search` | Run **search_tool** connector (`body`: `{ "query": "…", "params"?: { … } }` one-shot input overrides for playground); returns normalized `{ query, search_intent?, results[], debug? }` (`debug`: endpoint, request body, raw provider JSON) |
-| PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided; merge `secrets` or send `{}` to clear secrets |
+| PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided (output datasets validated against slot schema); merge `secrets` or send `{}` to clear secrets |
 | DELETE | `/api/connectors/{id}` | Delete connector |
 | GET | `/api/datasets` | List datasets (`console:datasets` or `ontology:read`; filtered by dataset ACL) |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |

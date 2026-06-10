@@ -689,6 +689,65 @@ select.console-form-control {
   max-height: 360px;
 }
 
+.connector-output-slot {
+  margin-bottom: 16px;
+}
+
+.connector-output-schema-details {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+
+  summary {
+    cursor: pointer;
+    color: var(--color-text-muted);
+    user-select: none;
+
+    &:hover {
+      color: var(--color-text);
+    }
+  }
+
+  .connector-output-schema {
+    margin-top: 8px;
+    max-height: 200px;
+  }
+}
+
+.connector-output-provision {
+  margin-top: 10px;
+}
+
+.connector-output-provision-form {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connector-output-provision-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.connector-output-provision-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.connector-output-provision-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .connector-form-field--inline-check {
   margin-bottom: 12px;
 }
