@@ -8,45 +8,45 @@
 
 .home-hero {
   text-align: center;
-  padding: 48px 24px 56px;
+  padding: var(--space-12) var(--space-6) calc(var(--space-12) + var(--space-2));
 }
 
 .home-hero-title {
-  font-size: 1.75rem;
+  font-size: var(--text-page-title);
   font-weight: 700;
   letter-spacing: -0.03em;
-  margin: 0 0 16px;
+  margin: 0 0 var(--space-4);
   color: var(--color-text);
 }
 
 .home-hero-subtitle {
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   line-height: 1.6;
   color: var(--color-text-secondary);
   margin: 0;
 }
 
 .home-section {
-  margin-bottom: 48px;
+  margin-bottom: var(--space-12);
 }
 
 .home-section-title {
-  font-size: 1.25rem;
+  font-size: var(--text-xl);
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   color: var(--color-text);
 }
 
 .home-section-desc {
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   color: var(--color-text-muted);
-  margin: 0 0 24px;
+  margin: 0 0 var(--space-6);
 }
 
 .home-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .home-card {
@@ -72,7 +72,7 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-md);
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .home-card-pain .home-card-icon {
@@ -86,14 +86,14 @@
 }
 
 .home-card-title {
-  font-size: 1rem;
+  font-size: var(--text-base);
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   color: var(--color-text);
 }
 
 .home-card-text {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   line-height: 1.5;
   color: var(--color-text-secondary);
   margin: 0;
@@ -102,7 +102,7 @@
 .home-func-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .home-func-card {
@@ -116,13 +116,13 @@
 .home-func-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  margin-bottom: var(--space-3);
   color: var(--color-accent);
 }
 
 .home-func-title {
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 0;
   color: var(--color-text);
@@ -132,7 +132,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.6;
   color: var(--color-text-secondary);
 }
@@ -153,21 +153,21 @@
 .home-cta {
   text-align: center;
   padding: 40px 24px;
-  margin-top: 24px;
+  margin-top: var(--space-6);
   background: var(--color-bg-muted);
   border-radius: var(--radius-lg);
 }
 
 .home-cta p {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--color-text);
 }
 
 .home-cta-hint {
-  margin-top: 8px !important;
-  font-size: 0.875rem !important;
+  margin-top: var(--space-2) !important;
+  font-size: var(--text-md) !important;
   font-weight: 400 !important;
   color: var(--color-text-muted) !important;
 }
@@ -192,14 +192,14 @@
 
 /* Knowledge operations hub (signed-in) */
 .home-static-landing-signin {
-  margin-top: 16px;
+  margin-top: var(--space-4);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .home-header {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .home-muted {
@@ -216,15 +216,15 @@
 .home-hub-split {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-top: 16px;
+  gap: var(--space-5);
+  margin-top: var(--space-4);
   align-items: stretch;
 }
 
 .home-hub-split__right {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
   min-width: 0;
   flex: 1;
 }
@@ -239,7 +239,7 @@
 .home-hub-split__right-row {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 @include min-width(ds.$bp-sm-min) {
@@ -257,7 +257,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .home-map-hero-header {
@@ -265,7 +265,7 @@
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px 24px;
+  gap: var(--space-4) 24px;
 }
 
 .home-map-hero-header-text h1 {
@@ -281,7 +281,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 16px;
+  gap: var(--space-3) 16px;
   justify-content: flex-end;
 }
 
@@ -292,23 +292,23 @@
 .home-map-hero-stats {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
+  gap: var(--space-3);
+  padding: var(--space-2) calc(var(--space-3) + var(--space-1) / 2);
   background: var(--color-bg-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .home-map-hero-stat {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--gap-compact);
 }
 
 .home-map-hero-stat-value {
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
   color: var(--color-text);
   font-variant-numeric: tabular-nums;
 }
@@ -327,7 +327,7 @@
 }
 
 .home-map-hero-stats-muted {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .home-map-manage-btn {
@@ -346,15 +346,15 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   min-width: 0;
 }
 
 .home-map-stage-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1rem;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--color-text);
   margin: 0;
@@ -380,7 +380,7 @@
 .home-map-stage-hint {
   margin: 0;
   text-align: center;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   padding-bottom: 4px;
 }
 
@@ -389,10 +389,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: min(48vh, 400px);
   color: var(--color-text-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .home-map-stage-spinner {
@@ -402,7 +402,7 @@
 
 .home-map-stage-error {
   margin: 0;
-  padding: 24px 16px;
+  padding: var(--space-6) 16px;
 }
 
 .home-map-stage-empty {
@@ -415,7 +415,7 @@
 .home-map-stage-empty-title {
   font-weight: 600;
   font-size: 1.05rem;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   color: var(--color-text);
 }
 
@@ -426,13 +426,13 @@
 .home-under-map {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .home-under-map-row {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 @include min-width(ds.$bp-md-min) {
@@ -477,8 +477,8 @@
 .home-hub-card-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1rem;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 0 0 12px;
 }
@@ -497,7 +497,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .home-hub-hint {
@@ -515,7 +515,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px 10px;
+  gap: var(--space-2) 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--color-border);
   font-size: 0.9rem;
@@ -526,7 +526,7 @@
 }
 
 .home-work-type {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-muted);
