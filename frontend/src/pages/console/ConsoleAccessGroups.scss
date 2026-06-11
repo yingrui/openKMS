@@ -6,12 +6,12 @@
 }
 
 .console-access-groups-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .console-access-groups-main {
   display: flex;
-  gap: 24px;
+  gap: var(--space-6);
   align-items: flex-start;
 }
 
@@ -27,12 +27,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  gap: 8px;
+  margin-bottom: var(--space-3);
+  gap: var(--space-2);
 }
 
 .console-access-groups-sidebar-header h3 {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -43,15 +43,15 @@
 .console-access-groups-sidebar-header .btn-sm {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--gap-compact);
 }
 
 .console-access-groups-search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  margin-bottom: 12px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  margin-bottom: var(--space-3);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -67,7 +67,7 @@
   min-width: 0;
   border: none;
   background: none;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-access-groups-search input:focus {
@@ -92,10 +92,10 @@
 .console-access-groups-list-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 8px 12px;
-  font-size: 0.9375rem;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
   border: none;
   border-radius: var(--radius-sm);
@@ -134,7 +134,7 @@
 }
 
 .console-access-groups-list-count {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -145,7 +145,7 @@
 
 .console-access-groups-sidebar-hint {
   margin: 10px 0 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
 }
 
@@ -156,35 +156,35 @@
 
 .console-access-groups-placeholder {
   margin: 0;
-  padding: 24px 0;
-  font-size: 0.9375rem;
+  padding: var(--space-6) 0;
+  font-size: var(--text-base);
   color: var(--color-text-muted);
 }
 
 .console-access-groups-detail-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 20px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  margin-bottom: var(--space-5);
 }
 
 .console-access-groups-detail-toolbar-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .console-access-groups-tabs {
   display: flex;
-  gap: 6px;
+  gap: var(--gap-compact);
   flex-wrap: wrap;
 }
 
 .console-access-groups-tab {
-  padding: 6px 12px;
-  font-size: 0.8125rem;
+  padding: var(--gap-compact) var(--space-3);
+  font-size: var(--text-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
@@ -207,12 +207,12 @@
 .console-access-groups-detail-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .console-access-groups-context-hint {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
   line-height: 1.45;
 }
@@ -221,12 +221,12 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .console-access-groups-panel-hint {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
   margin: 0;
   flex: 1;
@@ -234,38 +234,38 @@
 
 .console-access-groups-saving {
   flex-shrink: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-accent);
 }
 
 .console-access-groups-add-row {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
   max-width: 480px;
 }
 
 .console-access-groups-add-row input {
   flex: 1;
   min-width: 0;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-access-groups-user-pick {
   position: relative;
   max-width: 360px;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
 }
 
 .console-access-groups-user-pick input {
   width: 100%;
-  padding: 10px 12px 10px 36px;
+  padding: var(--padding-compact-y) var(--space-3) 10px 36px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   background: var(--color-bg-elevated);
 }
 
@@ -291,18 +291,18 @@
   box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.12));
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: var(--space-1);
 }
 
 .console-access-groups-user-menu button {
   width: 100%;
   text-align: left;
-  padding: 8px 10px;
+  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
   border: none;
   background: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-access-groups-user-menu button:hover {
@@ -323,7 +323,7 @@
 .console-access-groups-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-access-groups-table th,
@@ -345,7 +345,7 @@
 }
 
 .console-access-groups-table td {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   line-height: 1.45;
 }
 
@@ -359,10 +359,10 @@
 
 .console-access-groups-table-empty {
   margin: 0;
-  padding: 48px 24px;
+  padding: var(--space-12) var(--space-6);
   text-align: center;
   color: var(--color-text-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-access-groups-modal-backdrop {
@@ -387,11 +387,11 @@
 
 .console-access-groups-modal h2 {
   margin: 0 0 0.35rem;
-  font-size: 1.125rem;
+  font-size: var(--text-lg);
 }
 
 .console-access-groups-modal-sub {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-muted);
   margin: 0 0 1.25rem;
 }
@@ -399,29 +399,29 @@
 .console-access-groups-modal label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.8125rem;
-  margin-bottom: 12px;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-3);
 }
 
 .console-access-groups-modal input,
 .console-access-groups-modal textarea {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-access-groups-modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
   margin-top: 1rem;
 }
 
 .console-access-groups-muted {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 @media (max-width: 900px) {

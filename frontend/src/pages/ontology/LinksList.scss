@@ -6,18 +6,18 @@
 }
 
 .links-list .page-header {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-8);
 }
 
 .links-list .page-header h1 {
-  font-size: 1.75rem;
+  font-size: var(--text-page-title);
   font-weight: 600;
   letter-spacing: -0.03em;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .links-list .page-subtitle {
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
 }
 
@@ -31,27 +31,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 80px 24px;
+  gap: var(--space-3);
+  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
   text-align: center;
   color: var(--color-text-muted);
 }
 
 .links-empty svg {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   opacity: 0.5;
 }
 
 .links-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .links-card {
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: var(--space-6);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -67,7 +67,7 @@
 }
 
 .links-card-top {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .links-icon {
@@ -84,27 +84,27 @@
 .links-card h3 {
   font-size: 1.0625rem;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .links-desc {
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
   line-height: 1.5;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   flex: 1;
 }
 
 .links-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 0.8125rem;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
 .links-type-arrow {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--gap-compact);
 }

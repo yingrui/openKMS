@@ -6,18 +6,18 @@
 }
 
 .glossary-list .page-header {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-8);
 }
 
 .glossary-list .page-header h1 {
-  font-size: 1.75rem;
+  font-size: var(--text-page-title);
   font-weight: 600;
   letter-spacing: -0.03em;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .glossary-list .page-subtitle {
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
 }
 
@@ -26,15 +26,15 @@
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .glossary-header .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  font-size: 0.9375rem;
+  gap: var(--space-2);
+  padding: var(--padding-compact-y) var(--space-4);
+  font-size: var(--text-base);
   font-weight: 500;
   border-radius: var(--radius-md);
   transition: background 0.15s, color 0.15s;
@@ -60,27 +60,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 80px 24px;
+  gap: var(--space-3);
+  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
   text-align: center;
   color: var(--color-text-muted);
 }
 
 .glossary-empty svg {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   opacity: 0.5;
 }
 
 .glossary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .glossary-card {
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: var(--space-6);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -98,12 +98,12 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .glossary-card-actions {
   display: flex;
-  gap: 4px;
+  gap: var(--space-1);
   opacity: 0;
   transition: opacity 0.15s;
 }
@@ -116,7 +116,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: var(--gap-compact);
   border-radius: var(--radius-sm);
   color: var(--color-text-muted);
   background: none;
@@ -148,22 +148,22 @@
 .glossary-card h3 {
   font-size: 1.0625rem;
   font-weight: 600;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .glossary-desc {
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
   line-height: 1.5;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   flex: 1;
 }
 
 .glossary-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 0.8125rem;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -175,7 +175,7 @@
   align-items: center;
   justify-content: center;
   z-index: var(--z-modal);
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .glossary-dialog {
@@ -185,19 +185,19 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 480px;
   width: 100%;
-  padding: 24px;
+  padding: var(--space-6);
 }
 
 .glossary-dialog-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .glossary-dialog-header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: var(--text-xl);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -221,17 +221,17 @@
 }
 
 .glossary-dialog-body {
-  padding: 16px 0;
+  padding: var(--space-4) 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .glossary-dialog-body label {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 0.875rem;
+  gap: var(--gap-compact);
+  font-size: var(--text-md);
   font-weight: 500;
   color: var(--color-text-secondary);
 }
@@ -239,12 +239,12 @@
 .glossary-dialog-body input,
 .glossary-dialog-body textarea,
 .glossary-dialog-body select {
-  padding: 10px 14px;
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
   color: var(--color-text);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .glossary-dialog-body input:focus,
@@ -257,8 +257,8 @@
 .glossary-dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-  padding-top: 16px;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
 }

@@ -105,7 +105,7 @@
 .jobs-table-name {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
 .jobs-table-name svg {

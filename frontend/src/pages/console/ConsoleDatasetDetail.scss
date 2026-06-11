@@ -9,23 +9,23 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 48px 24px;
-  gap: 12px;
+  padding: var(--space-12) var(--space-6);
+  gap: var(--space-3);
   color: var(--color-text-muted);
 }
 
 .console-dataset-detail-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
 .console-dataset-detail-back {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   text-decoration: none;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
 }
 
 .console-dataset-detail-back:hover {
@@ -37,7 +37,7 @@
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .console-dataset-detail-title-row h1 {
@@ -48,34 +48,34 @@
 .console-dataset-detail-title-row .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
 .console-dataset-detail-subtitle {
   margin: 0;
   color: var(--color-text-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-dataset-detail-tabs {
   display: flex;
-  gap: 4px;
-  margin-bottom: 20px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
   border-bottom: 1px solid var(--color-border);
 }
 
 .console-dataset-detail-tab {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: var(--space-2);
+  padding: var(--padding-compact-y) var(--space-4);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   cursor: pointer;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   color: var(--color-text-muted);
 }
 
@@ -104,12 +104,12 @@
 .console-dataset-detail-table-wrap .console-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-dataset-detail-table-wrap .console-table th,
 .console-dataset-detail-table-wrap .console-table td {
-  padding: 12px 16px;
+  padding: var(--space-3) var(--space-4);
   text-align: left;
   border-bottom: 1px solid var(--color-border);
 }
@@ -118,7 +118,7 @@
   font-weight: 600;
   color: var(--color-text-secondary);
   background: var(--color-bg-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -143,40 +143,40 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .console-dataset-detail-pagination-info {
   display: flex;
   align-items: center;
-  gap: 20px;
-  font-size: 0.875rem;
+  gap: var(--space-5);
+  font-size: var(--text-md);
   color: var(--color-text-muted);
 }
 
 .console-dataset-detail-pagination-info label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .console-dataset-detail-pagination-info select {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-dataset-detail-pagination-btns {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .console-dataset-detail-page-nums {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-muted);
   margin: 0 4px;
 }

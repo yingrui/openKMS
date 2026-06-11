@@ -9,7 +9,7 @@
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 16px 24px;
+  gap: var(--space-4) 24px;
   margin-bottom: 1.5rem;
 }
 
@@ -32,7 +32,7 @@
 .console-health-refresh {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 40px;
   padding: 0 16px;
   font-weight: 600;
@@ -42,17 +42,17 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px 16px;
+  gap: calc(var(--space-2) + var(--space-1) / 2) 16px;
   margin-top: 0.75rem;
 }
 
 .console-health-overall {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: var(--gap-compact) var(--space-3);
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   font-weight: 600;
 }
 
@@ -73,7 +73,7 @@
 }
 
 .console-health-checked {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -82,7 +82,7 @@
 }
 
 .console-health-section h2 {
-  font-size: 1rem;
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 0 0 0.75rem;
 }
@@ -90,26 +90,26 @@
 .console-health-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-health-table th,
 .console-health-table td {
   text-align: left;
-  padding: 10px 12px;
+  padding: var(--padding-compact-y) var(--space-3);
   border-bottom: 1px solid var(--color-border);
 }
 
 .console-health-table th {
   font-weight: 600;
   color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .console-health-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--gap-compact);
   font-weight: 500;
 }
 
@@ -127,19 +127,19 @@
 
 .console-health-message {
   color: var(--color-text-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   max-width: 28rem;
   word-break: break-word;
 }
 
 .console-health-empty-ds {
   color: var(--color-text-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-health-hint {
   margin-top: 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 

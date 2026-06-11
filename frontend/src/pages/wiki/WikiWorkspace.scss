@@ -71,7 +71,7 @@
   border: 1px solid var(--color-border);
   background: var(--color-accent);
   color: var(--color-accent-contrast);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   font-weight: 600;
   line-height: 1.25;
   font-family: var(--font-sans);
@@ -122,7 +122,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--color-text);
 }
@@ -160,7 +160,7 @@
   padding: 0.3rem 0.65rem;
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   font-family: var(--font-sans);
   color: var(--color-text-secondary);

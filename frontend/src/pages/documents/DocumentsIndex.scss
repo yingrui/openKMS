@@ -6,32 +6,32 @@
 }
 
 .documents-index .page-header {
-  margin-bottom: 32px;
+  margin-bottom: var(--space-8);
 }
 
 .documents-index .page-header h1 {
-  font-size: 1.75rem;
+  font-size: var(--text-page-title);
   font-weight: 600;
   letter-spacing: -0.03em;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .documents-index .page-subtitle {
-  font-size: 1rem;
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
 }
 
 .documents-index-stats {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
 }
 
 .documents-index-stat {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   padding: 20px;
   text-decoration: none;
   color: inherit;
@@ -70,21 +70,21 @@
 
 .documents-index-stat-value {
   display: block;
-  font-size: 1.5rem;
+  font-size: var(--text-2xl);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .documents-index-stat-label {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
 
 .documents-index-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
 }
 
 @include max-width(ds.$km-layout-max) {
@@ -97,28 +97,28 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: var(--space-6);
   box-shadow: var(--shadow-sm);
 }
 
 .documents-index-card h2 {
-  font-size: 1rem;
+  font-size: var(--text-base);
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   color: var(--color-text);
 }
 
 .documents-index-quick-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .documents-index-quick-action {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: var(--space-3);
+  padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
   background: var(--color-bg-muted);
   border-radius: var(--radius-md);
   color: var(--color-text);
@@ -139,8 +139,8 @@
 .documents-index-channel-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) var(--space-3);
   border-radius: var(--radius-md);
   color: var(--color-text);
   text-decoration: none;

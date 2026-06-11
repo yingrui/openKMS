@@ -10,8 +10,8 @@
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .console-perm-header .page-subtitle code {
@@ -20,7 +20,7 @@
 
 .console-perm-main {
   display: flex;
-  gap: 24px;
+  gap: var(--space-6);
 }
 
 .console-perm-categories {
@@ -41,7 +41,7 @@
 }
 
 .console-perm-categories h3 {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -53,8 +53,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  gap: 8px;
+  margin-bottom: var(--space-3);
+  gap: var(--space-2);
 }
 
 .console-perm-categories-header h3 {
@@ -64,7 +64,7 @@
 .console-perm-categories-header .btn-sm {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--gap-compact);
 }
 
 .console-perm-category-list {
@@ -76,9 +76,9 @@
 .console-perm-category-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 0.9375rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -114,7 +114,7 @@
 }
 
 .console-perm-role-sidebar-count {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   margin-left: 2px;
 }
@@ -125,7 +125,7 @@
 
 .console-perm-role-sidebar-actions {
   display: flex;
-  gap: 2px;
+  gap: calc(var(--space-1) / 2);
   opacity: 0.65;
   margin-left: auto;
 }
@@ -154,7 +154,7 @@
 
 .console-perm-roles-sidebar-hint {
   margin: 10px 0 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.45;
 }
 
@@ -164,15 +164,15 @@
 }
 
 .console-perm-toolbar {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
 .console-perm-toolbar-row {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -180,7 +180,7 @@
 .console-perm-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   margin-left: auto;
   flex-wrap: wrap;
 }
@@ -188,15 +188,15 @@
 .console-perm-toolbar-add {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .console-perm-search {
   max-width: 360px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -212,7 +212,7 @@
   min-width: 0;
   border: none;
   background: none;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-perm-search input:focus {
@@ -221,13 +221,13 @@
 
 .console-perm-category-filters {
   display: flex;
-  gap: 6px;
+  gap: var(--gap-compact);
   flex-wrap: wrap;
 }
 
 .console-perm-filter-btn {
-  padding: 6px 12px;
-  font-size: 0.8125rem;
+  padding: var(--gap-compact) var(--space-3);
+  font-size: var(--text-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
@@ -249,7 +249,7 @@
 
 .console-perm-assign-hint {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
   line-height: 1.45;
 }
@@ -263,15 +263,15 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
 }
 
 .console-perm-draft-bar-status {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--color-accent);
 }
@@ -284,7 +284,7 @@
 .console-perm-draft-bar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
@@ -303,8 +303,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 48px 24px;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
   color: var(--color-text-muted);
 }
 
@@ -320,16 +320,16 @@
 
 .console-perm-table-empty {
   margin: 0;
-  padding: 48px 24px;
+  padding: var(--space-12) var(--space-6);
   text-align: center;
   color: var(--color-text-muted);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .console-perm-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-perm-table th,
@@ -351,7 +351,7 @@
 }
 
 .console-perm-table td {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   line-height: 1.45;
 }
 
@@ -372,7 +372,7 @@
 .console-perm-table-name {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .console-perm-table-name svg {
@@ -390,14 +390,14 @@
 }
 
 .console-perm-table-key {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono, ui-monospace, monospace);
   word-break: break-all;
 }
 
 .console-perm-table-patterns {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-secondary);
   max-width: 200px;
 }
@@ -438,7 +438,7 @@
 
 .console-perm-detail-system-note {
   margin: 0 0 1rem;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-muted);
   line-height: 1.45;
 }
@@ -452,7 +452,7 @@
 
 .console-perm-table-btns {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: flex-start;
   flex-wrap: nowrap;
 }
@@ -488,7 +488,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   margin-bottom: 0.75rem;
 }
 
@@ -498,8 +498,8 @@
 }
 
 .console-perm-onboarding-dismiss {
-  padding: 6px 12px;
-  font-size: 0.8125rem;
+  padding: var(--gap-compact) var(--space-3);
+  font-size: var(--text-sm);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
@@ -509,18 +509,18 @@
 .console-perm-onboarding-steps {
   margin: 0 0 1rem;
   padding-left: 1.25rem;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   line-height: 1.55;
   color: var(--color-text-secondary);
 }
 
 .console-perm-onboarding-steps code {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .console-perm-onboarding-missing-intro {
   margin: 0 0 0.75rem;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-perm-onboarding-actions {
@@ -528,8 +528,8 @@
 }
 
 .console-perm-onboarding-bulk {
-  padding: 8px 14px;
-  font-size: 0.875rem;
+  padding: var(--space-2) calc(var(--space-3) + var(--space-1) / 2);
+  font-size: var(--text-md);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
@@ -559,11 +559,11 @@
 .console-perm-onboarding-hint-list li {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   flex-wrap: wrap;
-  padding: 8px 10px;
+  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
   border-bottom: 1px solid var(--color-border);
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .console-perm-onboarding-hint-list li:last-child {
@@ -581,8 +581,8 @@
 }
 
 .console-perm-onboarding-add-one {
-  padding: 4px 10px;
-  font-size: 0.75rem;
+  padding: var(--space-1) calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-xs);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
@@ -595,7 +595,7 @@
 
 .console-perm-onboarding-done {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-perm-delete-catalog-btn {
@@ -605,13 +605,13 @@
 }
 
 .console-perm-edit-key {
-  margin: 0 0 12px;
-  font-size: 0.875rem;
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
   color: var(--color-text-muted);
 }
 
 .console-perm-edit-key code {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .console-perm-muted {
@@ -645,12 +645,12 @@
 }
 
 .console-perm-detail-key code {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .console-perm-detail-desc-text {
   margin: 0 0 1rem;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   line-height: 1.5;
   color: var(--color-text-secondary);
 }
@@ -665,7 +665,7 @@
 
 .console-perm-detail-section-title {
   margin: 0 0 0.5rem;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -675,22 +675,22 @@
 .console-perm-pattern-list {
   margin: 0;
   padding-left: 1.25rem;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   line-height: 1.6;
 }
 
 .console-perm-pattern-list code {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
 }
 
 .console-modal-body .console-perm-modal-textarea {
   width: 100%;
   box-sizing: border-box;
-  margin-top: 6px;
-  padding: 8px 12px;
+  margin-top: var(--gap-compact);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   font-family: inherit;
   resize: vertical;
 }
@@ -702,26 +702,26 @@
 .console-perm-ref-body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   max-height: min(75vh, 640px);
 }
 
 .console-perm-ref-hint {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--color-text-muted);
 }
 
 .console-perm-ref-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .console-perm-ref-tab {
-  padding: 6px 12px;
-  font-size: 0.8125rem;
+  padding: var(--gap-compact) var(--space-3);
+  font-size: var(--text-sm);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-muted);
@@ -738,10 +738,10 @@
 .console-perm-ref-search input {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .console-perm-ref-scroll {
@@ -756,18 +756,18 @@
 .console-perm-ref-list {
   list-style: none;
   margin: 0;
-  padding: 6px;
+  padding: var(--gap-compact);
 }
 
 .console-perm-ref-row {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: var(--space-1);
   width: 100%;
   text-align: left;
-  padding: 8px 10px;
-  margin-bottom: 4px;
+  padding: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
+  margin-bottom: var(--space-1);
   border: none;
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -781,15 +781,15 @@
 }
 
 .console-perm-ref-path code {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   word-break: break-all;
 }
 
 .console-perm-ref-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 10px;
-  font-size: 0.75rem;
+  gap: var(--gap-compact) calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
 
@@ -831,11 +831,11 @@
 
   .console-perm-table th,
   .console-perm-table td {
-    padding: 10px 12px;
+    padding: var(--padding-compact-y) var(--space-3);
   }
 
   .console-perm-table td {
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
   }
 
   .console-perm-table-actions-col {

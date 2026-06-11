@@ -8,27 +8,27 @@
 .console-feature-toggles-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .console-feature-toggle-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-5);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 
 .console-feature-toggle-info h3 {
-  font-size: 1rem;
+  font-size: var(--text-base);
   font-weight: 600;
   margin: 0 0 4px 0;
 }
 
 .console-feature-toggle-info p {
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
   margin: 0;
 }

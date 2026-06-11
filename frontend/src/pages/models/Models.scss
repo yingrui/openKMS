@@ -10,13 +10,13 @@
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: var(--space-5);
+  margin-bottom: var(--space-6);
 }
 
 .models-main {
   display: flex;
-  gap: 24px;
+  gap: var(--space-6);
   align-items: flex-start;
 }
 
@@ -29,7 +29,7 @@
 }
 
 .models-categories h3 {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-secondary);
   text-transform: uppercase;
@@ -41,8 +41,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
-  gap: 8px;
+  margin-bottom: var(--space-3);
+  gap: var(--space-2);
 }
 
 .models-categories-header h3 {
@@ -52,7 +52,7 @@
 .models-categories-header .btn-sm {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--gap-compact);
 }
 
 .models-category-list-scroll {
@@ -76,7 +76,7 @@
 }
 
 .models-provider-count {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   color: var(--color-text-muted);
   margin-left: 2px;
 }
@@ -87,7 +87,7 @@
 
 .models-provider-actions {
   display: flex;
-  gap: 2px;
+  gap: calc(var(--space-1) / 2);
   opacity: 0.6;
 }
 
@@ -122,9 +122,9 @@
 .models-category-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 0.9375rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-base);
   color: var(--color-text-secondary);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -156,15 +156,15 @@
 }
 
 .models-toolbar {
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
 .models-toolbar-row {
   display: flex;
-  gap: 16px;
+  gap: var(--space-4);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -172,7 +172,7 @@
 .models-toolbar-add {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   margin-left: auto;
 }
 
@@ -183,8 +183,8 @@
 }
 
 .models-filter-btn {
-  padding: 6px 12px;
-  font-size: 0.8125rem;
+  padding: var(--gap-compact) var(--space-3);
+  font-size: var(--text-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
@@ -210,13 +210,13 @@
 .models-capability-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .models-capability-tag {
-  padding: 2px 8px;
+  padding: calc(var(--space-1) / 2) var(--space-2);
   border-radius: var(--radius-pill);
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
   background: var(--color-bg-muted);
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);
@@ -249,8 +249,8 @@
   max-width: 360px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -266,7 +266,7 @@
   min-width: 0;
   border: none;
   background: none;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .models-search input:focus {
@@ -353,7 +353,7 @@
 .models-table-name > div {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: calc(var(--space-1) / 2);
 }
 
 .models-table-model-name {
