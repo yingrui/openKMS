@@ -3,36 +3,36 @@
 
 .account-page {
   width: 100%;
-  max-width: 900px;
-  padding-bottom: 32px;
+  max-width: ds.$km-layout-max;
+  padding-bottom: var(--space-8);
 }
 
 .account-page-header {
-  margin-bottom: 28px;
+  margin-bottom: calc(var(--space-6) + var(--space-1));
 }
 
 .account-page-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 1.75rem;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-page-title);
   font-weight: 600;
   letter-spacing: -0.03em;
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   color: var(--color-text);
 }
 
 .account-page-subtitle {
   margin: 0;
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: var(--text-base);
+  line-height: var(--text-base--line);
   color: var(--color-text-secondary);
 }
 
 .account-stack {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--space-5);
 }
 
 .account-card {
@@ -40,14 +40,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  padding: 22px 24px 24px;
+  padding: calc(var(--space-5) + var(--space-1) / 2) var(--space-6) var(--space-6);
 }
 
 .account-card-head {
   display: flex;
-  gap: 14px;
+  gap: calc(var(--space-3) + var(--space-1) / 2);
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: var(--space-5);
 }
 
 .account-card-icon {
@@ -55,8 +55,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: calc(var(--space-8) + var(--space-1));
+  height: calc(var(--space-8) + var(--space-1));
   border-radius: var(--radius-md);
   background: color-mix(in srgb, var(--color-accent) 12%, var(--color-bg-muted));
   color: var(--color-accent);
@@ -68,33 +68,33 @@
 }
 
 .account-card-title {
-  margin: 0 0 4px;
-  font-size: 1.0625rem;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-lg);
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .account-card-desc {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.45;
+  font-size: var(--text-md);
+  line-height: var(--text-md--line);
   color: var(--color-text-secondary);
 }
 
 .account-hint {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
 
 .account-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .account-field-label {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--color-text-secondary);
 }
@@ -103,22 +103,22 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
 .account-field-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.8125rem;
+  gap: var(--gap-compact);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
 .account-select,
 .account-input {
   font: inherit;
-  font-size: 0.9375rem;
-  padding: 10px 12px;
+  font-size: var(--text-base);
+  padding: var(--padding-compact-y) var(--space-3);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
@@ -145,25 +145,21 @@
 }
 
 .account-create-panel {
-  padding: 16px;
-  margin-bottom: 20px;
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--color-border-strong, var(--color-border));
-  background: var(--color-bg-muted);
+  margin-bottom: var(--space-5);
 }
 
 .account-create-fields {
   display: grid;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   max-width: 400px;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .account-form-grid {
   display: grid;
-  gap: 12px;
+  gap: var(--space-3);
   grid-template-columns: 1fr;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .account-form-grid .account-input,
@@ -187,16 +183,17 @@
 .account-form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 4px;
+  gap: var(--space-4);
+  align-items: center;
+  margin-top: var(--space-6);
 }
 
 .account-create-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   align-items: stretch;
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 .account-create-row .account-input {
@@ -207,10 +204,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 9px 16px;
+  gap: var(--gap-compact);
+  padding: var(--padding-compact-y) var(--space-4);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
   font-weight: 500;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
@@ -227,7 +224,7 @@
 .account-btn--primary {
   background: var(--color-accent);
   border-color: var(--color-accent);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .account-btn--primary:hover:not(:disabled) {
@@ -256,14 +253,14 @@
 }
 
 .account-error {
-  margin: 0 0 12px;
-  font-size: 0.875rem;
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-md);
   color: var(--color-error);
 }
 
 .account-section {
   border-top: 1px solid var(--color-border);
-  padding-top: 18px;
+  padding-top: calc(var(--space-3) + var(--space-2));
 }
 
 .account-section--flush {
@@ -279,13 +276,13 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .account-section-label {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -293,7 +290,7 @@
 }
 
 .account-section-meta {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -301,9 +298,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 28px 16px;
-  font-size: 0.875rem;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: calc(var(--space-6) + var(--space-1)) var(--space-4);
+  font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
 
@@ -311,8 +308,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 32px 16px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  padding: var(--space-8) var(--space-4);
   text-align: center;
   color: var(--color-text-muted);
   border-radius: var(--radius-md);
@@ -322,7 +319,7 @@
 
 .account-empty p {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 }
 
 .account-list {
@@ -331,15 +328,15 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
 .account-list-item {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 4px 16px;
+  gap: var(--space-1) var(--space-4);
   align-items: center;
-  padding: 14px 16px;
+  padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-muted);
@@ -354,19 +351,19 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px 10px;
+  gap: var(--space-2) calc(var(--space-2) + var(--space-1) / 2);
   min-width: 0;
 }
 
 .account-list-item-title {
   font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
 }
 
 .account-list-item-code {
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-size: 0.75rem;
-  padding: 2px 8px;
+  font-size: var(--text-xs);
+  padding: calc(var(--space-1) / 2) var(--space-2);
   border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
@@ -376,7 +373,7 @@
 .account-list-item-meta {
   grid-column: 1;
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 

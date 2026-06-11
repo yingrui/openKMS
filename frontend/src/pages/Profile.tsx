@@ -121,7 +121,7 @@ export function Profile() {
               <div>
                 <dt>{t('accountId')}</dt>
                 <dd>
-                  <code className="profile-inline-code">{me.id}</code>
+                  <code className="account-list-item-code">{me.id}</code>
                 </dd>
               </div>
             </dl>

@@ -1,8 +1,8 @@
 @use '../styles/account-page';
 
 .user-settings-reveal {
-  margin-bottom: 20px;
-  padding: 16px 18px;
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) calc(var(--space-3) + var(--space-2));
   border-radius: var(--radius-md);
   border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 35%, var(--color-border));
   background: color-mix(in srgb, var(--color-warning, #d97706) 8%, var(--color-bg-muted));
@@ -10,41 +10,41 @@
 
 .user-settings-reveal-head {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: flex-start;
-  margin-bottom: 14px;
+  margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
   color: var(--color-warning, #b45309);
 }
 
 .user-settings-reveal-title {
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-1);
   font-weight: 600;
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   color: var(--color-text);
 }
 
 .user-settings-reveal-hint {
   margin: 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line);
   color: var(--color-text-secondary);
 }
 
 .user-settings-reveal-token-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   align-items: stretch;
-  margin-bottom: 14px;
+  margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
 }
 
 .user-settings-reveal-token {
   flex: 1 1 200px;
   min-width: 0;
   word-break: break-all;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  padding: 10px 12px;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line);
+  padding: var(--padding-compact-y) var(--space-3);
   border-radius: var(--radius-sm);
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);

@@ -16,6 +16,37 @@
 | **`_index.scss`** | Optional barrel: `@forward` tokens + mixins — `@use '../styles/design-system' as *` from a feature file (path depth varies). |
 | **`knowledge-map/`** | Map-only compile-time sizes; `@use '…/knowledge-map/tokens' as km`. |
 
+## Spacing rhythm
+
+4px grid — always **`var(--space-*)`** in rules (see **`_css-variables.scss`**). Common choices:
+
+| Use | Token |
+|------|--------|
+| Label ↔ control | `--space-2` (8px) |
+| Form grid row/column gap | `--space-3` (12px) |
+| Card stack / create block bottom margin | `--space-5` (20px) |
+| Last form row → primary actions | `--space-6` (24px) |
+| Page header → content | `--space-6` (+ `--space-1` in account pages) |
+| Settings / account page max width | **`ds.$km-layout-max`** (900px) — same cap as document channel, project, and evaluation settings pages |
+
+Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-compact-x`** (chips, compact inputs).
+
+## Shared layout (`src/styles/`)
+
+| File | Role |
+|------|------|
+| **`account-page.scss`** | Cross-route **account / personal settings** chrome (Profile, Settings, Git credentials). Import via **`@use '../styles/account-page'`** in page SCSS, or **`import '…/account-page.scss'`** in a colocated component. |
+
+**Structure:** `.account-page` → `.account-page-header` + `.account-stack` → one or more `.account-card` sections.
+
+**Card:** `.account-card-head` (`.account-card-icon` + title/desc) then content. Forms sit on the **white card surface** — no inner gray box or dashed wrapper (matches Wiki / channel / project settings).
+
+**Forms:** `.account-field` + `.account-input` / `.account-select`; multi-field blocks use `.account-form-grid` (optional `.account-form-grid--2col`); single-line create uses `.account-create-row` inside `.account-create-panel`. Primary actions in `.account-form-actions` (**`margin-top: var(--space-6)`**, no divider line).
+
+**Saved items:** `.account-section` (top border) below the create block; `.account-section-toolbar` + `.account-list` / `.account-list-item`. Use `.account-empty` only for list-area empty states (not when a create form already sits above).
+
+**Actions:** `.account-btn`, `.account-btn--primary`, `--secondary`, `--danger` inside account cards. Elsewhere (e.g. Wiki settings) global **`.btn*`** from **`_global.scss`** is still fine.
+
 ## Conventions
 
 1. **Colors & surfaces** — Prefer **`var(--color-*)`**, **`var(--status-doc-*)`**, **`var(--color-*-bg)`** / **fg** / **border** so dark mode stays correct. Avoid new raw hex in feature SCSS unless print/PDF or a one-off chart.
@@ -25,6 +56,9 @@
 5. **Stacking** — Prefer **`z-index: var(--z-dropdown)`** (etc.) for overlays so layers stay consistent.
 6. **Motion** — Use **`var(--duration-fast)`** / **`var(--ease-standard)`** (or **`@include motion-tokens`** plus an explicit **`transition-property`**); global stylesheet respects **`prefers-reduced-motion`**.
 7. **TSX** — Prefer **`className`** + **`_utilities.scss`** / colocated SCSS for colors and spacing. Keep **`style={{…}}`** only for **data-driven geometry** (percent widths, tree indent from depth, crop box coordinates, CSS variables like `--home-knowledge-map-depth`).
+8. **Settings page width** — **`width: 100%`**, **`max-width: ds.$km-layout-max`**, left-aligned (no **`margin: 0 auto`**). Reuse **`account-page.scss`** for personal account surfaces; channel/project/wiki settings may keep colocated `*Settings.scss` but should use the same width and spacing tokens.
+9. **Reuse before inventing** — Prefer **`account-page.scss`**, **`.btn*`** / **`_utilities.scss`**, and existing settings layouts over one-off hex, magic `px`, or inline **`style={{}}`** for static chrome.
+10. **Tokens** — Add project-wide semantics in **`_css-variables.scss`** / **`_tokens.scss`**; do not copy token values into feature SCSS.
 
 ## New feature stylesheet
 
@@ -38,3 +72,7 @@ Colocate **`Feature.scss`** next to the component, then:
 (Adjust `../` depth from `src/components/…` vs `src/pages/…`.)
 
 Vite compiles SCSS with the **`sass`** package (`devDependency` in `package.json`).
+
+## Updating this doc
+
+When you add a reusable pattern under **`src/styles/`**, rename a shared class family, or change token meaning, update this file. If **`design-system/`** directory layout changes, also refresh the frontend bullet in **`docs/architecture.md`**.

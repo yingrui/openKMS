@@ -96,7 +96,9 @@ flowchart TB
 frontend/src/
 ├── main.tsx                 # 入口 (`index.scss` → 设计系统变量、全局、工具类)
 ├── index.scss               # `@use` design-system: `css-variables`, `global`, `utilities`
-├── styles/design-system/    # SCSS + CSS 变量: `_css-variables`（色板、间距 **`--gap-compact`** / **`--padding-compact-*`**、字体、动效、z-index、状态 pill、KB 图 **`--color-ontology-*`**、打印 **`--print-*`**）、`_tokens`、`_mixins`、`_global`、可选 `_index`、`knowledge-map/`
+├── styles/README.md         # 设计系统索引（token、约定、间距节奏）
+├── styles/design-system/    # SCSS + CSS 变量: `_css-variables`（色板、间距 **`--gap-compact`** / **`--padding-compact-*`**、字体、动效、z-index、状态 pill、KB 图 **`--color-ontology-*`**、打印 **`--print-*`**）、`_tokens`（含 **`$km-layout-max`**）、`_mixins`、`_global`、可选 `_index`、`knowledge-map/`
+├── styles/account-page.scss # Profile / 设置 共用卡片、表单、列表布局（`account-*` 类）
 ├── App.tsx                  # 路由、Provider（Auth → FeatureToggles → DocumentChannels → ArticleChannels）、ErrorBoundary、Suspense + lazy 路由
 ├── utils/permissionPatterns.ts  # 与后端对齐的前端 glob；catalog 模式并集供 SPA 门控
 ├── config/index.ts          # API URL；config/permissions.ts（PERM_* 镜像供 UI 门控）

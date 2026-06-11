@@ -8,6 +8,7 @@ import {
   listGitCredentials,
   type UserGitCredential,
 } from '../../data/projectsApi';
+import '../../styles/account-page.scss';
 
 export function GitCredentialsSection() {
   const { t } = useTranslation('agents');

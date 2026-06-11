@@ -96,7 +96,9 @@ flowchart TB
 frontend/src/
 ├── main.tsx                 # Entry (`index.scss` → design-system variables, globals, utilities)
 ├── index.scss               # `@use` design-system: `css-variables`, `global`, `utilities`
-├── styles/design-system/    # SCSS + CSS vars: `_css-variables` (palette, spacing incl. **`--gap-compact`** / **`--padding-compact-*`**, type, motion, z-index, status pills, **`--color-ontology-*`** for KB graph source chrome, **`@media print`** **`--print-*`** paper palette), `_tokens` (breakpoints, **`$grid-min-*`**, **`$playground-messages-*`**, **`$bp-dialog-sm`**, `$space-*` / `$z-*`), `_mixins`, `_global`, optional `_index` barrel, `knowledge-map/`
+├── styles/README.md         # Design system index (tokens, conventions, spacing rhythm)
+├── styles/design-system/    # SCSS + CSS vars: `_css-variables` (palette, spacing incl. **`--gap-compact`** / **`--padding-compact-*`**, type, motion, z-index, status pills, **`--color-ontology-*`** for KB graph source chrome, **`@media print`** **`--print-*`** paper palette), `_tokens` (breakpoints, **`$grid-min-*`**, **`$playground-messages-*`**, **`$bp-dialog-sm`**, `$space-*` / `$z-*` / **`$km-layout-max`**), `_mixins`, `_global`, optional `_index` barrel, `knowledge-map/`
+├── styles/account-page.scss # Shared Profile / Settings card + form + list layout (`account-*` classes)
 ├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels → ArticleChannels), ErrorBoundary, Suspense + lazy routes
 ├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
 ├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
