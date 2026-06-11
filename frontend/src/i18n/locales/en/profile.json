@@ -1,6 +1,8 @@
 {
   "title": "Profile",
   "subtitle": "Your account details as recognized by openKMS. To create API keys for assistants and scripts, open <settingsLink>Settings</settingsLink>.",
+  "accountSectionTitle": "Account information",
+  "accountSectionIntro": "Name, email, roles, and ID linked to your login.",
   "loading": "Loading…",
   "loadError": "Could not load profile",
   "tryAgain": "Try again",

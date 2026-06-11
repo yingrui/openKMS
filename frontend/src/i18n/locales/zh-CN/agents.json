@@ -238,6 +238,11 @@
   "gitCredentials": {
     "title": "Git 凭据",
     "subtitle": "用于 pull/push 的 HTTPS 个人访问令牌（保存后不再显示）。",
+    "addTitle": "添加凭据",
+    "adding": "添加中…",
+    "added": "凭据已保存",
+    "saved": "已保存的凭据",
+    "savedCount": "共 {{count}} 条",
     "provider": "提供商",
     "label": "标签",
     "username": "用户名",

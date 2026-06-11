@@ -10,7 +10,11 @@
   "keyCreatedTitle": "Key created — copy it now",
   "keyCreatedHint": "This value is shown only once. If you lose it, revoke the key and create a new one.",
   "copy": "Copy",
+  "copied": "Copied to clipboard",
   "done": "Done",
+  "activeKeys": "Your keys",
+  "keysCount": "{{count}} active",
+  "revoked": "Key revoked",
   "labelOptional": "Label (optional)",
   "placeholderLabel": "e.g. laptop assistant",
   "creating": "Creating…",
@@ -27,6 +31,7 @@
     "loadKeys": "Could not load API keys",
     "createKey": "Could not create key",
     "revokeKey": "Could not revoke key",
-    "localeSave": "Could not save display language"
+    "localeSave": "Could not save display language",
+    "copy": "Could not copy to clipboard"
   }
 }

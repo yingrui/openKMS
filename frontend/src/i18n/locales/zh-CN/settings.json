@@ -10,7 +10,11 @@
   "keyCreatedTitle": "密钥已创建 — 请立即复制",
   "keyCreatedHint": "该值仅显示一次。若遗失，请吊销并重新创建密钥。",
   "copy": "复制",
+  "copied": "已复制到剪贴板",
   "done": "完成",
+  "activeKeys": "您的密钥",
+  "keysCount": "{{count}} 个有效",
+  "revoked": "密钥已吊销",
   "labelOptional": "标签（可选）",
   "placeholderLabel": "例如：笔记本助手",
   "creating": "创建中…",
@@ -27,6 +31,7 @@
     "loadKeys": "无法加载 API 密钥",
     "createKey": "无法创建密钥",
     "revokeKey": "无法吊销密钥",
-    "localeSave": "无法保存界面语言"
+    "localeSave": "无法保存界面语言",
+    "copy": "无法复制到剪贴板"
   }
 }

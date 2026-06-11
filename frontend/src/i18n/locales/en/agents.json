@@ -238,6 +238,11 @@
   "gitCredentials": {
     "title": "Git credentials",
     "subtitle": "HTTPS personal access tokens for pull and push (never shown again after save).",
+    "addTitle": "Add credential",
+    "adding": "Adding…",
+    "added": "Credential saved",
+    "saved": "Saved credentials",
+    "savedCount": "{{count}} saved",
     "provider": "Provider",
     "label": "Label",
     "username": "Username",
