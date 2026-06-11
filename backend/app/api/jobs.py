@@ -273,10 +273,13 @@ async def create_job(
 
     file_ext = doc.name.rsplit(".", 1)[-1].lower() if "." in doc.name else "pdf"
 
+    from app.jobs.defer import defer_task
+
     if file_ext == "xlsx":
         from app.jobs.tasks import run_spreadsheet_preview
 
-        job_id = await run_spreadsheet_preview.defer_async(
+        job_id = await defer_task(
+            run_spreadsheet_preview,
             document_id=doc.id,
             file_hash=doc.file_hash or "",
             file_ext=file_ext,
@@ -284,7 +287,8 @@ async def create_job(
     elif file_ext == "xmind":
         from app.jobs.tasks import run_mindmap_preview
 
-        job_id = await run_mindmap_preview.defer_async(
+        job_id = await defer_task(
+            run_mindmap_preview,
             document_id=doc.id,
             file_hash=doc.file_hash or "",
             file_ext=file_ext,
@@ -310,7 +314,8 @@ async def create_job(
 
         from app.jobs.tasks import run_pipeline
 
-        job_id = await run_pipeline.defer_async(
+        job_id = await defer_task(
+            run_pipeline,
             document_id=doc.id,
             pipeline_id=pipeline.id,
             file_hash=doc.file_hash or "",
@@ -361,9 +366,10 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
         kb_id = args.get("knowledge_base_id")
         if not kb_id or not isinstance(kb_id, str):
             raise HTTPException(status_code=400, detail="Job has no knowledge_base_id in args")
+        from app.jobs.defer import defer_task
         from app.jobs.tasks import run_kb_index
 
-        new_job_id = await run_kb_index.defer_async(knowledge_base_id=kb_id)
+        new_job_id = await defer_task(run_kb_index, knowledge_base_id=kb_id)
         await db.commit()
         return await read_job_response(
             db,
@@ -376,6 +382,7 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
         cid = args.get("connector_id")
         if not cid or not isinstance(cid, str):
             raise HTTPException(status_code=400, detail="Job has no connector_id in args")
+        from app.jobs.defer import defer_task
         from app.jobs.tasks import run_connector_sync
 
         defer_kwargs: dict[str, str] = {"connector_id": cid}
@@ -383,7 +390,7 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
             val = args.get(key)
             if isinstance(val, str) and val.strip():
                 defer_kwargs[key] = val.strip()
-        new_job_id = await run_connector_sync.defer_async(**defer_kwargs)
+        new_job_id = await defer_task(run_connector_sync, **defer_kwargs)
         await db.commit()
         return await read_job_response(
             db,
@@ -395,10 +402,13 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
     if not document_id:
         raise HTTPException(status_code=400, detail="Job has no document_id in args")
 
+    from app.jobs.defer import defer_task
+
     if task_name == "run_spreadsheet_preview":
         from app.jobs.tasks import run_spreadsheet_preview
 
-        new_job_id = await run_spreadsheet_preview.defer_async(
+        new_job_id = await defer_task(
+            run_spreadsheet_preview,
             document_id=args.get("document_id", ""),
             file_hash=args.get("file_hash", ""),
             file_ext=args.get("file_ext", "xlsx"),
@@ -406,7 +416,8 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
     elif task_name == "run_mindmap_preview":
         from app.jobs.tasks import run_mindmap_preview
 
-        new_job_id = await run_mindmap_preview.defer_async(
+        new_job_id = await defer_task(
+            run_mindmap_preview,
             document_id=args.get("document_id", ""),
             file_hash=args.get("file_hash", ""),
             file_ext=args.get("file_ext", "xmind"),
@@ -416,7 +427,8 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
 
         cmd_template = args.get("command", "openkms-cli pipeline run")
 
-        new_job_id = await run_pipeline.defer_async(
+        new_job_id = await defer_task(
+            run_pipeline,
             document_id=args.get("document_id", ""),
             pipeline_id=args.get("pipeline_id", ""),
             file_hash=args.get("file_hash", ""),
@@ -448,6 +460,7 @@ async def mark_job_failed(job_id: int, request: Request, db: AsyncSession = Depe
     from procrastinate.jobs import Status
 
     from app.jobs import job_app
+    from app.jobs.defer import ensure_job_app_open
 
     result = await db.execute(
         text(
@@ -468,12 +481,12 @@ async def mark_job_failed(job_id: int, request: Request, db: AsyncSession = Depe
         )
 
     try:
-        async with job_app.open_async():
-            await job_app.job_manager.finish_job_by_id_async(
-                job_id=job_id,
-                status=Status.FAILED,
-                delete_job=False,
-            )
+        await ensure_job_app_open()
+        await job_app.job_manager.finish_job_by_id_async(
+            job_id=job_id,
+            status=Status.FAILED,
+            delete_job=False,
+        )
     except Exception as exc:
         logger.exception("mark_job_failed: procrastinate finish_job failed for job_id=%s", job_id)
         raise HTTPException(

@@ -312,8 +312,11 @@ async def upload_document(
         from app.models.pipeline import Pipeline
         pipeline = await db.get(Pipeline, channel.pipeline_id)
         if pipeline:
+            from app.jobs.defer import defer_task
             from app.jobs.tasks import run_pipeline
-            await run_pipeline.defer_async(
+
+            await defer_task(
+                run_pipeline,
                 document_id=doc.id,
                 pipeline_id=pipeline.id,
                 file_hash=file_hash,

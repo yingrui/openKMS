@@ -296,13 +296,14 @@ async def trigger_connector_sync(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
+    from app.jobs.defer import defer_task
     from app.jobs.tasks import run_connector_sync
 
     defer_kwargs: dict[str, str] = {"connector_id": row.id}
     if req.start_date is not None and req.end_date is not None:
         defer_kwargs["start_date"] = req.start_date.isoformat()
         defer_kwargs["end_date"] = req.end_date.isoformat()
-    job_id = await run_connector_sync.defer_async(**defer_kwargs)
+    job_id = await defer_task(run_connector_sync, **defer_kwargs)
     await db.commit()
     return ConnectorSyncTriggerResponse(job_id=int(job_id))
 

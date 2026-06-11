@@ -14,6 +14,7 @@ from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.services.connector_catalog import decrypt_secrets_blob
 from app.services.connector_sync.pg import (
+    calendar_range_covered,
     date_to_ymd,
     max_ymd_in_table,
     open_trade_dates_from_table,
@@ -206,6 +207,22 @@ async def sync_trade_calendar(
             start_s,
             end_s,
         )
+
+        if calendar_range_covered(
+            engine,
+            schema_name=dataset.schema_name,
+            table_name=dataset.table_name,
+            exchange=_CALENDAR_EXCHANGE,
+            start=start,
+            end=end,
+        ):
+            logger.info(
+                "trade_calendar already covers %s → %s for %s; skipping Tushare API",
+                start_s,
+                end_s,
+                connector.id,
+            )
+            return 0
 
         fetched = await client.query(
             "trade_cal",

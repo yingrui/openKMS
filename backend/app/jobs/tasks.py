@@ -803,6 +803,37 @@ async def run_connector_sync(
             logger.info("Connector sync finished for %s: %s", connector_id, stats)
             log_lines.append(f"Connector sync finished: {stats}")
         except Exception as exc:
+            from app.services.connector_sync.tushare.client import TushareRateLimitError
+
+            if isinstance(exc, TushareRateLimitError):
+                wait = int(exc.retry_after_seconds)
+                msg = (
+                    f"Tushare rate limited on {exc.api_name}; "
+                    f"re-queued connector sync in {wait}s"
+                )
+                logger.warning("%s for connector %s", msg, connector_id)
+                log_lines.append(msg)
+                await session.commit()
+                if job_id is not None:
+                    await persist_job_run_worker_log_best_effort(
+                        job_id, None, "\n".join(log_lines), ""
+                    )
+                from app.jobs.defer import defer_task
+
+                continuation_id = await defer_task(
+                    run_connector_sync,
+                    schedule_in={"seconds": wait},
+                    connector_id=connector_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                )
+                logger.info(
+                    "Deferred connector sync for %s as job %s (in %ss)",
+                    connector_id,
+                    continuation_id,
+                    wait,
+                )
+                return
             logger.exception("Connector sync failed for %s", connector_id)
             await session.commit()
             log_lines.append(f"Connector sync failed: {exc}")

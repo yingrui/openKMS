@@ -45,6 +45,37 @@ def date_to_ymd(value: date) -> str:
     return value.strftime("%Y%m%d")
 
 
+def calendar_range_covered(
+    engine: Engine,
+    *,
+    schema_name: str,
+    table_name: str,
+    exchange: str,
+    start: date,
+    end: date,
+) -> bool:
+    """True when the table already has calendar rows spanning ``start`` → ``end``."""
+    table_q = f"{quote_ident(schema_name)}.{quote_ident(table_name)}"
+    start_s, end_s = date_to_ymd(start), date_to_ymd(end)
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                f"""
+                SELECT MIN(cal_date), MAX(cal_date), COUNT(*)
+                FROM {table_q}
+                WHERE exchange = :exchange
+                  AND cal_date >= :start_date
+                  AND cal_date <= :end_date
+                """
+            ),
+            {"exchange": exchange, "start_date": start_s, "end_date": end_s},
+        ).one()
+    min_val, max_val, count = row[0], row[1], row[2]
+    if not count or min_val is None or max_val is None:
+        return False
+    return str(min_val) <= start_s and str(max_val) >= end_s
+
+
 def max_ymd_in_table(
     engine: Engine,
     *,

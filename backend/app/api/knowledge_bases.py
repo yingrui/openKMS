@@ -252,9 +252,10 @@ async def enqueue_knowledge_base_index_job(
             detail="Configure an embedding model on this knowledge base before indexing",
         )
 
+    from app.jobs.defer import defer_task
     from app.jobs.tasks import run_kb_index
 
-    job_id = await run_kb_index.defer_async(knowledge_base_id=kb.id)
+    job_id = await defer_task(run_kb_index, knowledge_base_id=kb.id)
     await db.commit()
 
     return await read_job_response(
@@ -289,9 +290,11 @@ async def enqueue_knowledge_base_wiki_space_index_job(
     if not link:
         raise HTTPException(status_code=404, detail="Wiki space not linked to this knowledge base")
 
+    from app.jobs.defer import defer_task
     from app.jobs.tasks import run_kb_wiki_space_index
 
-    job_id = await run_kb_wiki_space_index.defer_async(
+    job_id = await defer_task(
+        run_kb_wiki_space_index,
         knowledge_base_id=kb.id,
         wiki_space_id=wiki_space_id,
     )

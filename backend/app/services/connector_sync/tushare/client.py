@@ -12,6 +12,17 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _RATE_LIMIT_RE = re.compile(r"(\d+)\s*次\s*/\s*(分钟|小时)")
+# In-process sleeps longer than this block the worker; defer the job instead.
+DEFER_RETRY_AFTER_SECONDS = 120.0
+
+
+class TushareRateLimitError(RuntimeError):
+    """Tushare API rate limit; job should be re-queued after ``retry_after_seconds``."""
+
+    def __init__(self, *, api_name: str, retry_after_seconds: float, message: str) -> None:
+        self.api_name = api_name
+        self.retry_after_seconds = max(1.0, float(retry_after_seconds))
+        super().__init__(message)
 
 
 def is_tushare_rate_limit_error(message: str) -> bool:
@@ -55,6 +66,17 @@ class TushareClient:
     def _interval_for(self, api_name: str) -> float:
         return self.api_min_interval_seconds.get(api_name, self.min_interval_seconds)
 
+    async def _sleep_wall_clock(self, seconds: float, *, label: str) -> None:
+        """Sleep until wall-clock deadline (survives short process suspend better than one long sleep)."""
+        deadline = time.time() + seconds
+        while True:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                return
+            if remaining >= 30:
+                logger.info("Tushare waiting %.0fs more for %s", remaining, label)
+            await asyncio.sleep(min(60.0, remaining))
+
     async def _throttle(self, api_name: str) -> None:
         last = self._last_request_at.get(api_name)
         if last is None:
@@ -69,7 +91,7 @@ class TushareClient:
                 api_name,
                 interval,
             )
-            await asyncio.sleep(wait)
+            await self._sleep_wall_clock(wait, label=f"throttle {api_name}")
 
     async def query(self, api_name: str, params: dict, fields: str) -> list[dict]:
         last_error: RuntimeError | None = None
@@ -85,6 +107,17 @@ class TushareClient:
                         str(exc),
                         fallback=self._interval_for(api_name),
                     )
+                    if wait > DEFER_RETRY_AFTER_SECONDS:
+                        logger.warning(
+                            "Tushare rate limited on %s; deferring job retry in %.0fs",
+                            api_name,
+                            wait,
+                        )
+                        raise TushareRateLimitError(
+                            api_name=api_name,
+                            retry_after_seconds=wait,
+                            message=str(exc),
+                        ) from exc
                     logger.warning(
                         "Tushare rate limited on %s; retry %s/%s in %.0fs",
                         api_name,
@@ -92,7 +125,7 @@ class TushareClient:
                         self.max_retries,
                         wait,
                     )
-                    await asyncio.sleep(wait)
+                    await self._sleep_wall_clock(wait, label=f"rate limit {api_name}")
                     continue
                 raise
         if last_error:

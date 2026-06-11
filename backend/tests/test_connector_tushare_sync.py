@@ -7,7 +7,9 @@ import pytest
 from app.services.connector_sync.pg import date_to_ymd, ymd_to_date
 from app.services.connector_sync.sync_range import SyncDateRange
 from app.services.connector_sync.tushare.client import (
+    DEFER_RETRY_AFTER_SECONDS,
     TushareClient,
+    TushareRateLimitError,
     is_tushare_rate_limit_error,
     parse_tushare_rate_limit_wait_seconds,
 )
@@ -51,6 +53,17 @@ def test_ymd_roundtrip():
 
 def test_rate_limit_wait_seconds():
     assert parse_tushare_rate_limit_wait_seconds("频率超限(1次/小时)") == 3630.0
+
+
+def test_hourly_rate_limit_defers_instead_of_long_sleep():
+    assert parse_tushare_rate_limit_wait_seconds("频率超限(1次/小时)") > DEFER_RETRY_AFTER_SECONDS
+    err = TushareRateLimitError(
+        api_name="trade_cal",
+        retry_after_seconds=3661,
+        message="频率超限(1次/小时)",
+    )
+    assert err.api_name == "trade_cal"
+    assert err.retry_after_seconds == 3661.0
 
 
 def test_tushare_client_requires_token():
