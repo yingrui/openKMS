@@ -49,21 +49,21 @@ flowchart TB
   CLI -->|wiki put/sync/upload-file| Backend
 ```
 
-| Layer | Components |
-|-------|------------|
-| **PostgreSQL + pgvector** | users (local auth), **user_api_keys** (hashed personal API tokens; Bearer `okms.{id}.{secret}` authenticates as owner), **security_permissions** (permission key catalog: label, route/API patterns), **security_roles**, **security_role_permissions**, **user_security_roles** (local user ↔ role), **access_groups**, **access_group_members** (subject ↔ group), **resource_acl_entries** (per-resource sharing: r/w/m grants to user, group, or authenticated; container inheritance),  **system_settings** (singleton row: `system_name`, `default_timezone`, `api_base_url_note`), **knowledge_map_nodes** (self-referential tree of terms for the Knowledge Map), **knowledge_map_resource_links** (maps document channel, article channel id, or wiki space → one node; managed per term in the Knowledge Map UI), **knowledge_map_html_artifact** (singleton cached LLM HTML overview + semantic `content_hash`), **article_channels** (tree; no parsing pipeline), **articles** (markdown working copy + `series_id`, lifecycle dates, `origin_article_id`, `last_synced_at`; metadata JSONB), **article_versions**, **article_attachments**, documents (**series_id**, **effective_from** / **effective_to**, **lifecycle_status** for policy-style validity; **document_relationships** for directed edges: supersedes, amends, implements, see_also), document_versions (explicit markdown+metadata snapshots per document), doc_channels, pipelines, api_providers, api_models, feature_toggles, object_types, object_instances, link_types, link_instances, data_sources, datasets, knowledge_bases, kb_documents, faqs, chunks, **wiki_spaces**, **wiki_pages**, **wiki_files**, evaluation_datasets, evaluation_dataset_items, evaluation_runs, evaluation_run_items, glossaries, glossary_terms, procrastinate_jobs |
-| **S3/MinIO** | File storage under `{file_hash}/original.{ext}`; **article bundles** `articles/{article_id}/content.md`, `articles/{article_id}/images/…`, `articles/{article_id}/attachments/…`, optional `origin.html` (served via authenticated `GET /api/articles/{id}/files/{path}` → presigned redirect); wiki **vault mirror** `wiki/{space_id}/vault/{relative-path}` for vault imports and multipart uploads with normalizeable paths (binaries + `.md` bodies); markdown pages also written as `…/vault/{wiki_path}.md` when storage is enabled; **Graph View** cache JSON `wiki/{space_id}/link-graph.json` (invalidated when `max(wiki_pages.updated_at)` is newer than the object’s `LastModified`); ad-hoc uploads with non-normalizeable names use `wiki/{space_id}/files/{file_id}/…` |
-| **Worker** | Picks up jobs, spawns openkms-cli subprocess, updates document status / indexes knowledge bases |
-| **OpenAI compatible Service Provider** | OpenAI, Anthropic, etc.; metadata extraction, FAQ generation, embeddings, and model playground (configured via api_models) |
-| **QA Agent** | Separate FastAPI + LangGraph service; retrieves via backend search API (no DB access), generates answers via LLM; configurable per knowledge base |
-| **Wiki embedded agent (MVP)** | **Wiki Copilot** in the wiki UI: in-process LangGraph in the **main** FastAPI app: `POST/GET/DELETE/PATCH` **`/api/agent/conversations`** (list filtered by `wiki_space_id`), messages routes, wiki tools (`list_wiki_pages`, **`search_wiki_pages`**, `get_wiki_page`, `list_linked_channel_documents`; **`upsert_wiki_page`** when JWT has `wikis:write`); **streaming** messages use LangGraph `astream_events` (v2) so the NDJSON stream can include **`tool_start` / `tool_end` / `tool_error`** in addition to token `delta` lines. System prompt includes **vendored** [wiki-skills](https://github.com/kfchou/wiki-skills) `SKILL.md` text under `third-party/wiki-skills` (git subtree) plus an openKMS mapping; **wiki_space_documents** + linked-doc API. **Distinct** from qa-agent. [wiki_agent_prototype.md](./wiki_agent_prototype.md) |
+| Layer | Role |
+|-------|------|
+| **PostgreSQL + pgvector** | System of record — metadata, permissions, and vector embeddings. Domains: **auth & ACL** (users, roles, groups, resource ACLs), **channels & content** (documents, articles, versions, relationships), **knowledge** (KBs, chunks, FAQs, wiki pages, glossaries), **ontology** (object/link types and instances, datasets), **operations** (pipelines, jobs, models, evaluations, knowledge map), **system** (settings, feature toggles). Full table list: [data-models.md](features/data-models.md). |
+| **S3/MinIO** | Large blobs — document originals (`{file_hash}/…`), article bundles, wiki vault mirror and ad-hoc files, cached wiki link-graph JSON. Browser access via presigned redirects from the API. |
+| **Worker** | procrastinate worker runs deferred jobs (document parse, KB index, …) by spawning **openkms-cli**; updates status in PostgreSQL. |
+| **LLM providers** | External OpenAI-compatible APIs configured as **api_providers** / **api_models** — metadata extraction, FAQ generation, embeddings, playground. |
+| **QA Agent** | Separate FastAPI + LangGraph service per knowledge base; searches via backend API only (no direct DB). |
+| **Wiki Copilot** | In-process LangGraph agent in the **main** API (`/api/agent/*`) for the wiki UI — page search, linked documents, optional upsert. Not the QA Agent. Details: [wiki_agent_prototype.md](./wiki_agent_prototype.md). |
 
 ## Frontend Structure
 
 ```mermaid
 flowchart TB
   subgraph Providers["Provider hierarchy"]
-    Auth[AuthContext + permission-catalog union / canAccessPath]
+    Auth["AuthContext + permission-catalog union, canAccessPath"]
     FT[FeatureTogglesContext]
     DC[DocumentChannelsContext]
     AC[ArticleChannelsContext]
@@ -74,65 +74,70 @@ flowchart TB
 
   subgraph Pages["Routes"]
     Home[Home]
-    KnowledgeMapPage[Knowledge Map]
-    Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
-    Articles[ArticlesIndex, ArticleChannel, ArticleChannels, ArticleChannelSettings, ArticleDetail]
-    KB[KnowledgeBaseList, KnowledgeBaseDetail]
-    Wiki[WikiSpaceList, WikiSpaceSettings, WikiWorkspace]
-    Eval[EvaluationDatasetList, EvaluationDatasetDetail]
-    Glossaries[GlossaryList, GlossaryDetail]
+    KnowledgeMapPage["Knowledge Map"]
+    Docs["DocumentsIndex, DocumentChannel, DocumentDetail"]
+    Articles["ArticlesIndex, ArticleChannel, ArticleChannels, ArticleChannelSettings, ArticleDetail"]
+    KB["KnowledgeBaseList, KnowledgeBaseDetail"]
+    Wiki["WikiSpaceList, WikiSpaceSettings, WikiWorkspace"]
+    Eval["EvaluationDatasetList, EvaluationDatasetDetail"]
+    Glossaries["GlossaryList, GlossaryDetail"]
     Pipelines[Pipelines]
-    JobRuns[JobRuns, JobDetail]
-    Models[Models, ModelDetail]
-    Ontology[OntologyList; Datasets, DatasetDetail, ObjectTypesPage, LinkTypesPage; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer] — SPA sources under **`frontend/src/pages/ontology/`**
-    Console[Console: Overview, Permission management, Data security, DataSources, Connectors, Settings, Users, FeatureToggles]
-    UserSettings[Profile, UserSettings /settings API keys]
+    JobRuns["JobRuns, JobDetail"]
+    Models["Models, ModelDetail"]
+    Ontology["OntologyList, Datasets, ObjectTypes, Objects, Links, ObjectExplorer"]
+    Console["Console Overview, Permissions, Data security, DataSources, Connectors, Settings, Users, FeatureToggles"]
+    UserSettings["Profile, UserSettings, API keys"]
   end
 
   Providers --> Pages
 ```
 
+Ontology SPA sources live under `frontend/src/pages/ontology/`. Console admin screens live under `frontend/src/pages/console/`.
+
+### Layout (`frontend/src/`)
+
+| Area | Purpose |
+|------|---------|
+| **`App.tsx`** | Route table, provider nesting (see diagram), `ErrorBoundary`, lazy-loaded pages |
+| **`pages/`** | One screen per route, grouped by domain (`documents/`, `articles/`, `wiki/`, `ontology/`, `console/`, …). Match the diagram above — do not mirror every filename here |
+| **`components/`** | UI shared across routes (layout shell, markdown, graphs, errors). Keep page-only UI next to its page |
+| **`data/`** | HTTP clients per API area; always go through **`authAwareFetch`** in `apiClient.ts` |
+| **`contexts/`** | Cross-route React state (auth, toggles, channel lists) |
+| **`config/`** | API base URL and `PERM_*` mirrors for UI gating |
+| **`styles/`** | Global design system — details in [`frontend/src/styles/README.md`](../frontend/src/styles/README.md) |
+| **`i18n/`** | Locales and namespaces (see below) |
+| **`graph/`** | Shared graph types/builders when 2D and 3D (or wiki + home) reuse the same model |
+
 ```
 frontend/src/
-├── main.tsx                 # Entry (`index.scss` → design-system variables, globals, utilities)
-├── index.scss               # `@use` design-system: `css-variables`, `global`, `utilities`
-├── styles/README.md         # Design system index (tokens, conventions, spacing rhythm)
-├── styles/design-system/    # SCSS + CSS vars: `_css-variables` (palette, spacing incl. **`--gap-compact`** / **`--padding-compact-*`**, type, motion, z-index, status pills, **`--color-ontology-*`** for KB graph source chrome, **`@media print`** **`--print-*`** paper palette), `_tokens` (breakpoints, **`$grid-min-*`**, **`$playground-messages-*`**, **`$bp-dialog-sm`**, `$space-*` / `$z-*` / **`$km-layout-max`**), `_mixins`, `_global`, optional `_index` barrel, `knowledge-map/`
-├── styles/account-page.scss # Shared Profile / Settings card + form + list layout (`account-*` classes)
-├── App.tsx                  # Routes, providers (Auth → FeatureToggles → DocumentChannels → ArticleChannels), ErrorBoundary, Suspense + lazy routes
-├── utils/permissionPatterns.ts  # Frontend glob rules aligned with backend; union of catalog patterns for SPA gate
-├── config/index.ts          # API URL; config/permissions.ts (PERM_* mirrors for UI gating)
-├── components/Layout/       # MainLayout (route gate; **`app-content--home`** padding on `/`), Sidebar (nav gated by canAccessPath + toggles; **Glossaries** and **Ontology** are sibling top-level links, ontology sub-routes indented under Ontology when active; **collapsible** left rail—when narrow, **icon-only** top-level links + labels hidden + channel/ontology subnavs hidden; preference in **`localStorage`**), Header
-├── components/KnowledgeMapForceGraph.tsx (+ `.scss`)  # Home hub: when **`GET /api/knowledge-map/map-html/status`** has no saved HTML, **`react-force-graph-2d`** graph (same interaction model as wiki Graph View) from Knowledge Map tree + resource links; when a published HTML snapshot exists, **`Home`** shows it in an **`iframe`** instead. Term click → `/knowledge-map?node=…`; resource click → channel/wiki/articles route
-├── components/KnowledgeMapForceGraph3D.tsx  # Optional 3D exploration: **`react-force-graph-3d`** (lazy-loaded from `/knowledge-map` **Explore (3D)** tab only); shared graph build via `src/graph/knowledgeMapGraphModel.ts`
-├── graph/knowledgeMapGraphModel.ts  # `walkTree` + `KMNode` / `KMLink` types shared by 2D and 3D Knowledge Map force graphs
-├── components/ErrorBoundary.tsx   # Catches uncaught errors, fallback UI with retry
-├── components/ErrorBanner.tsx    # Page-level error banner (toast for transient errors)
-├── components/markdown/     # `richMarkdown.tsx`: GFM + KaTeX + `rehype-raw` + **Mermaid** fenced blocks; **WikiWorkspace** / **WikiPagePanel** preview, **WikiAgentMessageBody**, **DocumentDetail** markdown
-├── contexts/                # DocumentChannelsContext, ArticleChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # apiClient (getAuthHeaders, authAwareFetch + session-expired hook), systemApi (`/api/public/system`, `/api/system/settings`), channelsApi, articleChannelsApi, articlesApi, knowledgeMapApi (`/api/knowledge-map/*`), …, featureTogglesApi, securityAdminApi, channelUtils, **userApiKeysApi** (`/api/auth/api-keys`)
-└── pages/
-    ├── Home.tsx
-    ├── Profile.tsx            # /profile — `GET /api/auth/me`
-    ├── UserSettings.tsx       # /settings — personal API keys
-    ├── DocumentsIndex.tsx   # /documents – overview
-    ├── DocumentChannel.tsx  # /documents/channels/:channelId
-    ├── DocumentChannels.tsx # /documents/channels – manage
-    ├── DocumentChannelSettings.tsx
-    ├── DocumentDetail.tsx
-    ├── ArticlesIndex.tsx     # /articles – overview (like DocumentsIndex)
-    ├── ArticleChannel.tsx   # /articles/channels/:channelId – list in channel
-    ├── ArticleChannels.tsx  # /articles/channels – manage tree
-    ├── ArticleChannelSettings.tsx  # /articles/channels/:id/settings – name, description, parent
-    ├── ArticleDetail.tsx   # /articles/view/:id — shares **DocumentDetail.scss** layout (info card, **Relationships** panel like document lineage, markdown Edit/Save)
-    ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx (`/wikis/:id/settings`; sectioned settings UI; **Build index** for offline wiki page embeddings (default embedding ApiModel); folder vault import: modal with skip options + folder picker; import runs after browser file-access prompt), WikiSpaceGraph.tsx (`react-force-graph-2d`; **WikiSpaceGraphPanel** embedded in **WikiWorkspace** graph tab), **WikiWorkspace.tsx** + **WikiPagePanel.tsx** (multi-tab pages + graph tab; optional **WikiSpaceAgentPanel** Copilot rail toggled from the toolbar; **WikiPageEditor** re-exports workspace), WikiPageEditor.tsx (re-export only)
-    ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
-    ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
-    ├── Pipelines.tsx, JobRuns.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    ├── ontology/            # OntologyList, ObjectsList, ObjectTypeDetail, LinksList, LinkTypeDetail, ObjectExplorer, ObjectTypesPage, LinkTypesPage; ontology-admin.scss; co-located SCSS per page
-    └── console/             # ConsoleLayout, Overview, ConsolePermissionManagement, ConsoleDataSecurityGroups, ConsoleGroupDataAccess, DataSources, Connectors, Settings, Users, FeatureToggles (datasets & schema UIs live under /ontology/*)
+├── App.tsx, main.tsx, index.scss
+├── pages/
+│   ├── documents/, articles/, wiki/, knowledge-bases/, knowledge-map/
+│   ├── evaluation/, glossaries/, ontology/, console/
+│   ├── agents/, pipelines/, jobs/, models/, auth/, connectors/
+│   └── Home.tsx, Profile.tsx, UserSettings.tsx, GlobalSearch.tsx
+├── components/
+│   ├── Layout/                 # shell: sidebar, header, route gate
+│   ├── markdown/, wiki/, agents/, knowledge-bases/, jobs/, ui/
+│   └── KnowledgeMapForceGraph*.tsx, ErrorBoundary, …
+├── data/                       # *Api.ts per backend domain (+ apiClient.ts)
+├── contexts/                   # Auth, FeatureToggles, DocumentChannels, ArticleChannels
+├── config/                     # API URL, PERM_* mirrors
+├── styles/
+│   ├── design-system/          # tokens, mixins, globals — see styles/README.md
+│   └── account-page.scss
+├── i18n/locales/{en,zh-CN}/    # namespaces per surface
+├── graph/                      # shared Knowledge Map graph model
+└── utils/                      # permissionPatterns, helpers
 ```
+
+### Conventions
+
+- **New feature screen** — add `pages/<domain>/Feature.tsx` + colocated `Feature.scss`; register a lazy route in `App.tsx`; add or extend a module under `data/` for HTTP calls.
+- **Styles** — `@use` design-system tokens/mixins in SCSS; use `var(--space-*)` and `var(--text-*)` for rhythm; settings pages cap width with `ds.$km-layout-max`; Profile / personal Settings reuse `account-page.scss` (`account-*` classes).
+- **Navigation & access** — sidebar uses `canAccessPath` and feature toggles; backend permissions remain authoritative.
+- **Naming** — `*List` / `*Detail` / `*Settings` for browse → drill-down → configure flows; documents and articles follow the same channel pattern (index → channel tree → channel view → settings).
+- **Where to look** — route → `App.tsx`; API shape → `data/*Api.ts`; shell chrome → `components/Layout/`; tokens and spacing rules → `styles/README.md`.
 
 ### Internationalization (SPA)
 
@@ -140,127 +145,49 @@ The SPA uses **i18next** + **react-i18next** ([`frontend/src/i18n/`](https://git
 
 ## Backend Structure
 
+### Layout (`backend/`)
+
+| Layer | Purpose |
+|-------|---------|
+| **`app/main.py`** | FastAPI app, router registration, lifespan |
+| **`app/api/`** | HTTP routes — one module (or `admin/` package) per domain; mirrors frontend `data/*Api.ts` |
+| **`app/models/`** | SQLAlchemy ORM — one module per table cluster |
+| **`app/schemas/`** | Pydantic request/response types for API bodies |
+| **`app/services/`** | Business logic, LLM calls, S3, permissions, guards — keep routers thin |
+| **`app/jobs/`** | procrastinate app + deferred tasks (`run_pipeline`, `run_kb_index`, …) |
+| **`app/i18n/`** | Localized API error catalog + `Accept-Language` |
+| **`app/middleware/`** | Optional strict permission-pattern enforcement |
+| **`scheduler.py` / `worker.py`** | Cron hub (single replica) and job workers (scalable) — see below |
+| **`scripts/`** | Bootstrap helpers (`ensure_pgvector.py`, …) |
+
 ```
 backend/
 ├── app/
-│   ├── i18n/                  # API error catalogs (`catalog.py`) + `Accept-Language` resolution + structured HTTP errors (`errors.py`)
-│   ├── middleware/
-│   │   └── strict_permission_patterns.py  # Optional OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT: catalog pattern match + permission key check
-│   ├── config.py                # Settings (env: OPENKMS_*); vlm_url primary for VLM
-│   ├── oidc_discovery.py        # Cached GET {issuer}/.well-known/openid-configuration (JWKS + OAuth endpoints)
-│   ├── constants.py             # DocumentStatus enum (uploaded, pending, running, completed, failed)
-│   ├── database.py              # Async engine, get_db (no DDL at startup; pgvector via dev.sh / Alembic)
+│   ├── main.py, config.py, database.py
 │   ├── api/
-│   │   ├── auth.py              # OIDC (discovery + JWKS) or local HS256 JWT; require_auth, require_admin, require_permission; /api/auth/* (me, permission-catalog, **api-keys** CRUD, sync-session)
-│   │   ├── admin/
-│   │   │   ├── health_status.py   # GET /api/admin/health-status (console:access): core deps + optional Langfuse public health when LANGFUSE_BASE_URL set
-│   │   │   ├── groups.py        # CRUD /api/admin/groups, scopes PUT (any auth); members PUT local-only (OIDC: GET empty, PUT 403)
-│   │   │   ├── security_roles.py  # GET /api/admin/security-roles, PUT …/permissions
-│   │   │   ├── security_permissions.py  # CRUD /api/admin/security-permissions (catalog rows)
-│   │   │   └── permission_reference.py  # GET /api/admin/permission-reference (routes + APIs + operation_key_hints for admins)
-│   │   ├── channels.py         # GET/POST/PUT /api/document-channels
-│   │   ├── documents.py        # POST upload (store only), GET (channel_id, search, offset, limit), DELETE, PUT (name, channel_id), PUT metadata, PUT markdown, POST restore-markdown, POST rebuild-page-index, POST/GET versions, GET version, POST version restore, POST extract-metadata, GET page-index, GET section (by line range)
-│   │   ├── object_types.py     # CRUD /api/object-types; Neo4j index from linked dataset or object_instances when no dataset; is_master_data, display_property; master-data filter for label config; instances from Neo4j when available
-│   │   ├── link_types.py       # CRUD /api/link-types; Neo4j index from junction/source dataset or link_instances; count_from_neo4j; instances from Neo4j when available
-│   │   ├── ontology_explore.py # POST /api/ontology/explore; execute read-only Cypher against Neo4j (Object Explorer)
-│   │   ├── data_sources.py     # CRUD /api/data-sources (admin), POST /{id}/test, POST /{id}/neo4j-delete-all; credentials encrypted
-│   │   ├── datasets.py         # CRUD /api/datasets (admin), GET /from-source/{id} lists PG tables, GET /{id}/rows and /{id}/metadata
-│   │   ├── feature_toggles.py  # GET/PUT /api/feature-toggles (PUT admin-only); hasNeo4jDataSource for sidebar visibility
-│   │   ├── system_settings.py  # GET /api/public/system (no auth); GET/PUT /api/system/settings (`console:settings`)
-│   │   ├── knowledge_bases.py  # CRUD /api/knowledge-bases, documents, FAQs, chunks, search, ask proxy
-│   │   ├── wiki_spaces.py      # /api/wiki-spaces: spaces, pages, **…/documents** (channel doc links: list includes `linked_at` + each linked **document** `updated_at`), files, page-index, **GET …/graph**, **POST …/semantic-index** (offline pgvector embeddings per page); POST import/vault (zip/bulk), POST import/vault/markdown-file
-│   │   ├── agent.py            # /api/agent: **conversations** + **messages** (embedded LangGraph; Wiki Copilot in the wiki-space UI)
-│   │   ├── evaluations.py  # CRUD /api/evaluations, items, import (CSV), run (search_retrieval | qa_answer | wiki_content_coverage), runs list/get/delete/compare
-│   │   ├── glossaries.py       # CRUD /api/glossaries, terms, export, import
-│   │   ├── home_hub.py         # GET /api/home/hub (signed-in knowledge operations hub aggregates)
-│   │   ├── knowledge_map.py    # `/api/knowledge-map/*` — Knowledge Map node tree + CRUD + resource-links + map-html (status, get, regenerate, designer chat, preview, publish) via `knowledge_map_html`
-│   │   ├── pipelines.py       # CRUD /api/pipelines, template-variables
-│   │   ├── models.py           # CRUD /api/models, POST test
-│   │   ├── internal/           # package: internal/models.py — document-parse-defaults, llm-defaults, config-by-name, kb-embedding-credentials
-│   │   ├── providers.py        # CRUD /api/providers (service providers: OpenAI, Anthropic, etc.)
-│   │   ├── users_admin.py      # GET/POST/PATCH/DELETE /api/admin/users (console:users; local user CRUD + OIDC notice)
-│   │   └── jobs.py             # GET/POST/DELETE /api/jobs, POST retry
-│   ├── models/
-│   │   ├── document.py          # Document model (+ status, metadata JSONB)
-│   │   ├── document_version.py  # DocumentVersion (document_id FK, version_number, tag, note, markdown, metadata JSONB snapshot, created_by_*)
-│   │   ├── document_channel.py  # DocumentChannel (+ pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config, object_type_extraction_max_instances, created_by)
-│   │   ├── pipeline.py         # Pipeline model (name, command, default_args, model_id)
-│   │   ├── api_provider.py      # ApiProvider (name, base_url, api_key)
-│   │   ├── api_model.py        # ApiModel (provider_id FK, api_kind, capabilities[], model_name; inherits base_url/api_key from provider)
-│   │   ├── feature_toggle.py  # FeatureToggle (key-value flags)
-│   │   ├── user.py            # User (local auth: email, username, password_hash, is_admin)
-│   │   ├── user_api_key.py   # UserApiKey (user_id FK, name, key_prefix, key_hash bcrypt; Bearer `okms.{id}.{secret}` for HTTP)
-│   │   ├── security_role.py # SecurityRole, SecurityRolePermission, UserSecurityRole
-│   │   ├── security_permission.py # SecurityPermission (key, label, description, JSONB route/API patterns, sort_order)
-│   │   ├── access_group.py  # AccessGroup, AccessGroupMember
-│   │   ├── resource_acl.py  # ResourceAclEntry
-│   │   ├── object_type.py     # ObjectType (name, description, properties JSONB, dataset_id FK, key_property, is_master_data, display_property)
-│   │   ├── object_instance.py # ObjectInstance (object_type_id FK, data JSONB)
-│   │   ├── link_type.py       # LinkType (source_object_type_id, target_object_type_id)
-│   │   ├── link_instance.py   # LinkInstance (link_type_id, source_object_id, target_object_id)
-│   │   ├── data_source.py     # DataSource (kind, host, port, database, username_encrypted, password_encrypted)
-│   │   ├── dataset.py         # Dataset (data_source_id FK, schema_name, table_name)
-│   │   ├── knowledge_base.py  # KnowledgeBase (name, description, embedding_model_id, judge_model_id, agent_url, chunk_config, faq_prompt, metadata_keys)
-│   │   ├── kb_document.py     # KBDocument join table (knowledge_base_id, document_id)
-│   │   ├── faq.py             # FAQ (knowledge_base_id, question, answer, embedding via pgvector)
-│   │   ├── chunk.py           # Chunk (knowledge_base_id, document_id, content, embedding via pgvector)
-│   │   ├── evaluation.py  # Evaluation, EvaluationItem (query + expected answer)
-│   │   ├── evaluation_run.py   # EvaluationRun, EvaluationRunItem (persisted run + per-item detail JSONB)
-│   │   ├── glossary.py        # Glossary (name, description)
-│   │   ├── glossary_term.py   # GlossaryTerm (glossary_id, primary_en, primary_cn, definition, synonyms_en, synonyms_cn)
-│   │   └── knowledge_map.py   # KnowledgeMapNode, KnowledgeMapResourceLink, KnowledgeMapHtmlArtifact → `knowledge_map_nodes`, `knowledge_map_resource_links`, `knowledge_map_html_artifact`
-│   ├── schemas/
-│   │   ├── document.py
-│   │   ├── channel.py           # ChannelNode, ChannelCreate, ChannelUpdate, LabelConfigItem (label_config)
-│   │   ├── pipeline.py         # PipelineCreate/Update/Response (+ model_id)
-│   │   ├── api_model.py        # ApiModelCreate/Update/Response (+ provider_id)
-│   │   ├── api_provider.py     # ApiProviderCreate/Update/Response
-│   │   ├── job.py              # JobCreate/Response
-│   │   ├── knowledge_base.py  # KB/FAQ/Chunk/Search/Ask schemas
-│   │   ├── glossary.py        # Glossary/Term Create/Update/Response, Export/Import schemas
-│   │   ├── ontology.py        # ObjectType/LinkType/ObjectInstance/LinkInstance schemas
-│   │   └── data_source.py     # DataSourceCreate/Response; dataset.py for Dataset schemas
-│   ├── jobs/
-│   │   ├── __init__.py          # procrastinate App (PsycopgConnector)
-│   │   └── tasks.py            # run_pipeline, run_spreadsheet_preview (.xlsx preview), run_kb_index (subprocess openkms-cli where applicable)
-│   └── services/
-│       ├── credential_encryption.py # Fernet encrypt/decrypt for DataSource credentials
-│       ├── model_testing.py         # Model playground: build URL/headers/payload by api_kind; vision when capability set
-│       ├── metadata_extraction.py   # pydantic-ai Agent + StructuredDict for metadata extraction (abstract, author, tags, object_type, list[object_type])
-│       ├── faq_generation.py             # LLM-based FAQ pair generation from document markdown
-│       ├── glossary_term_suggestion.py   # LLM suggests translation, definition, synonyms for glossary terms
-│       ├── knowledge_map_html.py         # LLM-built Knowledge Map HTML overview: semantic content hash, placeholder hydration, nh3 sanitize
-│       ├── kb_search.py                  # Semantic search over chunks and FAQs (used by search route and evaluation)
-│       ├── search_judge.py               # LLM judges: search retrieval vs expected answer; QA answer vs expected answer
-│       ├── evaluation/execute.py         # Run strategies: search_retrieval, qa_answer (agent HTTP + judge)
-│       ├── page_index.py                 # md_to_tree_from_markdown (# headings); used when saving/restoring markdown
-│       ├── spreadsheet_preview.py      # openpyxl: XLSX grid preview + markdown for upload / spreadsheet job
-│       ├── wiki_semantic_index.py        # Offline: embed all wiki pages in a space (default **embedding** ApiModel → `wiki_pages.embedding`)
-│       ├── wiki_vault_import.py          # Obsidian vault bulk import: S3 vault mirror `wiki/{space_id}/vault/{path}`, upsert wiki_files on same path, markdown mirrors, link rewrite; strip NUL for PostgreSQL
-│       ├── agent/                        # Embedded LangGraph (wiki): `llm.py`, `wiki_tools.py`, `wiki_runner.py`, `prompts.py`
-│       ├── wiki_link_graph.py            # Parse `[[wikilinks]]` + relative `[text](href)` (skip fenced code); build directed graph JSON; path resolution aligned with vault import / frontend preview
-│       ├── storage.py                    # S3/MinIO client (upload, delete, `object_last_modified` via HEAD for wiki graph cache)
-│       ├── permission_catalog.py       # PERM_* constants, OPERATION_KEY_HINTS for admin reference UI
-│       ├── permission_seed.py          # Alembic seed: only ``all`` row for security_permissions when table empty
-│       ├── permission_pattern_engine.py   # Compile ``backend_api_patterns`` / match method+path; frontend-style glob helpers
-│       ├── permission_pattern_cache.py    # TTL cache for compiled rules; invalidated on admin catalog mutations
-│       ├── permission_default_patterns.py # Default frontend/backend pattern lists per PERM_* (used by Alembic backfill)
-│       ├── permission_reference.py     # Frontend route catalog + OpenAPI-derived API list for admin permission setup
-│       ├── security_permission_service.py  # List/sort permissions from DB; keys set for role validation
-│       ├── permission_resolution.py    # Permissions: local via user_security_roles; OIDC via JWT realm role name matching security_roles.name
-│       ├── user_roles_sync.py          # Sync user_security_roles from users.is_admin; create member role with `all` if missing
-│       ├── data_scope.py               # Re-exports resource ACL helpers; channel subtree expansion
-│       ├── resource_guard.py           # Layer 2 guard (standalone types)
-│       ├── context_guard.py            # Layer 2 guard (channels, documents, articles)
-│       ├── resource_acl_service.py     # ACL resolve, list filters, acl_check_required
-│       └── data_resource_policy.py     # Visibility helpers delegating to resource ACL
+│   │   ├── auth.py, channels.py, documents.py, articles.py, …
+│   │   ├── admin/              # console: groups, security roles, health
+│   │   └── internal/           # worker / openkms-cli only
+│   ├── models/                 # document, wiki, knowledge_base, evaluation, …
+│   ├── schemas/                # paired with api domains
+│   ├── services/
+│   │   ├── agent/, evaluation/, connector_sync/, connector_search/, …
+│   │   └── *.py                # kb_search, wiki_vault_import, permission_*, guards, storage
+│   ├── jobs/tasks.py
+│   ├── i18n/
+│   └── middleware/
 ├── scripts/
-│   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
-│   └── seed_mock_insurance_data.py  # Create mock diseases, insurance_products, disease_insurance_product tables in schema 'mock'
-├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
-├── scheduler.py                 # central cron hub (single instance): dispatch_due_schedules + heartbeat
-└── worker.py                    # procrastinate worker entry point + heartbeat
+├── scheduler.py
+└── worker.py
 ```
+
+### Conventions
+
+- **New HTTP feature** — add `api/<domain>.py` router, `schemas/<domain>.py`, `models/` if new tables (Alembic migration), logic in `services/`; register router in `main.py`.
+- **Permissions** — `require_permission` on routes; resource ACL via `context_guard` / `resource_acl_service` for channels, documents, articles; catalog in `services/permission_*`.
+- **Long work** — defer from API into `jobs/tasks.py`; worker runs openkms-cli subprocesses where needed.
+- **Internal-only** — defaults and credentials for CLI under `api/internal/` (not exposed to browser).
+- **Where to look** — route list → `app/api/`; table shape → `app/models/`; side effects → `app/services/`; async work → `app/jobs/tasks.py`.
 
 **Background processes:** **API** (`uvicorn`) serves HTTP and holds the in-memory process heartbeat registry. **Scheduler** (`scheduler.py`, one replica) reads `scheduled_triggers` each minute and defers jobs. **Worker** (`worker.py`, scalable) executes procrastinate tasks only — no cron scanning.
 

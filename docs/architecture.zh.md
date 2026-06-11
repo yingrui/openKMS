@@ -49,21 +49,21 @@ flowchart TB
   CLI -->|wiki put/sync/upload-file| Backend
 ```
 
-| 层 | 组件 |
+| 层 | 作用 |
 |----|------|
-| **PostgreSQL + pgvector** | users（本地认证）、**user_api_keys**（哈希个人 API token；Bearer `okms.{id}.{secret}` 以所有者身份认证）、**security_permissions**（权限键目录：label、route/API 模式）、**security_roles**、**security_role_permissions**、**user_security_roles**（本地用户 ↔ 角色）、**access_groups**、**access_group_members**（主体 ↔ 组）、**resource_acl_entries**（按资源共享：对用户/组/authenticated 的 r/w/m；容器继承）、**system_settings**（单行：`system_name`、`default_timezone`、`api_base_url_note`）、**knowledge_map_nodes**（知识地图术语自引用树）、**knowledge_map_resource_links**（文档通道、文章通道 id 或 wiki space → 节点；知识地图 UI 按术语管理）、**knowledge_map_html_artifact**（单例缓存 LLM HTML 概览 + 语义 `content_hash`）、**article_channels**（树；无解析流水线）、**articles**（markdown 工作副本 + `series_id`、生命周期日期、`origin_article_id`、`last_synced_at`；metadata JSONB）、**article_versions**、**article_attachments**、documents（**series_id**、**effective_from** / **effective_to**、**lifecycle_status**；**document_relationships** 有向边：supersedes、amends、implements、see_also）、document_versions、doc_channels、pipelines、api_providers、api_models、feature_toggles、object_types、object_instances、link_types、link_instances、data_sources、datasets、knowledge_bases、kb_documents、faqs、chunks、**wiki_spaces**、**wiki_pages**、**wiki_files**、evaluation_datasets、evaluation_dataset_items、evaluation_runs、evaluation_run_items、glossaries、glossary_terms、procrastinate_jobs |
-| **S3/MinIO** | 文件存储 `{file_hash}/original.{ext}`；**文章包** `articles/{article_id}/content.md`、`articles/{article_id}/images/…`、`articles/{article_id}/attachments/…`、可选 `origin.html`（经认证 `GET /api/articles/{id}/files/{path}` → presigned 重定向）；维基 **vault 镜像** `wiki/{space_id}/vault/{relative-path}`（vault 导入与 multipart 上传、可规范化路径）；启用存储时 markdown 页亦写入 `…/vault/{wiki_path}.md`；**Graph View** 缓存 JSON `wiki/{space_id}/link-graph.json`（当 `max(wiki_pages.updated_at)` 新于对象 `LastModified` 时失效）；不可规范化名的临时上传用 `wiki/{space_id}/files/{file_id}/…` |
-| **Worker** | 领取任务、spawn openkms-cli 子进程、更新文档状态 / 索引知识库 |
-| **OpenAI 兼容 Service Provider** | OpenAI、Anthropic 等；元数据抽取、FAQ 生成、embedding、模型 playground（经 api_models 配置） |
-| **QA Agent** | 独立 FastAPI + LangGraph；经后端 search API 检索（无 DB 直连），LLM 生成答案；按知识库配置 |
-| **维基内嵌 Agent（MVP）** | 维基 UI 的 **Wiki Copilot**：**主** FastAPI 进程内 LangGraph：`POST/GET/DELETE/PATCH` **`/api/agent/conversations`**（列表按 `wiki_space_id` 过滤）、消息路由、维基工具（`list_wiki_pages`、**`search_wiki_pages`**、`get_wiki_page`、`list_linked_channel_documents`；JWT 有 `wikis:write` 时 **`upsert_wiki_page`**）；**流式**消息用 LangGraph `astream_events`（v2），NDJSON 除 token `delta` 外含 **`tool_start` / `tool_end` / `tool_error`**。系统提示含 vendored [wiki-skills](https://github.com/kfchou/wiki-skills) `SKILL.md`（`third-party/wiki-skills`，git subtree）及 openKMS 映射；**wiki_space_documents** + linked-doc API。**与 qa-agent 不同**。[wiki_agent_prototype.md](./wiki_agent_prototype.md) |
+| **PostgreSQL + pgvector** | 系统记录 — 元数据、权限与向量 embedding。领域：**认证与 ACL**（用户、角色、组、资源 ACL）、**通道与内容**（文档、文章、版本、关系）、**知识**（知识库、分块、FAQ、维基、术语表）、**本体**（对象/链接类型与实例、数据集）、**运维**（流水线、任务、模型、评测、知识地图）、**系统**（设置、功能开关）。完整表清单：[data-models.md](features/data-models.md)。 |
+| **S3/MinIO** | 大文件 — 文档原件（`{file_hash}/…`）、文章包、维基 vault 镜像与临时文件、维基链接图缓存 JSON。浏览器经 API presigned 重定向访问。 |
+| **Worker** | procrastinate worker 执行延迟任务（文档解析、知识库索引等），拉起 **openkms-cli**；在 PostgreSQL 中更新状态。 |
+| **LLM 提供商** | 外部 OpenAI 兼容 API，配置为 **api_providers** / **api_models** — 元数据抽取、FAQ 生成、embedding、模型 playground。 |
+| **QA Agent** | 按知识库配置的独立 FastAPI + LangGraph 服务；仅经后端 API 检索（不直连数据库）。 |
+| **Wiki Copilot** | **主** API 进程内 LangGraph 代理（`/api/agent/*`），供维基 UI 使用 — 页面搜索、关联文档、可选 upsert。与 QA Agent 不同。详见 [wiki_agent_prototype.md](./wiki_agent_prototype.md)。 |
 
 ## 前端结构
 
 ```mermaid
 flowchart TB
   subgraph Providers["Provider 层级"]
-    Auth[AuthContext + permission-catalog 并集 / canAccessPath]
+    Auth["AuthContext + permission-catalog 并集, canAccessPath"]
     FT[FeatureTogglesContext]
     DC[DocumentChannelsContext]
     AC[ArticleChannelsContext]
@@ -75,64 +75,69 @@ flowchart TB
   subgraph Pages["路由"]
     Home[首页]
     KnowledgeMapPage[知识地图]
-    Docs[DocumentsIndex, DocumentChannel, DocumentDetail]
-    Articles[ArticlesIndex, ArticleChannel, ArticleChannels, ArticleChannelSettings, ArticleDetail]
-    KB[KnowledgeBaseList, KnowledgeBaseDetail]
-    Wiki[WikiSpaceList, WikiSpaceSettings, WikiWorkspace]
-    Eval[EvaluationDatasetList, EvaluationDatasetDetail]
-    Glossaries[GlossaryList, GlossaryDetail]
+    Docs["DocumentsIndex, DocumentChannel, DocumentDetail"]
+    Articles["ArticlesIndex, ArticleChannel, ArticleChannels, ArticleChannelSettings, ArticleDetail"]
+    KB["KnowledgeBaseList, KnowledgeBaseDetail"]
+    Wiki["WikiSpaceList, WikiSpaceSettings, WikiWorkspace"]
+    Eval["EvaluationDatasetList, EvaluationDatasetDetail"]
+    Glossaries["GlossaryList, GlossaryDetail"]
     Pipelines[Pipelines]
-    JobRuns[JobRuns, JobDetail]
-    Models[Models, ModelDetail]
-    Ontology[OntologyList; Datasets, DatasetDetail, ObjectTypesPage, LinkTypesPage; ObjectsList, ObjectTypeDetail; LinksList, LinkTypeDetail; ObjectExplorer] — SPA 源码 **`frontend/src/pages/ontology/`**
-    Console[Console: Overview, Permission management, Data security, DataSources, Connectors, Settings, Users, FeatureToggles]
-    UserSettings[Profile, UserSettings /settings API keys]
+    JobRuns["JobRuns, JobDetail"]
+    Models["Models, ModelDetail"]
+    Ontology["OntologyList, Datasets, ObjectTypes, Objects, Links, ObjectExplorer"]
+    Console["Console Overview, Permissions, Data security, DataSources, Connectors, Settings, Users, FeatureToggles"]
+    UserSettings["Profile, UserSettings, API keys"]
   end
 
   Providers --> Pages
 ```
 
+本体论相关 SPA 源码位于 `frontend/src/pages/ontology/`。Console 管理页位于 `frontend/src/pages/console/`。
+
+### 目录布局（`frontend/src/`）
+
+| 区域 | 作用 |
+|------|------|
+| **`App.tsx`** | 路由表、Provider 嵌套（见上图）、`ErrorBoundary`、懒加载页面 |
+| **`pages/`** | 每个路由一个页面，按领域分子目录（`documents/`、`articles/`、`wiki/`、`ontology/`、`console/` 等）。与上图对应即可，不必在此罗列每个文件名 |
+| **`components/`** | 跨路由复用的 UI（布局壳、markdown、图、错误边界）。仅单页使用的组件放在对应 `pages/` 旁 |
+| **`data/`** | 按 API 领域划分的 HTTP 客户端；统一经 `apiClient.ts` 的 **`authAwareFetch`** |
+| **`contexts/`** | 跨页 React 状态（认证、功能开关、通道列表） |
+| **`config/`** | API 根路径与供 UI 门控用的 `PERM_*` 镜像 |
+| **`styles/`** | 全局设计系统 — 细则见 [`frontend/src/styles/README.md`](../frontend/src/styles/README.md) |
+| **`i18n/`** | 语言包与 namespace（见下文） |
+| **`graph/`** | 2D/3D 或 wiki/首页共用同一图模型时的类型与构建逻辑 |
+
 ```
 frontend/src/
-├── main.tsx                 # 入口 (`index.scss` → 设计系统变量、全局、工具类)
-├── index.scss               # `@use` design-system: `css-variables`, `global`, `utilities`
-├── styles/README.md         # 设计系统索引（token、约定、间距节奏）
-├── styles/design-system/    # SCSS + CSS 变量: `_css-variables`（色板、间距 **`--gap-compact`** / **`--padding-compact-*`**、字体、动效、z-index、状态 pill、KB 图 **`--color-ontology-*`**、打印 **`--print-*`**）、`_tokens`（含 **`$km-layout-max`**）、`_mixins`、`_global`、可选 `_index`、`knowledge-map/`
-├── styles/account-page.scss # Profile / 设置 共用卡片、表单、列表布局（`account-*` 类）
-├── App.tsx                  # 路由、Provider（Auth → FeatureToggles → DocumentChannels → ArticleChannels）、ErrorBoundary、Suspense + lazy 路由
-├── utils/permissionPatterns.ts  # 与后端对齐的前端 glob；catalog 模式并集供 SPA 门控
-├── config/index.ts          # API URL；config/permissions.ts（PERM_* 镜像供 UI 门控）
-├── components/Layout/       # MainLayout（路由门控；`/` 上 **`app-content--home`** padding）、Sidebar（canAccessPath + toggles 门控导航；**术语表**与**本体**为同级顶栏；本体子路由缩进；窄屏可折叠图标模式 + localStorage）、Header
-├── components/KnowledgeMapForceGraph.tsx (+ `.scss`)  # 首页 hub：无已发布 HTML 时用 **`react-force-graph-2d`**；有快照则 **`iframe`** 展示。术语 → `/knowledge-map?node=…`；资源 → 通道/wiki/文章路由
-├── components/KnowledgeMapForceGraph3D.tsx  # 可选 3D：**`react-force-graph-3d`**（仅 `/knowledge-map` **Explore (3D)** tab lazy）；共享 `src/graph/knowledgeMapGraphModel.ts`
-├── graph/knowledgeMapGraphModel.ts  # `walkTree` + `KMNode` / `KMLink` 供 2D/3D 共用
-├── components/ErrorBoundary.tsx   # 未捕获错误、重试 UI
-├── components/ErrorBanner.tsx    # 页级错误横幅（瞬态错误用 toast）
-├── components/markdown/     # `richMarkdown.tsx`：GFM + KaTeX + `rehype-raw` + **Mermaid**；Wiki/Document 预览、Agent 消息体
-├── contexts/                # DocumentChannelsContext, ArticleChannelsContext, FeatureTogglesContext, AuthContext
-├── data/                    # apiClient（getAuthHeaders、authAwareFetch + session-expired hook）、systemApi、channelsApi、…、**userApiKeysApi**
-└── pages/
-    ├── Home.tsx
-    ├── Profile.tsx            # /profile — `GET /api/auth/me`
-    ├── UserSettings.tsx       # /settings — 个人 API 密钥
-    ├── DocumentsIndex.tsx   # /documents
-    ├── DocumentChannel.tsx  # /documents/channels/:channelId
-    ├── DocumentChannels.tsx # /documents/channels
-    ├── DocumentChannelSettings.tsx
-    ├── DocumentDetail.tsx
-    ├── ArticlesIndex.tsx     # /articles
-    ├── ArticleChannel.tsx   # /articles/channels/:channelId
-    ├── ArticleChannels.tsx  # /articles/channels
-    ├── ArticleChannelSettings.tsx
-    ├── ArticleDetail.tsx   # /articles/view/:id — 共用 **DocumentDetail.scss**（信息卡、**Relationships**、markdown 编辑）
-    ├── KnowledgeBaseList.tsx, KnowledgeBaseDetail.tsx
-    ├── WikiSpaceList.tsx, WikiSpaceSettings.tsx, WikiSpaceGraph.tsx, **WikiWorkspace.tsx** + **WikiPagePanel.tsx**（多 tab + 图 tab；可选 **WikiSpaceAgentPanel** Copilot）、WikiPageEditor.tsx（re-export）
-    ├── EvaluationDatasetList.tsx, EvaluationDatasetDetail.tsx
-    ├── KnowledgeMap.tsx, GlossaryList.tsx, GlossaryDetail.tsx
-    ├── Pipelines.tsx, JobRuns.tsx, JobDetail.tsx, Models.tsx, ModelDetail.tsx
-    ├── ontology/            # 本体相关页面；ontology-admin.scss
-    └── console/             # ConsoleLayout 及各 Console 页（datasets/schema UI 在 /ontology/*）
+├── App.tsx, main.tsx, index.scss
+├── pages/
+│   ├── documents/, articles/, wiki/, knowledge-bases/, knowledge-map/
+│   ├── evaluation/, glossaries/, ontology/, console/
+│   ├── agents/, pipelines/, jobs/, models/, auth/, connectors/
+│   └── Home.tsx, Profile.tsx, UserSettings.tsx, GlobalSearch.tsx
+├── components/
+│   ├── Layout/                 # 外壳：侧栏、顶栏、路由门控
+│   ├── markdown/, wiki/, agents/, knowledge-bases/, jobs/, ui/
+│   └── KnowledgeMapForceGraph*.tsx, ErrorBoundary, …
+├── data/                       # 按后端领域划分的 *Api.ts（+ apiClient.ts）
+├── contexts/                   # Auth、FeatureToggles、DocumentChannels、ArticleChannels
+├── config/                     # API 地址、PERM_* 镜像
+├── styles/
+│   ├── design-system/          # token、mixin、全局 — 见 styles/README.md
+│   └── account-page.scss
+├── i18n/locales/{en,zh-CN}/    # 按界面划分的 namespace
+├── graph/                      # 知识地图共用图模型
+└── utils/                      # permissionPatterns 等工具
 ```
+
+### 约定
+
+- **新功能页** — 在 `pages/<领域>/` 增加 `Feature.tsx` 与同目录 `Feature.scss`；在 `App.tsx` 注册懒加载路由；在 `data/` 新增或扩展 HTTP 模块。
+- **样式** — SCSS 中 `@use` 设计系统 token/mixin；间距与字号用 `var(--space-*)`、`var(--text-*)`；设置页宽度用 `ds.$km-layout-max`；Profile / 个人设置复用 `account-page.scss`（`account-*` 类）。
+- **导航与权限** — 侧栏用 `canAccessPath` 与功能开关；以后端权限为准。
+- **命名** — `*List` / `*Detail` / `*Settings` 表示浏览 → 详情 → 配置；文档与文章采用相同的通道模式（索引 → 通道树 → 通道内列表 → 设置）。
+- **去哪查** — 路由看 `App.tsx`；API 看 `data/*Api.ts`；外壳看 `components/Layout/`；token 与间距看 `styles/README.md`。
 
 ### 国际化（SPA）
 
@@ -140,38 +145,51 @@ SPA 使用 **i18next** + **react-i18next**（[`frontend/src/i18n/`](https://gith
 
 ## 后端结构
 
+### 目录布局（`backend/`）
+
+| 层级 | 作用 |
+|------|------|
+| **`app/main.py`** | FastAPI 应用、路由注册、lifespan |
+| **`app/api/`** | HTTP 路由 — 按领域分模块（或 `admin/` 包）；与前端 `data/*Api.ts` 对应 |
+| **`app/models/`** | SQLAlchemy ORM — 按表簇分模块 |
+| **`app/schemas/`** | API 请求/响应的 Pydantic 类型 |
+| **`app/services/`** | 业务逻辑、LLM、S3、权限与守卫 — 路由保持精简 |
+| **`app/jobs/`** | procrastinate 应用与延迟任务（`run_pipeline`、`run_kb_index` 等） |
+| **`app/i18n/`** | 多语言 API 错误目录 + `Accept-Language` |
+| **`app/middleware/`** | 可选的严格权限模式校验 |
+| **`scheduler.py` / `worker.py`** | 定时调度（单实例）与任务 worker（可扩展）— 见下文 |
+| **`scripts/`** | 启动辅助（`ensure_pgvector.py` 等） |
+
 ```
 backend/
 ├── app/
-│   ├── i18n/                  # API 错误目录 (`catalog.py`) + `Accept-Language` 解析 + 结构化 HTTP 错误 (`errors.py`)
-│   ├── middleware/
-│   │   └── strict_permission_patterns.py  # 可选 OPENKMS_ENFORCE_PERMISSION_PATTERNS_STRICT
-│   ├── config.py                # Settings (env: OPENKMS_*); vlm_url 为 VLM 主配置
-│   ├── oidc_discovery.py        # 缓存 GET {issuer}/.well-known/openid-configuration
-│   ├── constants.py             # DocumentStatus 枚举
-│   ├── database.py              # 异步 engine, get_db（启动不 DDL；pgvector 经 dev.sh / Alembic）
+│   ├── main.py, config.py, database.py
 │   ├── api/
-│   │   ├── auth.py              # OIDC 或本地 HS256 JWT；/api/auth/*（me、permission-catalog、**api-keys**、sync-session）
-│   │   ├── admin/               # health-status, groups, security_roles, security_permissions, permission_reference
-│   │   ├── channels.py         # GET/POST/PUT /api/document-channels
-│   │   ├── documents.py        # 上传、列表、元数据/markdown/版本、extract-metadata、page-index、section 等
-│   │   ├── object_types.py, link_types.py, ontology_explore.py
-│   │   ├── data_sources.py, datasets.py, feature_toggles.py, system_settings.py
-│   │   ├── knowledge_bases.py  # CRUD、documents、FAQs、chunks、search、ask 代理
-│   │   ├── wiki_spaces.py      # spaces、pages、documents 链接、files、graph、semantic-index、vault 导入
-│   │   ├── agent.py            # /api/agent：Wiki Copilot 对话与消息
-│   │   ├── evaluations.py, glossaries.py, home_hub.py, knowledge_map.py
-│   │   ├── pipelines.py, models.py, internal/, providers.py, users_admin.py, jobs.py
-│   ├── models/                  # 各 SQLAlchemy 模型（document、article、KB、wiki、evaluation、glossary、knowledge_map 等）
-│   ├── schemas/                 # Pydantic schema
-│   ├── jobs/                    # procrastinate App；run_pipeline、run_kb_index 等
-│   └── services/                # 加密、元数据/FAQ/术语建议、KB 搜索、wiki 导入与图谱、权限与 ACL、embedded agent 等
+│   │   ├── auth.py, channels.py, documents.py, articles.py, …
+│   │   ├── admin/              # 控制台：用户组、安全角色、健康检查
+│   │   └── internal/           # 仅 worker / openkms-cli
+│   ├── models/                 # document、wiki、knowledge_base、evaluation 等
+│   ├── schemas/                # 与 api 领域配对
+│   ├── services/
+│   │   ├── agent/, evaluation/, connector_sync/, connector_search/, …
+│   │   └── *.py                # kb_search、wiki_vault_import、permission_*、守卫、storage
+│   ├── jobs/tasks.py
+│   ├── i18n/
+│   └── middleware/
 ├── scripts/
-│   ├── ensure_pgvector.py
-│   └── seed_mock_insurance_data.py
-├── pyproject.toml
+├── scheduler.py
 └── worker.py
 ```
+
+### 约定
+
+- **新 HTTP 功能** — 增加 `api/<领域>.py` 路由、`schemas/<领域>.py`、新表则改 `models/`（Alembic 迁移），逻辑放在 `services/`；在 `main.py` 注册路由。
+- **权限** — 路由上 `require_permission`；通道/文档/文章用 `context_guard` / `resource_acl_service` 做资源 ACL；目录在 `services/permission_*`。
+- **长任务** — API 中 defer 到 `jobs/tasks.py`；worker 按需拉起 openkms-cli 子进程。
+- **仅内部** — CLI 默认值与凭据在 `api/internal/`（不对浏览器暴露）。
+- **去哪查** — 路由列表 → `app/api/`；表结构 → `app/models/`；副作用 → `app/services/`；异步任务 → `app/jobs/tasks.py`。
+
+**后台进程：** **API**（`uvicorn`）提供 HTTP 并维护进程心跳注册表。**Scheduler**（`scheduler.py`，单副本）每分钟读取 `scheduled_triggers` 并 defer 任务。**Worker**（`worker.py`，可扩展）只执行 procrastinate 任务，不扫 cron。
 
 **公开（无认证）API 布局：** 只读无 session 端点（除 auth bootstrap）使用 **`/api/public/<resource>`**（如 **`GET /api/public/system`**）。启用严格模式时须列入 **`strict_permission_patterns._UNAUTH_EXACT`**。
 
