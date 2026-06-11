@@ -1,8 +1,10 @@
+@use '../../styles/design-system/tokens' as ds;
+
 .agent-skill-settings-default-install {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.9375rem;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--color-text);
   cursor: pointer;
@@ -16,32 +18,33 @@
 }
 
 .agent-skill-settings-upload {
-  margin-bottom: 24px;
-  padding-bottom: 24px;
+  margin-bottom: var(--space-6);
+  padding-bottom: var(--space-6);
   border-bottom: 1px solid var(--color-border);
 }
 
 .agent-skill-settings-upload-actions {
   display: flex;
-  gap: 10px;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
   flex-wrap: wrap;
+  margin-top: var(--space-6);
 
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--space-2);
   }
 }
 
 .agent-skill-settings-versions {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: var(--text-md);
 
   th,
   td {
     text-align: left;
-    padding: 10px 12px;
+    padding: var(--padding-compact-y) var(--space-3);
     border-bottom: 1px solid var(--color-border);
     vertical-align: top;
   }
@@ -49,7 +52,7 @@
   th {
     font-weight: 500;
     color: var(--color-text-secondary);
-    font-size: 0.8125rem;
+    font-size: var(--text-sm);
   }
 
   td:last-child {
@@ -60,9 +63,9 @@
 
 .agent-skill-settings-default-badge {
   display: inline-block;
-  margin-left: 8px;
-  padding: 2px 8px;
-  font-size: 0.75rem;
+  margin-left: var(--space-2);
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--color-accent);
   background: var(--color-accent-subtle);
@@ -74,8 +77,8 @@
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  padding: 4px;
-  border-radius: 6px;
+  padding: var(--space-1);
+  border-radius: var(--radius-sm);
 
   &:hover {
     color: var(--color-danger);
@@ -84,7 +87,7 @@
 }
 
 .agent-skill-settings-spin {
-  animation: agent-skill-settings-spin 0.8s linear infinite;
+  animation: agent-skill-settings-spin var(--duration-medium) linear infinite;
 }
 
 @keyframes agent-skill-settings-spin {
@@ -94,19 +97,19 @@
 }
 
 .agent-skill-settings-danger {
-  margin-top: 24px;
+  margin-top: var(--space-6);
   border-color: color-mix(in srgb, var(--color-error) 35%, var(--color-border));
 }
 
 .agent-skill-settings-danger h2 {
-  font-size: 0.9375rem;
+  font-size: var(--text-base);
   font-weight: 600;
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
   color: var(--color-error);
 }
 
 .agent-skill-settings-delete-skill {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   background: transparent;
   color: var(--color-error);
   border: 1px solid color-mix(in srgb, var(--color-error) 50%, var(--color-border));

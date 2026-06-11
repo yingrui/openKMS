@@ -3,7 +3,7 @@
 
 .project-settings {
   width: 100%;
-  max-width: 900px;
+  max-width: ds.$km-layout-max;
 }
 
 .project-settings .page-header {
@@ -190,10 +190,9 @@
 .project-settings-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
 }
 
 .project-settings-actions .btn-primary {

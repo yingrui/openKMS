@@ -1,33 +1,35 @@
+@use '../../styles/design-system/tokens' as ds;
+
 .console-group-access-muted {
   color: var(--color-text-muted);
 }
 
 .console-group-access-hint {
-  font-size: 0.8125rem;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-3);
 }
 
 .console-group-access-section {
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-8);
 }
 
 .console-group-access-section h2 {
-  margin: 0 0 0.5rem;
-  font-size: 1.1rem;
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
 }
 
 .console-dso-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: var(--text-md);
 }
 
 .console-dso-table th,
 .console-dso-table td {
   text-align: left;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border-subtle, #e5e7eb);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .console-dso-actions {
@@ -35,31 +37,31 @@
 }
 
 .console-dso-detail-row td {
-  padding-top: 0.75rem;
-  padding-bottom: 1.25rem;
-  background: var(--surface-muted, #f9fafb);
+  padding-top: var(--space-3);
+  padding-bottom: calc(var(--space-4) + var(--space-1) / 2);
+  background: var(--color-bg-muted);
 }
 
 .console-dso-legacy {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-subtle, #e5e7eb);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
 }
 
 .console-dso-legacy-list {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
+  margin: var(--space-2) 0 0;
+  padding-left: calc(var(--space-4) + var(--space-1) / 2);
 }
 
 .console-dso-review-block {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-subtle, #e5e7eb);
+  margin-top: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border);
 }
 
 .console-dso-review-title {
-  margin: 0 0 0.35rem;
-  font-size: 1.1rem;
+  margin: 0 0 var(--gap-compact);
+  font-size: var(--text-lg);
 }
 
 .console-dso-pagination {
@@ -67,39 +69,39 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem 1rem;
-  margin-top: 0.75rem;
+  gap: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
 }
 
 .console-dso-pagination-info {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem 1rem;
-  font-size: 0.875rem;
-  color: var(--text-muted, #6b7280);
+  gap: var(--space-3) var(--space-4);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
 }
 
 .console-dso-pagination-info label {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--gap-compact);
 }
 
 .console-dso-pagination-info select {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border-subtle, #e5e7eb);
-  border-radius: 4px;
-  background: var(--surface, #fff);
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
 }
 
 .console-dso-pagination-btns {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--gap-compact);
 }
 
 .console-dso-page-nums {
-  font-size: 0.875rem;
-  padding: 0 0.35rem;
+  font-size: var(--text-md);
+  padding: 0 var(--gap-compact);
 }

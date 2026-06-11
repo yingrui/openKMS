@@ -48,7 +48,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  z-index: 10;
+  z-index: var(--z-sticky);
   display: flex;
   flex-direction: column;
   pointer-events: none;
@@ -624,7 +624,7 @@
   gap: 6px;
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 1;
   margin: -2px -2px 4px;
   padding: 2px 4px 4px;
   background: var(--color-bg);
@@ -688,7 +688,7 @@
   position: absolute;
   left: 6px;
   top: 6px;
-  z-index: 11;
+  z-index: var(--z-sticky);
   display: inline-flex;
   flex-direction: row;
   align-items: stretch;
@@ -735,7 +735,7 @@
   position: absolute;
   right: 6px;
   bottom: 6px;
-  z-index: 9;
+  z-index: var(--z-sticky);
   display: inline-flex;
   flex-direction: column;
   background: var(--color-bg-elevated);

@@ -3,11 +3,7 @@
 
 .document-channel-settings {
   width: 100%;
-  max-width: 900px;
-}
-
-.document-channel-settings:has(.ac-review-settings) {
-  max-width: 960px;
+  max-width: ds.$km-layout-max;
 }
 
 .document-channel-settings .page-header {
@@ -155,10 +151,9 @@
 .document-channel-settings-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
 }
 
 .document-channel-settings-saved {
@@ -425,7 +420,7 @@
   align-items: center;
 }
 
-@media (max-width: 720px) {
+@include max-width(ds.$bp-sm-min) {
   .article-review-criterion-row {
     grid-template-columns: 1fr;
   }
@@ -614,7 +609,7 @@
   font-size: 0.8125rem;
 }
 
-@media (max-width: 640px) {
+@include max-width(ds.$bp-xs-max) {
   .ac-review-builtin-list li {
     grid-template-columns: 1fr;
     gap: 2px;

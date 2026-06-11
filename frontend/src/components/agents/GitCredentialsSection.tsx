@@ -69,7 +69,6 @@ export function GitCredentialsSection() {
         className={`account-create-panel${showListSection ? '' : ' account-create-panel--last'}`}
         onSubmit={(e) => void add(e)}
       >
-        <p className="account-field-label">{t('gitCredentials.addTitle')}</p>
         <div className="account-form-grid account-form-grid--2col">
           <div className="account-field">
             <label className="account-field-label" htmlFor="git-credential-provider">

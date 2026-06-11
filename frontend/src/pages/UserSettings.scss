@@ -1,11 +1,12 @@
 @use '../styles/account-page';
+@use '../styles/design-system/tokens' as ds;
 
 .user-settings-reveal {
   margin-bottom: var(--space-5);
   padding: var(--space-4) calc(var(--space-3) + var(--space-2));
   border-radius: var(--radius-md);
-  border: 1px solid color-mix(in srgb, var(--color-warning, #d97706) 35%, var(--color-border));
-  background: color-mix(in srgb, var(--color-warning, #d97706) 8%, var(--color-bg-muted));
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-bg-muted));
 }
 
 .user-settings-reveal-head {
@@ -13,7 +14,7 @@
   gap: var(--space-3);
   align-items: flex-start;
   margin-bottom: calc(var(--space-3) + var(--space-1) / 2);
-  color: var(--color-warning, #b45309);
+  color: var(--color-warning);
 }
 
 .user-settings-reveal-title {
@@ -39,7 +40,7 @@
 }
 
 .user-settings-reveal-token {
-  flex: 1 1 200px;
+  flex: 1 1 ds.$account-input-min-flex;
   min-width: 0;
   word-break: break-all;
   font-size: var(--text-sm);

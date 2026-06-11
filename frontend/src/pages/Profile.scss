@@ -25,23 +25,6 @@
   word-break: break-word;
 }
 
-.profile-role {
-  display: inline-flex;
-  align-items: center;
-  padding: calc(var(--space-1) / 2) calc(var(--space-2) + var(--space-1) / 2);
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  font-weight: 500;
-  background: var(--color-bg-muted);
-  border: 1px solid var(--color-border);
-}
-
-.profile-role--admin {
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
-  color: var(--color-accent);
-}
-
 .profile-role-list {
   display: flex;
   flex-wrap: wrap;

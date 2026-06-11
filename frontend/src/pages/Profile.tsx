@@ -95,7 +95,7 @@ export function Profile() {
               <div>
                 <dt>{t('administrator')}</dt>
                 <dd>
-                  <span className={`profile-role ${me.is_admin ? 'profile-role--admin' : ''}`}>
+                  <span className={`account-pill ${me.is_admin ? 'account-pill--accent' : ''}`}>
                     {me.is_admin ? t('yes') : t('no')}
                   </span>
                 </dd>
@@ -111,7 +111,7 @@ export function Profile() {
                         .sort((a, b) => a.localeCompare(b))
                         .map((r) => (
                           <li key={r}>
-                            <span className={`profile-role ${r === 'admin' ? 'profile-role--admin' : ''}`}>{r}</span>
+                            <span className={`account-pill ${r === 'admin' ? 'account-pill--accent' : ''}`}>{r}</span>
                           </li>
                         ))}
                     </ul>

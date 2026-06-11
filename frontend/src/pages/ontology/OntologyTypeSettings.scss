@@ -1,12 +1,14 @@
+@use '../../styles/design-system/tokens' as ds;
+
 .ontology-type-settings {
   width: 100%;
-  max-width: 960px;
+  max-width: ds.$km-layout-max;
 }
 
 .ontology-type-settings-panel {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 
   .resource-share-panel {
     margin-top: 0;

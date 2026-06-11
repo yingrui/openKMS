@@ -2,7 +2,7 @@
 @use '../styles/design-system/tokens' as ds;
 
 .home-landing {
-  max-width: 900px;
+  max-width: ds.$km-layout-max;
   margin: 0 auto;
 }
 

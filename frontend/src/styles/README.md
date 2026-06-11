@@ -43,9 +43,13 @@ Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-
 
 **Forms:** `.account-field` + `.account-input` / `.account-select`; multi-field blocks use `.account-form-grid` (optional `.account-form-grid--2col`); single-line create uses `.account-create-row` inside `.account-create-panel`. Primary actions in `.account-form-actions` (**`margin-top: var(--space-6)`**, no divider line).
 
-**Saved items:** `.account-section` (top border) below the create block; `.account-section-toolbar` + `.account-list` / `.account-list-item`. Use `.account-empty` only for list-area empty states (not when a create form already sits above).
+**Saved items:** `.account-section` (top border) below the create block; `.account-section-toolbar` + `.account-list` / `.account-list-item` (white row on card). Use `.account-empty` only for list-area empty states (not when a create form already sits above); empty is text-only, no gray dashed box.
 
-**Actions:** `.account-btn`, `.account-btn--primary`, `--secondary`, `--danger` inside account cards. Elsewhere (e.g. Wiki settings) global **`.btn*`** from **`_global.scss`** is still fine.
+**Actions:** `.account-btn`, `.account-btn--primary`, `--secondary`, `--danger` inside account cards; **`margin-top: var(--space-6)`** before primary row (no top border). Channel/project/console settings **`*-settings-actions`** follow the same spacing. Elsewhere (e.g. Wiki settings) global **`.btn*`** from **`_global.scss`** is still fine.
+
+**Pills:** `.account-pill` / `.account-pill--accent` for role/status chips (Profile).
+
+**Compile-time caps** (`_tokens.scss`): **`$km-layout-max`** (900px page width), **`$account-form-max-width`**, **`$account-input-min-flex`**, **`$z-settings-modal-overlay`** / **`$z-settings-import-overlay`** (wiki import stack).
 
 ## Conventions
 

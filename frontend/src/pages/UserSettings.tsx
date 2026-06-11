@@ -86,6 +86,8 @@ export function UserSettings() {
     }
   };
 
+  const showKeysListSection = keysLoading || keys.length > 0;
+
   const handleRevoke = async (id: string) => {
     if (!window.confirm(t('confirmRevoke'))) return;
     setRevokingId(id);
@@ -199,7 +201,9 @@ export function UserSettings() {
           )}
 
           {!justCreated && (
-            <div className="account-create-panel">
+            <div
+              className={`account-create-panel${showKeysListSection ? '' : ' account-create-panel--last'}`}
+            >
               <label className="account-field-label" htmlFor="new-api-key-name">
                 {t('labelOptional')}
               </label>
@@ -237,54 +241,49 @@ export function UserSettings() {
 
           {keysError && <p className="account-error">{keysError}</p>}
 
-          <div className="account-section">
-            <div className="account-section-toolbar">
-              <h3 className="account-section-label">{t('activeKeys')}</h3>
+          {showKeysListSection && (
+            <div className="account-section">
+              <div className="account-section-toolbar">
+                <h3 className="account-section-label">{t('activeKeys')}</h3>
+                {!keysLoading && keys.length > 0 && (
+                  <span className="account-section-meta">{t('keysCount', { count: keys.length })}</span>
+                )}
+              </div>
+
+              {keysLoading && (
+                <div className="account-loading" role="status">
+                  <Loader2 size={22} className="account-spin" aria-hidden />
+                  <span>{t('loadingKeys')}</span>
+                </div>
+              )}
+
               {!keysLoading && keys.length > 0 && (
-                <span className="account-section-meta">{t('keysCount', { count: keys.length })}</span>
+                <ul className="account-list">
+                  {keys.map((k) => (
+                    <li key={k.id} className="account-list-item">
+                      <div className="account-list-item-main">
+                        <span className="account-list-item-title">{k.name || t('unnamed')}</span>
+                        <code className="account-list-item-code">{k.key_prefix}…</code>
+                      </div>
+                      <p className="account-list-item-meta">
+                        {k.last_used_at
+                          ? t('lastUsed', { when: new Date(k.last_used_at).toLocaleString() })
+                          : t('neverUsed')}
+                      </p>
+                      <button
+                        type="button"
+                        className="account-btn account-btn--danger account-list-item-action"
+                        disabled={revokingId === k.id}
+                        onClick={() => void handleRevoke(k.id)}
+                      >
+                        {revokingId === k.id ? t('revoking') : t('revoke')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
-
-            {keysLoading && (
-              <div className="account-loading" role="status">
-                <Loader2 size={22} className="account-spin" aria-hidden />
-                <span>{t('loadingKeys')}</span>
-              </div>
-            )}
-
-            {!keysLoading && keys.length === 0 && !justCreated && (
-              <div className="account-empty">
-                <KeyRound size={28} strokeWidth={1.5} aria-hidden />
-                <p>{t('noKeys')}</p>
-              </div>
-            )}
-
-            {!keysLoading && keys.length > 0 && (
-              <ul className="account-list">
-                {keys.map((k) => (
-                  <li key={k.id} className="account-list-item">
-                    <div className="account-list-item-main">
-                      <span className="account-list-item-title">{k.name || t('unnamed')}</span>
-                      <code className="account-list-item-code">{k.key_prefix}…</code>
-                    </div>
-                    <p className="account-list-item-meta">
-                      {k.last_used_at
-                        ? t('lastUsed', { when: new Date(k.last_used_at).toLocaleString() })
-                        : t('neverUsed')}
-                    </p>
-                    <button
-                      type="button"
-                      className="account-btn account-btn--danger account-list-item-action"
-                      disabled={revokingId === k.id}
-                      onClick={() => void handleRevoke(k.id)}
-                    >
-                      {revokingId === k.id ? t('revoking') : t('revoke')}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
         </section>
       </div>
     </div>

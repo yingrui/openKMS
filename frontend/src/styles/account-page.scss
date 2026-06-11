@@ -123,12 +123,14 @@
   border: 1px solid var(--color-border);
   background: var(--color-bg-muted);
   color: var(--color-text);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
 .account-select {
-  min-width: 11rem;
-  max-width: 400px;
+  min-width: ds.$account-select-min-width;
+  max-width: ds.$account-form-max-width;
   cursor: pointer;
 }
 
@@ -151,7 +153,7 @@
 .account-create-fields {
   display: grid;
   gap: calc(var(--space-2) + var(--space-1) / 2);
-  max-width: 400px;
+  max-width: ds.$account-form-max-width;
   margin-top: var(--space-2);
 }
 
@@ -197,7 +199,7 @@
 }
 
 .account-create-row .account-input {
-  flex: 1 1 200px;
+  flex: 1 1 ds.$account-input-min-flex;
 }
 
 .account-btn {
@@ -213,7 +215,10 @@
   border: 1px solid var(--color-border);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .account-btn:disabled {
@@ -309,12 +314,9 @@
   flex-direction: column;
   align-items: center;
   gap: calc(var(--space-2) + var(--space-1) / 2);
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-6) var(--space-4);
   text-align: center;
   color: var(--color-text-muted);
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--color-border);
-  background: var(--color-bg-muted);
 }
 
 .account-empty p {
@@ -339,8 +341,8 @@
   padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-bg-muted);
-  transition: border-color 0.15s;
+  background: var(--color-bg-elevated);
+  transition: border-color var(--duration-fast) var(--ease-standard);
 }
 
 .account-list-item:hover {
@@ -383,8 +385,25 @@
   align-self: center;
 }
 
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: calc(var(--space-1) / 2) calc(var(--space-2) + var(--space-1) / 2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+}
+
+.account-pill--accent {
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  color: var(--color-accent);
+}
+
 .account-spin {
-  animation: account-spin 0.75s linear infinite;
+  animation: account-spin var(--duration-medium) linear infinite;
 }
 
 @keyframes account-spin {
