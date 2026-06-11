@@ -22,7 +22,7 @@
 x-build-mirror-args: &build_mirror_args
   APT_MIRROR: ${APT_MIRROR:-mirrors.aliyun.com}
   UV_INDEX_URL: ${UV_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
-  UV_EXTRA_INDEX_URL: ${UV_EXTRA_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+  UV_EXTRA_INDEX_URL: ${UV_EXTRA_INDEX_URL:-}
   NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
 
 x-backend-env: &backend_env
