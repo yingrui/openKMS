@@ -117,7 +117,10 @@ export function ConnectorsPage() {
           toast.error(t('connectors.toastDuplicateKey'));
           break;
         case 'outputs':
-          toast.error(t('connectors.toastOutputsRequired'));
+          toast.error(t('connectors.toastOutputsIncomplete'));
+          break;
+        case 'schedule_outputs':
+          toast.error(t('connectors.toastScheduleOutputsRequired'));
           break;
         case 'secrets':
           toast.error(t('connectors.toastSecretsRequired'));

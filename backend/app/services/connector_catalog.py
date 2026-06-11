@@ -10,7 +10,9 @@ from typing import Any
 from app.services.connector_search.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
 from app.services.connector_sync.schemas import ConnectorDatasetColumn
 from app.services.connector_sync.tushare.schemas import (
+    TUSHARE_DIVIDENDS_COLUMNS,
     TUSHARE_PG_SCHEMA,
+    TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
     TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
@@ -70,7 +72,7 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
         kind="tushare",
         category=CATEGORY_SYNC,
         label="Tushare",
-        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, and daily quotes).",
+        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, daily quotes, adj factors, and dividends).",
         secret_keys=frozenset({"TUSHARE_TOKEN"}),
         input_fields=(
             ConnectorInputField(
@@ -84,18 +86,9 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
         ),
         output_slots=(
             ConnectorOutputSlot(
-                slot="stock_trade_daily",
-                label="Daily stock data",
-                description="Tabular target for daily quotes, adj factor, and dividends (per trading day), aligned with a stock_trade_daily-style pipeline.",
-                resource="dataset",
-                dataset_columns=TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
-                default_pg_schema=TUSHARE_PG_SCHEMA,
-                default_table_name="stock_trade_daily",
-            ),
-            ConnectorOutputSlot(
                 slot="trade_calendar",
                 label="Trade calendar",
-                description="Tabular target for exchange trade calendars (e.g. SSE/SZSE cal_date / is_open), aligned with a trade_calendar-style pipeline.",
+                description="Exchange trade calendars (SSE/SZSE cal_date / is_open).",
                 resource="dataset",
                 dataset_columns=TUSHARE_TRADE_CALENDAR_COLUMNS,
                 default_pg_schema=TUSHARE_PG_SCHEMA,
@@ -104,11 +97,38 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
             ConnectorOutputSlot(
                 slot="stock_basic",
                 label="Stock basic",
-                description="Listed-stock reference data (code, name, list date, industry, etc.). One stock_basic API call per sync run.",
+                description="Listed-stock reference data (one stock_basic API call per sync run).",
                 resource="dataset",
                 dataset_columns=TUSHARE_STOCK_BASIC_COLUMNS,
                 default_pg_schema=TUSHARE_PG_SCHEMA,
                 default_table_name="stock_basic",
+            ),
+            ConnectorOutputSlot(
+                slot="stock_trade_daily",
+                label="Daily stock data",
+                description="Unadjusted daily OHLCV quotes (Tushare daily API).",
+                resource="dataset",
+                dataset_columns=TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="stock_trade_daily",
+            ),
+            ConnectorOutputSlot(
+                slot="stock_adj_daily",
+                label="Adj factor daily",
+                description="Per-day adjustment factors (Tushare adj_factor API).",
+                resource="dataset",
+                dataset_columns=TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="stock_adj_daily",
+            ),
+            ConnectorOutputSlot(
+                slot="dividends",
+                label="Dividends",
+                description="Cash/stock dividend events keyed by ex_date (Tushare dividend API).",
+                resource="dataset",
+                dataset_columns=TUSHARE_DIVIDENDS_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="dividends",
             ),
         ),
         default_settings={
@@ -296,7 +316,7 @@ def normalize_and_validate_settings(kind: str, settings: dict[str, Any] | None) 
 
 
 def normalize_and_validate_outputs(kind: str, outputs: dict[str, Any] | None) -> dict[str, str]:
-    """Validate slot keys and non-empty dataset id strings."""
+    """Validate slot keys. All slots empty is allowed; otherwise every slot must be set."""
     spec = CONNECTOR_KINDS.get(kind)
     if not spec:
         validate_kind(kind)
@@ -313,16 +333,57 @@ def normalize_and_validate_outputs(kind: str, outputs: dict[str, Any] | None) ->
     slots = {s.slot for s in spec.output_slots}
     raw = dict(outputs or {})
     out: dict[str, str] = {}
+    missing_labels: list[str] = []
     for slot in spec.output_slots:
         v = raw.get(slot.slot)
         sid = (str(v).strip() if v is not None else "") or ""
-        if not sid:
-            raise ValueError(f"Missing output dataset for slot '{slot.slot}' ({slot.label}).")
-        out[slot.slot] = sid
+        if sid:
+            out[slot.slot] = sid
+        else:
+            missing_labels.append(slot.label)
     for k in raw:
         if k not in slots:
             raise ValueError(f"Unknown output slot '{k}' for connector kind '{kind}'.")
+    if out and missing_labels:
+        raise ValueError(
+            "Configure every output dataset, or clear all output datasets to save without targets."
+        )
     return out
+
+
+def validate_sync_run_outputs(kind: str, outputs: dict[str, str] | None) -> None:
+    """Manual or on-demand sync requires every output slot to be mapped."""
+    spec = get_kind_spec(kind)
+    if not spec or spec.category != CATEGORY_SYNC:
+        return
+    required = {s.slot for s in spec.output_slots}
+    if not required:
+        return
+    configured = {k for k, v in (outputs or {}).items() if str(v).strip()}
+    if configured != required:
+        raise ValueError("Configure all output datasets before running sync.")
+
+
+def validate_sync_schedule_outputs(
+    kind: str,
+    outputs: dict[str, str],
+    settings: dict[str, Any] | None,
+) -> None:
+    """Scheduled sync requires a full output dataset mapping."""
+    from app.services.connector_sync.schedule import extract_sync_schedule
+
+    spec = get_kind_spec(kind)
+    if not spec or spec.category != CATEGORY_SYNC:
+        return
+    sched = extract_sync_schedule(settings)
+    if not sched or not bool(sched.get("enabled")):
+        return
+    required = {s.slot for s in spec.output_slots}
+    if required and set(outputs.keys()) != required:
+        raise ValueError(
+            "Scheduled sync requires all output datasets to be configured, "
+            "or disable scheduled sync to save without datasets."
+        )
 
 
 def merge_secrets_encrypted(

@@ -56,7 +56,6 @@ def calendar_range_covered(
 ) -> bool:
     """True when the table already has calendar rows spanning ``start`` → ``end``."""
     table_q = f"{quote_ident(schema_name)}.{quote_ident(table_name)}"
-    start_s, end_s = date_to_ymd(start), date_to_ymd(end)
     with engine.connect() as conn:
         row = conn.execute(
             text(
@@ -68,12 +67,16 @@ def calendar_range_covered(
                   AND cal_date <= :end_date
                 """
             ),
-            {"exchange": exchange, "start_date": start_s, "end_date": end_s},
+            {"exchange": exchange, "start_date": start, "end_date": end},
         ).one()
     min_val, max_val, count = row[0], row[1], row[2]
     if not count or min_val is None or max_val is None:
         return False
-    return str(min_val) <= start_s and str(max_val) >= end_s
+    min_d = ymd_to_date(min_val)
+    max_d = ymd_to_date(max_val)
+    if not min_d or not max_d:
+        return False
+    return min_d <= start and max_d >= end
 
 
 def max_ymd_in_table(
@@ -106,7 +109,6 @@ def open_trade_dates_from_table(
 ) -> list[str]:
     """Distinct open trading dates (YYYYMMDD) from a synced trade_calendar table."""
     table_q = f"{quote_ident(schema_name)}.{quote_ident(table_name)}"
-    start_s, end_s = date_to_ymd(start), date_to_ymd(end)
     with engine.connect() as conn:
         rows = conn.execute(
             text(
@@ -119,9 +121,16 @@ def open_trade_dates_from_table(
                 ORDER BY cal_date
                 """
             ),
-            {"start_date": start_s, "end_date": end_s},
+            {"start_date": start, "end_date": end},
         ).fetchall()
-    return [str(r[0]) for r in rows if r[0] is not None]
+    out: list[str] = []
+    for row in rows:
+        if row[0] is None:
+            continue
+        parsed = ymd_to_date(row[0])
+        if parsed:
+            out.append(date_to_ymd(parsed))
+    return out
 
 
 def quote_ident(name: str) -> str:
@@ -147,6 +156,7 @@ def upsert_rows(
         raise ValueError("Upsert requires at least one primary-key column.")
 
     col_names = [c.name for c in columns]
+    columns_by_name = {c.name: c for c in columns}
     table_q = f"{quote_ident(schema_name)}.{quote_ident(table_name)}"
     cols_sql = ", ".join(quote_ident(n) for n in col_names)
     values_sql = ", ".join(f":{n}" for n in col_names)
@@ -167,13 +177,19 @@ def upsert_rows(
         chunk = rows[offset : offset + step]
         with engine.begin() as conn:
             for row in chunk:
-                params = {name: _coerce_row_value(row.get(name)) for name in col_names}
+                params = {
+                    name: _coerce_row_value(row.get(name), columns_by_name.get(name))
+                    for name in col_names
+                }
                 conn.execute(sql, params)
                 written += 1
     return written
 
 
-def _coerce_row_value(value):
+def _coerce_row_value(value, column: ConnectorDatasetColumn | None = None):
     if value is None or value == "":
         return None
+    if column is not None and column.pg_type.upper() == "DATE":
+        parsed = ymd_to_date(value)
+        return parsed if parsed is not None else value
     return value

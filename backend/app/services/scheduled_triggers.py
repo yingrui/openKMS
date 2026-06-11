@@ -56,6 +56,11 @@ async def upsert_connector_sync_trigger(db: AsyncSession, connector: Connector) 
     cron_raw = sched.get("cron")
     cron: str | None = None
     if enabled:
+        if not connector.outputs:
+            raise ValueError(
+                "Scheduled sync requires all output datasets to be configured, "
+                "or disable scheduled sync to save without datasets."
+            )
         if not isinstance(cron_raw, str) or not cron_raw.strip():
             raise ValueError("sync_schedule.cron is required when scheduling is enabled.")
         cron = validate_cron_expression(cron_raw)

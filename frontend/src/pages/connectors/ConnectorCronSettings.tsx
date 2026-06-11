@@ -37,11 +37,14 @@ export function ConnectorCronSettings({
   onChange,
   savedSchedule,
   readOnly,
+  outputsConfigured = true,
 }: {
   value: SyncScheduleFormState;
   onChange: (next: SyncScheduleFormState) => void;
   savedSchedule: ConnectorSyncSchedule | null | undefined;
   readOnly: boolean;
+  /** When false, enabling scheduled sync is blocked until output datasets are set. */
+  outputsConfigured?: boolean;
 }) {
   const { t } = useTranslation('console');
   const dash = t('connectors.dash');
@@ -63,11 +66,14 @@ export function ConnectorCronSettings({
         <input
           type="checkbox"
           checked={value.enabled}
-          disabled={readOnly}
+          disabled={readOnly || (!outputsConfigured && !value.enabled)}
           onChange={(e) => onChange({ ...value, enabled: e.target.checked })}
         />
         <span>{t('connectors.cronEnabled')}</span>
       </label>
+      {!outputsConfigured ? (
+        <p className="console-modal-hint">{t('connectors.cronRequiresOutputs')}</p>
+      ) : null}
 
       <div className={`connector-cron-fields${!value.enabled ? ' connector-cron-fields--disabled' : ''}`}>
         <div className="console-form-field">

@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Clock, Loader2, Play, Settings, Trash2, FlaskConical } from 'lucide-react';
+import { ArrowLeft, Clock, Database, Loader2, Play, Settings, Trash2, FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteConnector } from '../../data/connectorsApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONNECTORS_WRITE, PERM_CONSOLE_DATASETS } from '../../config/permissions';
 import { ConnectorCronSettings } from './ConnectorCronSettings';
 import { ConnectorFormFields } from './ConnectorFormFields';
+import { ConnectorOutputDatasetsFields } from './ConnectorOutputDatasetsFields';
 import { ConnectorSearchPlayground } from './ConnectorSearchPlayground';
 import { ConnectorTushareProbe } from './ConnectorTushareProbe';
 import { ConnectorSyncDialog } from './ConnectorSyncDialog';
@@ -32,12 +33,14 @@ export function ConnectorDetailPage() {
     selectedKindMeta,
     isSearchTool,
     isSyncConnector,
+    hasOutputDatasetsConfigured,
     isTushareConnector,
     isTabbedDetail,
     activeTab,
     setActiveTab,
     formName,
     formFieldsProps,
+    outputDatasetsProps,
     playgroundBaseline,
     inputValues,
     settingsRows,
@@ -49,7 +52,10 @@ export function ConnectorDetailPage() {
 
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
 
-  const openSyncDialog = () => setSyncDialogOpen(true);
+  const openSyncDialog = () => {
+    if (!hasOutputDatasetsConfigured) return;
+    setSyncDialogOpen(true);
+  };
 
   const confirmSync = async (range: ConnectorSyncDateRange) => {
     const jobId = await handleRunSync(range);
@@ -93,12 +99,14 @@ export function ConnectorDetailPage() {
   }
 
   const formContent = <ConnectorFormFields {...formFieldsProps} />;
+  const datasetsContent = <ConnectorOutputDatasetsFields {...outputDatasetsProps} />;
   const cronContent = (
     <ConnectorCronSettings
       value={syncSchedule}
       onChange={setSyncSchedule}
       savedSchedule={connector.sync_schedule}
       readOnly={!canWrite}
+      outputsConfigured={hasOutputDatasetsConfigured}
     />
   );
 
@@ -125,7 +133,8 @@ export function ConnectorDetailPage() {
               <button
                 type="button"
                 className="btn btn-secondary"
-                disabled={syncing}
+                disabled={syncing || !hasOutputDatasetsConfigured}
+                title={!hasOutputDatasetsConfigured ? t('connectors.syncRequiresOutputs') : undefined}
                 onClick={openSyncDialog}
               >
                 {syncing ? <Loader2 size={18} className="console-loading-spinner" /> : <Play size={18} />}
@@ -157,6 +166,18 @@ export function ConnectorDetailPage() {
                 <Settings size={18} />
                 <span>{t(isSyncConnector ? 'connectors.tabGeneral' : 'connectors.tabSettings')}</span>
               </button>
+              {isSyncConnector ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'datasets'}
+                  className={`document-channel-settings-tab${activeTab === 'datasets' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('datasets')}
+                >
+                  <Database size={18} />
+                  <span>{t('connectors.tabDatasets')}</span>
+                </button>
+              ) : null}
               {isSyncConnector ? (
                 <button
                   type="button"
@@ -203,6 +224,7 @@ export function ConnectorDetailPage() {
               role="tabpanel"
             >
               {activeTab === 'general' ? formContent : null}
+              {activeTab === 'datasets' && isSyncConnector ? datasetsContent : null}
               {activeTab === 'cron' && isSyncConnector ? cronContent : null}
               {activeTab === 'probe' && isTushareConnector && id ? (
                 <ConnectorTushareProbe

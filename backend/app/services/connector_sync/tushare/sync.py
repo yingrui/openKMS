@@ -25,6 +25,8 @@ from app.services.connector_sync.pg import (
 from app.services.connector_sync.sync_range import SyncDateRange, parse_sync_date_range
 from app.services.connector_sync.tushare.client import TushareClient
 from app.services.connector_sync.tushare.schemas import (
+    TUSHARE_DIVIDENDS_COLUMNS,
+    TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
     TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
@@ -325,6 +327,47 @@ async def sync_stock_basic(
     return written
 
 
+async def _resolve_open_trade_dates(
+    client: TushareClient,
+    *,
+    calendar_engine: Engine,
+    calendar_dataset: Dataset,
+    start: date,
+    end: date,
+    connector_id: str,
+    slot_label: str,
+) -> list[str]:
+    trade_dates = open_trade_dates_from_table(
+        calendar_engine,
+        schema_name=calendar_dataset.schema_name,
+        table_name=calendar_dataset.table_name,
+        start=start,
+        end=end,
+    )
+    if not trade_dates:
+        logger.warning(
+            "trade_calendar table has no open dates in range; falling back to Tushare trade_cal API"
+        )
+        trade_dates = await _open_trade_dates_from_api(client, start=start, end=end)
+    if not trade_dates:
+        logger.info(
+            "%s: no open trade dates for connector %s in %s → %s",
+            slot_label,
+            connector_id,
+            date_to_ymd(start),
+            date_to_ymd(end),
+        )
+    return trade_dates
+
+
+_DAILY_FIELDS = "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount"
+_ADJ_FIELDS = "ts_code,trade_date,adj_factor"
+_DIVIDEND_FIELDS = (
+    "ts_code,end_date,ann_date,div_proc,stk_div,stk_bo_rate,stk_co_rate,cash_div,cash_div_tax,"
+    "record_date,ex_date,pay_date,div_listdate,imp_ann_date,base_date,base_share,update_flag"
+)
+
+
 async def sync_stock_trade_daily(
     client: TushareClient,
     db: AsyncSession,
@@ -340,25 +383,16 @@ async def sync_stock_trade_daily(
     trade_dates: list[str] = []
     written = 0
     try:
-        trade_dates = open_trade_dates_from_table(
-            calendar_engine,
-            schema_name=calendar_dataset.schema_name,
-            table_name=calendar_dataset.table_name,
+        trade_dates = await _resolve_open_trade_dates(
+            client,
+            calendar_engine=calendar_engine,
+            calendar_dataset=calendar_dataset,
             start=start,
             end=end,
+            connector_id=connector.id,
+            slot_label="stock_trade_daily",
         )
         if not trade_dates:
-            logger.warning(
-                "trade_calendar table has no open dates in range; falling back to Tushare trade_cal API"
-            )
-            trade_dates = await _open_trade_dates_from_api(client, start=start, end=end)
-        if not trade_dates:
-            logger.info(
-                "stock_trade_daily: no open trade dates for connector %s in %s → %s",
-                connector.id,
-                date_to_ymd(start),
-                date_to_ymd(end),
-            )
             return 0
 
         logger.info(
@@ -369,37 +403,12 @@ async def sync_stock_trade_daily(
             len(trade_dates),
         )
 
-        daily_fields = (
-            "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount"
-        )
-        adj_fields = "ts_code,trade_date,adj_factor"
-
         for trade_date in trade_dates:
-            daily_rows = await client.query("daily", {"trade_date": trade_date}, daily_fields)
-            adj_rows = await client.query("adj_factor", {"trade_date": trade_date}, adj_fields)
-            adj_by_key = {
-                (str(r.get("ts_code")), str(r.get("trade_date"))): r.get("adj_factor")
-                for r in adj_rows
-            }
-            day_rows = []
-            for row in daily_rows:
-                key = (str(row.get("ts_code")), str(row.get("trade_date")))
-                day_rows.append(
-                    {
-                        "ts_code": row.get("ts_code"),
-                        "trade_date": row.get("trade_date"),
-                        "open": row.get("open"),
-                        "high": row.get("high"),
-                        "low": row.get("low"),
-                        "close": row.get("close"),
-                        "pre_close": row.get("pre_close"),
-                        "change": row.get("change"),
-                        "pct_chg": row.get("pct_chg"),
-                        "vol": row.get("vol"),
-                        "amount": row.get("amount"),
-                        "adj_factor": adj_by_key.get(key),
-                    }
-                )
+            fetched = await client.query("daily", {"trade_date": trade_date}, _DAILY_FIELDS)
+            day_rows = [
+                {col.name: row.get(col.name) for col in TUSHARE_STOCK_TRADE_DAILY_COLUMNS}
+                for row in fetched
+            ]
             if day_rows:
                 logger.info(
                     "stock_trade_daily %s: %s rows -> %s.%s",
@@ -419,6 +428,145 @@ async def sync_stock_trade_daily(
         engine.dispose()
     logger.info(
         "Synced stock_trade_daily for connector %s: %s rows (%s trade dates) into %s.%s",
+        connector.id,
+        written,
+        len(trade_dates),
+        dataset.schema_name,
+        dataset.table_name,
+    )
+    return written
+
+
+async def sync_stock_adj_daily(
+    client: TushareClient,
+    db: AsyncSession,
+    connector: Connector,
+    *,
+    start: date,
+    end: date,
+    calendar_dataset: Dataset,
+    calendar_engine: Engine,
+) -> int:
+    dataset, data_source = await _load_output_dataset(db, connector.outputs, "stock_adj_daily")
+    engine = pg_engine_for_datasource(data_source)
+    trade_dates: list[str] = []
+    written = 0
+    try:
+        trade_dates = await _resolve_open_trade_dates(
+            client,
+            calendar_engine=calendar_engine,
+            calendar_dataset=calendar_dataset,
+            start=start,
+            end=end,
+            connector_id=connector.id,
+            slot_label="stock_adj_daily",
+        )
+        if not trade_dates:
+            return 0
+
+        logger.info(
+            "stock_adj_daily sync window for %s: %s → %s (%s trade dates)",
+            connector.id,
+            trade_dates[0],
+            trade_dates[-1],
+            len(trade_dates),
+        )
+
+        for trade_date in trade_dates:
+            fetched = await client.query("adj_factor", {"trade_date": trade_date}, _ADJ_FIELDS)
+            day_rows = [
+                {col.name: row.get(col.name) for col in TUSHARE_STOCK_ADJ_DAILY_COLUMNS}
+                for row in fetched
+            ]
+            if day_rows:
+                logger.info(
+                    "stock_adj_daily %s: %s rows -> %s.%s",
+                    trade_date,
+                    len(day_rows),
+                    dataset.schema_name,
+                    dataset.table_name,
+                )
+                written += upsert_rows(
+                    engine,
+                    schema_name=dataset.schema_name,
+                    table_name=dataset.table_name,
+                    columns=TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
+                    rows=day_rows,
+                )
+    finally:
+        engine.dispose()
+    logger.info(
+        "Synced stock_adj_daily for connector %s: %s rows (%s trade dates) into %s.%s",
+        connector.id,
+        written,
+        len(trade_dates),
+        dataset.schema_name,
+        dataset.table_name,
+    )
+    return written
+
+
+async def sync_dividends(
+    client: TushareClient,
+    db: AsyncSession,
+    connector: Connector,
+    *,
+    start: date,
+    end: date,
+    calendar_dataset: Dataset,
+    calendar_engine: Engine,
+) -> int:
+    dataset, data_source = await _load_output_dataset(db, connector.outputs, "dividends")
+    engine = pg_engine_for_datasource(data_source)
+    trade_dates: list[str] = []
+    written = 0
+    try:
+        trade_dates = await _resolve_open_trade_dates(
+            client,
+            calendar_engine=calendar_engine,
+            calendar_dataset=calendar_dataset,
+            start=start,
+            end=end,
+            connector_id=connector.id,
+            slot_label="dividends",
+        )
+        if not trade_dates:
+            return 0
+
+        logger.info(
+            "dividends sync window for %s: %s → %s (%s trade dates)",
+            connector.id,
+            trade_dates[0],
+            trade_dates[-1],
+            len(trade_dates),
+        )
+
+        for trade_date in trade_dates:
+            fetched = await client.query("dividend", {"ex_date": trade_date}, _DIVIDEND_FIELDS)
+            day_rows = [
+                {col.name: row.get(col.name) for col in TUSHARE_DIVIDENDS_COLUMNS}
+                for row in fetched
+                if row.get("ts_code") and row.get("ex_date")
+            ]
+            if day_rows:
+                logger.info(
+                    "dividends ex_date=%s: %s rows -> %s.%s",
+                    trade_date,
+                    len(day_rows),
+                    dataset.schema_name,
+                    dataset.table_name,
+                )
+                written += upsert_rows(
+                    engine,
+                    schema_name=dataset.schema_name,
+                    table_name=dataset.table_name,
+                    columns=TUSHARE_DIVIDENDS_COLUMNS,
+                    rows=day_rows,
+                )
+    finally:
+        engine.dispose()
+    logger.info(
+        "Synced dividends for connector %s: %s rows (%s trade dates scanned) into %s.%s",
         connector.id,
         written,
         len(trade_dates),
@@ -509,6 +657,24 @@ async def sync_tushare_connector(
             calendar_dataset=calendar_dataset,
             calendar_engine=calendar_engine,
         )
+        adj_rows = await sync_stock_adj_daily(
+            client,
+            db,
+            connector,
+            start=daily_start,
+            end=daily_end,
+            calendar_dataset=calendar_dataset,
+            calendar_engine=calendar_engine,
+        )
+        dividend_rows = await sync_dividends(
+            client,
+            db,
+            connector,
+            start=daily_start,
+            end=daily_end,
+            calendar_dataset=calendar_dataset,
+            calendar_engine=calendar_engine,
+        )
     finally:
         calendar_engine.dispose()
         daily_engine.dispose()
@@ -518,4 +684,6 @@ async def sync_tushare_connector(
         "trade_calendar": calendar_rows,
         "stock_basic": basic_rows,
         "stock_trade_daily": daily_rows,
+        "stock_adj_daily": adj_rows,
+        "dividends": dividend_rows,
     }

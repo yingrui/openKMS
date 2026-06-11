@@ -41,6 +41,8 @@ from app.services.connector_catalog import (
     normalize_and_validate_inputs,
     normalize_and_validate_outputs,
     normalize_and_validate_settings,
+    validate_sync_run_outputs,
+    validate_sync_schedule_outputs,
     secrets_status,
     validate_kind,
     validate_secrets_for_kind,
@@ -239,6 +241,7 @@ async def create_connector(body: ConnectorCreate, db: AsyncSession = Depends(get
         inputs_norm = normalize_and_validate_inputs(body.kind, body.inputs)
         outputs_norm = normalize_and_validate_outputs(body.kind, body.outputs)
         settings_norm = normalize_and_validate_settings(body.kind, body.settings)
+        validate_sync_schedule_outputs(body.kind, outputs_norm, settings_norm)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -301,8 +304,10 @@ async def trigger_connector_sync(
         raise HTTPException(status_code=400, detail="Connector kind does not support sync")
     if not row.enabled:
         raise HTTPException(status_code=400, detail="Connector is disabled")
-    if not row.outputs:
-        raise HTTPException(status_code=400, detail="Connector has no dataset outputs configured")
+    try:
+        validate_sync_run_outputs(row.kind, row.outputs)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     req = body or ConnectorSyncTriggerRequest()
     try:
@@ -437,6 +442,13 @@ async def update_connector(connector_id: str, body: ConnectorUpdate, db: AsyncSe
         row.enabled = body.enabled
     if body.secrets is not None:
         row.secrets_encrypted = merge_secrets_encrypted(row.secrets_encrypted, body.secrets, kind=row.kind)
+
+    try:
+        merged_outputs = dict(row.outputs or {}) if body.outputs is None else outputs_norm
+        merged_settings = row.settings if body.settings is None else settings_norm
+        validate_sync_schedule_outputs(row.kind, merged_outputs, merged_settings)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     await db.flush()
     try:

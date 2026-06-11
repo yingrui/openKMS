@@ -32,6 +32,7 @@ export function ConnectorFormFields({
   kindLocked,
   isExisting,
   readOnly,
+  includeOutputs = true,
 }: {
   kinds: ConnectorKindOut[];
   formName: string;
@@ -55,6 +56,8 @@ export function ConnectorFormFields({
   kindLocked: boolean;
   isExisting: boolean;
   readOnly: boolean;
+  /** When false, output dataset slots are omitted (use ConnectorOutputDatasetsFields on a separate tab). */
+  includeOutputs?: boolean;
 }) {
   const { t } = useTranslation('console');
   const selectedKindMeta = kinds.find((k) => k.kind === formKind);
@@ -178,7 +181,7 @@ export function ConnectorFormFields({
         </div>
       ) : null}
 
-      {hasOutputSlots && selectedKindMeta ? (
+      {includeOutputs && hasOutputSlots && selectedKindMeta ? (
         <div className="console-modal-section">
           <h3 className="console-modal-subheading">{t('connectors.sectionOutputs')}</h3>
           <p className="console-modal-hint">{t('connectors.outputsHint')}</p>

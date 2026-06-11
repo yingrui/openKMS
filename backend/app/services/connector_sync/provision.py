@@ -128,8 +128,19 @@ def validate_table_columns(
             continue
         actual = existing[col.name]
         expected = col.pg_type.upper()
-        if actual != expected and not (expected == "NUMERIC" and actual in ("NUMERIC", "DOUBLE PRECISION")):
-            errors.append(f"column '{col.name}' has type {actual}, expected {expected}")
+        if actual == expected:
+            continue
+        if expected == "NUMERIC" and actual in ("NUMERIC", "DOUBLE PRECISION"):
+            continue
+        if expected.startswith("NUMERIC(") and actual == "NUMERIC":
+            continue
+        if expected == "VARCHAR(10)" and actual in ("VARCHAR", "TEXT", "CHARACTER VARYING"):
+            continue
+        if expected == "VARCHAR(24)" and actual in ("VARCHAR", "TEXT", "CHARACTER VARYING"):
+            continue
+        if expected == "VARCHAR(12)" and actual in ("VARCHAR", "TEXT", "CHARACTER VARYING"):
+            continue
+        errors.append(f"column '{col.name}' has type {actual}, expected {expected}")
     return errors
 
 

@@ -14,6 +14,7 @@ import { fetchDataSources, type DataSourceResponse } from '../../data/dataSource
 import { fetchSystemSettings } from '../../data/systemApi';
 import {
   applyKindToInputsOutputs,
+  areAllOutputSlotsConfigured,
   buildConnectorPayload,
   initFormFromConnector,
   newKvRow,
@@ -22,15 +23,16 @@ import {
 import { defaultSyncScheduleForm, parseSyncScheduleForm, type SyncScheduleFormState } from './connectorScheduleUtils';
 import type { ConnectorSyncDateRange } from './connectorSyncUtils';
 
-export type ConnectorDetailTabId = 'general' | 'cron' | 'playground' | 'probe';
+export type ConnectorDetailTabId = 'general' | 'datasets' | 'cron' | 'playground' | 'probe';
 
-type PayloadError = 'required' | 'duplicate' | 'outputs' | 'secrets';
+type PayloadError = 'required' | 'duplicate' | 'outputs' | 'schedule_outputs' | 'secrets';
 
 function toastForPayloadError(t: (key: string) => string, error: PayloadError) {
   const keyByError: Record<PayloadError, string> = {
     required: 'connectors.toastRequiredFields',
     duplicate: 'connectors.toastDuplicateKey',
-    outputs: 'connectors.toastOutputsRequired',
+    outputs: 'connectors.toastOutputsIncomplete',
+    schedule_outputs: 'connectors.toastScheduleOutputsRequired',
     secrets: 'connectors.toastSecretsRequired',
   };
   toast.error(t(keyByError[error]));
@@ -69,6 +71,11 @@ export function useConnectorDetailForm(
   const isSyncConnector = selectedKindMeta?.category === 'sync';
   const isTushareConnector = formKind === 'tushare';
   const isTabbedDetail = isSearchTool || isSyncConnector;
+
+  const hasOutputDatasetsConfigured = useMemo(
+    () => isSyncConnector && areAllOutputSlotsConfigured(selectedKindMeta, outputDatasetIds),
+    [isSyncConnector, selectedKindMeta, outputDatasetIds]
+  );
 
   const applyInit = useCallback((kindList: ConnectorKindOut[], row: ConnectorResponse, tz: string) => {
     const init = initFormFromConnector(kindList, row);
@@ -146,6 +153,9 @@ export function useConnectorDetailForm(
     );
     if (!built.ok) {
       toastForPayloadError(t, built.error);
+      if (built.error === 'schedule_outputs') {
+        setActiveTab('cron');
+      }
       return false;
     }
     setSaving(true);
@@ -160,6 +170,9 @@ export function useConnectorDetailForm(
       });
       setConnector(updated);
       applyInit(kinds, updated, defaultTimezone);
+      if (built.scheduleAutoDisabled) {
+        toast.info(t('connectors.toastScheduleAutoDisabled'));
+      }
       toast.success(t('connectors.toastUpdated'));
       return true;
     } catch (e) {
@@ -193,6 +206,10 @@ export function useConnectorDetailForm(
   const handleRunSync = useCallback(
     async (range: ConnectorSyncDateRange): Promise<number | null> => {
       if (!canWrite || !id || !isSyncConnector) return null;
+      if (!areAllOutputSlotsConfigured(selectedKindMeta, outputDatasetIds)) {
+        toast.error(t('connectors.syncRequiresOutputs'));
+        return null;
+      }
       setSyncing(true);
       try {
         const { job_id: jobId } = await triggerConnectorSync(id, {
@@ -212,7 +229,7 @@ export function useConnectorDetailForm(
         setSyncing(false);
       }
     },
-    [canWrite, id, isSyncConnector, kinds, applyInit, defaultTimezone, t]
+    [canWrite, id, isSyncConnector, selectedKindMeta, outputDatasetIds, kinds, applyInit, defaultTimezone, t]
   );
 
   const formFieldsProps = useMemo(
@@ -239,6 +256,7 @@ export function useConnectorDetailForm(
       kindLocked: true as const,
       isExisting: true as const,
       readOnly: !canWrite,
+      includeOutputs: false as const,
     }),
     [
       kinds,
@@ -258,6 +276,32 @@ export function useConnectorDetailForm(
     ]
   );
 
+  const outputDatasetsProps = useMemo(
+    () => ({
+      selectedKindMeta,
+      formKind,
+      outputDatasetIds,
+      onOutputDatasetIdsChange: setOutputDatasetIds,
+      datasets,
+      dataSources,
+      canProvisionDatasets,
+      onDatasetProvisioned: handleDatasetProvisioned,
+      readOnly: !canWrite,
+      scheduleEnabled: syncSchedule.enabled,
+    }),
+    [
+      selectedKindMeta,
+      formKind,
+      outputDatasetIds,
+      datasets,
+      dataSources,
+      canProvisionDatasets,
+      handleDatasetProvisioned,
+      canWrite,
+      syncSchedule.enabled,
+    ]
+  );
+
   return {
     loading,
     saving,
@@ -268,11 +312,13 @@ export function useConnectorDetailForm(
     isSearchTool,
     isSyncConnector,
     isTushareConnector,
+    hasOutputDatasetsConfigured,
     isTabbedDetail,
     activeTab,
     setActiveTab,
     formName,
     formFieldsProps,
+    outputDatasetsProps,
     playgroundBaseline,
     inputValues,
     settingsRows,

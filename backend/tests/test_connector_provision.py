@@ -21,10 +21,10 @@ def test_build_create_table_ddl_trade_calendar():
 
 def test_validate_table_columns_ok():
     existing = {
-        "exchange": "TEXT",
-        "cal_date": "TEXT",
-        "is_open": "SMALLINT",
-        "pretrade_date": "TEXT",
+        "exchange": "VARCHAR",
+        "cal_date": "DATE",
+        "is_open": "INTEGER",
+        "pretrade_date": "DATE",
     }
     assert validate_table_columns(existing, TUSHARE_TRADE_CALENDAR_COLUMNS) == []
 

@@ -76,23 +76,78 @@ def test_tushare_inputs_rejects_bad_url():
         normalize_and_validate_inputs("tushare", {"api_base_url": "not-a-url"})
 
 
-def test_tushare_outputs_requires_all_slots():
-    with pytest.raises(ValueError, match="stock_trade_daily"):
-        normalize_and_validate_outputs("tushare", {"trade_calendar": "ds1"})
-    with pytest.raises(ValueError, match="stock_basic"):
+def test_tushare_outputs_allows_all_empty():
+    assert normalize_and_validate_outputs("tushare", {}) == {}
+    assert normalize_and_validate_outputs("tushare", None) == {}
+
+
+def test_tushare_outputs_rejects_partial():
+    with pytest.raises(ValueError, match="every output dataset"):
         normalize_and_validate_outputs(
             "tushare",
-            {"stock_trade_daily": "a" * 32, "trade_calendar": "b" * 32},
+            {"trade_calendar": "a" * 32, "stock_basic": "b" * 32},
         )
+
+
+def test_tushare_outputs_requires_all_slots_when_any_set():
     out = normalize_and_validate_outputs(
         "tushare",
         {
-            "stock_trade_daily": "a" * 32,
-            "trade_calendar": "b" * 32,
-            "stock_basic": "c" * 32,
+            "trade_calendar": "a" * 32,
+            "stock_basic": "b" * 32,
+            "stock_trade_daily": "c" * 32,
+            "stock_adj_daily": "d" * 32,
+            "dividends": "e" * 32,
         },
     )
-    assert set(out.keys()) == {"stock_trade_daily", "trade_calendar", "stock_basic"}
+    assert set(out.keys()) == {
+        "trade_calendar",
+        "stock_basic",
+        "stock_trade_daily",
+        "stock_adj_daily",
+        "dividends",
+    }
+
+
+def test_validate_sync_run_outputs_requires_all_slots():
+    from app.services.connector_catalog import validate_sync_run_outputs
+
+    with pytest.raises(ValueError, match="Configure all output datasets"):
+        validate_sync_run_outputs("tushare", {})
+
+    with pytest.raises(ValueError, match="Configure all output datasets"):
+        validate_sync_run_outputs(
+            "tushare",
+            {"trade_calendar": "a" * 32, "stock_basic": "b" * 32},
+        )
+
+    validate_sync_run_outputs(
+        "tushare",
+        {
+            "trade_calendar": "a" * 32,
+            "stock_basic": "b" * 32,
+            "stock_trade_daily": "c" * 32,
+            "stock_adj_daily": "d" * 32,
+            "dividends": "e" * 32,
+        },
+    )
+
+
+def test_validate_sync_schedule_outputs_requires_datasets_when_enabled():
+    from app.services.connector_catalog import validate_sync_schedule_outputs
+
+    with pytest.raises(ValueError, match="Scheduled sync requires"):
+        validate_sync_schedule_outputs(
+            "tushare",
+            {},
+            {"sync_schedule": {"enabled": True, "cron": "5 15 * * *", "timezone": "UTC"}},
+        )
+
+    validate_sync_schedule_outputs(
+        "tushare",
+        {},
+        {"sync_schedule": {"enabled": False, "cron": None, "timezone": "UTC"}},
+    )
 
 
 def test_zhipu_outputs_must_be_empty():

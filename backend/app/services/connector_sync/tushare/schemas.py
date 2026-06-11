@@ -1,4 +1,4 @@
-"""Tushare dataset column contracts."""
+"""Tushare dataset column contracts (schema ``tushare`` market tables)."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from app.services.connector_sync.schemas import ConnectorDatasetColumn
 TUSHARE_PG_SCHEMA = "tushare"
 
 TUSHARE_TRADE_CALENDAR_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
-    ConnectorDatasetColumn("exchange", "TEXT", primary_key=True),
-    ConnectorDatasetColumn("cal_date", "TEXT", primary_key=True),
-    ConnectorDatasetColumn("is_open", "SMALLINT"),
-    ConnectorDatasetColumn("pretrade_date", "TEXT", nullable=True),
+    ConnectorDatasetColumn("exchange", "VARCHAR(10)", nullable=True, primary_key=True),
+    ConnectorDatasetColumn("cal_date", "DATE", nullable=True, primary_key=True),
+    ConnectorDatasetColumn("is_open", "INTEGER", nullable=True),
+    ConnectorDatasetColumn("pretrade_date", "DATE", nullable=True),
 )
 
 TUSHARE_STOCK_BASIC_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
@@ -34,8 +34,8 @@ TUSHARE_STOCK_BASIC_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
 )
 
 TUSHARE_STOCK_TRADE_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
-    ConnectorDatasetColumn("ts_code", "TEXT", primary_key=True),
-    ConnectorDatasetColumn("trade_date", "TEXT", primary_key=True),
+    ConnectorDatasetColumn("ts_code", "TEXT", nullable=False, primary_key=True),
+    ConnectorDatasetColumn("trade_date", "DATE", nullable=False, primary_key=True),
     ConnectorDatasetColumn("open", "NUMERIC", nullable=True),
     ConnectorDatasetColumn("high", "NUMERIC", nullable=True),
     ConnectorDatasetColumn("low", "NUMERIC", nullable=True),
@@ -45,5 +45,30 @@ TUSHARE_STOCK_TRADE_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
     ConnectorDatasetColumn("pct_chg", "NUMERIC", nullable=True),
     ConnectorDatasetColumn("vol", "NUMERIC", nullable=True),
     ConnectorDatasetColumn("amount", "NUMERIC", nullable=True),
-    ConnectorDatasetColumn("adj_factor", "NUMERIC", nullable=True),
+)
+
+TUSHARE_STOCK_ADJ_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
+    ConnectorDatasetColumn("ts_code", "VARCHAR(10)", nullable=True, primary_key=True),
+    ConnectorDatasetColumn("trade_date", "DATE", nullable=True, primary_key=True),
+    ConnectorDatasetColumn("adj_factor", "NUMERIC(10,4)", nullable=True),
+)
+
+TUSHARE_DIVIDENDS_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
+    ConnectorDatasetColumn("ts_code", "VARCHAR(10)", nullable=True, primary_key=True),
+    ConnectorDatasetColumn("ex_date", "DATE", nullable=True, primary_key=True),
+    ConnectorDatasetColumn("end_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("ann_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("div_proc", "VARCHAR(24)", nullable=True),
+    ConnectorDatasetColumn("stk_div", "NUMERIC(10,4)", nullable=True),
+    ConnectorDatasetColumn("stk_bo_rate", "NUMERIC(10,4)", nullable=True),
+    ConnectorDatasetColumn("stk_co_rate", "NUMERIC(10,4)", nullable=True),
+    ConnectorDatasetColumn("cash_div", "NUMERIC(10,4)", nullable=True),
+    ConnectorDatasetColumn("cash_div_tax", "NUMERIC(10,4)", nullable=True),
+    ConnectorDatasetColumn("record_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("pay_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("div_listdate", "DATE", nullable=True),
+    ConnectorDatasetColumn("imp_ann_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("base_date", "DATE", nullable=True),
+    ConnectorDatasetColumn("base_share", "NUMERIC(10,4)", nullable=True),
+    ConnectorDatasetColumn("update_flag", "VARCHAR(12)", nullable=True),
 )

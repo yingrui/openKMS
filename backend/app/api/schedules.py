@@ -16,6 +16,7 @@ from app.schemas.schedule import ScheduleListResponse, ScheduleOut, SchedulePatc
 from app.services.connector_catalog import CATEGORY_SYNC, get_kind_spec, normalize_and_validate_settings
 from app.services.connector_sync.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
 from app.services.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE
+from app.services.connector_catalog import validate_sync_run_outputs
 from app.services.scheduled_triggers import upsert_connector_sync_trigger
 
 router = APIRouter(
@@ -127,6 +128,10 @@ async def run_schedule_now(schedule_id: str, db: AsyncSession = Depends(get_db))
         raise HTTPException(status_code=400, detail="Connector kind does not support sync")
     if not connector.enabled:
         raise HTTPException(status_code=400, detail="Connector is disabled")
+    try:
+        validate_sync_run_outputs(connector.kind, connector.outputs)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     from app.jobs.defer import defer_task
     from app.jobs.tasks import run_connector_sync

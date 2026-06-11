@@ -129,6 +129,22 @@ export function datasetOptionLabel(d: DatasetResponse): string {
   return d.data_source_name ? `${base} · ${d.data_source_name}` : base;
 }
 
+export function areAllOutputSlotsEmpty(
+  selectedKindMeta: ConnectorKindOut | undefined,
+  outputDatasetIds: Record<string, string>
+): boolean {
+  if (!selectedKindMeta?.output_slots?.length) return true;
+  return selectedKindMeta.output_slots.every((o) => !(outputDatasetIds[o.slot] ?? '').trim());
+}
+
+export function areAllOutputSlotsConfigured(
+  selectedKindMeta: ConnectorKindOut | undefined,
+  outputDatasetIds: Record<string, string>
+): boolean {
+  if (!selectedKindMeta?.output_slots?.length) return false;
+  return selectedKindMeta.output_slots.every((o) => (outputDatasetIds[o.slot] ?? '').trim().length > 0);
+}
+
 export function buildConnectorPayload(
   selectedKindMeta: ConnectorKindOut | undefined,
   formName: string,
@@ -139,16 +155,20 @@ export function buildConnectorPayload(
   secretRows: KvRow[],
   options: { isCreate: boolean; syncSchedule?: SyncScheduleFormState | null }
 ):
-  | { ok: true; body: {
-      name: string;
-      enabled: boolean;
-      settings: Record<string, unknown>;
-      inputs?: Record<string, string>;
-      outputs?: Record<string, string>;
-      secrets?: Record<string, string>;
-      kind?: string;
-    } }
-  | { ok: false; error: 'required' | 'duplicate' | 'outputs' | 'secrets' } {
+  | {
+      ok: true;
+      body: {
+        name: string;
+        enabled: boolean;
+        settings: Record<string, unknown>;
+        inputs?: Record<string, string>;
+        outputs?: Record<string, string>;
+        secrets?: Record<string, string>;
+        kind?: string;
+      };
+      scheduleAutoDisabled?: boolean;
+    }
+  | { ok: false; error: 'required' | 'duplicate' | 'outputs' | 'schedule_outputs' | 'secrets' } {
   if (!formName.trim() || (options.isCreate && !selectedKindMeta)) {
     return { ok: false, error: 'required' };
   }
@@ -172,10 +192,40 @@ export function buildConnectorPayload(
 
   const outputsObj: Record<string, string> = {};
   if (hasOutputSlots && selectedKindMeta) {
+    const missing: string[] = [];
     for (const o of selectedKindMeta.output_slots) {
       const id = (outputDatasetIds[o.slot] ?? '').trim();
-      if (!id) return { ok: false, error: 'outputs' };
-      outputsObj[o.slot] = id;
+      if (id) {
+        outputsObj[o.slot] = id;
+      } else {
+        missing.push(o.slot);
+      }
+    }
+    if (Object.keys(outputsObj).length > 0 && missing.length > 0) {
+      return { ok: false, error: 'outputs' };
+    }
+  }
+
+  let syncScheduleForPayload = options.syncSchedule;
+  let scheduleAutoDisabled = false;
+  if (
+    syncScheduleForPayload &&
+    selectedKindMeta?.category === 'sync' &&
+    areAllOutputSlotsEmpty(selectedKindMeta, outputDatasetIds) &&
+    syncScheduleForPayload.enabled
+  ) {
+    syncScheduleForPayload = { ...syncScheduleForPayload, enabled: false };
+    scheduleAutoDisabled = true;
+  }
+
+  const scheduleEnabled =
+    syncScheduleForPayload?.enabled === true && selectedKindMeta?.category === 'sync';
+  if (scheduleEnabled && hasOutputSlots && selectedKindMeta) {
+    const allConfigured = selectedKindMeta.output_slots.every(
+      (o) => (outputDatasetIds[o.slot] ?? '').trim().length > 0
+    );
+    if (!allConfigured) {
+      return { ok: false, error: 'schedule_outputs' };
     }
   }
 
@@ -187,8 +237,8 @@ export function buildConnectorPayload(
   }
 
   const settings: Record<string, unknown> = { ...settingsResult.value };
-  if (options.syncSchedule && selectedKindMeta?.category === 'sync') {
-    settings.sync_schedule = syncScheduleToSettingsPayload(options.syncSchedule);
+  if (syncScheduleForPayload && selectedKindMeta?.category === 'sync') {
+    settings.sync_schedule = syncScheduleToSettingsPayload(syncScheduleForPayload);
   }
 
   const body: {
@@ -206,9 +256,9 @@ export function buildConnectorPayload(
   };
   if (options.isCreate && selectedKindMeta) body.kind = selectedKindMeta.kind;
   if (hasInputFields) body.inputs = inputsObj;
-  if (hasOutputSlots) body.outputs = outputsObj;
+  if (hasOutputSlots) body.outputs = outputsObj; // may be {} when no datasets configured
   if (Object.keys(secrets).length > 0) body.secrets = secrets;
-  return { ok: true, body };
+  return { ok: true, body, scheduleAutoDisabled: scheduleAutoDisabled || undefined };
 }
 
 export function initFormFromConnector(kinds: ConnectorKindOut[], row: ConnectorResponse) {
