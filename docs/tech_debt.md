@@ -23,7 +23,7 @@ These were previously called out as problems; they are **addressed** in the curr
 - **Knowledge bases (SPA):** list and detail use real KB APIs (no mock-only KB UI).
 - **Article channel list:** row opens detail; no separate mock row actions in the table.
 - **Document channel list:** channel tree + document list are batched queries (not per-document N+1); further SQL consolidation is optional polish.
-- **SPA / SCSS design system (incremental):** Shared tokens and conventions under `frontend/src/styles/design-system/` + **`frontend/src/styles/README.md`**; waves of route SCSS moved off ad hoc modal **`z-index`**, raw literals in jobs/models, GlobalSearch, evaluation dialogs, document print, KB Q&A (incl. **`--color-ontology-*`**), **`App.scss`** shell, and **`richMarkdown`** Mermaid error surfaces.
+- **SPA / SCSS design system (incremental):** Shared tokens and conventions under `frontend/src/styles/design-system/` + **[design-system.md](design-system.md)**; waves of route SCSS moved off ad hoc modal **`z-index`**, raw literals in jobs/models, GlobalSearch, evaluation dialogs, document print, KB Q&A (incl. **`--color-ontology-*`**), **`App.scss`** shell, and **`richMarkdown`** Mermaid error surfaces.
 
 ---
 

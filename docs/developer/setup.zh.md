@@ -4,7 +4,7 @@
 
 - **后端**（`backend/`）：FastAPI 服务 + PostgreSQL，文档解析使用 PaddleOCRVL
 - **VLM 服务**（`vlm-server/`）：MLX-VLM 服务 `http://localhost:8101` — PaddleOCRVL 的 VLM 后端
-- **前端**（`frontend/`）：React/Vite；**`frontend/src/index.scss`** 加载 **`_css-variables`**、**`_global`**、**`_utilities`**。编译期 **`_tokens`** / **`_mixins`**。见 **`frontend/src/styles/README.md`**。
+- **前端**（`frontend/`）：React/Vite；**`frontend/src/index.scss`** 加载 **`_css-variables`**、**`_global`**、**`_utilities`**。编译期 **`_tokens`** / **`_mixins`**。见 [design-system.md](../design-system.md)。
 
 ### 数据库搭建
 

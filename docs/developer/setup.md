@@ -4,7 +4,7 @@
 
 - **Backend** (`backend/`): FastAPI service with PostgreSQL, uses PaddleOCRVL for document parsing
 - **VLM Server** (`vlm-server/`): MLX-VLM server at `http://localhost:8101` – required by PaddleOCRVL as VLM backend
-- **Frontend** (`frontend/`): React/Vite app; **`frontend/src/index.scss`** loads **`_css-variables`**, **`_global`**, and **`_utilities`**. Compile-time **`_tokens`** / **`_mixins`**. See **`frontend/src/styles/README.md`**.
+- **Frontend** (`frontend/`): React/Vite app; **`frontend/src/index.scss`** loads **`_css-variables`**, **`_global`**, and **`_utilities`**. Compile-time **`_tokens`** / **`_mixins`**. See [design-system.md](../design-system.md).
 
 ### Database Setup
 Login to postgres as superuser and run:

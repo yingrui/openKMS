@@ -14,7 +14,7 @@ If the user asks for a commit (or you are committing), review staged changes and
 | `docs/features/<area>.md` | Features and UI surfaces for that area |
 | `docs/features/api-reference.md` | New / changed HTTP endpoints |
 | `docs/features/data-models.md` | New tables / columns |
-| `frontend/src/styles/README.md` | openKMS **design system** — update when shared SCSS patterns, tokens, conventions, or cross-route layout primitives change |
+| `docs/design-system.md` | openKMS **design system** — update when shared SCSS patterns, tokens, conventions, or cross-route layout primitives change |
 
 `docs/functionalities.md` is the routing index — only edit it when adding or removing a feature page.
 

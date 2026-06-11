@@ -98,6 +98,7 @@ plugins:
             Docker: Docker
             Developer: 开发者
             Setup: 环境搭建
+            Design system: 设计系统
             Doc conventions for AI agents: AI 代理文档规范
             Roadmap: 路线图
             Development plan: 开发计划
@@ -181,6 +182,7 @@ nav:
       - Docker: operations/docker.md
   - Developer:
       - Setup: developer/setup.md
+      - Design system: design-system.md
       - Doc conventions for AI agents: agents.md
   - Roadmap:
       - Development plan: development_plan.md

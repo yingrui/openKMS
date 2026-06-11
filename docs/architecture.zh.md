@@ -104,7 +104,7 @@ flowchart TB
 | **`data/`** | 按 API 领域划分的 HTTP 客户端；统一经 `apiClient.ts` 的 **`authAwareFetch`** |
 | **`contexts/`** | 跨页 React 状态（认证、功能开关、通道列表） |
 | **`config/`** | API 根路径与供 UI 门控用的 `PERM_*` 镜像 |
-| **`styles/`** | 全局设计系统 — 细则见 [`frontend/src/styles/README.md`](../frontend/src/styles/README.md) |
+| **`styles/`** | 全局设计系统 — 细则见 [design-system.md](design-system.md) |
 | **`i18n/`** | 语言包与 namespace（见下文） |
 | **`graph/`** | 2D/3D 或 wiki/首页共用同一图模型时的类型与构建逻辑 |
 
@@ -124,7 +124,7 @@ frontend/src/
 ├── contexts/                   # Auth、FeatureToggles、DocumentChannels、ArticleChannels
 ├── config/                     # API 地址、PERM_* 镜像
 ├── styles/
-│   ├── design-system/          # token、mixin、全局 — 见 styles/README.md
+│   ├── design-system/          # token、mixin、全局 — 见 design-system.md
 │   └── account-page.scss
 ├── i18n/locales/{en,zh-CN}/    # 按界面划分的 namespace
 ├── graph/                      # 知识地图共用图模型
@@ -137,7 +137,7 @@ frontend/src/
 - **样式** — SCSS 中 `@use` 设计系统 token/mixin；间距与字号用 `var(--space-*)`、`var(--text-*)`；设置页宽度用 `ds.$km-layout-max`；Profile / 个人设置复用 `account-page.scss`（`account-*` 类）。
 - **导航与权限** — 侧栏用 `canAccessPath` 与功能开关；以后端权限为准。
 - **命名** — `*List` / `*Detail` / `*Settings` 表示浏览 → 详情 → 配置；文档与文章采用相同的通道模式（索引 → 通道树 → 通道内列表 → 设置）。
-- **去哪查** — 路由看 `App.tsx`；API 看 `data/*Api.ts`；外壳看 `components/Layout/`；token 与间距看 `styles/README.md`。
+- **去哪查** — 路由看 `App.tsx`；API 看 `data/*Api.ts`；外壳看 `components/Layout/`；token 与间距看 [design-system.md](design-system.md)。
 
 ### 国际化（SPA）
 
