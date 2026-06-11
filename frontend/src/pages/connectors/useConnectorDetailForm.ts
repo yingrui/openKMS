@@ -22,7 +22,7 @@ import {
 import { defaultSyncScheduleForm, parseSyncScheduleForm, type SyncScheduleFormState } from './connectorScheduleUtils';
 import type { ConnectorSyncDateRange } from './connectorSyncUtils';
 
-export type ConnectorDetailTabId = 'general' | 'cron' | 'playground';
+export type ConnectorDetailTabId = 'general' | 'cron' | 'playground' | 'probe';
 
 type PayloadError = 'required' | 'duplicate' | 'outputs' | 'secrets';
 
@@ -67,6 +67,7 @@ export function useConnectorDetailForm(
   const selectedKindMeta = useMemo(() => kinds.find((k) => k.kind === formKind), [kinds, formKind]);
   const isSearchTool = selectedKindMeta?.category === 'search_tool';
   const isSyncConnector = selectedKindMeta?.category === 'sync';
+  const isTushareConnector = formKind === 'tushare';
   const isTabbedDetail = isSearchTool || isSyncConnector;
 
   const applyInit = useCallback((kindList: ConnectorKindOut[], row: ConnectorResponse, tz: string) => {
@@ -266,6 +267,7 @@ export function useConnectorDetailForm(
     selectedKindMeta,
     isSearchTool,
     isSyncConnector,
+    isTushareConnector,
     isTabbedDetail,
     activeTab,
     setActiveTab,

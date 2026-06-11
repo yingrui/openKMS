@@ -75,6 +75,32 @@ export interface ConnectorSearchResult {
   debug?: ConnectorSearchDebug;
 }
 
+export interface ConnectorProbeDebug {
+  method: string;
+  endpoint: string;
+  api_name: string;
+  request_body: Record<string, unknown>;
+}
+
+export interface ConnectorProbeResult {
+  api_name: string;
+  params: Record<string, unknown>;
+  row_count: number;
+  truncated: boolean;
+  rows: Array<Record<string, unknown>>;
+  debug?: ConnectorProbeDebug;
+}
+
+export interface ConnectorProbeBody {
+  api_name?: string;
+  ts_code?: string;
+  trade_date?: string;
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}
+
 export interface ConnectorSyncSchedule {
   enabled: boolean;
   cron: string | null;
@@ -251,6 +277,27 @@ export async function searchConnector(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const message = (err as { detail?: string }).detail || 'Search failed';
+    const error = new Error(message) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
+  }
+  return res.json();
+}
+
+export async function probeConnector(
+  id: string,
+  body: ConnectorProbeBody
+): Promise<ConnectorProbeResult> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}/probe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const message = (err as { detail?: string }).detail || 'Probe failed';
     const error = new Error(message) as Error & { status?: number };
     error.status = res.status;
     throw error;

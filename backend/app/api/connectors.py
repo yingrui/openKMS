@@ -23,6 +23,8 @@ from app.schemas.connector import (
     ConnectorProvisionDatasetRequest,
     ConnectorProvisionDatasetResponse,
     ConnectorResponse,
+    ConnectorProbeRequest,
+    ConnectorProbeResponse,
     ConnectorSearchRequest,
     ConnectorSearchResponse,
     ConnectorSyncScheduleOut,
@@ -333,6 +335,45 @@ async def search_connector(connector_id: str, body: ConnectorSearchRequest, db: 
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Search provider error: {e}") from e
     return ConnectorSearchResponse(**result)
+
+
+@router.post(
+    "/{connector_id}/probe",
+    response_model=ConnectorProbeResponse,
+    dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))],
+)
+async def probe_connector(connector_id: str, body: ConnectorProbeRequest, db: AsyncSession = Depends(get_db)):
+    """Call a live Tushare API from the connector detail Probe tab (no dataset writes)."""
+    from app.services.connector_sync.tushare.client import TushareRateLimitError
+    from app.services.connector_sync.tushare.probe import run_tushare_probe
+
+    row = await db.get(Connector, connector_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    if row.kind != "tushare":
+        raise HTTPException(status_code=400, detail="Probe is only supported for Tushare connectors")
+    try:
+        result = await run_tushare_probe(
+            row,
+            api_name=body.api_name,
+            ts_code=body.ts_code,
+            trade_date=body.trade_date,
+            start_date=body.start_date,
+            end_date=body.end_date,
+            limit=body.limit,
+            offset=body.offset,
+            include_debug=True,
+        )
+    except TushareRateLimitError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Tushare rate limited on {exc.api_name}; retry in {int(exc.retry_after_seconds)}s",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Tushare API error: {exc}") from exc
+    return ConnectorProbeResponse(**result)
 
 
 @router.put("/{connector_id}", response_model=ConnectorResponse, dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))])

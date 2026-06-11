@@ -76,14 +76,23 @@ def test_tushare_inputs_rejects_bad_url():
         normalize_and_validate_inputs("tushare", {"api_base_url": "not-a-url"})
 
 
-def test_tushare_outputs_requires_both_slots():
+def test_tushare_outputs_requires_all_slots():
     with pytest.raises(ValueError, match="stock_trade_daily"):
         normalize_and_validate_outputs("tushare", {"trade_calendar": "ds1"})
+    with pytest.raises(ValueError, match="stock_basic"):
+        normalize_and_validate_outputs(
+            "tushare",
+            {"stock_trade_daily": "a" * 32, "trade_calendar": "b" * 32},
+        )
     out = normalize_and_validate_outputs(
         "tushare",
-        {"stock_trade_daily": "a" * 32, "trade_calendar": "b" * 32},
+        {
+            "stock_trade_daily": "a" * 32,
+            "trade_calendar": "b" * 32,
+            "stock_basic": "c" * 32,
+        },
     )
-    assert set(out.keys()) == {"stock_trade_daily", "trade_calendar"}
+    assert set(out.keys()) == {"stock_trade_daily", "trade_calendar", "stock_basic"}
 
 
 def test_zhipu_outputs_must_be_empty():

@@ -9,6 +9,7 @@ import { PERM_CONNECTORS_WRITE, PERM_CONSOLE_DATASETS } from '../../config/permi
 import { ConnectorCronSettings } from './ConnectorCronSettings';
 import { ConnectorFormFields } from './ConnectorFormFields';
 import { ConnectorSearchPlayground } from './ConnectorSearchPlayground';
+import { ConnectorTushareProbe } from './ConnectorTushareProbe';
 import { ConnectorSyncDialog } from './ConnectorSyncDialog';
 import { useConnectorDetailForm } from './useConnectorDetailForm';
 import type { ConnectorSyncDateRange } from './connectorSyncUtils';
@@ -31,6 +32,7 @@ export function ConnectorDetailPage() {
     selectedKindMeta,
     isSearchTool,
     isSyncConnector,
+    isTushareConnector,
     isTabbedDetail,
     activeTab,
     setActiveTab,
@@ -100,7 +102,7 @@ export function ConnectorDetailPage() {
     />
   );
 
-  const showSave = canWrite && activeTab !== 'playground';
+  const showSave = canWrite && activeTab !== 'playground' && activeTab !== 'probe';
 
   return (
     <div className="ontology-admin">
@@ -167,6 +169,18 @@ export function ConnectorDetailPage() {
                   <span>{t('connectors.tabCron')}</span>
                 </button>
               ) : null}
+              {isTushareConnector ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'probe'}
+                  className={`document-channel-settings-tab${activeTab === 'probe' ? ' active' : ''}`}
+                  onClick={() => setActiveTab('probe')}
+                >
+                  <FlaskConical size={18} />
+                  <span>{t('connectors.tabProbe')}</span>
+                </button>
+              ) : null}
               {isSearchTool ? (
                 <button
                   type="button"
@@ -182,12 +196,21 @@ export function ConnectorDetailPage() {
             </div>
             <div
               className={`document-channel-settings-form${
-                activeTab === 'playground' ? ' connector-detail-tab-panel--playground' : ''
+                activeTab === 'playground' || activeTab === 'probe'
+                  ? ' connector-detail-tab-panel--playground'
+                  : ''
               }`}
               role="tabpanel"
             >
               {activeTab === 'general' ? formContent : null}
               {activeTab === 'cron' && isSyncConnector ? cronContent : null}
+              {activeTab === 'probe' && isTushareConnector && id ? (
+                <ConnectorTushareProbe
+                  connectorId={id}
+                  apiBaseUrl={inputValues.api_base_url}
+                  embedded
+                />
+              ) : null}
               {activeTab === 'playground' && isSearchTool && selectedKindMeta && id ? (
                 <ConnectorSearchPlayground
                   connectorId={id}

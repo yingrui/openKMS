@@ -11,6 +11,7 @@ from app.services.connector_search.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
 from app.services.connector_sync.schemas import ConnectorDatasetColumn
 from app.services.connector_sync.tushare.schemas import (
     TUSHARE_PG_SCHEMA,
+    TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
 )
@@ -69,7 +70,7 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
         kind="tushare",
         category=CATEGORY_SYNC,
         label="Tushare",
-        description="China market data via tushare.pro (token + API URL; sync targets two datasets).",
+        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, and daily quotes).",
         secret_keys=frozenset({"TUSHARE_TOKEN"}),
         input_fields=(
             ConnectorInputField(
@@ -100,11 +101,20 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
                 default_pg_schema=TUSHARE_PG_SCHEMA,
                 default_table_name="trade_calendar",
             ),
+            ConnectorOutputSlot(
+                slot="stock_basic",
+                label="Stock basic",
+                description="Listed-stock reference data (code, name, list date, industry, etc.). One stock_basic API call per sync run.",
+                resource="dataset",
+                dataset_columns=TUSHARE_STOCK_BASIC_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="stock_basic",
+            ),
         ),
         default_settings={
             "sync_start_date": "19900101",
-            "sync_api_min_interval_seconds": 61,
-            "sync_trade_cal_min_interval_seconds": 3661,
+            "sync_api_min_interval_seconds": 0.31,
+            "sync_trade_cal_min_interval_seconds": 0.31,
         },
     ),
     "zhipu_web_search": ConnectorKindSpec(

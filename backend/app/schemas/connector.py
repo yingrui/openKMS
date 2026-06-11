@@ -120,6 +120,51 @@ class ConnectorSearchResponse(BaseModel):
     debug: ConnectorSearchDebugOut | None = None
 
 
+class ConnectorProbeRequest(BaseModel):
+    api_name: str = Field(
+        default="daily",
+        description="Tushare API to call (probe supports daily stock bars).",
+    )
+    ts_code: str | None = Field(
+        default=None,
+        max_length=32,
+        description="Stock code (e.g. 000001.SZ).",
+    )
+    trade_date: str | None = Field(
+        default=None,
+        max_length=10,
+        description="Trading date as YYYYMMDD or YYYY-MM-DD.",
+    )
+    start_date: str | None = Field(
+        default=None,
+        max_length=10,
+        description="Range start (YYYYMMDD or YYYY-MM-DD).",
+    )
+    end_date: str | None = Field(
+        default=None,
+        max_length=10,
+        description="Range end (YYYYMMDD or YYYY-MM-DD).",
+    )
+    limit: int | None = Field(default=None, ge=1, description="Max rows per request.")
+    offset: int | None = Field(default=None, ge=0, description="Row offset for pagination.")
+
+
+class ConnectorProbeDebugOut(BaseModel):
+    method: str = "POST"
+    endpoint: str
+    api_name: str
+    request_body: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConnectorProbeResponse(BaseModel):
+    api_name: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    row_count: int
+    truncated: bool = False
+    rows: list[dict[str, Any]] = Field(default_factory=list)
+    debug: ConnectorProbeDebugOut | None = None
+
+
 class ConnectorCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=256)
     kind: str = Field(..., min_length=1, max_length=64)

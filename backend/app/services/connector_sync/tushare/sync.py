@@ -25,17 +25,26 @@ from app.services.connector_sync.pg import (
 from app.services.connector_sync.sync_range import SyncDateRange, parse_sync_date_range
 from app.services.connector_sync.tushare.client import TushareClient
 from app.services.connector_sync.tushare.schemas import (
+    TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
 )
+
+_STOCK_BASIC_FIELDS = (
+    "ts_code,symbol,name,area,industry,fullname,enname,cnspell,market,exchange,"
+    "curr_type,list_status,list_date,delist_date,is_hs,act_name,act_ent_type"
+)
+_STOCK_BASIC_PARAMS = {"list_status": "L"}
 
 logger = logging.getLogger(__name__)
 
 # A-share SSE/SZSE share the same trading calendar; one trade_cal call avoids hourly limits.
 _CALENDAR_EXCHANGE = "SSE"
 _DEFAULT_SYNC_START_YMD = "19900101"
-_DEFAULT_API_MIN_INTERVAL_SECONDS = 61
-_DEFAULT_TRADE_CAL_MIN_INTERVAL_SECONDS = 3661
+# ~200 calls/min (e.g. 2000-point tier). Low-tier accounts: raise intervals in connector settings.
+_DEFAULT_API_MIN_INTERVAL_SECONDS = 0.31
+_DEFAULT_TRADE_CAL_MIN_INTERVAL_SECONDS = 0.31
+_MIN_API_MIN_INTERVAL_SECONDS = 0.1
 _MAX_API_MIN_INTERVAL_SECONDS = 7200
 
 
@@ -51,14 +60,16 @@ def _sync_settings(settings: dict[str, Any] | None) -> dict[str, Any]:
         interval = float(raw.get("sync_api_min_interval_seconds", _DEFAULT_API_MIN_INTERVAL_SECONDS))
     except (TypeError, ValueError):
         interval = float(_DEFAULT_API_MIN_INTERVAL_SECONDS)
-    interval = max(1.0, min(interval, float(_MAX_API_MIN_INTERVAL_SECONDS)))
+    interval = max(_MIN_API_MIN_INTERVAL_SECONDS, min(interval, float(_MAX_API_MIN_INTERVAL_SECONDS)))
     try:
         trade_cal_interval = float(
             raw.get("sync_trade_cal_min_interval_seconds", _DEFAULT_TRADE_CAL_MIN_INTERVAL_SECONDS)
         )
     except (TypeError, ValueError):
         trade_cal_interval = float(_DEFAULT_TRADE_CAL_MIN_INTERVAL_SECONDS)
-    trade_cal_interval = max(1.0, min(trade_cal_interval, float(_MAX_API_MIN_INTERVAL_SECONDS)))
+    trade_cal_interval = max(
+        _MIN_API_MIN_INTERVAL_SECONDS, min(trade_cal_interval, float(_MAX_API_MIN_INTERVAL_SECONDS))
+    )
     return {
         "sync_start_date": start,
         "api_min_interval_seconds": interval,
@@ -268,6 +279,52 @@ async def sync_trade_calendar(
     return written
 
 
+async def sync_stock_basic(
+    client: TushareClient,
+    db: AsyncSession,
+    connector: Connector,
+    *,
+    engine: Engine | None = None,
+) -> int:
+    """Refresh full listed-stock reference table (one stock_basic call per sync)."""
+    dataset, data_source = await _load_output_dataset(db, connector.outputs, "stock_basic")
+    own_engine = engine is None
+    if own_engine:
+        engine = pg_engine_for_datasource(data_source)
+    written = 0
+    try:
+        logger.info("stock_basic sync for %s (single stock_basic API call)", connector.id)
+        fetched = await client.query("stock_basic", _STOCK_BASIC_PARAMS, _STOCK_BASIC_FIELDS)
+        rows = [
+            {col.name: row.get(col.name) for col in TUSHARE_STOCK_BASIC_COLUMNS}
+            for row in fetched
+        ]
+        logger.info(
+            "stock_basic fetched %s rows; writing to %s.%s",
+            len(rows),
+            dataset.schema_name,
+            dataset.table_name,
+        )
+        written += upsert_rows(
+            engine,
+            schema_name=dataset.schema_name,
+            table_name=dataset.table_name,
+            columns=TUSHARE_STOCK_BASIC_COLUMNS,
+            rows=rows,
+        )
+    finally:
+        if own_engine and engine is not None:
+            engine.dispose()
+    logger.info(
+        "Synced stock_basic for connector %s: %s rows into %s.%s",
+        connector.id,
+        written,
+        dataset.schema_name,
+        dataset.table_name,
+    )
+    return written
+
+
 async def sync_stock_trade_daily(
     client: TushareClient,
     db: AsyncSession,
@@ -396,8 +453,10 @@ async def sync_tushare_connector(
 
     calendar_dataset, calendar_ds = await _load_output_dataset(db, connector.outputs, "trade_calendar")
     daily_dataset, daily_ds = await _load_output_dataset(db, connector.outputs, "stock_trade_daily")
+    basic_dataset, basic_ds = await _load_output_dataset(db, connector.outputs, "stock_basic")
     calendar_engine = pg_engine_for_datasource(calendar_ds)
     daily_engine = pg_engine_for_datasource(daily_ds)
+    basic_engine = pg_engine_for_datasource(basic_ds)
     try:
         (cal_start, cal_end), (daily_start, daily_end) = _resolve_tushare_windows(
             requested,
@@ -435,6 +494,12 @@ async def sync_tushare_connector(
             end=cal_end,
             engine=calendar_engine,
         )
+        basic_rows = await sync_stock_basic(
+            client,
+            db,
+            connector,
+            engine=basic_engine,
+        )
         daily_rows = await sync_stock_trade_daily(
             client,
             db,
@@ -447,8 +512,10 @@ async def sync_tushare_connector(
     finally:
         calendar_engine.dispose()
         daily_engine.dispose()
+        basic_engine.dispose()
 
     return {
         "trade_calendar": calendar_rows,
+        "stock_basic": basic_rows,
         "stock_trade_daily": daily_rows,
     }
