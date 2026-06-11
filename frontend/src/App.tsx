@@ -83,6 +83,7 @@ const KnowledgeBaseDetail = lazy(() =>
 );
 const Pipelines = lazy(() => import('./pages/pipelines/Pipelines').then((m) => ({ default: m.Pipelines })));
 const JobRuns = lazy(() => import('./pages/jobs/JobRuns').then((m) => ({ default: m.JobRuns })));
+const SchedulesPage = lazy(() => import('./pages/jobs/SchedulesPage').then((m) => ({ default: m.SchedulesPage })));
 const JobDetail = lazy(() => import('./pages/jobs/JobDetail').then((m) => ({ default: m.JobDetail })));
 const Models = lazy(() => import('./pages/models/Models').then((m) => ({ default: m.Models })));
 const ModelDetail = lazy(() => import('./pages/models/ModelDetail').then((m) => ({ default: m.ModelDetail })));
@@ -195,6 +196,7 @@ function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="settings" element={<UserSettings />} />
           <Route path="pipelines" element={<Pipelines />} />
+          <Route path="job-runs/schedules" element={<SchedulesPage />} />
           <Route path="job-runs" element={<JobRuns />} />
           <Route path="job-runs/:jobId" element={<JobDetail />} />
           <Route path="jobs" element={<Navigate to="/job-runs" replace />} />

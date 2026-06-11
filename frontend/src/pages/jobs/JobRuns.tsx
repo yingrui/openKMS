@@ -16,6 +16,7 @@ import {
 } from '../../data/jobsApi';
 import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { Pagination } from '../../styles/design-system';
+import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import './Jobs.scss';
 
 const JOBS_PAGE_SIZE_DEFAULT = 25;
@@ -150,6 +151,7 @@ export function JobRuns() {
 
   return (
     <div className="jobs">
+      <JobsAreaNav />
       <div className="page-header jobs-header">
         <div>
           <h1>{t('jobs.title')}</h1>

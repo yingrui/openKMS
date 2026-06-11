@@ -1,6 +1,6 @@
 # openKMS 架构
 
-**`docker/docker-compose.yml`** 运行完整栈（Postgres/pgvector、MinIO、本体图存储用 **Neo4j**、backend、带 `openkms-cli` 解析的 procrastinate worker、nginx 前端 **http://localhost:8082**）。**worker** 镜像为 **`platform: linux/amd64`**（Apple Silicon 经模拟运行 Paddle wheel），并安装 **`libgl1`**（OpenCV/PaddleX）及 **LibreOffice（writer + impress）**（**DOCX/PPTX**）与 **mupdf-tools**（`mutool`，**EPUB** → PDF 再解析）。**Postgres**、**MinIO**、**backend** 不发布到主机；服务经 Docker DNS（`postgres`、`minio`、`backend:8102`）互访，浏览器经 **8082** 由 nginx 代理 **`/api`**、**`/internal-api`**、认证路由与 **`/buckets/...`**。镜像：**`docker/Dockerfile`**（`backend`、`worker`）、**`docker/Dockerfile.frontend`**。仓库根目录：**`docker compose -f docker/docker-compose.yml`** 用于 **`build`**、**`up -d --build`**、**`down`**（**`docker/README.md`**）。
+**`docker/docker-compose.yml`** 运行完整栈（Postgres/pgvector、MinIO、本体图存储用 **Neo4j**、backend、**scheduler**（中央 cron）、带 `openkms-cli` 解析的 procrastinate **worker**、nginx 前端 **http://localhost:8082**）。**worker** 镜像为 **`platform: linux/amd64`**（Apple Silicon 经模拟运行 Paddle wheel），并安装 **`libgl1`**（OpenCV/PaddleX）及 **LibreOffice（writer + impress）**（**DOCX/PPTX**）与 **mupdf-tools**（`mutool`，**EPUB** → PDF 再解析）。**Postgres**、**MinIO**、**backend** 不发布到主机；服务经 Docker DNS（`postgres`、`minio`、`backend:8102`）互访，浏览器经 **8082** 由 nginx 代理 **`/api`**、**`/internal-api`**、认证路由与 **`/buckets/...`**。镜像：**`docker/Dockerfile`**（`backend`、`worker`）、**`docker/Dockerfile.frontend`**。仓库根目录：**`docker compose -f docker/docker-compose.yml`** 用于 **`build`**、**`up -d --build`**、**`down`**（**`docker/README.md`**）。
 
 ## 高层架构图
 

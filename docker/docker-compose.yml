@@ -1,4 +1,4 @@
-# Full stack: Postgres (pgvector), MinIO, backend API, worker (+ openkms-cli), qa-agent, frontend (nginx).
+# Full stack: Postgres (pgvector), MinIO, backend API, scheduler, worker (+ openkms-cli), qa-agent, frontend (nginx).
 #
 # From repo root (examples):
 #   docker compose -f docker/docker-compose.yml build
@@ -45,6 +45,13 @@ x-backend-env: &backend_env
   OPENKMS_BACKEND_URL: http://backend:8102
   OPENKMS_CLI_BASIC_USER: ${OPENKMS_CLI_BASIC_USER:-openkms-cli}
   OPENKMS_CLI_BASIC_PASSWORD: ${OPENKMS_CLI_BASIC_PASSWORD:-change-me}
+  OPENKMS_CLI_OIDC_CLIENT_ID: ${OPENKMS_CLI_OIDC_CLIENT_ID:-openkms-cli}
+  OPENKMS_CLI_OIDC_CLIENT_SECRET: ${OPENKMS_CLI_OIDC_CLIENT_SECRET:-}
+  OPENKMS_OIDC_TOKEN_URL: ${OPENKMS_OIDC_TOKEN_URL:-}
+  OPENKMS_WORKER_BASIC_USER: ${OPENKMS_WORKER_BASIC_USER:-openkms-worker}
+  OPENKMS_WORKER_BASIC_PASSWORD: ${OPENKMS_WORKER_BASIC_PASSWORD:-change-me}
+  OPENKMS_WORKER_OIDC_CLIENT_ID: ${OPENKMS_WORKER_OIDC_CLIENT_ID:-}
+  OPENKMS_WORKER_OIDC_CLIENT_SECRET: ${OPENKMS_WORKER_OIDC_CLIENT_SECRET:-}
   OPENKMS_QA_AGENT_BASIC_USER: ${OPENKMS_QA_AGENT_BASIC_USER:-qa-agent}
   OPENKMS_QA_AGENT_BASIC_PASSWORD: ${OPENKMS_QA_AGENT_BASIC_PASSWORD:-change-me}
   OPENKMS_VLM_URL: ${OPENKMS_VLM_URL:-http://host.docker.internal:8101}
@@ -156,6 +163,25 @@ services:
       neo4j:
         condition: service_healthy
 
+  scheduler:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: backend
+      args:
+        <<: *build_mirror_args
+    command: ["python", "scheduler.py"]
+    environment:
+      <<: *backend_env
+    volumes:
+      - projects_data:/data/projects
+      - agent_skills_data:/data/agent-skills
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+
   # PaddleOCR / paddlepaddle PyPI wheels are linux/amd64 (and macOS arm64), not linux/arm64.
   # On Apple Silicon, this forces an amd64 image so openkms-cli[parse] installs; runs under QEMU.
   worker:
@@ -168,6 +194,7 @@ services:
         <<: *build_mirror_args
     environment:
       <<: *backend_env
+      OPENKMS_WORKER_NAME: ${OPENKMS_WORKER_NAME:-worker}
     volumes:
       - projects_data:/data/projects
       - agent_skills_data:/data/agent-skills

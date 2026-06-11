@@ -52,7 +52,7 @@ For **baidu-doc-parse**, set **`OPENKMS_BAIDU_CLOUD_API_KEY`** and **`OPENKMS_BA
 
 The frontend image is built with `VITE_AUTH_MODE` baked in. Compose defaults are **local auth only** (no OIDC env in `docker-compose.yml`). For OIDC, set **`OPENKMS_AUTH_MODE=oidc`**, all **`OPENKMS_OIDC_*`** vars (see **`backend/.env.example`**), and rebuild the frontend with **`VITE_AUTH_MODE=oidc`** — not covered by **`docker/.env.example`** alone.
 
-CLI basic credentials for worker → `openkms-cli` default to **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`).
+**openkms-cli** Basic defaults to **`OPENKMS_CLI_BASIC_*`**; worker/scheduler heartbeats use **`OPENKMS_WORKER_BASIC_*`** (local) or **`OPENKMS_WORKER_OIDC_*`** (OIDC; add the client id to **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**).
 
 ## See also
 

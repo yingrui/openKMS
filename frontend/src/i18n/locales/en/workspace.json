@@ -26,6 +26,11 @@
     "actions": "Actions"
   },
   "jobs": {
+    "nav": {
+      "areaLabel": "Jobs area",
+      "runs": "Job runs",
+      "schedules": "Schedules"
+    },
     "title": "Job runs",
     "subtitle": "Document processing and knowledge base indexing runs.",
     "newJob": "New run",
@@ -68,6 +73,25 @@
     "forceFullReparse": "Full re-parse",
     "forceFullReparseTitle": "Ignore cached parse on storage and run the pipeline again.",
     "createJob": "Queue run"
+  },
+  "schedules": {
+    "title": "Schedules",
+    "subtitle": "Automatic connector sync and other registered cron triggers.",
+    "loadFailed": "Failed to load schedules",
+    "updateFailed": "Could not update schedule",
+    "runFailed": "Could not queue run",
+    "runQueued": "Run #{{id}} queued",
+    "runNow": "Run now",
+    "loading": "Loading schedules…",
+    "empty": "No schedules yet. Enable a schedule on a sync connector.",
+    "hint": "Schedules are executed by the central scheduler process. Manage connectors under Connectors.",
+    "colName": "Name",
+    "colKind": "Kind",
+    "colCron": "Cron",
+    "colEnabled": "Enabled",
+    "colNextRun": "Next run",
+    "colLastRun": "Last run",
+    "colStatus": "Last status"
   },
   "jobDetail": {
     "loadFailed": "Failed to load run",

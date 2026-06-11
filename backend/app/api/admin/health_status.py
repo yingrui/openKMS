@@ -21,7 +21,9 @@ from app.schemas.health_status import (
     HealthComponent,
     HealthStatusResponse,
     HealthStatusKind,
+    ProcessInstanceHealth,
 )
+from app.services import process_heartbeat_registry as heartbeat_registry
 from app.services.data_source_connection import test_data_source_connection
 from app.services.permission_catalog import PERM_CONSOLE_ACCESS, PERM_CONSOLE_DATA_SOURCES
 
@@ -145,6 +147,55 @@ async def _check_langfuse() -> tuple[HealthStatusKind, str | None, int | None]:
         return "error", f"Host {host}: {e}. {creds}", ms
 
 
+def _build_process_health() -> tuple[list[ProcessInstanceHealth], list[HealthComponent]]:
+    heartbeat_registry.prune_stale()
+    entries = heartbeat_registry.list_entries()
+    instances: list[ProcessInstanceHealth] = []
+    for entry in sorted(entries, key=lambda e: (e.role, e.instance_id)):
+        status = heartbeat_registry.instance_status(entry.reported_at)  # type: ignore[arg-type]
+        role_label = "Job worker" if entry.role == "worker" else "Job scheduler"
+        instances.append(
+            ProcessInstanceHealth(
+                role=entry.role,
+                instance_id=entry.instance_id,
+                label=f"{role_label} · {entry.instance_id}",
+                status=status,
+                last_seen_at=entry.reported_at,
+                message=entry.message or heartbeat_registry.format_last_seen_message(entry.reported_at),
+            )
+        )
+
+    worker_rows = [i for i in instances if i.role == "worker"]
+    scheduler_rows = [i for i in instances if i.role == "scheduler"]
+    worker_online = [i for i in worker_rows if i.status == "ok"]
+    scheduler_online = [i for i in scheduler_rows if i.status == "ok"]
+
+    summary: list[HealthComponent] = []
+    if worker_rows:
+        w_status: HealthStatusKind = "ok" if worker_online else "error"
+        w_msg = f"{len(worker_online)} of {len(worker_rows)} workers online"
+        if worker_online:
+            names = ", ".join(i.instance_id for i in worker_online)
+            w_msg = f"{w_msg} ({names})"
+    else:
+        w_status = "error"
+        w_msg = "No workers registered"
+    summary.append(
+        HealthComponent(id="job_workers", label="Job workers", status=w_status, message=w_msg)
+    )
+
+    if scheduler_rows:
+        s_status: HealthStatusKind = "ok" if scheduler_online else "error"
+        s_msg = "Scheduler online" if scheduler_online else "Scheduler offline"
+    else:
+        s_status = "error"
+        s_msg = "No scheduler registered"
+    summary.append(
+        HealthComponent(id="job_scheduler", label="Job scheduler", status=s_status, message=s_msg)
+    )
+    return instances, summary
+
+
 @router.get(
     "/health-status",
     response_model=HealthStatusResponse,
@@ -154,7 +205,7 @@ async def get_health_status(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Check API, database, storage, job queue, Langfuse (when configured), and optionally data sources."""
+    """Check API, database, storage, job queue, job processes, Langfuse, and optionally data sources."""
     components: list[HealthComponent] = [
         HealthComponent(id="api", label="API", status="ok", message="Responding"),
     ]
@@ -197,6 +248,9 @@ async def get_health_status(
         )
     )
 
+    process_instances, process_summary = _build_process_health()
+    components.extend(process_summary)
+
     data_sources: list[DataSourceHealthItem] = []
     include_data_sources = False
     try:
@@ -226,12 +280,14 @@ async def get_health_status(
             )
 
     component_statuses = [c.status for c in components]
+    process_statuses = [p.status for p in process_instances]
     ds_statuses = [d.status for d in data_sources]
-    overall = _overall(*component_statuses, *ds_statuses)
+    overall = _overall(*component_statuses, *process_statuses, *ds_statuses)
 
     return HealthStatusResponse(
         checked_at=datetime.now(timezone.utc),
         overall=overall,
         components=components,
+        process_instances=process_instances,
         data_sources=data_sources,
     )

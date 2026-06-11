@@ -21,10 +21,13 @@ Pipelines define how a document is processed (command template + linked model). 
 | Job queue | ✅ | procrastinate (PostgreSQL-based); schema applied on startup |
 | Job runs list pagination | ✅ | `GET /api/jobs` returns `total`, `limit`, `offset`; UI paginates with status/search server-side |
 | Job runs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry`, `POST /api/jobs/{id}/mark-failed` |
-| Job runs UI | ✅ | `JobRuns.tsx` at `/job-runs` (legacy `/jobs` redirects), status filter, queue run, retry failed, mark stale in-flight runs failed, delete |
+| Job runs UI | ✅ | `JobRuns.tsx` at `/job-runs` (legacy `/jobs` redirects), area nav with **Schedules** at `/job-runs/schedules`, status filter, queue run, retry failed, mark stale in-flight runs failed, delete |
+| Schedules hub | ✅ | `scheduled_triggers` registry; `GET/PATCH /api/schedules`, `POST /api/schedules/{id}/run-now`; connector sync cron write-through |
+| Central scheduler | ✅ | `backend/scheduler.py` (single instance): minute tick, `dispatch_due_schedules`, advisory lock; defers `run_connector_sync` with per-connector `lock` |
 | Job run detail | ✅ | `JobDetail.tsx` at `/job-runs/:jobId` – timing, document link, pipeline info, rendered command, event log |
 | run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default **3600**) caps wait time; updates document status |
-| Worker | ✅ | `backend/worker.py` entry point for procrastinate worker |
+| Worker | ✅ | `backend/worker.py` — procrastinate worker + minute heartbeat (`OPENKMS_WORKER_NAME` or hostname) |
+| Process health | ✅ | Console **System health** lists each worker/scheduler instance (2 min offline, 10 min prune from in-memory registry) |
 | Document status | ✅ | uploaded → pending → running → completed/failed; shown in list and detail |
 | Process button | ✅ | Visible for uploaded/failed documents in list and detail views |
 | Reset status | ✅ | Reset pending/failed documents to uploaded (if no active jobs); `POST /api/documents/{id}/reset-status` |

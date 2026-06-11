@@ -118,6 +118,21 @@ export function ConnectorCronSettings({
           </div>
         </dl>
       ) : null}
+
+      {savedSchedule?.last_run_at ? (
+        <dl className="connector-cron-status">
+          <div>
+            <dt>{t('connectors.cronLastRun')}</dt>
+            <dd>{formatDateTime(savedSchedule.last_run_at, value.timezone, dash)}</dd>
+          </div>
+          {savedSchedule.last_status ? (
+            <div>
+              <dt>{t('connectors.cronLastStatus')}</dt>
+              <dd>{savedSchedule.last_status}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
     </div>
   );
 }

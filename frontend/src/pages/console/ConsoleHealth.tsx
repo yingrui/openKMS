@@ -8,6 +8,7 @@ import {
   type HealthComponent,
   type HealthStatusKind,
   type HealthStatusResponse,
+  type ProcessInstanceHealth,
 } from '../../data/healthStatusApi';
 import './ConsoleHealth.scss';
 
@@ -19,6 +20,28 @@ function StatusIcon({ status }: { status: HealthStatusKind }) {
 
 function statusLabel(t: (key: string) => string, status: HealthStatusKind): string {
   return t(`health.status.${status}`);
+}
+
+function ProcessRow({ row }: { row: ProcessInstanceHealth }) {
+  const { t } = useTranslation('console');
+  return (
+    <tr>
+      <td>{row.instance_id}</td>
+      <td>{t(`health.role.${row.role}`)}</td>
+      <td>
+        <span className={`console-health-status console-health-status--${row.status}`}>
+          <StatusIcon status={row.status} />
+          {statusLabel(t, row.status)}
+        </span>
+      </td>
+      <td>
+        {row.last_seen_at
+          ? new Date(row.last_seen_at).toLocaleString()
+          : t('health.colLastSeenEmpty')}
+      </td>
+      <td className="console-health-message">{row.message ?? '—'}</td>
+    </tr>
+  );
 }
 
 function ComponentRow({ row }: { row: HealthComponent }) {
@@ -126,6 +149,37 @@ export function ConsoleHealth() {
                 ))}
               </tbody>
             </table>
+          </section>
+
+          <section className="console-health-section" aria-labelledby="console-health-processes-heading">
+            <h2 id="console-health-processes-heading">{t('health.processesHeading')}</h2>
+            {(data.process_instances ?? []).length === 0 ? (
+              <p className="console-health-empty-ds">{t('health.processesEmpty')}</p>
+            ) : (
+              <>
+                <p className="console-health-hint">
+                  {t('health.workersOnline', {
+                    count: (data.process_instances ?? []).filter((p) => p.role === 'worker' && p.status === 'ok').length,
+                  })}
+                </p>
+                <table className="console-health-table">
+                  <thead>
+                    <tr>
+                      <th>{t('health.colProcessName')}</th>
+                      <th>{t('health.colProcessRole')}</th>
+                      <th>{t('health.colStatus')}</th>
+                      <th>{t('health.colLastSeen')}</th>
+                      <th>{t('health.colDetails')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.process_instances ?? []).map((row) => (
+                      <ProcessRow key={`${row.role}:${row.instance_id}`} row={row} />
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
           </section>
 
           <section className="console-health-section" aria-labelledby="console-health-ds-heading">

@@ -1,4 +1,7 @@
-"""Persist sync connector schedule settings (``settings.sync_schedule`` only; no execution)."""
+"""Cron validation, normalization, and next-run preview for connector sync schedules.
+
+Execution is driven by ``scheduled_triggers`` and the central ``scheduler`` process.
+"""
 
 from __future__ import annotations
 
@@ -91,7 +94,7 @@ def sync_schedule_to_response(settings: dict[str, Any] | None) -> dict[str, Any]
 
 
 def compute_next_run_at(cron: str, tz_name: str, *, from_dt: datetime | None = None) -> datetime:
-    """Preview only; not used to trigger jobs."""
+    """Next fire time in UTC (API preview; scheduler uses separate slot matching)."""
     validate_cron_expression(cron)
     tz = ZoneInfo(validate_timezone(tz_name))
     base = from_dt or datetime.now(timezone.utc)

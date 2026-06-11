@@ -20,7 +20,7 @@
   "resetForm": "Reset form to defaults",
   "health": {
     "pageTitle": "System health",
-    "subtitle": "Check whether the API, database, object storage, background jobs, Langfuse tracing host (when configured on the server), and registered data sources are reachable.",
+    "subtitle": "Check whether the API, database, object storage, background jobs, job worker and scheduler processes, Langfuse tracing host (when configured on the server), and registered data sources are reachable.",
     "toastLoadFailed": "Failed to load health status",
     "loading": "Loading health checks…",
     "refresh": "Refresh",
@@ -28,6 +28,17 @@
     "overall": "Overall: {{status}}",
     "checkedAt": "Last checked {{time}}",
     "coreHeading": "Core services",
+    "processesHeading": "Job processes",
+    "processesEmpty": "No worker or scheduler heartbeats received yet.",
+    "workersOnline": "{{count}} workers online",
+    "colProcessName": "Name",
+    "colProcessRole": "Role",
+    "colLastSeen": "Last seen",
+    "colLastSeenEmpty": "—",
+    "role": {
+      "worker": "Worker",
+      "scheduler": "Scheduler"
+    },
     "dataSourcesHeading": "Registered data sources",
     "dataSourcesEmpty": "No data sources to check, or you need console:data_sources to see connection tests here.",
     "dataSourcesHint": "Manage connections on",
@@ -51,6 +62,8 @@
       "database": "Database",
       "storage": "Object storage",
       "job_queue": "Background jobs",
+      "job_workers": "Job workers",
+      "job_scheduler": "Job scheduler",
       "langfuse": "Langfuse (tracing)"
     }
   },
@@ -461,6 +474,8 @@
     "cronExpression": "Cron: {{cron}}",
     "cronLastRun": "Last run",
     "cronNextRun": "Next run",
+    "cronLastRun": "Last run",
+    "cronLastStatus": "Last status",
     "cronStatus": {
       "ok": "succeeded",
       "failed": "failed",

@@ -150,6 +150,7 @@ def _parse_basic_auth(header: str) -> tuple[str, str] | None:
 def _local_basic_matches(username: str, password: str) -> bool:
     for cfg_user, cfg_pass in (
         (settings.cli_basic_user, settings.cli_basic_password),
+        (settings.worker_basic_user, settings.worker_basic_password),
         (settings.qa_agent_basic_user, settings.qa_agent_basic_password),
     ):
         if cfg_user and cfg_pass and secrets.compare_digest(username, cfg_user) and secrets.compare_digest(

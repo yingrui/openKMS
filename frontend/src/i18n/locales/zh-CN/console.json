@@ -20,7 +20,7 @@
   "resetForm": "重置表单为默认值",
   "health": {
     "pageTitle": "系统健康",
-    "subtitle": "检查 API、数据库、对象存储、后台任务、Langfuse 追踪服务（在服务器上配置时）与已登记数据源是否可用。",
+    "subtitle": "检查 API、数据库、对象存储、后台任务、任务 Worker 与 Scheduler 进程、Langfuse 追踪服务（在服务器上配置时）与已登记数据源是否可用。",
     "toastLoadFailed": "无法加载健康状态",
     "loading": "正在加载健康检查…",
     "refresh": "刷新",
@@ -28,6 +28,17 @@
     "overall": "总体：{{status}}",
     "checkedAt": "上次检查 {{time}}",
     "coreHeading": "核心服务",
+    "processesHeading": "任务进程",
+    "processesEmpty": "尚未收到 Worker 或 Scheduler 心跳。",
+    "workersOnline": "{{count}} 个 Worker 在线",
+    "colProcessName": "名称",
+    "colProcessRole": "角色",
+    "colLastSeen": "上次上报",
+    "colLastSeenEmpty": "—",
+    "role": {
+      "worker": "Worker",
+      "scheduler": "Scheduler"
+    },
     "dataSourcesHeading": "已登记数据源",
     "dataSourcesEmpty": "没有可检查的数据源，或需要 console:data_sources 权限才能在此测试连接。",
     "dataSourcesHint": "在以下页面管理连接：",
@@ -51,6 +62,8 @@
       "database": "数据库",
       "storage": "对象存储",
       "job_queue": "后台任务",
+      "job_workers": "任务 Worker",
+      "job_scheduler": "任务 Scheduler",
       "langfuse": "Langfuse（追踪）"
     }
   },
@@ -461,6 +474,8 @@
     "cronExpression": "Cron：{{cron}}",
     "cronLastRun": "上次运行",
     "cronNextRun": "下次运行",
+    "cronLastRun": "上次运行",
+    "cronLastStatus": "上次状态",
     "cronStatus": {
       "ok": "成功",
       "failed": "失败",

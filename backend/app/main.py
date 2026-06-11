@@ -17,6 +17,7 @@ from app.api.jobs import router as jobs_router
 from app.api.internal import documents_router as internal_documents_router
 from app.api.internal import knowledge_bases_router as internal_knowledge_bases_router
 from app.api.internal import models_router as internal_models_router
+from app.api.internal import process_heartbeat_router as internal_process_heartbeat_router
 from app.api.models import router as models_router
 from app.api.pipelines import router as pipelines_router
 from app.api.knowledge_bases import router as knowledge_bases_router
@@ -31,6 +32,7 @@ from app.api.link_types import router as link_types_router
 from app.api.ontology_explore import router as ontology_explore_router
 from app.api.providers import router as providers_router
 from app.api.connectors import router as connectors_router
+from app.api.schedules import router as schedules_router
 from app.api.data_sources import router as data_sources_router
 from app.api.datasets import router as datasets_router
 from app.api.evaluations import router as evaluations_router
@@ -128,6 +130,7 @@ app.include_router(models_router, prefix="/api")
 app.include_router(internal_models_router)
 app.include_router(internal_documents_router)
 app.include_router(internal_knowledge_bases_router)
+app.include_router(internal_process_heartbeat_router)
 app.include_router(providers_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(knowledge_bases_router, prefix="/api")
@@ -141,6 +144,7 @@ app.include_router(object_types_router, prefix="/api")
 app.include_router(link_types_router, prefix="/api")
 app.include_router(ontology_explore_router, prefix="/api")
 app.include_router(connectors_router, prefix="/api")
+app.include_router(schedules_router, prefix="/api")
 app.include_router(data_sources_router, prefix="/api")
 app.include_router(datasets_router, prefix="/api")
 app.include_router(evaluations_router, prefix="/api")

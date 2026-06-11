@@ -110,12 +110,23 @@ Same OpenAI-compat **thinking** handling as Wiki Copilot: optional JSON **`extra
 | `OPENKMS_QA_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per KB Q&A turn (generate ↔ tools). **Alias:** `OPENKMS_AGENT_RECURSION_LIMIT`. Without this, LangGraph defaults to **25** (ontology-heavy questions hit it quickly). |
 | `OPENKMS_QA_AGENT_LOG_LEVEL` | `INFO` | **INFO**: turn summary, tool name/count; **DEBUG**: tool I/O payloads, questions, per LangGraph event gaps |
 
-## openkms-cli (OIDC)
+## Backend worker + scheduler + CLI subprocess
+
+Set on **`backend/.env`**. The worker injects **`OPENKMS_CLI_*`** into every **openkms-cli** subprocess; worker/scheduler use **`OPENKMS_WORKER_*`** for heartbeats.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `OPENKMS_OIDC_TOKEN_URL` | unset | Required when **`OPENKMS_AUTH_MODE=oidc`**; IdP `token_endpoint` |
-| `OPENKMS_CLI_OIDC_CLIENT_ID` / `OPENKMS_CLI_OIDC_CLIENT_SECRET` | `openkms-cli` / unset | Client credentials for `/internal-api` and other API calls |
+| `OPENKMS_WORKER_BASIC_USER` / `OPENKMS_WORKER_BASIC_PASSWORD` | unset | Local mode HTTP Basic for worker/scheduler heartbeats |
+| `OPENKMS_WORKER_OIDC_CLIENT_ID` / `OPENKMS_WORKER_OIDC_CLIENT_SECRET` | unset | OIDC for worker/scheduler; id in **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** |
+| `OPENKMS_CLI_OIDC_CLIENT_ID` / `OPENKMS_CLI_OIDC_CLIENT_SECRET` | `openkms-cli` / unset | OIDC for worker-spawned openkms-cli; id in **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`** |
+| `OPENKMS_OIDC_TOKEN_URL` | unset | IdP `token_endpoint` for CLI (and worker OIDC when issuer discovery is not used) |
+
+## openkms-cli (standalone / extra)
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `OPENKMS_OIDC_TOKEN_URL` | unset | Same as backend when running CLI from a shell; worker jobs use **`backend/.env`** |
+| `OPENKMS_CLI_OIDC_CLIENT_ID` / `OPENKMS_CLI_OIDC_CLIENT_SECRET` | `openkms-cli` / unset | Optional override in **`openkms-cli/.env`** for direct CLI use |
 | `OPENKMS_CLI_LOG_LEVEL` | `INFO` | **`openkms_cli.*`** logs to stderr (visible in job Worker output); e.g. **`DEBUG`** for Baidu **`file_url`** diagnostics |
 | `OPENKMS_LLM_MODEL_BASE_URL` | unset | Override LLM base URL (skip backend fetch for this field) |
 | `OPENKMS_LLM_MODEL_NAME` | unset | Override model name |

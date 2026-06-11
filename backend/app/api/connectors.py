@@ -50,7 +50,12 @@ from app.services.connector_sync.provision import (
     provision_dataset_for_slot,
     validate_connector_outputs,
 )
-from app.services.connector_sync.schedule import sync_schedule_to_response
+from app.services.scheduled_triggers import (
+    delete_connector_sync_trigger,
+    get_trigger_for_connector,
+    merge_sync_schedule_response,
+    upsert_connector_sync_trigger,
+)
 from app.services.connector_sync.sync_range import parse_sync_date_range
 from app.services.permission_catalog import (
     PERM_CONNECTORS_READ,
@@ -72,12 +77,13 @@ async def _ensure_datasets_exist(db: AsyncSession, dataset_ids: list[str]) -> No
             raise HTTPException(status_code=400, detail=f"Dataset not found: {did}")
 
 
-def _to_response(row: Connector) -> ConnectorResponse:
+async def _to_response(row: Connector, db: AsyncSession) -> ConnectorResponse:
     spec = get_kind_spec(row.kind)
     configured: dict[str, bool] = {}
     if spec:
         configured = secrets_status(spec, row.secrets_encrypted)
-    sched_raw = sync_schedule_to_response(row.settings)
+    trigger = await get_trigger_for_connector(db, row.id)
+    sched_raw = merge_sync_schedule_response(row, trigger)
     sched = ConnectorSyncScheduleOut(**sched_raw) if sched_raw else None
     return ConnectorResponse(
         id=row.id,
@@ -211,7 +217,8 @@ async def list_connectors(
     if category:
         cat = category.strip()
         rows = [r for r in rows if (spec := get_kind_spec(r.kind)) and spec.category == cat]
-    return ConnectorListResponse(items=[_to_response(r) for r in rows], total=len(rows))
+    items = [await _to_response(r, db) for r in rows]
+    return ConnectorListResponse(items=items, total=len(items))
 
 
 @router.post("", response_model=ConnectorResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))])
@@ -257,8 +264,13 @@ async def create_connector(body: ConnectorCreate, db: AsyncSession = Depends(get
     )
     db.add(row)
     await db.flush()
+    try:
+        await upsert_connector_sync_trigger(db, row)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
     await db.refresh(row)
-    return _to_response(row)
+    return await _to_response(row, db)
 
 
 @router.get("/{connector_id}", response_model=ConnectorResponse, dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))])
@@ -266,7 +278,7 @@ async def get_connector(connector_id: str, db: AsyncSession = Depends(get_db)):
     row = await db.get(Connector, connector_id)
     if not row:
         raise HTTPException(status_code=404, detail="Connector not found")
-    return _to_response(row)
+    return await _to_response(row, db)
 
 
 @router.post(
@@ -300,12 +312,16 @@ async def trigger_connector_sync(
 
     from app.jobs.defer import defer_task
     from app.jobs.tasks import run_connector_sync
+    from app.services.schedule_dispatch import CONNECTOR_SYNC_LOCK_PREFIX
 
     defer_kwargs: dict[str, str] = {"connector_id": row.id}
     if req.start_date is not None and req.end_date is not None:
         defer_kwargs["start_date"] = req.start_date.isoformat()
         defer_kwargs["end_date"] = req.end_date.isoformat()
-    job_id = await defer_task(run_connector_sync, **defer_kwargs)
+    job_id = await defer_task(
+        run_connector_sync.configure(lock=f"{CONNECTOR_SYNC_LOCK_PREFIX}{row.id}"),
+        **defer_kwargs,
+    )
     await db.commit()
     return ConnectorSyncTriggerResponse(job_id=int(job_id))
 
@@ -423,8 +439,13 @@ async def update_connector(connector_id: str, body: ConnectorUpdate, db: AsyncSe
         row.secrets_encrypted = merge_secrets_encrypted(row.secrets_encrypted, body.secrets, kind=row.kind)
 
     await db.flush()
+    try:
+        await upsert_connector_sync_trigger(db, row)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    await db.commit()
     await db.refresh(row)
-    return _to_response(row)
+    return await _to_response(row, db)
 
 
 @router.delete("/{connector_id}", status_code=204, dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))])
@@ -432,4 +453,6 @@ async def delete_connector(connector_id: str, db: AsyncSession = Depends(get_db)
     row = await db.get(Connector, connector_id)
     if not row:
         raise HTTPException(status_code=404, detail="Connector not found")
+    await delete_connector_sync_trigger(db, row.id)
     await db.delete(row)
+    await db.commit()

@@ -155,6 +155,12 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 - `id`, `name`, `kind` (e.g. `tushare` — see `GET /api/connectors/kinds`), **`inputs`** (JSONB: kind-defined non-secret fields, e.g. `api_base_url`), **`outputs`** (JSONB: slot → `dataset_id` for sync targets), `settings` (JSONB, optional extra key–value), `secrets_encrypted` (Fernet ciphertext of a JSON object whose keys are kind-specific, e.g. `TUSHARE_TOKEN`), `enabled`, `created_at`, `updated_at`
 - One row per configured integration; workers read secrets via the same decrypt helper as data sources
+- **Sync schedule:** `settings.sync_schedule` (`enabled`, `cron`, `timezone`) mirrors **`scheduled_triggers`**; runtime fields (`last_run_at`, `last_status`, `last_job_id`) live on the trigger row
+
+### ScheduledTrigger
+
+- `id`, `kind` (v1: `connector_sync`), `target_id` (e.g. connector id), `display_name`, `cron`, `timezone`, `enabled`, `last_fired_slot`, `last_run_at`, `last_status`, `last_job_id`, `created_at`, `updated_at`
+- UNIQUE (`kind`, `target_id`); scanned each minute by **`scheduler.py`**; backfilled from connector `sync_schedule` on migration
 
 ### Dataset
 

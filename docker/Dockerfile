@@ -31,6 +31,7 @@ COPY backend/app ./app
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini .
 COPY backend/worker.py .
+COPY backend/scheduler.py .
 
 ENV UV_INDEX_URL=${UV_INDEX_URL} \
     UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}

@@ -35,8 +35,10 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | **Max LangGraph steps** (model+tool loop) per chat turn. The default was too low for bulk get/upsert; raise (e.g. 400) only if you need very large single-turn batches, or use smaller batches per message. |
 | `OPENKMS_AUTH_MODE` | oidc | `oidc` (external IdP) or `local` (PostgreSQL users + `/api/auth/*`) |
 | `OPENKMS_ALLOW_SIGNUP` | true | Allow `POST /api/auth/register` when `auth_mode=local`; first user is admin |
-| `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: HTTP Basic for openkms-cli |
+| `OPENKMS_CLI_BASIC_USER` | (empty) | Local mode: HTTP Basic for openkms-cli (worker injects into CLI subprocess) |
 | `OPENKMS_CLI_BASIC_PASSWORD` | (empty) | |
+| `OPENKMS_CLI_OIDC_CLIENT_ID` | openkms-cli | OIDC: client id for worker-spawned openkms-cli |
+| `OPENKMS_CLI_OIDC_CLIENT_SECRET` | (empty) | OIDC client secret (must be in **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**) |
 | `OPENKMS_QA_AGENT_BASIC_USER` | (empty) | Local mode: HTTP Basic for qa-agent |
 | `OPENKMS_QA_AGENT_BASIC_PASSWORD` | (empty) | |
 | `OPENKMS_OIDC_ISSUER` | (empty) | Full OIDC issuer URL; if set, overrides base+realm below |
@@ -54,7 +56,7 @@ Create `.env` or set environment variables (prefix `OPENKMS_`):
 - **`OPENKMS_VLM_URL`** is the only VLM-related variable the **backend** reads (defaults to mlx-vlm on port **8101**). Pipelines can still override the parse URL from a **linked API model** on the pipeline (`model_id`).
 - **`OPENKMS_VLM_API_KEY`** and **`OPENKMS_EMBEDDING_MODEL_*`** are **not** read by the backend (`app/config.py` uses `extra: "ignore"`). **`OPENKMS_VLM_API_KEY`** belongs in **`openkms-cli/.env`** when the VLM HTTP API requires a key. **`kb-index`** gets embedding URL, model name, and API key from **`GET /internal-api/models/kb-embedding-credentials`** (same auth as other CLI calls); optional **`OPENKMS_EMBEDDING_MODEL_*`** in **`openkms-cli/.env`** overrides those values when needed. **qa-agent** resolves default LLM via **`GET /internal-api/models/llm-defaults`** (same authenticated service pattern as openkms-cli model defaults).
 
-**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **openkms-cli** / **qa-agent** OIDC: `OPENKMS_OIDC_TOKEN_URL` (required), `OPENKMS_CLI_OIDC_CLIENT_ID`, `OPENKMS_CLI_OIDC_CLIENT_SECRET`.
+**Migrating env names:** Backend no longer reads `KEYCLOAK_*` — use `OPENKMS_OIDC_*` and `OPENKMS_FRONTEND_URL` as in `backend/.env.example`. **Worker-spawned openkms-cli** reads **`OPENKMS_CLI_OIDC_*`** and **`OPENKMS_OIDC_TOKEN_URL`** from **`backend/.env`** (injected by the worker). Standalone CLI from a shell may still use **`openkms-cli/.env`**. **qa-agent** OIDC: **`qa-agent/.env.example`** (`OPENKMS_QA_AGENT_OIDC_CLIENT_*`).
 
 ## Database
 
@@ -122,9 +124,17 @@ cd ../vlm-server && ./start.sh
 # SQL statement logging is opt-in: set OPENKMS_SQL_ECHO=true (OPENKMS_DEBUG alone does not enable it).
 ./dev.sh
 
+# Background processes (separate terminals; same .env as API)
+python worker.py
+python scheduler.py
+
 # Or run uvicorn directly (requires OPENKMS_DEBUG=true or non-default OPENKMS_SECRET_KEY for local dev)
 uvicorn app.main:app --reload --port 8102
 ```
+
+Optional **`OPENKMS_WORKER_NAME`** names a worker instance on Console **System health** (default: hostname). The scheduler is a **single** process; connector cron does not run without it.
+
+**Auth for worker/scheduler heartbeats** (`/internal-api/process-heartbeat`): **`OPENKMS_AUTH_MODE=local`** → **`OPENKMS_WORKER_BASIC_USER`** / **`OPENKMS_WORKER_BASIC_PASSWORD`** (API must accept the same pair). **`OPENKMS_AUTH_MODE=oidc`** → **`OPENKMS_WORKER_OIDC_CLIENT_ID`** / **`OPENKMS_WORKER_OIDC_CLIENT_SECRET`** (client id must appear in **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**); optional **`OPENKMS_OIDC_TOKEN_URL`** (else from issuer discovery). openkms-cli keeps its own **`OPENKMS_CLI_*`** credentials.
 
 API: http://localhost:8102  
 Docs: http://localhost:8102/docs

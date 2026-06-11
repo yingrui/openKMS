@@ -52,7 +52,7 @@ OPENKMS_VLM_URL=http://host.docker.internal:8101
 
 前端镜像构建时烘焙 `VITE_AUTH_MODE`。Compose 默认**仅本地认证**（`docker-compose.yml` 无 OIDC 环境变量）。OIDC 须设 **`OPENKMS_AUTH_MODE=oidc`**、全部 **`OPENKMS_OIDC_*`**（见 **`backend/.env.example`**），并以 **`VITE_AUTH_MODE=oidc`** 重建前端 — 不能仅靠 **`docker/.env.example`**。
 
-Worker → `openkms-cli` 的 CLI Basic 凭据默认来自 compose 的 **`OPENKMS_CLI_BASIC_*`**（`openkms-cli` / `change-me`）。
+**openkms-cli** 默认 **`OPENKMS_CLI_BASIC_*`**；worker/scheduler 心跳使用 **`OPENKMS_WORKER_BASIC_*`**（local）或 **`OPENKMS_WORKER_OIDC_*`**（OIDC；client id 须列入 **`OPENKMS_INTERNAL_SERVICE_CLIENT_IDS`**）。
 
 ## 另见
 

@@ -2,7 +2,6 @@
 import asyncio
 import json
 import logging
-import os
 import shlex
 import subprocess
 import traceback
@@ -12,6 +11,7 @@ from procrastinate.job_context import JobContext
 from app.config import settings
 from app.constants import DocumentStatus
 from app.jobs import job_app
+from app.services.openkms_cli_subprocess import build_openkms_cli_subprocess_env
 
 logger = logging.getLogger(__name__)
 
@@ -170,26 +170,21 @@ async def run_pipeline(
     log_out = ""
     log_err = ""
 
-    subprocess_env = {
-        **os.environ,
-        "AWS_ACCESS_KEY_ID": settings.aws_access_key_id,
-        "AWS_SECRET_ACCESS_KEY": settings.aws_secret_access_key,
-        "OPENKMS_API_URL": settings.openkms_backend_url.rstrip("/"),
-        "OPENKMS_FRONTEND_URL": settings.frontend_url.rstrip("/"),
-        "OPENKMS_BAIDU_FILE_URL_SUBMIT_RETRIES": str(settings.baidu_file_url_submit_retries),
-        "OPENKMS_BAIDU_FILE_URL_RETRY_DELAY_SECONDS": str(settings.baidu_file_url_retry_delay_seconds),
-        "OPENKMS_BAIDU_FILE_URL_SUBMIT_TIMEOUT_SECONDS": str(settings.baidu_file_url_submit_timeout_seconds),
-        "OPENKMS_BAIDU_BOS_BUCKET": settings.baidu_bos_bucket,
-        "OPENKMS_BAIDU_BOS_ACCESS_KEY": settings.baidu_bos_access_key,
-        "OPENKMS_BAIDU_BOS_SECRET_KEY": settings.baidu_bos_secret_key,
-        "OPENKMS_BAIDU_BOS_ENDPOINT": settings.baidu_bos_endpoint,
-        "OPENKMS_BAIDU_BOS_PREFIX": settings.baidu_bos_prefix,
-        "OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS": str(settings.baidu_bos_presign_ttl_seconds),
-        # openkms-cli reads these for try_api_request_auth() (local: HTTP Basic; OIDC: still from os.environ).
-        "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
-        "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,
-        "OPENKMS_CLI_BASIC_PASSWORD": settings.cli_basic_password,
-    }
+    subprocess_env = build_openkms_cli_subprocess_env(
+        AWS_ACCESS_KEY_ID=settings.aws_access_key_id,
+        AWS_SECRET_ACCESS_KEY=settings.aws_secret_access_key,
+        OPENKMS_API_URL=settings.openkms_backend_url.rstrip("/"),
+        OPENKMS_FRONTEND_URL=settings.frontend_url.rstrip("/"),
+        OPENKMS_BAIDU_FILE_URL_SUBMIT_RETRIES=str(settings.baidu_file_url_submit_retries),
+        OPENKMS_BAIDU_FILE_URL_RETRY_DELAY_SECONDS=str(settings.baidu_file_url_retry_delay_seconds),
+        OPENKMS_BAIDU_FILE_URL_SUBMIT_TIMEOUT_SECONDS=str(settings.baidu_file_url_submit_timeout_seconds),
+        OPENKMS_BAIDU_BOS_BUCKET=settings.baidu_bos_bucket,
+        OPENKMS_BAIDU_BOS_ACCESS_KEY=settings.baidu_bos_access_key,
+        OPENKMS_BAIDU_BOS_SECRET_KEY=settings.baidu_bos_secret_key,
+        OPENKMS_BAIDU_BOS_ENDPOINT=settings.baidu_bos_endpoint,
+        OPENKMS_BAIDU_BOS_PREFIX=settings.baidu_bos_prefix,
+        OPENKMS_BAIDU_BOS_PRESIGN_TTL_SECONDS=str(settings.baidu_bos_presign_ttl_seconds),
+    )
 
     if "--extract-metadata" in rendered and settings.auth_mode.strip().lower() == "local":
         if not (settings.cli_basic_user.strip() and settings.cli_basic_password):
@@ -489,13 +484,7 @@ async def run_kb_index(
             f" --api-url {base_api_url}"
         )
 
-        subprocess_env = {
-            **os.environ,
-            "OPENKMS_API_URL": base_api_url,
-            "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
-            "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,
-            "OPENKMS_CLI_BASIC_PASSWORD": settings.cli_basic_password,
-        }
+        subprocess_env = build_openkms_cli_subprocess_env(OPENKMS_API_URL=base_api_url)
 
         cmd = shlex.split(cmd_str)
         log_cmd = cmd_str
@@ -572,13 +561,7 @@ async def run_kb_wiki_space_index(
             f" --api-url {base_api_url}"
         )
 
-        subprocess_env = {
-            **os.environ,
-            "OPENKMS_API_URL": base_api_url,
-            "OPENKMS_AUTH_MODE": (settings.auth_mode or "oidc").strip().lower(),
-            "OPENKMS_CLI_BASIC_USER": settings.cli_basic_user,
-            "OPENKMS_CLI_BASIC_PASSWORD": settings.cli_basic_password,
-        }
+        subprocess_env = build_openkms_cli_subprocess_env(OPENKMS_API_URL=base_api_url)
 
         cmd = shlex.split(cmd_str)
         log_cmd = cmd_str
@@ -799,6 +782,14 @@ async def run_connector_sync(
             )
             for slot, count in stats.items():
                 log_lines.append(f"{slot}: {count} rows upserted")
+            from app.services.schedule_dispatch import update_trigger_after_sync
+
+            await update_trigger_after_sync(
+                session,
+                connector_id,
+                job_id=job_id,
+                status="completed",
+            )
             await session.commit()
             logger.info("Connector sync finished for %s: %s", connector_id, stats)
             log_lines.append(f"Connector sync finished: {stats}")
@@ -834,6 +825,14 @@ async def run_connector_sync(
                     wait,
                 )
                 return
+            from app.services.schedule_dispatch import update_trigger_after_sync
+
+            await update_trigger_after_sync(
+                session,
+                connector_id,
+                job_id=job_id,
+                status="failed",
+            )
             logger.exception("Connector sync failed for %s", connector_id)
             await session.commit()
             log_lines.append(f"Connector sync failed: {exc}")

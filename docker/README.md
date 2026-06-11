@@ -2,7 +2,9 @@
 
 ## Full stack (`docker-compose.yml`)
 
-Backend, worker (`openkms-cli` with parse/pipeline/metadata/kb), **qa-agent** (KB Q&A / hybrid retrieve), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
+Backend, **scheduler** (central cron hub), worker (`openkms-cli` with parse/pipeline/metadata/kb), **qa-agent** (KB Q&A / hybrid retrieve), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
+
+Run **one** `scheduler` replica only. Connector cron and other `scheduled_triggers` do not run if scheduler is down (Console health shows scheduler offline). Optional **`OPENKMS_WORKER_NAME`** on the worker service names instances on the health page when scaling workers.
 
 **Worker** is `platform: linux/amd64` so Paddle wheels install on Apple Silicon (QEMU). Needs **`libgl1`** in the image for OpenCV/PaddleX.
 

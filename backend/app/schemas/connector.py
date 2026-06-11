@@ -94,6 +94,9 @@ class ConnectorSyncScheduleOut(BaseModel):
     cron: str | None = None
     timezone: str = "UTC"
     next_run_at: datetime | None = None
+    last_run_at: datetime | None = None
+    last_status: str | None = None
+    last_job_id: int | None = None
 
 
 class ConnectorSearchRequest(BaseModel):

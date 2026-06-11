@@ -26,6 +26,11 @@
     "actions": "操作"
   },
   "jobs": {
+    "nav": {
+      "areaLabel": "任务区",
+      "runs": "任务运行",
+      "schedules": "计划任务"
+    },
     "title": "任务运行",
     "subtitle": "文档处理与知识库索引的运行记录。",
     "newJob": "新建运行",
@@ -68,6 +73,25 @@
     "forceFullReparse": "完整重新解析",
     "forceFullReparseTitle": "忽略存储上的解析缓存并重新执行流水线。",
     "createJob": "排队运行"
+  },
+  "schedules": {
+    "title": "计划任务",
+    "subtitle": "连接器自动同步及其他已注册的定时任务。",
+    "loadFailed": "无法加载计划任务",
+    "updateFailed": "无法更新计划",
+    "runFailed": "无法排队运行",
+    "runQueued": "已排队运行 #{{id}}",
+    "runNow": "立即运行",
+    "loading": "正在加载计划任务…",
+    "empty": "暂无计划。可在同步连接器上启用计划任务。",
+    "hint": "计划由中央 scheduler 进程执行。连接器管理见「连接器」。",
+    "colName": "名称",
+    "colKind": "类型",
+    "colCron": "Cron",
+    "colEnabled": "启用",
+    "colNextRun": "下次运行",
+    "colLastRun": "上次运行",
+    "colStatus": "上次状态"
   },
   "jobDetail": {
     "loadFailed": "无法加载运行记录",

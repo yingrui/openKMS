@@ -13,6 +13,7 @@ import {
 } from '../../data/jobsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
+import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import './JobDetail.scss';
 
 function formatDateTime(iso: string | undefined | null, dash: string): string {
@@ -150,6 +151,7 @@ export function JobDetail() {
 
   return (
     <div className="job-detail">
+      <JobsAreaNav />
       <Link to="/job-runs" className="job-detail-back">
         <ArrowLeft size={18} />
         <span>{t('jobDetail.back')}</span>

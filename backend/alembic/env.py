@@ -55,6 +55,7 @@ import app.models.user_git_credential  # noqa: F401 - register models with Base.
 import app.models.system_settings  # noqa: F401 - register models with Base.metadata
 import app.models.knowledge_map  # noqa: F401 - register models with Base.metadata
 import app.models.job_run_worker_log  # noqa: F401 - register models with Base.metadata
+import app.models.scheduled_trigger  # noqa: F401 - register models with Base.metadata
 
 config = context.config
 

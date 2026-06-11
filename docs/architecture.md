@@ -258,8 +258,11 @@ backend/
 │   ├── ensure_pgvector.py       # Pre-start: check/create pgvector extension; auto-install in Docker if missing
 │   └── seed_mock_insurance_data.py  # Create mock diseases, insurance_products, disease_insurance_product tables in schema 'mock'
 ├── pyproject.toml               # Dependencies (uv.lock for reproducible installs)
-└── worker.py                    # procrastinate worker entry point
+├── scheduler.py                 # central cron hub (single instance): dispatch_due_schedules + heartbeat
+└── worker.py                    # procrastinate worker entry point + heartbeat
 ```
+
+**Background processes:** **API** (`uvicorn`) serves HTTP and holds the in-memory process heartbeat registry. **Scheduler** (`scheduler.py`, one replica) reads `scheduled_triggers` each minute and defers jobs. **Worker** (`worker.py`, scalable) executes procrastinate tasks only — no cron scanning.
 
 **Public (no-auth) API layout:** Endpoints that return read-only data without a session, beyond auth bootstrap (`/api/auth/public-config`, login/register), use **`/api/public/<resource>`** (for example **`GET /api/public/system`**). Each such route must be listed in **`strict_permission_patterns._UNAUTH_EXACT`** when strict pattern enforcement is enabled.
 

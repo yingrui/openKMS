@@ -106,6 +106,9 @@ export interface ConnectorSyncSchedule {
   cron: string | null;
   timezone: string;
   next_run_at: string | null;
+  last_run_at: string | null;
+  last_status: string | null;
+  last_job_id: number | null;
 }
 
 export interface ConnectorSyncTriggerBody {

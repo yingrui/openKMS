@@ -194,6 +194,16 @@ class Settings(BaseSettings):
     local_jwt_exp_hours: int = Field(default=168, validation_alias="OPENKMS_LOCAL_JWT_EXP_HOURS")
     cli_basic_user: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_USER")
     cli_basic_password: str = Field(default="", validation_alias="OPENKMS_CLI_BASIC_PASSWORD")
+    cli_oidc_client_id: str = Field(
+        default="openkms-cli",
+        validation_alias="OPENKMS_CLI_OIDC_CLIENT_ID",
+    )
+    cli_oidc_client_secret: str = Field(
+        default="",
+        validation_alias="OPENKMS_CLI_OIDC_CLIENT_SECRET",
+    )
+    worker_basic_user: str = Field(default="", validation_alias="OPENKMS_WORKER_BASIC_USER")
+    worker_basic_password: str = Field(default="", validation_alias="OPENKMS_WORKER_BASIC_PASSWORD")
     qa_agent_basic_user: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_USER")
     qa_agent_basic_password: str = Field(default="", validation_alias="OPENKMS_QA_AGENT_BASIC_PASSWORD")
 
@@ -281,6 +291,12 @@ class Settings(BaseSettings):
     oidc_post_logout_client_id: str = Field(
         default="openkms-frontend",
         validation_alias="OPENKMS_OIDC_POST_LOGOUT_CLIENT_ID",
+    )
+    oidc_token_url: str = Field(default="", validation_alias="OPENKMS_OIDC_TOKEN_URL")
+    worker_oidc_client_id: str = Field(default="", validation_alias="OPENKMS_WORKER_OIDC_CLIENT_ID")
+    worker_oidc_client_secret: str = Field(
+        default="",
+        validation_alias="OPENKMS_WORKER_OIDC_CLIENT_SECRET",
     )
     # Comma-separated OIDC client ids allowed on /internal-api (openkms-cli, qa-agent, …).
     internal_service_client_ids: str = Field(
