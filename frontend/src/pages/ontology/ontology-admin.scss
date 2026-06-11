@@ -848,6 +848,14 @@ select.console-form-control {
   .console-form-field {
     margin-bottom: 0;
   }
+
+  input[type='time'].console-form-control,
+  select.console-form-control {
+    box-sizing: border-box;
+    height: 2.625rem;
+    padding: 0 14px;
+    line-height: 1.25;
+  }
 }
 
 .connector-cron-cron-preview {
