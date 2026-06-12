@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SlidersHorizontal } from 'lucide-react';
-import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
-import { useArticleChannels } from '../contexts/ArticleChannelsContext';
+import { useEnsureDocumentChannels } from '../contexts/DocumentChannelsContext';
+import { useEnsureArticleChannels } from '../contexts/ArticleChannelsContext';
 import { fetchGlobalSearch, type GlobalSearchHit, type GlobalSearchResponse } from '../data/globalSearchApi';
 import './GlobalSearch.scss';
 
@@ -118,8 +118,8 @@ export function GlobalSearch() {
   const { t } = useTranslation('search');
   const [searchParams, setSearchParams] = useSearchParams();
   const qParam = searchParams.get('q') ?? '';
-  const { channels: docChannels } = useDocumentChannels();
-  const { channels: artChannels } = useArticleChannels();
+  const { channels: docChannels } = useEnsureDocumentChannels();
+  const { channels: artChannels } = useEnsureArticleChannels();
   const activeTab = useMemo(() => normalizeTab(searchParams.get('tab')), [searchParams]);
 
   const tabDefs = useMemo(

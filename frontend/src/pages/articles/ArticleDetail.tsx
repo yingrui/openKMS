@@ -27,7 +27,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { toast } from 'sonner';
 import 'katex/dist/katex.min.css';
-import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { getDocumentChannelName } from '../../data/channelUtils';
 import {
   ARTICLE_RELATION_TYPES,
@@ -84,7 +84,7 @@ export function ArticleDetail() {
   const { t } = useTranslation('articles');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { channels } = useArticleChannels();
+  const { channels } = useEnsureArticleChannels();
   const [infoVisible, setInfoVisible] = useState(true);
   const [article, setArticle] = useState<ArticleOut | null>(null);
   const [attachments, setAttachments] = useState<ArticleAttachmentOut[]>([]);

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../../data/channelUtils';
 import {
   createKnowledgeMapNode,
@@ -409,7 +409,7 @@ function KnowledgeMapTreeItem({
 export function KnowledgeMap() {
   const { t } = useTranslation('knowledgeMap');
   const { hasPermission } = useAuth();
-  const { channels } = useDocumentChannels();
+  const { channels } = useEnsureDocumentChannels();
   const [searchParams, setSearchParams] = useSearchParams();
   const nodeFromUrl = searchParams.get('node');
   const canRead = hasPermission('knowledge_map:read') || hasPermission('all');

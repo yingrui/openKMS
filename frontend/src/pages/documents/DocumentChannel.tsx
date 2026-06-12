@@ -22,7 +22,7 @@ import {
   RotateCcw,
   RefreshCw,
 } from 'lucide-react';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import {
   getDocumentChannelName,
   getDocumentChannelDescription,
@@ -97,7 +97,7 @@ export function DocumentChannel() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
-  const { channels, loading, error, refetch: refetchChannels } = useDocumentChannels();
+  const { channels, loading, error, refetch: refetchChannels } = useEnsureDocumentChannels();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatSize = useCallback(

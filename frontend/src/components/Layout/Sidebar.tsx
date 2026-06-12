@@ -31,15 +31,14 @@ import {
   Plug,
   Bot,
 } from 'lucide-react';
-import { useCallback, useEffect, useState, startTransition } from 'react';
+import { useEffect, useState, startTransition } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import logo from '../../assets/logo.svg';
-import { DEFAULT_SYSTEM_DISPLAY_NAME, effectiveSystemDisplayName, fetchSystemPublic } from '../../data/systemApi';
-import { SYSTEM_SETTINGS_UPDATED_EVENT } from '../../utils/systemSettingsStorage';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
@@ -190,8 +189,9 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const { t } = useTranslation('layout');
   const location = useLocation();
   const navigate = useNavigate();
-  const { channels } = useDocumentChannels();
-  const { channels: articleChannels } = useArticleChannels();
+  const { channels, ensureLoaded: ensureDocumentChannels } = useDocumentChannels();
+  const { channels: articleChannels, ensureLoaded: ensureArticleChannels } = useArticleChannels();
+  const { systemName: sidebarBrandName } = useSystemPublic();
   const onDocuments = location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onArticles = location.pathname === '/articles' || location.pathname.startsWith('/articles/');
 
@@ -206,29 +206,14 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
 
   const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
   const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
-  /** Empty until public system name is fetched (avoids flashing a default before the API responds). */
-  const [sidebarBrandName, setSidebarBrandName] = useState('');
-
-  const loadSidebarBrand = useCallback(async () => {
-    try {
-      const { system_name } = await fetchSystemPublic();
-      setSidebarBrandName(effectiveSystemDisplayName(system_name));
-    } catch {
-      setSidebarBrandName(DEFAULT_SYSTEM_DISPLAY_NAME);
-    }
-  }, []);
 
   useEffect(() => {
-    queueMicrotask(() => {
-      void loadSidebarBrand();
-    });
-  }, [loadSidebarBrand]);
+    if (onDocuments) void ensureDocumentChannels();
+  }, [onDocuments, ensureDocumentChannels]);
 
   useEffect(() => {
-    const onUpdated = () => void loadSidebarBrand();
-    window.addEventListener(SYSTEM_SETTINGS_UPDATED_EVENT, onUpdated);
-    return () => window.removeEventListener(SYSTEM_SETTINGS_UPDATED_EVENT, onUpdated);
-  }, [loadSidebarBrand]);
+    if (onArticles) void ensureArticleChannels();
+  }, [onArticles, ensureArticleChannels]);
 
   useEffect(() => {
     if (onDocuments && channels.length > 0) {

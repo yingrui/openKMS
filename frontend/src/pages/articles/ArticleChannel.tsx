@@ -9,7 +9,7 @@ import {
   TableRowActions,
   tableRowActionCellClass,
 } from '../../styles/design-system';
-import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getDocumentChannelDescription, getDocumentChannelName } from '../../data/channelUtils';
 import {
   createArticle,
@@ -33,7 +33,7 @@ export function ArticleChannel() {
   const { t } = useTranslation('articles');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
-  const { channels, loading, error, refetch: refetchChannels } = useArticleChannels();
+  const { channels, loading, error, refetch: refetchChannels } = useEnsureArticleChannels();
 
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);

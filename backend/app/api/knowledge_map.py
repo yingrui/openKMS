@@ -89,14 +89,14 @@ def _nid() -> str:
     return uuid.uuid4().hex[:32]
 
 
-class KnowledgeMapNodeOut(BaseModel):
-    id: str
-    parent_id: str | None
-    name: str
-    description: str | None = None
-    sort_order: int
-    link_count: int = 0
-    children: list["KnowledgeMapNodeOut"] = Field(default_factory=list)
+from app.services.knowledge_map_read import (
+    KnowledgeMapHtmlStatusOut,
+    KnowledgeMapNodeOut,
+    ResourceLinkOut,
+    load_knowledge_map_tree,
+    load_map_html_status,
+    load_resource_links,
+)
 
 
 class KnowledgeMapNodeCreate(BaseModel):
@@ -113,28 +113,10 @@ class KnowledgeMapNodeUpdate(BaseModel):
     parent_id: str | None = None
 
 
-class ResourceLinkOut(BaseModel):
-    id: str
-    knowledge_map_node_id: str
-    resource_type: str
-    resource_id: str
-
-
 class ResourceLinkUpsert(BaseModel):
     knowledge_map_node_id: str = Field(..., min_length=1, max_length=64)
     resource_type: str = Field(..., min_length=1, max_length=32)
     resource_id: str = Field(..., min_length=1, max_length=64)
-
-
-class KnowledgeMapHtmlStatusOut(BaseModel):
-    """Whether the stored HTML snapshot matches the current map (semantic hash)."""
-
-    current_content_hash: str
-    artifact_content_hash: str | None = None
-    stale: bool
-    has_artifact: bool
-    nodes_modified_at: datetime | None = None
-    generated_at: datetime | None = None
 
 
 class KnowledgeMapHtmlRegenerateOut(BaseModel):
@@ -206,48 +188,13 @@ async def _validate_resource(db: AsyncSession, resource_type: str, resource_id: 
             raise HTTPException(status_code=400, detail="article_channel not found")
 
 
-def _build_tree(
-    nodes: list[KnowledgeMapNode],
-    link_counts: dict[str, int],
-    parent_id: str | None,
-) -> list[KnowledgeMapNodeOut]:
-    children = [n for n in nodes if n.parent_id == parent_id]
-    children.sort(key=lambda n: (n.sort_order, n.name))
-    out: list[KnowledgeMapNodeOut] = []
-    for n in children:
-        out.append(
-            KnowledgeMapNodeOut(
-                id=n.id,
-                parent_id=n.parent_id,
-                name=n.name,
-                description=n.description,
-                sort_order=n.sort_order,
-                link_count=link_counts.get(n.id, 0),
-                children=_build_tree(nodes, link_counts, n.id),
-            )
-        )
-    return out
-
-
 @router.get(
     "/nodes/tree",
     response_model=list[KnowledgeMapNodeOut],
     dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
 )
 async def get_knowledge_map_tree(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(KnowledgeMapNode))
-    nodes = list(result.scalars().all())
-    link_counts: dict[str, int] = {}
-    if nodes:
-        ids = [n.id for n in nodes]
-        lc_result = await db.execute(
-            select(KnowledgeMapResourceLink.knowledge_map_node_id).where(
-                KnowledgeMapResourceLink.knowledge_map_node_id.in_(ids)
-            )
-        )
-        for (nid,) in lc_result.all():
-            link_counts[nid] = link_counts.get(nid, 0) + 1
-    return _build_tree(nodes, link_counts, None)
+    return await load_knowledge_map_tree(db)
 
 
 @router.post(
@@ -351,17 +298,7 @@ async def delete_knowledge_map_node(node_id: str, db: AsyncSession = Depends(get
     dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
 )
 async def list_resource_links(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(KnowledgeMapResourceLink).order_by(KnowledgeMapResourceLink.created_at))
-    rows = result.scalars().all()
-    return [
-        ResourceLinkOut(
-            id=r.id,
-            knowledge_map_node_id=r.knowledge_map_node_id,
-            resource_type=r.resource_type,
-            resource_id=r.resource_id,
-        )
-        for r in rows
-    ]
+    return await load_resource_links(db)
 
 
 @router.put(
@@ -427,20 +364,7 @@ async def delete_resource_link(
     dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
 )
 async def get_map_html_status(db: AsyncSession = Depends(get_db)):
-    snapshot = await load_semantic_snapshot(db)
-    current_hash = semantic_content_hash(snapshot)
-    row = await db.get(KnowledgeMapHtmlArtifact, DEFAULT_KNOWLEDGE_MAP_HTML_ARTIFACT_ID)
-    artifact_hash = row.content_hash if row else None
-    stale = row is None or row.content_hash != current_hash
-    nodes_mod = await knowledge_map_nodes_last_modified_at(db)
-    return KnowledgeMapHtmlStatusOut(
-        current_content_hash=current_hash,
-        artifact_content_hash=artifact_hash,
-        stale=stale,
-        has_artifact=row is not None and bool((row.html or "").strip()),
-        nodes_modified_at=nodes_mod,
-        generated_at=row.generated_at if row else None,
-    )
+    return await load_map_html_status(db)
 
 
 @router.get(

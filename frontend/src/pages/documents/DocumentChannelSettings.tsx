@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, Plus, Trash2, ChevronUp, ChevronDown, Code, Settings, Zap, FileSearch, Tag, Users } from 'lucide-react';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import {
   findChannel,
   getDocumentChannelName,
@@ -48,7 +48,7 @@ export function DocumentChannelSettings() {
   const navigate = useNavigate();
   const { t } = useTranslation('documents');
   const { channelId = '' } = useParams<{ channelId: string }>();
-  const { channels, refetch: refreshChannels } = useDocumentChannels();
+  const { channels, refetch: refreshChannels } = useEnsureDocumentChannels();
 
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
   const [pipelinesLoading, setPipelinesLoading] = useState(true);

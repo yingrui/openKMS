@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Folder } from 'lucide-react';
-import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../../data/channelUtils';
 import { fetchArticleStats } from '../../data/articlesApi';
 import '../documents/DocumentsIndex.scss';
@@ -11,7 +11,7 @@ export function ArticlesIndex() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { channels, loading, error } = useArticleChannels();
+  const { channels, loading, error } = useEnsureArticleChannels();
   const [articleCount, setArticleCount] = useState<number | null>(null);
 
   useEffect(() => {

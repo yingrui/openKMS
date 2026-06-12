@@ -267,6 +267,46 @@ async function syncTokenToBackend(token: string) {
   }
 }
 
+/** Dedupe sync-session + /me when runOidcInit and UserLoaded fire for the same token. */
+let oidcSessionCache: { token: string; profile: AuthUser } | null = null;
+let oidcSessionSyncInflight: Promise<AuthUser | null> | null = null;
+
+function resetOidcSessionSyncState() {
+  oidcSessionCache = null;
+  oidcSessionSyncInflight = null;
+}
+
+async function resolveOidcSessionProfile(u: User): Promise<AuthUser | null> {
+  const token = u.access_token;
+  if (!token) return parseUserFromOidc(u);
+
+  if (oidcSessionCache?.token === token) {
+    return oidcSessionCache.profile;
+  }
+
+  if (oidcSessionSyncInflight) {
+    return oidcSessionSyncInflight;
+  }
+
+  oidcSessionSyncInflight = (async () => {
+    try {
+      await syncTokenToBackend(token);
+      const me = await fetchAuthMeWithBearer(token);
+      const profile = me ?? parseUserFromOidc(u);
+      if (profile) {
+        oidcSessionCache = { token, profile };
+      }
+      return profile;
+    } catch {
+      return parseUserFromOidc(u);
+    } finally {
+      oidcSessionSyncInflight = null;
+    }
+  })();
+
+  return oidcSessionSyncInflight;
+}
+
 type PublicAuthConfigJson = {
   auth_mode: string;
   allow_signup?: boolean;
@@ -323,30 +363,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const skeletonValue = useMemo<AuthContextValue>(
-    () => ({
-      isAuthenticated: false,
-      isLoading: true,
-      user: null,
-      isAdmin: false,
-      authError: null,
-      clearAuthError: () => {},
-      retryAuth: () => {},
-      login: () => {},
-      logout: () => {},
-      getToken: async () => undefined,
-      completeLocalSession: async () => {},
-      authMode,
-      authModeReady: ready,
-      allowSignup,
-      canAccessConsole: false,
-      hasPermission: () => false,
-      canAccessPath: () => true,
-      permissionPatternsReady: false,
-      refreshUser: async () => {},
-    }),
-    [authMode, ready, allowSignup]
-  );
+  if (!ready) {
+    return <div className="app-loading" aria-live="polite" />;
+  }
 
   return (
     <>
@@ -355,9 +374,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           {compatWarning}
         </p>
       )}
-      {!ready ? (
-        <AuthContext.Provider value={skeletonValue}>{children}</AuthContext.Provider>
-      ) : authMode === 'local' ? (
+      {authMode === 'local' ? (
         <LocalAuthProvider authMode={authMode} authModeReady allowSignup={allowSignup}>
           {children}
         </LocalAuthProvider>
@@ -594,15 +611,11 @@ function OidcAuthProvider({
         }
       }
       if (u && !u.expired) {
-        let profile = parseUserFromOidc(u);
-        if (u.access_token) {
-          await syncTokenToBackend(u.access_token);
-          const me = await fetchAuthMeWithBearer(u.access_token);
-          if (me) profile = me;
-        }
+        const profile = await resolveOidcSessionProfile(u);
         setUser(profile);
         setIsAuthenticated(true);
       } else {
+        resetOidcSessionSyncState();
         setUser(null);
         setIsAuthenticated(false);
       }
@@ -629,12 +642,7 @@ function OidcAuthProvider({
     const mgr = getUserManager();
     const onLoaded = (u: User) => {
       void (async () => {
-        let profile = parseUserFromOidc(u);
-        if (u.access_token) {
-          await syncTokenToBackend(u.access_token);
-          const me = await fetchAuthMeWithBearer(u.access_token);
-          if (me) profile = me;
-        }
+        const profile = await resolveOidcSessionProfile(u);
         setUser(profile);
         setIsAuthenticated(true);
       })();
@@ -663,6 +671,7 @@ function OidcAuthProvider({
 
   const login = useCallback(() => {
     setAuthError(null);
+    resetOidcSessionSyncState();
     void (async () => {
       const mgr = getUserManager();
       try {
@@ -712,6 +721,7 @@ function OidcAuthProvider({
 
   const logout = useCallback(async () => {
     setAuthError(null);
+    resetOidcSessionSyncState();
     try {
       await fetch(`${config.apiUrl}/clear-session`, {
         method: 'POST',
@@ -730,7 +740,7 @@ function OidcAuthProvider({
     }
   }, [navigate]);
 
-  /** Return access token only. Do not `setUser` or sync session here — `tokenProvider` runs on every `getAuthHeaders()` call and would loop with `useFrontendPermissionGate` (which calls `getToken`). Session + `/me` run in `runOidcInit` and `UserManager.events` handlers. */
+  /** Return access token only. Session + /me run in `resolveOidcSessionProfile` (init / UserLoaded). */
   const getToken = useCallback(async () => {
     const mgr = getUserManager();
     try {

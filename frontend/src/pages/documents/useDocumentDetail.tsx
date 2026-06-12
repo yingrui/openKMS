@@ -33,7 +33,7 @@ import {
 } from '../../data/documentsApi';
 import { fetchObjectType, fetchObjectInstances } from '../../data/ontologyApi';
 import { createJob } from '../../data/jobsApi';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { findChannel, normalizeExtractionSchemaToFields, type LabelConfigItem, isProcessBlockedByMissingPipeline } from '../../data/channelUtils';
 import type { PageBlock, ParsingResult } from './DocumentDetail.types';
 import {
@@ -45,7 +45,7 @@ import {
 
 export function useDocumentDetail(id: string | undefined) {
   const { t } = useTranslation('documents');
-  const { channels } = useDocumentChannels();
+  const { channels } = useEnsureDocumentChannels();
 
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [parsingResult, setParsingResult] = useState<ParsingResult | null>(null);

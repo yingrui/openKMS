@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, FileStack, FileText, FolderUp, Network, Plus, Sparkles, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import type { ChannelNode } from '../../data/channelsApi';
 import { fetchDocuments } from '../../data/documentsApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
@@ -84,7 +84,7 @@ export function WikiSpaceSettings() {
   const [vaultFolderModalOpen, setVaultFolderModalOpen] = useState(false);
   const [vaultSkipOpts, setVaultSkipOpts] = useState<VaultImportSkipOptions>(() => defaultVaultImportSkipOptions());
 
-  const { channels } = useDocumentChannels();
+  const { channels } = useEnsureDocumentChannels();
   const channelOptions = useMemo(() => flattenChannelOptions(channels), [channels]);
 
   const [linkedDocs, setLinkedDocs] = useState<WikiLinkedDoc[]>([]);

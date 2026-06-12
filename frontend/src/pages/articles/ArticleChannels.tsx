@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Folder, Plus, ArrowRightLeft, Trash2, GitMerge, ChevronUp, ChevronDown, Settings } from 'lucide-react';
-import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import {
   createArticleChannel,
   updateArticleChannel,
@@ -25,7 +25,7 @@ function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: 
 
 export function ArticleChannels() {
   const { t } = useTranslation('articles');
-  const { channels, loading, error, refetch } = useArticleChannels();
+  const { channels, loading, error, refetch } = useEnsureArticleChannels();
   const [createName, setCreateName] = useState('');
   const [createDescription, setCreateDescription] = useState('');
   const [createParentId, setCreateParentId] = useState<string>('');

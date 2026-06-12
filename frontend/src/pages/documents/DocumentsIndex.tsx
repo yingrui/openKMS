@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FileStack, Folder, Upload } from 'lucide-react';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../../data/channelUtils';
 import { fetchDocumentStats } from '../../data/documentsApi';
 import './DocumentsIndex.scss';
 
 export function DocumentsIndex() {
   const { t } = useTranslation('documents');
-  const { channels, loading, error } = useDocumentChannels();
+  const { channels, loading, error } = useEnsureDocumentChannels();
   const [documentCount, setDocumentCount] = useState<number | null>(null);
 
   useEffect(() => {

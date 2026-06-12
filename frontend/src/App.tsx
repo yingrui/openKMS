@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { BrowserRouter, Routes, Route, Outlet, useParams, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
+import { SystemPublicProvider } from './contexts/SystemPublicContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
@@ -140,6 +141,7 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-right" richColors closeButton />
       <AuthProvider>
+      <SystemPublicProvider>
       <FeatureTogglesProvider>
       <DocumentChannelsProvider>
       <ArticleChannelsProvider>
@@ -254,6 +256,7 @@ function App() {
       </ArticleChannelsProvider>
       </DocumentChannelsProvider>
       </FeatureTogglesProvider>
+      </SystemPublicProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, CheckCircle2, ClipboardCheck, Plus, Settings, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import {
   findChannel,
   flattenChannels,
@@ -49,7 +49,7 @@ export function ArticleChannelSettings() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
   const { channelId = '' } = useParams<{ channelId: string }>();
-  const { channels, loading, error, refetch } = useArticleChannels();
+  const { channels, loading, error, refetch } = useEnsureArticleChannels();
 
   const channel = channels.length > 0 && channelId ? findChannel(channels, channelId) : null;
   const channelName = getDocumentChannelName(channels, channelId);

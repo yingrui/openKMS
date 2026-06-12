@@ -17,6 +17,15 @@ from app.models.document import Document
 from app.models.document_relationship import DocumentRelationship
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
 from app.services.data_resource_policy import document_passes_scoped_predicate
+from app.services.knowledge_map_read import (
+    KnowledgeMapHtmlStatusOut,
+    KnowledgeMapNodeOut,
+    ResourceLinkOut,
+    load_knowledge_map_tree,
+    load_map_html_status,
+    load_resource_labels,
+    load_resource_links,
+)
 from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_KNOWLEDGE_MAP_READ
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
@@ -42,6 +51,10 @@ class HomeHubResponse(BaseModel):
     knowledge_map: KnowledgeMapSummary | None = None
     work_items: list[WorkItem] = Field(default_factory=list)
     share_requests: list[dict] = Field(default_factory=list)
+    knowledge_map_tree: list[KnowledgeMapNodeOut] | None = None
+    resource_links: list[ResourceLinkOut] | None = None
+    map_html_status: KnowledgeMapHtmlStatusOut | None = None
+    resource_labels: dict[str, str] = Field(default_factory=dict)
 
 
 @router.get(
@@ -64,10 +77,19 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
     has_docs = PERM_ALL in perms or PERM_DOCUMENTS_READ in perms
 
     km_summary: KnowledgeMapSummary | None = None
+    km_tree: list[KnowledgeMapNodeOut] | None = None
+    resource_links: list[ResourceLinkOut] | None = None
+    map_html_status: KnowledgeMapHtmlStatusOut | None = None
+    resource_labels: dict[str, str] = {}
+
     if has_tax:
         node_count = await db.scalar(select(sa_func.count()).select_from(KnowledgeMapNode)) or 0
         link_count = await db.scalar(select(sa_func.count()).select_from(KnowledgeMapResourceLink)) or 0
         km_summary = KnowledgeMapSummary(node_count=int(node_count), link_count=int(link_count))
+        km_tree = await load_knowledge_map_tree(db)
+        resource_links = await load_resource_links(db)
+        map_html_status = await load_map_html_status(db)
+        resource_labels = await load_resource_labels(db, resource_links)
 
     work_items: list[WorkItem] = []
     if has_docs and sub:
@@ -111,4 +133,8 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
         knowledge_map=km_summary,
         work_items=work_items,
         share_requests=[],
+        knowledge_map_tree=km_tree,
+        resource_links=resource_links,
+        map_html_status=map_html_status,
+        resource_labels=resource_labels,
     )

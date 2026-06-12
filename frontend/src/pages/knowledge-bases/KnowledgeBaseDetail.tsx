@@ -78,7 +78,7 @@ import type { AgentConversationResponse, AgentMessageItem } from '../../data/age
 import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
-import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
@@ -386,7 +386,7 @@ export function KnowledgeBaseDetail() {
   const { id: kbId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { channels } = useDocumentChannels();
+  const { channels } = useEnsureDocumentChannels();
   const { t } = useTranslation('knowledgeBase');
   const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
   const initialTab = (searchParams.get('tab') as TabId) || 'documents';

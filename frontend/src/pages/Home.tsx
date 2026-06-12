@@ -3,48 +3,22 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileStack, Inbox, Loader2, Share2, Waypoints } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { useDocumentChannels } from '../contexts/DocumentChannelsContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
 import { KnowledgeMapForceGraph } from '../components/KnowledgeMapForceGraph';
 import { config } from '../config';
 import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
-import {
-  fetchKnowledgeMapHtmlStatus,
-  fetchKnowledgeMapTree,
-  fetchResourceLinks,
-  type KnowledgeMapHtmlStatus,
-  type KnowledgeMapNode,
-  type ResourceLink,
-} from '../data/knowledgeMapApi';
-import { fetchWikiSpaces } from '../data/wikiSpacesApi';
-import type { ChannelNode } from '../data/channelUtils';
+import type { KnowledgeMapHtmlStatus } from '../data/knowledgeMapApi';
 import './Home.scss';
-
-function flattenDocChannels(nodes: ChannelNode[], prefix = ''): { id: string; label: string }[] {
-  const out: { id: string; label: string }[] = [];
-  for (const n of nodes) {
-    out.push({ id: n.id, label: `${prefix}${n.name}` });
-    if (n.children?.length) {
-      out.push(...flattenDocChannels(n.children, `${prefix}${n.name} / `));
-    }
-  }
-  return out;
-}
 
 export function Home() {
   const { t } = useTranslation('home');
   const { isAuthenticated, login, hasPermission } = useAuth();
-  const { channels } = useDocumentChannels();
   const navigate = useNavigate();
   const [hub, setHub] = useState<HomeHubResponse | null>(null);
   const [hubError, setHubError] = useState<string | null>(null);
   const [hubLoading, setHubLoading] = useState(false);
-  const [knowledgeMapTree, setKnowledgeMapTree] = useState<KnowledgeMapNode[] | null>(null);
-  const [resourceLinks, setResourceLinks] = useState<ResourceLink[]>([]);
-  const [mapHtmlStatus, setMapHtmlStatus] = useState<KnowledgeMapHtmlStatus | null>(null);
-  const [knowledgeMapTreeLoading, setKnowledgeMapTreeLoading] = useState(false);
-  const [knowledgeMapTreeError, setKnowledgeMapTreeError] = useState<string | null>(null);
-  const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
+
+  const showKnowledgeMapHub = hasPermission('knowledge_map:read') || hasPermission('all');
 
   const loadHub = useCallback(async () => {
     setHubLoading(true);
@@ -68,77 +42,19 @@ export function Home() {
     }
   }, [isAuthenticated, loadHub]);
 
-  const showKnowledgeMapHub = hasPermission('knowledge_map:read') || hasPermission('all');
-
-  useEffect(() => {
-    if (!isAuthenticated || !showKnowledgeMapHub) {
-      setKnowledgeMapTree(null);
-      setResourceLinks([]);
-      setMapHtmlStatus(null);
-      setKnowledgeMapTreeError(null);
-      setKnowledgeMapTreeLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setKnowledgeMapTreeLoading(true);
-    setKnowledgeMapTreeError(null);
-    void (async () => {
-      let st: KnowledgeMapHtmlStatus | null = null;
-      try {
-        st = await fetchKnowledgeMapHtmlStatus();
-      } catch {
-        st = null;
-      }
-      if (cancelled) return;
-      setMapHtmlStatus(st);
-      try {
-        const [tree, links] = await Promise.all([fetchKnowledgeMapTree(), fetchResourceLinks()]);
-        if (!cancelled) {
-          setKnowledgeMapTree(tree);
-          setResourceLinks(links);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setKnowledgeMapTree(null);
-          setResourceLinks([]);
-          setKnowledgeMapTreeError(e instanceof Error ? e.message : t('mapLoadError'));
-        }
-      } finally {
-        if (!cancelled) setKnowledgeMapTreeLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, showKnowledgeMapHub, t]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const w = await fetchWikiSpaces();
-        if (cancelled) return;
-        setWikiOptions(w.items.map((s) => ({ id: s.id, label: s.name })));
-      } catch {
-        if (!cancelled) setWikiOptions([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const docChannelOptions = useMemo(() => flattenDocChannels(channels), [channels]);
-  const channelLabelById = useMemo(() => new Map(docChannelOptions.map((o) => [o.id, o.label])), [docChannelOptions]);
-  const wikiLabelById = useMemo(() => new Map(wikiOptions.map((o) => [o.id, o.label])), [wikiOptions]);
+  const knowledgeMapTree = showKnowledgeMapHub ? (hub?.knowledge_map_tree ?? null) : null;
+  const resourceLinks = showKnowledgeMapHub ? (hub?.resource_links ?? []) : [];
+  const mapHtmlStatus: KnowledgeMapHtmlStatus | null = showKnowledgeMapHub ? (hub?.map_html_status ?? null) : null;
+  const resourceLabelMap = useMemo(
+    () => new Map(Object.entries(hub?.resource_labels ?? {})),
+    [hub?.resource_labels],
+  );
 
   const resolveResourceLabel = useCallback(
     (resourceType: string, resourceId: string) => {
-      if (resourceType === 'document_channel') return channelLabelById.get(resourceId) ?? resourceId;
-      if (resourceType === 'wiki_space') return wikiLabelById.get(resourceId) ?? resourceId;
-      return resourceId;
+      return resourceLabelMap.get(`${resourceType}:${resourceId}`) ?? resourceId;
     },
-    [channelLabelById, wikiLabelById],
+    [resourceLabelMap],
   );
 
   const openTermOnMap = useCallback(
@@ -160,6 +76,8 @@ export function Home() {
 
   const showKnowledgeMapWrite = hasPermission('knowledge_map:write') || hasPermission('all');
   const showDocsWork = hasPermission('documents:read') || hasPermission('all');
+  const knowledgeMapTreeLoading = hubLoading && knowledgeMapTree === null && showKnowledgeMapHub;
+  const knowledgeMapTreeError = hubError && showKnowledgeMapHub && !hubLoading ? hubError : null;
   const mapLoaded = knowledgeMapTree !== null;
   const mapHasTerms = Boolean(knowledgeMapTree?.length);
   const showHtmlHome = mapHtmlStatus?.has_artifact === true;
