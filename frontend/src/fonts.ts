@@ -1,0 +1,7 @@
+import '@fontsource/dm-sans/latin-400.css'
+import '@fontsource/dm-sans/latin-500.css'
+import '@fontsource/dm-sans/latin-600.css'
+import '@fontsource/dm-sans/latin-700.css'
+import '@fontsource/source-serif-4/latin-400.css'
+import '@fontsource/source-serif-4/latin-400-italic.css'
+import '@fontsource/source-serif-4/latin-600.css'

@@ -337,7 +337,7 @@ _MAP_HTML_VISUAL_DESIGN_APPENDIX = """**openKMS visual design (embed in your `<s
 Mirror the SPA palette in `frontend/src/styles/design-system/_css-variables.scss` (warm stone + teal accent).
 
 - **Surfaces:** page background `#faf9f7`; elevated cards/panels `#ffffff`; muted bands `#f3f2ef`. Borders `#e8e6e1`, stronger dividers `#d4d1c9`.
-- **Typography:** `'DM Sans','Noto Sans SC',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei UI','Microsoft YaHei',system-ui,sans-serif`; body `#2c2925`; secondary `#5c5750`; muted/meta `#8a8379`; comfortable line-height (~1.45–1.55).
+- **Typography:** `'DM Sans',-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei UI','Microsoft YaHei',system-ui,sans-serif`; body `#2c2925`; secondary `#5c5750`; muted/meta `#8a8379`; comfortable line-height (~1.45–1.55).
 - **Accent:** `#0d9488` (hover `#0f766e`); use for primary emphasis. Hydrated term links use **`a.km-node`**; resource links use **`a.km-res`** — style them distinctly (e.g. stronger teal + weight for `.km-node`, calmer secondary or pill for `.km-res`); avoid default browser link blue. If you add any other absolute links to this SPA, use **`target="_top"`** so they work when the document is shown inside a sandboxed iframe (navigate the top browsing context).
 - **Layout:** `max-width: min(960px, 100%); margin-inline: auto;` for the main column; padding and gaps on an **8/12/16/20/24px** rhythm.
 - **Shape:** rounded sections ~**10px** (`border-radius: 10px`); optional soft shadow `0 4px 12px rgba(44, 41, 37, 0.08)`.

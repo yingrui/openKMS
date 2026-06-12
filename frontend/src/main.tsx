@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import './fonts'
 import './index.scss'
 import './setupSonnerErrorCopy'
 import './i18n/config'

@@ -456,31 +456,6 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             <span>{t('agents')}</span>
           </NavLink>
         )}
-        {canAccessPath('/documents') && (
-        <div className="sidebar-menu-group">
-          <NavLink
-            to="/documents"
-            title={t('documents')}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-            }
-          >
-            <FileStack size={18} strokeWidth={1.75} />
-            <span>{t('documents')}</span>
-          </NavLink>
-          {onDocuments && channels.length > 0 && (
-            <div className="sidebar-subnav">
-              <SidebarChannelTree
-                channels={channels}
-                selectedId={docChannel}
-                expanded={docExpanded}
-                onSelect={setDocumentChannel}
-                onToggle={(id) => setDocExpanded((p) => ({ ...p, [id]: !p[id] }))}
-              />
-            </div>
-          )}
-        </div>
-        )}
         {canAccessPath('/articles') && (
           <div className="sidebar-menu-group">
             <NavLink
@@ -506,6 +481,31 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             )}
           </div>
         )}
+        {canAccessPath('/documents') && (
+        <div className="sidebar-menu-group">
+          <NavLink
+            to="/documents"
+            title={t('documents')}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <FileStack size={18} strokeWidth={1.75} />
+            <span>{t('documents')}</span>
+          </NavLink>
+          {onDocuments && channels.length > 0 && (
+            <div className="sidebar-subnav">
+              <SidebarChannelTree
+                channels={channels}
+                selectedId={docChannel}
+                expanded={docExpanded}
+                onSelect={setDocumentChannel}
+                onToggle={(id) => setDocExpanded((p) => ({ ...p, [id]: !p[id] }))}
+              />
+            </div>
+          )}
+        </div>
+        )}
         {canAccessPath('/wikis') && (
           <NavLink
             to="/wikis"
@@ -517,59 +517,6 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             <Library size={18} strokeWidth={1.75} />
             <span>{t('wikiSpaces')}</span>
           </NavLink>
-        )}
-        {canAccessPath('/knowledge-map') && (
-          <NavLink
-            to="/knowledge-map"
-            title={t('knowledgeMap')}
-            className={({ isActive }) =>
-              `sidebar-link ${
-                isActive || location.pathname.startsWith('/knowledge-map/')
-                  ? 'sidebar-link-active'
-                  : ''
-              }`
-            }
-          >
-            <FolderTree size={18} strokeWidth={1.75} />
-            <span>{t('knowledgeMap')}</span>
-          </NavLink>
-        )}
-        {(canAccessPath('/glossaries') || showOntologySection) && (
-          <div className="sidebar-menu-group">
-            {canAccessPath('/glossaries') && (
-              <NavLink
-                to="/glossaries"
-                title={t('glossaries')}
-                className={({ isActive }) =>
-                  `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
-                }
-              >
-                <BookOpen size={18} strokeWidth={1.75} />
-                <span>{t('glossaries')}</span>
-              </NavLink>
-            )}
-            {showOntologySection && (
-              <>
-                {canAccessPath('/ontology') && (
-                  <NavLink
-                    to="/ontology"
-                    title={t('ontology')}
-                    className={({ isActive }) =>
-                      `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
-                    }
-                  >
-                    <Network size={18} strokeWidth={1.75} />
-                    <span>{t('ontology')}</span>
-                  </NavLink>
-                )}
-                {onOntology && (
-                  <div className="sidebar-subnav">
-                    <OntologyChildNavLinks canAccessPath={canAccessPath} />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
         )}
         {canAccessPath('/knowledge-bases') && (
           <NavLink
@@ -593,6 +540,55 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           >
             <ClipboardList size={18} strokeWidth={1.75} />
             <span>{t('evaluation')}</span>
+          </NavLink>
+        )}
+        {showOntologySection && (
+          <div className="sidebar-menu-group">
+            {canAccessPath('/ontology') && (
+              <NavLink
+                to="/ontology"
+                title={t('ontology')}
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive || onOntology ? 'sidebar-link-active' : ''}`
+                }
+              >
+                <Network size={18} strokeWidth={1.75} />
+                <span>{t('ontology')}</span>
+              </NavLink>
+            )}
+            {onOntology && (
+              <div className="sidebar-subnav">
+                <OntologyChildNavLinks canAccessPath={canAccessPath} />
+              </div>
+            )}
+          </div>
+        )}
+        {canAccessPath('/glossaries') && (
+          <NavLink
+            to="/glossaries"
+            title={t('glossaries')}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <BookOpen size={18} strokeWidth={1.75} />
+            <span>{t('glossaries')}</span>
+          </NavLink>
+        )}
+        {canAccessPath('/knowledge-map') && (
+          <NavLink
+            to="/knowledge-map"
+            title={t('knowledgeMap')}
+            className={({ isActive }) =>
+              `sidebar-link ${
+                isActive || location.pathname.startsWith('/knowledge-map/')
+                  ? 'sidebar-link-active'
+                  : ''
+              }`
+            }
+          >
+            <FolderTree size={18} strokeWidth={1.75} />
+            <span>{t('knowledgeMap')}</span>
           </NavLink>
         )}
         {toggles.connectors && canAccessPath('/connectors') && (
