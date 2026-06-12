@@ -169,6 +169,7 @@ nav:
       - Knowledge map & home: features/knowledge-map.md
       - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
+      - Object Explorer: features/object-explorer.md
       - Pipelines, jobs & models: features/pipelines-and-jobs.md
       - Data security: features/data-security.md
       - Console & authentication: features/console-and-auth.md

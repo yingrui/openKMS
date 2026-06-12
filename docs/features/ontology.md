@@ -12,7 +12,7 @@ Object types and link types model an entity-relationship layer that can be backe
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write + parent link type write ACL) |
 | Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |
-| Object Explorer | ✅ | Graph view at `/object-explorer`; runs Cypher on Neo4j, renders force-directed graph via react-force-graph-2d; checkbox selection for object/link types (sidebar lists only types the user can read via ACL); **tabs** switch between manual Cypher and plain-language text-to-Cypher (**Execute** / generate-and-run under the active input); query stack sits above results and the graph uses remaining main-column height; **list view** paginates rows client-side (page size 25–200) to limit DOM size; **node/link color legend** slides in from the right (collapsed by default so the graph uses full width); layout modes (force, left-to-right, top-to-bottom, radial); zoom in/out/fit, fullscreen; main column uses **flex height** (`app-content--object-explorer`) so the graph fills the viewport without a bottom dead band |
+| Object Explorer | ✅ | Cypher / text-to-Cypher at `/object-explorer`; list + **instance graph** (Neo4j results via `react-force-graph-2d`); see [Object Explorer](object-explorer.md) for Graph view pipeline, layout modes, and implementation notes |
 | Ontology overview | ✅ | Single page at `/ontology` with **List** (card grids) or **Graph** (schema diagram via react-force-graph-2d: object types as nodes, link types as straight directed edges; self-referential link types omitted; disconnected type groups stacked separately; layout modes include schema default plus LR/TD/radial; zoom/fit controls; click node or edge to open browse pages) toggle; preference stored in `localStorage` |
 | Ontology sidebar | ✅ | **Ontology** is a top-level item **next to Glossaries** (same menu group); links to `/ontology`; indented subnav for Datasets, Object types, Link types, Objects, Links, Object Explorer when on those routes; visibility follows permission patterns (Neo4j presence still affects graph-backed counts) |
 | Search | ✅ | Optional search filter on object instances |
@@ -40,3 +40,7 @@ PostgreSQL and Neo4j connections live in **Console → Data Sources**; mappings 
 | M:M junction table links | ✅ | When link type has dataset_id, links and link_count come from junction table; Add/Delete disabled for dataset-backed links |
 | M:1/1:M link count | ✅ | When source object type has dataset and source_key_property (FK column), link_count from rows where FK is not null |
 | Index to Neo4j | ✅ | Ontology **Object types** / **Link types** pages: Index Objects/Links button when Neo4j data source exists; indexes datasets as nodes, link types as relationships |
+
+## Ontology overview graph
+
+`/ontology` **Graph** toggle shows the **schema** diagram (`OntologySchemaGraph.tsx`, `ontologySchemaGraphModel.ts`): object types as nodes, link types as straight directed edges; self-referential link types omitted; disconnected type groups laid out separately. Instance exploration and layout lessons for query results are documented in [Object Explorer](object-explorer.md).
