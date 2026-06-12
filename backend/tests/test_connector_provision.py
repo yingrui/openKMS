@@ -5,6 +5,7 @@ from app.services.connector_sync.provision import (
     validate_table_columns,
 )
 from app.services.connector_sync.tushare.schemas import (
+    TUSHARE_DIVIDENDS_COLUMNS,
     TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,
 )
@@ -40,3 +41,8 @@ def test_validate_table_columns_missing():
     existing = {"exchange": "TEXT"}
     issues = validate_table_columns(existing, TUSHARE_TRADE_CALENDAR_COLUMNS)
     assert any("cal_date" in i for i in issues)
+
+
+def test_dividends_base_share_allows_large_万股_values():
+    ddl = build_create_table_ddl("tushare", "dividends", TUSHARE_DIVIDENDS_COLUMNS)
+    assert '"base_share" NUMERIC(20,4)' in ddl

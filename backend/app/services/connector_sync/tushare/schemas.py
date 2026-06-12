@@ -69,6 +69,7 @@ TUSHARE_DIVIDENDS_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
     ConnectorDatasetColumn("div_listdate", "DATE", nullable=True),
     ConnectorDatasetColumn("imp_ann_date", "DATE", nullable=True),
     ConnectorDatasetColumn("base_date", "DATE", nullable=True),
-    ConnectorDatasetColumn("base_share", "NUMERIC(10,4)", nullable=True),
+    # 万股 (10k shares); large caps exceed NUMERIC(10,4) — e.g. 000617.SZ ≈ 1.26M 万股
+    ConnectorDatasetColumn("base_share", "NUMERIC(20,4)", nullable=True),
     ConnectorDatasetColumn("update_flag", "VARCHAR(12)", nullable=True),
 )
