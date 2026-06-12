@@ -17,7 +17,7 @@ from app.schemas.data_source import (
     DataSourceUpdate,
 )
 from app.services.credential_encryption import decrypt, encrypt
-from app.services.data_source_connection import test_data_source_connection
+from app.services.data_source_connection import test_data_source_connection as check_data_source_connection
 
 router = APIRouter(
     prefix="/data-sources",
@@ -132,7 +132,7 @@ async def test_data_source_connection(data_source_id: str, db: AsyncSession = De
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
 
-    ok, message = test_data_source_connection(ds)
+    ok, message = check_data_source_connection(ds)
     if message == "Neo4j driver not installed":
         raise HTTPException(
             status_code=501,
