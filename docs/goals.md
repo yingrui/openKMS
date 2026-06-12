@@ -97,7 +97,7 @@ Below follows **where knowledge comes from → how it enters and is cataloged �
 
 **Direction:** **Aggregate multi-source content with unified permissions and lineage**—become one **unified knowledge layer** for **Data for AI** under compliance. Not replacing every business database, but cataloging and governing “explanatory knowledge and documents safe for AI consumption.”
 
-**Product gap:** [Connectors](development_plan.md#connectors-high) — instances and secrets configurable; **sync jobs writing to datasets not shipped**.
+**Product gap:** [Connectors](features/connectors.md) — Tushare sync and Zhipu search shipped; **additional sync kinds** and downstream dataset→KB hooks remain ([backlog](development_plan.md#connectors-high)).
 
 ---
 

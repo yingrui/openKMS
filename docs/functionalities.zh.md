@@ -19,7 +19,7 @@
 | [流水线、任务与模型](features/pipelines-and-jobs.md) | 流水线模板、procrastinate 任务、Provider/模型注册（多模态图像/视频模型规划中） |
 | [数据安全](features/data-security.md) | 双层模型（操作 RBAC + 资源 ACL）、组、共享、继承、 enforcement |
 | [控制台与认证](features/console-and-auth.md) | 权限目录、Console UX、OIDC/本地认证、系统设置、用户设置（API 密钥）、功能开关 |
-| [连接器](features/console-and-auth.md#console-admin) | **部分交付：** `/connectors` CRUD、种类、密钥、数据集输出槽 — 同步任务**尚未交付**（[开发计划](development_plan.md#connectors-high)） |
+| [连接器](features/connectors.md) | `/connectors` 同步与 search_tool 种类、数据集输出、Tushare 同步任务、计划任务、Agent `web_search` |
 | [Agent（项目工作区）](features/openkms-agents.md) | Deep Agents 对话、文件、本地/远程 git、计划模式、openKMS 研究工具 |
 | [Wiki Copilot 与知识库问答](features/wiki-spaces.md) | 维基空间与知识库内嵌助手 |
 | [OpenCode 技能（openkms）](features/opencode-openkms-skill.md) | 外部 Agent 技能 + CLI（`openkms-skill/`）；不能替代应用内 Agent |

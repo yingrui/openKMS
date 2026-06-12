@@ -41,11 +41,12 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Glossaries](features/glossaries.md) | Bilingual terms, AI suggestion, import/export |
 | [Knowledge map & home](features/knowledge-map.md) | Knowledge Map terms, resource links, home hub graph |
 | [Global search](features/global-search.md) | `/search` page: documents, articles, wiki spaces, knowledge bases (name, channel, updated filters) |
-| [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, Object Explorer, data sources, datasets |
+| [Ontology — objects, links, datasets](features/ontology.md) | Object/link types, instances, data sources, datasets |
+| [Object Explorer](features/object-explorer.md) | Cypher exploration, list view, instance graph layout and rendering |
 | [Pipelines, jobs & models](features/pipelines-and-jobs.md) | Pipeline templates, procrastinate jobs, provider/model registry (multimodal image/video models planned) |
 | [Data security](features/data-security.md) | Two-layer model (operation RBAC + resource ACL), groups, sharing, inheritance, enforcement; **resource ACL** on evaluations, glossaries, and ontology types (object/link/dataset) |
 | [Console & authentication](features/console-and-auth.md) | Permission catalog, Console UX, OIDC/local auth, system settings, user Settings (API keys), feature toggles |
-| [Connectors](features/console-and-auth.md#console-admin) | **Partial:** `/connectors` CRUD, kinds, secrets, dataset output slots — sync jobs **not shipped** ([backlog](#connectors-high)) |
+| [Connectors](features/connectors.md) | Tushare sync + Zhipu search shipped; more sync kinds and downstream hooks ([backlog](#connectors-high)) |
 | [Wiki Copilot & map designer](features/wiki-spaces.md) | Wiki Copilot, knowledge map HTML Copilot (**in-app**; distinct from qa-agent) |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat per project (files, git, plan mode, openKMS research tools, optional `web_search` via connector) |
 | [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | **External:** agent skill + CLI for third-party tools (`openkms-skill/`); complements delivery APIs and in-app agents |
@@ -99,13 +100,13 @@ Aligns with [Goals — retrieve and contribute](goals.md#goals-user-value) and [
 
 | Item | Notes |
 |------|--------|
-| Sync execution | org — Procrastinate (or pipeline) jobs per connector kind; write into configured **dataset** outputs; run history and failures in UI |
-| **search_tool** (Zhipu web search) | ✅ kind + `POST /api/connectors/{id}/search`; Agents project **`search_connector_id`** + `web_search` tool |
-| Operator UX | Manual **Run sync**, central **Schedules** hub + scheduler cron, last-success timestamp, row counts, retry |
-| Kind expansion | Beyond Tushare: additional catalogs and mapping docs per kind |
+| **Tushare sync** | ✅ `run_connector_sync`, dataset outputs, manual + scheduled runs, Probe tab |
+| **search_tool** (Zhipu web search) | ✅ kind + `POST /api/connectors/{id}/search`; Agents **`search_connector_id`** + `web_search` tool |
+| Operator UX | ✅ Manual **Run sync**, **Schedules** hub (`/job-runs/schedules`), scheduler cron, last run on trigger row; richer per-slot stats still open |
+| Kind expansion | Additional **sync** catalogs beyond Tushare (`run_connector_sync_for_row` is kind-dispatched) |
 | Downstream | Optional hooks: refresh datasets → re-index linked KBs or notify operators |
 
-API/UI today: [Connectors](features/console-and-auth.md#console-admin), [API reference — Connectors](features/api-reference.md).
+Shipped surfaces: [Connectors](features/connectors.md), [API reference — Connectors](features/api-reference.md).
 
 ### In-product agents (high) {#in-product-agents-high}
 
