@@ -16,7 +16,6 @@ from app.database import get_db
 from app.models.document import Document
 from app.models.document_relationship import DocumentRelationship
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
-from app.services.data_resource_policy import document_passes_scoped_predicate
 from app.services.knowledge_map_read import (
     KnowledgeMapHtmlStatusOut,
     KnowledgeMapNodeOut,
@@ -28,6 +27,7 @@ from app.services.knowledge_map_read import (
 )
 from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_KNOWLEDGE_MAP_READ
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
+from app.services.resource_acl_service import readable_document_channel_ids, scope_applies
 
 router = APIRouter(prefix="/home", tags=["home"])
 
@@ -93,10 +93,20 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
 
     work_items: list[WorkItem] = []
     if has_docs and sub:
+        readable_channels: set[str] | None = None
+        if scope_applies(payload, sub):
+            readable_channels = await readable_document_channel_ids(db, payload, sub)
+
         sdoc = aliased(Document)
         tdoc = aliased(Document)
         rel_result = await db.execute(
-            select(DocumentRelationship, sdoc.name, tdoc.name)
+            select(
+                DocumentRelationship,
+                sdoc.name,
+                tdoc.name,
+                sdoc.channel_id,
+                tdoc.channel_id,
+            )
             .join(sdoc, DocumentRelationship.source_document_id == sdoc.id)
             .join(tdoc, DocumentRelationship.target_document_id == tdoc.id)
             .where(
@@ -107,25 +117,23 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
             .order_by(DocumentRelationship.created_at.desc())
             .limit(40)
         )
-        for rel, sname, tname in rel_result.all():
-            src = await db.get(Document, rel.source_document_id)
-            tgt = await db.get(Document, rel.target_document_id)
-            if not src or not tgt:
-                continue
-            if await document_passes_scoped_predicate(db, payload, sub, src) or await document_passes_scoped_predicate(
-                db, payload, sub, tgt
-            ):
-                work_items.append(
-                    WorkItem(
-                        id=rel.id,
-                        relation_type=rel.relation_type,
-                        source_document_id=rel.source_document_id,
-                        target_document_id=rel.target_document_id,
-                        source_title=sname,
-                        target_title=tname,
-                        created_at=rel.created_at,
-                    )
+        for rel, sname, tname, src_channel_id, tgt_channel_id in rel_result.all():
+            if readable_channels is not None:
+                src_ok = bool(src_channel_id and src_channel_id in readable_channels)
+                tgt_ok = bool(tgt_channel_id and tgt_channel_id in readable_channels)
+                if not (src_ok or tgt_ok):
+                    continue
+            work_items.append(
+                WorkItem(
+                    id=rel.id,
+                    relation_type=rel.relation_type,
+                    source_document_id=rel.source_document_id,
+                    target_document_id=rel.target_document_id,
+                    source_title=sname,
+                    target_title=tname,
+                    created_at=rel.created_at,
                 )
+            )
             if len(work_items) >= 15:
                 break
 

@@ -7,7 +7,6 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
-import mermaid from 'mermaid';
 import 'katex/dist/katex.min.css';
 import './richMarkdown.scss';
 
@@ -42,16 +41,17 @@ export function MermaidBlock({ code }: { code: string }) {
     const host = hostRef.current;
     if (!host) return;
 
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'loose',
-      theme: mermaidTheme(),
-    });
-
     let cancelled = false;
     const renderId = `mm-${baseId}-${Math.random().toString(36).slice(2, 10)}`;
 
     void (async () => {
+      const mermaid = (await import('mermaid')).default;
+      if (cancelled) return;
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'loose',
+        theme: mermaidTheme(),
+      });
       try {
         const { svg, bindFunctions } = await mermaid.render(renderId, code, host);
         if (cancelled) return;

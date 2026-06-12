@@ -1,4 +1,5 @@
 """Ontology Explorer API – execute Cypher queries against Neo4j, plus text-to-cypher and answer summarisation."""
+import asyncio
 import logging
 import re
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,6 +20,8 @@ from app.services.text_to_cypher import (
 )
 
 logger = logging.getLogger(__name__)
+
+MAX_CYPHER_ROWS = 500
 
 router = APIRouter(
     prefix="/ontology",
@@ -90,6 +93,27 @@ def _serialize_val(v):
     return str(v)
 
 
+def _run_neo4j_cypher(uri: str, username: str, password: str, cypher: str) -> tuple[list[str], list[dict]]:
+    from neo4j import GraphDatabase
+
+    driver = GraphDatabase.driver(uri, auth=(username, password))
+    try:
+        with driver.session() as session:
+            result = session.run(cypher)
+            keys = list(result.keys())
+            rows: list[dict] = []
+            for record in result:
+                row = {}
+                for k in keys:
+                    row[k] = _serialize_val(record.get(k))
+                rows.append(row)
+                if len(rows) >= MAX_CYPHER_ROWS:
+                    break
+            return keys, rows
+    finally:
+        driver.close()
+
+
 @router.post("/explore", response_model=CypherQueryResponse)
 async def execute_cypher(
     body: CypherQueryRequest,
@@ -105,29 +129,17 @@ async def execute_cypher(
     if not neo4j_ds:
         raise HTTPException(status_code=400, detail="No Neo4j data source configured")
     try:
-        from neo4j import GraphDatabase
+        from neo4j import GraphDatabase  # noqa: F401
     except ImportError:
         raise HTTPException(status_code=501, detail="Neo4j driver not installed") from None
     username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
     password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
     uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-    driver = GraphDatabase.driver(uri, auth=(username, password))
     try:
-        with driver.session() as session:
-            result = session.run(cypher)
-            keys = result.keys()
-            rows = []
-            for record in result:
-                row = {}
-                for k in keys:
-                    v = record.get(k)
-                    row[k] = _serialize_val(v)
-                rows.append(row)
-            return CypherQueryResponse(columns=list(keys), rows=rows)
+        keys, rows = await asyncio.to_thread(_run_neo4j_cypher, uri, username, password, cypher)
+        return CypherQueryResponse(columns=keys, rows=rows)
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
-    finally:
-        driver.close()
 
 
 async def _load_schema_snapshot(db: AsyncSession) -> tuple[list[dict], list[dict]]:

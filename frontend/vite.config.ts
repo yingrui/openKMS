@@ -5,6 +5,20 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/mermaid')) return 'mermaid';
+          if (id.includes('node_modules/three')) return 'three';
+          if (id.includes('node_modules/katex')) return 'katex';
+          if (id.includes('force-graph') || id.includes('d3-force') || id.includes('d3-quadtree')) {
+            return 'force-graph';
+          }
+        },
+      },
+    },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

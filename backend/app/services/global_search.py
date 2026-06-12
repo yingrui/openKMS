@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+
 from datetime import datetime
 
 from sqlalchemy import and_, func, select
@@ -379,7 +379,10 @@ async def run_global_search(
         kb_section = GlobalSearchSection(items=items, total=total)
 
     try:
-        await asyncio.gather(run_docs(), run_arts(), run_wiki(), run_kb())
+        await run_docs()
+        await run_arts()
+        await run_wiki()
+        await run_kb()
     except ValueError as e:
         if str(e) == "document_channel_not_found":
             return None, "document_channel_not_found"

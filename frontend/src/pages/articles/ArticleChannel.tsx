@@ -8,6 +8,7 @@ import {
   TableRowActionCell,
   TableRowActions,
   tableRowActionCellClass,
+  Pagination,
 } from '../../styles/design-system';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getDocumentChannelDescription, getDocumentChannelName } from '../../data/channelUtils';
@@ -20,6 +21,8 @@ import {
 } from '../../data/articlesApi';
 import '../documents/DocumentChannel.scss';
 import './Articles.scss';
+
+const ARTICLES_PAGE_SIZE_DEFAULT = 25;
 
 function formatUpdated(iso: string): string {
   try {
@@ -43,6 +46,8 @@ export function ArticleChannel() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [items, setItems] = useState<ArticleOut[]>([]);
   const [total, setTotal] = useState(0);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(ARTICLES_PAGE_SIZE_DEFAULT);
   const [listLoading, setListLoading] = useState(true);
   const [newArticleOpen, setNewArticleOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -82,7 +87,8 @@ export function ArticleChannel() {
       const res = await fetchArticles({
         channel_id: channelId,
         search: debouncedSearch || undefined,
-        limit: 200,
+        offset: listPage * listPageSize,
+        limit: listPageSize,
       });
       setItems(res.items);
       setTotal(res.total);
@@ -93,13 +99,19 @@ export function ArticleChannel() {
     } finally {
       setListLoading(false);
     }
-  }, [channelId, debouncedSearch, channelIds, t]);
+  }, [channelId, debouncedSearch, channelIds, listPage, listPageSize, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [total, listPageSize, listPage]);
+
+  useEffect(() => {
+    setListPage(0);
     setSelectedArticleIds(new Set());
   }, [channelId, debouncedSearch]);
 
@@ -396,6 +408,7 @@ export function ArticleChannel() {
           {listLoading ? (
             <p className="articles-empty-hint">{t('channel.loading')}</p>
           ) : items.length > 0 ? (
+            <>
             <table className="articles-table">
               <thead>
                 <tr>
@@ -499,6 +512,22 @@ export function ArticleChannel() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              total={total}
+              page={listPage}
+              pageSize={listPageSize}
+              loading={listLoading}
+              onPageChange={(page) => {
+                setListPage(page);
+                setSelectedArticleIds(new Set());
+              }}
+              onPageSizeChange={(size) => {
+                setListPageSize(size);
+                setListPage(0);
+                setSelectedArticleIds(new Set());
+              }}
+            />
+            </>
           ) : (
             <div className="articles-empty">
               <Folder size={48} />

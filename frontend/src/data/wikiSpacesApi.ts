@@ -269,6 +269,26 @@ export async function fetchWikiPages(
   return res.json();
 }
 
+const WIKI_PAGES_FETCH_SIZE = 500;
+
+/** Load all pages for a wiki space using paginated API requests (max 500 per call). */
+export async function fetchAllWikiPages(
+  spaceId: string,
+  pathPrefix?: string,
+): Promise<WikiPageListResponse> {
+  const items: WikiPageListResponse['items'] = [];
+  let offset = 0;
+  let total = 0;
+  for (;;) {
+    const res = await fetchWikiPages(spaceId, pathPrefix, { limit: WIKI_PAGES_FETCH_SIZE, offset });
+    total = res.total;
+    items.push(...res.items);
+    offset += res.items.length;
+    if (res.items.length === 0 || offset >= total) break;
+  }
+  return { items, total, limit: null, offset: 0 };
+}
+
 /** Page match: string (title/path) then semantic (embeddings). */
 export async function fetchWikiSemanticPageMatches(
   spaceId: string,

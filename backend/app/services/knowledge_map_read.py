@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import TypeVar
+
 from pydantic import BaseModel, Field
 from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -135,6 +137,30 @@ def _flatten_channel_labels(
     return labels
 
 
+_ChannelT = TypeVar("_ChannelT", DocumentChannel, ArticleChannel)
+
+
+async def _load_channel_ancestors(
+    db: AsyncSession,
+    model: type[_ChannelT],
+    channel_ids: set[str],
+) -> list[_ChannelT]:
+    if not channel_ids:
+        return []
+    by_id: dict[str, _ChannelT] = {}
+    pending = set(channel_ids)
+    while pending:
+        batch = pending - set(by_id.keys())
+        if not batch:
+            break
+        result = await db.execute(select(model).where(model.id.in_(batch)))
+        rows = list(result.scalars().all())
+        for ch in rows:
+            by_id[ch.id] = ch
+        pending = {ch.parent_id for ch in rows if ch.parent_id and ch.parent_id not in by_id}
+    return list(by_id.values())
+
+
 async def load_resource_labels(db: AsyncSession, links: list[ResourceLinkOut]) -> dict[str, str]:
     doc_ids = {link.resource_id for link in links if link.resource_type == "document_channel"}
     art_ids = {link.resource_id for link in links if link.resource_type == "article_channel"}
@@ -143,15 +169,13 @@ async def load_resource_labels(db: AsyncSession, links: list[ResourceLinkOut]) -
     labels: dict[str, str] = {}
 
     if doc_ids:
-        result = await db.execute(select(DocumentChannel))
-        doc_channels = list(result.scalars().all())
+        doc_channels = await _load_channel_ancestors(db, DocumentChannel, doc_ids)
         for cid, name in _flatten_channel_labels(doc_channels).items():
             if cid in doc_ids:
                 labels[f"document_channel:{cid}"] = name
 
     if art_ids:
-        result = await db.execute(select(ArticleChannel))
-        art_channels = list(result.scalars().all())
+        art_channels = await _load_channel_ancestors(db, ArticleChannel, art_ids)
         for cid, name in _flatten_channel_labels(art_channels).items():
             if cid in art_ids:
                 labels[f"article_channel:{cid}"] = name

@@ -165,11 +165,20 @@ export function GlobalSearch() {
   /** Request all entity kinds so tab badges match section totals. */
   const typesParam = 'all';
 
+  const hasActiveFilters = Boolean(docChannel || artChannel || updatedAfter || updatedBefore);
+
   const runSearch = useCallback(() => {
+    const q = qParam.trim();
+    if (!q && !hasActiveFilters) {
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     fetchGlobalSearch({
-      q: qParam.trim() || undefined,
+      q: q || undefined,
       types: typesParam,
       document_channel_id: docChannel || undefined,
       article_channel_id: artChannel || undefined,
@@ -183,7 +192,7 @@ export function GlobalSearch() {
         setError(e instanceof Error ? e.message : t('searchFailed'));
       })
       .finally(() => setLoading(false));
-  }, [qParam, typesParam, docChannel, artChannel, updatedAfter, updatedBefore, t]);
+  }, [qParam, typesParam, docChannel, artChannel, updatedAfter, updatedBefore, hasActiveFilters, t]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {

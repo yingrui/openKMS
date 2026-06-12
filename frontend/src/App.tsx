@@ -8,8 +8,6 @@ import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
-import { Home } from './pages/Home';
-import { GlobalSearch } from './pages/GlobalSearch';
 import { Profile } from './pages/Profile';
 import { UserSettings } from './pages/UserSettings';
 import { Login } from './pages/auth/Login';
@@ -79,6 +77,8 @@ function AppLoadingFallback() {
   );
 }
 
+const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
+const GlobalSearch = lazy(() => import('./pages/GlobalSearch').then((m) => ({ default: m.GlobalSearch })));
 const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );

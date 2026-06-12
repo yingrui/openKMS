@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { FileStack, Inbox, Loader2, Share2, Waypoints } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
-import { KnowledgeMapForceGraph } from '../components/KnowledgeMapForceGraph';
 import { config } from '../config';
 import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
 import type { KnowledgeMapHtmlStatus } from '../data/knowledgeMapApi';
 import './Home.scss';
+
+const KnowledgeMapForceGraph = lazy(() =>
+  import('../components/KnowledgeMapForceGraph').then((m) => ({ default: m.KnowledgeMapForceGraph })),
+);
 
 export function Home() {
   const { t } = useTranslation('home');
@@ -158,14 +161,23 @@ export function Home() {
                 ) : null}
               </div>
             ) : knowledgeMapTree ? (
-              <KnowledgeMapForceGraph
-                tree={knowledgeMapTree}
-                links={resourceLinks}
-                selectedNodeId={null}
-                onSelectNode={openTermOnMap}
-                resolveResourceLabel={resolveResourceLabel}
-                className="km-map-graph--home"
-              />
+              <Suspense
+                fallback={
+                  <div className="home-map-stage-loading">
+                    <Loader2 className="home-map-stage-spinner" size={32} aria-hidden />
+                    <span>{t('loadingGraph')}</span>
+                  </div>
+                }
+              >
+                <KnowledgeMapForceGraph
+                  tree={knowledgeMapTree}
+                  links={resourceLinks}
+                  selectedNodeId={null}
+                  onSelectNode={openTermOnMap}
+                  resolveResourceLabel={resolveResourceLabel}
+                  className="km-map-graph--home"
+                />
+              </Suspense>
             ) : null}
             {showHtmlHome ? (
               <p className="home-muted home-map-stage-hint">{t('mapHtmlHint')}</p>

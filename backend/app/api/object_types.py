@@ -641,11 +641,20 @@ async def list_object_instances(
             )
         return ObjectInstanceListResponse(items=items, total=total)
     else:
-        query = select(ObjectInstance).where(ObjectInstance.object_type_id == object_type_id)
+        filters = [ObjectInstance.object_type_id == object_type_id]
         if search and search.strip():
             pattern = f"%{search.strip()}%"
-            query = query.where(cast(ObjectInstance.data, String).ilike(pattern))
-        query = query.order_by(ObjectInstance.created_at.desc())
+            filters.append(cast(ObjectInstance.data, String).ilike(pattern))
+        total = int(
+            (await db.execute(select(func.count()).select_from(ObjectInstance).where(*filters))).scalar_one()
+        )
+        query = (
+            select(ObjectInstance)
+            .where(*filters)
+            .order_by(ObjectInstance.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
         result = await db.execute(query)
         instances = result.scalars().all()
         return ObjectInstanceListResponse(
@@ -659,7 +668,7 @@ async def list_object_instances(
                 )
                 for o in instances
             ],
-            total=len(instances),
+            total=total,
         )
 
 

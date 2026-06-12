@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Bot, Network, Save, Settings, X } from 'lucide-react';
 import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
 import { WikiSpaceAgentPanel } from '../../components/wiki/WikiSpaceAgentPanel';
-import { fetchWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from '../../data/wikiSpacesApi';
+import { fetchAllWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from '../../data/wikiSpacesApi';
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
 import { WikiPagePanel, type WikiPagePanelHandle } from './WikiPagePanel';
@@ -215,7 +215,7 @@ export function WikiWorkspace() {
     if (!spaceId) return;
     let cancelled = false;
     setPagesLoading(true);
-    void fetchWikiPages(spaceId)
+    void fetchAllWikiPages(spaceId)
       .then((r) => {
         if (!cancelled) setWikiPages(r.items);
       })
