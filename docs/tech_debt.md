@@ -44,15 +44,19 @@ Embedding columns are **dimensionless** `vector` on purpose (each KB/wiki space 
 
 `kb_agent_conversations.py`, `kb_faq_agent_conversations.py`, and `eval_agent_conversations.py` share nearly the same streaming CRUD shape. Consolidate into a shared factory or base service when touching agent APIs.
 
+### ACL implementation layout
+
+`resource_acl_service.py` is a re-export facade; implementation lives in `acl_scope.py`, `acl_identity.py`, `acl_context.py`, `acl_resolve.py`, `acl_store.py`, `acl_channel_filters.py`, `acl_resource_filters.py`, and `acl_content_visibility.py`.
+
 ### God modules (split when editing)
 
 | Module | ~Lines | Smell |
 |--------|--------|-------|
 | `api/knowledge_bases.py` | 950+ | CRUD, chunks, FAQs (search/ask in `knowledge_bases_search.py`) |
-| `services/resource_acl_service.py` | 1200+ | ACL resolution, channel trees |
 | `api/wiki_spaces.py` | 950+ | Pages, files, import, semantic index |
 | `api/documents.py` | 970+ | Upload, pipeline, metadata |
-| `pages/knowledge-bases/KnowledgeBaseDetail.tsx` | 3300+ | All KB tabs in one file |
+| `pages/knowledge-bases/KnowledgeBaseDetail.tsx` | ~1900 | View shell + tab JSX; logic in `useKnowledgeBaseDetail.ts` (~1400) and `KnowledgeBaseDetail.*` helpers |
+| `pages/knowledge-bases/useKnowledgeBaseDetail.ts` | ~1400 | KB detail state/handlers — split tab panels into `KnowledgeBaseDetail.*Tab.tsx` when editing |
 
 ### Optional query polish
 

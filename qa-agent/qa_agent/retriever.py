@@ -3,15 +3,14 @@
 Pipeline:
   query
     → strip leading slash command (/rag, /ontology, /premium, …)
-    → parallel recall:
-         A. backend /search dense recall (top settings.hybrid_recall_top_k)
-         B. in-memory BM25 over jieba-tokenized chunks/FAQs (top settings.hybrid_recall_top_k)
+    → dense recall: backend /search (force_dense) with pool_k = max(2×top_k, rerank_recall_top_k)
+    → BM25 re-score on that candidate pool only (no full-corpus chunk/FAQ crawl)
     → RRF fuse (k=settings.rrf_k) → top settings.rerank_recall_top_k candidates
     → SiliconFlow /v1/rerank (BAAI/bge-reranker-v2-m3 cross-encoder)
     → top-K SourceItems
 
-Each stage degrades gracefully on failure: BM25 build/network errors → dense-only
-recall; rerank errors → fused candidates as-is. The answer path never breaks.
+Each stage degrades gracefully on failure: BM25 errors → dense-only recall;
+rerank errors → fused candidates as-is. The answer path never breaks.
 """
 import logging
 import re
@@ -19,7 +18,7 @@ from typing import Any
 
 import httpx
 
-from .bm25_index import cache as bm25_cache
+from .bm25_index import score_candidates
 from .config import openai_v1_base, settings
 from .llm_config import get_effective_llm_config
 from .schemas import SourceItem
@@ -37,6 +36,11 @@ _SLASH_PATTERN = re.compile(
 def _strip_slash_prefix(query: str) -> str:
     stripped = _SLASH_PATTERN.sub("", query, count=1).strip()
     return stripped or query.strip()
+
+
+def _candidate_pool_k(top_k: int) -> int:
+    """How many hits to load before RRF/rerank (2× page size, enough for rerank stage)."""
+    return max(2 * top_k, settings.rerank_recall_top_k)
 
 
 def _dense_recall(kb_id: str, query: str, access_token: str, top_k: int) -> list[dict[str, Any]]:
@@ -57,8 +61,8 @@ def _dense_recall(kb_id: str, query: str, access_token: str, top_k: int) -> list
         return []
 
 
-def _bm25_recall(kb_id: str, query: str, access_token: str, top_k: int) -> list[dict[str, Any]]:
-    return bm25_cache.query(kb_id, query, access_token, top_k)
+def _bm25_recall(query: str, candidates: list[dict[str, Any]], top_k: int) -> list[dict[str, Any]]:
+    return score_candidates(query, candidates, top_k)
 
 
 def _rrf_fuse(
@@ -222,12 +226,13 @@ def retrieve(
     access_token: str,
     top_k: int = 5,
 ) -> list[SourceItem]:
-    """Hybrid retrieve: BM25 + dense → RRF → cross-encoder rerank → top-K."""
+    """Hybrid retrieve: dense pool → BM25 re-score → RRF → cross-encoder rerank → top-K."""
     clean_query = _strip_slash_prefix(query)
     recall_k = max(top_k, settings.hybrid_recall_top_k)
+    pool_k = _candidate_pool_k(top_k)
 
-    dense = _dense_recall(knowledge_base_id, clean_query, access_token, recall_k)
-    bm25 = _bm25_recall(knowledge_base_id, clean_query, access_token, recall_k)
+    dense = _dense_recall(knowledge_base_id, clean_query, access_token, pool_k)
+    bm25 = _bm25_recall(clean_query, dense, recall_k) if dense else []
     _annotate_recall_ranks(dense, bm25)
 
     if dense and bm25:

@@ -24,11 +24,7 @@ from app.schemas.knowledge_base import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/knowledge-bases",
-    tags=["knowledge-bases"],
-    dependencies=[Depends(require_auth)],
-)
+router = APIRouter(tags=["knowledge-bases"])
 
 
 @router.post("/{kb_id}/search", response_model=SearchResponse)

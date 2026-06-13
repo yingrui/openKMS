@@ -1,6 +1,4 @@
-import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   BookOpen,
@@ -10,15 +8,11 @@ import {
   Search as SearchIcon,
   Send,
   FileStack,
-  Folder,
-  FolderOpen,
   Layers,
   Plus,
   Eye,
   Trash2,
   Sparkles,
-  Settings,
-  Users,
   MessageSquare,
   Pencil,
   X,
@@ -32,1478 +26,46 @@ import {
   ThumbsUp,
   ThumbsDown,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  fetchKnowledgeBase,
-  fetchKBDocuments,
-  fetchAllKBDocuments,
-  fetchKBWikiSpaces,
-  fetchFAQs,
-  fetchChunks,
-  fetchChunkById,
-  addKBDocument,
-  removeKBDocument,
-  addKBWikiSpace,
-  removeKBWikiSpace,
-  createFAQ,
-  polishFAQAnswer,
-  updateFAQ,
-  deleteFAQ,
-  generateFAQs,
-  saveFAQs,
-  searchKnowledgeBase,
-  updateKnowledgeBase,
-  updateChunk,
-  enqueueKnowledgeBaseIndexJob,
-  enqueueKnowledgeBaseWikiSpaceIndexJob,
-  listKbAgentConversations,
-  listAllKbAgentMessages,
-  createKbAgentConversation,
-  deleteKbAgentConversation,
-  patchKbAgentConversation,
-  postKbAgentMessageStream,
-  getStoredKbQaConversationId,
-  setStoredKbQaConversationId,
-  clearStoredKbQaConversationId,
-  KB_QA_SOURCES_V1,
-  type KnowledgeBaseResponse,
-  type KBDocumentResponse,
-  type KBWikiSpaceResponse,
-  type FAQResponse,
-  type FAQGenerateResult,
-  type ChunkResponse,
-  type SearchResult,
-} from '../../data/knowledgeBasesApi';
-import type { AgentConversationResponse, AgentMessageItem } from '../../data/agentApi';
-import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
-import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
-import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
-import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { fetchDocumentById } from '../../data/documentsApi';
+import { fetchChannelById } from '../../data/channelsApi';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
-import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistantStreamBody';
-import { applyCopilotStreamEvent } from '../../components/agents/agentStreamState';
 import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
 import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
+import { KbRetrievalProvenancePanel } from './KnowledgeBaseDetail.searchUtils';
+import { DocPickerChannelTree } from './KnowledgeBaseDetail.docPickerTree';
 import {
-  assistantHistoryStreamParts,
-  type AssistantStreamPart,
-} from '../../components/wiki/wikiCopilotStreamParts';
+  kbQaChipTitle,
+  kbQaExpandedDetailPreviewMaxLen,
+  kbQaFeedbackKey,
+  kbQaNormalizeSourceKind,
+  kbQaShowRetrievalScore,
+  kbQaSourceCardModifierClass,
+  kbQaSourceChipModifierClass,
+  kbQaTruncatePreview,
+} from './KnowledgeBaseDetail.qaUtils';
+import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
+import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import './KnowledgeBaseDetail.scss';
 
-type TabId = 'documents' | 'wiki_spaces' | 'faqs' | 'chunks' | 'search' | 'settings';
-
-type SettingsSubTabId = 'general' | 'sharing';
-
-const TAB_ORDER: TabId[] = ['documents', 'wiki_spaces', 'faqs', 'chunks', 'search', 'settings'];
-
-const TAB_ICONS: Record<TabId, typeof FileStack> = {
-  documents: FileStack,
-  wiki_spaces: BookOpen,
-  faqs: HelpCircle,
-  chunks: Layers,
-  search: SearchIcon,
-  settings: Settings,
-};
-
-interface KbSearchSnapshot {
-  query: string;
-  searchType: string;
-  topK: number;
-  forceDense: boolean;
-  orderedIds: string[];
-  scores: Record<string, number>;
-}
-
-interface KbSearchRetrievalDiff {
-  added: string[];
-  removed: string[];
-  moved: { id: string; from: number; to: number }[];
-}
-
-function kbSnapshotFromResults(
-  query: string,
-  searchType: string,
-  topK: number,
-  forceDense: boolean,
-  results: SearchResult[]
-): KbSearchSnapshot {
-  const orderedIds = results.map((r) => r.id);
-  const scores: Record<string, number> = {};
-  for (const r of results) scores[r.id] = r.score;
-  return { query, searchType, topK, forceDense, orderedIds, scores };
-}
-
-function kbComputeSearchDiff(prev: KbSearchSnapshot, cur: KbSearchSnapshot): KbSearchRetrievalDiff {
-  const prevSet = new Set(prev.orderedIds);
-  const curSet = new Set(cur.orderedIds);
-  const added = cur.orderedIds.filter((id) => !prevSet.has(id));
-  const removed = prev.orderedIds.filter((id) => !curSet.has(id));
-  const moved: { id: string; from: number; to: number }[] = [];
-  cur.orderedIds.forEach((id, to) => {
-    const from = prev.orderedIds.indexOf(id);
-    if (from >= 0 && from !== to) moved.push({ id, from, to });
-  });
-  return { added, removed, moved };
-}
-
-function kbHasRetrievalProvenance(s: SearchResult): boolean {
-  if (s.chunk_index != null && s.chunk_index !== undefined) return true;
-  if (s.retrieval_mode) return true;
-  const d = s.retrieval_debug;
-  if (d && typeof d === 'object' && Object.keys(d).length > 0) return true;
-  return false;
-}
-
-interface KbRetrievalProvenanceProps {
-  s: SearchResult;
-  t: (key: string, options?: Record<string, unknown>) => string;
-}
-
-function KbRetrievalProvenancePanel({ s, t }: KbRetrievalProvenanceProps) {
-  if (!kbHasRetrievalProvenance(s)) return null;
-  const dbg = s.retrieval_debug;
-  const num = (v: unknown): string | null => {
-    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
-    if (typeof v === 'string' && v.trim() && !Number.isNaN(Number(v))) return v;
-    return null;
-  };
-  const stages = dbg?.pipeline_stages;
-  const stageLine =
-    Array.isArray(stages) && stages.length
-      ? (stages as unknown[])
-          .map((x) => (typeof x === 'string' ? t(`detail.retrieval.stage.${x}`, { defaultValue: String(x) }) : ''))
-          .filter(Boolean)
-          .join(' → ')
-      : null;
-  const modeLabel = s.retrieval_mode
-    ? t(`detail.retrieval.mode.${s.retrieval_mode}`, { defaultValue: s.retrieval_mode })
-    : null;
-  const rows: { label: string; value: string }[] = [];
-  if (s.chunk_index != null && s.chunk_index !== undefined) {
-    rows.push({ label: t('detail.retrieval.chunkIndex'), value: String(s.chunk_index) });
-  }
-  if (modeLabel) rows.push({ label: t('detail.retrieval.modeLabel'), value: modeLabel });
-  if (stageLine) rows.push({ label: t('detail.retrieval.pipelineLabel'), value: stageLine });
-  const dr = dbg?.dense_rank;
-  if (dr != null && num(dr) != null) rows.push({ label: t('detail.retrieval.denseRank'), value: num(dr)! });
-  const ds = dbg?.dense_similarity;
-  if (ds != null && num(ds) != null) rows.push({ label: t('detail.retrieval.denseSimilarity'), value: num(ds)! });
-  const br = dbg?.bm25_rank;
-  if (br != null && num(br) != null) rows.push({ label: t('detail.retrieval.bm25Rank'), value: num(br)! });
-  const bs = dbg?.bm25_score;
-  if (bs != null && num(bs) != null) rows.push({ label: t('detail.retrieval.bm25Score'), value: num(bs)! });
-  const rf = dbg?.rrf_score;
-  if (rf != null && num(rf) != null) rows.push({ label: t('detail.retrieval.rrfScore'), value: num(rf)! });
-  const rr = dbg?.rerank_score;
-  if (rr != null && num(rr) != null) rows.push({ label: t('detail.retrieval.rerankScore'), value: num(rr)! });
-  if (!rows.length && !stageLine && !modeLabel) return null;
-  return (
-    <div className="kb-retrieval-panel">
-      <div className="kb-retrieval-panel__title">{t('detail.retrieval.panelTitle')}</div>
-      <dl className="kb-retrieval-panel__dl">
-        {rows.map((row) => (
-          <div key={row.label} className="kb-retrieval-panel__row">
-            <dt>{row.label}</dt>
-            <dd>{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
-  );
-}
-
-interface ChatMessage {
-  id?: string;
-  role: 'user' | 'assistant';
-  content: string;
-  sources?: SearchResult[];
-  streamParts?: AssistantStreamPart[];
-  /** Stable id for this assistant turn (which reference rows are expanded). */
-  replyKey?: string;
-}
-
-function kbAgentItemsToChatMessages(items: AgentMessageItem[]): ChatMessage[] {
-  const out: ChatMessage[] = [];
-  for (const m of items) {
-    if (m.role !== 'user' && m.role !== 'assistant') continue;
-    if (m.role === 'user') {
-      out.push({ id: m.id, role: 'user', content: m.content });
-      continue;
-    }
-    const tc = m.tool_calls as Record<string, unknown> | undefined;
-    const rawSources = tc?.[KB_QA_SOURCES_V1];
-    const sources = Array.isArray(rawSources) ? (rawSources as SearchResult[]) : undefined;
-    out.push({
-      id: m.id,
-      role: 'assistant',
-      content: m.content,
-      sources,
-      streamParts: assistantHistoryStreamParts(m.content, m.tool_calls),
-      replyKey: m.id,
-    });
-  }
-  return out;
-}
-
-function kbQaLineId(): string {
-  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `line_${Date.now()}`;
-}
-
-function kbQaFeedbackKey(msg: ChatMessage, index: number): string {
-  return msg.replyKey ?? msg.id ?? `idx-${index}`;
-}
-
-type KbQaFeedbackVote = 'up' | 'down';
-
-function kbQaNormalizeSourceKind(sourceType: string | null | undefined): string {
-  const k = (sourceType || 'chunk').toLowerCase();
-  if (k === 'ontology' || k === 'document_section' || k === 'faq' || k === 'chunk') return k;
-  return 'chunk';
-}
-
-function kbQaSourceCardModifierClass(sourceType: string | null | undefined): string {
-  const k = kbQaNormalizeSourceKind(sourceType);
-  if (k === 'ontology') return 'kb-qa-source-card--ontology';
-  if (k === 'document_section') return 'kb-qa-source-card--section';
-  if (k === 'faq') return 'kb-qa-source-card--faq';
-  return 'kb-qa-source-card--chunk';
-}
-
-function kbQaTruncatePreview(text: string, maxLen: number): string {
-  const n = text.replace(/\s+/g, ' ').trim();
-  if (!n) return '';
-  if (n.length <= maxLen) return n;
-  return `${n.slice(0, Math.max(0, maxLen - 1))}…`;
-}
-
-function kbQaShowRetrievalScore(sourceType: string | null | undefined, score: number): boolean {
-  const k = kbQaNormalizeSourceKind(sourceType);
-  if (k === 'ontology' || k === 'document_section') return false;
-  return score < 0.999;
-}
-
-function kbQaSourceChipModifierClass(sourceType: string | null | undefined): string {
-  const k = kbQaNormalizeSourceKind(sourceType);
-  if (k === 'ontology') return 'kb-qa-source-chip--ontology';
-  if (k === 'document_section') return 'kb-qa-source-chip--section';
-  if (k === 'faq') return 'kb-qa-source-chip--faq';
-  return 'kb-qa-source-chip--chunk';
-}
-
-function kbQaChipTitle(s: SearchResult, maxLen = 26): string {
-  const raw =
-    (s.source_name && s.source_name.trim()) ||
-    (s.wiki_page_id ? String(s.wiki_page_id) : '') ||
-    (s.document_id ? String(s.document_id) : '') ||
-    (s.id ? String(s.id) : '');
-  const x = raw.replace(/\s+/g, ' ').trim();
-  if (!x) return '…';
-  if (x.length <= maxLen) return x;
-  return `${x.slice(0, Math.max(0, maxLen - 1))}…`;
-}
-
-function kbQaExpandedDetailPreviewMaxLen(sourceType: string | null | undefined): number {
-  const k = kbQaNormalizeSourceKind(sourceType);
-  if (k === 'ontology') return 12_000;
-  if (k === 'document_section') return 4_000;
-  return 1_200;
-}
-
-function DocPickerChannelTree({
-  node,
-  selectedId,
-  expanded,
-  onSelect,
-  onToggle,
-  depth,
-}: {
-  node: ChannelNode;
-  selectedId: string | null;
-  expanded: Record<string, boolean>;
-  onSelect: (id: string) => void;
-  onToggle: (id: string) => void;
-  depth: number;
-}) {
-  const { t } = useTranslation('knowledgeBase');
-  const hasChildren = node.children && node.children.length > 0;
-  const isExpanded = expanded[node.id];
-  return (
-    <li className="kb-doc-picker-channel-li">
-      <div
-        className={`kb-doc-picker-channel-item${selectedId === node.id ? ' selected' : ''}`}
-        style={{ paddingLeft: 8 + depth * 16 }}
-      >
-        {hasChildren ? (
-          <button
-            type="button"
-            className="kb-doc-picker-channel-toggle"
-            onClick={() => onToggle(node.id)}
-            aria-label={isExpanded ? t('detail.collapseTree') : t('detail.expandTree')}
-          >
-            <ChevronRight size={14} className={isExpanded ? 'expanded' : ''} />
-          </button>
-        ) : (
-          <span className="kb-doc-picker-channel-spacer" />
-        )}
-        <button
-          type="button"
-          className="kb-doc-picker-channel-label"
-          onClick={() => onSelect(node.id)}
-        >
-          {hasChildren && isExpanded ? (
-            <FolderOpen size={16} />
-          ) : (
-            <Folder size={16} />
-          )}
-          <span>{node.name}</span>
-        </button>
-      </div>
-      {hasChildren && isExpanded && (
-        <ul className="kb-doc-picker-channel-tree kb-doc-picker-channel-tree--root">
-          {node.children!.map((ch) => (
-            <DocPickerChannelTree
-              key={ch.id}
-              node={ch}
-              selectedId={selectedId}
-              expanded={expanded}
-              onSelect={onSelect}
-              onToggle={onToggle}
-              depth={depth + 1}
-            />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
-}
-
 export function KnowledgeBaseDetail() {
-  const { id: kbId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { channels } = useEnsureDocumentChannels();
-  const { t } = useTranslation('knowledgeBase');
-  const [kb, setKb] = useState<KnowledgeBaseResponse | null>(null);
-  const initialTab = (searchParams.get('tab') as TabId) || 'documents';
-  const [activeTab, setActiveTab] = useState<TabId>(TAB_ORDER.includes(initialTab) ? initialTab : 'documents');
-  const [qaFullPage, setQaFullPage] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const vm = useKnowledgeBaseDetail();
 
-  // Documents
-  const [docs, setDocs] = useState<KBDocumentResponse[]>([]);
-  const [docTotal, setDocTotal] = useState(0);
-  const [docPage, setDocPage] = useState(0);
-  const [docPageSize, setDocPageSize] = useState(50);
-  const [linkedDocIds, setLinkedDocIds] = useState<Set<string>>(new Set());
-  const [genDocs, setGenDocs] = useState<KBDocumentResponse[]>([]);
-  const [showDocPicker, setShowDocPicker] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState('');
-  const [pickerResults, setPickerResults] = useState<DocumentListItemResponse[]>([]);
-  const [pickerLoading, setPickerLoading] = useState(false);
-  const [pickerSelected, setPickerSelected] = useState<Set<string>>(new Set());
-  const [pickerSelectedChannel, setPickerSelectedChannel] = useState<string | null>(null);
-  const [pickerChannelExpanded, setPickerChannelExpanded] = useState<Record<string, boolean>>({});
-  const [pickerSearchDebounced, setPickerSearchDebounced] = useState('');
-  const [pickerPage, setPickerPage] = useState(0);
-  const [pickerPageSize] = useState(20);
-  const [pickerTotal, setPickerTotal] = useState(0);
-  const [pickerAdding, setPickerAdding] = useState(false);
-  const pickerDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  if (vm.loading) return <div className="kb-detail"><p>{vm.t('detail.loading')}</p></div>;
+  if (!vm.kb) return <div className="kb-detail"><p>{vm.t('detail.notFound')}</p></div>;
 
-  const [kbWikiSpaces, setKbWikiSpaces] = useState<KBWikiSpaceResponse[]>([]);
-  const [showWikiSpacePicker, setShowWikiSpacePicker] = useState(false);
-  const [wikiSpacePickerItems, setWikiSpacePickerItems] = useState<WikiSpaceResponse[]>([]);
-  const [wikiSpacePickerLoading, setWikiSpacePickerLoading] = useState(false);
-  const [wikiSpaceBusyId, setWikiSpaceBusyId] = useState<string | null>(null);
+  const faqDialogTitle = vm.editFaq
+    ? vm.t('detail.faqDialogEdit')
+    : vm.faqDialogSource === 'from_qa'
+      ? vm.t('detail.faqDialogSaveFromQa')
+      : vm.t('detail.faqDialogAdd');
 
-  // FAQs
-  const [faqs, setFaqs] = useState<FAQResponse[]>([]);
-  const [faqTotal, setFaqTotal] = useState(0);
-  const [faqPage, setFaqPage] = useState(0);
-  const [faqPageSize, setFaqPageSize] = useState(50);
-  const [showFaqDialog, setShowFaqDialog] = useState(false);
-  const [faqDialogSource, setFaqDialogSource] = useState<'manual' | 'from_qa'>('manual');
-  const [faqPolishing, setFaqPolishing] = useState(false);
-  const [editFaq, setEditFaq] = useState<FAQResponse | null>(null);
-  const [faqQuestion, setFaqQuestion] = useState('');
-  const [faqAnswer, setFaqAnswer] = useState('');
-  const [, setFaqLabelsValues] = useState<Record<string, string>>({});
-  const [faqDocMetadataValues, setFaqDocMetadataValues] = useState<Record<string, string>>({});
-  const [, setFaqLabelAllowMultiple] = useState<Record<string, boolean>>({});
-  const [faqMetadataIsArray, setFaqMetadataIsArray] = useState<Record<string, boolean>>({});
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [genSelectedDocs, setGenSelectedDocs] = useState<Set<string>>(new Set());
-  const [genModelId, setGenModelId] = useState('');
-  const [genPrompt, setGenPrompt] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [genProgress, setGenProgress] = useState<{ current: number; total: number; documentName: string } | null>(null);
-  const [genStep, setGenStep] = useState<'config' | 'review'>('config');
-  const [genPreviewFaqs, setGenPreviewFaqs] = useState<FAQGenerateResult[]>([]);
-  const [genSaving, setGenSaving] = useState(false);
-
-  // Chunks
-  const [chunks, setChunks] = useState<ChunkResponse[]>([]);
-  const [chunkTotal, setChunkTotal] = useState(0);
-  const [chunkPage, setChunkPage] = useState(0);
-  const [chunkPageSize, setChunkPageSize] = useState(50);
-  const [editChunk, setEditChunk] = useState<ChunkResponse | null>(null);
-  const [showChunkDialog, setShowChunkDialog] = useState(false);
-  const [chunkContent, setChunkContent] = useState('');
-  const [, setChunkLabelsValues] = useState<Record<string, string>>({});
-  const [chunkDocMetadataValues, setChunkDocMetadataValues] = useState<Record<string, string>>({});
-  const [, setChunkLabelAllowMultiple] = useState<Record<string, boolean>>({});
-  const [chunkMetadataIsArray, setChunkMetadataIsArray] = useState<Record<string, boolean>>({});
-  const [chunkSaving, setChunkSaving] = useState(false);
-  const [chunkDialogReadOnly, setChunkDialogReadOnly] = useState(false);
-
-  // Search
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'all' | 'chunks' | 'faqs'>('all');
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [searchOptionsExpanded, setSearchOptionsExpanded] = useState(false);
-  const [searchLabelFilters] = useState<Record<string, string>>({});
-  const [searchMetadataFilters, setSearchMetadataFilters] = useState<Record<string, string>>({});
-  const [searchTopK, setSearchTopK] = useState(10);
-  const [searchForceDense, setSearchForceDense] = useState(false);
-  const searchPrevSnapshotRef = useRef<KbSearchSnapshot | null>(null);
-  const [searchRetrievalDiff, setSearchRetrievalDiff] = useState<KbSearchRetrievalDiff | null>(null);
-
-  // QA
-  const [qaInput, setQaInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [qaFeedback, setQaFeedback] = useState<Record<string, KbQaFeedbackVote>>({});
-  const [qaLoading, setQaLoading] = useState(false);
-  const qaStreamAbortRef = useRef<AbortController | null>(null);
-  /** Langfuse session id for KB Q&A turns while this full-page chat is open (opaque UUID). */
-  const qaTraceSessionRef = useRef<string | null>(null);
-  /** Which source indexes are expanded (full detail), keyed by assistant ``replyKey``. */
-  const [qaSourcesExpanded, setQaSourcesExpanded] = useState<Record<string, Set<number>>>({});
-  const kbIdRef = useRef(kbId);
-  kbIdRef.current = kbId;
-  const [kbQaConvId, setKbQaConvId] = useState<string | null>(null);
-  const [kbQaConversations, setKbQaConversations] = useState<AgentConversationResponse[]>([]);
-  const [kbQaConvsLoading, setKbQaConvsLoading] = useState(false);
-  const [kbQaConvReady, setKbQaConvReady] = useState(false);
-  const kbQaMainScrollRef = useRef<HTMLDivElement | null>(null);
-
-  // Settings
-  const [settingsAgentUrl, setSettingsAgentUrl] = useState('');
-  const [settingsEmbeddingModelId, setSettingsEmbeddingModelId] = useState('');
-  const [settingsFaqPrompt, setSettingsFaqPrompt] = useState('');
-  const [settingsChunkStrategy, setSettingsChunkStrategy] = useState('fixed_size');
-  const [settingsChunkSize, setSettingsChunkSize] = useState(8000);
-  const [settingsChunkOverlap, setSettingsChunkOverlap] = useState(50);
-  const [settingsMetadataKeys, setSettingsMetadataKeys] = useState('');
-  const [embeddingModels, setEmbeddingModels] = useState<ApiModelResponse[]>([]);
-  const [llmModels, setLlmModels] = useState<ApiModelResponse[]>([]);
-  const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settingsSubTab, setSettingsSubTab] = useState<SettingsSubTabId>('general');
-  const [indexJobSubmitting, setIndexJobSubmitting] = useState(false);
-
-  const settingsSubTabs = useMemo(
-    () =>
-      [
-        { id: 'general' as const, label: t('detail.settingsTabGeneral'), icon: Settings },
-        { id: 'sharing' as const, label: t('detail.settingsTabSharing'), icon: Users },
-      ],
-    [t],
-  );
-
-  const loadKb = useCallback(async () => {
-    if (!kbId) return;
-    try {
-      const data = await fetchKnowledgeBase(kbId);
-      setKb(data);
-      setSettingsAgentUrl(data.agent_url || '');
-      setSettingsEmbeddingModelId(data.embedding_model_id || '');
-      const cc = (data.chunk_config || {}) as Record<string, unknown>;
-      setSettingsChunkStrategy((cc.strategy as string) || 'fixed_size');
-      setSettingsChunkSize((cc.chunk_size as number) || 8000);
-      setSettingsChunkOverlap((cc.chunk_overlap as number) || 50);
-      setSettingsFaqPrompt(data.faq_prompt || '');
-      setSettingsMetadataKeys(Array.isArray(data.metadata_keys) ? data.metadata_keys.join(', ') : '');
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastLoadKbFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [kbId, t]);
-
-  const refreshLinkedDocIds = useCallback(async () => {
-    if (!kbId) return;
-    try {
-      const all = await fetchAllKBDocuments(kbId);
-      setLinkedDocIds(new Set(all.map((d) => d.document_id)));
-    } catch { /* noop */ }
-  }, [kbId]);
-
-  const loadDocs = useCallback(async () => {
-    if (!kbId) return;
-    try {
-      const data = await fetchKBDocuments(kbId, { offset: docPage * docPageSize, limit: docPageSize });
-      setDocs(data.items);
-      setDocTotal(data.total);
-      setDocPage((p) => {
-        const maxP = data.total > 0 ? Math.ceil(data.total / docPageSize) - 1 : 0;
-        return Math.min(p, Math.max(0, maxP));
-      });
-    } catch { /* noop */ }
-  }, [kbId, docPage, docPageSize]);
-
-  const loadKbWikiSpaces = useCallback(async () => {
-    if (!kbId) return;
-    try {
-      setKbWikiSpaces(await fetchKBWikiSpaces(kbId));
-    } catch { /* noop */ }
-  }, [kbId]);
-
-  const loadFaqs = useCallback(async () => {
-    if (!kbId) return;
-    try {
-      const data = await fetchFAQs(kbId, { offset: faqPage * faqPageSize, limit: faqPageSize });
-      setFaqs(data.items);
-      setFaqTotal(data.total);
-      setFaqPage((p) => {
-        const maxP = data.total > 0 ? Math.ceil(data.total / faqPageSize) - 1 : 0;
-        return Math.min(p, Math.max(0, maxP));
-      });
-    } catch { /* noop */ }
-  }, [kbId, faqPage, faqPageSize]);
-
-  const loadChunks = useCallback(async () => {
-    if (!kbId) return;
-    try {
-      const data = await fetchChunks(kbId, { offset: chunkPage * chunkPageSize, limit: chunkPageSize });
-      setChunks(data.items);
-      setChunkTotal(data.total);
-      setChunkPage((p) => {
-        const maxP = data.total > 0 ? Math.ceil(data.total / chunkPageSize) - 1 : 0;
-        return Math.min(p, Math.max(0, maxP));
-      });
-    } catch { /* noop */ }
-  }, [kbId, chunkPage, chunkPageSize]);
-
-  const enqueueIndexJob = useCallback(async () => {
-    if (!kbId) return;
-    if (!kb?.embedding_model_id) {
-      toast.error(t('detail.indexJobRequiresEmbedding'));
-      return;
-    }
-    setIndexJobSubmitting(true);
-    try {
-      const job = await enqueueKnowledgeBaseIndexJob(kbId);
-      toast.success(t('detail.indexJobToastQueued', { id: job.id }));
-      navigate(`/job-runs/${job.id}`);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.indexJobToastFailed'));
-    } finally {
-      setIndexJobSubmitting(false);
-    }
-  }, [kbId, kb?.embedding_model_id, navigate, t]);
-
-  const loadModels = useCallback(async () => {
-    try {
-      const emb = await fetchAllModels({ api_kind: 'embeddings' });
-      setEmbeddingModels(emb);
-      const llm = await fetchAllModels({ api_kind: 'chat-completions' });
-      setLlmModels(llm);
-    } catch { /* noop */ }
-  }, []);
-
-  useEffect(() => { loadKb(); loadModels(); }, [loadKb, loadModels]);
-
-  useEffect(() => {
-    const q = searchParams.get('tab');
-    if (!q) return;
-    if (TAB_ORDER.includes(q as TabId)) {
-      setActiveTab(q as TabId);
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (kbId) void refreshLinkedDocIds();
-  }, [kbId, refreshLinkedDocIds]);
-
-  useEffect(() => {
-    if (activeTab === 'documents') void loadDocs();
-    if (activeTab === 'wiki_spaces') void loadKbWikiSpaces();
-    if (activeTab === 'faqs') loadFaqs();
-    if (activeTab === 'chunks') loadChunks();
-  }, [activeTab, loadDocs, loadKbWikiSpaces, loadFaqs, loadChunks]);
-
-  useEffect(() => {
-    if (qaFullPage && kb && !kb.agent_url) {
-      setQaFullPage(false);
-    }
-  }, [qaFullPage, kb]);
-
-  useEffect(() => {
-    if (qaFullPage && kb?.agent_url) {
-      document.body.classList.add('openkms-kb-qa-fullpage');
-      return () => {
-        document.body.classList.remove('openkms-kb-qa-fullpage');
-      };
-    }
-    document.body.classList.remove('openkms-kb-qa-fullpage');
-    return undefined;
-  }, [qaFullPage, kb?.agent_url]);
-
-  useLayoutEffect(() => {
-    if (!qaFullPage || !kb?.agent_url) return;
-    const sc = kbQaMainScrollRef.current;
-    if (!sc) return;
-    sc.scrollTop = sc.scrollHeight;
-  }, [qaFullPage, kb?.agent_url, chatMessages, qaLoading]);
-
-  const loadKbQaMessagesForConversation = useCallback(
-    async (conversationId: string) => {
-      if (!kbId) return;
-      const msgs = await listAllKbAgentMessages(kbId, conversationId);
-      setChatMessages(kbAgentItemsToChatMessages(msgs));
-      setQaFeedback({});
-    },
-    [kbId]
-  );
-
-  useEffect(() => {
-    if (!qaFullPage || !kbId) return;
-    let cancelled = false;
-    (async () => {
-      setKbQaConvReady(false);
-      setKbQaConvsLoading(true);
-      try {
-        const items = await listKbAgentConversations(kbId);
-        if (cancelled) return;
-        setKbQaConversations(items);
-        const stored = getStoredKbQaConversationId(kbId);
-        const validStored = stored && items.some((x) => x.id === stored) ? stored : null;
-        const nextId = validStored || items[0]?.id || null;
-        setKbQaConvId(nextId);
-        if (nextId) {
-          setStoredKbQaConversationId(kbId, nextId);
-          try {
-            await loadKbQaMessagesForConversation(nextId);
-          } catch {
-            if (!cancelled) {
-              setChatMessages([]);
-              toast.error(t('detail.qaToastLoadMessagesFailed'));
-            }
-          }
-        } else {
-          clearStoredKbQaConversationId(kbId);
-          if (!cancelled) setChatMessages([]);
-        }
-      } catch {
-        if (!cancelled) toast.error(t('detail.qaToastLoadConversationsFailed'));
-      } finally {
-        if (!cancelled) {
-          setKbQaConvsLoading(false);
-          setKbQaConvReady(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [qaFullPage, kbId, t, loadKbQaMessagesForConversation]);
-
-  // --- Document picker ---
-  const alreadyAddedIds = linkedDocIds;
-
-  const openDocPicker = async () => {
-    setShowDocPicker(true);
-    setPickerSearch('');
-    setPickerSearchDebounced('');
-    setPickerSelected(new Set());
-    setPickerSelectedChannel(null);
-    setPickerPage(0);
-    setPickerResults([]);
-    setPickerTotal(0);
-    setPickerLoading(false);
-    setPickerChannelExpanded(
-      channels.reduce<Record<string, boolean>>((acc, ch) => {
-        if (ch.children?.length) acc[ch.id] = true;
-        return acc;
-      }, {})
-    );
-  };
-
-  const handlePickerChannelSelect = (channelId: string) => {
-    setPickerSelectedChannel(channelId);
-    setPickerPage(0);
-  };
-
-  const handlePickerChannelToggle = (channelId: string) => {
-    setPickerChannelExpanded((prev) => ({ ...prev, [channelId]: !prev[channelId] }));
-  };
-
-  const loadPickerDocuments = useCallback(async () => {
-    if (!pickerSelectedChannel) {
-      setPickerResults([]);
-      setPickerTotal(0);
-      return;
-    }
-    setPickerLoading(true);
-    try {
-      const res = await fetchDocuments({
-        channel_id: pickerSelectedChannel,
-        search: pickerSearchDebounced || undefined,
-        offset: pickerPage * pickerPageSize,
-        limit: pickerPageSize,
-      });
-      setPickerResults(res.items);
-      setPickerTotal(res.total);
-    } catch { /* noop */ }
-    finally { setPickerLoading(false); }
-  }, [pickerSelectedChannel, pickerSearchDebounced, pickerPage, pickerPageSize]);
-
-  useEffect(() => {
-    if (showDocPicker && pickerSelectedChannel) {
-      loadPickerDocuments();
-    } else if (showDocPicker && !pickerSelectedChannel) {
-      setPickerResults([]);
-      setPickerTotal(0);
-    }
-  }, [showDocPicker, pickerSelectedChannel, loadPickerDocuments]);
-
-  const handlePickerSearch = (query: string) => {
-    setPickerSearch(query);
-    if (pickerDebounceRef.current) clearTimeout(pickerDebounceRef.current);
-    pickerDebounceRef.current = setTimeout(() => {
-      setPickerSearchDebounced(query);
-      setPickerPage(0);
-    }, 300);
-  };
-
-  const pickerTotalPages = Math.ceil(pickerTotal / pickerPageSize) || 1;
-  const pickerCanPrev = pickerPage > 0;
-  const pickerCanNext = pickerPage < pickerTotalPages - 1;
-
-  const togglePickerDoc = (docId: string) => {
-    setPickerSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(docId)) next.delete(docId);
-      else next.add(docId);
-      return next;
-    });
-  };
-
-  const handleAddSelectedDocuments = async () => {
-    if (!kbId || pickerSelected.size === 0) return;
-    setPickerAdding(true);
-    let added = 0;
-    for (const docId of pickerSelected) {
-      try {
-        await addKBDocument(kbId, docId);
-        added++;
-      } catch { /* skip duplicates */ }
-    }
-    setPickerAdding(false);
-    setShowDocPicker(false);
-    if (added > 0) {
-      toast.success(t('detail.toastDocumentsAdded', { count: added }));
-      void loadDocs();
-      void refreshLinkedDocIds();
-      loadKb();
-    }
-  };
-
-  const closeDocPicker = () => {
-    if (!pickerAdding) {
-      setShowDocPicker(false);
-    }
-  };
-
-  const handleRemoveDocument = async (docId: string) => {
-    if (!kbId) return;
-    try {
-      await removeKBDocument(kbId, docId);
-      toast.success(t('detail.toastDocRemoved'));
-      void loadDocs();
-      void refreshLinkedDocIds();
-      loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastRemoveDocFailed'));
-    }
-  };
-
-  const openWikiSpacePicker = async () => {
-    setShowWikiSpacePicker(true);
-    setWikiSpacePickerLoading(true);
-    setWikiSpacePickerItems([]);
-    try {
-      const res = await fetchAllWikiSpaces();
-      setWikiSpacePickerItems(res);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpacesLoadFailed'));
-    } finally {
-      setWikiSpacePickerLoading(false);
-    }
-  };
-
-  const closeWikiSpacePicker = () => {
-    if (!wikiSpaceBusyId) setShowWikiSpacePicker(false);
-  };
-
-  const handleAddWikiSpaceToKb = async (wikiSpaceId: string) => {
-    if (!kbId) return;
-    setWikiSpaceBusyId(wikiSpaceId);
-    try {
-      await addKBWikiSpace(kbId, wikiSpaceId);
-      toast.success(t('detail.toastWikiSpaceLinked'));
-      await loadKbWikiSpaces();
-      await loadKb();
-      setShowWikiSpacePicker(false);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpaceLinkFailed'));
-    } finally {
-      setWikiSpaceBusyId(null);
-    }
-  };
-
-  const handleRemoveWikiSpaceFromKb = async (wikiSpaceId: string) => {
-    if (!kbId) return;
-    setWikiSpaceBusyId(wikiSpaceId);
-    try {
-      await removeKBWikiSpace(kbId, wikiSpaceId);
-      toast.success(t('detail.toastWikiSpaceRemoved'));
-      await loadKbWikiSpaces();
-      await loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpaceRemoveFailed'));
-    } finally {
-      setWikiSpaceBusyId(null);
-    }
-  };
-
-  const handleIndexWikiSpace = async (wikiSpaceId: string) => {
-    if (!kbId) return;
-    if (!kb?.embedding_model_id) {
-      toast.error(t('detail.indexJobRequiresEmbedding'));
-      return;
-    }
-    setWikiSpaceBusyId(wikiSpaceId);
-    try {
-      const job = await enqueueKnowledgeBaseWikiSpaceIndexJob(kbId, wikiSpaceId);
-      toast.success(t('detail.wikiSpaceIndexJobQueued', { id: job.id }));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.wikiSpaceIndexJobFailed'));
-    } finally {
-      setWikiSpaceBusyId(null);
-    }
-  };
-
-  // --- FAQ handlers ---
-  const configValuesToMetadata = (
-    values: Record<string, string>,
-    keys: string[] | null | undefined,
-    isArray: Record<string, boolean>
-  ): Record<string, unknown> | null => {
-    if (!keys?.length) return null;
-    const result: Record<string, unknown> = {};
-    for (const k of keys) {
-      const v = (values[k] ?? '').trim();
-      if (v) {
-        result[k] = isArray[k]
-          ? v.split(',').map((s) => s.trim()).filter(Boolean)
-          : v;
-      }
-    }
-    return Object.keys(result).length ? result : null;
-  };
-
-  const objToConfigValues = (obj: Record<string, unknown> | null | undefined, keys: string[] | null | undefined): Record<string, string> => {
-    if (!keys?.length) return {};
-    return Object.fromEntries(
-      keys.map((k) => {
-        const v = obj?.[k];
-        return [k, Array.isArray(v) ? v.join(', ') : String(v ?? '')];
-      })
-    );
-  };
-
-  const kbQaAssistantText = (msg: ChatMessage): string => msg.content?.trim() ?? '';
-
-  const setKbQaFeedbackVote = (key: string, vote: KbQaFeedbackVote) => {
-    setQaFeedback((prev) => {
-      if (prev[key] === vote) {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      }
-      return { ...prev, [key]: vote };
-    });
-  };
-
-  const closeFaqDialog = () => {
-    setShowFaqDialog(false);
-    setEditFaq(null);
-    setFaqDialogSource('manual');
-    setFaqPolishing(false);
-  };
-
-  const openFaqFromQa = (question: string, answer: string) => {
-    setEditFaq(null);
-    setFaqDialogSource('from_qa');
-    setFaqQuestion(question.trim());
-    setFaqAnswer(answer.trim());
-    setFaqLabelsValues({});
-    setFaqDocMetadataValues({});
-    setFaqLabelAllowMultiple({});
-    setFaqMetadataIsArray({});
-    setShowFaqDialog(true);
-  };
-
-  const handlePolishFaqAnswer = async () => {
-    if (!kbId || !faqQuestion.trim() || !faqAnswer.trim() || faqPolishing) return;
-    setFaqPolishing(true);
-    try {
-      const res = await polishFAQAnswer(kbId, {
-        question: faqQuestion.trim(),
-        answer: faqAnswer.trim(),
-      });
-      setFaqAnswer(res.answer);
-      toast.success(t('detail.toastFaqPolished'));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastFaqPolishFailed'));
-    } finally {
-      setFaqPolishing(false);
-    }
-  };
-
-  const handleSaveFaq = async () => {
-    if (!kbId || !faqQuestion.trim() || !faqAnswer.trim()) return;
-    try {
-      const doc_metadata = configValuesToMetadata(
-        faqDocMetadataValues,
-        kb?.metadata_keys ?? undefined,
-        faqMetadataIsArray
-      );
-      const payload = { question: faqQuestion, answer: faqAnswer, doc_metadata: doc_metadata ?? undefined };
-      if (editFaq) {
-        await updateFAQ(kbId, editFaq.id, payload);
-        toast.success(t('detail.toastFaqUpdated'));
-      } else {
-        await createFAQ(kbId, payload);
-        toast.success(t('detail.toastFaqCreated'));
-      }
-      closeFaqDialog();
-      setFaqQuestion('');
-      setFaqAnswer('');
-      setFaqLabelsValues({});
-      setFaqDocMetadataValues({});
-      setFaqLabelAllowMultiple({});
-      setFaqMetadataIsArray({});
-      loadFaqs();
-      loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastSaveFaqFailed'));
-    }
-  };
-
-  const handleDeleteFaq = async (faqId: string) => {
-    if (!kbId) return;
-    try {
-      await deleteFAQ(kbId, faqId);
-      toast.success(t('detail.toastFaqDeleted'));
-      loadFaqs();
-      loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastDeleteFaqFailed'));
-    }
-  };
-
-  const openGenerateModal = async () => {
-    if (!kbId) return;
-    try {
-      const all = await fetchAllKBDocuments(kbId);
-      setGenDocs(all);
-      setGenSelectedDocs(new Set(all.map((d) => d.document_id)));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastLoadKbFailed'));
-      return;
-    }
-    setGenModelId('');
-    setGenPrompt(kb?.faq_prompt || '');
-    setGenStep('config');
-    setGenPreviewFaqs([]);
-    setShowGenerateModal(true);
-  };
-
-  const closeGenerateModal = () => {
-    if (!generating && !genSaving) setShowGenerateModal(false);
-  };
-
-  const toggleGenDoc = (docId: string) => {
-    setGenSelectedDocs((prev) => {
-      const next = new Set(prev);
-      if (next.has(docId)) next.delete(docId);
-      else next.add(docId);
-      return next;
-    });
-  };
-
-  const handleGenerateFaqs = async () => {
-    if (!kbId || !genModelId) return;
-    const docIds = Array.from(genSelectedDocs);
-    if (docIds.length === 0) {
-      toast.error(t('detail.toastSelectDoc'));
-      return;
-    }
-    const docIdToName = new Map(genDocs.map((d) => [d.document_id, d.document_name || d.document_id]));
-    setGenerating(true);
-    setGenProgress(null);
-    try {
-      const allResults: FAQGenerateResult[] = [];
-      if (docIds.length === 1) {
-        setGenProgress({
-          current: 1,
-          total: 1,
-          documentName: docIdToName.get(docIds[0]) || docIds[0],
-        });
-        const result = await generateFAQs(kbId, {
-          document_ids: docIds,
-          model_id: genModelId,
-          prompt: genPrompt.trim() || undefined,
-        });
-        allResults.push(...result);
-      } else {
-        for (let i = 0; i < docIds.length; i++) {
-          const docId = docIds[i];
-          setGenProgress({
-            current: i + 1,
-            total: docIds.length,
-            documentName: docIdToName.get(docId) || docId,
-          });
-          const result = await generateFAQs(kbId, {
-            document_ids: [docId],
-            model_id: genModelId,
-            prompt: genPrompt.trim() || undefined,
-          });
-          allResults.push(...result);
-        }
-      }
-      setGenProgress(null);
-      setGenPreviewFaqs(allResults);
-      setGenStep('review');
-      toast.success(t('detail.toastGenDone', { count: allResults.length }));
-    } catch (e: unknown) {
-      setGenProgress(null);
-      toast.error(e instanceof Error ? e.message : t('detail.toastGenFailed'));
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const removeGenPreviewFaq = (idx: number) => {
-    setGenPreviewFaqs((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleSaveGeneratedFaqs = async () => {
-    if (!kbId || genPreviewFaqs.length === 0) return;
-    setGenSaving(true);
-    try {
-      const items = genPreviewFaqs.map((f) => ({
-        document_id: f.document_id,
-        question: f.question,
-        answer: f.answer,
-        doc_metadata: f.doc_metadata ?? undefined,
-      }));
-      await saveFAQs(kbId, items);
-      toast.success(t('detail.toastFaqsSaved', { count: items.length }));
-      setShowGenerateModal(false);
-      loadFaqs();
-      loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastSaveFaqsFailed'));
-    } finally {
-      setGenSaving(false);
-    }
-  };
-
-  const handleGenBackToConfig = () => {
-    setGenStep('config');
-    setGenPreviewFaqs([]);
-  };
-
-  // --- Chunk edit ---
-  const openChunkEdit = async (chunk: ChunkResponse, options?: { readOnly?: boolean }) => {
-    setChunkDialogReadOnly(options?.readOnly ?? false);
-    setEditChunk(chunk);
-    setChunkContent(chunk.content);
-    const metaValues = objToConfigValues(chunk.doc_metadata, kb?.metadata_keys ?? undefined);
-    setChunkLabelsValues(metaValues);
-    setChunkDocMetadataValues(metaValues);
-    const metadataIsArray: Record<string, boolean> = {};
-    if (chunk.document_id) {
-      try {
-        const doc = await fetchDocumentById(chunk.document_id);
-        const channel = await fetchChannelById(doc.channel_id);
-        if (kb?.metadata_keys?.length) {
-          const metaFields = normalizeExtractionSchemaToFields(channel.extraction_schema ?? null);
-          const metaMap = new Map(metaFields.map((f) => [f.key, f.type === 'array']));
-          const lcMap = new Map(
-            (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
-          );
-          for (const k of kb.metadata_keys) {
-            metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
-          }
-        }
-      } catch {
-        /* default to false */
-      }
-    }
-    setChunkLabelAllowMultiple({});
-    setChunkMetadataIsArray(metadataIsArray);
-    setShowChunkDialog(true);
-  };
-
-  const openChunkViewFromId = async (chunkId: string) => {
-    if (!kbId) return;
-    try {
-      const c = await fetchChunkById(kbId, chunkId);
-      await openChunkEdit(c, { readOnly: true });
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastChunkFailed'));
-    }
-  };
-
-  const openChunkEditFromId = async (chunkId: string) => {
-    if (!kbId) return;
-    try {
-      const c = await fetchChunkById(kbId, chunkId);
-      await openChunkEdit(c);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastChunkFailed'));
-    }
-  };
-
-  const closeChunkDialog = () => {
-    setShowChunkDialog(false);
-    setEditChunk(null);
-    setChunkDialogReadOnly(false);
-  };
-
-  const handleSaveChunk = async () => {
-    if (!kbId || !editChunk) return;
-    setChunkSaving(true);
-    try {
-      const doc_metadata = configValuesToMetadata(
-        chunkDocMetadataValues,
-        kb?.metadata_keys ?? undefined,
-        chunkMetadataIsArray
-      );
-      await updateChunk(kbId, editChunk.id, {
-        content: chunkContent,
-        doc_metadata: doc_metadata ?? undefined,
-      });
-      toast.success(t('detail.toastChunkUpdated'));
-      closeChunkDialog();
-      loadChunks();
-      loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastChunkFailed'));
-    } finally {
-      setChunkSaving(false);
-    }
-  };
-
-  // --- Search ---
-  const parseFilterValue = (v: string): string | string[] => {
-    const trimmed = v.trim();
-    if (!trimmed) return trimmed;
-    if (trimmed.includes(',')) {
-      return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-    }
-    return trimmed;
-  };
-
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!kbId || !searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      const metadata_filters: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(searchMetadataFilters)) {
-        const parsed = parseFilterValue(v);
-        if (parsed && (typeof parsed === 'string' ? parsed : parsed.length > 0)) {
-          metadata_filters[k] = parsed;
-        }
-      }
-      const res = await searchKnowledgeBase(kbId, {
-        query: searchQuery,
-        top_k: searchTopK,
-        search_type: searchType,
-        force_dense: searchForceDense || undefined,
-        metadata_filters: Object.keys(metadata_filters).length ? metadata_filters : undefined,
-      });
-      const snap = kbSnapshotFromResults(
-        searchQuery,
-        searchType,
-        searchTopK,
-        searchForceDense,
-        res.results
-      );
-      const prev = searchPrevSnapshotRef.current;
-      setSearchRetrievalDiff(prev ? kbComputeSearchDiff(prev, snap) : null);
-      searchPrevSnapshotRef.current = snap;
-      setSearchResults(res.results);
-      setHasSearched(true);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastSearchFailed'));
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  // --- QA (persisted threads; NDJSON via backend → qa-agent, like wiki copilot) ---
-  const onSelectKbQaConversation = async (id: string) => {
-    if (!kbId || !id || id === kbQaConvId) return;
-    setKbQaConvId(id);
-    setStoredKbQaConversationId(kbId, id);
-    try {
-      await loadKbQaMessagesForConversation(id);
-    } catch {
-      toast.error(t('detail.qaToastLoadMessagesFailed'));
-    }
-  };
-
-  const onNewKbQaChat = async () => {
-    if (!kbId) return;
-    try {
-      const c = await createKbAgentConversation(kbId);
-      setKbQaConvId(c.id);
-      setStoredKbQaConversationId(kbId, c.id);
-      setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
-      setChatMessages([]);
-      setQaFeedback({});
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastNewChatFailed'));
-    }
-  };
-
-  const onRenameKbQaChat = async (id: string, title: string) => {
-    if (!kbId) return;
-    try {
-      const updated = await patchKbAgentConversation(kbId, id, { title });
-      setKbQaConversations((prev) => prev.map((c) => (c.id === id ? updated : c)));
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastRenameChatFailed'));
-    }
-  };
-
-  const onDeleteKbQaChat = async (id: string) => {
-    if (!kbId) return;
-    const deletingActive = kbQaConvId === id;
-    try {
-      await deleteKbAgentConversation(kbId, id);
-      const items = await listKbAgentConversations(kbId);
-      setKbQaConversations(items);
-      if (!deletingActive) return;
-      const next = items[0]?.id || null;
-      setKbQaConvId(next);
-      if (next) {
-        setStoredKbQaConversationId(kbId, next);
-        await loadKbQaMessagesForConversation(next);
-      } else {
-        clearStoredKbQaConversationId(kbId);
-        setChatMessages([]);
-      }
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.qaToastDeleteChatFailed'));
-    }
-  };
-
-  const handleAsk = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!kbId || !qaInput.trim() || !kbQaConvReady) return;
-    const startedKb = kbId;
-    const userText = qaInput.trim();
-
-    qaStreamAbortRef.current?.abort();
-    const ac = new AbortController();
-    qaStreamAbortRef.current = ac;
-
-    setQaInput('');
-    const tempUserId = kbQaLineId();
-    const asstStreamId = kbQaLineId();
-    let streamPersistedUserId: string | null = null;
-
-    setChatMessages((prev) => [
-      ...prev,
-      { id: tempUserId, role: 'user', content: userText },
-      { id: asstStreamId, role: 'assistant', content: '', streamParts: [], replyKey: asstStreamId },
-    ]);
-    setQaLoading(true);
-    try {
-      let convId = kbQaConvId;
-      if (!convId) {
-        const c = await createKbAgentConversation(kbId);
-        if (startedKb !== kbIdRef.current) return;
-        convId = c.id;
-        setKbQaConvId(c.id);
-        setKbQaConversations((prev) => [c, ...prev.filter((x) => x.id !== c.id)]);
-        setStoredKbQaConversationId(kbId, c.id);
-      }
-
-      await postKbAgentMessageStream(
-        kbId,
-        convId,
-        userText,
-        (ev) => {
-          if (startedKb !== kbIdRef.current) return;
-          if (ev.type === 'user') {
-            streamPersistedUserId = ev.message.id;
-          }
-          if (ev.type === 'done' && !('user' in ev)) {
-            setChatMessages((prev) => {
-              const next = [...prev];
-              for (let i = next.length - 1; i >= 0; i--) {
-                if (next[i].role === 'assistant') {
-                  const m = next[i];
-                  next[i] = {
-                    ...m,
-                    content: ev.answer,
-                    sources: ev.sources,
-                    streamParts: m.streamParts && m.streamParts.length > 0 ? m.streamParts : undefined,
-                  };
-                  break;
-                }
-              }
-              return next;
-            });
-            return;
-          }
-          if (ev.type === 'error') {
-            if ('message' in ev && ev.message) {
-              setChatMessages((prev) =>
-                prev.map((p) =>
-                  p.id === asstStreamId
-                    ? {
-                        ...p,
-                        id: ev.message.id,
-                        content: ev.message.content,
-                        replyKey: ev.message.id,
-                      }
-                    : p,
-                ),
-              );
-              return;
-            }
-            const msg = `${t('detail.qaErrorPrefix')} ${ev.detail}${ev.answer ? ` ${ev.answer}` : ''}`;
-            setChatMessages((prev) => {
-              const next = [...prev];
-              for (let i = next.length - 1; i >= 0; i--) {
-                if (next[i].role === 'assistant') {
-                  next[i] = { ...next[i], role: 'assistant', content: msg };
-                  break;
-                }
-              }
-              return next;
-            });
-            return;
-          }
-          applyCopilotStreamEvent<ChatMessage>(ev, { asstStreamId, userTempId: tempUserId, userText }, {
-            setLines: setChatMessages,
-            getText: (p) => p.content,
-            setText: (p, text) => ({ ...p, content: text }),
-            onDone: (prev, { userText: savedText, streamed, ev: doneEv, asstStreamId: aId, userTempId: uId }) => {
-              const kbDone = doneEv as Extract<typeof ev, { type: 'done' }> & {
-                user: { id: string };
-                message: { id: string; content: string };
-                sources?: SearchResult[];
-              };
-              const without = prev.filter(
-                (p) => p.id !== aId && p.id !== kbDone.user.id && (uId == null || p.id !== uId),
-              );
-              const parts = streamed?.role === 'assistant' ? streamed.streamParts : undefined;
-              return [
-                ...without,
-                { id: kbDone.user.id, role: 'user' as const, content: savedText },
-                {
-                  id: kbDone.message.id,
-                  role: 'assistant' as const,
-                  content: kbDone.message.content,
-                  sources: kbDone.sources,
-                  streamParts: parts && parts.length > 0 ? parts : undefined,
-                  replyKey: kbDone.message.id,
-                },
-              ];
-            },
-          });
-        },
-        { signal: ac.signal, session_id: qaTraceSessionRef.current ?? undefined }
-      );
-      if (startedKb === kbIdRef.current) {
-        void listKbAgentConversations(kbId).then((list) => setKbQaConversations(list));
-      }
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      if (startedKb !== kbIdRef.current) return;
-      const persisted = streamPersistedUserId;
-      const stripIds = (p: ChatMessage) =>
-        p.id !== asstStreamId &&
-        p.id !== tempUserId &&
-        (persisted == null || p.id !== persisted);
-      const msg = `${t('detail.qaErrorPrefix')} ${err instanceof Error ? err.message : t('detail.toastAnswerFailed')}`;
-      setQaInput(userText);
-      setChatMessages((prev) => prev.filter(stripIds));
-      toast.error(msg);
-    } finally {
-      setQaLoading(false);
-      if (qaStreamAbortRef.current === ac) qaStreamAbortRef.current = null;
-    }
-  };
-
-  // --- Settings ---
-  const handleSaveSettings = async () => {
-    if (!kbId) return;
-    setSettingsSaving(true);
-    try {
-      const metadataKeys = settingsMetadataKeys
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      await updateKnowledgeBase(kbId, {
-        agent_url: settingsAgentUrl || null,
-        embedding_model_id: settingsEmbeddingModelId || null,
-        chunk_config: {
-          strategy: settingsChunkStrategy,
-          chunk_size: settingsChunkSize,
-          chunk_overlap: settingsChunkOverlap,
-        },
-        faq_prompt: settingsFaqPrompt.trim() || null,
-        metadata_keys: metadataKeys.length > 0 ? metadataKeys : null,
-      });
-      toast.success(t('detail.toastSettingsSaved'));
-      loadKb();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('detail.toastSettingsFailed'));
-    } finally {
-      setSettingsSaving(false);
-    }
-  };
-
-  if (loading) return <div className="kb-detail"><p>{t('detail.loading')}</p></div>;
-  if (!kb) return <div className="kb-detail"><p>{t('detail.notFound')}</p></div>;
-
-  const faqDialogTitle = editFaq
-    ? t('detail.faqDialogEdit')
-    : faqDialogSource === 'from_qa'
-      ? t('detail.faqDialogSaveFromQa')
-      : t('detail.faqDialogAdd');
-
-  const faqDialog = showFaqDialog ? (
+  const faqDialog = vm.showFaqDialog ? (
     <div
       className="kb-doc-picker-overlay"
-      onClick={() => { if (!faqPolishing) closeFaqDialog(); }}
+      onClick={() => { if (!vm.faqPolishing) vm.closeFaqDialog(); }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="faq-dialog-title"
@@ -1514,69 +76,69 @@ export function KnowledgeBaseDetail() {
           <button
             type="button"
             className="kb-doc-picker-close"
-            onClick={closeFaqDialog}
-            disabled={faqPolishing}
-            aria-label={t('detail.closeAria')}
+            onClick={vm.closeFaqDialog}
+            disabled={vm.faqPolishing}
+            aria-label={vm.t('detail.closeAria')}
           >
             <X size={20} />
           </button>
         </div>
         <div className="kb-faq-dialog-form">
-          {faqDialogSource === 'from_qa' ? (
-            <p className="kb-faq-dialog-hint">{t('detail.faqDialogSaveFromQaHint')}</p>
+          {vm.faqDialogSource === 'from_qa' ? (
+            <p className="kb-faq-dialog-hint">{vm.t('detail.faqDialogSaveFromQaHint')}</p>
           ) : null}
           <label>
-            <span>{t('detail.question')}</span>
+            <span>{vm.t('detail.question')}</span>
             <input
               type="text"
-              placeholder={t('detail.placeholderQuestion')}
-              value={faqQuestion}
-              onChange={(e) => setFaqQuestion(e.target.value)}
-              disabled={faqPolishing}
+              placeholder={vm.t('detail.placeholderQuestion')}
+              value={vm.faqQuestion}
+              onChange={(e) => vm.setFaqQuestion(e.target.value)}
+              disabled={vm.faqPolishing}
               autoFocus
             />
           </label>
           <label>
             <div className="kb-faq-answer-header">
-              <span>{t('detail.answer')}</span>
+              <span>{vm.t('detail.answer')}</span>
               <button
                 type="button"
                 className="kb-faq-polish-btn"
-                onClick={() => void handlePolishFaqAnswer()}
-                disabled={faqPolishing || !faqQuestion.trim() || !faqAnswer.trim()}
-                aria-label={t('detail.faqPolishAnswerAria')}
+                onClick={() => void vm.handlePolishFaqAnswer()}
+                disabled={vm.faqPolishing || !vm.faqQuestion.trim() || !vm.faqAnswer.trim()}
+                aria-label={vm.t('detail.faqPolishAnswerAria')}
               >
-                {faqPolishing ? (
+                {vm.faqPolishing ? (
                   <Loader2 size={14} className="kb-faq-polish-btn__spin" aria-hidden />
                 ) : (
                   <Sparkles size={14} aria-hidden />
                 )}
-                <span>{faqPolishing ? t('detail.faqPolishing') : t('detail.faqPolishAnswer')}</span>
+                <span>{vm.faqPolishing ? vm.t('detail.faqPolishing') : vm.t('detail.faqPolishAnswer')}</span>
               </button>
             </div>
             <textarea
-              placeholder={t('detail.placeholderAnswer')}
-              value={faqAnswer}
-              onChange={(e) => setFaqAnswer(e.target.value)}
-              disabled={faqPolishing}
+              placeholder={vm.t('detail.placeholderAnswer')}
+              value={vm.faqAnswer}
+              onChange={(e) => vm.setFaqAnswer(e.target.value)}
+              disabled={vm.faqPolishing}
               rows={8}
             />
           </label>
 
-          {kb.metadata_keys && kb.metadata_keys.length > 0 && (
+          {vm.kb.metadata_keys && vm.kb.metadata_keys.length > 0 && (
             <div className="kb-kv-editor">
-              <span className="kb-kv-editor-label">{t('detail.metadata')}</span>
+              <span className="kb-kv-editor-label">{vm.t('detail.metadata')}</span>
               <small className="kb-kv-editor-hint">
-                {Object.values(faqMetadataIsArray).some(Boolean) ? t('detail.kvHintArray') : t('detail.kvHintSingle')}
+                {Object.values(vm.faqMetadataIsArray).some(Boolean) ? vm.t('detail.kvHintArray') : vm.t('detail.kvHintSingle')}
               </small>
-              {kb.metadata_keys.map((key) => (
+              {vm.kb.metadata_keys.map((key) => (
                 <div key={key} className="kb-kv-row kb-kv-row-config">
-                  <span className="kb-kv-key-label">{key}{faqMetadataIsArray[key] ? t('detail.arraySuffix') : ''}</span>
+                  <span className="kb-kv-key-label">{key}{vm.faqMetadataIsArray[key] ? vm.t('detail.arraySuffix') : ''}</span>
                   <input
                     type="text"
-                    placeholder={faqMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
-                    value={faqDocMetadataValues[key] ?? ''}
-                    onChange={(e) => setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={vm.faqMetadataIsArray[key] ? vm.t('detail.placeholderValueArray', { key }) : vm.t('detail.placeholderValueSingle', { key })}
+                    value={vm.faqDocMetadataValues[key] ?? ''}
+                    onChange={(e) => vm.setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
                   />
                 </div>
               ))}
@@ -1586,16 +148,16 @@ export function KnowledgeBaseDetail() {
           <div className="kb-doc-picker-footer">
             <div />
             <div className="kb-doc-picker-actions">
-              <button type="button" className="btn btn-secondary" onClick={closeFaqDialog} disabled={faqPolishing}>
-                {t('detail.cancel')}
+              <button type="button" className="btn btn-secondary" onClick={vm.closeFaqDialog} disabled={vm.faqPolishing}>
+                {vm.t('detail.cancel')}
               </button>
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={handleSaveFaq}
-                disabled={faqPolishing || !faqQuestion.trim() || !faqAnswer.trim()}
+                onClick={vm.handleSaveFaq}
+                disabled={vm.faqPolishing || !vm.faqQuestion.trim() || !vm.faqAnswer.trim()}
               >
-                {editFaq ? t('detail.update') : t('detail.create')}
+                {vm.editFaq ? vm.t('detail.update') : vm.t('detail.create')}
               </button>
             </div>
           </div>
@@ -1604,50 +166,50 @@ export function KnowledgeBaseDetail() {
     </div>
   ) : null;
 
-  if (qaFullPage && kb.agent_url) {
+  if (vm.qaFullPage && vm.kb.agent_url) {
     return (
       <div className="kb-detail kb-detail--qa-fullpage">
         <div className="kb-qa-shell">
           <div className="kb-qa-shell-body">
             <KbQaSessionSidebar
-              kbName={kb.name}
-              conversations={kbQaConversations}
-              activeId={kbQaConvId}
-              loading={kbQaConvsLoading}
-              disabled={qaLoading}
+              kbName={vm.kb.name}
+              conversations={vm.kbQaConversations}
+              activeId={vm.kbQaConvId}
+              loading={vm.kbQaConvsLoading}
+              disabled={vm.qaLoading}
               onBack={() => {
-                qaTraceSessionRef.current = null;
-                setQaFullPage(false);
+                vm.qaTraceSessionRef.current = null;
+                vm.setQaFullPage(false);
               }}
               onOpenSettings={() => {
-                qaTraceSessionRef.current = null;
-                setQaFullPage(false);
-                setActiveTab('settings');
+                vm.qaTraceSessionRef.current = null;
+                vm.setQaFullPage(false);
+                vm.setActiveTab('settings');
               }}
-              onSelectSession={(id) => void onSelectKbQaConversation(id)}
-              onNewChat={() => void onNewKbQaChat()}
-              onRename={onRenameKbQaChat}
-              onDelete={onDeleteKbQaChat}
+              onSelectSession={(id) => void vm.onSelectKbQaConversation(id)}
+              onNewChat={() => void vm.onNewKbQaChat()}
+              onRename={vm.onRenameKbQaChat}
+              onDelete={vm.onDeleteKbQaChat}
             />
             <main className="kb-qa-main">
-              <div className="kb-qa-main-scroll" ref={kbQaMainScrollRef}>
-                {chatMessages.length === 0 && !qaLoading ? (
+              <div className="kb-qa-main-scroll" ref={vm.kbQaMainScrollRef}>
+                {vm.chatMessages.length === 0 && !vm.qaLoading ? (
                   <div className="kb-qa-hero">
                     <div className="kb-qa-hero-mark" aria-hidden>
                       <Sparkles size={28} strokeWidth={1.75} />
                     </div>
-                    <h1 className="kb-qa-hero-title">{t('detail.qaHeroTitle', { name: kb.name })}</h1>
-                    <p className="kb-qa-hero-sub">{t('detail.qaHeroSubtitle')}</p>
+                    <h1 className="kb-qa-hero-title">{vm.t('detail.qaHeroTitle', { name: vm.kb.name })}</h1>
+                    <p className="kb-qa-hero-sub">{vm.t('detail.qaHeroSubtitle')}</p>
                   </div>
                 ) : null}
-                {chatMessages.length > 0 ? (
+                {vm.chatMessages.length > 0 ? (
                   <div className="kb-qa-thread kb-qa-messages kb-qa-messages--fullpage">
-                {chatMessages.map((msg, i) => {
-                  const isLast = i === chatMessages.length - 1;
+                {vm.chatMessages.map((msg, i) => {
+                  const isLast = i === vm.chatMessages.length - 1;
                   return (
                     <div key={msg.id ?? `msg-fp-${i}`} className={`kb-qa-msg kb-qa-msg-${msg.role}`}>
                       <span className="kb-qa-msg-label">
-                        {msg.role === 'user' ? t('detail.qaLabelYou') : t('detail.qaLabelAssistant')}
+                        {msg.role === 'user' ? vm.t('detail.qaLabelYou') : vm.t('detail.qaLabelAssistant')}
                       </span>
                       {msg.role === 'assistant' && msg.streamParts && msg.streamParts.length > 0 ? (
                         <div className="kb-qa-assistant-stream">
@@ -1659,10 +221,10 @@ export function KnowledgeBaseDetail() {
                       ) : msg.role === 'assistant' &&
                         !msg.content &&
                         !(msg.streamParts && msg.streamParts.length) &&
-                        qaLoading &&
+                        vm.qaLoading &&
                         isLast ? (
                         <div className="kb-qa-msg-bubble kb-qa-msg-bubble--assistant kb-qa-typing">
-                          {t('detail.qaThinking')}
+                          {vm.t('detail.qaThinking')}
                         </div>
                       ) : (
                         <div
@@ -1677,30 +239,30 @@ export function KnowledgeBaseDetail() {
                         </div>
                       )}
                       {msg.role === 'assistant' &&
-                        kbQaAssistantText(msg) &&
-                        !(qaLoading && isLast) &&
+                        vm.kbQaAssistantText(msg) &&
+                        !(vm.qaLoading && isLast) &&
                         (() => {
                           const feedbackKey = kbQaFeedbackKey(msg, i);
-                          const feedback = qaFeedback[feedbackKey];
-                          const prev = chatMessages[i - 1];
+                          const feedback = vm.qaFeedback[feedbackKey];
+                          const prev = vm.chatMessages[i - 1];
                           const question = prev?.role === 'user' ? prev.content.trim() : '';
                           return (
                             <div className="kb-qa-msg-actions kb-qa-msg-feedback">
                               <button
                                 type="button"
                                 className={`kb-qa-feedback-btn kb-qa-feedback-btn--up${feedback === 'up' ? ' kb-qa-feedback-btn--active' : ''}`}
-                                aria-label={t('detail.qaFeedbackUpAria')}
+                                aria-label={vm.t('detail.qaFeedbackUpAria')}
                                 aria-pressed={feedback === 'up'}
-                                onClick={() => setKbQaFeedbackVote(feedbackKey, 'up')}
+                                onClick={() => vm.setKbQaFeedbackVote(feedbackKey, 'up')}
                               >
                                 <ThumbsUp size={16} strokeWidth={2} aria-hidden />
                               </button>
                               <button
                                 type="button"
                                 className={`kb-qa-feedback-btn kb-qa-feedback-btn--down${feedback === 'down' ? ' kb-qa-feedback-btn--active' : ''}`}
-                                aria-label={t('detail.qaFeedbackDownAria')}
+                                aria-label={vm.t('detail.qaFeedbackDownAria')}
                                 aria-pressed={feedback === 'down'}
-                                onClick={() => setKbQaFeedbackVote(feedbackKey, 'down')}
+                                onClick={() => vm.setKbQaFeedbackVote(feedbackKey, 'down')}
                               >
                                 <ThumbsDown size={16} strokeWidth={2} aria-hidden />
                               </button>
@@ -1708,10 +270,10 @@ export function KnowledgeBaseDetail() {
                                 <button
                                   type="button"
                                   className="kb-qa-sources-action-btn"
-                                  aria-label={t('detail.qaSaveAsFaqAria')}
-                                  onClick={() => openFaqFromQa(question, kbQaAssistantText(msg))}
+                                  aria-label={vm.t('detail.qaSaveAsFaqAria')}
+                                  onClick={() => vm.openFaqFromQa(question, vm.kbQaAssistantText(msg))}
                                 >
-                                  {t('detail.qaSaveAsFaq')}
+                                  {vm.t('detail.qaSaveAsFaq')}
                                 </button>
                               ) : null}
                             </div>
@@ -1719,31 +281,31 @@ export function KnowledgeBaseDetail() {
                         })()}
                       {msg.sources && msg.sources.length > 0 && (() => {
                         const rk = msg.replyKey ?? `legacy-${i}`;
-                        const expandedSet = qaSourcesExpanded[rk];
+                        const expandedSet = vm.qaSourcesExpanded[rk];
                         const expandedList = expandedSet ? [...expandedSet].sort((a, b) => a - b) : [];
                         return (
-                          <div className="kb-qa-sources" role="region" aria-label={t('detail.qaSourcesAria')}>
+                          <div className="kb-qa-sources" role="region" aria-label={vm.t('detail.qaSourcesAria')}>
                             <div className="kb-qa-sources-toolbar">
-                              <div className="kb-qa-sources-heading">{t('detail.qaSourcesHeading')}</div>
+                              <div className="kb-qa-sources-heading">{vm.t('detail.qaSourcesHeading')}</div>
                               <div className="kb-qa-sources-actions">
                                 <button
                                   type="button"
                                   className="kb-qa-sources-action-btn"
                                   onClick={() =>
-                                    setQaSourcesExpanded((prev) => ({
+                                    vm.setQaSourcesExpanded((prev) => ({
                                       ...prev,
                                       [rk]: new Set(msg.sources!.map((_, ix) => ix)),
                                     }))
                                   }
                                 >
-                                  {t('detail.qaSourcesExpandAll')}
+                                  {vm.t('detail.qaSourcesExpandAll')}
                                 </button>
                                 <button
                                   type="button"
                                   className="kb-qa-sources-action-btn"
-                                  onClick={() => setQaSourcesExpanded((prev) => ({ ...prev, [rk]: new Set() }))}
+                                  onClick={() => vm.setQaSourcesExpanded((prev) => ({ ...prev, [rk]: new Set() }))}
                                 >
-                                  {t('detail.qaSourcesCollapseAll')}
+                                  {vm.t('detail.qaSourcesCollapseAll')}
                                 </button>
                               </div>
                             </div>
@@ -1751,7 +313,7 @@ export function KnowledgeBaseDetail() {
                               {msg.sources.map((s, j) => {
                                 const kind = kbQaNormalizeSourceKind(s.source_type);
                                 const chipMod = kbQaSourceChipModifierClass(s.source_type);
-                                const kindLabel = t(`detail.qaSourceKind.${kind}`, {
+                                const kindLabel = vm.t(`detail.qaSourceKind.${kind}`, {
                                   defaultValue: s.source_type || kind,
                                 });
                                 const showScore = kbQaShowRetrievalScore(s.source_type, s.score);
@@ -1764,9 +326,9 @@ export function KnowledgeBaseDetail() {
                                     role="listitem"
                                     className={`kb-qa-source-chip ${chipMod}${isOpen ? ' kb-qa-source-chip--open' : ''}`}
                                     aria-expanded={isOpen}
-                                    aria-label={t('detail.qaSourceChipAria', { kind: kindLabel, title: chipTitle })}
+                                    aria-label={vm.t('detail.qaSourceChipAria', { kind: kindLabel, title: chipTitle })}
                                     onClick={() =>
-                                      setQaSourcesExpanded((prev) => {
+                                      vm.setQaSourcesExpanded((prev) => {
                                         const next = { ...prev };
                                         const cur = new Set(next[rk] || []);
                                         if (cur.has(j)) cur.delete(j);
@@ -1780,7 +342,7 @@ export function KnowledgeBaseDetail() {
                                     <span className="kb-qa-source-chip__title">{chipTitle}</span>
                                     {showScore ? (
                                       <span className="kb-qa-source-chip__score">
-                                        {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
+                                        {vm.t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
                                       </span>
                                     ) : null}
                                   </button>
@@ -1793,7 +355,7 @@ export function KnowledgeBaseDetail() {
                                   const s = msg.sources![j];
                                   const kind = kbQaNormalizeSourceKind(s.source_type);
                                   const mod = kbQaSourceCardModifierClass(s.source_type);
-                                  const kindLabel = t(`detail.qaSourceKind.${kind}`, {
+                                  const kindLabel = vm.t(`detail.qaSourceKind.${kind}`, {
                                     defaultValue: s.source_type || kind,
                                   });
                                   const detailPreview = kbQaTruncatePreview(
@@ -1810,7 +372,7 @@ export function KnowledgeBaseDetail() {
                                         <span className="kb-qa-source-card__kind">{kindLabel}</span>
                                         {showScore ? (
                                           <span className="kb-qa-source-card__score">
-                                            {t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
+                                            {vm.t('detail.qaSourceScore', { pct: (s.score * 100).toFixed(0) })}
                                           </span>
                                         ) : null}
                                       </div>
@@ -1828,14 +390,14 @@ export function KnowledgeBaseDetail() {
                                           </Link>
                                         ) : (
                                           <span className="kb-qa-source-card__title-text">
-                                            {s.source_name || t('detail.faqSourceFallback')}
+                                            {s.source_name || vm.t('detail.faqSourceFallback')}
                                           </span>
                                         )}
                                       </div>
                                       {detailPreview ? (
                                         <p className="kb-qa-source-card__preview">{detailPreview}</p>
                                       ) : null}
-                                      <KbRetrievalProvenancePanel s={s} t={t} />
+                                      <KbRetrievalProvenancePanel s={s} t={vm.t} />
                                     </div>
                                   );
                                 })}
@@ -1851,30 +413,30 @@ export function KnowledgeBaseDetail() {
                 ) : null}
               </div>
               <div className="kb-qa-composer-outer">
-                <form className="kb-qa-composer" onSubmit={handleAsk}>
+                <form className="kb-qa-composer" onSubmit={vm.handleAsk}>
                   <textarea
                     className="kb-qa-composer-input"
-                    placeholder={t('detail.qaPlaceholder')}
-                    value={qaInput}
-                    onChange={(e) => setQaInput(e.target.value)}
+                    placeholder={vm.t('detail.qaPlaceholder')}
+                    value={vm.qaInput}
+                    onChange={(e) => vm.setQaInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         (e.currentTarget.form as HTMLFormElement | null)?.requestSubmit();
                       }
                     }}
-                    disabled={qaLoading || !kbQaConvReady}
+                    disabled={vm.qaLoading || !vm.kbQaConvReady}
                     rows={1}
                     autoComplete="off"
-                    aria-label={t('detail.qaPlaceholder')}
+                    aria-label={vm.t('detail.qaPlaceholder')}
                   />
                   <div className="kb-qa-composer-bar">
-                    <p className="kb-qa-composer-hint">{t('detail.qaComposerHint')}</p>
+                    <p className="kb-qa-composer-hint">{vm.t('detail.qaComposerHint')}</p>
                     <button
                       type="submit"
                       className="kb-qa-composer-send"
-                      disabled={qaLoading || !qaInput.trim() || !kbQaConvReady}
-                      aria-label={t('detail.qaSendAria')}
+                      disabled={vm.qaLoading || !vm.qaInput.trim() || !vm.kbQaConvReady}
+                      aria-label={vm.t('detail.qaSendAria')}
                     >
                       <ArrowUp size={18} strokeWidth={2.25} aria-hidden />
                     </button>
@@ -1893,48 +455,48 @@ export function KnowledgeBaseDetail() {
     <div className="kb-detail">
       <Link to="/knowledge-bases" className="kb-detail-back">
         <ArrowLeft size={18} />
-        <span>{t('detail.backToList')}</span>
+        <span>{vm.t('detail.backToList')}</span>
       </Link>
 
       <header className="kb-detail-header kb-detail-header--split">
         <div className="kb-detail-header-text">
-          <h1>{kb.name}</h1>
-          <p className="kb-detail-desc">{kb.description || t('detail.noDescription')}</p>
+          <h1>{vm.kb.name}</h1>
+          <p className="kb-detail-desc">{vm.kb.description || vm.t('detail.noDescription')}</p>
           <div className="kb-detail-stats">
-            <span>{t('detail.statDocs', { count: kb.document_count })}</span>
-            <span>{t('detail.statWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
-            <span>{t('detail.statFaqs', { count: kb.faq_count })}</span>
-            <span>{t('detail.statChunks', { count: kb.chunk_count })}</span>
+            <span>{vm.t('detail.statDocs', { count: vm.kb.document_count })}</span>
+            <span>{vm.t('detail.statWikiSpaces', { count: vm.kb.wiki_space_count ?? 0 })}</span>
+            <span>{vm.t('detail.statFaqs', { count: vm.kb.faq_count })}</span>
+            <span>{vm.t('detail.statChunks', { count: vm.kb.chunk_count })}</span>
           </div>
         </div>
         <div className="kb-detail-header-actions">
-          {kb.embedding_model_id ? (
+          {vm.kb.embedding_model_id ? (
             <button
               type="button"
               className="btn btn-secondary btn-sm kb-detail-header-index-btn"
-              onClick={() => void enqueueIndexJob()}
-              disabled={indexJobSubmitting}
-              title={t('detail.indexJobHeaderTitle')}
+              onClick={() => void vm.enqueueIndexJob()}
+              disabled={vm.indexJobSubmitting}
+              title={vm.t('detail.indexJobHeaderTitle')}
             >
-              {indexJobSubmitting ? (
+              {vm.indexJobSubmitting ? (
                 <Loader2 size={18} className="kb-spinner-inline" aria-hidden />
               ) : (
                 <RefreshCw size={18} aria-hidden />
               )}
-              <span>{t('detail.indexJobHeader')}</span>
+              <span>{vm.t('detail.indexJobHeader')}</span>
             </button>
           ) : null}
-        {kb.agent_url ? (
+        {vm.kb.agent_url ? (
           <button
             type="button"
             className="btn btn-primary btn-sm kb-detail-header-qa-btn"
             onClick={() => {
-              qaTraceSessionRef.current = crypto.randomUUID();
-              setQaFullPage(true);
+              vm.qaTraceSessionRef.current = crypto.randomUUID();
+              vm.setQaFullPage(true);
             }}
           >
             <MessageSquare size={18} />
-            <span>{t('detail.qaOpenChat')}</span>
+            <span>{vm.t('detail.qaOpenChat')}</span>
           </button>
         ) : null}
         </div>
@@ -1947,11 +509,11 @@ export function KnowledgeBaseDetail() {
             <button
               key={tabId}
               type="button"
-              className={`kb-tab ${activeTab === tabId ? 'active' : ''}`}
-              onClick={() => setActiveTab(tabId)}
+              className={`kb-tab ${vm.activeTab === tabId ? 'active' : ''}`}
+              onClick={() => vm.setActiveTab(tabId)}
             >
               <Icon size={18} />
-              <span>{t(`detail.tabs.${tabId}`)}</span>
+              <span>{vm.t(`detail.tabs.${tabId}`)}</span>
             </button>
           );
         })}
@@ -1959,31 +521,31 @@ export function KnowledgeBaseDetail() {
 
       <div className="kb-detail-content">
         {/* ===== DOCUMENTS TAB ===== */}
-        {activeTab === 'documents' && (
+        {vm.activeTab === 'documents' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>{t('detail.documentsTitle', { count: docTotal })}</h2>
-              <button type="button" className="btn btn-primary btn-sm" onClick={openDocPicker}>
+              <h2>{vm.t('detail.documentsTitle', { count: vm.docTotal })}</h2>
+              <button type="button" className="btn btn-primary btn-sm" onClick={vm.openDocPicker}>
                 <Plus size={16} />
-                <span>{t('detail.addDocument')}</span>
+                <span>{vm.t('detail.addDocument')}</span>
               </button>
             </div>
-            {docTotal === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyDocuments')}</p>
+            {vm.docTotal === 0 ? (
+              <p className="kb-empty-text">{vm.t('detail.emptyDocuments')}</p>
             ) : (
               <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th>{t('detail.colName')}</th>
-                      <th>{t('detail.colType')}</th>
-                      <th>{t('detail.colStatus')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
+                      <th>{vm.t('detail.colName')}</th>
+                      <th>{vm.t('detail.colType')}</th>
+                      <th>{vm.t('detail.colStatus')}</th>
+                      <th className="kb-table-actions">{vm.t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {docs.map((doc) => (
+                    {vm.docs.map((doc) => (
                       <tr key={doc.id}>
                         <td>
                           <div className="kb-table-name">
@@ -1995,10 +557,10 @@ export function KnowledgeBaseDetail() {
                         <td>{doc.document_status}</td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <Link to={`/documents/view/${doc.document_id}`} title={t('detail.view')} aria-label={t('detail.view')}>
+                            <Link to={`/documents/view/${doc.document_id}`} title={vm.t('detail.view')} aria-label={vm.t('detail.view')}>
                               <Eye size={16} />
                             </Link>
-                            <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleRemoveDocument(doc.document_id)}>
+                            <button type="button" title={vm.t('detail.remove')} aria-label={vm.t('detail.remove')} onClick={() => vm.handleRemoveDocument(doc.document_id)}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -2008,23 +570,23 @@ export function KnowledgeBaseDetail() {
                   </tbody>
                 </table>
               </div>
-              {docTotal > 0 && (
+              {vm.docTotal > 0 && (
                 <div className="kb-pagination">
                   <div className="kb-pagination-info">
                     <span>
-                      {t('detail.paginationRange', {
-                        start: docTotal === 0 ? 0 : docPage * docPageSize + 1,
-                        end: Math.min((docPage + 1) * docPageSize, docTotal),
-                        total: docTotal,
+                      {vm.t('detail.paginationRange', {
+                        start: vm.docTotal === 0 ? 0 : vm.docPage * vm.docPageSize + 1,
+                        end: Math.min((vm.docPage + 1) * vm.docPageSize, vm.docTotal),
+                        total: vm.docTotal,
                       })}
                     </span>
                     <label>
-                      <span>{t('detail.pageSize')}</span>
+                      <span>{vm.t('detail.pageSize')}</span>
                       <select
-                        value={docPageSize}
+                        value={vm.docPageSize}
                         onChange={(e) => {
-                          setDocPageSize(Number(e.target.value));
-                          setDocPage(0);
+                          vm.setDocPageSize(Number(e.target.value));
+                          vm.setDocPage(0);
                         }}
                       >
                         {[25, 50, 100, 200].map((n) => (
@@ -2033,45 +595,45 @@ export function KnowledgeBaseDetail() {
                       </select>
                     </label>
                   </div>
-                  {Math.ceil(docTotal / docPageSize) > 1 && (
+                  {Math.ceil(vm.docTotal / vm.docPageSize) > 1 && (
                     <div className="kb-pagination-btns">
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage(0)}
-                        disabled={docPage === 0}
-                        title={t('detail.firstPage')}
+                        onClick={() => vm.setDocPage(0)}
+                        disabled={vm.docPage === 0}
+                        title={vm.t('detail.firstPage')}
                       >
                         «
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage((p) => Math.max(0, p - 1))}
-                        disabled={docPage === 0}
+                        onClick={() => vm.setDocPage((p) => Math.max(0, p - 1))}
+                        disabled={vm.docPage === 0}
                       >
-                        {t('detail.previous')}
+                        {vm.t('detail.previous')}
                       </button>
                       <span className="kb-pagination-nums">
-                        {t('detail.pageOf', {
-                          current: docPage + 1,
-                          total: Math.ceil(docTotal / docPageSize) || 1,
+                        {vm.t('detail.pageOf', {
+                          current: vm.docPage + 1,
+                          total: Math.ceil(vm.docTotal / vm.docPageSize) || 1,
                         })}
                       </span>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage((p) => Math.min(Math.ceil(docTotal / docPageSize) - 1, p + 1))}
-                        disabled={docPage >= Math.ceil(docTotal / docPageSize) - 1}
+                        onClick={() => vm.setDocPage((p) => Math.min(Math.ceil(vm.docTotal / vm.docPageSize) - 1, p + 1))}
+                        disabled={vm.docPage >= Math.ceil(vm.docTotal / vm.docPageSize) - 1}
                       >
-                        {t('detail.next')}
+                        {vm.t('detail.next')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setDocPage(Math.ceil(docTotal / docPageSize) - 1)}
-                        disabled={docPage >= Math.ceil(docTotal / docPageSize) - 1}
-                        title={t('detail.lastPage')}
+                        onClick={() => vm.setDocPage(Math.ceil(vm.docTotal / vm.docPageSize) - 1)}
+                        disabled={vm.docPage >= Math.ceil(vm.docTotal / vm.docPageSize) - 1}
+                        title={vm.t('detail.lastPage')}
                       >
                         »
                       </button>
@@ -2085,29 +647,29 @@ export function KnowledgeBaseDetail() {
         )}
 
         {/* ===== WIKI SPACES TAB ===== */}
-        {activeTab === 'wiki_spaces' && (
+        {vm.activeTab === 'wiki_spaces' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>{t('detail.wikiSpacesTitle')}</h2>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => void openWikiSpacePicker()}>
+              <h2>{vm.t('detail.wikiSpacesTitle')}</h2>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => void vm.openWikiSpacePicker()}>
                 <Plus size={16} />
-                <span>{t('detail.addWikiSpace')}</span>
+                <span>{vm.t('detail.addWikiSpace')}</span>
               </button>
             </div>
-            <p className="kb-section-desc kb-wiki-index-hint">{t('detail.wikiIndexHint')}</p>
-            {kbWikiSpaces.length === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyWikiSpaces')}</p>
+            <p className="kb-section-desc kb-wiki-index-hint">{vm.t('detail.wikiIndexHint')}</p>
+            {vm.kbWikiSpaces.length === 0 ? (
+              <p className="kb-empty-text">{vm.t('detail.emptyWikiSpaces')}</p>
             ) : (
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th>{t('detail.colWikiSpace')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
+                      <th>{vm.t('detail.colWikiSpace')}</th>
+                      <th className="kb-table-actions">{vm.t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {kbWikiSpaces.map((ws) => (
+                    {vm.kbWikiSpaces.map((ws) => (
                       <tr key={ws.id}>
                         <td>
                           <div className="kb-table-name">
@@ -2119,26 +681,26 @@ export function KnowledgeBaseDetail() {
                           <div className="kb-table-btns">
                             <button
                               type="button"
-                              title={t('detail.indexWikiSpace')}
-                              aria-label={t('detail.indexWikiSpace')}
-                              disabled={wikiSpaceBusyId === ws.wiki_space_id || !kb?.embedding_model_id}
-                              onClick={() => void handleIndexWikiSpace(ws.wiki_space_id)}
+                              title={vm.t('detail.indexWikiSpace')}
+                              aria-label={vm.t('detail.indexWikiSpace')}
+                              disabled={vm.wikiSpaceBusyId === ws.wiki_space_id || !vm.kb?.embedding_model_id}
+                              onClick={() => void vm.handleIndexWikiSpace(ws.wiki_space_id)}
                             >
-                              {wikiSpaceBusyId === ws.wiki_space_id ? (
+                              {vm.wikiSpaceBusyId === ws.wiki_space_id ? (
                                 <Loader2 size={16} className="kb-spinner-inline" aria-hidden />
                               ) : (
                                 <RefreshCw size={16} aria-hidden />
                               )}
                             </button>
-                            <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`} title={t('detail.view')} aria-label={t('detail.view')}>
+                            <Link to={`/wikis/${ws.wiki_space_id}/pages/graph`} title={vm.t('detail.view')} aria-label={vm.t('detail.view')}>
                               <Eye size={16} />
                             </Link>
                             <button
                               type="button"
-                              title={t('detail.remove')}
-                              aria-label={t('detail.remove')}
-                              disabled={wikiSpaceBusyId === ws.wiki_space_id}
-                              onClick={() => void handleRemoveWikiSpaceFromKb(ws.wiki_space_id)}
+                              title={vm.t('detail.remove')}
+                              aria-label={vm.t('detail.remove')}
+                              disabled={vm.wikiSpaceBusyId === ws.wiki_space_id}
+                              onClick={() => void vm.handleRemoveWikiSpaceFromKb(ws.wiki_space_id)}
                             >
                               <Trash2 size={16} />
                             </button>
@@ -2154,48 +716,48 @@ export function KnowledgeBaseDetail() {
         )}
 
         {/* ===== FAQS TAB ===== */}
-        {activeTab === 'faqs' && (
+        {vm.activeTab === 'faqs' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>{t('detail.faqsTitle', { count: faqTotal })}</h2>
+              <h2>{vm.t('detail.faqsTitle', { count: vm.faqTotal })}</h2>
               <div className="kb-section-header-btns">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openGenerateModal()}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void vm.openGenerateModal()}>
                   <Sparkles size={16} />
-                  <span>{t('detail.generateFaq')}</span>
+                  <span>{vm.t('detail.generateFaq')}</span>
                 </button>
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => {
-                  setEditFaq(null);
-                  setFaqDialogSource('manual');
-                  setFaqQuestion('');
-                  setFaqAnswer('');
-                  setFaqLabelsValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
-                  setFaqDocMetadataValues(objToConfigValues({}, kb?.metadata_keys ?? undefined));
-                  setFaqLabelAllowMultiple({});
-                  setFaqMetadataIsArray({});
-                  setShowFaqDialog(true);
+                  vm.setEditFaq(null);
+                  vm.setFaqDialogSource('manual');
+                  vm.setFaqQuestion('');
+                  vm.setFaqAnswer('');
+                  vm.setFaqLabelsValues(vm.objToConfigValues({}, vm.kb?.metadata_keys ?? undefined));
+                  vm.setFaqDocMetadataValues(vm.objToConfigValues({}, vm.kb?.metadata_keys ?? undefined));
+                  vm.setFaqLabelAllowMultiple({});
+                  vm.setFaqMetadataIsArray({});
+                  vm.setShowFaqDialog(true);
                 }}>
                   <Plus size={16} />
-                  <span>{t('detail.addFaq')}</span>
+                  <span>{vm.t('detail.addFaq')}</span>
                 </button>
               </div>
             </div>
 
-            {faqTotal === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyFaqs')}</p>
+            {vm.faqTotal === 0 ? (
+              <p className="kb-empty-text">{vm.t('detail.emptyFaqs')}</p>
             ) : (
               <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th className="kb-table-question-col">{t('detail.colQuestion')}</th>
-                      <th>{t('detail.colAnswer')}</th>
-                      <th className="kb-table-source-col">{t('detail.colSource')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
+                      <th className="kb-table-question-col">{vm.t('detail.colQuestion')}</th>
+                      <th>{vm.t('detail.colAnswer')}</th>
+                      <th className="kb-table-source-col">{vm.t('detail.colSource')}</th>
+                      <th className="kb-table-actions">{vm.t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {faqs.map((faq) => (
+                    {vm.faqs.map((faq) => (
                       <tr key={faq.id}>
                         <td className="kb-table-question-col">
                           <div className="kb-table-name">
@@ -2209,21 +771,21 @@ export function KnowledgeBaseDetail() {
                             className="kb-table-source"
                             title={faq.document_name || faq.document_id || undefined}
                           >
-                            {faq.document_name || faq.document_id || t('detail.dash')}
+                            {faq.document_name || faq.document_id || vm.t('detail.dash')}
                           </span>
                         </td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={async () => {
-                              setEditFaq(faq);
-                              setFaqDialogSource('manual');
-                              setFaqQuestion(faq.question);
-                              setFaqAnswer(faq.answer);
-                              const metaValues = objToConfigValues(faq.doc_metadata, kb?.metadata_keys ?? undefined);
-                              setFaqLabelsValues(metaValues);
-                              setFaqDocMetadataValues(metaValues);
+                            <button type="button" title={vm.t('detail.edit')} aria-label={vm.t('detail.edit')} onClick={async () => {
+                              vm.setEditFaq(faq);
+                              vm.setFaqDialogSource('manual');
+                              vm.setFaqQuestion(faq.question);
+                              vm.setFaqAnswer(faq.answer);
+                              const metaValues = vm.objToConfigValues(faq.doc_metadata, vm.kb?.metadata_keys ?? undefined);
+                              vm.setFaqLabelsValues(metaValues);
+                              vm.setFaqDocMetadataValues(metaValues);
                               const metadataIsArray: Record<string, boolean> = {};
-                              if (faq.document_id && kb?.metadata_keys?.length) {
+                              if (faq.document_id && vm.kb?.metadata_keys?.length) {
                                 try {
                                   const doc = await fetchDocumentById(faq.document_id);
                                   const channel = await fetchChannelById(doc.channel_id);
@@ -2232,20 +794,20 @@ export function KnowledgeBaseDetail() {
                                   const lcMap = new Map(
                                     (channel.label_config ?? []).map((lc: { key: string; type?: string }) => [lc.key, lc.type === 'list[object_type]'])
                                   );
-                                  for (const k of kb.metadata_keys) {
+                                  for (const k of vm.kb.metadata_keys) {
                                     metadataIsArray[k] = metaMap.get(k) ?? lcMap.get(k) ?? false;
                                   }
                                 } catch {
                                   /* default to false */
                                 }
                               }
-                              setFaqLabelAllowMultiple({});
-                              setFaqMetadataIsArray(metadataIsArray);
-                              setShowFaqDialog(true);
+                              vm.setFaqLabelAllowMultiple({});
+                              vm.setFaqMetadataIsArray(metadataIsArray);
+                              vm.setShowFaqDialog(true);
                             }}>
                               <Pencil size={16} />
                             </button>
-                            <button type="button" title={t('detail.remove')} aria-label={t('detail.remove')} onClick={() => handleDeleteFaq(faq.id)}>
+                            <button type="button" title={vm.t('detail.remove')} aria-label={vm.t('detail.remove')} onClick={() => vm.handleDeleteFaq(faq.id)}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -2255,23 +817,23 @@ export function KnowledgeBaseDetail() {
                   </tbody>
                 </table>
               </div>
-              {faqTotal > 0 && (
+              {vm.faqTotal > 0 && (
                 <div className="kb-pagination">
                   <div className="kb-pagination-info">
                     <span>
-                      {t('detail.paginationRange', {
-                        start: faqTotal === 0 ? 0 : faqPage * faqPageSize + 1,
-                        end: Math.min((faqPage + 1) * faqPageSize, faqTotal),
-                        total: faqTotal,
+                      {vm.t('detail.paginationRange', {
+                        start: vm.faqTotal === 0 ? 0 : vm.faqPage * vm.faqPageSize + 1,
+                        end: Math.min((vm.faqPage + 1) * vm.faqPageSize, vm.faqTotal),
+                        total: vm.faqTotal,
                       })}
                     </span>
                     <label>
-                      <span>{t('detail.pageSize')}</span>
+                      <span>{vm.t('detail.pageSize')}</span>
                       <select
-                        value={faqPageSize}
+                        value={vm.faqPageSize}
                         onChange={(e) => {
-                          setFaqPageSize(Number(e.target.value));
-                          setFaqPage(0);
+                          vm.setFaqPageSize(Number(e.target.value));
+                          vm.setFaqPage(0);
                         }}
                       >
                         {[25, 50, 100, 200].map((n) => (
@@ -2280,45 +842,45 @@ export function KnowledgeBaseDetail() {
                       </select>
                     </label>
                   </div>
-                  {Math.ceil(faqTotal / faqPageSize) > 1 && (
+                  {Math.ceil(vm.faqTotal / vm.faqPageSize) > 1 && (
                     <div className="kb-pagination-btns">
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage(0)}
-                        disabled={faqPage === 0}
-                        title={t('detail.firstPage')}
+                        onClick={() => vm.setFaqPage(0)}
+                        disabled={vm.faqPage === 0}
+                        title={vm.t('detail.firstPage')}
                       >
                         «
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage((p) => Math.max(0, p - 1))}
-                        disabled={faqPage === 0}
+                        onClick={() => vm.setFaqPage((p) => Math.max(0, p - 1))}
+                        disabled={vm.faqPage === 0}
                       >
-                        {t('detail.previous')}
+                        {vm.t('detail.previous')}
                       </button>
                       <span className="kb-pagination-nums">
-                        {t('detail.pageOf', {
-                          current: faqPage + 1,
-                          total: Math.ceil(faqTotal / faqPageSize) || 1,
+                        {vm.t('detail.pageOf', {
+                          current: vm.faqPage + 1,
+                          total: Math.ceil(vm.faqTotal / vm.faqPageSize) || 1,
                         })}
                       </span>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage((p) => Math.min(Math.ceil(faqTotal / faqPageSize) - 1, p + 1))}
-                        disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
+                        onClick={() => vm.setFaqPage((p) => Math.min(Math.ceil(vm.faqTotal / vm.faqPageSize) - 1, p + 1))}
+                        disabled={vm.faqPage >= Math.ceil(vm.faqTotal / vm.faqPageSize) - 1}
                       >
-                        {t('detail.next')}
+                        {vm.t('detail.next')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setFaqPage(Math.ceil(faqTotal / faqPageSize) - 1)}
-                        disabled={faqPage >= Math.ceil(faqTotal / faqPageSize) - 1}
-                        title={t('detail.lastPage')}
+                        onClick={() => vm.setFaqPage(Math.ceil(vm.faqTotal / vm.faqPageSize) - 1)}
+                        disabled={vm.faqPage >= Math.ceil(vm.faqTotal / vm.faqPageSize) - 1}
+                        title={vm.t('detail.lastPage')}
                       >
                         »
                       </button>
@@ -2332,28 +894,28 @@ export function KnowledgeBaseDetail() {
         )}
 
         {/* ===== CHUNKS TAB ===== */}
-        {activeTab === 'chunks' && (
+        {vm.activeTab === 'chunks' && (
           <section className="kb-section">
             <div className="kb-section-header">
-              <h2>{t('detail.chunksTitle', { count: chunkTotal })}</h2>
+              <h2>{vm.t('detail.chunksTitle', { count: vm.chunkTotal })}</h2>
             </div>
-            {chunkTotal === 0 ? (
-              <p className="kb-empty-text">{t('detail.emptyChunks')}</p>
+            {vm.chunkTotal === 0 ? (
+              <p className="kb-empty-text">{vm.t('detail.emptyChunks')}</p>
             ) : (
               <>
               <div className="kb-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
-                      <th>{t('detail.chunkSource')}</th>
-                      <th>{t('detail.colExcerpt')}</th>
-                      <th>{t('detail.colTokens')}</th>
-                      <th>{t('detail.colEmbedded')}</th>
-                      <th className="kb-table-actions">{t('detail.actions')}</th>
+                      <th>{vm.t('detail.chunkSource')}</th>
+                      <th>{vm.t('detail.colExcerpt')}</th>
+                      <th>{vm.t('detail.colTokens')}</th>
+                      <th>{vm.t('detail.colEmbedded')}</th>
+                      <th className="kb-table-actions">{vm.t('detail.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {chunks.map((chunk) => (
+                    {vm.chunks.map((chunk) => (
                       <tr key={chunk.id}>
                         <td>
                           <div className="kb-table-name">
@@ -2365,16 +927,16 @@ export function KnowledgeBaseDetail() {
                                 {chunk.document_name || chunk.wiki_page_id}
                               </Link>
                             ) : (
-                              <span>{chunk.document_name || chunk.document_id || chunk.wiki_page_id || t('detail.dash')}</span>
+                              <span>{chunk.document_name || chunk.document_id || chunk.wiki_page_id || vm.t('detail.dash')}</span>
                             )}
                           </div>
                         </td>
                         <td className="kb-table-excerpt">{chunk.content.slice(0, 150)}...</td>
-                        <td>{chunk.token_count ?? t('detail.dash')}</td>
-                        <td>{chunk.has_embedding ? t('detail.yes') : t('detail.no')}</td>
+                        <td>{chunk.token_count ?? vm.t('detail.dash')}</td>
+                        <td>{chunk.has_embedding ? vm.t('detail.yes') : vm.t('detail.no')}</td>
                         <td className="kb-table-actions">
                           <div className="kb-table-btns">
-                            <button type="button" title={t('detail.edit')} aria-label={t('detail.edit')} onClick={() => openChunkEdit(chunk)}>
+                            <button type="button" title={vm.t('detail.edit')} aria-label={vm.t('detail.edit')} onClick={() => vm.openChunkEdit(chunk)}>
                               <Pencil size={16} />
                             </button>
                           </div>
@@ -2384,23 +946,23 @@ export function KnowledgeBaseDetail() {
                   </tbody>
                 </table>
               </div>
-              {chunkTotal > 0 && (
+              {vm.chunkTotal > 0 && (
                 <div className="kb-pagination">
                   <div className="kb-pagination-info">
                     <span>
-                      {t('detail.paginationRange', {
-                        start: chunkTotal === 0 ? 0 : chunkPage * chunkPageSize + 1,
-                        end: Math.min((chunkPage + 1) * chunkPageSize, chunkTotal),
-                        total: chunkTotal,
+                      {vm.t('detail.paginationRange', {
+                        start: vm.chunkTotal === 0 ? 0 : vm.chunkPage * vm.chunkPageSize + 1,
+                        end: Math.min((vm.chunkPage + 1) * vm.chunkPageSize, vm.chunkTotal),
+                        total: vm.chunkTotal,
                       })}
                     </span>
                     <label>
-                      <span>{t('detail.pageSize')}</span>
+                      <span>{vm.t('detail.pageSize')}</span>
                       <select
-                        value={chunkPageSize}
+                        value={vm.chunkPageSize}
                         onChange={(e) => {
-                          setChunkPageSize(Number(e.target.value));
-                          setChunkPage(0);
+                          vm.setChunkPageSize(Number(e.target.value));
+                          vm.setChunkPage(0);
                         }}
                       >
                         {[25, 50, 100, 200].map((n) => (
@@ -2409,45 +971,45 @@ export function KnowledgeBaseDetail() {
                       </select>
                     </label>
                   </div>
-                  {Math.ceil(chunkTotal / chunkPageSize) > 1 && (
+                  {Math.ceil(vm.chunkTotal / vm.chunkPageSize) > 1 && (
                     <div className="kb-pagination-btns">
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage(0)}
-                        disabled={chunkPage === 0}
-                        title={t('detail.firstPage')}
+                        onClick={() => vm.setChunkPage(0)}
+                        disabled={vm.chunkPage === 0}
+                        title={vm.t('detail.firstPage')}
                       >
                         «
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage((p) => Math.max(0, p - 1))}
-                        disabled={chunkPage === 0}
+                        onClick={() => vm.setChunkPage((p) => Math.max(0, p - 1))}
+                        disabled={vm.chunkPage === 0}
                       >
-                        {t('detail.previous')}
+                        {vm.t('detail.previous')}
                       </button>
                       <span className="kb-pagination-nums">
-                        {t('detail.pageOf', {
-                          current: chunkPage + 1,
-                          total: Math.ceil(chunkTotal / chunkPageSize) || 1,
+                        {vm.t('detail.pageOf', {
+                          current: vm.chunkPage + 1,
+                          total: Math.ceil(vm.chunkTotal / vm.chunkPageSize) || 1,
                         })}
                       </span>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage((p) => Math.min(Math.ceil(chunkTotal / chunkPageSize) - 1, p + 1))}
-                        disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
+                        onClick={() => vm.setChunkPage((p) => Math.min(Math.ceil(vm.chunkTotal / vm.chunkPageSize) - 1, p + 1))}
+                        disabled={vm.chunkPage >= Math.ceil(vm.chunkTotal / vm.chunkPageSize) - 1}
                       >
-                        {t('detail.next')}
+                        {vm.t('detail.next')}
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setChunkPage(Math.ceil(chunkTotal / chunkPageSize) - 1)}
-                        disabled={chunkPage >= Math.ceil(chunkTotal / chunkPageSize) - 1}
-                        title={t('detail.lastPage')}
+                        onClick={() => vm.setChunkPage(Math.ceil(vm.chunkTotal / vm.chunkPageSize) - 1)}
+                        disabled={vm.chunkPage >= Math.ceil(vm.chunkTotal / vm.chunkPageSize) - 1}
+                        title={vm.t('detail.lastPage')}
                       >
                         »
                       </button>
@@ -2461,38 +1023,38 @@ export function KnowledgeBaseDetail() {
         )}
 
         {/* ===== SEARCH TAB ===== */}
-        {activeTab === 'search' && (
+        {vm.activeTab === 'search' && (
           <section className="kb-section kb-search-section">
-            <h2>{t('detail.searchTitle')}</h2>
+            <h2>{vm.t('detail.searchTitle')}</h2>
             <p className="kb-section-desc">
-              {t('detail.searchDesc')}
+              {vm.t('detail.searchDesc')}
             </p>
             <div className="kb-search-type-tabs">
               {(['all', 'chunks', 'faqs'] as const).map((type) => (
                 <button
                   key={type}
                   type="button"
-                  className={`kb-search-type-tab${searchType === type ? ' active' : ''}`}
-                  onClick={() => setSearchType(type)}
-                  aria-pressed={searchType === type}
+                  className={`kb-search-type-tab${vm.searchType === type ? ' active' : ''}`}
+                  onClick={() => vm.setSearchType(type)}
+                  aria-pressed={vm.searchType === type}
                 >
-                  {type === 'all' ? t('detail.searchTypeAll') : type === 'chunks' ? t('detail.searchTypeChunks') : t('detail.searchTypeFaqs')}
+                  {type === 'all' ? vm.t('detail.searchTypeAll') : type === 'chunks' ? vm.t('detail.searchTypeChunks') : vm.t('detail.searchTypeFaqs')}
                 </button>
               ))}
             </div>
-            <form className="kb-search-form" onSubmit={handleSearch}>
+            <form className="kb-search-form" onSubmit={vm.handleSearch}>
               <SearchIcon size={20} />
               <input
                 type="search"
-                aria-label={t('detail.searchAria')}
-                placeholder={t('detail.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label={vm.t('detail.searchAria')}
+                placeholder={vm.t('detail.searchPlaceholder')}
+                value={vm.searchQuery}
+                onChange={(e) => vm.setSearchQuery(e.target.value)}
                 className="kb-search-input"
               />
-              <button type="submit" className="kb-search-submit" disabled={searching}>
+              <button type="submit" className="kb-search-submit" disabled={vm.searching}>
                 <Send size={18} />
-                <span>{searching ? t('detail.searching') : t('detail.search')}</span>
+                <span>{vm.searching ? vm.t('detail.searching') : vm.t('detail.search')}</span>
               </button>
             </form>
 
@@ -2500,65 +1062,65 @@ export function KnowledgeBaseDetail() {
               <button
                 type="button"
                 className="kb-search-options-toggle"
-                onClick={() => setSearchOptionsExpanded((o) => !o)}
-                aria-expanded={searchOptionsExpanded}
+                onClick={() => vm.setSearchOptionsExpanded((o) => !o)}
+                aria-expanded={vm.searchOptionsExpanded}
               >
-                {searchOptionsExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                {vm.searchOptionsExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 <Filter size={16} aria-hidden />
-                <span>{t('detail.searchOptionsToggle')}</span>
-                {(Object.values(searchLabelFilters).some(Boolean) ||
-                  Object.values(searchMetadataFilters).some(Boolean) ||
-                  searchForceDense ||
-                  searchTopK !== 10) && (
-                  <span className="kb-search-options-badge">{t('detail.filtersActive')}</span>
+                <span>{vm.t('detail.searchOptionsToggle')}</span>
+                {(Object.values(vm.searchLabelFilters).some(Boolean) ||
+                  Object.values(vm.searchMetadataFilters).some(Boolean) ||
+                  vm.searchForceDense ||
+                  vm.searchTopK !== 10) && (
+                  <span className="kb-search-options-badge">{vm.t('detail.filtersActive')}</span>
                 )}
               </button>
-              {searchOptionsExpanded ? (
+              {vm.searchOptionsExpanded ? (
                 <div className="kb-search-options-panel">
                   <div className="kb-search-options-block">
-                    <div className="kb-search-options-block-title">{t('detail.searchOptionsRankingTitle')}</div>
+                    <div className="kb-search-options-block-title">{vm.t('detail.searchOptionsRankingTitle')}</div>
                     <div className="kb-search-options-row">
                       <label className="kb-search-advanced-field">
-                        <span>{t('detail.searchTopKLabel')}</span>
+                        <span>{vm.t('detail.searchTopKLabel')}</span>
                         <input
                           type="number"
                           min={1}
                           max={50}
-                          value={searchTopK}
+                          value={vm.searchTopK}
                           onChange={(e) => {
                             const n = Number(e.target.value);
-                            setSearchTopK(Number.isFinite(n) ? Math.min(50, Math.max(1, Math.trunc(n))) : 10);
+                            vm.setSearchTopK(Number.isFinite(n) ? Math.min(50, Math.max(1, Math.trunc(n))) : 10);
                           }}
                         />
                       </label>
                       <label className="kb-search-advanced-checkbox">
                         <input
                           type="checkbox"
-                          checked={searchForceDense}
-                          onChange={(e) => setSearchForceDense(e.target.checked)}
+                          checked={vm.searchForceDense}
+                          onChange={(e) => vm.setSearchForceDense(e.target.checked)}
                         />
-                        <span>{t('detail.searchForceDense')}</span>
+                        <span>{vm.t('detail.searchForceDense')}</span>
                       </label>
                     </div>
-                    <p className="kb-search-advanced-hint">{t('detail.searchAdvancedHint')}</p>
+                    <p className="kb-search-advanced-hint">{vm.t('detail.searchAdvancedHint')}</p>
                   </div>
 
-                  {kb?.metadata_keys?.length ? (
+                  {vm.kb?.metadata_keys?.length ? (
                     <>
                       <hr className="kb-search-options-sep" />
                       <div className="kb-search-options-block">
-                        <div className="kb-search-options-block-title">{t('detail.metadataLabel')}</div>
-                        <p className="kb-search-filters-hint">{t('detail.filtersHint')}</p>
+                        <div className="kb-search-options-block-title">{vm.t('detail.metadataLabel')}</div>
+                        <p className="kb-search-filters-hint">{vm.t('detail.filtersHint')}</p>
                         <div className="kb-search-filters-group">
-                          {kb.metadata_keys.map((key) => (
+                          {vm.kb.metadata_keys.map((key) => (
                             <div key={key} className="kb-search-filter-row">
                               <label htmlFor={`search-meta-${key}`}>{key}</label>
                               <input
                                 id={`search-meta-${key}`}
                                 type="text"
-                                placeholder={t('detail.placeholderMetaExample')}
-                                value={searchMetadataFilters[key] ?? ''}
-                                onChange={(e) => setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
+                                placeholder={vm.t('detail.placeholderMetaExample')}
+                                value={vm.searchMetadataFilters[key] ?? ''}
+                                onChange={(e) => vm.setSearchMetadataFilters((prev) => ({ ...prev, [key]: e.target.value }))}
                               />
                             </div>
                           ))}
@@ -2568,37 +1130,37 @@ export function KnowledgeBaseDetail() {
                   ) : (
                     <>
                       <hr className="kb-search-options-sep" />
-                      <p className="kb-search-options-empty-hint">{t('detail.metadataKeysEmptyHint')}</p>
+                      <p className="kb-search-options-empty-hint">{vm.t('detail.metadataKeysEmptyHint')}</p>
                     </>
                   )}
                 </div>
               ) : null}
             </div>
 
-            {hasSearched && searchResults.length > 0 && (
+            {vm.hasSearched && vm.searchResults.length > 0 && (
               <div className="kb-search-results-panel">
-                <h3>{t('detail.resultsTitle', { count: searchResults.length })}</h3>
-                {searchRetrievalDiff &&
-                (searchRetrievalDiff.added.length > 0 ||
-                  searchRetrievalDiff.removed.length > 0 ||
-                  searchRetrievalDiff.moved.length > 0) ? (
-                  <div className="kb-search-diff-panel" role="region" aria-label={t('detail.searchDiffAria')}>
-                    <h4 className="kb-search-diff-title">{t('detail.searchDiffTitle')}</h4>
-                    {searchRetrievalDiff.added.length > 0 ? (
+                <h3>{vm.t('detail.resultsTitle', { count: vm.searchResults.length })}</h3>
+                {vm.searchRetrievalDiff &&
+                (vm.searchRetrievalDiff.added.length > 0 ||
+                  vm.searchRetrievalDiff.removed.length > 0 ||
+                  vm.searchRetrievalDiff.moved.length > 0) ? (
+                  <div className="kb-search-diff-panel" role="region" aria-label={vm.t('detail.searchDiffAria')}>
+                    <h4 className="kb-search-diff-title">{vm.t('detail.searchDiffTitle')}</h4>
+                    {vm.searchRetrievalDiff.added.length > 0 ? (
                       <p className="kb-search-diff-line">
-                        <strong>{t('detail.searchDiffAdded')}</strong> {searchRetrievalDiff.added.length}
+                        <strong>{vm.t('detail.searchDiffAdded')}</strong> {vm.searchRetrievalDiff.added.length}
                       </p>
                     ) : null}
-                    {searchRetrievalDiff.removed.length > 0 ? (
+                    {vm.searchRetrievalDiff.removed.length > 0 ? (
                       <p className="kb-search-diff-line">
-                        <strong>{t('detail.searchDiffRemoved')}</strong> {searchRetrievalDiff.removed.length}
+                        <strong>{vm.t('detail.searchDiffRemoved')}</strong> {vm.searchRetrievalDiff.removed.length}
                       </p>
                     ) : null}
-                    {searchRetrievalDiff.moved.length > 0 ? (
+                    {vm.searchRetrievalDiff.moved.length > 0 ? (
                       <ul className="kb-search-diff-moves">
-                        {searchRetrievalDiff.moved.slice(0, 20).map((m) => (
+                        {vm.searchRetrievalDiff.moved.slice(0, 20).map((m) => (
                           <li key={m.id}>
-                            {t('detail.searchDiffMoved', {
+                            {vm.t('detail.searchDiffMoved', {
                               id: m.id.length > 24 ? `${m.id.slice(0, 20)}…` : m.id,
                               from: m.from + 1,
                               to: m.to + 1,
@@ -2610,12 +1172,12 @@ export function KnowledgeBaseDetail() {
                   </div>
                 ) : null}
                 <ul className="kb-search-results-list">
-                  {searchResults.map((r) => (
+                  {vm.searchResults.map((r) => (
                     <li key={r.id} className="kb-search-result-item">
                       <span className="kb-search-result-source">
                         [{r.source_type}]
                         {r.source_type === 'chunk' && r.wiki_page_id && r.wiki_space_id && (
-                          <span className="kb-search-result-kind"> {t('detail.searchHitWiki')} </span>
+                          <span className="kb-search-result-kind"> {vm.t('detail.searchHitWiki')} </span>
                         )}{' '}
                         {r.wiki_page_id && r.wiki_space_id ? (
                           <Link to={`/wikis/${r.wiki_space_id}/pages/${r.wiki_page_id}`}>
@@ -2624,19 +1186,19 @@ export function KnowledgeBaseDetail() {
                         ) : r.document_id ? (
                           <Link to={`/documents/view/${r.document_id}`}>{r.source_name || r.document_id}</Link>
                         ) : (
-                          <span>{r.source_name || r.document_id || t('detail.faqSourceFallback')}</span>
+                          <span>{r.source_name || r.document_id || vm.t('detail.faqSourceFallback')}</span>
                         )}
                       </span>
                       <p className="kb-search-result-excerpt">{r.content.slice(0, 300)}</p>
-                      <span className="kb-search-result-score">{t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}</span>
-                      <KbRetrievalProvenancePanel s={r} t={t} />
+                      <span className="kb-search-result-score">{vm.t('detail.matchPercent', { pct: (r.score * 100).toFixed(0) })}</span>
+                      <KbRetrievalProvenancePanel s={r} t={vm.t} />
                       {r.source_type === 'chunk' ? (
                         <div className="kb-search-result-chunk-actions">
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openChunkViewFromId(r.id)}>
-                            {t('detail.chunkView')}
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void vm.openChunkViewFromId(r.id)}>
+                            {vm.t('detail.chunkView')}
                           </button>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void openChunkEditFromId(r.id)}>
-                            {t('detail.chunkEdit')}
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void vm.openChunkEditFromId(r.id)}>
+                            {vm.t('detail.chunkEdit')}
                           </button>
                         </div>
                       ) : null}
@@ -2646,35 +1208,35 @@ export function KnowledgeBaseDetail() {
               </div>
             )}
 
-            {hasSearched && searchResults.length === 0 && (
-              <p className="kb-empty-text">{t('detail.noSearchResults')}</p>
+            {vm.hasSearched && vm.searchResults.length === 0 && (
+              <p className="kb-empty-text">{vm.t('detail.noSearchResults')}</p>
             )}
 
-            {!hasSearched && (
+            {!vm.hasSearched && (
               <div className="kb-search-empty">
                 <SearchIcon size={48} strokeWidth={1} />
-                <p>{t('detail.searchEmptyPrompt')}</p>
+                <p>{vm.t('detail.searchEmptyPrompt')}</p>
               </div>
             )}
           </section>
         )}
 
         {/* ===== SETTINGS TAB ===== */}
-        {activeTab === 'settings' && (
+        {vm.activeTab === 'settings' && (
           <section className="kb-section kb-settings-section">
             <h2 id="kb-settings-heading" className="kb-settings-page-title">
-              {t('detail.settingsTitle')}
+              {vm.t('detail.settingsTitle')}
             </h2>
 
-            <div className="kb-settings-subtabs" role="tablist" aria-label={t('detail.settingsTitle')}>
-              {settingsSubTabs.map((tab) => (
+            <div className="kb-settings-subtabs" role="tablist" aria-label={vm.t('detail.settingsTitle')}>
+              {vm.settingsSubTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   role="tab"
-                  aria-selected={settingsSubTab === tab.id}
-                  className={`kb-settings-subtab ${settingsSubTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setSettingsSubTab(tab.id)}
+                  aria-selected={vm.settingsSubTab === tab.id}
+                  className={`kb-settings-subtab ${vm.settingsSubTab === tab.id ? 'active' : ''}`}
+                  onClick={() => vm.setSettingsSubTab(tab.id)}
                 >
                   <tab.icon size={16} aria-hidden />
                   <span>{tab.label}</span>
@@ -2683,25 +1245,25 @@ export function KnowledgeBaseDetail() {
             </div>
 
             <div className="kb-settings-subtab-panel" role="tabpanel">
-              {settingsSubTab === 'sharing' && kbId ? (
+              {vm.settingsSubTab === 'sharing' && vm.kbId ? (
                 <ResourceSharePanel
                   resourceType={RESOURCE_TYPES.knowledgeBase}
-                  resourceId={kbId}
-                  title={t('detail.sharingTitle')}
+                  resourceId={vm.kbId}
+                  title={vm.t('detail.sharingTitle')}
                 />
               ) : null}
 
-              {settingsSubTab === 'general' ? (
+              {vm.settingsSubTab === 'general' ? (
                 <>
             <div className="kb-settings-header-row">
-              <p className="kb-settings-general-lead">{t('detail.settingsGeneralLead')}</p>
+              <p className="kb-settings-general-lead">{vm.t('detail.settingsGeneralLead')}</p>
               <button
                 type="button"
                 className="btn btn-primary kb-settings-header-save"
-                disabled={settingsSaving}
-                onClick={handleSaveSettings}
+                disabled={vm.settingsSaving}
+                onClick={vm.handleSaveSettings}
               >
-                {settingsSaving ? t('detail.savingSettings') : t('detail.saveSettings')}
+                {vm.settingsSaving ? vm.t('detail.savingSettings') : vm.t('detail.saveSettings')}
               </button>
             </div>
 
@@ -2709,55 +1271,55 @@ export function KnowledgeBaseDetail() {
               <div className="kb-settings-layout">
                 <div className="kb-settings-col kb-settings-col-models">
                   <label>
-                    <span>{t('detail.qaAgentUrl')}</span>
+                    <span>{vm.t('detail.qaAgentUrl')}</span>
                     <input
                       type="url"
-                      placeholder={t('detail.qaAgentUrlPlaceholder')}
-                      value={settingsAgentUrl}
-                      onChange={(e) => setSettingsAgentUrl(e.target.value)}
+                      placeholder={vm.t('detail.qaAgentUrlPlaceholder')}
+                      value={vm.settingsAgentUrl}
+                      onChange={(e) => vm.setSettingsAgentUrl(e.target.value)}
                     />
-                    <small>{t('detail.qaAgentUrlHelp')}</small>
+                    <small>{vm.t('detail.qaAgentUrlHelp')}</small>
                   </label>
 
                   <label>
-                    <span>{t('detail.embeddingModel')}</span>
-                    <select value={settingsEmbeddingModelId} onChange={(e) => setSettingsEmbeddingModelId(e.target.value)}>
-                      <option value="">{t('detail.modelNone')}</option>
-                      {embeddingModels.map((m) => (
+                    <span>{vm.t('detail.embeddingModel')}</span>
+                    <select value={vm.settingsEmbeddingModelId} onChange={(e) => vm.setSettingsEmbeddingModelId(e.target.value)}>
+                      <option value="">{vm.t('detail.modelNone')}</option>
+                      {vm.embeddingModels.map((m) => (
                         <option key={m.id} value={m.id}>{m.name} ({m.model_name})</option>
                       ))}
                     </select>
-                    <small>{t('detail.embeddingHelp')}</small>
+                    <small>{vm.t('detail.embeddingHelp')}</small>
                   </label>
 
                   <fieldset className="kb-settings-fieldset">
-                    <legend>{t('detail.chunkingFieldset')}</legend>
+                    <legend>{vm.t('detail.chunkingFieldset')}</legend>
                     <label>
-                      <span>{t('detail.strategy')}</span>
-                      <select value={settingsChunkStrategy} onChange={(e) => setSettingsChunkStrategy(e.target.value)}>
-                        <option value="fixed_size">{t('detail.strategyFixedSize')}</option>
-                        <option value="markdown_header">{t('detail.strategyMarkdownHeader')}</option>
-                        <option value="paragraph">{t('detail.strategyParagraph')}</option>
+                      <span>{vm.t('detail.strategy')}</span>
+                      <select value={vm.settingsChunkStrategy} onChange={(e) => vm.setSettingsChunkStrategy(e.target.value)}>
+                        <option value="fixed_size">{vm.t('detail.strategyFixedSize')}</option>
+                        <option value="markdown_header">{vm.t('detail.strategyMarkdownHeader')}</option>
+                        <option value="paragraph">{vm.t('detail.strategyParagraph')}</option>
                       </select>
                     </label>
                     <label>
-                      <span>{t('detail.chunkSize')}</span>
+                      <span>{vm.t('detail.chunkSize')}</span>
                       <input
                         type="number"
                         min={100}
                         max={10000}
-                        value={settingsChunkSize}
-                        onChange={(e) => setSettingsChunkSize(Number(e.target.value))}
+                        value={vm.settingsChunkSize}
+                        onChange={(e) => vm.setSettingsChunkSize(Number(e.target.value))}
                       />
                     </label>
                     <label>
-                      <span>{t('detail.chunkOverlap')}</span>
+                      <span>{vm.t('detail.chunkOverlap')}</span>
                       <input
                         type="number"
                         min={0}
                         max={1000}
-                        value={settingsChunkOverlap}
-                        onChange={(e) => setSettingsChunkOverlap(Number(e.target.value))}
+                        value={vm.settingsChunkOverlap}
+                        onChange={(e) => vm.setSettingsChunkOverlap(Number(e.target.value))}
                       />
                     </label>
                   </fieldset>
@@ -2765,54 +1327,54 @@ export function KnowledgeBaseDetail() {
 
                 <div className="kb-settings-col kb-settings-col-text">
                   <label>
-                    <span>{t('detail.faqGenPrompt')}</span>
+                    <span>{vm.t('detail.faqGenPrompt')}</span>
                     <textarea
-                      placeholder={t('detail.faqGenPromptPlaceholder')}
-                      value={settingsFaqPrompt}
-                      onChange={(e) => setSettingsFaqPrompt(e.target.value)}
+                      placeholder={vm.t('detail.faqGenPromptPlaceholder')}
+                      value={vm.settingsFaqPrompt}
+                      onChange={(e) => vm.setSettingsFaqPrompt(e.target.value)}
                       rows={6}
                     />
-                    <small>{t('detail.faqGenPromptHelp')}</small>
+                    <small>{vm.t('detail.faqGenPromptHelp')}</small>
                   </label>
 
                   <label>
-                    <span>{t('detail.metadataKeys')}</span>
+                    <span>{vm.t('detail.metadataKeys')}</span>
                     <input
                       type="text"
-                      placeholder={t('detail.metadataKeysPlaceholder')}
-                      value={settingsMetadataKeys}
-                      onChange={(e) => setSettingsMetadataKeys(e.target.value)}
+                      placeholder={vm.t('detail.metadataKeysPlaceholder')}
+                      value={vm.settingsMetadataKeys}
+                      onChange={(e) => vm.setSettingsMetadataKeys(e.target.value)}
                     />
-                    <small>{t('detail.metadataKeysHelp')}</small>
+                    <small>{vm.t('detail.metadataKeysHelp')}</small>
                   </label>
                 </div>
               </div>
 
               <fieldset className="kb-settings-fieldset kb-settings-index-fieldset">
-                <legend>{t('detail.indexJobTitle')}</legend>
+                <legend>{vm.t('detail.indexJobTitle')}</legend>
                 <div className="kb-settings-index-actions">
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    disabled={indexJobSubmitting || !kb?.embedding_model_id}
-                    onClick={() => void enqueueIndexJob()}
+                    disabled={vm.indexJobSubmitting || !vm.kb?.embedding_model_id}
+                    onClick={() => void vm.enqueueIndexJob()}
                   >
-                    {indexJobSubmitting ? (
+                    {vm.indexJobSubmitting ? (
                       <>
                         <Loader2 size={14} className="kb-spinner-inline" />
-                        {t('detail.indexJobButtonRunning')}
+                        {vm.t('detail.indexJobButtonRunning')}
                       </>
                     ) : (
-                      t('detail.indexJobButton')
+                      vm.t('detail.indexJobButton')
                     )}
                   </button>
                   <Link to="/job-runs" className="kb-settings-index-jobs-link">
-                    {t('detail.indexJobViewJobs')}
+                    {vm.t('detail.indexJobViewJobs')}
                   </Link>
                 </div>
-                <small className="kb-settings-index-help">{t('detail.indexJobHelp')}</small>
-                {!kb?.embedding_model_id ? (
-                  <small className="kb-settings-index-warn">{t('detail.indexJobRequiresEmbedding')}</small>
+                <small className="kb-settings-index-help">{vm.t('detail.indexJobHelp')}</small>
+                {!vm.kb?.embedding_model_id ? (
+                  <small className="kb-settings-index-warn">{vm.t('detail.indexJobRequiresEmbedding')}</small>
                 ) : null}
               </fieldset>
             </div>
@@ -2823,100 +1385,100 @@ export function KnowledgeBaseDetail() {
         )}
       </div>
 
-      {showGenerateModal && (
+      {vm.showGenerateModal && (
         <div
           className="kb-doc-picker-overlay"
-          onClick={closeGenerateModal}
+          onClick={vm.closeGenerateModal}
           role="dialog"
           aria-modal="true"
           aria-labelledby="gen-faq-title"
         >
           <div className="kb-doc-picker" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="gen-faq-title">{genStep === 'config' ? t('detail.genModalTitleConfig') : t('detail.genModalTitleReview')}</h2>
+              <h2 id="gen-faq-title">{vm.genStep === 'config' ? vm.t('detail.genModalTitleConfig') : vm.t('detail.genModalTitleReview')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
-                onClick={closeGenerateModal}
-                disabled={generating || genSaving}
-                aria-label={t('detail.closeAria')}
+                onClick={vm.closeGenerateModal}
+                disabled={vm.generating || vm.genSaving}
+                aria-label={vm.t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <p className="kb-doc-picker-hint">
-              {genStep === 'config'
-                ? generating && genProgress
-                  ? t('detail.genHintProgress', {
-                      current: genProgress.current,
-                      total: genProgress.total,
-                      name: genProgress.documentName,
+              {vm.genStep === 'config'
+                ? vm.generating && vm.genProgress
+                  ? vm.t('detail.genHintProgress', {
+                      current: vm.genProgress.current,
+                      total: vm.genProgress.total,
+                      name: vm.genProgress.documentName,
                     })
-                  : t('detail.genHintConfig')
-                : t('detail.genHintReview')}
+                  : vm.t('detail.genHintConfig')
+                : vm.t('detail.genHintReview')}
             </p>
-            {generating && genProgress && genProgress.total > 1 && (
+            {vm.generating && vm.genProgress && vm.genProgress.total > 1 && (
               <div className="kb-gen-progress-bar">
                 <div
                   className="kb-gen-progress-fill"
-                  style={{ width: `${(genProgress.current / genProgress.total) * 100}%` }}
+                  style={{ width: `${(vm.genProgress.current / vm.genProgress.total) * 100}%` }}
                 />
               </div>
             )}
 
-            {genStep === 'config' ? (
+            {vm.genStep === 'config' ? (
               <>
                 <div className="kb-gen-model-select">
                   <label>
-                    <span>{t('detail.llmModel')}</span>
-                    <select value={genModelId} onChange={(e) => setGenModelId(e.target.value)}>
-                      <option value="">{t('detail.selectModel')}</option>
-                      {llmModels.map((m) => (
+                    <span>{vm.t('detail.llmModel')}</span>
+                    <select value={vm.genModelId} onChange={(e) => vm.setGenModelId(e.target.value)}>
+                      <option value="">{vm.t('detail.selectModel')}</option>
+                      {vm.llmModels.map((m) => (
                         <option key={m.id} value={m.id}>{m.name}</option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    <span>{t('detail.prompt')}</span>
+                    <span>{vm.t('detail.prompt')}</span>
                     <textarea
-                      placeholder={t('detail.promptPlaceholder')}
-                      value={genPrompt}
-                      onChange={(e) => setGenPrompt(e.target.value)}
+                      placeholder={vm.t('detail.promptPlaceholder')}
+                      value={vm.genPrompt}
+                      onChange={(e) => vm.setGenPrompt(e.target.value)}
                       rows={4}
                     />
                   </label>
                 </div>
 
                 <div className="kb-gen-doc-header">
-                  <span className="kb-gen-doc-label">{t('detail.documents')}</span>
+                  <span className="kb-gen-doc-label">{vm.t('detail.documents')}</span>
                   <button
                     type="button"
                     className="kb-gen-toggle-all"
                     onClick={() => {
-                      if (genSelectedDocs.size === genDocs.length) setGenSelectedDocs(new Set());
-                      else setGenSelectedDocs(new Set(genDocs.map((d) => d.document_id)));
+                      if (vm.genSelectedDocs.size === vm.genDocs.length) vm.setGenSelectedDocs(new Set());
+                      else vm.setGenSelectedDocs(new Set(vm.genDocs.map((d) => d.document_id)));
                     }}
                   >
-                    {genSelectedDocs.size === genDocs.length ? t('detail.deselectAll') : t('detail.selectAll')}
+                    {vm.genSelectedDocs.size === vm.genDocs.length ? vm.t('detail.deselectAll') : vm.t('detail.selectAll')}
                   </button>
                 </div>
 
                 <div className="kb-doc-picker-list">
-                  {genDocs.length === 0 ? (
+                  {vm.genDocs.length === 0 ? (
                     <div className="kb-doc-picker-empty">
-                      <p>{t('detail.genNoDocs')}</p>
+                      <p>{vm.t('detail.genNoDocs')}</p>
                     </div>
                   ) : (
-                    genDocs.map((doc) => {
-                      const selected = genSelectedDocs.has(doc.document_id);
+                    vm.genDocs.map((doc) => {
+                      const selected = vm.genSelectedDocs.has(doc.document_id);
                       return (
                         <div
                           key={doc.document_id}
                           className={`kb-doc-picker-item${selected ? ' selected' : ''}`}
-                          onClick={() => toggleGenDoc(doc.document_id)}
+                          onClick={() => vm.toggleGenDoc(doc.document_id)}
                           role="button"
                           tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && toggleGenDoc(doc.document_id)}
+                          onKeyDown={(e) => e.key === 'Enter' && vm.toggleGenDoc(doc.document_id)}
                         >
                           <div className="kb-doc-picker-item-check">
                             {selected ? (
@@ -2940,12 +1502,12 @@ export function KnowledgeBaseDetail() {
               </>
             ) : (
               <div className="kb-gen-review-list">
-                {genPreviewFaqs.length === 0 ? (
+                {vm.genPreviewFaqs.length === 0 ? (
                   <div className="kb-doc-picker-empty">
-                    <p>{t('detail.genNoPreview')}</p>
+                    <p>{vm.t('detail.genNoPreview')}</p>
                   </div>
                 ) : (
-                  genPreviewFaqs.map((faq, idx) => (
+                  vm.genPreviewFaqs.map((faq, idx) => (
                     <div key={idx} className="kb-gen-review-item">
                       <div className="kb-gen-review-content">
                         <span className="kb-gen-review-source">{faq.document_name || faq.document_id}</span>
@@ -2955,9 +1517,9 @@ export function KnowledgeBaseDetail() {
                       <button
                         type="button"
                         className="kb-gen-review-remove"
-                        onClick={() => removeGenPreviewFaq(idx)}
-                        aria-label={t('detail.genRemoveFaqAria')}
-                        title={t('detail.remove')}
+                        onClick={() => vm.removeGenPreviewFaq(idx)}
+                        aria-label={vm.t('detail.genRemoveFaqAria')}
+                        title={vm.t('detail.remove')}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -2969,38 +1531,38 @@ export function KnowledgeBaseDetail() {
 
             <div className="kb-doc-picker-footer">
               <span className="kb-doc-picker-count">
-                {genStep === 'config'
-                  ? (genSelectedDocs.size > 0
-                      ? t('detail.genFooterSelectedDocs', { count: genSelectedDocs.size })
-                      : t('detail.genFooterNoDocs'))
-                  : t('detail.genFooterSaveCount', { count: genPreviewFaqs.length })}
+                {vm.genStep === 'config'
+                  ? (vm.genSelectedDocs.size > 0
+                      ? vm.t('detail.genFooterSelectedDocs', { count: vm.genSelectedDocs.size })
+                      : vm.t('detail.genFooterNoDocs'))
+                  : vm.t('detail.genFooterSaveCount', { count: vm.genPreviewFaqs.length })}
               </span>
               <div className="kb-doc-picker-actions">
-                {genStep === 'config' ? (
+                {vm.genStep === 'config' ? (
                   <>
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={closeGenerateModal}
-                      disabled={generating}
+                      onClick={vm.closeGenerateModal}
+                      disabled={vm.generating}
                     >
-                      {t('detail.cancel')}
+                      {vm.t('detail.cancel')}
                     </button>
                     <button
                       type="button"
                       className="btn btn-primary"
-                      onClick={handleGenerateFaqs}
-                      disabled={!genModelId || genSelectedDocs.size === 0 || generating}
+                      onClick={vm.handleGenerateFaqs}
+                      disabled={!vm.genModelId || vm.genSelectedDocs.size === 0 || vm.generating}
                     >
-                      {generating ? (
+                      {vm.generating ? (
                         <>
                           <Loader2 size={18} className="kb-doc-picker-spinner" />
-                          <span>{t('detail.generating')}</span>
+                          <span>{vm.t('detail.generating')}</span>
                         </>
                       ) : (
                         <>
                           <Sparkles size={18} />
-                          <span>{t('detail.generate')}</span>
+                          <span>{vm.t('detail.generate')}</span>
                         </>
                       )}
                     </button>
@@ -3010,26 +1572,26 @@ export function KnowledgeBaseDetail() {
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={handleGenBackToConfig}
-                      disabled={genSaving}
+                      onClick={vm.handleGenBackToConfig}
+                      disabled={vm.genSaving}
                     >
-                      {t('detail.genModalBack')}
+                      {vm.t('detail.genModalBack')}
                     </button>
                     <button
                       type="button"
                       className="btn btn-primary"
-                      onClick={handleSaveGeneratedFaqs}
-                      disabled={genPreviewFaqs.length === 0 || genSaving}
+                      onClick={vm.handleSaveGeneratedFaqs}
+                      disabled={vm.genPreviewFaqs.length === 0 || vm.genSaving}
                     >
-                      {genSaving ? (
+                      {vm.genSaving ? (
                         <>
                           <Loader2 size={18} className="kb-doc-picker-spinner" />
-                          <span>{t('detail.saving')}</span>
+                          <span>{vm.t('detail.saving')}</span>
                         </>
                       ) : (
                         <>
                           <Check size={18} />
-                          <span>{t('detail.saveFaqs', { count: genPreviewFaqs.length })}</span>
+                          <span>{vm.t('detail.saveFaqs', { count: vm.genPreviewFaqs.length })}</span>
                         </>
                       )}
                     </button>
@@ -3041,43 +1603,43 @@ export function KnowledgeBaseDetail() {
         </div>
       )}
 
-      {showDocPicker && (
+      {vm.showDocPicker && (
         <div
           className="kb-doc-picker-overlay"
-          onClick={closeDocPicker}
+          onClick={vm.closeDocPicker}
           role="dialog"
           aria-modal="true"
           aria-labelledby="doc-picker-title"
         >
           <div className="kb-doc-picker kb-doc-picker-split" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="doc-picker-title">{t('detail.docPickerTitle')}</h2>
+              <h2 id="doc-picker-title">{vm.t('detail.docPickerTitle')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
-                onClick={closeDocPicker}
-                disabled={pickerAdding}
-                aria-label={t('detail.closeAria')}
+                onClick={vm.closeDocPicker}
+                disabled={vm.pickerAdding}
+                aria-label={vm.t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="kb-doc-picker-body">
               <aside className="kb-doc-picker-sidebar">
-                <span className="kb-doc-picker-sidebar-label">{t('detail.channels')}</span>
+                <span className="kb-doc-picker-sidebar-label">{vm.t('detail.channels')}</span>
                 <ul className="kb-doc-picker-channel-tree">
-                  {channels.length === 0 ? (
-                    <li className="kb-doc-picker-channel-empty">{t('detail.noChannels')}</li>
+                  {vm.channels.length === 0 ? (
+                    <li className="kb-doc-picker-channel-empty">{vm.t('detail.noChannels')}</li>
                   ) : (
                     <>
-                      {channels.map((ch) => (
+                      {vm.channels.map((ch) => (
                         <DocPickerChannelTree
                           key={ch.id}
                           node={ch}
-                          selectedId={pickerSelectedChannel}
-                          expanded={pickerChannelExpanded}
-                          onSelect={handlePickerChannelSelect}
-                          onToggle={handlePickerChannelToggle}
+                          selectedId={vm.pickerSelectedChannel}
+                          expanded={vm.pickerChannelExpanded}
+                          onSelect={vm.handlePickerChannelSelect}
+                          onToggle={vm.handlePickerChannelToggle}
                           depth={0}
                         />
                       ))}
@@ -3090,39 +1652,39 @@ export function KnowledgeBaseDetail() {
                   <SearchIcon size={18} />
                   <input
                     type="search"
-                    placeholder={t('detail.searchDocsPlaceholder')}
-                    value={pickerSearch}
-                    onChange={(e) => handlePickerSearch(e.target.value)}
-                    disabled={!pickerSelectedChannel}
+                    placeholder={vm.t('detail.searchDocsPlaceholder')}
+                    value={vm.pickerSearch}
+                    onChange={(e) => vm.handlePickerSearch(e.target.value)}
+                    disabled={!vm.pickerSelectedChannel}
                     autoFocus
                   />
                 </div>
                 <div className="kb-doc-picker-list">
-                  {!pickerSelectedChannel ? (
+                  {!vm.pickerSelectedChannel ? (
                     <div className="kb-doc-picker-empty">
-                      <p>{t('detail.selectChannelFirst')}</p>
+                      <p>{vm.t('detail.selectChannelFirst')}</p>
                     </div>
-                  ) : pickerLoading ? (
-                    <div className="kb-doc-picker-loading">
+                  ) : vm.pickerLoading ? (
+                    <div className="kb-doc-picker-vm.loading">
                       <Loader2 size={24} className="kb-doc-picker-spinner" />
-                      <span>{t('detail.loadingDocs')}</span>
+                      <span>{vm.t('detail.loadingDocs')}</span>
                     </div>
-                  ) : pickerResults.length === 0 ? (
+                  ) : vm.pickerResults.length === 0 ? (
                     <div className="kb-doc-picker-empty">
-                      <p>{t('detail.noDocsFound')}</p>
+                      <p>{vm.t('detail.noDocsFound')}</p>
                     </div>
                   ) : (
-                    pickerResults.map((doc) => {
-                      const added = alreadyAddedIds.has(doc.id);
-                      const selected = pickerSelected.has(doc.id);
+                    vm.pickerResults.map((doc) => {
+                      const added = vm.alreadyAddedIds.has(doc.id);
+                      const selected = vm.pickerSelected.has(doc.id);
                       return (
                         <div
                           key={doc.id}
                           className={`kb-doc-picker-item${selected ? ' selected' : ''}${added ? ' already-added' : ''}`}
-                          onClick={() => !added && togglePickerDoc(doc.id)}
+                          onClick={() => !added && vm.togglePickerDoc(doc.id)}
                           role="button"
                           tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && !added && togglePickerDoc(doc.id)}
+                          onKeyDown={(e) => e.key === 'Enter' && !added && vm.togglePickerDoc(doc.id)}
                         >
                           <div className="kb-doc-picker-item-check">
                             {added ? (
@@ -3140,37 +1702,37 @@ export function KnowledgeBaseDetail() {
                               {doc.file_type} · {doc.status || 'completed'}
                             </span>
                           </div>
-                          {added && <span className="kb-doc-picker-item-badge">{t('detail.addedBadge')}</span>}
+                          {added && <span className="kb-doc-picker-item-badge">{vm.t('detail.addedBadge')}</span>}
                         </div>
                       );
                     })
                   )}
                 </div>
-                {pickerSelectedChannel && pickerTotal > 0 && (
+                {vm.pickerSelectedChannel && vm.pickerTotal > 0 && (
                   <div className="kb-doc-picker-pagination">
                     <span className="kb-doc-picker-pagination-info">
-                      {t('detail.pickerPageRange', {
-                        start: pickerPage * pickerPageSize + 1,
-                        end: Math.min((pickerPage + 1) * pickerPageSize, pickerTotal),
-                        total: pickerTotal,
+                      {vm.t('detail.pickerPageRange', {
+                        start: vm.pickerPage * vm.pickerPageSize + 1,
+                        end: Math.min((vm.pickerPage + 1) * vm.pickerPageSize, vm.pickerTotal),
+                        total: vm.pickerTotal,
                       })}
                     </span>
                     <div className="kb-doc-picker-pagination-btns">
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setPickerPage((p) => Math.max(0, p - 1))}
-                        disabled={!pickerCanPrev}
-                        aria-label={t('detail.pickerAriaPrevPage')}
+                        onClick={() => vm.setPickerPage((p) => Math.max(0, p - 1))}
+                        disabled={!vm.pickerCanPrev}
+                        aria-label={vm.t('detail.pickerAriaPrevPage')}
                       >
                         <ChevronLeft size={16} />
                       </button>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        onClick={() => setPickerPage((p) => Math.min(pickerTotalPages - 1, p + 1))}
-                        disabled={!pickerCanNext}
-                        aria-label={t('detail.pickerAriaNextPage')}
+                        onClick={() => vm.setPickerPage((p) => Math.min(vm.pickerTotalPages - 1, p + 1))}
+                        disabled={!vm.pickerCanNext}
+                        aria-label={vm.t('detail.pickerAriaNextPage')}
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -3181,37 +1743,37 @@ export function KnowledgeBaseDetail() {
             </div>
             <div className="kb-doc-picker-footer">
               <span className="kb-doc-picker-count">
-                {pickerSelected.size > 0
-                  ? t('detail.pickerSelected', { count: pickerSelected.size })
-                  : t('detail.pickerNoneSelected')}
+                {vm.pickerSelected.size > 0
+                  ? vm.t('detail.pickerSelected', { count: vm.pickerSelected.size })
+                  : vm.t('detail.pickerNoneSelected')}
               </span>
               <div className="kb-doc-picker-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
-                  onClick={closeDocPicker}
-                  disabled={pickerAdding}
+                  onClick={vm.closeDocPicker}
+                  disabled={vm.pickerAdding}
                 >
-                  {t('detail.cancel')}
+                  {vm.t('detail.cancel')}
                 </button>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={handleAddSelectedDocuments}
-                  disabled={pickerSelected.size === 0 || pickerAdding}
+                  onClick={vm.handleAddSelectedDocuments}
+                  disabled={vm.pickerSelected.size === 0 || vm.pickerAdding}
                 >
-                  {pickerAdding ? (
+                  {vm.pickerAdding ? (
                     <>
                       <Loader2 size={18} className="kb-doc-picker-spinner" />
-                      <span>{t('detail.adding')}</span>
+                      <span>{vm.t('detail.adding')}</span>
                     </>
                   ) : (
                     <>
                       <Plus size={18} />
                       <span>
-                        {pickerSelected.size > 0
-                          ? t('detail.addButtonWithCount', { count: pickerSelected.size })
-                          : t('detail.addButton')}
+                        {vm.pickerSelected.size > 0
+                          ? vm.t('detail.addButtonWithCount', { count: vm.pickerSelected.size })
+                          : vm.t('detail.addButton')}
                       </span>
                     </>
                   )}
@@ -3222,56 +1784,56 @@ export function KnowledgeBaseDetail() {
         </div>
       )}
 
-      {showWikiSpacePicker && (
+      {vm.showWikiSpacePicker && (
         <div
           className="kb-doc-picker-overlay"
-          onClick={closeWikiSpacePicker}
+          onClick={vm.closeWikiSpacePicker}
           role="dialog"
           aria-modal="true"
           aria-labelledby="wiki-picker-title"
         >
           <div className="kb-doc-picker kb-doc-picker--narrow" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="wiki-picker-title">{t('detail.wikiPickerTitle')}</h2>
+              <h2 id="wiki-picker-title">{vm.t('detail.wikiPickerTitle')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
-                onClick={closeWikiSpacePicker}
-                disabled={Boolean(wikiSpaceBusyId)}
-                aria-label={t('detail.closeAria')}
+                onClick={vm.closeWikiSpacePicker}
+                disabled={Boolean(vm.wikiSpaceBusyId)}
+                aria-label={vm.t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="kb-doc-picker-body">
-              {wikiSpacePickerLoading ? (
-                <p className="kb-empty-text">{t('detail.loading')}</p>
+              {vm.wikiSpacePickerLoading ? (
+                <p className="kb-empty-text">{vm.t('detail.loading')}</p>
               ) : (
                 <>
                   <ul className="kb-wiki-picker-list">
-                    {wikiSpacePickerItems
-                      .filter((w) => !kbWikiSpaces.some((k) => k.wiki_space_id === w.id))
+                    {vm.wikiSpacePickerItems
+                      .filter((w) => !vm.kbWikiSpaces.some((k) => k.wiki_space_id === w.id))
                       .map((w) => (
                         <li key={w.id} className="kb-wiki-picker-row">
                           <span className="kb-wiki-picker-name">{w.name}</span>
                           <button
                             type="button"
                             className="btn btn-primary btn-sm"
-                            disabled={wikiSpaceBusyId !== null}
-                            onClick={() => void handleAddWikiSpaceToKb(w.id)}
+                            disabled={vm.wikiSpaceBusyId !== null}
+                            onClick={() => void vm.handleAddWikiSpaceToKb(w.id)}
                           >
-                            {wikiSpaceBusyId === w.id ? (
+                            {vm.wikiSpaceBusyId === w.id ? (
                               <Loader2 size={16} className="kb-doc-picker-spinner" />
                             ) : (
                               <Plus size={16} />
                             )}
-                            <span>{t('detail.linkWikiSpace')}</span>
+                            <span>{vm.t('detail.linkWikiSpace')}</span>
                           </button>
                         </li>
                       ))}
                   </ul>
-                  {wikiSpacePickerItems.filter((w) => !kbWikiSpaces.some((k) => k.wiki_space_id === w.id)).length === 0 && (
-                    <p className="kb-empty-text">{t('detail.wikiPickerEmpty')}</p>
+                  {vm.wikiSpacePickerItems.filter((w) => !vm.kbWikiSpaces.some((k) => k.wiki_space_id === w.id)).length === 0 && (
+                    <p className="kb-empty-text">{vm.t('detail.wikiPickerEmpty')}</p>
                   )}
                 </>
               )}
@@ -3280,63 +1842,63 @@ export function KnowledgeBaseDetail() {
         </div>
       )}
 
-      {showChunkDialog && editChunk && (
+      {vm.showChunkDialog && vm.editChunk && (
         <div
           className="kb-doc-picker-overlay"
-          onClick={closeChunkDialog}
+          onClick={vm.closeChunkDialog}
           role="dialog"
           aria-modal="true"
           aria-labelledby="chunk-dialog-title"
         >
           <div className="kb-doc-picker kb-faq-dialog kb-chunk-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="kb-doc-picker-header">
-              <h2 id="chunk-dialog-title">{t('detail.chunkDialogTitle')}</h2>
+              <h2 id="chunk-dialog-title">{vm.t('detail.chunkDialogTitle')}</h2>
               <button
                 type="button"
                 className="kb-doc-picker-close"
-                onClick={closeChunkDialog}
-                disabled={chunkSaving}
-                aria-label={t('detail.closeAria')}
+                onClick={vm.closeChunkDialog}
+                disabled={vm.chunkSaving}
+                aria-label={vm.t('detail.closeAria')}
               >
                 <X size={20} />
               </button>
             </div>
             <div className="kb-faq-dialog-form">
               <label>
-                <span>{t('detail.chunkSource')}</span>
+                <span>{vm.t('detail.chunkSource')}</span>
                 <input
                   type="text"
-                  value={editChunk.document_name || editChunk.document_id || editChunk.wiki_page_id || ''}
+                  value={vm.editChunk.document_name || vm.editChunk.document_id || vm.editChunk.wiki_page_id || ''}
                   readOnly
                   disabled
                   className="kb-chunk-dialog-readonly"
                 />
               </label>
               <label>
-                <span>{t('detail.chunkContent')}</span>
+                <span>{vm.t('detail.chunkContent')}</span>
                 <textarea
-                  value={chunkContent}
-                  onChange={(e) => setChunkContent(e.target.value)}
+                  value={vm.chunkContent}
+                  onChange={(e) => vm.setChunkContent(e.target.value)}
                   rows={8}
-                  readOnly={chunkDialogReadOnly}
+                  readOnly={vm.chunkDialogReadOnly}
                 />
               </label>
 
-              {kb?.metadata_keys && kb.metadata_keys.length > 0 && (
+              {vm.kb?.metadata_keys && vm.kb.metadata_keys.length > 0 && (
                 <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">{t('detail.metadata')}</span>
+                  <span className="kb-kv-editor-label">{vm.t('detail.metadata')}</span>
                   <small className="kb-kv-editor-hint">
-                    {Object.values(chunkMetadataIsArray).some(Boolean) ? t('detail.kvHintArray') : t('detail.kvHintSingle')}
+                    {Object.values(vm.chunkMetadataIsArray).some(Boolean) ? vm.t('detail.kvHintArray') : vm.t('detail.kvHintSingle')}
                   </small>
-                  {kb.metadata_keys.map((key) => (
+                  {vm.kb.metadata_keys.map((key) => (
                     <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{chunkMetadataIsArray[key] ? t('detail.arraySuffix') : ''}</span>
+                      <span className="kb-kv-key-label">{key}{vm.chunkMetadataIsArray[key] ? vm.t('detail.arraySuffix') : ''}</span>
                       <input
                         type="text"
-                        placeholder={chunkMetadataIsArray[key] ? t('detail.placeholderValueArray', { key }) : t('detail.placeholderValueSingle', { key })}
-                        value={chunkDocMetadataValues[key] ?? ''}
-                        onChange={(e) => setChunkDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                        disabled={chunkDialogReadOnly}
+                        placeholder={vm.chunkMetadataIsArray[key] ? vm.t('detail.placeholderValueArray', { key }) : vm.t('detail.placeholderValueSingle', { key })}
+                        value={vm.chunkDocMetadataValues[key] ?? ''}
+                        onChange={(e) => vm.setChunkDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                        disabled={vm.chunkDialogReadOnly}
                       />
                     </div>
                   ))}
@@ -3345,17 +1907,17 @@ export function KnowledgeBaseDetail() {
               <div className="kb-doc-picker-footer">
                 <div />
                 <div className="kb-doc-picker-actions">
-                  {chunkDialogReadOnly ? (
-                    <button type="button" className="btn btn-primary" onClick={closeChunkDialog}>
-                      {t('detail.chunkDialogClose')}
+                  {vm.chunkDialogReadOnly ? (
+                    <button type="button" className="btn btn-primary" onClick={vm.closeChunkDialog}>
+                      {vm.t('detail.chunkDialogClose')}
                     </button>
                   ) : (
                     <>
-                      <button type="button" className="btn btn-secondary" onClick={closeChunkDialog} disabled={chunkSaving}>
-                        {t('detail.cancel')}
+                      <button type="button" className="btn btn-secondary" onClick={vm.closeChunkDialog} disabled={vm.chunkSaving}>
+                        {vm.t('detail.cancel')}
                       </button>
-                      <button type="button" className="btn btn-primary" onClick={handleSaveChunk} disabled={chunkSaving || !chunkContent.trim()}>
-                        {chunkSaving ? t('detail.saving') : t('detail.update')}
+                      <button type="button" className="btn btn-primary" onClick={vm.handleSaveChunk} disabled={vm.chunkSaving || !vm.chunkContent.trim()}>
+                        {vm.chunkSaving ? vm.t('detail.saving') : vm.t('detail.update')}
                       </button>
                     </>
                   )}
@@ -3370,3 +1932,4 @@ export function KnowledgeBaseDetail() {
     </div>
   );
 }
+

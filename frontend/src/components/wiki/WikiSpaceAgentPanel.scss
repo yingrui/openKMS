@@ -1,6 +1,6 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
-@import '../agents/AgentMessage.scss';
+@use '../agents/AgentMessage';
 
 .wiki-space-agent-panel {
   display: flex;
