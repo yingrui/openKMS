@@ -22,11 +22,12 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
+import {
+  richMarkdownPreComponent,
+  richMarkdownRehypePlugins,
+  richMarkdownRemarkPlugins,
+} from '../../components/markdown/richMarkdown';
 import { toast } from 'sonner';
-import 'katex/dist/katex.min.css';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { getDocumentChannelName } from '../../data/channelUtils';
 import {
@@ -234,17 +235,22 @@ export function ArticleDetail() {
   };
 
   const mdComponents = useMemo(() => {
-    if (!id) return undefined;
-    return {
-      img: ({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) => (
-        <img src={resolveMarkdownSrc(id, src)} alt={alt ?? ''} {...props} />
-      ),
-      a: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
-        <a href={resolveMarkdownHref(id, href)} target="_blank" rel="noopener noreferrer" {...props}>
-          {children}
-        </a>
-      ),
+    const base = {
+      pre: richMarkdownPreComponent(),
+      ...(id
+        ? {
+            img: ({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) => (
+              <img src={resolveMarkdownSrc(id, src)} alt={alt ?? ''} {...props} />
+            ),
+            a: ({ href, children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+              <a href={resolveMarkdownHref(id, href)} target="_blank" rel="noopener noreferrer" {...props}>
+                {children}
+              </a>
+            ),
+          }
+        : {}),
     };
+    return base;
   }, [id]);
 
   const backTo =
@@ -1265,8 +1271,8 @@ export function ArticleDetail() {
                         <aside className="article-detail-markdown-preview-pane" aria-label="Markdown preview">
                           <div className="article-detail-markdown-preview-scroll article-detail-markdown-read">
                             <ReactMarkdown
-                              remarkPlugins={[remarkGfm, remarkMath]}
-                              rehypePlugins={[rehypeKatex]}
+                              remarkPlugins={richMarkdownRemarkPlugins}
+                              rehypePlugins={richMarkdownRehypePlugins}
                               components={mdComponents}
                             >
                               {editMarkdown.trim() ? editMarkdown : ' '}
@@ -1285,8 +1291,8 @@ export function ArticleDetail() {
                       ) : null}
                     </div>
                     <ReactMarkdown
-                      remarkPlugins={[remarkGfm, remarkMath]}
-                      rehypePlugins={[rehypeKatex]}
+                      remarkPlugins={richMarkdownRemarkPlugins}
+                      rehypePlugins={richMarkdownRehypePlugins}
                       components={mdComponents}
                     >
                       {editMarkdown}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { BookOpen, Plus, Trash2, Pencil, X } from 'lucide-react';
@@ -10,11 +10,17 @@ import {
   updateGlossary,
   type GlossaryResponse,
 } from '../../data/glossariesApi';
+import { Pagination } from '../../styles/design-system';
 import './GlossaryList.scss';
+
+const GLOSSARY_PAGE_SIZE_DEFAULT = 24;
 
 export function GlossaryList() {
   const { t } = useTranslation('explore');
   const [glossaries, setGlossaries] = useState<GlossaryResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(GLOSSARY_PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editGlossary, setEditGlossary] = useState<GlossaryResponse | null>(null);
@@ -22,20 +28,32 @@ export function GlossaryList() {
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await fetchGlossaries();
+      const data = await fetchGlossaries({
+        limit: listPageSize,
+        offset: listPage * listPageSize,
+      });
       setGlossaries(data.items);
+      setTotal(data.total);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('glossary.toastLoadFailed'));
+      setGlossaries([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [listPage, listPageSize, t]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [total, listPageSize, listPage]);
 
   const handleCreate = async () => {
     if (!formName.trim()) return;
@@ -46,6 +64,7 @@ export function GlossaryList() {
       setFormName('');
       setFormDesc('');
       toast.success(t('glossary.toastCreated'));
+      setListPage(0);
       void load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('shared.createFailed'));
@@ -125,7 +144,7 @@ export function GlossaryList() {
 
       {loading && <p className="glossary-loading">{t('shared.loading')}</p>}
 
-      {!loading && glossaries.length === 0 && (
+      {!loading && total === 0 && (
         <div className="glossary-empty">
           <BookOpen size={48} strokeWidth={1} />
           <p>{t('glossary.empty')}</p>
@@ -156,6 +175,19 @@ export function GlossaryList() {
           </Link>
         ))}
       </div>
+
+      <Pagination
+        total={total}
+        page={listPage}
+        pageSize={listPageSize}
+        loading={loading}
+        pageSizeOptions={[12, 24, 48, 96]}
+        onPageChange={setListPage}
+        onPageSizeChange={(size) => {
+          setListPageSize(size);
+          setListPage(0);
+        }}
+      />
 
       {(showCreate || editGlossary) && (
         <div className="glossary-dialog-overlay" onClick={closeDialog}>

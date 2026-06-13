@@ -32,7 +32,7 @@ from app.schemas.evaluation import (
     EvaluationUpdate,
     SearchResultSnippet,
 )
-from app.services.data_resource_policy import evaluation_visible, knowledge_base_visible, wiki_space_visible
+from app.services.data_resource_policy import knowledge_base_visible, wiki_space_visible
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.evaluation_scope import (
     load_evaluation_scoped,
@@ -51,6 +51,11 @@ from app.services.evaluation.execute import (
     run_search_retrieval_evaluation,
 )
 from app.services.evaluation.wiki_execute import run_wiki_content_coverage_evaluation
+from app.services.evaluation_read import (
+    evaluation_to_response,
+    item_count,
+    list_evaluations_page,
+)
 
 router = APIRouter(
     prefix="/evaluations",
@@ -83,34 +88,6 @@ async def get_evaluation_scoped_manage(
 ) -> Evaluation:
     ev = await get_evaluation_scoped(evaluation_id, request, db)
     return await require_evaluation_manage(db, request, ev)
-
-
-async def _item_count(db: AsyncSession, evaluation_id: str) -> int:
-    return (
-        await db.execute(
-            select(func.count()).select_from(EvaluationItem).where(EvaluationItem.evaluation_id == evaluation_id)
-        )
-    ).scalar_one()
-
-
-def _evaluation_to_response(
-    ev: Evaluation,
-    kb_name: str | None,
-    wiki_name: str | None,
-    item_count: int,
-) -> EvaluationResponse:
-    return EvaluationResponse(
-        id=ev.id,
-        name=ev.name,
-        knowledge_base_id=ev.knowledge_base_id,
-        knowledge_base_name=kb_name,
-        wiki_space_id=ev.wiki_space_id,
-        wiki_space_name=wiki_name,
-        description=ev.description,
-        item_count=item_count,
-        created_at=ev.created_at,
-        updated_at=ev.updated_at,
-    )
 
 
 def _aggregates(item_rows: list[dict]) -> tuple[int, int, float | None]:
@@ -237,26 +214,17 @@ def _run_to_response(run: EvaluationRun, results: list[EvaluationRunResult]) -> 
 async def list_evaluations(
     request: Request,
     knowledge_base_id: str | None = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(Evaluation).order_by(Evaluation.created_at.desc())
-    if knowledge_base_id:
-        q = q.where(Evaluation.knowledge_base_id == knowledge_base_id)
-    result = await db.execute(q)
-    rows = list(result.scalars().all())
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str):
-        rows = [ev for ev in rows if await evaluation_visible(db, p, sub, ev)]
-    items = []
-    for ev in rows:
-        kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
-        wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
-        count = await _item_count(db, ev.id)
-        items.append(
-            _evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
-        )
-    return EvaluationListResponse(items=items, total=len(items))
+    return await list_evaluations_page(
+        db,
+        request,
+        knowledge_base_id=knowledge_base_id,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=EvaluationResponse, status_code=201)
@@ -296,7 +264,7 @@ async def create_evaluation(
         await bootstrap_owner_acl(db, RT_EVALUATION, ev.id, sub)
     await db.commit()
     await db.refresh(ev)
-    return _evaluation_to_response(ev, kb.name, wiki_name, 0)
+    return evaluation_to_response(ev, kb.name, wiki_name, 0)
 
 
 @router.get("/{evaluation_id}", response_model=EvaluationResponse)
@@ -306,9 +274,9 @@ async def get_evaluation(
     db: AsyncSession = Depends(get_db),
 ):
     kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
-    count = await _item_count(db, ev.id)
+    count = await item_count(db, ev.id)
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
-    return _evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
+    return evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
 
 
 @router.put("/{evaluation_id}", response_model=EvaluationResponse)
@@ -345,9 +313,9 @@ async def update_evaluation(
     await db.flush()
     await db.refresh(ev)
     kb = await db.get(KnowledgeBase, ev.knowledge_base_id)
-    count = await _item_count(db, ev.id)
+    count = await item_count(db, ev.id)
     wiki = await db.get(WikiSpace, ev.wiki_space_id) if ev.wiki_space_id else None
-    return _evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
+    return evaluation_to_response(ev, kb.name if kb else None, wiki.name if wiki else None, count)
 
 
 @router.delete("/{evaluation_id}", status_code=204)

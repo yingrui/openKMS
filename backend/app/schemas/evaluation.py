@@ -37,6 +37,8 @@ class EvaluationResponse(BaseModel):
 class EvaluationListResponse(BaseModel):
     items: list[EvaluationResponse]
     total: int
+    limit: int
+    offset: int
 
 
 class EvaluationItemCreate(BaseModel):

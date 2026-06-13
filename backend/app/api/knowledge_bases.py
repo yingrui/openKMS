@@ -1,14 +1,11 @@
 """Knowledge base management API."""
 import base64
-import json
 import logging
 import struct
 import uuid
 from typing import Any
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy import cast
 from sqlalchemy.exc import DBAPIError
@@ -17,20 +14,22 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.api.auth import require_auth
+from app.api.kb_router_deps import (
+    ensure_wiki_page_in_kb_wiki_spaces,
+    get_kb_scoped,
+    get_kb_scoped_write,
+    propagate_metadata,
+)
 from app.api.jobs import read_job_response
 from app.database import get_db
 from app.services.data_scope import bootstrap_owner_acl, effective_wiki_space_ids, scope_applies
-from app.services.data_resource_policy import knowledge_base_visible
-from app.services.document_scope import require_document_by_id_read
 from app.services.document_lifecycle import source_current_for_rag_sql
-from app.services.kb_scope import (
-    load_knowledge_base_scoped,
-    require_knowledge_base_manage,
-    require_knowledge_base_write,
-)
+from app.services.document_scope import require_document_by_id_read
+from app.services.knowledge_base_read import kb_stats, kb_to_response, list_knowledge_bases_page
+from app.services.kb_scope import require_knowledge_base_manage
 from app.services.wiki_page_scope import require_wiki_page_by_id_read
 from app.services.wiki_scope import load_wiki_space_scoped
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_KNOWLEDGE_BASE, RT_WIKI_SPACE
+from app.services.resource_acl_constants import PERM_WRITE, RT_KNOWLEDGE_BASE, RT_WIKI_SPACE
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.faq import FAQ
@@ -40,8 +39,6 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.wiki_models import WikiPage, WikiSpace
 from app.schemas.job import JobResponse
 from app.schemas.knowledge_base import (
-    AskRequest,
-    AskResponse,
     ChunkBatchCreateRequest,
     ChunkListResponse,
     ChunkResponse,
@@ -65,9 +62,6 @@ from app.schemas.knowledge_base import (
     KnowledgeBaseListResponse,
     KnowledgeBaseResponse,
     KnowledgeBaseUpdate,
-    SearchRequest,
-    SearchResponse,
-    SearchResult,
     WikiPageForKbIndexItem,
     WikiPageForKbIndexListResponse,
 )
@@ -81,105 +75,16 @@ router = APIRouter(
 )
 
 
-async def _get_kb_or_404(
-    kb_id: str,
-    request: Request,
-    db: AsyncSession,
-) -> KnowledgeBase:
-    return await load_knowledge_base_scoped(db, request, kb_id, PERM_READ)
-
-
-async def get_kb_scoped(
-    kb_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-) -> KnowledgeBase:
-    return await _get_kb_or_404(kb_id, request, db)
-
-
-async def get_kb_scoped_write(
-    kb_id: str,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-) -> KnowledgeBase:
-    kb = await _get_kb_or_404(kb_id, request, db)
-    return await require_knowledge_base_write(db, request, kb)
-
-
-async def _ensure_wiki_page_in_kb_wiki_spaces(db: AsyncSession, kb_id: str, wiki_page_id: str) -> None:
-    r = await db.execute(
-        select(WikiPage.id)
-        .join(KBWikiSpace, KBWikiSpace.wiki_space_id == WikiPage.wiki_space_id)
-        .where(KBWikiSpace.knowledge_base_id == kb_id, WikiPage.id == wiki_page_id)
-    )
-    if r.scalar_one_or_none() is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Wiki page is not in a wiki space linked to this knowledge base",
-        )
-
-
-def _propagate_metadata(doc_metadata: dict | None, metadata_keys: list | None) -> dict | None:
-    """Filter document metadata by KB config. Returns filtered doc_metadata."""
-    if not metadata_keys:
-        return None
-    filtered = {k: v for k, v in (doc_metadata or {}).items() if k in metadata_keys}
-    return filtered if filtered else None
-
-
-async def _kb_stats(db: AsyncSession, kb_id: str) -> dict[str, int]:
-    doc_count = (await db.execute(
-        select(func.count()).select_from(KBDocument).where(KBDocument.knowledge_base_id == kb_id)
-    )).scalar_one()
-    wiki_space_count = (await db.execute(
-        select(func.count()).select_from(KBWikiSpace).where(KBWikiSpace.knowledge_base_id == kb_id)
-    )).scalar_one()
-    faq_count = (await db.execute(
-        select(func.count()).select_from(FAQ).where(FAQ.knowledge_base_id == kb_id)
-    )).scalar_one()
-    chunk_count = (await db.execute(
-        select(func.count()).select_from(Chunk).where(Chunk.knowledge_base_id == kb_id)
-    )).scalar_one()
-    return {
-        "document_count": doc_count,
-        "wiki_space_count": wiki_space_count,
-        "faq_count": faq_count,
-        "chunk_count": chunk_count,
-    }
-
-
-def _kb_to_response(kb: KnowledgeBase, stats: dict[str, int]) -> KnowledgeBaseResponse:
-    return KnowledgeBaseResponse(
-        id=kb.id,
-        name=kb.name,
-        description=kb.description,
-        embedding_model_id=kb.embedding_model_id,
-        judge_model_id=kb.judge_model_id,
-        agent_url=kb.agent_url,
-        chunk_config=kb.chunk_config,
-        faq_prompt=kb.faq_prompt,
-        metadata_keys=kb.metadata_keys,
-        created_at=kb.created_at,
-        updated_at=kb.updated_at,
-        **stats,
-    )
-
-
 # --- Knowledge Base CRUD ---
 
 @router.get("", response_model=KnowledgeBaseListResponse)
-async def list_knowledge_bases(request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc()))
-    kbs = list(result.scalars().all())
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str):
-        kbs = [kb for kb in kbs if await knowledge_base_visible(db, p, sub, kb)]
-    items = []
-    for kb in kbs:
-        stats = await _kb_stats(db, kb.id)
-        items.append(_kb_to_response(kb, stats))
-    return KnowledgeBaseListResponse(items=items, total=len(items))
+async def list_knowledge_bases(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    return await list_knowledge_bases_page(db, request, limit=limit, offset=offset)
 
 
 @router.post("", response_model=KnowledgeBaseResponse, status_code=201)
@@ -210,8 +115,8 @@ async def create_knowledge_base(
         await bootstrap_owner_acl(db, RT_KNOWLEDGE_BASE, kb.id, sub)
     await db.commit()
     await db.refresh(kb)
-    stats = await _kb_stats(db, kb.id)
-    return _kb_to_response(kb, stats)
+    stats = await kb_stats(db, kb.id)
+    return kb_to_response(kb, stats)
 
 
 @router.get("/{kb_id}", response_model=KnowledgeBaseResponse)
@@ -219,8 +124,8 @@ async def get_knowledge_base(
     kb: KnowledgeBase = Depends(get_kb_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    stats = await _kb_stats(db, kb.id)
-    return _kb_to_response(kb, stats)
+    stats = await kb_stats(db, kb.id)
+    return kb_to_response(kb, stats)
 
 
 @router.put("/{kb_id}", response_model=KnowledgeBaseResponse)
@@ -235,8 +140,8 @@ async def update_knowledge_base(
         setattr(kb, field, value)
     await db.flush()
     await db.refresh(kb)
-    stats = await _kb_stats(db, kb.id)
-    return _kb_to_response(kb, stats)
+    stats = await kb_stats(db, kb.id)
+    return kb_to_response(kb, stats)
 
 
 @router.post("/{kb_id}/index-job", response_model=JobResponse, status_code=201)
@@ -761,7 +666,7 @@ async def generate_faqs(
         if not doc.markdown:
             continue
         pairs = await generate_faq_pairs(doc.markdown, model_config, custom_prompt=effective_prompt)
-        doc_meta = _propagate_metadata(doc.doc_metadata, kb.metadata_keys)
+        doc_meta = propagate_metadata(doc.doc_metadata, kb.metadata_keys)
         for pair in pairs:
             results.append(FAQGenerateResult(
                 document_id=doc_id,
@@ -787,7 +692,7 @@ async def create_faqs_batch(
         if doc_meta is None and item.document_id:
             doc = await db.get(Document, item.document_id)
             if doc:
-                doc_meta = _propagate_metadata(doc.doc_metadata, kb.metadata_keys)
+                doc_meta = propagate_metadata(doc.doc_metadata, kb.metadata_keys)
         faq = FAQ(
             id=str(uuid.uuid4()),
             knowledge_base_id=kb_id,
@@ -1004,7 +909,7 @@ async def create_chunks_batch(
         wiki_pid = (item.wiki_page_id or "").strip() or None
         doc_id = (item.document_id or "").strip() or None
         if wiki_pid:
-            await _ensure_wiki_page_in_kb_wiki_spaces(db, kb_id, wiki_pid)
+            await ensure_wiki_page_in_kb_wiki_spaces(db, kb_id, wiki_pid)
             await require_wiki_page_by_id_read(db, request, wiki_pid)
             chunk = Chunk(
                 id=item.id,
@@ -1058,163 +963,11 @@ async def create_chunks_batch(
     return ChunkListResponse(items=items, total=len(items))
 
 
-# --- Semantic Search ---
-
-@router.post("/{kb_id}/search", response_model=SearchResponse)
-async def semantic_search(
-    kb_id: str,
-    body: SearchRequest,
-    token: str = Depends(require_auth),
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    """Hybrid search via qa-agent (BM25 + dense + RRF + rerank), with dense-only fallback.
-
-    Filtered requests (label/metadata/historical) skip qa-agent because the hybrid
-    pipeline does not honor those filters; they go straight to the dense-only service.
-    """
-    from app.services.kb_search import search_knowledge_base
-
-    has_filters = bool(
-        body.label_filters
-        or body.metadata_filters
-        or body.include_historical_documents
-        or (body.search_type and body.search_type != "all")
-    )
-
-    if kb.agent_url and not has_filters and not body.force_dense:
-        agent_url = kb.agent_url.rstrip("/")
-        try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                resp = await client.post(
-                    f"{agent_url}/retrieve",
-                    json={
-                        "knowledge_base_id": kb_id,
-                        "query": body.query,
-                        "access_token": token,
-                        "top_k": body.top_k,
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-            results = [SearchResult(**s) for s in data.get("results", [])]
-            return SearchResponse(results=results, query=body.query)
-        except Exception as e:  # noqa: BLE001
-            logger.warning("Hybrid /retrieve failed, falling back to dense-only: %s", e)
-
-    return await search_knowledge_base(
-        kb_id,
-        body.query,
-        top_k=body.top_k,
-        search_type=body.search_type,
-        label_filters=body.label_filters,
-        metadata_filters=body.metadata_filters,
-        include_historical_documents=body.include_historical_documents,
-        retrieval_mode="dense_fallback",
-        db=db,
-    )
-
-
-# --- Ask (QA Proxy) ---
-
-@router.post("/{kb_id}/ask", response_model=AskResponse)
-async def ask_question(
-    kb_id: str,
-    body: AskRequest,
-    token: str = Depends(require_auth),
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-    db: AsyncSession = Depends(get_db),
-):
-    """Forward question to the configured QA agent service."""
-    if not kb.agent_url:
-        raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
-
-    agent_url = kb.agent_url.rstrip("/")
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                f"{agent_url}/ask",
-                json={
-                    "knowledge_base_id": kb_id,
-                    "question": body.question,
-                    "conversation_history": body.conversation_history,
-                    "access_token": token,
-                    "session_id": body.session_id,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return AskResponse(
-                answer=data.get("answer", ""),
-                sources=[SearchResult(**s) for s in data.get("sources", [])],
-            )
-    except httpx.HTTPStatusError as e:
-        logger.error("Agent returned error: %s %s", e.response.status_code, e.response.text[:200])
-        raise HTTPException(status_code=502, detail="Agent service returned an error")
-    except Exception as e:
-        logger.error("Failed to reach agent at %s: %s", agent_url, e)
-        raise HTTPException(status_code=502, detail="Could not reach agent service")
-
-
-@router.post("/{kb_id}/ask/stream")
-async def ask_question_stream(
-    kb_id: str,
-    body: AskRequest,
-    token: str = Depends(require_auth),
-    kb: KnowledgeBase = Depends(get_kb_scoped),
-):
-    """Proxy streaming NDJSON from the QA agent (delta lines, then done)."""
-    if not kb.agent_url:
-        raise HTTPException(status_code=400, detail="No agent URL configured for this knowledge base")
-
-    agent_url = kb.agent_url.rstrip("/")
-
-    async def proxy_stream():
-        try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                async with client.stream(
-                    "POST",
-                    f"{agent_url}/ask/stream",
-                    json={
-                        "knowledge_base_id": kb_id,
-                        "question": body.question,
-                        "conversation_history": body.conversation_history,
-                        "access_token": token,
-                        "session_id": body.session_id,
-                    },
-                ) as resp:
-                    if resp.status_code >= 400:
-                        err_body = (await resp.aread()).decode("utf-8", errors="replace")[:800]
-                        yield (
-                            '{"type":"error","detail":'
-                            + json.dumps(err_body or f"HTTP {resp.status_code}")
-                            + "}\n"
-                        ).encode("utf-8")
-                        return
-                    async for chunk in resp.aiter_bytes():
-                        yield chunk
-        except httpx.HTTPError as e:
-            logger.error("Agent stream failed at %s: %s", agent_url, e)
-            yield (
-                '{"type":"error","detail":'
-                + json.dumps("Could not reach agent service")
-                + "}\n"
-            ).encode("utf-8")
-
-    return StreamingResponse(
-        proxy_stream(),
-        media_type="application/x-ndjson",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )
-
-
 # KB Q&A persisted chats: ``/api/knowledge-bases/{kb_id}/agent-conversations/…`` (same URL tree as other KB routes).
 from app.api.kb_agent_conversations import router as kb_agent_conversations_router
 from app.api.kb_faq_agent_conversations import router as kb_faq_agent_conversations_router
+from app.api.knowledge_bases_search import router as kb_search_router
 
+router.include_router(kb_search_router)
 router.include_router(kb_agent_conversations_router)
 router.include_router(kb_faq_agent_conversations_router)

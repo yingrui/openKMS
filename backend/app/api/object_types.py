@@ -17,7 +17,7 @@ from app.services.ontology_type_scope import require_object_type_permission
 from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.credential_encryption import decrypt
+from app.services.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.schemas.ontology import (
@@ -234,6 +234,22 @@ def _query_neo4j_nodes(
         return rows, total
 
 
+async def _neo4j_node_counts_for_types(ds: DataSource, type_names: list[str]) -> dict[str, int | None]:
+    """Return label -> count; None when count fails for that label."""
+
+    def _run(driver) -> dict[str, int | None]:
+        out: dict[str, int | None] = {}
+        for name in type_names:
+            label = _neo4j_safe_label(name)
+            try:
+                out[label] = _neo4j_node_count(driver, label)
+            except Exception:
+                out[label] = None
+        return out
+
+    return await run_with_neo4j_driver(ds, _run)
+
+
 @router.get("", response_model=ObjectTypeListResponse)
 async def list_object_types(
     request: Request,
@@ -251,35 +267,24 @@ async def list_object_types(
     sub = p.get("sub")
     if isinstance(sub, str):
         types = [t for t in types if await object_type_visible(db, p, sub, t)]
-    items = []
-    neo4j_driver = None
+    neo4j_counts: dict[str, int | None] = {}
     if count_from_neo4j:
         neo4j_ds = await _get_first_neo4j_datasource(db)
         if neo4j_ds:
             try:
-                from neo4j import GraphDatabase
-
-                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-                neo4j_driver = GraphDatabase.driver(uri, auth=(username, password))
+                neo4j_counts = await _neo4j_node_counts_for_types(neo4j_ds, [t.name for t in types])
             except ImportError:
-                neo4j_driver = None
-    try:
-        for t in types:
-            if neo4j_driver:
-                try:
-                    label = _neo4j_safe_label(t.name)
-                    count = _neo4j_node_count(neo4j_driver, label)
-                except Exception:
-                    count = await _resolve_instance_count(db, t)
-            else:
-                count = await _resolve_instance_count(db, t)
-            ds_name = await _dataset_name(db, t.dataset_id)
-            items.append(_to_response(t, count, ds_name))
-    finally:
-        if neo4j_driver:
-            neo4j_driver.close()
+                neo4j_counts = {}
+    items = []
+    for t in types:
+        label = _neo4j_safe_label(t.name)
+        neo4j_count = neo4j_counts.get(label)
+        if neo4j_count is not None:
+            count = neo4j_count
+        else:
+            count = await _resolve_instance_count(db, t)
+        ds_name = await _dataset_name(db, t.dataset_id)
+        items.append(_to_response(t, count, ds_name))
     return ObjectTypeListResponse(items=items, total=len(items))
 
 
@@ -339,19 +344,14 @@ async def get_object_type(
         neo4j_ds = await _get_first_neo4j_datasource(db)
         if neo4j_ds:
             try:
-                from neo4j import GraphDatabase
-
-                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-                driver = GraphDatabase.driver(uri, auth=(username, password))
-                try:
-                    label = _neo4j_safe_label(obj_type.name)
-                    count = _neo4j_node_count(driver, label)
-                finally:
-                    driver.close()
-                ds_name = await _dataset_name(db, obj_type.dataset_id)
-                return _to_response(obj_type, count, ds_name)
+                label = _neo4j_safe_label(obj_type.name)
+                counts = await _neo4j_node_counts_for_types(neo4j_ds, [obj_type.name])
+                neo4j_count = counts.get(label)
+                if neo4j_count is not None:
+                    ds_name = await _dataset_name(db, obj_type.dataset_id)
+                    return _to_response(obj_type, neo4j_count, ds_name)
+            except ImportError:
+                pass
             except Exception:
                 pass
     count = await _resolve_instance_count(db, obj_type)
@@ -480,16 +480,13 @@ async def _open_neo4j_driver_for_index(body: IndexToNeo4jRequest, db: AsyncSessi
     if neo4j_ds.kind != "neo4j":
         raise HTTPException(status_code=400, detail="Target must be a Neo4j data source")
     try:
-        from neo4j import GraphDatabase
+        from neo4j import GraphDatabase  # noqa: F401
     except ImportError:
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
         ) from None
-    username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-    password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-    uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-    return GraphDatabase.driver(uri, auth=(username, password))
+    return open_neo4j_driver(neo4j_ds)
 
 
 @router.post(
@@ -582,36 +579,31 @@ async def list_object_instances(
     neo4j_ds = await _get_first_neo4j_datasource(db)
     if neo4j_ds:
         try:
-            from neo4j import GraphDatabase
+            from neo4j import GraphDatabase  # noqa: F401
+
+            label = _neo4j_safe_label(obj_type.name)
+
+            def _query(driver):
+                return _query_neo4j_nodes(driver, label, search, limit, offset, id_prop)
+
+            rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
+            return ObjectInstanceListResponse(
+                items=[
+                    ObjectInstanceResponse(
+                        id=str(r["id"]),
+                        object_type_id=object_type_id,
+                        data=r["data"],
+                        created_at=None,
+                        updated_at=None,
+                    )
+                    for r in rows
+                ],
+                total=total,
+            )
         except ImportError:
             pass
-        else:
-            username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-            password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-            uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-            driver = GraphDatabase.driver(uri, auth=(username, password))
-            try:
-                label = _neo4j_safe_label(obj_type.name)
-                rows, total = _query_neo4j_nodes(
-                    driver, label, search, limit, offset, id_prop
-                )
-                return ObjectInstanceListResponse(
-                    items=[
-                        ObjectInstanceResponse(
-                            id=str(r["id"]),
-                            object_type_id=object_type_id,
-                            data=r["data"],
-                            created_at=None,
-                            updated_at=None,
-                        )
-                        for r in rows
-                    ],
-                    total=total,
-                )
-            except Exception:
-                pass
-            finally:
-                driver.close()
+        except Exception:
+            pass
 
     if obj_type.dataset_id:
         try:

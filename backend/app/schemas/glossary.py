@@ -30,6 +30,8 @@ class GlossaryResponse(BaseModel):
 class GlossaryListResponse(BaseModel):
     items: list[GlossaryResponse]
     total: int
+    limit: int
+    offset: int
 
 
 # --- Glossary Term ---

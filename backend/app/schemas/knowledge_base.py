@@ -52,6 +52,8 @@ class KnowledgeBaseResponse(BaseModel):
 class KnowledgeBaseListResponse(BaseModel):
     items: list[KnowledgeBaseResponse]
     total: int
+    limit: int
+    offset: int
 
 
 # --- KB Documents ---

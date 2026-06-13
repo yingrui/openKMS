@@ -17,7 +17,8 @@ from app.schemas.data_source import (
     DataSourceUpdate,
 )
 from app.services.credential_encryption import decrypt, encrypt
-from app.services.data_source_connection import test_data_source_connection as check_data_source_connection
+from app.services.data_source_connection import test_data_source_connection_async
+from app.services.neo4j_async import neo4j_delete_all
 
 router = APIRouter(
     prefix="/data-sources",
@@ -132,7 +133,7 @@ async def test_data_source_connection(data_source_id: str, db: AsyncSession = De
     if not ds:
         raise HTTPException(status_code=404, detail="Data source not found")
 
-    ok, message = check_data_source_connection(ds)
+    ok, message = await test_data_source_connection_async(ds)
     if message == "Neo4j driver not installed":
         raise HTTPException(
             status_code=501,
@@ -153,22 +154,12 @@ async def neo4j_delete_all(data_source_id: str, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=400, detail="Only Neo4j data sources support delete all")
 
     try:
-        from neo4j import GraphDatabase
+        from neo4j import GraphDatabase  # noqa: F401
     except ImportError:
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
-        )
+        ) from None
 
-    username = decrypt(ds.username_encrypted) if ds.username_encrypted else ""
-    password = decrypt(ds.password_encrypted) if ds.password_encrypted else ""
-    uri = f"bolt://{ds.host}:{ds.port or 7687}"
-    driver = GraphDatabase.driver(uri, auth=(username, password))
-    try:
-        with driver.session() as session:
-            session.run("MATCH (n) DETACH DELETE n")
-        return {"ok": True, "message": "All nodes and relationships deleted"}
-    except Exception as e:
-        return {"ok": False, "message": str(e)}
-    finally:
-        driver.close()
+    ok, message = await neo4j_delete_all(ds)
+    return {"ok": ok, "message": message}

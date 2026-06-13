@@ -18,6 +18,8 @@ export interface EvaluationResponse {
 export interface EvaluationListResponse {
   items: EvaluationResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface EvaluationItemResponse {
@@ -101,10 +103,14 @@ export interface EvaluationCompareResponse {
 
 export async function fetchEvaluations(params?: {
   knowledge_base_id?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<EvaluationListResponse> {
   const headers = await getAuthHeaders();
   const query = new URLSearchParams();
   if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
   const qs = query.toString() ? `?${query.toString()}` : '';
   const res = await authAwareFetch(`${config.apiUrl}/api/evaluations${qs}`, {
     headers: { ...headers },
@@ -112,6 +118,23 @@ export async function fetchEvaluations(params?: {
   });
   if (!res.ok) throw new Error(`Failed to fetch evaluations: ${res.status}`);
   return res.json();
+}
+
+/** Full list for dropdowns. Paginates at API max page size (200). */
+export async function fetchAllEvaluations(params?: {
+  knowledge_base_id?: string;
+}): Promise<EvaluationResponse[]> {
+  const items: EvaluationResponse[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetchEvaluations({ ...params, limit: 200, offset });
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+  return items;
 }
 
 export async function fetchEvaluation(id: string): Promise<EvaluationResponse> {

@@ -27,6 +27,8 @@ export interface KnowledgeBaseResponse {
 export interface KnowledgeBaseListResponse {
   items: KnowledgeBaseResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface KBWikiSpaceResponse {
@@ -501,14 +503,36 @@ export async function postKbAgentMessageStream(
 
 // --- Knowledge Base CRUD ---
 
-export async function fetchKnowledgeBases(): Promise<KnowledgeBaseListResponse> {
+export async function fetchKnowledgeBases(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<KnowledgeBaseListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases`, {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(`Failed to fetch knowledge bases: ${res.status}`);
   return res.json();
+}
+
+/** Full list for dropdowns. Paginates at API max page size (200). */
+export async function fetchAllKnowledgeBases(): Promise<KnowledgeBaseResponse[]> {
+  const items: KnowledgeBaseResponse[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetchKnowledgeBases({ limit: 200, offset });
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+  return items;
 }
 
 export async function fetchKnowledgeBase(kbId: string): Promise<KnowledgeBaseResponse> {

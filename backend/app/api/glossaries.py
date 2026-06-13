@@ -24,7 +24,6 @@ from app.schemas.glossary import (
     GlossaryTermUpdate,
     GlossaryUpdate,
 )
-from app.services.data_resource_policy import glossary_visible
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.glossary_scope import (
     load_glossary_scoped,
@@ -32,29 +31,17 @@ from app.services.glossary_scope import (
     require_glossary_write,
 )
 from app.services.resource_acl_constants import PERM_READ, RT_GLOSSARY
+from app.services.glossary_read import (
+    glossary_term_count,
+    glossary_to_response,
+    list_glossaries_page,
+)
 
 router = APIRouter(
     prefix="/glossaries",
     tags=["glossaries"],
     dependencies=[Depends(require_auth)],
 )
-
-
-async def _glossary_term_count(db: AsyncSession, glossary_id: str) -> int:
-    return (await db.execute(
-        select(func.count()).select_from(GlossaryTerm).where(GlossaryTerm.glossary_id == glossary_id)
-    )).scalar_one()
-
-
-def _glossary_to_response(glossary: Glossary, term_count: int) -> GlossaryResponse:
-    return GlossaryResponse(
-        id=glossary.id,
-        name=glossary.name,
-        description=glossary.description,
-        term_count=term_count,
-        created_at=glossary.created_at,
-        updated_at=glossary.updated_at,
-    )
 
 
 def _term_to_response(term: GlossaryTerm) -> GlossaryTermResponse:
@@ -100,18 +87,13 @@ async def get_glossary_scoped_manage(
 # --- Glossary CRUD ---
 
 @router.get("", response_model=GlossaryListResponse)
-async def list_glossaries(request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Glossary).order_by(Glossary.created_at.desc()))
-    glossaries = list(result.scalars().all())
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str):
-        glossaries = [g for g in glossaries if await glossary_visible(db, p, sub, g)]
-    items = []
-    for g in glossaries:
-        count = await _glossary_term_count(db, g.id)
-        items.append(_glossary_to_response(g, count))
-    return GlossaryListResponse(items=items, total=len(items))
+async def list_glossaries(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    return await list_glossaries_page(db, request, limit=limit, offset=offset)
 
 
 @router.post("", response_model=GlossaryResponse, status_code=201)
@@ -132,8 +114,8 @@ async def create_glossary(body: GlossaryCreate, request: Request, db: AsyncSessi
         await bootstrap_owner_acl(db, RT_GLOSSARY, glossary.id, sub)
     await db.commit()
     await db.refresh(glossary)
-    count = await _glossary_term_count(db, glossary.id)
-    return _glossary_to_response(glossary, count)
+    count = await glossary_term_count(db, glossary.id)
+    return glossary_to_response(glossary, count)
 
 
 @router.get("/{glossary_id}", response_model=GlossaryResponse)
@@ -141,8 +123,8 @@ async def get_glossary(
     glossary: Glossary = Depends(get_glossary_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    count = await _glossary_term_count(db, glossary.id)
-    return _glossary_to_response(glossary, count)
+    count = await glossary_term_count(db, glossary.id)
+    return glossary_to_response(glossary, count)
 
 
 @router.put("/{glossary_id}", response_model=GlossaryResponse)
@@ -156,8 +138,8 @@ async def update_glossary(
         setattr(glossary, field, value)
     await db.flush()
     await db.refresh(glossary)
-    count = await _glossary_term_count(db, glossary.id)
-    return _glossary_to_response(glossary, count)
+    count = await glossary_term_count(db, glossary.id)
+    return glossary_to_response(glossary, count)
 
 
 @router.delete("/{glossary_id}", status_code=204)

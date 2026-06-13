@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from app.models.data_source import DataSource
 from app.services.credential_encryption import decrypt
 
@@ -44,3 +46,7 @@ def test_data_source_connection(ds: DataSource) -> tuple[bool, str]:
         except Exception as e:
             return False, str(e)
     return False, f"Unsupported data source kind: {ds.kind}"
+
+
+async def test_data_source_connection_async(ds: DataSource) -> tuple[bool, str]:
+    return await asyncio.to_thread(test_data_source_connection, ds)

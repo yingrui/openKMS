@@ -446,7 +446,7 @@ async def list_pages(
     space: WikiSpace = Depends(get_wiki_space_scoped),
     db: AsyncSession = Depends(get_db),
     path_prefix: str | None = Query(None),
-    limit: int | None = Query(None, ge=1, le=500),
+    limit: int = Query(500, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
     filters = [WikiPage.wiki_space_id == space.id]
@@ -470,16 +470,16 @@ async def list_pages(
         )
         .where(*filters)
         .order_by(WikiPage.path)
+        .offset(offset)
+        .limit(limit)
     )
-    if limit is not None:
-        q = q.offset(offset).limit(limit)
     result = await db.execute(q)
     pages = list(result.scalars().all())
     return WikiPageListResponse(
         items=[_page_to_list_item(p) for p in pages],
         total=total,
         limit=limit,
-        offset=offset if limit is not None else 0,
+        offset=offset,
     )
 
 

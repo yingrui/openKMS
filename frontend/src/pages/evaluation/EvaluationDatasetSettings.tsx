@@ -9,7 +9,7 @@ import {
   deleteEvaluation,
   type EvaluationResponse,
 } from '../../data/evaluationsApi';
-import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
+import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
@@ -47,7 +47,7 @@ export function EvaluationDatasetSettings() {
       const [data, wikiList, kbList] = await Promise.all([
         fetchEvaluation(evaluationId),
         fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
-        fetchKnowledgeBases().catch(() => ({ items: [], total: 0 })),
+        fetchAllKnowledgeBases().catch(() => []),
       ]);
       setDataset(data);
       setNameField(data.name);
@@ -55,7 +55,7 @@ export function EvaluationDatasetSettings() {
       setKnowledgeBaseIdField(data.knowledge_base_id);
       setWikiSpaceIdField(data.wiki_space_id ?? '');
       setWikiSpaces(wikiList.items ?? []);
-      setKnowledgeBases(kbList.items ?? []);
+      setKnowledgeBases(kbList ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationSettings.loadFailed'));
       setDataset(null);

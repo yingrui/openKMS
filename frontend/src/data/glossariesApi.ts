@@ -16,6 +16,8 @@ export interface GlossaryResponse {
 export interface GlossaryListResponse {
   items: GlossaryResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface GlossaryTermResponse {
@@ -50,14 +52,36 @@ export interface GlossaryExportPayload {
 
 // --- Glossary CRUD ---
 
-export async function fetchGlossaries(): Promise<GlossaryListResponse> {
+export async function fetchGlossaries(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<GlossaryListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries`, {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries${qs}`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(`Failed to fetch glossaries: ${res.status}`);
   return res.json();
+}
+
+/** Full list for dropdowns. Paginates at API max page size (200). */
+export async function fetchAllGlossaries(): Promise<GlossaryResponse[]> {
+  const items: GlossaryResponse[] = [];
+  let offset = 0;
+  let total = 0;
+  do {
+    const page = await fetchGlossaries({ limit: 200, offset });
+    items.push(...page.items);
+    total = page.total;
+    offset += page.items.length;
+    if (page.items.length === 0) break;
+  } while (offset < total);
+  return items;
 }
 
 export async function fetchGlossary(glossaryId: string): Promise<GlossaryResponse> {

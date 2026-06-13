@@ -1,55 +1,71 @@
 # Technical Debt
 
-Last updated: 2026-05-22
+Last updated: 2026-06-12
 
-This file lists **remaining** debt. Items that are done stay in [Resolved (historical)](#resolved-historical) only so the body does not contradict the codebase.
-
----
-
-## Resolved (historical)
-
-These were previously called out as problems; they are **addressed** in the current tree (verify in git history if needed):
-
-- **Tests:** `backend/tests/` (pytest), frontend `npm test` / Vitest, `openkms-cli/tests/`.
-- **Frontend tooling:** `frontend/package.json` includes `typecheck` (`tsc --noEmit`); heavy routes use `React.lazy` in `App.tsx`.
-- **Errors:** `ErrorBoundary` wraps main app content; some list pages use `ErrorBanner` / `setError` (pattern still mixed — see [Active](#active-medium-priority)).
-- **Document status:** `Document.status` uses aligned Python and DB defaults with `DocumentStatus` in `backend/app/constants.py`.
-- **Ontology Cypher:** `validate_ontology_explore_cypher` blocks writes, `CALL`, `apoc.` / `dbms.`, and requires `RETURN`; covered by `backend/tests/test_ontology_explore_cypher.py`.
-- **Infra docs:** `docker/docker-compose.yml`, root `.env.example`, `backend/.env.example`, `vlm-server/.env.example`.
-- **Pipeline command:** `PipelineCreate.command` has `max_length` and validation in schemas.
-- **Secrets:** non-debug startup refuses default `OPENKMS_SECRET_KEY` (`main.py`).
-- **Document pipeline subprocess:** `run_pipeline` uses `asyncio.create_subprocess_exec` (async path).
-- **Console users / settings:** wired to admin and system APIs; `ConsoleSettings` uses `id` / `htmlFor` on main fields.
-- **Knowledge bases (SPA):** list and detail use real KB APIs (no mock-only KB UI).
-- **Article channel list:** row opens detail; no separate mock row actions in the table.
-- **Document channel list:** channel tree + document list are batched queries (not per-document N+1); further SQL consolidation is optional polish.
-- **SPA / SCSS design system (incremental):** Shared tokens and conventions under `frontend/src/styles/design-system/` + **[design-system.md](design-system.md)**; waves of route SCSS moved off ad hoc modal **`z-index`**, raw literals in jobs/models, GlobalSearch, evaluation dialogs, document print, KB Q&A (incl. **`--color-ontology-*`**), **`App.scss`** shell, and **`richMarkdown`** Mermaid error surfaces.
+Open items only. Closed work lives in git history.
 
 ---
 
-## Active: medium priority
+## Medium priority
 
 ### Inconsistent error handling in the frontend
 
 Some pages use `setError` + a visible banner (`Pipelines.tsx`, `Jobs.tsx`, `DocumentDetail.tsx`). Others rely on `toast.error` only (`Models.tsx`, `ModelDetail.tsx`, `JobDetail.tsx`). Consider a project convention (e.g. toast for transient failures, banner for blocking load errors).
 
-### Dead frontend module
-
-`frontend/src/data/documents.ts` defines mock maps and `getDocumentById` but **nothing imports this file** (all callers use `documentsApi`). Remove the file or replace with shared types only, after confirming no external imports.
-
 ### Non-functional or incomplete controls
 
 | Location | Issue |
 |----------|--------|
-| `frontend/src/pages/DocumentChannel.tsx` | **Edit** and **Download** icon buttons have no `onClick` (row still opens detail on click elsewhere). |
+| `frontend/src/pages/documents/DocumentChannel.tsx` | **Edit** and **Download** icon buttons have no `onClick` (row still opens detail on click elsewhere). |
+
+### List endpoints without pagination
+
+| Endpoint | Notes |
+|----------|--------|
+| `GET /api/wiki-spaces` | Returns all visible wiki spaces. Add `limit`/`offset` if tenant scale grows. |
+| `GET /api/channels`, `GET /api/article-channels` | Channel trees; usually small but unbounded. |
+| `GET /api/projects`, `GET /api/pipelines`, `GET /api/data-sources` | Admin/config lists without pagination. |
+
+### Frontend load-all client helpers
+
+| Helper | Used by | Risk |
+|--------|---------|------|
+| `fetchAllWikiPages` | `WikiWorkspace` | Loads entire space into memory for tree/tabs |
+| `fetchAllKBDocuments` | `KnowledgeBaseDetail` | All linked docs for bulk UI |
+| `fetchAllModels` | Settings / KB / pipelines | Paginates API but accumulates all models |
+| `fetchAllKnowledgeBases` / `fetchAllEvaluations` / `fetchAllGlossaries` | Evaluation settings, create dialogs | Same pattern for dropdown options |
+
+Fine for small tenants; large deployments need server-side tree/search or virtualized UI.
+
+### Embedding semantic search at scale
+
+Embedding columns are **dimensionless** `vector` on purpose (each KB/wiki space may use a different embedding model). Table-level pgvector HNSW/IVFFlat indexes are **not applicable**. Semantic search uses `cosine_distance` (sequential scan). Revisit per-KB partitioning or an external vector index if latency becomes an issue.
 
 ---
 
-## Active: architecture and coupling
+## Architecture and coupling
 
 ### Jobs API and Procrastinate internals
 
 `backend/app/api/jobs.py` (and related paths) read/write `procrastinate_jobs` / `procrastinate_events` with raw SQL instead of only Procrastinate’s public APIs. Risk: schema drift on library upgrades. Mitigation options: use supported query helpers or isolate SQL in one module with integration tests.
+
+### Neo4j index-to-graph write paths
+
+`index_objects_to_neo4j` / `index_links_to_neo4j` still run **sync** Neo4j sessions on the event loop while interleaving **async** SQLAlchemy calls. Read/query paths use `neo4j_async.run_with_neo4j_driver`; write/index paths need prefetch-then-thread or a dedicated worker.
+
+### Duplicate agent conversation routers
+
+`kb_agent_conversations.py`, `kb_faq_agent_conversations.py`, and `eval_agent_conversations.py` share nearly the same streaming CRUD shape. Consolidate into a shared factory or base service when touching agent APIs.
+
+### God modules (split when editing)
+
+| Module | ~Lines | Smell |
+|--------|--------|-------|
+| `api/knowledge_bases.py` | 950+ | CRUD, chunks, FAQs (search/ask in `knowledge_bases_search.py`) |
+| `services/resource_acl_service.py` | 1200+ | ACL resolution, channel trees |
+| `api/wiki_spaces.py` | 950+ | Pages, files, import, semantic index |
+| `api/documents.py` | 970+ | Upload, pipeline, metadata |
+| `pages/knowledge-bases/KnowledgeBaseDetail.tsx` | 3300+ | All KB tabs in one file |
 
 ### Optional query polish
 
@@ -57,7 +73,7 @@ Some pages use `setError` + a visible banner (`Pipelines.tsx`, `Jobs.tsx`, `Docu
 
 ---
 
-## Active: low priority
+## Low priority
 
 ### Hardcoded or duplicated configuration
 
@@ -66,7 +82,7 @@ Some pages use `setError` + a visible banner (`Pipelines.tsx`, `Jobs.tsx`, `Docu
 | Session cookie | `max_age` in `backend/app/main.py` |
 | Presigned URLs | `expires_in` in `backend/app/services/storage.py` |
 | Model testing HTTP | Timeouts in `backend/app/services/model_testing.py` |
-| KB index job | `run_kb_index` in `backend/app/jobs/tasks.py` still uses **`subprocess.run`** with a fixed **1800s** timeout (blocks the worker thread during the call); document pipeline path uses async subprocess. |
+| KB index job | `run_kb_index` in `backend/app/jobs/tasks.py` uses **`subprocess.run`** with a fixed **1800s** timeout (blocks the worker thread); document pipeline path uses async subprocess. |
 | VLM URL | `vlm_url` is canonical; `paddleocr_vl_server_url` in `config.py` is deprecated alias — finish removing call sites and duplicate env docs when safe. |
 
 ### Missing or partial type hints
@@ -78,15 +94,16 @@ Incremental typing backlog (examples): `get_categories` in `backend/app/api/mode
 - CRUD list pages (`Models.tsx`, `Pipelines.tsx`, `Jobs.tsx`) repeat load / modal / table patterns — candidate for a small hook.
 - Repeated search inputs — optional shared component.
 - `KnowledgeBaseDetail.tsx` remains very large — split tabs into subcomponents or hooks over time.
+- Heavy console/ontology pages (`ConsolePermissionManagement`, `ObjectExplorer`, `KnowledgeMap`) still eager-imported in `App.tsx` — extend lazy loading when touching routes.
 
 ### SPA / SCSS (remaining style debt)
 
 | Area | Notes |
 |------|--------|
 | **Hex / `rgba` / magic `px` outside `design-system/`** | Many `frontend/src/pages/**/*.scss` and some `components/**/*.scss` still use raw colors or ad hoc spacing. Prefer **`var(--color-*)`**, **`var(--space-*)`**, **`color-mix`**, and **`@use '…/tokens' as ds`** for breakpoints / grid mins (`README.md` conventions). |
-| **`z-index` outliers** | Bulk `1000` / `100` sweeps are done for listed routes; re-audit any remaining numeric stacks (e.g. `50`, `200`, chart overlays) when something hides under the shell. |
-| **`style={{}}` in TSX** | Keep for data-driven geometry only; move static chrome to colocated SCSS or **`_utilities.scss`**. |
-| **Redundant `[data-theme='dark']` blocks** | Some files still repeat rules that only mirror `:root` semantic vars — safe to delete when next editing that stylesheet. |
+| **`z-index` outliers** | Re-audit numeric stacks (e.g. `50`, `200`, chart overlays) when something hides under the shell. |
+| **`style={{}}` in TSX** | Tree depth padding in Sidebar, KnowledgeMap, DocumentChannels — prefer CSS `--depth` custom properties. |
+| **Redundant `[data-theme='dark']` blocks** | Some files repeat rules that only mirror `:root` semantic vars — delete when next editing that stylesheet. |
 
 ### Security and operations (ongoing)
 
@@ -95,9 +112,9 @@ Incremental typing backlog (examples): `get_categories` in `backend/app/api/mode
 | CORS | Single allowed origin from `OPENKMS_FRONTEND_URL` — intentional; document for multi-origin deployments. |
 | Legacy `GET /logout` | Marked legacy in API; consider removal after clients migrate. |
 | Migrations | Seed URLs / fixed IDs in Alembic — not environment-parameterized. |
-| Production | Default secret rejection is implemented; keep documenting required env for prod. |
+| Production | Document required env for prod deployments. |
 
-### API tokens and machine authentication (backlog) {#api-tokens-machine-auth}
+### API tokens and machine authentication {#api-tokens-machine-auth}
 
 Operators use `POST /api/auth/login` or Bearer JWTs per [Obtaining an API token](features/console-and-auth.md#obtaining-an-api-token). Open themes: shorter-lived tokens or refresh, first-class PATs / device code / client-credentials with explicit role mapping, rate limiting on login, audit for issuance, IdP recipes for automation users, stricter warnings on long `OPENKMS_LOCAL_JWT_EXP_HOURS` in prod-like configs.
 
@@ -109,11 +126,15 @@ FastAPI serves `/docs` and `/redoc`; optional export of `openapi.json` for exter
 
 Logic overlaps between `backend/app/services/metadata_extraction.py` and `openkms-cli/openkms_cli/extract.py` (schema / pydantic-ai setup). Prefer a single implementation or a thin CLI that calls the backend when online.
 
+### Test coverage gaps
+
+Vitest covers a small set of modules (`App`, `apiClient`, auth callback, document detail utils). No automated tests for AuthContext, KB detail, ontology explorer, or global search flows.
+
 ---
 
-## Long methods and structural smells (audit snapshot)
+## Long methods (audit snapshot)
 
-Automated pass (AST span **≥55** lines) on `backend/app/**/*.py` and `openkms-cli/openkms_cli/**/*.py` (excluding Alembic) highlighted large functions — usual drivers: nested branching, HTTP + DB + side effects in one block, or duplicated CLI steps.
+AST pass (span **≥55** lines) on `backend/app/**/*.py` and `openkms-cli/openkms_cli/**/*.py` (excluding Alembic). Re-run with `radon` or Ruff only after team agreement on thresholds.
 
 ### Representative long Python functions
 
@@ -135,19 +156,12 @@ Automated pass (AST span **≥55** lines) on `backend/app/**/*.py` and `openkms-
 | 100 | `backend/app/services/glossary_term_suggestion.py` | `suggest_glossary_term` |
 | 98 | `backend/app/api/object_types.py` | `list_object_instances` |
 
-**Other ≥55-line hits:** `channels.py` (`merge_document_channels`, `reorder_document_channel`, `update_document_channel`), `documents.py` (`upload_document`, `extract_document_metadata`), `evaluations.py` (`run_evaluation`, `compare_evaluation_runs`), `home_hub.py` (`get_home_hub`), `jobs.py` (`create_job`, `retry_job`), `ontology_explore.py` (`execute_cypher`), `strict_permission_patterns.py` (`dispatch`), `wiki_vault_import.py` (`rewrite_markdown_assets`, `import_markdown_vault_file`), `extract.py` (`extract_metadata_sync`), `search_judge.py`, `faq_generation.py`, `wiki_runner.py` (`iter_wiki_conversation_stream_parts`), `object_types.py` (`index_objects_to_neo4j`, `_query_neo4j_nodes`), `link_types.py` (`_query_neo4j_relationships`), `metadata_extraction.py` (`extract_metadata`), `tasks.py` (`run_kb_index`).
+**Other ≥55-line hits:** `channels.py`, `documents.py`, `evaluations.py`, `home_hub.py`, `jobs.py`, `strict_permission_patterns.py`, `wiki_vault_import.py`, `extract.py`, `search_judge.py`, `faq_generation.py`, `wiki_runner.py`, `object_types.py` (`index_objects_to_neo4j`), `link_types.py`, `metadata_extraction.py`, `tasks.py` (`run_kb_index`).
 
 ### Smell summary
 
 - **openkms-cli:** Large CLI commands mix parsing, env, subprocess, storage, and HTTP — extract phases and shared error reporting.
-- **Neo4j-heavy APIs:** Move Cypher builders and row mapping toward `services/` with targeted tests.
+- **Neo4j-heavy APIs:** Move Cypher builders and row mapping toward `services/` with targeted tests; index write paths still on event loop.
 - **Worker:** Align KB index subprocess policy with async/non-blocking goals where the runtime allows.
 - **Agent / streaming:** Extract serialization and tool-dispatch helpers from long NDJSON/stream loops.
 - **Frontend file size:** `DocumentDetail.tsx`, `KnowledgeBaseDetail.tsx`, `ConsolePermissionManagement.tsx`, `KnowledgeMap.tsx`, `WikiSpaceSettings.tsx`, `EvaluationDatasetDetail.tsx`, `ontology/ObjectExplorer.tsx` — split into hooks and presentational components when touching those areas.
-
-### Partial mitigations (CLI)
-
-- **`openkms_cli/backend_defaults`:** `_merge_document_parse_defaults_payload` extracted; tests in `openkms-cli/tests/test_backend_defaults.py`.
-- **`openkms_cli/parser`:** `_restructure_pages_after_predict` extracted; tests in `openkms-cli/tests/test_parser_restructure.py` and `test_parser_helpers.py`.
-
-**Re-run:** small AST script or optional `radon` / Ruff rules — only after team agreement on thresholds to avoid noise.

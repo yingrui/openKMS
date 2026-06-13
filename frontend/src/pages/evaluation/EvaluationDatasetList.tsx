@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ClipboardList, Plus, Trash2, Pencil, X } from 'lucide-react';
@@ -10,13 +10,19 @@ import {
   updateEvaluation,
   type EvaluationResponse,
 } from '../../data/evaluationsApi';
-import { fetchKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
+import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { Pagination } from '../../styles/design-system';
 import './EvaluationDatasetList.scss';
+
+const EVAL_PAGE_SIZE_DEFAULT = 24;
 
 export function EvaluationDatasetList() {
   const { t } = useTranslation('workspace');
   const [datasets, setDatasets] = useState<EvaluationResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(EVAL_PAGE_SIZE_DEFAULT);
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
   const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,26 +34,54 @@ export function EvaluationDatasetList() {
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const loadDatasets = useCallback(async () => {
+    setLoading(true);
     try {
-      const [dsData, kbData, wikiData] = await Promise.all([
-        fetchEvaluations(),
-        fetchKnowledgeBases(),
-        fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
-      ]);
+      const dsData = await fetchEvaluations({
+        limit: listPageSize,
+        offset: listPage * listPageSize,
+      });
       setDatasets(dsData.items);
-      setKbs(kbData.items);
-      setWikiSpaces(wikiData.items ?? []);
+      setTotal(dsData.total);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluation.loadFailed'));
+      setDatasets([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [listPage, listPageSize, t]);
+
+  const loadDropdowns = useCallback(async () => {
+    try {
+      const [kbItems, wikiData] = await Promise.all([
+        fetchAllKnowledgeBases(),
+        fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
+      ]);
+      setKbs(kbItems);
+      setWikiSpaces(wikiData.items ?? []);
+    } catch {
+      // Dropdown options are optional; list load shows its own error.
+    }
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, []);
+    void loadDatasets();
+  }, [loadDatasets]);
+
+  useEffect(() => {
+    void loadDropdowns();
+  }, [loadDropdowns]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [total, listPageSize, listPage]);
+
+  const reload = () => {
+    void loadDatasets();
+    void loadDropdowns();
+  };
 
   const handleCreate = async () => {
     if (!formName.trim() || !formKbId) return;
@@ -65,7 +99,8 @@ export function EvaluationDatasetList() {
       setFormWikiSpaceId('');
       setFormDesc('');
       toast.success(t('evaluation.createdToast'));
-      void load();
+      setListPage(0);
+      reload();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluation.createFailed'));
     } finally {
@@ -85,7 +120,7 @@ export function EvaluationDatasetList() {
       setFormName('');
       setFormDesc('');
       toast.success(t('evaluation.updatedToast'));
-      void load();
+      reload();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluation.updateFailed'));
     } finally {
@@ -100,7 +135,7 @@ export function EvaluationDatasetList() {
     try {
       await deleteEvaluation(ds.id);
       toast.success(t('evaluation.deletedToast'));
-      void load();
+      reload();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : t('shared.deleteFailed'));
     }
@@ -148,7 +183,7 @@ export function EvaluationDatasetList() {
 
       {loading && <p className="eval-loading">{t('evaluation.loading')}</p>}
 
-      {!loading && datasets.length === 0 && (
+      {!loading && total === 0 && (
         <div className="eval-empty">
           <ClipboardList size={48} strokeWidth={1} />
           <p>{t('evaluation.empty')}</p>
@@ -181,6 +216,19 @@ export function EvaluationDatasetList() {
           </Link>
         ))}
       </div>
+
+      <Pagination
+        total={total}
+        page={listPage}
+        pageSize={listPageSize}
+        loading={loading}
+        pageSizeOptions={[12, 24, 48, 96]}
+        onPageChange={setListPage}
+        onPageSizeChange={(size) => {
+          setListPageSize(size);
+          setListPage(0);
+        }}
+      />
 
       {(showCreate || editDs) && (
         <div className="eval-dialog-overlay" onClick={closeDialog}>

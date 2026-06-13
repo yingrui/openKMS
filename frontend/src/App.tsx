@@ -14,17 +14,11 @@ import { Login } from './pages/auth/Login';
 import { OidcCallback } from './pages/auth/OidcCallback';
 import { OidcSilentRenew } from './pages/auth/OidcSilentRenew';
 import { Signup } from './pages/auth/Signup';
-import { DocumentChannel } from './pages/documents/DocumentChannel';
-import { DocumentsIndex } from './pages/documents/DocumentsIndex';
-import { ArticlesIndex } from './pages/articles/ArticlesIndex';
-import { ArticleChannel } from './pages/articles/ArticleChannel';
-import { ArticleChannels } from './pages/articles/ArticleChannels';
 import { KnowledgeBaseList } from './pages/knowledge-bases/KnowledgeBaseList';
 import { WikiSpaceList } from './pages/wiki/WikiSpaceList';
 import { GlossaryList } from './pages/glossaries/GlossaryList';
 import { GlossaryDetail } from './pages/glossaries/GlossaryDetail';
 import { GlossarySettings } from './pages/glossaries/GlossarySettings';
-import { DocumentChannels } from './pages/documents/DocumentChannels';
 import { ConsoleLayout } from './pages/console/ConsoleLayout';
 import { ConsoleOverview } from './pages/console/ConsoleOverview';
 import { ConsoleSettings } from './pages/console/ConsoleSettings';
@@ -79,6 +73,12 @@ function AppLoadingFallback() {
 
 const Home = lazy(() => import('./pages/Home').then((m) => ({ default: m.Home })));
 const GlobalSearch = lazy(() => import('./pages/GlobalSearch').then((m) => ({ default: m.GlobalSearch })));
+const DocumentsIndex = lazy(() => import('./pages/documents/DocumentsIndex').then((m) => ({ default: m.DocumentsIndex })));
+const DocumentChannel = lazy(() => import('./pages/documents/DocumentChannel').then((m) => ({ default: m.DocumentChannel })));
+const DocumentChannels = lazy(() => import('./pages/documents/DocumentChannels').then((m) => ({ default: m.DocumentChannels })));
+const ArticlesIndex = lazy(() => import('./pages/articles/ArticlesIndex').then((m) => ({ default: m.ArticlesIndex })));
+const ArticleChannel = lazy(() => import('./pages/articles/ArticleChannel').then((m) => ({ default: m.ArticleChannel })));
+const ArticleChannels = lazy(() => import('./pages/articles/ArticleChannels').then((m) => ({ default: m.ArticleChannels })));
 const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );

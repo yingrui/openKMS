@@ -24,7 +24,7 @@ from app.api.agent import (
 )
 from app.api.deps import get_jwt_sub
 from app.api.auth import require_auth, require_permission
-from app.api.knowledge_bases import get_kb_scoped
+from app.api.kb_router_deps import get_kb_scoped
 from app.config import settings
 from app.database import get_db
 from app.models.agent_models import AgentConversation, AgentMessage

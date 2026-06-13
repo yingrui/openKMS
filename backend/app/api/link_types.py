@@ -19,7 +19,7 @@ from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_T
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
-from app.services.credential_encryption import decrypt
+from app.services.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.link_type import CARDINALITY_CHOICES, LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
@@ -158,6 +158,27 @@ def _query_neo4j_relationships(
         return rows, total
 
 
+async def _neo4j_rel_counts_batch(
+    ds: DataSource,
+    keys: list[tuple[str, str, str]],
+) -> dict[tuple[str, str, str], int | None]:
+    if not keys:
+        return {}
+
+    def _run(driver) -> dict[tuple[str, str, str], int | None]:
+        out: dict[tuple[str, str, str], int | None] = {}
+        for src_label, tgt_label, rel_type in keys:
+            try:
+                out[(src_label, tgt_label, rel_type)] = _neo4j_rel_count(
+                    driver, src_label, tgt_label, rel_type
+                )
+            except Exception:
+                out[(src_label, tgt_label, rel_type)] = None
+        return out
+
+    return await run_with_neo4j_driver(ds, _run)
+
+
 async def _to_response(db: AsyncSession, link_type: LinkType, link_count_override: int | None = None) -> LinkTypeResponse:
     count = link_count_override if link_count_override is not None else await _link_count_for_type(db, link_type)
     source_type = await db.get(ObjectType, link_type.source_object_type_id)
@@ -200,38 +221,45 @@ async def list_link_types(
     sub = p.get("sub")
     if isinstance(sub, str):
         types = [t for t in types if await link_type_visible(db, p, sub, t)]
-    neo4j_driver = None
-    if count_from_neo4j:
+    neo4j_counts: dict[tuple[str, str, str], int | None] = {}
+    object_types_by_id: dict[str, ObjectType] = {}
+    if count_from_neo4j and types:
+        type_ids = {t.source_object_type_id for t in types} | {t.target_object_type_id for t in types}
+        ot_result = await db.execute(select(ObjectType).where(ObjectType.id.in_(type_ids)))
+        object_types_by_id = {ot.id: ot for ot in ot_result.scalars().all()}
         neo4j_ds = await _get_first_neo4j_datasource(db)
         if neo4j_ds:
-            try:
-                from neo4j import GraphDatabase
-
-                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-                neo4j_driver = GraphDatabase.driver(uri, auth=(username, password))
-            except ImportError:
-                neo4j_driver = None
-    items = []
-    try:
-        for t in types:
-            count_override = None
-            if neo4j_driver:
-                source_type = await db.get(ObjectType, t.source_object_type_id)
-                target_type = await db.get(ObjectType, t.target_object_type_id)
+            keys: list[tuple[str, str, str]] = []
+            for t in types:
+                source_type = object_types_by_id.get(t.source_object_type_id)
+                target_type = object_types_by_id.get(t.target_object_type_id)
                 if source_type and target_type:
-                    try:
-                        src_label = _neo4j_safe_label(source_type.name)
-                        tgt_label = _neo4j_safe_label(target_type.name)
-                        rel_type = _neo4j_safe_rel_type(t.name)
-                        count_override = _neo4j_rel_count(neo4j_driver, src_label, tgt_label, rel_type)
-                    except Exception:
-                        pass
-            items.append(await _to_response(db, t, count_override))
-    finally:
-        if neo4j_driver:
-            neo4j_driver.close()
+                    keys.append(
+                        (
+                            _neo4j_safe_label(source_type.name),
+                            _neo4j_safe_label(target_type.name),
+                            _neo4j_safe_rel_type(t.name),
+                        )
+                    )
+            unique_keys = list(dict.fromkeys(keys))
+            try:
+                neo4j_counts = await _neo4j_rel_counts_batch(neo4j_ds, unique_keys)
+            except ImportError:
+                neo4j_counts = {}
+    items = []
+    for t in types:
+        count_override = None
+        if neo4j_counts:
+            source_type = object_types_by_id.get(t.source_object_type_id)
+            target_type = object_types_by_id.get(t.target_object_type_id)
+            if source_type and target_type:
+                key = (
+                    _neo4j_safe_label(source_type.name),
+                    _neo4j_safe_label(target_type.name),
+                    _neo4j_safe_rel_type(t.name),
+                )
+                count_override = neo4j_counts.get(key)
+        items.append(await _to_response(db, t, count_override))
     return LinkTypeListResponse(items=items, total=len(items))
 
 
@@ -300,20 +328,16 @@ async def get_link_type(
             source_type = await db.get(ObjectType, link_type.source_object_type_id)
             target_type = await db.get(ObjectType, link_type.target_object_type_id)
             if source_type and target_type:
+                key = (
+                    _neo4j_safe_label(source_type.name),
+                    _neo4j_safe_label(target_type.name),
+                    _neo4j_safe_rel_type(link_type.name),
+                )
                 try:
-                    from neo4j import GraphDatabase
-
-                    username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-                    password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-                    uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-                    driver = GraphDatabase.driver(uri, auth=(username, password))
-                    try:
-                        src_label = _neo4j_safe_label(source_type.name)
-                        tgt_label = _neo4j_safe_label(target_type.name)
-                        rel_type = _neo4j_safe_rel_type(link_type.name)
-                        count_override = _neo4j_rel_count(driver, src_label, tgt_label, rel_type)
-                    finally:
-                        driver.close()
+                    counts = await _neo4j_rel_counts_batch(neo4j_ds, [key])
+                    count_override = counts.get(key)
+                except ImportError:
+                    pass
                 except Exception:
                     pass
     return await _to_response(db, link_type, count_override)
@@ -395,16 +419,13 @@ async def _open_neo4j_driver_for_link_index(body: IndexToNeo4jRequest, db: Async
     if neo4j_ds.kind != "neo4j":
         raise HTTPException(status_code=400, detail="Target must be a Neo4j data source")
     try:
-        from neo4j import GraphDatabase
+        from neo4j import GraphDatabase  # noqa: F401
     except ImportError:
         raise HTTPException(
             status_code=501,
             detail="Neo4j driver not installed. pip install neo4j",
         ) from None
-    username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-    password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-    uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-    return GraphDatabase.driver(uri, auth=(username, password))
+    return open_neo4j_driver(neo4j_ds)
 
 
 async def _index_link_type_m2m_junction(
@@ -657,49 +678,46 @@ async def list_link_instances(
         target_type = await db.get(ObjectType, link_type.target_object_type_id)
         if source_type and target_type:
             try:
-                from neo4j import GraphDatabase
-            except ImportError:
-                pass
-            else:
-                username = decrypt(neo4j_ds.username_encrypted) if neo4j_ds.username_encrypted else ""
-                password = decrypt(neo4j_ds.password_encrypted) if neo4j_ds.password_encrypted else ""
-                uri = f"bolt://{neo4j_ds.host}:{neo4j_ds.port or 7687}"
-                driver = GraphDatabase.driver(uri, auth=(username, password))
-                try:
-                    src_label = _neo4j_safe_label(source_type.name)
-                    tgt_label = _neo4j_safe_label(target_type.name)
-                    rel_type = _neo4j_safe_rel_type(link_type.name)
-                    if link_type.cardinality in ("many-to-one", "one-to-many"):
-                        src_key = link_type.target_key_property or "id"
-                        tgt_key = src_key
-                    else:
-                        src_key = link_type.source_key_property or "id"
-                        tgt_key = link_type.target_key_property or "id"
-                    rows, total = _query_neo4j_relationships(
+                from neo4j import GraphDatabase  # noqa: F401
+
+                src_label = _neo4j_safe_label(source_type.name)
+                tgt_label = _neo4j_safe_label(target_type.name)
+                rel_type = _neo4j_safe_rel_type(link_type.name)
+                if link_type.cardinality in ("many-to-one", "one-to-many"):
+                    src_key = link_type.target_key_property or "id"
+                    tgt_key = src_key
+                else:
+                    src_key = link_type.source_key_property or "id"
+                    tgt_key = link_type.target_key_property or "id"
+
+                def _query(driver):
+                    return _query_neo4j_relationships(
                         driver, src_label, tgt_label, rel_type, src_key, tgt_key, limit, offset
                     )
-                    return LinkInstanceListResponse(
-                        items=[
-                            LinkInstanceResponse(
-                                id=f"neo4j:{r['source_key_value']}:{r['target_key_value']}",
-                                link_type_id=link_type_id,
-                                source_object_id="",
-                                target_object_id="",
-                                source_key_value=r["source_key_value"],
-                                target_key_value=r["target_key_value"],
-                                source_data=r["source_data"],
-                                target_data=r["target_data"],
-                                created_at=None,
-                                updated_at=None,
-                            )
-                            for r in rows
-                        ],
-                        total=total,
-                    )
-                except Exception:
-                    pass
-                finally:
-                    driver.close()
+
+                rows, total = await run_with_neo4j_driver(neo4j_ds, _query)
+                return LinkInstanceListResponse(
+                    items=[
+                        LinkInstanceResponse(
+                            id=f"neo4j:{r['source_key_value']}:{r['target_key_value']}",
+                            link_type_id=link_type_id,
+                            source_object_id="",
+                            target_object_id="",
+                            source_key_value=r["source_key_value"],
+                            target_key_value=r["target_key_value"],
+                            source_data=r["source_data"],
+                            target_data=r["target_data"],
+                            created_at=None,
+                            updated_at=None,
+                        )
+                        for r in rows
+                    ],
+                    total=total,
+                )
+            except ImportError:
+                pass
+            except Exception:
+                pass
 
     # Many-to-many with dataset: connections come from junction table
     if (

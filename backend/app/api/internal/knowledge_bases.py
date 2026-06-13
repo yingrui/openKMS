@@ -10,12 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 
 from app.api.auth import require_internal_client
-from app.api.knowledge_bases import (
-    _base64_to_floats,
-    _ensure_wiki_page_in_kb_wiki_spaces,
-    _kb_stats,
-    _kb_to_response,
-)
+from app.api.kb_router_deps import ensure_wiki_page_in_kb_wiki_spaces
+from app.api.knowledge_bases import _base64_to_floats
+from app.services.knowledge_base_read import kb_stats, kb_to_response
 from app.database import get_db
 from app.models.chunk import Chunk
 from app.models.document import Document
@@ -56,8 +53,8 @@ async def internal_get_knowledge_base(
     db: AsyncSession = Depends(get_db),
 ):
     kb = await _get_kb_or_404(db, kb_id)
-    stats = await _kb_stats(db, kb.id)
-    return _kb_to_response(kb, stats)
+    stats = await kb_stats(db, kb.id)
+    return kb_to_response(kb, stats)
 
 
 @router.get("/{kb_id}/documents", response_model=list[KBDocumentResponse])
@@ -230,7 +227,7 @@ async def internal_create_chunks_batch(
         doc_id = (item.document_id or "").strip() or None
         if wiki_pid:
             if wiki_pid not in validated_wiki:
-                await _ensure_wiki_page_in_kb_wiki_spaces(db, kb_id, wiki_pid)
+                await ensure_wiki_page_in_kb_wiki_spaces(db, kb_id, wiki_pid)
                 validated_wiki.add(wiki_pid)
             chunk = Chunk(
                 id=item.id,

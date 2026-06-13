@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Database, Plus, MessageCircle, Trash2, Pencil, X } from 'lucide-react';
@@ -10,12 +10,18 @@ import {
   updateKnowledgeBase,
   type KnowledgeBaseResponse,
 } from '../../data/knowledgeBasesApi';
+import { Pagination } from '../../styles/design-system';
 import './KnowledgeBaseList.scss';
+
+const KB_PAGE_SIZE_DEFAULT = 24;
 
 export function KnowledgeBaseList() {
   const { t } = useTranslation('knowledgeBase');
   const { t: ts } = useTranslation('explore');
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(KB_PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [editKb, setEditKb] = useState<KnowledgeBaseResponse | null>(null);
@@ -23,20 +29,32 @@ export function KnowledgeBaseList() {
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await fetchKnowledgeBases();
+      const data = await fetchKnowledgeBases({
+        limit: listPageSize,
+        offset: listPage * listPageSize,
+      });
       setKbs(data.items);
+      setTotal(data.total);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('toastLoadFailed'));
+      setKbs([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [listPage, listPageSize, t]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [total, listPageSize, listPage]);
 
   const handleCreate = async () => {
     if (!formName.trim()) return;
@@ -47,6 +65,7 @@ export function KnowledgeBaseList() {
       setFormName('');
       setFormDesc('');
       toast.success(t('toastCreated'));
+      setListPage(0);
       void load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : ts('shared.createFailed'));
@@ -123,7 +142,7 @@ export function KnowledgeBaseList() {
 
       {loading && <p className="kb-loading">{ts('shared.loading')}</p>}
 
-      {!loading && kbs.length === 0 && (
+      {!loading && total === 0 && (
         <div className="kb-empty">
           <Database size={48} strokeWidth={1} />
           <p>{t('empty')}</p>
@@ -163,6 +182,19 @@ export function KnowledgeBaseList() {
           </Link>
         ))}
       </div>
+
+      <Pagination
+        total={total}
+        page={listPage}
+        pageSize={listPageSize}
+        loading={loading}
+        pageSizeOptions={[12, 24, 48, 96]}
+        onPageChange={setListPage}
+        onPageSizeChange={(size) => {
+          setListPageSize(size);
+          setListPage(0);
+        }}
+      />
 
       {(showCreate || editKb) && (
         <div className="kb-dialog-overlay" onClick={closeDialog}>
