@@ -4,7 +4,7 @@ import { Plus, GitBranch, Search, Trash2, Pencil, X, Loader2, Info } from 'lucid
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
-  fetchPipelines,
+  fetchAllPipelines,
   fetchTemplateVariables,
   createPipeline,
   deletePipeline,
@@ -42,11 +42,11 @@ export function Pipelines() {
     setError(null);
     try {
       const [res, vars, modelsRes] = await Promise.all([
-        fetchPipelines(),
+        fetchAllPipelines(),
         fetchTemplateVariables(),
         fetchAllModels(),
       ]);
-      setPipelines(res.items);
+      setPipelines(res);
       setTemplateVars(vars);
       setAllModels(modelsRes);
     } catch (e) {

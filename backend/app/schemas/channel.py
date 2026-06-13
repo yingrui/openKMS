@@ -39,6 +39,13 @@ class ChannelNode(BaseModel):
 ChannelNode.model_rebuild()
 
 
+class ChannelTreeListResponse(BaseModel):
+    items: list[ChannelNode]
+    total: int
+    limit: int
+    offset: int
+
+
 class ChannelCreate(BaseModel):
     name: str
     description: str | None = None

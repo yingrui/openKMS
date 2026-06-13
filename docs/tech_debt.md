@@ -8,23 +8,9 @@ Open items only. Closed work lives in git history.
 
 ## Medium priority
 
-### Inconsistent error handling in the frontend
+### Frontend error handling convention
 
-Some pages use `setError` + a visible banner (`Pipelines.tsx`, `Jobs.tsx`, `DocumentDetail.tsx`). Others rely on `toast.error` only (`Models.tsx`, `ModelDetail.tsx`, `JobDetail.tsx`). Consider a project convention (e.g. toast for transient failures, banner for blocking load errors).
-
-### Non-functional or incomplete controls
-
-| Location | Issue |
-|----------|--------|
-| `frontend/src/pages/documents/DocumentChannel.tsx` | **Edit** and **Download** icon buttons have no `onClick` (row still opens detail on click elsewhere). |
-
-### List endpoints without pagination
-
-| Endpoint | Notes |
-|----------|--------|
-| `GET /api/wiki-spaces` | Returns all visible wiki spaces. Add `limit`/`offset` if tenant scale grows. |
-| `GET /api/channels`, `GET /api/article-channels` | Channel trees; usually small but unbounded. |
-| `GET /api/projects`, `GET /api/pipelines`, `GET /api/data-sources` | Admin/config lists without pagination. |
+**Blocking load failures** → `ErrorBanner` + `setError` (dismissible). **Mutations / actions** → `toast.error`. See `frontend/src/components/ErrorBanner.tsx`. List/detail pages updated to match (`Models`, `ModelDetail`, `JobDetail`, `JobRuns`, `SchedulesPage`, `WikiSpaceList`, `ProjectList`, `ConsoleDataSources`).
 
 ### Frontend load-all client helpers
 
@@ -34,6 +20,7 @@ Some pages use `setError` + a visible banner (`Pipelines.tsx`, `Jobs.tsx`, `Docu
 | `fetchAllKBDocuments` | `KnowledgeBaseDetail` | All linked docs for bulk UI |
 | `fetchAllModels` | Settings / KB / pipelines | Paginates API but accumulates all models |
 | `fetchAllKnowledgeBases` / `fetchAllEvaluations` / `fetchAllGlossaries` | Evaluation settings, create dialogs | Same pattern for dropdown options |
+| `fetchAllWikiSpaces` / `fetchAllDocumentChannels` / `fetchAllDataSources` / `fetchAllPipelines` | Pickers, sidebar channel trees | Paginate API internally; still loads full set client-side |
 
 Fine for small tenants; large deployments need server-side tree/search or virtualized UI.
 

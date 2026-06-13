@@ -84,11 +84,42 @@ export function projectWorkspacePath(projectId: string, sessionId?: string | nul
   return `/projects/${projectId}`;
 }
 
-export async function listProjects(): Promise<ProjectResponse[]> {
+export interface ProjectListResponse {
+  items: ProjectResponse[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function listProjects(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ProjectListResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString();
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects`, { headers, credentials: 'include' });
+  const res = await authAwareFetch(`${config.apiUrl}/api/projects${qs ? `?${qs}` : ''}`, {
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+export async function listAllProjects(): Promise<ProjectResponse[]> {
+  const merged: ProjectResponse[] = [];
+  let offset = 0;
+  const limit = 200;
+  let total = 0;
+  do {
+    const page = await listProjects({ limit, offset });
+    merged.push(...page.items);
+    total = page.total;
+    offset += limit;
+  } while (offset < total);
+  return merged;
 }
 
 export async function createProject(body: {

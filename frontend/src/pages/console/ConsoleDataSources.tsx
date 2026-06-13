@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Pencil, Trash2, X, Wifi, Loader2, Eraser } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import {
   fetchDataSources,
   createDataSource,
@@ -32,14 +33,16 @@ export function ConsoleDataSources() {
   const [testing, setTesting] = useState<string | null>(null);
   const [deletingAll, setDeletingAll] = useState<string | null>(null);
   const [deleteAllConfirmId, setDeleteAllConfirmId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetchDataSources();
+      const res = await fetchDataSources({ limit: 200, offset: 0 });
       setItems(res.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('dataSources.toastLoadFailed'));
+      setError(e instanceof Error ? e.message : t('dataSources.toastLoadFailed'));
     } finally {
       setLoading(false);
     }
@@ -171,6 +174,8 @@ export function ConsoleDataSources() {
           <span>{t('dataSources.newDataSource')}</span>
         </button>
       </div>
+
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       <div className="ontology-admin-content">
         <div className="ontology-admin-table-wrap">

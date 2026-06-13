@@ -6,7 +6,7 @@ import shutil
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_jwt_sub
@@ -24,6 +24,7 @@ from app.schemas.project import (
     ProjectFileDeleteRequest,
     ProjectFileListResponse,
     ProjectFileWriteRequest,
+    ProjectListResponse,
     ProjectResponse,
     ProjectUpdate,
 )
@@ -75,13 +76,30 @@ async def _get_owned_project(db: AsyncSession, project_id: str, sub: str) -> Pro
     return p
 
 
-@router.get("", response_model=list[ProjectResponse], dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
-async def list_projects(request: Request, db: AsyncSession = Depends(get_db)):
+@router.get("", response_model=ProjectListResponse, dependencies=[Depends(require_permission(PERM_PROJECTS_READ))])
+async def list_projects(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
     sub = get_jwt_sub(request)
-    r = await db.execute(
-        select(Project).where(Project.user_sub == sub).order_by(Project.updated_at.desc())
+    total = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(Project).where(Project.user_sub == sub)
+            )
+        ).scalar_one()
     )
-    return [_to_out(p) for p in r.scalars().all()]
+    r = await db.execute(
+        select(Project)
+        .where(Project.user_sub == sub)
+        .order_by(Project.updated_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    items = [_to_out(p) for p in r.scalars().all()]
+    return ProjectListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=ProjectResponse, status_code=201, dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))])

@@ -2,7 +2,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +18,8 @@ from app.services.channel_scope import (
 from app.services.data_scope import bootstrap_owner_acl
 from app.services.resource_acl_constants import RT_DOCUMENT_CHANNEL
 from app.models.object_type import ObjectType
-from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelUpdate
+from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelTreeListResponse, ChannelUpdate
+from app.services.channel_tree_list import paginate_channels_for_tree
 
 router = APIRouter(prefix="/document-channels", tags=["document-channels"], dependencies=[Depends(require_auth)])
 
@@ -108,9 +109,14 @@ async def get_document_channel(
     )
 
 
-@router.get("", response_model=list[ChannelNode])
-async def list_document_channels(request: Request, db: AsyncSession = Depends(get_db)):
-    """List document channels as tree (top-level only, children nested)."""
+@router.get("", response_model=ChannelTreeListResponse)
+async def list_document_channels(
+    request: Request,
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """List document channels as tree (paginated by top-level roots; each page includes full subtrees)."""
     result = await db.execute(
         select(DocumentChannel).order_by(DocumentChannel.sort_order, DocumentChannel.name)
     )
@@ -118,7 +124,13 @@ async def list_document_channels(request: Request, db: AsyncSession = Depends(ge
     allowed = await _scoped_channel_ids(request, db)
     if allowed is not None:
         channels = [c for c in channels if c.id in allowed]
-    return _build_tree(channels, None)
+    page_channels, total = paginate_channels_for_tree(channels, limit=limit, offset=offset)
+    return ChannelTreeListResponse(
+        items=_build_tree(page_channels, None),
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=ChannelNode)

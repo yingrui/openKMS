@@ -11,7 +11,7 @@ import {
   type EvaluationResponse,
 } from '../../data/evaluationsApi';
 import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
-import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { Pagination } from '../../styles/design-system';
 import './EvaluationDatasetList.scss';
 
@@ -56,10 +56,10 @@ export function EvaluationDatasetList() {
     try {
       const [kbItems, wikiData] = await Promise.all([
         fetchAllKnowledgeBases(),
-        fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
+        fetchAllWikiSpaces().catch(() => []),
       ]);
       setKbs(kbItems);
-      setWikiSpaces(wikiData.items ?? []);
+      setWikiSpaces(Array.isArray(wikiData) ? wikiData : []);
     } catch {
       // Dropdown options are optional; list load shows its own error.
     }

@@ -95,6 +95,7 @@
     "deleteConfirm": "删除「{{name}}」？此操作不可撤销。",
     "deletedToast": "已删除「{{name}}」",
     "deleteFailed": "删除文档失败",
+    "downloadFailed": "下载失败",
     "processJobCreated": "已排队处理运行",
     "processJobFailed": "排队处理运行失败",
     "processNoPipeline": "请先在频道设置中选择文档处理流水线",

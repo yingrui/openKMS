@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ListTodo, Search, RefreshCw, Loader2, Trash2, CircleX } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { Link } from 'react-router-dom';
 import {
   fetchJobs,
@@ -14,7 +15,7 @@ import {
   isConnectorSyncJob,
   type JobResponse,
 } from '../../data/jobsApi';
-import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
+import { fetchAllPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { Pagination } from '../../styles/design-system';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import './Jobs.scss';
@@ -71,15 +72,14 @@ export function JobRuns() {
           status: statusFilter || undefined,
           search: searchDebounced.trim() || undefined,
         }),
-        fetchPipelines(),
+        fetchAllPipelines(),
       ]);
       setJobs(jobsRes.items);
       setJobsTotal(jobsRes.total);
-      setPipelines(pipRes.items);
+      setPipelines(pipRes);
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('jobs.loadFailed');
       setError(msg);
-      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -187,7 +187,7 @@ export function JobRuns() {
             <option value="failed">{t('jobs.statusFailed')}</option>
           </select>
         </div>
-        {error && <p className="jobs-error">{error}</p>}
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
         <div className="jobs-table-wrap">
           {loading ? (
             <div className="jobs-loading">

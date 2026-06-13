@@ -33,6 +33,8 @@ export interface WikiSpaceResponse {
 export interface WikiSpaceListResponse {
   items: WikiSpaceResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface WikiPageResponse {
@@ -99,11 +101,35 @@ export interface WikiLinkGraphResponse {
   source_max_updated_at?: string | null;
 }
 
-export async function fetchWikiSpaces(): Promise<WikiSpaceListResponse> {
+export async function fetchWikiSpaces(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<WikiSpaceListResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString();
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces`, { headers, credentials: 'include' });
+  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces${qs ? `?${qs}` : ''}`, {
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) throw new Error(await parseError(res));
   return res.json();
+}
+
+export async function fetchAllWikiSpaces(): Promise<WikiSpaceResponse[]> {
+  const merged: WikiSpaceResponse[] = [];
+  let offset = 0;
+  const limit = 200;
+  let total = 0;
+  do {
+    const page = await fetchWikiSpaces({ limit, offset });
+    merged.push(...page.items);
+    total = page.total;
+    offset += limit;
+  } while (offset < total);
+  return merged;
 }
 
 export async function createWikiSpace(data: { name: string; description?: string }): Promise<WikiSpaceResponse> {

@@ -44,3 +44,5 @@ class DataSourceResponse(BaseModel):
 class DataSourceListResponse(BaseModel):
     items: list[DataSourceResponse]
     total: int
+    limit: int
+    offset: int

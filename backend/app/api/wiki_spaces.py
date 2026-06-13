@@ -69,6 +69,7 @@ from app.services.wiki_link_graph import (
     graph_payload_to_json_bytes,
     link_graph_cache_key,
 )
+from app.services.wiki_space_read import list_wiki_spaces_page
 from app.services.wiki_vault_import import (
     delete_wiki_page_markdown_mirror,
     import_markdown_vault_file,
@@ -186,21 +187,13 @@ def _space_to_response(ws: WikiSpace, page_count: int) -> WikiSpaceResponse:
 
 
 @router.get("", response_model=WikiSpaceListResponse, dependencies=[Depends(require_permission(PERM_WIKIS_READ))])
-async def list_wiki_spaces(request: Request, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(WikiSpace).order_by(WikiSpace.created_at.desc()))
-    spaces = list(result.scalars().all())
-    p = request.state.openkms_jwt_payload
-    sub = p.get("sub")
-    if isinstance(sub, str) and scope_applies(p, sub):
-        allowed = await effective_wiki_space_ids(db, sub, p)
-        if allowed is not None:
-            if not allowed:
-                return WikiSpaceListResponse(items=[], total=0)
-            spaces = [s for s in spaces if s.id in allowed]
-    items = []
-    for s in spaces:
-        items.append(_space_to_response(s, await _page_count(db, s.id)))
-    return WikiSpaceListResponse(items=items, total=len(items))
+async def list_wiki_spaces(
+    request: Request,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    return await list_wiki_spaces_page(db, request, limit=limit, offset=offset)
 
 
 @router.post(

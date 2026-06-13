@@ -31,7 +31,7 @@ import {
   type KnowledgeMapNode,
   type ResourceLink,
 } from '../../data/knowledgeMapApi';
-import { fetchWikiSpaces } from '../../data/wikiSpacesApi';
+import { fetchAllWikiSpaces } from '../../data/wikiSpacesApi';
 import './KnowledgeMap.scss';
 import { KnowledgeMapHtmlCopilot } from './KnowledgeMapHtmlCopilot';
 import { KnowledgeMapForceGraph } from '../../components/KnowledgeMapForceGraph';
@@ -493,9 +493,9 @@ export function KnowledgeMap() {
     let cancelled = false;
     void (async () => {
       try {
-        const w = await fetchWikiSpaces();
+        const w = await fetchAllWikiSpaces();
         if (cancelled) return;
-        setWikiOptions(w.items.map((s) => ({ id: s.id, label: s.name })));
+        setWikiOptions(w.map((s) => ({ id: s.id, label: s.name })));
       } catch {
         if (!cancelled) setWikiOptions([]);
       }

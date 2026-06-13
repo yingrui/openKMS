@@ -1,30 +1,59 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Bot, Plus, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { Pagination } from '../../styles/design-system';
 import { createProject, listProjects, type ProjectResponse } from '../../data/projectsApi';
 import { AgentsAreaNav } from '../../components/agents/AgentsAreaNav';
 import { AgentsListSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import './ProjectList.scss';
 
+const PROJECT_PAGE_SIZE_DEFAULT = 24;
+
 export function ProjectList() {
   const { t } = useTranslation('agents');
   const { t: ts } = useTranslation('explore');
   const [projects, setProjects] = useState<ProjectResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(PROJECT_PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const emptyNameRef = useRef<HTMLInputElement>(null);
 
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await listProjects({
+        limit: listPageSize,
+        offset: listPage * listPageSize,
+      });
+      setProjects(res.items);
+      setTotal(res.total);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('list.loadFailed'));
+      setProjects([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [listPage, listPageSize, t]);
+
   useEffect(() => {
-    listProjects()
-      .then(setProjects)
-      .catch((e) => toast.error(String(e)))
-      .finally(() => setLoading(false));
-  }, []);
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [total, listPageSize, listPage]);
 
   useEffect(() => {
     if (!loading && projects.length === 0) {
@@ -48,7 +77,9 @@ export function ProjectList() {
         description: description.trim() || undefined,
       });
       setProjects((prev) => [p, ...prev]);
+      setTotal((n) => n + 1);
       resetForm();
+      void load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t('list.createError'));
     } finally {
@@ -68,11 +99,12 @@ export function ProjectList() {
     }
   };
 
-  const hasProjects = !loading && projects.length > 0;
+  const hasProjects = !loading && !error && total > 0;
 
   return (
     <div className={`agents-list page${!loading && projects.length === 0 ? ' agents-list--empty' : ''}`}>
       <AgentsAreaNav />
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       {hasProjects ? (
         <div className="page-header agents-toolbar">
           <h1>{t('list.pageTitle')}</h1>
@@ -99,7 +131,7 @@ export function ProjectList() {
 
       {loading ? <AgentsListSkeleton /> : null}
 
-      {!loading && projects.length === 0 ? (
+      {!loading && !error && projects.length === 0 ? (
         <div className="agents-empty">
           <div className="agents-empty-hero">
             <div className="agents-empty-icon" aria-hidden>
@@ -128,7 +160,8 @@ export function ProjectList() {
         </div>
       ) : null}
 
-      {!loading && projects.length > 0 ? (
+      {!loading && !error && projects.length > 0 ? (
+        <>
         <div className="agents-grid">
           {projects.map((p) => (
             <div key={p.id} className="agents-card">
@@ -154,6 +187,20 @@ export function ProjectList() {
             </div>
           ))}
         </div>
+        {total > listPageSize ? (
+          <Pagination
+            total={total}
+            page={listPage}
+            pageSize={listPageSize}
+            loading={loading}
+            onPageChange={setListPage}
+            onPageSizeChange={(size) => {
+              setListPageSize(size);
+              setListPage(0);
+            }}
+          />
+        ) : null}
+        </>
       ) : null}
 
       {showCreate ? (

@@ -10,7 +10,7 @@ import {
   type EvaluationResponse,
 } from '../../data/evaluationsApi';
 import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
-import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import '../documents/DocumentChannelSettings.scss';
@@ -46,7 +46,7 @@ export function EvaluationDatasetSettings() {
     try {
       const [data, wikiList, kbList] = await Promise.all([
         fetchEvaluation(evaluationId),
-        fetchWikiSpaces().catch(() => ({ items: [], total: 0 })),
+        fetchAllWikiSpaces().catch(() => []),
         fetchAllKnowledgeBases().catch(() => []),
       ]);
       setDataset(data);
@@ -54,7 +54,7 @@ export function EvaluationDatasetSettings() {
       setDescriptionField(data.description ?? '');
       setKnowledgeBaseIdField(data.knowledge_base_id);
       setWikiSpaceIdField(data.wiki_space_id ?? '');
-      setWikiSpaces(wikiList.items ?? []);
+      setWikiSpaces(wikiList ?? []);
       setKnowledgeBases(kbList ?? []);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('evaluationSettings.loadFailed'));

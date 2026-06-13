@@ -12,7 +12,7 @@ import {
   type DatasetResponse,
   type TableInfo,
 } from '../../data/datasetsApi';
-import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import '../ontology/ontology-admin.scss';
 
 export function ConsoleDatasets() {
@@ -46,10 +46,10 @@ export function ConsoleDatasets() {
     try {
       const [dsRes, dRes] = await Promise.all([
         fetchDatasets(filterDataSourceId ? { data_source_id: filterDataSourceId } : undefined),
-        fetchDataSources(),
+        fetchAllDataSources(),
       ]);
       setItems(dsRes.items);
-      setDataSources(dRes.items);
+      setDataSources(dRes);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('datasets.toastLoadFailed'));
     } finally {

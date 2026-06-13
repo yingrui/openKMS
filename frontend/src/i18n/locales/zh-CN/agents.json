@@ -75,6 +75,7 @@
     "create": "新建项目",
     "createFirst": "创建第一个项目",
     "createError": "无法创建项目",
+    "loadFailed": "无法加载项目列表",
     "empty": "暂无项目，先创建一个吧。",
     "emptyTitle": "开始你的第一个项目",
     "emptyLead": "每个项目都有独立的工作区文件夹、对话会话和智能体说明。",

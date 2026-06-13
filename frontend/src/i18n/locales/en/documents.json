@@ -95,6 +95,7 @@
     "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone.",
     "deletedToast": "\"{{name}}\" deleted",
     "deleteFailed": "Failed to delete document",
+    "downloadFailed": "Download failed",
     "processJobCreated": "Processing run queued",
     "processJobFailed": "Failed to queue processing run",
     "processNoPipeline": "Set a processing pipeline in channel settings first",

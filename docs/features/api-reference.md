@@ -86,7 +86,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/document-channels` | List document channels (tree) |
+| GET | `/api/document-channels` | List document channels (tree). Query: `limit` (default 200, max 500), `offset` — paginates **root** channels; each page includes full subtrees. Response: `{ items, total, limit, offset }` |
 | GET | `/api/document-channels/{id}` | Get channel by ID (includes label_config, extraction_schema) |
 | POST | `/api/document-channels` | Create channel |
 | PUT | `/api/document-channels/{id}` | Update channel (name, description, parent_id, pipeline_id, auto_process, extraction_model_id, extraction_schema, label_config, object_type_extraction_max_instances) |
@@ -99,7 +99,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/documents/{id}` | Get document by ID |
 | PUT | `/api/documents/{id}` | Update document info (name, channel_id) |
 | GET | `/api/documents/{id}/parsing` | Get parsing result (result.json) |
-| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy |
+| GET | `/api/documents/{id}/files/{file_hash}/{path}` | Redirect to presigned S3 URL via frontend proxy; `?url_only=true` returns `{ "url": "..." }` JSON (for authenticated downloads without following redirects in `fetch`) |
 | DELETE | `/api/documents/{id}` | Delete document and its storage files |
 | POST | `/api/documents/{id}/reset-status` | Reset processing status to **uploaded** when status is `pending`, `failed`, `completed`, or `running` (rejects if active jobs exist) |
 | PUT | `/api/documents/{id}/metadata` | Update document metadata (partial merge) |
@@ -122,7 +122,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/pipelines` | List pipeline configurations |
+| GET | `/api/pipelines` | List pipeline configurations (`limit`, `offset`; default limit 50, max 200) |
 | GET | `/api/pipelines/template-variables` | List available command template variables |
 | POST | `/api/pipelines` | Create pipeline |
 | GET | `/api/pipelines/{id}` | Get pipeline detail |
@@ -269,7 +269,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/link-types/index-to-neo4j` | Index link types to Neo4j: M:M junction, M:1/1:M from source dataset when configured, else saved link instances (admin-only) |
 | POST | `/api/link-types/{id}/index-to-neo4j` | Index one link type to Neo4j (same rules as bulk; 400 if nothing to index) (admin-only) |
 | POST | `/api/ontology/explore` | Execute read-only Cypher query against Neo4j (body: `{ cypher }`); used by Object Explorer |
-| GET | `/api/data-sources` | List data sources (`console:data_sources`) |
+| GET | `/api/data-sources` | List data sources (`limit`, `offset`; `console:data_sources`) |
 | POST | `/api/data-sources` | Create data source (`console:data_sources`) |
 | GET | `/api/data-sources/{id}` | Get data source (`console:data_sources`) |
 | PUT | `/api/data-sources/{id}` | Update data source (`console:data_sources`) |
@@ -317,7 +317,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/article-channels` | List article channels (tree) |
+| GET | `/api/article-channels` | List article channels (tree). Query: `limit`, `offset` (root pagination + subtrees; same shape as document channels) |
 | GET | `/api/article-channels/{id}` | Get channel by ID |
 | POST | `/api/article-channels` | Create channel |
 | PUT | `/api/article-channels/{id}` | Update channel (name, description, parent_id, `review_model_id`, `review_prompt`, `review_criteria`) |
@@ -353,7 +353,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/wiki-spaces` | List wiki spaces |
+| GET | `/api/wiki-spaces` | List wiki spaces (`limit`, `offset`; ACL-filtered) |
 | POST | `/api/wiki-spaces` | Create wiki space |
 | GET | `/api/wiki-spaces/{id}` | Get wiki space |
 | PATCH | `/api/wiki-spaces/{id}` | Update wiki space (`name`, `description`, optional `semantic_similarity_threshold` 0–1, `semantic_match_top_k` integer ≥ 1, `semantic_embedding_model_id` embedding ApiModel id or `null` to clear) |
@@ -401,7 +401,7 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/projects` | List current user's projects |
+| GET | `/api/projects` | List current user's projects (`limit`, `offset`) |
 | POST | `/api/projects` | Create project (scaffolds `AGENTS.md`, `.openkms/skills/`; auto-installs skills where `agent_skills.is_default=true`) |
 | GET | `/api/projects/{id}` | Get project |
 | PATCH | `/api/projects/{id}` | Update name, description, slug, settings |

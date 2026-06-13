@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { CalendarClock, Loader2, Play, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import { fetchSchedules, patchSchedule, runScheduleNow, type Schedule } from '../../data/schedulesApi';
 import './Jobs.scss';
@@ -25,15 +26,19 @@ export function SchedulesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
+    if (!silent) setError(null);
     try {
       const res = await fetchSchedules();
       setItems(res.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('schedules.loadFailed'));
+      const msg = e instanceof Error ? e.message : t('schedules.loadFailed');
+      if (silent) toast.error(msg);
+      else setError(msg);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,6 +92,8 @@ export function SchedulesPage() {
           <span>{refreshing ? t('shared.loading') : t('shared.refresh')}</span>
         </button>
       </div>
+
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {loading ? (
         <p className="jobs-empty">{t('schedules.loading')}</p>

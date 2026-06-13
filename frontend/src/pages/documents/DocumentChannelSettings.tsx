@@ -10,7 +10,7 @@ import {
   editorFieldsToJsonSchema,
   type ExtractionSchemaField,
 } from '../../data/channelUtils';
-import { fetchPipelines, type PipelineResponse } from '../../data/pipelinesApi';
+import { fetchAllPipelines, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import { toast } from 'sonner';
@@ -98,8 +98,8 @@ export function DocumentChannelSettings() {
   const loadPipelines = useCallback(async () => {
     setPipelinesLoading(true);
     try {
-      const res = await fetchPipelines();
-      setPipelines(res.items);
+      const res = await fetchAllPipelines();
+      setPipelines(res);
     } catch {
       setPipelines([]);
     } finally {

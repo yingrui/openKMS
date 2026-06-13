@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Cpu, Loader2, Send, Settings, Globe, Clock, ImagePlus, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import {
   fetchModelById,
   testModel,
@@ -31,6 +32,7 @@ export function ModelDetail() {
   const { modelId } = useParams<{ modelId: string }>();
   const [model, setModel] = useState<ApiModelResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState('');
@@ -48,11 +50,13 @@ export function ModelDetail() {
   const load = useCallback(async () => {
     if (!modelId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const m = await fetchModelById(modelId);
       setModel(m);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('modelDetail.loadFailed'));
+      setModel(null);
+      setLoadError(e instanceof Error ? e.message : t('modelDetail.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -151,7 +155,11 @@ export function ModelDetail() {
         <Link to="/models" className="model-detail-back">
           <ArrowLeft size={18} /> {t('modelDetail.back')}
         </Link>
-        <p className="model-detail-not-found">{t('modelDetail.notFound')}</p>
+        {loadError ? (
+          <ErrorBanner message={loadError} onDismiss={() => setLoadError(null)} />
+        ) : (
+          <p className="model-detail-not-found">{t('modelDetail.notFound')}</p>
+        )}
       </div>
     );
   }

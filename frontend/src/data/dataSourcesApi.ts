@@ -19,16 +19,39 @@ export interface DataSourceResponse {
 export interface DataSourceListResponse {
   items: DataSourceResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
-export async function fetchDataSources(): Promise<DataSourceListResponse> {
+export async function fetchDataSources(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<DataSourceListResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString();
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources${qs ? `?${qs}` : ''}`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(`Failed to fetch data sources: ${res.status}`);
   return res.json();
+}
+
+export async function fetchAllDataSources(): Promise<DataSourceResponse[]> {
+  const merged: DataSourceResponse[] = [];
+  let offset = 0;
+  const limit = 200;
+  let total = 0;
+  do {
+    const page = await fetchDataSources({ limit, offset });
+    merged.push(...page.items);
+    total = page.total;
+    offset += limit;
+  } while (offset < total);
+  return merged;
 }
 
 export async function fetchDataSource(id: string): Promise<DataSourceResponse> {

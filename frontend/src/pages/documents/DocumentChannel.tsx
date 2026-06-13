@@ -5,7 +5,6 @@ import {
   FileText,
   Upload,
   Search,
-  Pencil,
   FolderInput,
   Download,
   Trash2,
@@ -37,6 +36,7 @@ import {
   deleteDocument,
   updateDocument,
   resetDocumentStatus,
+  downloadDocumentOriginal,
   isAcceptedFile,
   type DocumentListItemResponse,
 } from '../../data/documentsApi';
@@ -321,6 +321,15 @@ export function DocumentChannel() {
       toast.error(err instanceof Error ? err.message : t('channel.processJobFailed'));
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleDownloadClick = async (e: React.MouseEvent, doc: DocumentListItemResponse) => {
+    e.stopPropagation();
+    try {
+      await downloadDocumentOriginal(doc);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t('channel.downloadFailed'));
     }
   };
 
@@ -859,11 +868,6 @@ export function DocumentChannel() {
                             />
                           )}
                           <TableRowActionButton
-                            title={t('common.edit')}
-                            aria-label={t('channel.ariaEdit')}
-                            icon={<Pencil size={16} />}
-                          />
-                          <TableRowActionButton
                             title={t('common.move')}
                             aria-label={t('channel.ariaMoveDoc', { name: doc.name })}
                             onClick={(e) => handleMoveClick(e, doc)}
@@ -872,6 +876,7 @@ export function DocumentChannel() {
                           <TableRowActionButton
                             title={t('common.download')}
                             aria-label={t('channel.ariaDownload')}
+                            onClick={(e) => void handleDownloadClick(e, doc)}
                             icon={<Download size={16} />}
                           />
                           <TableRowActionButton

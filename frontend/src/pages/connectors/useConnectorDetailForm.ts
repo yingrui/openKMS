@@ -10,7 +10,7 @@ import {
   type ConnectorResponse,
 } from '../../data/connectorsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { fetchSystemSettings } from '../../data/systemApi';
 import {
   applyKindToInputsOutputs,
@@ -98,7 +98,7 @@ export function useConnectorDetailForm(
         fetchConnectorKinds(),
         fetchConnector(id),
         fetchDatasets().catch(() => ({ items: [], total: 0 })),
-        fetchDataSources().catch(() => ({ items: [], total: 0 })),
+        fetchAllDataSources().catch(() => []),
         fetchSystemSettings().catch(() => ({
           default_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           system_name: '',
@@ -110,7 +110,7 @@ export function useConnectorDetailForm(
       setKinds(kRes);
       setConnector(cRes);
       setDatasets(dRes.items);
-      setDataSources(dsRes.items);
+      setDataSources(dsRes);
       applyInit(kRes, cRes, tz);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('connectors.toastLoadFailed'));

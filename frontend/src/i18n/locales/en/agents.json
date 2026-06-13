@@ -75,6 +75,7 @@
     "create": "New project",
     "createFirst": "Create your first project",
     "createError": "Could not create project",
+    "loadFailed": "Could not load projects",
     "empty": "No projects yet. Create one to get started.",
     "emptyTitle": "Start your first project",
     "emptyLead": "Each project is a workspace folder with its own files, chat sessions, and agent instructions.",

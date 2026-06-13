@@ -76,7 +76,7 @@ import {
 } from '../../data/knowledgeBasesApi';
 import type { AgentConversationResponse, AgentMessageItem } from '../../data/agentApi';
 import { fetchDocumentById, fetchDocuments, type DocumentListItemResponse } from '../../data/documentsApi';
-import { fetchWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
+import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { fetchChannelById, type ChannelNode } from '../../data/channelsApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { normalizeExtractionSchemaToFields } from '../../data/channelUtils';
@@ -839,8 +839,8 @@ export function KnowledgeBaseDetail() {
     setWikiSpacePickerLoading(true);
     setWikiSpacePickerItems([]);
     try {
-      const res = await fetchWikiSpaces();
-      setWikiSpacePickerItems(res.items);
+      const res = await fetchAllWikiSpaces();
+      setWikiSpacePickerItems(res);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('detail.toastWikiSpacesLoadFailed'));
     } finally {

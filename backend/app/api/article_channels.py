@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +15,10 @@ from app.schemas.article_channel import (
     ArticleChannelMergeBody,
     ArticleChannelNode,
     ArticleChannelReorderBody,
+    ArticleChannelTreeListResponse,
     ArticleChannelUpdate,
 )
+from app.services.channel_tree_list import paginate_channels_for_tree
 from app.services.channel_scope import (
     require_article_channel_in_scope,
     require_article_channel_write,
@@ -76,14 +78,25 @@ async def get_article_channel(
     return _channel_node(channel)
 
 
-@router.get("", response_model=list[ArticleChannelNode])
-async def list_article_channels(request: Request, db: AsyncSession = Depends(get_db)):
+@router.get("", response_model=ArticleChannelTreeListResponse)
+async def list_article_channels(
+    request: Request,
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(ArticleChannel).order_by(ArticleChannel.sort_order, ArticleChannel.name))
     channels = list(result.scalars().all())
     allowed = await _scoped_article_channel_ids(request, db)
     if allowed is not None:
         channels = [c for c in channels if c.id in allowed]
-    return _build_tree(channels, None)
+    page_channels, total = paginate_channels_for_tree(channels, limit=limit, offset=offset)
+    return ArticleChannelTreeListResponse(
+        items=_build_tree(page_channels, None),
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=ArticleChannelNode)

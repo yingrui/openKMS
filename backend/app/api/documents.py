@@ -27,6 +27,7 @@ from app.models.document_version import DocumentVersion
 from app.constants import DocumentRelationType
 from app.schemas.document import (
     DocumentInfoUpdateBody,
+    DocumentFileUrlResponse,
     DocumentListItemResponse,
     DocumentLifecycleUpdateBody,
     DocumentListResponse,
@@ -939,15 +940,19 @@ def _storage_key(file_hash: str, path: str) -> str:
     return f"{file_hash}/{path}"
 
 
-@router.get("/{document_id}/files/{file_hash}/{file_path:path}")
+@router.get(
+    "/{document_id}/files/{file_hash}/{file_path:path}",
+    response_model=None,
+)
 async def get_document_file(
+    request: Request,
     document_id: str,
     file_hash: str,
     file_path: str,
+    url_only: bool = False,
     doc: Document = Depends(get_scoped_document),
-    db: AsyncSession = Depends(get_db),
 ):
-    """Redirect to presigned S3 URL. Verifies document_id+file_hash match; frontend fetches directly from S3."""
+    """Redirect to presigned S3 URL, or return that URL as JSON when url_only=true."""
     from urllib.parse import unquote
 
     path = unquote(file_path).lstrip("/")
@@ -966,6 +971,7 @@ async def get_document_file(
         raise HTTPException(status_code=404, detail="File not found")
 
     url = get_redirect_url(key)
-
+    if url_only:
+        return DocumentFileUrlResponse(url=url)
     return RedirectResponse(url=url, status_code=302)
 

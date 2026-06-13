@@ -18,7 +18,7 @@ import {
   type DatasetResponse,
   type ColumnMetadata,
 } from '../../data/datasetsApi';
-import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import './ontology-admin.scss';
 
 const PROPERTY_TYPES = ['string', 'number', 'boolean'];
@@ -146,11 +146,11 @@ export function ObjectTypesPage() {
       const [typesRes, dsRes, dsSourcesRes] = await Promise.all([
         fetchObjectTypes(),
         fetchDatasets(),
-        fetchDataSources(),
+        fetchAllDataSources(),
       ]);
       setTypes(typesRes.items);
       setDatasets(dsRes.items);
-      setDataSources(dsSourcesRes.items);
+      setDataSources(dsSourcesRes);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load object types');
     } finally {

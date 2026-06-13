@@ -1,7 +1,7 @@
 """Data sources API – CRUD and test connection (admin-only)."""
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,11 +50,23 @@ def _to_response(ds: DataSource) -> DataSourceResponse:
 
 
 @router.get("", response_model=DataSourceListResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])
-async def list_data_sources(db: AsyncSession = Depends(get_db)):
-    """List all data sources."""
-    result = await db.execute(select(DataSource).order_by(DataSource.created_at.desc()))
+async def list_data_sources(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """List data sources (paginated)."""
+    total = int((await db.execute(select(func.count()).select_from(DataSource))).scalar_one())
+    result = await db.execute(
+        select(DataSource).order_by(DataSource.created_at.desc()).offset(offset).limit(limit)
+    )
     items = result.scalars().all()
-    return DataSourceListResponse(items=[_to_response(d) for d in items], total=len(items))
+    return DataSourceListResponse(
+        items=[_to_response(d) for d in items],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.post("", response_model=DataSourceResponse, status_code=201, dependencies=[Depends(require_permission(PERM_CONSOLE_DATA_SOURCES))])

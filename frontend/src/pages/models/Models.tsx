@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Cpu, Search, Trash2, Pencil, X, Loader2, Server } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import {
   fetchModels,
   fetchApiKinds,
@@ -47,6 +48,7 @@ export function Models() {
   const [editProvider, setEditProvider] = useState<ApiProviderResponse | null>(null);
   const [editModel, setEditModel] = useState<ApiModelResponse | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Provider form
   const [provFormName, setProvFormName] = useState('');
@@ -82,6 +84,7 @@ export function Models() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [modelsRes, kinds, caps, provsRes] = await Promise.all([
         fetchModels({
@@ -101,7 +104,7 @@ export function Models() {
       setCapabilityOptions(caps);
       setProviders(provsRes.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('models.loadFailed'));
+      setError(e instanceof Error ? e.message : t('models.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -286,6 +289,7 @@ export function Models() {
           </p>
         </div>
       </div>
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <div className="models-main">
         <div className="models-categories">
           <div className="models-categories-header">

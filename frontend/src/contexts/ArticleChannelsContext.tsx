@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { fetchArticleChannels } from '../data/articleChannelsApi';
+import { fetchAllArticleChannels } from '../data/articleChannelsApi';
 import type { ChannelNode } from '../data/channelUtils';
 import { useAuth } from './AuthContext';
 
@@ -26,7 +26,7 @@ export function ArticleChannelsProvider({ children }: { children: React.ReactNod
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchArticleChannels();
+      const data = await fetchAllArticleChannels();
       setChannels(data);
       setLoaded(true);
     } catch (e) {

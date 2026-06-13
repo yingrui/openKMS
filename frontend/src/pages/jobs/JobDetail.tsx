@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Loader2, ListTodo, Clock, FileText, GitBranch, Cpu, Terminal, CircleX, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
 import {
   fetchJobById,
   markJobFailed,
@@ -47,12 +48,14 @@ export function JobDetail() {
   const [pipeline, setPipeline] = useState<PipelineResponse | null>(null);
   const [model, setModel] = useState<ApiModelResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [markingFailed, setMarkingFailed] = useState(false);
 
   const load = useCallback(async () => {
     if (!jobId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const j = await fetchJobById(Number(jobId));
       setJob(j);
@@ -77,7 +80,8 @@ export function JobDetail() {
         setModel(null);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('jobDetail.loadFailed'));
+      setJob(null);
+      setLoadError(e instanceof Error ? e.message : t('jobDetail.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -133,7 +137,11 @@ export function JobDetail() {
         <Link to="/job-runs" className="job-detail-back">
           <ArrowLeft size={18} /> {t('jobDetail.back')}
         </Link>
-        <p className="job-detail-not-found">{t('jobDetail.notFound')}</p>
+        {loadError ? (
+          <ErrorBanner message={loadError} onDismiss={() => setLoadError(null)} />
+        ) : (
+          <p className="job-detail-not-found">{t('jobDetail.notFound')}</p>
+        )}
       </div>
     );
   }

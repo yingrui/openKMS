@@ -15,7 +15,7 @@ import {
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import './ontology-admin.scss';
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
@@ -74,12 +74,12 @@ export function LinkTypesPage() {
         fetchLinkTypes(),
         fetchObjectTypes(),
         fetchDatasets(),
-        fetchDataSources(),
+        fetchAllDataSources(),
       ]);
       setLinkTypes(linksRes.items);
       setObjectTypes(objsRes.items);
       setDatasets(dsRes.items);
-      setDataSources(dsSourcesRes.items);
+      setDataSources(dsSourcesRes);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to load link types');
     } finally {

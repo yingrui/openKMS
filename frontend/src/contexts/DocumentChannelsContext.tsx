@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { fetchDocumentChannels, type ChannelNode } from '../data/channelsApi';
+import { fetchAllDocumentChannels, type ChannelNode } from '../data/channelsApi';
 import { useAuth } from './AuthContext';
 
 interface DocumentChannelsContextValue {
@@ -25,7 +25,7 @@ export function DocumentChannelsProvider({ children }: { children: React.ReactNo
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchDocumentChannels();
+      const data = await fetchAllDocumentChannels();
       setChannels(data);
       setLoaded(true);
     } catch (e) {

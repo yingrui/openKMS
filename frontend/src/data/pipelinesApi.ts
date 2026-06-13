@@ -19,6 +19,8 @@ export interface PipelineResponse {
 export interface PipelineListResponse {
   items: PipelineResponse[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface PipelineCreate {
@@ -50,14 +52,35 @@ export async function fetchTemplateVariables(): Promise<Record<string, string>> 
   return data.variables || {};
 }
 
-export async function fetchPipelines(): Promise<PipelineListResponse> {
+export async function fetchPipelines(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<PipelineListResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString();
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines`, {
+  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines${qs ? `?${qs}` : ''}`, {
     headers: { ...headers },
     credentials: 'include',
   });
   if (!res.ok) throw new Error(`Failed to fetch pipelines: ${res.status}`);
   return res.json();
+}
+
+export async function fetchAllPipelines(): Promise<PipelineResponse[]> {
+  const merged: PipelineResponse[] = [];
+  let offset = 0;
+  const limit = 200;
+  let total = 0;
+  do {
+    const page = await fetchPipelines({ limit, offset });
+    merged.push(...page.items);
+    total = page.total;
+    offset += limit;
+  } while (offset < total);
+  return merged;
 }
 
 export async function fetchPipelineById(id: string): Promise<PipelineResponse> {

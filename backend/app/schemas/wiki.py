@@ -37,6 +37,8 @@ class WikiSpaceResponse(BaseModel):
 class WikiSpaceListResponse(BaseModel):
     items: list[WikiSpaceResponse]
     total: int
+    limit: int
+    offset: int
 
 
 class WikiPageCreate(BaseModel):

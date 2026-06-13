@@ -191,6 +191,48 @@ export function getDocumentFileUrl(documentId: string, filePath: string): string
   return `${getDocumentFilesBaseUrl(documentId)}/${encoded}`;
 }
 
+/** Presigned object URL from the authenticated files API (redirect target as JSON). */
+async function resolveDocumentFileUrl(apiUrl: string): Promise<string> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${apiUrl}?url_only=1`, {
+    headers,
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error(`Download failed (${res.status})`);
+  const data = (await res.json()) as { url?: string };
+  if (!data.url) throw new Error('Download failed (missing file URL)');
+  return data.url;
+}
+
+async function fetchDocumentFileBlob(apiUrl: string): Promise<Blob> {
+  const objectUrl = await resolveDocumentFileUrl(apiUrl);
+  const objectRes = await fetch(objectUrl);
+  if (!objectRes.ok) throw new Error(`Download failed (${objectRes.status})`);
+  return objectRes.blob();
+}
+
+function triggerBlobDownload(blob: Blob, filename: string): void {
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+/** Download the original uploaded file for a document list row. */
+export async function downloadDocumentOriginal(
+  doc: Pick<DocumentListItemResponse, 'id' | 'file_hash' | 'file_type' | 'name'>,
+): Promise<void> {
+  if (!doc.file_hash) {
+    throw new Error('Document has no stored file');
+  }
+  const ext = doc.file_type.toLowerCase().replace(/^\./, '') || 'bin';
+  const url = `${getDocumentFilesBaseUrl(doc.id)}/${encodeURIComponent(doc.file_hash)}/original.${ext}`;
+  const blob = await fetchDocumentFileBlob(url);
+  triggerBlobDownload(blob, doc.name);
+}
+
 export async function fetchParsingResult(
   documentId: string,
   signal?: AbortSignal

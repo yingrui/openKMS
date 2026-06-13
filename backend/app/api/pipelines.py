@@ -1,7 +1,7 @@
 """Pipelines API – CRUD for pipeline configurations."""
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -42,14 +42,20 @@ async def get_template_variables():
 
 
 @router.get("", response_model=PipelineListResponse)
-async def list_pipelines(db: AsyncSession = Depends(get_db)):
-    """List all pipeline configurations."""
+async def list_pipelines(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """List pipeline configurations (paginated)."""
     total_result = await db.execute(select(func.count(Pipeline.id)))
-    total = total_result.scalar_one()
+    total = int(total_result.scalar_one())
 
-    result = await db.execute(select(Pipeline).order_by(Pipeline.created_at.desc()))
+    result = await db.execute(
+        select(Pipeline).order_by(Pipeline.created_at.desc()).offset(offset).limit(limit)
+    )
     items = [await _enrich_pipeline(p, db) for p in result.scalars().all()]
-    return PipelineListResponse(items=items, total=total)
+    return PipelineListResponse(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("", response_model=PipelineResponse, status_code=201)

@@ -33,6 +33,13 @@ class ProjectResponse(BaseModel):
     updated_at: datetime
 
 
+class ProjectListResponse(BaseModel):
+    items: list[ProjectResponse]
+    total: int
+    limit: int
+    offset: int
+
+
 class ProjectFileEntry(BaseModel):
     name: str
     path: str

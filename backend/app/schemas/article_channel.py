@@ -27,6 +27,13 @@ class ArticleChannelNode(BaseModel):
 ArticleChannelNode.model_rebuild()
 
 
+class ArticleChannelTreeListResponse(BaseModel):
+    items: list[ArticleChannelNode]
+    total: int
+    limit: int
+    offset: int
+
+
 class ArticleChannelCreate(BaseModel):
     name: str
     description: str | None = None

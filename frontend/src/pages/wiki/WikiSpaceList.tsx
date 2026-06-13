@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { BookOpen, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { ErrorBanner } from '../../components/ErrorBanner';
+import { Pagination } from '../../styles/design-system';
 import {
   fetchWikiSpaces,
   createWikiSpace,
@@ -12,30 +14,49 @@ import {
 } from '../../data/wikiSpacesApi';
 import '../knowledge-bases/KnowledgeBaseList.scss';
 
+const WIKI_PAGE_SIZE_DEFAULT = 24;
+
 export function WikiSpaceList() {
   const { t } = useTranslation('explore');
   const [spaces, setSpaces] = useState<WikiSpaceResponse[]>([]);
+  const [total, setTotal] = useState(0);
+  const [listPage, setListPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(WIKI_PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editSp, setEditSp] = useState<WikiSpaceResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const data = await fetchWikiSpaces();
+      const data = await fetchWikiSpaces({
+        limit: listPageSize,
+        offset: listPage * listPageSize,
+      });
       setSpaces(data.items);
+      setTotal(data.total);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('wiki.toastLoadFailed'));
+      setError(e instanceof Error ? e.message : t('wiki.toastLoadFailed'));
+      setSpaces([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-  };
+  }, [listPage, listPageSize, t]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
+    if (listPage > maxPage) setListPage(maxPage);
+  }, [total, listPageSize, listPage]);
 
   const handleCreate = async () => {
     if (!formName.trim()) return;
@@ -46,6 +67,7 @@ export function WikiSpaceList() {
       setFormName('');
       setFormDesc('');
       toast.success(t('wiki.toastCreated'));
+      setListPage(0);
       void load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('shared.createFailed'));
@@ -120,6 +142,8 @@ export function WikiSpaceList() {
         </button>
       </div>
 
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+
       {loading && <p className="kb-loading">{t('shared.loading')}</p>}
 
       {!loading && spaces.length === 0 && (
@@ -164,6 +188,20 @@ export function WikiSpaceList() {
             </Link>
           ))}
         </div>
+      )}
+
+      {!loading && total > listPageSize && (
+        <Pagination
+          total={total}
+          page={listPage}
+          pageSize={listPageSize}
+          loading={loading}
+          onPageChange={setListPage}
+          onPageSizeChange={(size) => {
+            setListPageSize(size);
+            setListPage(0);
+          }}
+        />
       )}
 
       {(showCreate || editSp) && (

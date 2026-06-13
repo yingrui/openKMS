@@ -55,3 +55,5 @@ class PipelineResponse(BaseModel):
 class PipelineListResponse(BaseModel):
     items: list[PipelineResponse]
     total: int
+    limit: int
+    offset: int

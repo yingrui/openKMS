@@ -34,15 +34,53 @@ function toChannelNode(raw: ArticleChannelNodeRaw): ChannelNode {
   };
 }
 
-export async function fetchArticleChannels(): Promise<ChannelNode[]> {
+export async function fetchArticleChannels(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ChannelNode[]> {
+  const page = await fetchArticleChannelsPage(params);
+  return page.items.map(toChannelNode);
+}
+
+export interface ArticleChannelTreeListResponse {
+  items: ArticleChannelNodeRaw[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function fetchArticleChannelsPage(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ArticleChannelTreeListResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit != null) query.set('limit', String(params.limit));
+  if (params?.offset != null) query.set('offset', String(params.offset));
+  const qs = query.toString();
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/article-channels`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/article-channels${qs ? `?${qs}` : ''}`,
+    {
+      headers: { ...headers },
+      credentials: 'include',
+    },
+  );
   if (!res.ok) throw new Error(`Failed to fetch article channels (${res.status})`);
-  const data = (await res.json()) as ArticleChannelNodeRaw[];
-  return Array.isArray(data) ? data.map(toChannelNode) : [];
+  return res.json();
+}
+
+export async function fetchAllArticleChannels(): Promise<ChannelNode[]> {
+  const merged: ChannelNode[] = [];
+  let offset = 0;
+  const limit = 200;
+  let total = 0;
+  do {
+    const page = await fetchArticleChannelsPage({ limit, offset });
+    merged.push(...page.items.map(toChannelNode));
+    total = page.total;
+    offset += limit;
+  } while (offset < total);
+  return merged;
 }
 
 function parseErrorDetail(body: unknown, fallback: string): string {

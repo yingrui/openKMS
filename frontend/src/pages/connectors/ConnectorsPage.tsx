@@ -11,7 +11,7 @@ import {
   type ConnectorResponse,
 } from '../../data/connectorsApi';
 import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
-import { fetchDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_CONNECTORS_WRITE, PERM_CONSOLE_DATASETS } from '../../config/permissions';
 import { ConnectorFormFields } from './ConnectorFormFields';
@@ -79,11 +79,11 @@ export function ConnectorsPage() {
     setShowCreate(true);
     void Promise.all([
       fetchDatasets(),
-      fetchDataSources().catch(() => ({ items: [], total: 0 })),
+      fetchAllDataSources().catch(() => []),
     ])
       .then(([dRes, dsRes]) => {
         setDatasets(dRes.items);
-        setDataSources(dsRes.items);
+        setDataSources(dsRes);
       })
       .catch(() => {
         setDatasets([]);

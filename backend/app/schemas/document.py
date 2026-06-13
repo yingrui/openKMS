@@ -177,6 +177,12 @@ class DocumentListResponse(BaseModel):
     total: int
 
 
+class DocumentFileUrlResponse(BaseModel):
+    """Presigned object URL for a document file (same URL as the 302 redirect target)."""
+
+    url: str
+
+
 class ExtractMetadataResponse(BaseModel):
     """Response for POST /documents/{id}/extract-metadata."""
 

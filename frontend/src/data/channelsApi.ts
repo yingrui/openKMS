@@ -40,13 +40,30 @@ export async function fetchChannelById(channelId: string): Promise<ChannelNode> 
   return res.json();
 }
 
-export async function fetchDocumentChannels(): Promise<ChannelNode[]> {
+export interface ChannelTreeListResponse {
+  items: ChannelNode[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function fetchDocumentChannels(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ChannelTreeListResponse> {
   try {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set('limit', String(params.limit));
+    if (params?.offset != null) query.set('offset', String(params.offset));
+    const qs = query.toString();
     const headers = await getAuthHeaders();
-    const res = await authAwareFetch(`${config.apiUrl}/api/document-channels`, {
-      headers: { ...headers },
-      credentials: 'include',
-    });
+    const res = await authAwareFetch(
+      `${config.apiUrl}/api/document-channels${qs ? `?${qs}` : ''}`,
+      {
+        headers: { ...headers },
+        credentials: 'include',
+      },
+    );
     if (!res.ok) throw new Error(`Failed to fetch channels (${res.status})`);
     return res.json();
   } catch (e) {
@@ -55,6 +72,21 @@ export async function fetchDocumentChannels(): Promise<ChannelNode[]> {
     }
     throw e;
   }
+}
+
+/** Load every root channel tree (paginates until all roots are fetched). */
+export async function fetchAllDocumentChannels(): Promise<ChannelNode[]> {
+  const merged: ChannelNode[] = [];
+  let offset = 0;
+  const limit = 200;
+  let total = 0;
+  do {
+    const page = await fetchDocumentChannels({ limit, offset });
+    merged.push(...page.items);
+    total = page.total;
+    offset += limit;
+  } while (offset < total);
+  return merged;
 }
 
 function handleNetworkError(e: unknown): never {
