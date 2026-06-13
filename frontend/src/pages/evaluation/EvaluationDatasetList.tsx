@@ -12,17 +12,25 @@ import {
 } from '../../data/evaluationsApi';
 import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/knowledgeBasesApi';
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
-import { Pagination } from '../../styles/design-system';
+import {
+  CARD_PREVIEW_LIMIT,
+  LIST_PAGE_SIZE_DEFAULT,
+  useStoredViewMode,
+  type CardListViewMode,
+} from '../../hooks/useStoredViewMode';
+import { Pagination, ResourceViewToggle } from '../../styles/design-system';
 import './EvaluationDatasetList.scss';
 
-const EVAL_PAGE_SIZE_DEFAULT = 24;
+const VIEW_STORAGE_KEY = 'evaluations-list-view';
 
 export function EvaluationDatasetList() {
   const { t } = useTranslation('workspace');
+  const { t: tc } = useTranslation('common');
+  const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(VIEW_STORAGE_KEY, 'card');
   const [datasets, setDatasets] = useState<EvaluationResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [listPage, setListPage] = useState(0);
-  const [listPageSize, setListPageSize] = useState(EVAL_PAGE_SIZE_DEFAULT);
+  const [listPageSize, setListPageSize] = useState(LIST_PAGE_SIZE_DEFAULT);
   const [kbs, setKbs] = useState<KnowledgeBaseResponse[]>([]);
   const [wikiSpaces, setWikiSpaces] = useState<WikiSpaceResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,12 +42,16 @@ export function EvaluationDatasetList() {
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const isCardView = viewMode === 'card';
+  const fetchLimit = isCardView ? CARD_PREVIEW_LIMIT : listPageSize;
+  const fetchOffset = isCardView ? 0 : listPage * listPageSize;
+
   const loadDatasets = useCallback(async () => {
     setLoading(true);
     try {
       const dsData = await fetchEvaluations({
-        limit: listPageSize,
-        offset: listPage * listPageSize,
+        limit: fetchLimit,
+        offset: fetchOffset,
       });
       setDatasets(dsData.items);
       setTotal(dsData.total);
@@ -50,7 +62,7 @@ export function EvaluationDatasetList() {
     } finally {
       setLoading(false);
     }
-  }, [listPage, listPageSize, t]);
+  }, [fetchLimit, fetchOffset, t]);
 
   const loadDropdowns = useCallback(async () => {
     try {
@@ -74,9 +86,15 @@ export function EvaluationDatasetList() {
   }, [loadDropdowns]);
 
   useEffect(() => {
+    if (isCardView) return;
     const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
     if (listPage > maxPage) setListPage(maxPage);
-  }, [total, listPageSize, listPage]);
+  }, [total, listPageSize, listPage, isCardView]);
+
+  const switchView = (mode: CardListViewMode) => {
+    setViewMode(mode);
+    setListPage(0);
+  };
 
   const reload = () => {
     void loadDatasets();
@@ -165,20 +183,25 @@ export function EvaluationDatasetList() {
           <h1>{t('evaluation.title')}</h1>
           <p className="page-subtitle">{t('evaluation.subtitle')}</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => {
-            setShowCreate(true);
-            setFormName('');
-            setFormKbId(kbs[0]?.id ?? '');
-            setFormWikiSpaceId('');
-            setFormDesc('');
-          }}
-        >
-          <Plus size={18} />
-          <span>{t('evaluation.newEvaluation')}</span>
-        </button>
+        <div className="eval-header-actions">
+          {!loading ? (
+            <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setShowCreate(true);
+              setFormName('');
+              setFormKbId(kbs[0]?.id ?? '');
+              setFormWikiSpaceId('');
+              setFormDesc('');
+            }}
+          >
+            <Plus size={18} />
+            <span>{t('evaluation.newEvaluation')}</span>
+          </button>
+        </div>
       </div>
 
       {loading && <p className="eval-loading">{t('evaluation.loading')}</p>}
@@ -190,6 +213,16 @@ export function EvaluationDatasetList() {
         </div>
       )}
 
+      {!loading && total > 0 && isCardView && total > datasets.length ? (
+        <p className="ds-card-preview-hint">
+          {tc('cardPreviewHint', { shown: datasets.length, total })}
+          <button type="button" onClick={() => switchView('list')}>
+            {tc('viewAllInList')}
+          </button>
+        </p>
+      ) : null}
+
+      {!loading && total > 0 && isCardView ? (
       <div className="eval-grid">
         {datasets.map((ds) => (
           <Link key={ds.id} to={`/evaluations/${ds.id}`} className="eval-card">
@@ -216,19 +249,60 @@ export function EvaluationDatasetList() {
           </Link>
         ))}
       </div>
+      ) : null}
 
-      <Pagination
-        total={total}
-        page={listPage}
-        pageSize={listPageSize}
-        loading={loading}
-        pageSizeOptions={[12, 24, 48, 96]}
-        onPageChange={setListPage}
-        onPageSizeChange={(size) => {
-          setListPageSize(size);
-          setListPage(0);
-        }}
-      />
+      {!loading && total > 0 && !isCardView ? (
+        <>
+          <div className="ds-resource-table-wrap">
+            <table className="ds-resource-table">
+              <thead>
+                <tr>
+                  <th>{t('shared.name')}</th>
+                  <th>{t('shared.description')}</th>
+                  <th>{t('evaluation.listColKb')}</th>
+                  <th>{t('evaluation.listColItems')}</th>
+                  <th aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                {datasets.map((ds) => (
+                  <tr key={ds.id}>
+                    <td>
+                      <Link to={`/evaluations/${ds.id}`} className="ds-resource-table__link">
+                        {ds.name}
+                      </Link>
+                    </td>
+                    <td>{ds.description || t('evaluation.noDescription')}</td>
+                    <td>{ds.knowledge_base_name || ds.knowledge_base_id}</td>
+                    <td>{t('evaluation.itemsCount', { count: ds.item_count })}</td>
+                    <td>
+                      <div className="ds-resource-table__actions">
+                        <button type="button" title={t('shared.edit')} aria-label={t('shared.edit')} onClick={(e) => openEdit(ds, e)}>
+                          <Pencil size={15} />
+                        </button>
+                        <button type="button" title={t('shared.delete')} aria-label={t('shared.delete')} onClick={(e) => void handleDelete(ds, e)}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            total={total}
+            page={listPage}
+            pageSize={listPageSize}
+            loading={loading}
+            onPageChange={setListPage}
+            onPageSizeChange={(size) => {
+              setListPageSize(size);
+              setListPage(0);
+            }}
+          />
+        </>
+      ) : null}
 
       {(showCreate || editDs) && (
         <div className="eval-dialog-overlay" onClick={closeDialog}>

@@ -7,6 +7,17 @@
     "next": "下一页",
     "pageStatus": "第 {{current}} / {{total}} 页"
   },
+  "viewMode": {
+    "aria": "视图模式",
+    "card": "卡片",
+    "cardTitle": "卡片预览（最近条目）",
+    "list": "列表",
+    "listTitle": "分页表格",
+    "graph": "图谱",
+    "graphTitle": "图谱视图"
+  },
+  "cardPreviewHint": "显示 {{shown}} / {{total}} 条。",
+  "viewAllInList": "在列表中查看全部",
   "appLoading": "加载中…",
   "graphPanZoomHint": "拖拽平移，滚动缩放。",
   "graph3dHint": "拖拽旋转视角，滚动缩放。青色连线为上下级，灰色为引用。点击地图节点可在左侧树中选中；点击资源则打开对应页面。",

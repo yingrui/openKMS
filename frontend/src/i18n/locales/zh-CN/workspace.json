@@ -184,6 +184,8 @@
     "empty": "暂无评测数据集，创建一个开始使用。",
     "noDescription": "无描述",
     "itemsCount": "{{count}} 条",
+    "listColKb": "知识库",
+    "listColItems": "条目数",
     "dialogNew": "新建评测",
     "dialogEdit": "编辑评测",
     "namePlaceholder": "评测名称",

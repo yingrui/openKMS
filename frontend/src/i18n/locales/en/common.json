@@ -7,6 +7,17 @@
     "next": "Next",
     "pageStatus": "Page {{current}} of {{total}}"
   },
+  "viewMode": {
+    "aria": "View mode",
+    "card": "Cards",
+    "cardTitle": "Card preview (recent items)",
+    "list": "List",
+    "listTitle": "Paginated table",
+    "graph": "Graph",
+    "graphTitle": "Graph view"
+  },
+  "cardPreviewHint": "Showing {{shown}} of {{total}}.",
+  "viewAllInList": "View all in list",
   "appLoading": "Loading…",
   "graphPanZoomHint": "Drag to pan, scroll to zoom.",
   "graph3dHint": "Drag to orbit, scroll to zoom. Teal links: parent to child. Gray links: refer-tos. Click a map node to select it in the tree; click a resource to open it.",

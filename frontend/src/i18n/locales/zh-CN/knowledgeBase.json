@@ -17,6 +17,7 @@
   "metaFaqs": "{{count}} 条常见问题",
   "metaChunks": "{{count}} 个分块",
   "ragBadge": "RAG 问答",
+  "listColStats": "内容",
   "detail": {
     "loading": "加载中…",
     "notFound": "未找到该知识库。",

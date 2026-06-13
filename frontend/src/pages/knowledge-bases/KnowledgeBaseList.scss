@@ -29,6 +29,30 @@
   gap: var(--space-5);
 }
 
+.kb-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.kb-list-rag-pill {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border-radius: 4px;
+  vertical-align: middle;
+}
+
+.kb-list-stats {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
 .kb-header .btn {
   display: inline-flex;
   align-items: center;

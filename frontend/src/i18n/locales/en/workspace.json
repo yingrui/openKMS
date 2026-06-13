@@ -184,6 +184,8 @@
     "empty": "No evaluation datasets yet. Create one to get started.",
     "noDescription": "No description",
     "itemsCount": "{{count}} items",
+    "listColKb": "Knowledge base",
+    "listColItems": "Items",
     "dialogNew": "New Evaluation",
     "dialogEdit": "Edit Evaluation",
     "namePlaceholder": "Evaluation name",

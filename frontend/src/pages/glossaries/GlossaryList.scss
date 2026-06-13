@@ -29,6 +29,13 @@
   gap: var(--space-5);
 }
 
+.glossary-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
 .glossary-header .btn {
   display: inline-flex;
   align-items: center;

@@ -4,7 +4,13 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Plus, Trash2, Pencil, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
-import { Pagination } from '../../styles/design-system';
+import {
+  CARD_PREVIEW_LIMIT,
+  LIST_PAGE_SIZE_DEFAULT,
+  useStoredViewMode,
+  type CardListViewMode,
+} from '../../hooks/useStoredViewMode';
+import { Pagination, ResourceViewToggle } from '../../styles/design-system';
 import {
   fetchWikiSpaces,
   createWikiSpace,
@@ -14,14 +20,16 @@ import {
 } from '../../data/wikiSpacesApi';
 import '../knowledge-bases/KnowledgeBaseList.scss';
 
-const WIKI_PAGE_SIZE_DEFAULT = 24;
+const VIEW_STORAGE_KEY = 'wiki-spaces-list-view';
 
 export function WikiSpaceList() {
   const { t } = useTranslation('explore');
+  const { t: tc } = useTranslation('common');
+  const [viewMode, setViewMode] = useStoredViewMode<CardListViewMode>(VIEW_STORAGE_KEY, 'card');
   const [spaces, setSpaces] = useState<WikiSpaceResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [listPage, setListPage] = useState(0);
-  const [listPageSize, setListPageSize] = useState(WIKI_PAGE_SIZE_DEFAULT);
+  const [listPageSize, setListPageSize] = useState(LIST_PAGE_SIZE_DEFAULT);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -30,13 +38,17 @@ export function WikiSpaceList() {
   const [formDesc, setFormDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const isCardView = viewMode === 'card';
+  const fetchLimit = isCardView ? CARD_PREVIEW_LIMIT : listPageSize;
+  const fetchOffset = isCardView ? 0 : listPage * listPageSize;
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await fetchWikiSpaces({
-        limit: listPageSize,
-        offset: listPage * listPageSize,
+        limit: fetchLimit,
+        offset: fetchOffset,
       });
       setSpaces(data.items);
       setTotal(data.total);
@@ -47,16 +59,22 @@ export function WikiSpaceList() {
     } finally {
       setLoading(false);
     }
-  }, [listPage, listPageSize, t]);
+  }, [fetchLimit, fetchOffset, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
+    if (isCardView) return;
     const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
     if (listPage > maxPage) setListPage(maxPage);
-  }, [total, listPageSize, listPage]);
+  }, [total, listPageSize, listPage, isCardView]);
+
+  const switchView = (mode: CardListViewMode) => {
+    setViewMode(mode);
+    setListPage(0);
+  };
 
   const handleCreate = async () => {
     if (!formName.trim()) return;
@@ -128,32 +146,46 @@ export function WikiSpaceList() {
           <h1>{t('wiki.title')}</h1>
           <p className="page-subtitle">{t('wiki.subtitle')}</p>
         </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => {
-            setShowCreate(true);
-            setFormName('');
-            setFormDesc('');
-          }}
-        >
-          <Plus size={18} />
-          <span>{t('wiki.newSpace')}</span>
-        </button>
+        <div className="kb-header-actions">
+          {!loading ? (
+            <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setShowCreate(true);
+              setFormName('');
+              setFormDesc('');
+            }}
+          >
+            <Plus size={18} />
+            <span>{t('wiki.newSpace')}</span>
+          </button>
+        </div>
       </div>
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {loading && <p className="kb-loading">{t('shared.loading')}</p>}
 
-      {!loading && spaces.length === 0 && (
+      {!loading && total === 0 && (
         <div className="kb-empty">
           <BookOpen size={48} strokeWidth={1} />
           <p>{t('wiki.empty')}</p>
         </div>
       )}
 
-      {!loading && spaces.length > 0 && (
+      {!loading && total > 0 && isCardView && total > spaces.length ? (
+        <p className="ds-card-preview-hint">
+          {tc('cardPreviewHint', { shown: spaces.length, total })}
+          <button type="button" onClick={() => switchView('list')}>
+            {tc('viewAllInList')}
+          </button>
+        </p>
+      ) : null}
+
+      {!loading && total > 0 && isCardView ? (
         <div className="kb-grid">
           {spaces.map((sp) => (
             <Link key={sp.id} to={`/wikis/${sp.id}/pages/graph`} className="kb-card">
@@ -188,21 +220,68 @@ export function WikiSpaceList() {
             </Link>
           ))}
         </div>
-      )}
+      ) : null}
 
-      {!loading && total > listPageSize && (
-        <Pagination
-          total={total}
-          page={listPage}
-          pageSize={listPageSize}
-          loading={loading}
-          onPageChange={setListPage}
-          onPageSizeChange={(size) => {
-            setListPageSize(size);
-            setListPage(0);
-          }}
-        />
-      )}
+      {!loading && total > 0 && !isCardView ? (
+        <>
+          <div className="ds-resource-table-wrap">
+            <table className="ds-resource-table">
+              <thead>
+                <tr>
+                  <th>{t('shared.name')}</th>
+                  <th>{t('shared.description')}</th>
+                  <th>{t('wiki.listColPages')}</th>
+                  <th aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                {spaces.map((sp) => (
+                  <tr key={sp.id}>
+                    <td>
+                      <Link to={`/wikis/${sp.id}/pages/graph`} className="ds-resource-table__link">
+                        {sp.name}
+                      </Link>
+                    </td>
+                    <td>{sp.description || t('shared.noDescription')}</td>
+                    <td>{t('wiki.pageCount', { count: sp.page_count })}</td>
+                    <td>
+                      <div className="ds-resource-table__actions">
+                        <button
+                          type="button"
+                          title={t('shared.edit')}
+                          aria-label={t('shared.edit')}
+                          onClick={(e) => openEdit(sp, e)}
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          title={t('shared.delete')}
+                          aria-label={t('shared.delete')}
+                          onClick={(e) => void handleDelete(sp, e)}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            total={total}
+            page={listPage}
+            pageSize={listPageSize}
+            loading={loading}
+            onPageChange={setListPage}
+            onPageSizeChange={(size) => {
+              setListPageSize(size);
+              setListPage(0);
+            }}
+          />
+        </>
+      ) : null}
 
       {(showCreate || editSp) && (
         <div className="kb-dialog-overlay" role="presentation" onClick={closeDialog}>

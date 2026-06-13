@@ -1,0 +1,120 @@
+.ds-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-compact);
+  flex-shrink: 0;
+}
+
+.ds-view-toggle__btn {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 4);
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.ds-view-toggle__btn:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.ds-view-toggle__btn.active {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.ds-card-preview-hint {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.ds-card-preview-hint button {
+  margin-left: var(--space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-size: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ds-resource-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+}
+
+.ds-resource-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.ds-resource-table th,
+.ds-resource-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.ds-resource-table th {
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-muted);
+}
+
+.ds-resource-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ds-resource-table tbody tr:hover td {
+  background: var(--color-bg-subtle);
+}
+
+.ds-resource-table__link {
+  color: var(--color-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ds-resource-table__link:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.ds-resource-table__actions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.ds-resource-table__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-compact);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ds-resource-table__actions button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}

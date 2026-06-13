@@ -17,6 +17,7 @@
   "metaFaqs": "{{count}} FAQs",
   "metaChunks": "{{count}} chunks",
   "ragBadge": "RAG Q&A",
+  "listColStats": "Contents",
   "detail": {
     "loading": "Loading…",
     "notFound": "Knowledge base not found.",

@@ -32,6 +32,7 @@
     "placeholderName": "例如：产品 Wiki",
     "pageCount_one": "{{count}} 页",
     "pageCount_other": "{{count}} 页",
+    "listColPages": "页面数",
     "pageEditor": {
       "loadFailed": "加载页面失败",
       "saved": "已保存",
@@ -81,6 +82,7 @@
     "placeholderName": "术语表名称",
     "placeholderDesc": "可选描述（例如领域）",
     "termCount": "{{count}} 条术语",
+    "listColTerms": "术语数",
     "settings": {
       "pageTitle": "术语表设置",
       "backToGlossary": "返回术语表",
@@ -179,6 +181,10 @@
     "linkCount_other": "{{count}} 条关联",
     "endpointSource": "源",
     "endpointTarget": "目标",
+    "listColInstances": "实例数",
+    "listColProperties": "属性数",
+    "listColEndpoints": "端点",
+    "listColLinks": "链接数",
     "viewModeAria": "本体视图模式",
     "listView": "列表",
     "listViewTitle": "以卡片列表查看对象类型与关联类型",

@@ -29,6 +29,13 @@
   gap: var(--space-5);
 }
 
+.eval-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
 .eval-header .btn {
   display: inline-flex;
   align-items: center;

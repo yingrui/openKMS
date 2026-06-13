@@ -32,6 +32,7 @@
     "placeholderName": "e.g. Product wiki",
     "pageCount_one": "{{count}} page",
     "pageCount_other": "{{count}} pages",
+    "listColPages": "Pages",
     "pageEditor": {
       "loadFailed": "Failed to load page",
       "saved": "Saved",
@@ -81,6 +82,7 @@
     "placeholderName": "Glossary name",
     "placeholderDesc": "Optional description (e.g. domain)",
     "termCount": "{{count}} terms",
+    "listColTerms": "Terms",
     "settings": {
       "pageTitle": "Glossary settings",
       "backToGlossary": "Back to glossary",
@@ -179,6 +181,10 @@
     "linkCount_other": "{{count}} links",
     "endpointSource": "Source",
     "endpointTarget": "Target",
+    "listColInstances": "Instances",
+    "listColProperties": "Properties",
+    "listColEndpoints": "Endpoints",
+    "listColLinks": "Links",
     "viewModeAria": "Ontology view mode",
     "listView": "List",
     "listViewTitle": "Card list of object and link types",
