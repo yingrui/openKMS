@@ -9,14 +9,19 @@ const ICONS = {
   graph: Network,
 } as const;
 
-export type ResourceViewToggleProps = {
-  modes: ResourceViewToggleMode[];
-  value: ResourceViewToggleMode;
-  onChange: (mode: ResourceViewToggleMode) => void;
+export type ResourceViewToggleProps<M extends ResourceViewToggleMode = ResourceViewToggleMode> = {
+  modes: readonly M[];
+  value: M;
+  onChange: (mode: M) => void;
   className?: string;
 };
 
-export function ResourceViewToggle({ modes, value, onChange, className }: ResourceViewToggleProps) {
+export function ResourceViewToggle<const M extends ResourceViewToggleMode>({
+  modes,
+  value,
+  onChange,
+  className,
+}: ResourceViewToggleProps<M>) {
   const { t } = useTranslation('common');
   return (
     <div
@@ -25,7 +30,7 @@ export function ResourceViewToggle({ modes, value, onChange, className }: Resour
       aria-label={t('viewMode.aria')}
     >
       {modes.map((mode) => {
-        const Icon = ICONS[mode];
+        const Icon = ICONS[mode as ResourceViewToggleMode];
         return (
           <button
             key={mode}
