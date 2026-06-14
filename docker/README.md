@@ -140,7 +140,7 @@ Two bases keep backend/scheduler images lean while caching slow worker parse dep
 
 App builds only copy source and run a fast `uv sync`. Worker copies fresh **`openkms-cli`** source over the editable install in the base.
 
-**`build-and-run.sh`** builds both bases first; Docker layer cache makes that fast when only app code changed. Rebuild bases explicitly:
+**`build-and-run.sh`** builds both bases first; Docker layer cache makes that fast when only app code changed. **`build-base.sh`** builds **`openkms-backend-base`** then **`openkms-worker-base`** (worker extends the backend image — they cannot build in parallel). Rebuild bases explicitly:
 
 ```bash
 cd docker

@@ -158,6 +158,8 @@ services:
 
   openkms-worker-base:
     profiles: [build]
+    depends_on:
+      - openkms-backend-base
     platform: linux/amd64
     build:
       context: ..
