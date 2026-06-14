@@ -6,8 +6,8 @@ from app.models.scheduled_trigger import (
     PROJECT_AGENT_SCHEDULE_KINDS,
     SCHEDULE_KIND_CONNECTOR_SYNC,
     ScheduledTrigger,
+    agent_schedule_lock_name,
 )
-from app.services.project_agent_schedule import agent_schedule_lock_name
 
 CONNECTOR_SYNC_LOCK_PREFIX = "connector_sync:"
 

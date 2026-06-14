@@ -42,3 +42,10 @@ class ScheduledTrigger(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+def agent_schedule_lock_name(trigger: ScheduledTrigger) -> str:
+    """Procrastinate lock key for project agent scheduled runs."""
+    if trigger.kind == SCHEDULE_KIND_PROJECT_AGENT_STATEFUL:
+        return f"project_agent:conv:{trigger.target_id}"
+    return f"project_agent:{trigger.id}"

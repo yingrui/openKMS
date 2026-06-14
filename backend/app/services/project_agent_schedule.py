@@ -21,7 +21,6 @@ from app.models.scheduled_trigger import (
 from app.services.agent_session_api_key import ensure_session_api_key, get_session_bearer_token, revoke_session_api_key
 from app.services.agent_skill_install import ensure_skills_materialized
 from app.services.connector_sync.schedule import validate_cron_expression, validate_timezone
-from app.services.deep_agents.checkpointer import delete_conversation_thread
 from app.services.deep_agents.runner import (
     _build_agent,
     _runnable_config,
@@ -334,12 +333,9 @@ async def execute_scheduled_project_agent(
         and cfg.get("on_run_completed") == "delete"
         and created_conv is not None
     ):
+        from app.services.deep_agents.checkpointer import delete_conversation_thread
+
         await revoke_session_api_key(db, created_conv)
         await delete_conversation_thread(created_conv.id)
         await db.delete(created_conv)
 
-
-def agent_schedule_lock_name(trigger: ScheduledTrigger) -> str:
-    if trigger.kind == SCHEDULE_KIND_PROJECT_AGENT_STATEFUL:
-        return f"project_agent:conv:{trigger.target_id}"
-    return f"project_agent:{trigger.id}"
