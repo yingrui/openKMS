@@ -94,7 +94,8 @@
     "colEnabled": "启用",
     "colNextRun": "下次运行",
     "colLastRun": "上次运行",
-    "colStatus": "上次状态"
+    "colStatus": "上次状态",
+    "openSession": "打开会话"
   },
   "jobDetail": {
     "loadFailed": "无法加载运行记录",
@@ -118,6 +119,12 @@
     "knowledgeBase": "知识库",
     "knowledgeBaseId": "知识库 ID",
     "wikiSpaceId": "Wiki 空间 ID",
+    "scheduledAgent": "计划智能体任务",
+    "scheduleName": "计划任务",
+    "triggerId": "触发器 ID",
+    "projectId": "项目",
+    "agentSession": "智能体会话",
+    "openAgentSession": "打开会话",
     "fileHash": "文件哈希",
     "fileExtension": "扩展名",
     "pipeline": "流水线",

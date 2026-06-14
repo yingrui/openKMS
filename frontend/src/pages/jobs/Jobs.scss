@@ -226,6 +226,11 @@
   white-space: nowrap;
 }
 
+.jobs-schedule-status-failed {
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}
+
 .jobs-delete-btn:hover {
   color: var(--color-error) !important;
 }

@@ -38,6 +38,7 @@ def _agent_fields(row: ScheduledTrigger) -> dict:
     return {
         "project_id": str(cfg.get("project_id") or "") or None,
         "conversation_id": cfg.get("conversation_id"),
+        "last_conversation_id": cfg.get("last_conversation_id"),
         "mode": mode,
     }
 
@@ -67,6 +68,7 @@ def _to_schedule_out(row: ScheduledTrigger) -> ScheduleOut:
         connector_id=connector_id,
         project_id=agent_extra.get("project_id"),
         conversation_id=agent_extra.get("conversation_id"),
+        last_conversation_id=agent_extra.get("last_conversation_id"),
         mode=agent_extra.get("mode"),
     )
 

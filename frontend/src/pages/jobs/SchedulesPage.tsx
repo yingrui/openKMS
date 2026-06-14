@@ -5,7 +5,8 @@ import { CalendarClock, Loader2, Play, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
-import { fetchSchedules, patchSchedule, runScheduleNow, scheduleKindLabel, type Schedule } from '../../data/schedulesApi';
+import { fetchSchedules, patchSchedule, runScheduleNow, scheduleKindLabel, scheduleSessionId, type Schedule } from '../../data/schedulesApi';
+import { projectWorkspacePath } from '../../data/projectsApi';
 import { Pagination } from '../../styles/design-system';
 import './Jobs.scss';
 
@@ -166,9 +167,21 @@ export function SchedulesPage() {
                     </td>
                     <td>{formatDate(row.next_run_at, dash)}</td>
                     <td>{formatDate(row.last_run_at, dash)}</td>
-                    <td>{row.last_status ?? dash}</td>
+                    <td>
+                      <span className={row.last_status === 'failed' ? 'jobs-schedule-status-failed' : undefined}>
+                        {row.last_status ?? dash}
+                      </span>
+                    </td>
                     <td className="jobs-table-actions-col jobs-table-actions-col--inline">
                       <div className="jobs-table-actions-inline">
+                        {row.project_id && scheduleSessionId(row) ? (
+                          <Link
+                            to={projectWorkspacePath(row.project_id, scheduleSessionId(row))}
+                            className="jobs-link-inline"
+                          >
+                            {t('schedules.openSession')}
+                          </Link>
+                        ) : null}
                         <button
                           type="button"
                           className="btn btn-secondary btn-sm"

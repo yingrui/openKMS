@@ -10,8 +10,10 @@ import {
   retryJob,
   isKbIndexingJob,
   isConnectorSyncJob,
+  isScheduledAgentJob,
   type JobResponse,
 } from '../../data/jobsApi';
+import { projectWorkspacePath } from '../../data/projectsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
@@ -155,7 +157,12 @@ export function JobDetail() {
   const defaultArgs = job.args?.default_args as Record<string, unknown> | null | undefined;
   const isKbIndexingTask = isKbIndexingJob(job.task_name);
   const isConnectorSyncTask = isConnectorSyncJob(job.task_name);
+  const isScheduledAgentTask = isScheduledAgentJob(job.task_name);
   const connectorId = String(job.args?.connector_id || '');
+  const triggerId = String(job.args?.trigger_id || '');
+  const scheduleProjectId = String(job.args?.project_id || '');
+  const scheduleConversationId = String(job.args?.conversation_id || '');
+  const scheduleDisplayName = String(job.args?.display_name || '');
 
   return (
     <div className="job-detail">
@@ -219,15 +226,47 @@ export function JobDetail() {
 
         <section className="job-detail-card">
           <h2>
-            {isConnectorSyncTask ? <ListTodo size={18} /> : isKbIndexingTask ? <BookOpen size={18} /> : <FileText size={18} />}{' '}
+            {isConnectorSyncTask ? <ListTodo size={18} /> : isKbIndexingTask ? <BookOpen size={18} /> : isScheduledAgentTask ? <ListTodo size={18} /> : <FileText size={18} />}{' '}
             {isConnectorSyncTask
               ? t('jobDetail.connector')
               : isKbIndexingTask
                 ? t('jobDetail.knowledgeBase')
-                : t('jobDetail.document')}
+                : isScheduledAgentTask
+                  ? t('jobDetail.scheduledAgent')
+                  : t('jobDetail.document')}
           </h2>
           <dl className="job-detail-dl">
-            {isConnectorSyncTask ? (
+            {isScheduledAgentTask ? (
+              <>
+                <dt>{t('jobDetail.scheduleName')}</dt>
+                <dd>{scheduleDisplayName || dash}</dd>
+                <dt>{t('jobDetail.triggerId')}</dt>
+                <dd className="job-detail-mono">{triggerId || dash}</dd>
+                <dt>{t('jobDetail.projectId')}</dt>
+                <dd>
+                  {scheduleProjectId ? (
+                    <Link to={`/projects/${scheduleProjectId}/settings`} className="job-detail-link">
+                      {scheduleProjectId}
+                    </Link>
+                  ) : (
+                    dash
+                  )}
+                </dd>
+                {scheduleConversationId ? (
+                  <>
+                    <dt>{t('jobDetail.agentSession')}</dt>
+                    <dd>
+                      <Link
+                        to={projectWorkspacePath(scheduleProjectId, scheduleConversationId)}
+                        className="job-detail-link"
+                      >
+                        {t('jobDetail.openAgentSession')}
+                      </Link>
+                    </dd>
+                  </>
+                ) : null}
+              </>
+            ) : isConnectorSyncTask ? (
               <>
                 <dt>{t('jobDetail.connectorId')}</dt>
                 <dd>
@@ -284,7 +323,7 @@ export function JobDetail() {
           </dl>
         </section>
 
-        {!isKbIndexingTask && (
+        {!isKbIndexingTask && !isScheduledAgentTask && (
         <section className="job-detail-card">
           <h2>
             <GitBranch size={18} /> {t('jobDetail.pipeline')}

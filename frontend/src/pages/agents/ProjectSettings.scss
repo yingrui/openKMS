@@ -309,3 +309,13 @@
     }
   }
 }
+
+.project-settings-schedule-status-failed {
+  color: var(--color-error);
+  font-weight: var(--font-weight-medium);
+}
+
+.project-settings-schedule-job-link {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+}

@@ -845,15 +845,22 @@ async def run_connector_sync(
 
 
 @job_app.task(name="run_scheduled_project_agent", pass_context=True)
-async def run_scheduled_project_agent(context: JobContext, trigger_id: str) -> None:
+async def run_scheduled_project_agent(
+    context: JobContext,
+    trigger_id: str,
+    project_id: str = "",
+    conversation_id: str | None = None,
+    display_name: str = "",
+) -> None:
     """Run a scheduled project agent turn (stateful or stateless)."""
     from app.database import async_session_maker
     from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
     from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.project_agent_schedule import execute_scheduled_project_agent, update_trigger_after_agent_job
+    from app.services.schedule_dispatch import update_trigger_after_agent_job
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = []
+    label = display_name.strip() or trigger_id
 
     async with async_session_maker() as session:
         trigger = await session.get(ScheduledTrigger, trigger_id)
@@ -866,6 +873,8 @@ async def run_scheduled_project_agent(context: JobContext, trigger_id: str) -> N
 
         log_lines.append(f"Scheduled agent started: {trigger.display_name} ({trigger.kind})")
         try:
+            from app.services.project_agent_schedule import execute_scheduled_project_agent
+
             await execute_scheduled_project_agent(session, trigger)
             await update_trigger_after_agent_job(
                 session, trigger.id, job_id=job_id, status="completed"
@@ -879,7 +888,7 @@ async def run_scheduled_project_agent(context: JobContext, trigger_id: str) -> N
             )
             await session.commit()
             log_lines.append(f"Scheduled agent failed: {exc}")
-            logger.exception("Scheduled agent failed for trigger %s", trigger_id)
+            logger.exception("Scheduled agent failed for %s (%s)", trigger_id, label)
             if job_id is not None:
                 await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
             raise

@@ -120,3 +120,20 @@ async def update_trigger_after_sync(
     trigger.last_status = status
     if job_id is not None:
         trigger.last_job_id = job_id
+
+
+async def update_trigger_after_agent_job(
+    session: AsyncSession,
+    trigger_id: str,
+    *,
+    job_id: int | None,
+    status: str,
+) -> None:
+    """Record completion/failure on a project agent schedule row."""
+    row = await session.get(ScheduledTrigger, trigger_id)
+    if not row:
+        return
+    row.last_run_at = datetime.now(timezone.utc)
+    row.last_status = status
+    if job_id is not None:
+        row.last_job_id = job_id

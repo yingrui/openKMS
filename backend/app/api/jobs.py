@@ -125,9 +125,12 @@ def _jobs_list_filters(
     if search and (q := search.strip()):
         params["search"] = f"%{q}%"
         clauses.append(
-            "(task_name ILIKE :search OR COALESCE(args->>'document_id', '') ILIKE :search "
+            "(task_name ILIKE :search OR CAST(id AS TEXT) ILIKE :search "
+            "OR COALESCE(args->>'document_id', '') ILIKE :search "
             "OR COALESCE(args->>'knowledge_base_id', '') ILIKE :search "
-            "OR COALESCE(args->>'connector_id', '') ILIKE :search)"
+            "OR COALESCE(args->>'connector_id', '') ILIKE :search "
+            "OR COALESCE(args->>'trigger_id', '') ILIKE :search "
+            "OR COALESCE(args->>'project_id', '') ILIKE :search)"
         )
 
     where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
@@ -397,6 +400,32 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
             new_job_id,
             fallback_task_name="run_connector_sync",
             fallback_args=defer_kwargs,
+        )
+
+    if task_name == "run_scheduled_project_agent":
+        trigger_id = args.get("trigger_id")
+        if not trigger_id or not isinstance(trigger_id, str):
+            raise HTTPException(status_code=400, detail="Job has no trigger_id in args")
+        from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
+        from app.services.schedule_handlers import defer_scheduled_trigger
+
+        trigger = await db.get(ScheduledTrigger, trigger_id.strip())
+        if not trigger or trigger.kind not in PROJECT_AGENT_SCHEDULE_KINDS:
+            raise HTTPException(status_code=400, detail="Schedule trigger not found")
+        new_job_id = await defer_scheduled_trigger(trigger)
+        cfg = trigger.config if isinstance(trigger.config, dict) else {}
+        fallback_args = {
+            "trigger_id": trigger.id,
+            "project_id": str(cfg.get("project_id") or args.get("project_id") or ""),
+            "conversation_id": cfg.get("conversation_id") or args.get("conversation_id"),
+            "display_name": trigger.display_name,
+        }
+        await db.commit()
+        return await read_job_response(
+            db,
+            new_job_id,
+            fallback_task_name="run_scheduled_project_agent",
+            fallback_args=fallback_args,
         )
 
     if not document_id:

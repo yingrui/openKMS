@@ -47,6 +47,7 @@ def _to_out(row) -> ProjectAgentScheduleOut:
         mode=mode,
         project_id=str(cfg.get("project_id") or ""),
         conversation_id=cfg.get("conversation_id"),
+        last_conversation_id=cfg.get("last_conversation_id"),
         display_name=row.display_name,
         cron=row.cron,
         timezone=row.timezone,

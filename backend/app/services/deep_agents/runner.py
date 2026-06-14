@@ -12,6 +12,7 @@ from deepagents import create_deep_agent
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphRecursionError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -209,6 +210,15 @@ async def _pending_interrupt_parts(agent, cfg: dict) -> list[ProjectStreamPart]:
     return [{"type": "interrupt", "interrupt": _interrupt_payload(intr.value)} for intr in snap.interrupts or ()]
 
 
+async def _conversation_message_rows(db: AsyncSession, conversation_id: str) -> list[AgentMessage]:
+    result = await db.execute(
+        select(AgentMessage)
+        .where(AgentMessage.conversation_id == conversation_id)
+        .order_by(AgentMessage.created_at, AgentMessage.id)
+    )
+    return list(result.scalars().all())
+
+
 async def iter_project_stream_parts(
     db: AsyncSession,
     conversation: AgentConversation,
@@ -224,8 +234,7 @@ async def iter_project_stream_parts(
     session_id: str | None = None,
 ) -> AsyncIterator[ProjectStreamPart]:
     del jwt_payload
-    rows = list(conversation.messages)
-    rows.sort(key=lambda m: (m.created_at, m.id))
+    rows = await _conversation_message_rows(db, conversation.id)
     messages = _lc_messages_from_db(rows)
     agent, err = await _build_agent(
         db,
@@ -288,8 +297,7 @@ async def run_project_turn(
     session_id: str | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     del jwt_payload
-    rows = list(conversation.messages)
-    rows.sort(key=lambda m: (m.created_at, m.id))
+    rows = await _conversation_message_rows(db, conversation.id)
     messages = _lc_messages_from_db(rows)
     agent, err = await _build_agent(
         db,

@@ -20,7 +20,14 @@ export interface Schedule {
   connector_id: string | null;
   project_id: string | null;
   conversation_id: string | null;
+  last_conversation_id: string | null;
   mode: ScheduleMode | null;
+}
+
+/** Session to open for viewing scheduled agent output (stateful bound session or last successful run). */
+export function scheduleSessionId(row: Pick<Schedule, 'mode' | 'conversation_id' | 'last_conversation_id'>): string | null {
+  if (row.mode === 'stateful' && row.conversation_id) return row.conversation_id;
+  return row.last_conversation_id ?? null;
 }
 
 export interface ScheduleListResponse {

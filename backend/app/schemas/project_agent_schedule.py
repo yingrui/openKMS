@@ -41,6 +41,7 @@ class ProjectAgentScheduleOut(BaseModel):
     mode: ScheduleMode
     project_id: str
     conversation_id: str | None = None
+    last_conversation_id: str | None = None
     display_name: str
     cron: str | None = None
     timezone: str = "UTC"

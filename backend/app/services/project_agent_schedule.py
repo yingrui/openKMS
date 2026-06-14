@@ -197,22 +197,6 @@ async def delete_agent_schedule_row(db: AsyncSession, row: ScheduledTrigger) -> 
     await db.delete(row)
 
 
-async def update_trigger_after_agent_job(
-    session: AsyncSession,
-    trigger_id: str,
-    *,
-    job_id: int | None,
-    status: str,
-) -> None:
-    row = await session.get(ScheduledTrigger, trigger_id)
-    if not row:
-        return
-    row.last_run_at = datetime.now(timezone.utc)
-    row.last_status = status
-    if job_id is not None:
-        row.last_job_id = job_id
-
-
 async def _conversation_for_stateful(
     db: AsyncSession, cfg: dict[str, Any]
 ) -> AgentConversation:
@@ -326,6 +310,9 @@ async def execute_scheduled_project_agent(
     )
     db.add(asst)
     conversation.updated_at = datetime.now(timezone.utc)
+    cfg_out = dict(trigger.config if isinstance(trigger.config, dict) else {})
+    cfg_out["last_conversation_id"] = conversation.id
+    trigger.config = cfg_out
     await db.flush()
 
     if (

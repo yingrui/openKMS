@@ -10,10 +10,12 @@ import {
   listProjectSchedules,
   patchProjectSchedule,
   runProjectScheduleNow,
+  scheduleSessionId,
   type OnRunCompleted,
   type ProjectAgentSchedule,
   type ScheduleMode,
 } from '../../data/schedulesApi';
+import { projectWorkspacePath } from '../../data/projectsApi';
 import { fetchSystemSettings } from '../../data/systemApi';
 import { timezoneSelectOptions } from '../../utils/commonTimezones';
 
@@ -182,6 +184,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
                 <th>{t('settings.schedules.colCron')}</th>
                 <th>{t('settings.schedules.colEnabled')}</th>
                 <th>{t('settings.schedules.colNextRun')}</th>
+                <th>{t('settings.schedules.colLastStatus')}</th>
                 <th>{t('settings.schedules.colActions')}</th>
               </tr>
             </thead>
@@ -205,7 +208,28 @@ export function ProjectSchedulesTab({ projectId }: Props) {
                     </label>
                   </td>
                   <td>{formatDate(row.next_run_at)}</td>
+                  <td>
+                    <span className={row.last_status === 'failed' ? 'project-settings-schedule-status-failed' : undefined}>
+                      {row.last_status ?? t('settings.schedules.dash')}
+                    </span>
+                    {row.last_job_id != null ? (
+                      <>
+                        {' '}
+                        <Link to={`/job-runs/${row.last_job_id}`} className="project-settings-schedule-job-link">
+                          #{row.last_job_id}
+                        </Link>
+                      </>
+                    ) : null}
+                  </td>
                   <td className="project-settings-skills-table-actions">
+                    {scheduleSessionId(row) ? (
+                      <Link
+                        to={projectWorkspacePath(projectId, scheduleSessionId(row))}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        {t('settings.schedules.openSession')}
+                      </Link>
+                    ) : null}
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"

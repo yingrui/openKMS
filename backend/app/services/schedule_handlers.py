@@ -23,8 +23,12 @@ async def defer_scheduled_trigger(trigger: ScheduledTrigger) -> int:
             connector_id=trigger.target_id,
         )
     if trigger.kind in PROJECT_AGENT_SCHEDULE_KINDS:
+        cfg = trigger.config if isinstance(trigger.config, dict) else {}
         return await defer_task(
             run_scheduled_project_agent.configure(lock=agent_schedule_lock_name(trigger)),
             trigger_id=trigger.id,
+            project_id=str(cfg.get("project_id") or ""),
+            conversation_id=cfg.get("conversation_id"),
+            display_name=trigger.display_name,
         )
     raise ValueError(f"Unknown schedule kind: {trigger.kind}")

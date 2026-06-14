@@ -34,6 +34,7 @@ export interface JobListResponse {
 
 const KB_INDEX_TASK_NAMES = new Set(['run_kb_index', 'run_kb_wiki_space_index']);
 const CONNECTOR_SYNC_TASK_NAMES = new Set(['run_connector_sync']);
+const SCHEDULED_AGENT_TASK_NAMES = new Set(['run_scheduled_project_agent']);
 
 /** Primary ID the job runs against (document, knowledge base, or connector). */
 export function jobRunTargetId(job: Pick<JobResponse, 'task_name' | 'args'>): string {
@@ -53,6 +54,10 @@ export function isKbIndexingJob(taskName: string): boolean {
 
 export function isConnectorSyncJob(taskName: string): boolean {
   return CONNECTOR_SYNC_TASK_NAMES.has(taskName);
+}
+
+export function isScheduledAgentJob(taskName: string): boolean {
+  return SCHEDULED_AGENT_TASK_NAMES.has(taskName);
 }
 
 export interface JobCreate {

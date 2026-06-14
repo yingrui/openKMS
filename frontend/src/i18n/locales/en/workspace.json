@@ -94,7 +94,8 @@
     "colEnabled": "Enabled",
     "colNextRun": "Next run",
     "colLastRun": "Last run",
-    "colStatus": "Last status"
+    "colStatus": "Last status",
+    "openSession": "Open session"
   },
   "jobDetail": {
     "loadFailed": "Failed to load run",
@@ -118,6 +119,12 @@
     "knowledgeBase": "Knowledge base",
     "knowledgeBaseId": "Knowledge base ID",
     "wikiSpaceId": "Wiki space ID",
+    "scheduledAgent": "Scheduled agent",
+    "scheduleName": "Schedule",
+    "triggerId": "Trigger ID",
+    "projectId": "Project",
+    "agentSession": "Agent session",
+    "openAgentSession": "Open session",
     "fileHash": "File Hash",
     "fileExtension": "File Extension",
     "pipeline": "Pipeline",

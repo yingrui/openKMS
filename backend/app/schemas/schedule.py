@@ -38,6 +38,10 @@ class ScheduleOut(BaseModel):
         default=None,
         description="Set for stateful project agent schedules.",
     )
+    last_conversation_id: str | None = Field(
+        default=None,
+        description="Session id from the most recent successful agent schedule run.",
+    )
     mode: Literal["stateless", "stateful"] | None = Field(
         default=None,
         description="Agent schedules only.",
