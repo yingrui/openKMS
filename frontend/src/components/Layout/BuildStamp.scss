@@ -1,0 +1,18 @@
+.app-build-stamp {
+  position: fixed;
+  left: 8px;
+  bottom: 4px;
+  z-index: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  opacity: 0.25;
+  pointer-events: none;
+  user-select: none;
+}
+
+[data-theme='dark'] .app-build-stamp {
+  opacity: 0.22;
+}

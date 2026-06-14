@@ -1,6 +1,24 @@
 /// <reference types="vitest/config" />
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+function gitShortHash(): string {
+  try {
+    return execSync('git rev-parse --short=6 HEAD', { encoding: 'utf8' }).trim()
+  } catch {
+    return ''
+  }
+}
+
+/** Baked into the bundle at build/dev start; never written to source files. */
+function resolveAppVersion(): string {
+  const fromEnv = process.env.VITE_APP_VERSION?.trim()
+  if (fromEnv) return fromEnv.slice(0, 6)
+  return gitShortHash() || 'dev'
+}
+
+process.env.VITE_APP_VERSION = resolveAppVersion()
 
 // https://vite.dev/config/
 export default defineConfig({

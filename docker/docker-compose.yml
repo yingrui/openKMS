@@ -232,6 +232,7 @@ services:
         <<: *build_mirror_args
         VITE_API_URL: ""
         VITE_AUTH_MODE: local
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-}
     ports:
       - "8082:80"
     depends_on:

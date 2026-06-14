@@ -8,6 +8,7 @@ import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
+import { BuildStamp } from './components/Layout/BuildStamp';
 import { Profile } from './pages/Profile';
 import { UserSettings } from './pages/UserSettings';
 import { Login } from './pages/auth/Login';
@@ -258,6 +259,7 @@ function App() {
       </FeatureTogglesProvider>
       </SystemPublicProvider>
       </AuthProvider>
+      <BuildStamp />
     </BrowserRouter>
   );
 }
