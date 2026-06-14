@@ -25,6 +25,8 @@ x-build-mirror-args: &build_mirror_args
   UV_EXTRA_INDEX_URL: ${UV_EXTRA_INDEX_URL:-}
   NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
 
+x-openkms-base-image: &openkms_base_image openkms-base:${OPENKMS_BASE_TAG:-local}
+
 x-backend-env: &backend_env
   OPENKMS_AUTH_MODE: ${OPENKMS_AUTH_MODE:-local}
   OPENKMS_ALLOW_SIGNUP: ${OPENKMS_ALLOW_SIGNUP:-true}
@@ -143,6 +145,16 @@ services:
       retries: 10
       start_period: 40s
 
+  # Shared Python deps for backend / scheduler / worker. Rebuild when uv.lock changes.
+  openkms-base:
+    profiles: [build]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.base
+      args:
+        <<: *build_mirror_args
+    image: *openkms_base_image
+
   backend:
     build:
       context: ..
@@ -150,6 +162,7 @@ services:
       target: backend
       args:
         <<: *build_mirror_args
+        OPENKMS_BASE_IMAGE: *openkms_base_image
     environment:
       <<: *backend_env
     volumes:
@@ -170,6 +183,7 @@ services:
       target: backend
       args:
         <<: *build_mirror_args
+        OPENKMS_BASE_IMAGE: *openkms_base_image
     command: ["python", "scheduler.py"]
     environment:
       <<: *backend_env
@@ -192,6 +206,7 @@ services:
       target: worker
       args:
         <<: *build_mirror_args
+        OPENKMS_BASE_IMAGE: *openkms_base_image
     environment:
       <<: *backend_env
       OPENKMS_WORKER_NAME: ${OPENKMS_WORKER_NAME:-worker}

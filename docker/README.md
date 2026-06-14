@@ -8,20 +8,29 @@ Run **one** `scheduler` replica only. Connector cron and other `scheduled_trigge
 
 **Worker** is `platform: linux/amd64` so Paddle wheels install on Apple Silicon (QEMU). Needs **`libgl1`** in the image for OpenCV/PaddleX.
 
-From **`docker/`** (recommended — no `--env-file` flag):
+From **`docker/`** (recommended):
 
 ```bash
 cp .env.example .env   # optional — edit VLM URL, Baidu keys, secrets, mirrors
-docker compose up -d --build
+./build-and-run.sh
 ```
+
+**`build-and-run.sh`** is the default rebuild-and-restart path. It (1) builds the shared **`openkms-base`** image (cached unless `uv.lock` / `Dockerfile.base` changed), (2) rebuilds app images with the current git hash as **`VITE_APP_VERSION`** (bottom-left build stamp in the UI), (3) runs **`docker compose down`**, then (4) **`up -d`**. Run it from **`docker/`** — the script expects **`docker-compose.yml`** in the working directory.
 
 Compose loads **`.env`** in this directory automatically for `${…}` substitution in the YAML.
 
-From **repo root** (same effect; compose file lives in `docker/`):
+Manual compose (skip base rebuild or avoid `down`):
+
+```bash
+cd docker
+docker compose up -d --build
+```
+
+From **repo root**:
 
 ```bash
 cp docker/.env.example docker/.env   # optional
-docker compose -f docker/docker-compose.yml up -d --build
+cd docker && ./build-and-run.sh
 ```
 
 You do **not** need `--env-file` if the file is **`docker/.env`** (Compose reads it from the compose file’s directory). To be explicit, or if the file lives elsewhere:
@@ -120,6 +129,20 @@ docker compose -f docker/docker-compose.yml build \
 
 **Backend `uv.lock`:** wheel URLs are pinned to **Aliyun** (`mirrors.aliyun.com/pypi/packages/…`) via `[[tool.uv.index]]` in `backend/pyproject.toml`. After dependency changes run `cd backend && uv lock` on a machine that can reach the mirror. `uv sync --frozen` in Docker then downloads from China, not `files.pythonhosted.org`.
 
+### Pre-built base image (`openkms-base`)
+
+Python deps and worker system packages (LibreOffice, OpenCV libs, etc.) are baked into **`openkms-base:local`**. Worker only adds **`openkms-cli`** on top during app build.
+
+**`build-and-run.sh`** always builds **`openkms-base`** first; Docker layer cache makes that step fast when only app code changed. Rebuild the base explicitly when **`backend/uv.lock`** or **`Dockerfile.base`** changes:
+
+```bash
+cd docker
+./build-base.sh                    # base only
+./build-and-run.sh                 # full stack (base + app + restart)
+```
+
+Optional tag: **`OPENKMS_BASE_TAG=local`** in **`docker/.env`**.
+
 **Docker image pulls** (`FROM python:…`, `FROM node:…`, `ghcr.io/astral-sh/uv`) still use your Docker **registry** mirror in `daemon.json` if Hub/ghcr.io is slow—that is separate from apt/PyPI/npm.
 
 ## Files
@@ -127,7 +150,10 @@ docker compose -f docker/docker-compose.yml build \
 | File | Role |
 |------|------|
 | `.env.example` | Compose `${…}` overrides template (copy to `.env`) |
-| `Dockerfile` | `backend` + `worker` targets |
+| `build-and-run.sh` | **Recommended:** build base + app (with git stamp), restart stack |
+| `Dockerfile.base` | Pre-built `openkms-base` (shared Python deps) |
+| `build-base.sh` | Rebuild `openkms-base` only (after `uv.lock` changes) |
+| `Dockerfile` | App layers + `backend` / `worker` targets (worker adds CLI on shared base) |
 | `Dockerfile.frontend` | Vite build + nginx |
 | `apt-set-mirror.sh` | Rewrites Debian apt sources when `APT_MIRROR` is set |
 | `nginx-frontend.conf` | Reverse proxy |

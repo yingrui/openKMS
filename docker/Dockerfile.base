@@ -1,0 +1,37 @@
+# Shared deps for backend, scheduler, and worker (incl. worker system libs for parse/pipeline).
+# Rebuild when backend/uv.lock changes:  cd docker && ./build-base.sh
+# Context: repository root.
+
+FROM python:3.12-slim-bookworm
+
+WORKDIR /app
+
+ARG APT_MIRROR=
+ARG UV_INDEX_URL=
+ARG UV_EXTRA_INDEX_URL=
+COPY docker/apt-set-mirror.sh /usr/local/bin/apt-set-mirror.sh
+RUN chmod +x /usr/local/bin/apt-set-mirror.sh \
+    && APT_MIRROR="${APT_MIRROR}" apt-set-mirror.sh \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    libgl1 \
+    libgomp1 \
+    libglib2.0-0 \
+    libreoffice-writer \
+    libreoffice-impress \
+    mupdf-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+COPY backend/pyproject.toml backend/uv.lock ./
+
+ENV UV_INDEX_URL=${UV_INDEX_URL} \
+    UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
+
+RUN uv sync --frozen --no-dev --no-install-project
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONPATH=/app
