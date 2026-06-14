@@ -25,7 +25,8 @@ x-build-mirror-args: &build_mirror_args
   UV_EXTRA_INDEX_URL: ${UV_EXTRA_INDEX_URL:-}
   NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
 
-x-openkms-base-image: &openkms_base_image openkms-base:${OPENKMS_BASE_TAG:-local}
+x-openkms-backend-base-image: &openkms_backend_base_image openkms-backend-base:${OPENKMS_BACKEND_BASE_TAG:-local}
+x-openkms-worker-base-image: &openkms_worker_base_image openkms-worker-base:${OPENKMS_WORKER_BASE_TAG:-local}
 
 x-backend-env: &backend_env
   OPENKMS_AUTH_MODE: ${OPENKMS_AUTH_MODE:-local}
@@ -145,15 +146,26 @@ services:
       retries: 10
       start_period: 40s
 
-  # Shared Python deps for backend / scheduler / worker. Rebuild when uv.lock changes.
-  openkms-base:
+  # Pre-built bases. Rebuild when uv.lock / openkms-cli deps change (see docker/build-base.sh).
+  openkms-backend-base:
     profiles: [build]
     build:
       context: ..
-      dockerfile: docker/Dockerfile.base
+      dockerfile: docker/Dockerfile.backend-base
       args:
         <<: *build_mirror_args
-    image: *openkms_base_image
+    image: *openkms_backend_base_image
+
+  openkms-worker-base:
+    profiles: [build]
+    platform: linux/amd64
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.worker-base
+      args:
+        <<: *build_mirror_args
+        OPENKMS_BACKEND_BASE_IMAGE: *openkms_backend_base_image
+    image: *openkms_worker_base_image
 
   backend:
     build:
@@ -162,7 +174,7 @@ services:
       target: backend
       args:
         <<: *build_mirror_args
-        OPENKMS_BASE_IMAGE: *openkms_base_image
+        OPENKMS_BACKEND_BASE_IMAGE: *openkms_backend_base_image
     environment:
       <<: *backend_env
     volumes:
@@ -183,7 +195,7 @@ services:
       target: backend
       args:
         <<: *build_mirror_args
-        OPENKMS_BASE_IMAGE: *openkms_base_image
+        OPENKMS_BACKEND_BASE_IMAGE: *openkms_backend_base_image
     command: ["python", "scheduler.py"]
     environment:
       <<: *backend_env
@@ -206,7 +218,7 @@ services:
       target: worker
       args:
         <<: *build_mirror_args
-        OPENKMS_BASE_IMAGE: *openkms_base_image
+        OPENKMS_WORKER_BASE_IMAGE: *openkms_worker_base_image
     environment:
       <<: *backend_env
       OPENKMS_WORKER_NAME: ${OPENKMS_WORKER_NAME:-worker}

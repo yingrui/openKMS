@@ -1,5 +1,4 @@
-# Shared deps for backend, scheduler, and worker (incl. worker system libs for parse/pipeline).
-# Rebuild when backend/uv.lock changes:  cd docker && ./build-base.sh
+# Backend + scheduler deps (libpq, backend uv sync). Rebuild when backend/uv.lock changes.
 # Context: repository root.
 
 FROM python:3.12-slim-bookworm
@@ -16,12 +15,6 @@ RUN chmod +x /usr/local/bin/apt-set-mirror.sh \
     && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
-    libgl1 \
-    libgomp1 \
-    libglib2.0-0 \
-    libreoffice-writer \
-    libreoffice-impress \
-    mupdf-tools \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv

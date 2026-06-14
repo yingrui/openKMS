@@ -1,0 +1,33 @@
+# Worker deps on backend base: parse system libs + openkms-cli extras (Paddle wheels, etc.).
+# Rebuild when backend/uv.lock, openkms-cli/pyproject.toml, or openkms-cli/uv.lock changes.
+# Build linux/amd64 (see compose worker platform) so Paddle wheels install on Apple Silicon.
+# Context: repository root.
+
+ARG OPENKMS_BACKEND_BASE_IMAGE=openkms-backend-base:local
+FROM ${OPENKMS_BACKEND_BASE_IMAGE}
+
+ARG APT_MIRROR=
+COPY docker/apt-set-mirror.sh /usr/local/bin/apt-set-mirror.sh
+RUN chmod +x /usr/local/bin/apt-set-mirror.sh \
+    && APT_MIRROR="${APT_MIRROR}" apt-set-mirror.sh \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libgomp1 \
+    libglib2.0-0 \
+    libreoffice-writer \
+    libreoffice-impress \
+    mupdf-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY openkms-cli/pyproject.toml openkms-cli/uv.lock openkms-cli/README.md /openkms-cli/
+COPY openkms-cli/openkms_cli /openkms-cli/openkms_cli
+COPY openkms-cli/schemas /openkms-cli/schemas
+
+ARG UV_INDEX_URL=
+ARG UV_EXTRA_INDEX_URL=
+ENV UV_INDEX_URL=${UV_INDEX_URL} \
+    UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
+
+RUN cd /openkms-cli \
+    && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb,parse,baidu]"

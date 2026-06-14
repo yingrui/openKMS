@@ -1,8 +1,8 @@
-# Backend + worker on a shared pre-built base (docker/Dockerfile.base → openkms-base:local).
+# Backend + worker app layers on pre-built bases (docker/Dockerfile.*-base).
 # Context: repository root.
 
-ARG OPENKMS_BASE_IMAGE=openkms-base:local
-FROM ${OPENKMS_BASE_IMAGE} AS base
+ARG OPENKMS_BACKEND_BASE_IMAGE=openkms-backend-base:local
+FROM ${OPENKMS_BACKEND_BASE_IMAGE} AS base
 
 COPY backend/app ./app
 COPY backend/alembic ./alembic
@@ -21,12 +21,16 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
 
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8102"]
 
-# Worker adds openkms-cli on top of the shared base (linux/amd64 for Paddle wheels).
-FROM base AS worker
+# Worker: openkms-cli parse/pipeline deps are in openkms-worker-base; copy fresh source here.
+ARG OPENKMS_WORKER_BASE_IMAGE=openkms-worker-base:local
+FROM ${OPENKMS_WORKER_BASE_IMAGE} AS worker
+
+COPY backend/app ./app
+COPY backend/worker.py .
 
 COPY openkms-cli /openkms-cli
 
-RUN cd /openkms-cli && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb,parse,baidu]"
+RUN uv sync --frozen --no-dev
 
 WORKDIR /app
 
