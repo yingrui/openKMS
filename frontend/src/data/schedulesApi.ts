@@ -26,6 +26,8 @@ export interface Schedule {
 export interface ScheduleListResponse {
   items: Schedule[];
   total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface ProjectAgentSchedule extends Schedule {
@@ -66,9 +68,16 @@ async function parseError(res: Response): Promise<string> {
   return res.statusText;
 }
 
-export async function fetchSchedules(): Promise<ScheduleListResponse> {
+export async function fetchSchedules(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ScheduleListResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/schedules`, {
+  const q = new URLSearchParams();
+  if (params?.limit != null) q.set('limit', String(params.limit));
+  if (params?.offset != null) q.set('offset', String(params.offset));
+  const qs = q.toString();
+  const res = await authAwareFetch(`${config.apiUrl}/api/schedules${qs ? `?${qs}` : ''}`, {
     headers: { ...headers },
     credentials: 'include',
   });

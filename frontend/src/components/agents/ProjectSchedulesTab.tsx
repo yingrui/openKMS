@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { CalendarClock, Loader2, Play, Plus, Trash2 } from 'lucide-react';
@@ -14,6 +14,8 @@ import {
   type ProjectAgentSchedule,
   type ScheduleMode,
 } from '../../data/schedulesApi';
+import { fetchSystemSettings } from '../../data/systemApi';
+import { timezoneSelectOptions } from '../../utils/commonTimezones';
 
 interface Props {
   projectId: string;
@@ -40,6 +42,14 @@ export function ProjectSchedulesTab({ projectId }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(defaultForm);
   const [creating, setCreating] = useState(false);
+  const [defaultTimezone, setDefaultTimezone] = useState('UTC');
+
+  const timezoneOptions = useMemo(() => timezoneSelectOptions(form.timezone), [form.timezone]);
+
+  const openCreateForm = () => {
+    setForm({ ...defaultForm, timezone: defaultTimezone });
+    setShowForm(true);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +69,11 @@ export function ProjectSchedulesTab({ projectId }: Props) {
 
   useEffect(() => {
     void load();
+    fetchSystemSettings()
+      .then((s) => setDefaultTimezone(s.default_timezone?.trim() || 'UTC'))
+      .catch(() => {
+        setDefaultTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+      });
   }, [load]);
 
   const onCreate = async () => {
@@ -155,7 +170,9 @@ export function ProjectSchedulesTab({ projectId }: Props) {
 
       {items.length === 0 && !showForm ? (
         <p className="project-settings-skills-empty">{t('settings.schedules.empty')}</p>
-      ) : (
+      ) : null}
+
+      {items.length > 0 ? (
         <div className="project-settings-skills-table-wrap">
           <table className="project-settings-skills-table">
             <thead>
@@ -213,7 +230,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {showForm ? (
         <div className="project-settings-schedules-form">
@@ -282,12 +299,17 @@ export function ProjectSchedulesTab({ projectId }: Props) {
           </div>
           <div className="project-settings-field">
             <label htmlFor="schedule-timezone">{t('settings.schedules.fieldTimezone')}</label>
-            <input
+            <select
               id="schedule-timezone"
-              type="text"
               value={form.timezone}
               onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
-            />
+            >
+              {timezoneOptions.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="project-settings-field">
             <label htmlFor="schedule-prompt">{t('settings.schedules.fieldPrompt')}</label>
@@ -325,7 +347,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
         </div>
       ) : (
         <div className="project-settings-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => setShowForm(true)}>
+          <button type="button" className="btn btn-secondary" onClick={openCreateForm}>
             <Plus size={16} aria-hidden />
             {t('settings.schedules.add')}
           </button>

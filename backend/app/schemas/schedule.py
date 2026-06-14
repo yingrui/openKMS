@@ -47,6 +47,8 @@ class ScheduleOut(BaseModel):
 class ScheduleListResponse(BaseModel):
     items: list[ScheduleOut]
     total: int
+    limit: int = 25
+    offset: int = 0
 
 
 class SchedulePatch(BaseModel):

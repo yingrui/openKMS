@@ -1,19 +1,8 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConnectorSyncSchedule } from '../../data/connectorsApi';
+import { timezoneSelectOptions } from '../../utils/commonTimezones';
 import { dailyCronFromForm, type SyncScheduleFormState } from './connectorScheduleUtils';
-
-const COMMON_TIMEZONES = [
-  'UTC',
-  'Asia/Shanghai',
-  'Asia/Hong_Kong',
-  'Asia/Tokyo',
-  'Asia/Singapore',
-  'Europe/London',
-  'Europe/Berlin',
-  'America/New_York',
-  'America/Los_Angeles',
-];
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
@@ -52,11 +41,7 @@ export function ConnectorCronSettings({
   const timeValue = `${pad2(value.hour)}:${pad2(value.minute)}`;
   const cronPreview = value.enabled ? dailyCronFromForm(value) : null;
 
-  const timezoneOptions = useMemo(() => {
-    const set = new Set(COMMON_TIMEZONES);
-    if (value.timezone) set.add(value.timezone);
-    return [...set];
-  }, [value.timezone]);
+  const timezoneOptions = useMemo(() => timezoneSelectOptions(value.timezone), [value.timezone]);
 
   return (
     <div className="connector-cron-settings">

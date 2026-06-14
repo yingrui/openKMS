@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_any_permission
@@ -15,6 +15,7 @@ from app.models.project import Project
 from app.models.scheduled_trigger import (
     PROJECT_AGENT_SCHEDULE_KINDS,
     SCHEDULE_KIND_CONNECTOR_SYNC,
+    SCHEDULE_KIND_PROJECT_AGENT_STATEFUL,
     ScheduledTrigger,
 )
 from app.schemas.schedule import ScheduleListResponse, ScheduleOut, SchedulePatch, ScheduleRunNowResponse
@@ -77,12 +78,27 @@ def _to_schedule_out(row: ScheduledTrigger) -> ScheduleOut:
         Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE))
     ],
 )
-async def list_schedules(db: AsyncSession = Depends(get_db)):
+async def list_schedules(
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+):
+    total = int(
+        (await db.execute(select(func.count()).select_from(ScheduledTrigger))).scalar_one()
+    )
     result = await db.execute(
-        select(ScheduledTrigger).order_by(ScheduledTrigger.display_name.asc())
+        select(ScheduledTrigger)
+        .order_by(ScheduledTrigger.display_name.asc())
+        .limit(limit)
+        .offset(offset)
     )
     rows = result.scalars().all()
-    return ScheduleListResponse(items=[_to_schedule_out(r) for r in rows], total=len(rows))
+    return ScheduleListResponse(
+        items=[_to_schedule_out(r) for r in rows],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.patch(

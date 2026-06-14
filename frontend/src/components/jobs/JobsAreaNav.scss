@@ -1,15 +1,15 @@
 .jobs-area-nav {
   display: flex;
-  gap: 4px;
-  margin-bottom: 24px;
-  padding: 4px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+  padding: var(--space-1);
   background: var(--color-bg-muted);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   width: fit-content;
 }
 
 .jobs-area-nav-link {
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
