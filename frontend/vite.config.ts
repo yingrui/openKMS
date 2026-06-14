@@ -28,8 +28,18 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules/mermaid')) return 'mermaid';
-          if (id.includes('node_modules/three')) return 'three';
           if (id.includes('node_modules/katex')) return 'katex';
+          // Keep three + 3d-force-graph stack in one chunk — splitting three out causes
+          // "Cannot access … before initialization" TDZ errors at runtime (Rollup cycle).
+          if (
+            id.includes('node_modules/three') ||
+            id.includes('react-force-graph-3d') ||
+            id.includes('3d-force-graph') ||
+            id.includes('three-forcegraph') ||
+            id.includes('three-render-objects')
+          ) {
+            return 'graph-3d';
+          }
           if (id.includes('force-graph') || id.includes('d3-force') || id.includes('d3-quadtree')) {
             return 'force-graph';
           }
