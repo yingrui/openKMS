@@ -1,7 +1,10 @@
 # Backend + worker app layers on pre-built bases (docker/Dockerfile.*-base).
 # Context: repository root.
 
+# Both ARGs must precede the first FROM (BuildKit requirement for FROM ${…}).
 ARG OPENKMS_BACKEND_BASE_IMAGE=openkms-backend-base:local
+ARG OPENKMS_WORKER_BASE_IMAGE=openkms-worker-base:local
+
 FROM ${OPENKMS_BACKEND_BASE_IMAGE} AS base
 
 COPY backend/app ./app
@@ -22,7 +25,6 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8102"]
 
 # Worker: openkms-cli parse/pipeline deps are in openkms-worker-base; copy fresh source here.
-ARG OPENKMS_WORKER_BASE_IMAGE=openkms-worker-base:local
 FROM ${OPENKMS_WORKER_BASE_IMAGE} AS worker
 
 COPY backend/app ./app
