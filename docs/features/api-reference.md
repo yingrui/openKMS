@@ -293,9 +293,9 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | POST | `/api/connectors/{id}/probe` | **Tushare only:** live **daily** (历史日线) probe from the detail **Probe** tab (`body`: `{ "api_name"?: "daily", "ts_code"?, "trade_date"?, "start_date"?, "end_date"?, "limit"?, "offset"? }` — at least one of the date/code filters required); returns `{ api_name, params, row_count, truncated, rows[], debug? }` (`debug.endpoint`: connector `api_base_url`, default `https://api.tushare.pro`); no dataset writes; **429** when rate-limited |
 | PUT | `/api/connectors/{id}` | Update connector; replace `inputs` / `outputs` / `settings` when provided (output datasets validated against slot schema; **sync** `settings.sync_schedule` write-through to `scheduled_triggers`); merge `secrets` or send `{}` to clear secrets |
 | DELETE | `/api/connectors/{id}` | Delete connector and its `scheduled_triggers` row |
-| GET | `/api/schedules` | List central schedule registry (`connectors:read` or `connectors:write`) |
-| PATCH | `/api/schedules/{id}` | Update schedule (`enabled`, `cron`, `timezone`); sync kinds mirror `settings.sync_schedule` on the connector (`connectors:write`) |
-| POST | `/api/schedules/{id}/run-now` | Queue the scheduled target now (`run_connector_sync` for `connector_sync`); returns `{ job_id }` (202) |
+| GET | `/api/schedules` | List central schedule registry (`connectors:read/write` or `projects:read/write`); rows include `connector_id`, `project_id`, `mode` when applicable |
+| PATCH | `/api/schedules/{id}` | Update schedule (`enabled`, `cron`, `timezone`; agent kinds also `prompt`); sync kinds mirror `settings.sync_schedule` on the connector (`connectors:write` or `projects:write`) |
+| POST | `/api/schedules/{id}/run-now` | Queue the scheduled target now (`run_connector_sync` or `run_scheduled_project_agent`); returns `{ job_id }` (202) |
 | POST | `/internal-api/process-heartbeat` | **Internal service client only**; worker/scheduler liveness (`role`, `instance_id`); in-memory registry for Console health (no history table) |
 | GET | `/api/datasets` | List datasets (`console:datasets` or `ontology:read`; filtered by dataset ACL) |
 | GET | `/api/datasets/from-source/{id}` | List tables from PostgreSQL data source (`console:datasets`) |
@@ -421,6 +421,9 @@ Deep Agents runtime in `backend/app/services/deep_agents/`. Disk root: `OPENKMS_
 | GET/POST | `/api/projects/{id}/conversations/{cid}/messages` | History; POST body: `content`, optional `stream`, optional `session_id` (Langfuse session on Deep Agents), optional `mode` (`plan` \| agent). **`stream: true`** → NDJSON (`delta`, `tool_*`, `subagent_*`, `todo`, `interrupt`, `done`). Streamed assistant rows persist `tool_calls` (`wiki_tool_traces_v1`, incl. input/output) for UI replay |
 | DELETE | `/api/projects/{id}/conversations/{cid}/messages/from/{message_id}` | Delete this message and everything after it; clears LangGraph checkpoint thread (revert / regenerate) |
 | POST | `/api/projects/{id}/conversations/{cid}/messages/resume` | HITL resume (`decision`: approve/reject/edit/respond) |
+| GET/POST | `/api/projects/{id}/schedules` | List / create project agent cron schedules (`projects:read` / `projects:write`); kinds `project_agent_stateless` (new session each run) or `project_agent_stateful` (fixed `conversation_id`); body: `display_name`, `mode`, `cron`, `timezone`, `prompt`, `enabled`, optional `on_run_completed` (`keep` \| `delete`, stateless only), optional `conversation_id` (stateful) |
+| PATCH/DELETE | `/api/projects/{id}/schedules/{sid}` | Update prompt/cron/enabled or delete schedule |
+| POST | `/api/projects/{id}/schedules/{sid}/run-now` | Queue `run_scheduled_project_agent`; returns `{ job_id }` (202) |
 | POST | `/api/projects/{id}/git/init` | Local `git init` |
 | GET | `/api/projects/{id}/git/status` | Porcelain status |
 | GET | `/api/projects/{id}/git/log` | Recent commits |

@@ -51,7 +51,7 @@ def test_dispatch_defers_due_trigger():
             AsyncMock(),
         ),
         patch("app.services.schedule_dispatch.is_cron_due_for_slot", return_value=True),
-        patch("app.jobs.defer.defer_task", AsyncMock(return_value=99)) as defer_mock,
+        patch("app.services.schedule_handlers.defer_scheduled_trigger", AsyncMock(return_value=99)) as defer_mock,
     ):
         count = asyncio.run(dispatch_due_schedules(session, slot))
 
@@ -119,7 +119,7 @@ def test_dispatch_does_not_defer_when_no_enabled_triggers():
             "app.services.schedule_dispatch.release_scheduler_lock",
             AsyncMock(),
         ),
-        patch("app.jobs.defer.defer_task", AsyncMock(return_value=99)) as defer_mock,
+        patch("app.services.schedule_handlers.defer_scheduled_trigger", AsyncMock(return_value=99)) as defer_mock,
     ):
         count = asyncio.run(dispatch_due_schedules(session, slot))
 

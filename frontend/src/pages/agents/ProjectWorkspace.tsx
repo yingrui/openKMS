@@ -107,6 +107,19 @@ export function ProjectWorkspace() {
     [filesRailWidthPx, clampFilesRailWidth],
   );
 
+  const onFilesRailWidthFromPanel = useCallback(
+    (width: number) => {
+      const next = clampFilesRailWidth(width);
+      setFilesRailWidthPx(next);
+      try {
+        localStorage.setItem(FILES_RAIL_WIDTH_KEY, String(next));
+      } catch {
+        /* ignore */
+      }
+    },
+    [clampFilesRailWidth],
+  );
+
   const loadProject = useCallback(async () => {
     setProject(await getProject(projectId));
   }, [projectId]);
@@ -171,6 +184,7 @@ export function ProjectWorkspace() {
           gitInitialized={project.git_initialized}
           onGitChange={loadProject}
           railWidthPx={filesRailWidth}
+          onRailWidthChange={onFilesRailWidthFromPanel}
         />
       </div>
     </div>

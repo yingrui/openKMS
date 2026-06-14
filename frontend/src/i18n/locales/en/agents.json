@@ -189,6 +189,7 @@
     "tabGeneral": "General",
     "tabAgent": "Agent",
     "tabSkills": "Skills",
+    "tabSchedules": "Schedules",
     "generalHeading": "General",
     "agentHeading": "Agent configuration",
     "agentHint": "Web search and advanced runtime settings. Stored in project settings.",
@@ -234,6 +235,57 @@
       "uninstallConfirm": "Remove {{skill}} from this project?",
       "uninstallSuccess": "{{skill}} removed",
       "uninstallError": "Uninstall failed"
+    },
+    "schedules": {
+      "heading": "Scheduled agent runs",
+      "hint": "Run the project agent on a cron schedule with a fixed prompt. Plan mode and human-in-the-loop approvals are not supported for scheduled runs.",
+      "hubHint": "All schedules also appear in the central",
+      "hubLink": "Schedules hub",
+      "loading": "Loading schedules…",
+      "empty": "No agent schedules yet.",
+      "loadFailed": "Could not load schedules",
+      "createSuccess": "Schedule created",
+      "createFailed": "Could not create schedule",
+      "updateFailed": "Could not update schedule",
+      "deleteConfirm": "Delete schedule \"{{name}}\"?",
+      "deleteSuccess": "Schedule deleted",
+      "deleteFailed": "Could not delete schedule",
+      "runQueued": "Run #{{id}} queued",
+      "runFailed": "Could not queue run",
+      "runNow": "Run now",
+      "delete": "Delete",
+      "add": "Add schedule",
+      "create": "Create schedule",
+      "formTitle": "New schedule",
+      "dash": "—",
+      "colName": "Name",
+      "colMode": "Mode",
+      "colCron": "Cron",
+      "colEnabled": "Enabled",
+      "colNextRun": "Next run",
+      "colActions": "Actions",
+      "fieldName": "Name",
+      "fieldMode": "Mode",
+      "fieldConversation": "Session",
+      "conversationPlaceholder": "Select a session…",
+      "conversationRequired": "Select a session for stateful schedules",
+      "fieldOnComplete": "After each run",
+      "fieldCron": "Cron expression",
+      "fieldTimezone": "Timezone",
+      "fieldPrompt": "Prompt",
+      "fieldEnabled": "Enabled",
+      "mode": {
+        "stateless": "Stateless",
+        "stateful": "Stateful"
+      },
+      "modeHint": {
+        "stateless": "Starts a new session each run. Optionally delete the session when finished.",
+        "stateful": "Reuses one existing session so the agent keeps context between runs."
+      },
+      "onComplete": {
+        "keep": "Keep session",
+        "delete": "Delete session"
+      }
     }
   },
   "gitCredentials": {

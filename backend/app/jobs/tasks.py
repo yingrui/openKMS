@@ -842,3 +842,47 @@ async def run_connector_sync(
 
     if job_id is not None:
         await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
+
+
+@job_app.task(name="run_scheduled_project_agent", pass_context=True)
+async def run_scheduled_project_agent(context: JobContext, trigger_id: str) -> None:
+    """Run a scheduled project agent turn (stateful or stateless)."""
+    from app.database import async_session_maker
+    from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.project_agent_schedule import execute_scheduled_project_agent, update_trigger_after_agent_job
+
+    job_id = int(context.job.id) if context.job and context.job.id else None
+    log_lines: list[str] = []
+
+    async with async_session_maker() as session:
+        trigger = await session.get(ScheduledTrigger, trigger_id)
+        if not trigger or trigger.kind not in PROJECT_AGENT_SCHEDULE_KINDS:
+            logger.info("Skipping scheduled agent: trigger %s missing or wrong kind", trigger_id)
+            return
+        if not trigger.enabled:
+            logger.info("Skipping scheduled agent: trigger %s disabled", trigger_id)
+            return
+
+        log_lines.append(f"Scheduled agent started: {trigger.display_name} ({trigger.kind})")
+        try:
+            await execute_scheduled_project_agent(session, trigger)
+            await update_trigger_after_agent_job(
+                session, trigger.id, job_id=job_id, status="completed"
+            )
+            await session.commit()
+            log_lines.append("Scheduled agent completed")
+            logger.info("Scheduled agent finished for trigger %s", trigger_id)
+        except Exception as exc:
+            await update_trigger_after_agent_job(
+                session, trigger.id, job_id=job_id, status="failed"
+            )
+            await session.commit()
+            log_lines.append(f"Scheduled agent failed: {exc}")
+            logger.exception("Scheduled agent failed for trigger %s", trigger_id)
+            if job_id is not None:
+                await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
+            raise
+
+    if job_id is not None:
+        await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")

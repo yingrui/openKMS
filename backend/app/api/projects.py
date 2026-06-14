@@ -434,6 +434,10 @@ from app.api.project_conversations import router as project_conversations_router
 
 router.include_router(project_conversations_router)
 
+from app.api.project_schedules import build_project_schedules_router  # noqa: E402
+
+router.include_router(build_project_schedules_router())
+
 # Remote git (Phase 6)
 from app.api.project_git_remote import router as project_git_remote_router  # noqa: E402
 

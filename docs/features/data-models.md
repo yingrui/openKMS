@@ -159,7 +159,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 
 ### ScheduledTrigger
 
-- `id`, `kind` (v1: `connector_sync`), `target_id` (e.g. connector id), `display_name`, `cron`, `timezone`, `enabled`, `last_fired_slot`, `last_run_at`, `last_status`, `last_job_id`, `created_at`, `updated_at`
+- `id`, `kind` (`connector_sync`, `project_agent_stateless`, `project_agent_stateful`), `target_id` (connector id; stateless agent: per-schedule uuid; stateful agent: `conversation_id`), `display_name`, `cron`, `timezone`, `enabled`, `last_fired_slot`, `last_run_at`, `last_status`, `last_job_id`, **`config`** (JSONB: agent schedules store `project_id`, `owner_sub`, `prompt`, optional `on_run_completed`, `conversation_id`, `oidc_realm_roles`), `created_at`, `updated_at`
 - UNIQUE (`kind`, `target_id`); scanned each minute by **`scheduler.py`**; backfilled from connector `sync_schedule` on migration
 
 ### Dataset

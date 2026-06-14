@@ -8,15 +8,13 @@ from datetime import datetime, timezone
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.scheduled_trigger import SCHEDULE_KIND_CONNECTOR_SYNC, ScheduledTrigger
+from app.models.scheduled_trigger import ScheduledTrigger
+from app.services.schedule_handlers import defer_scheduled_trigger
 from app.services.schedule_slots import floor_to_minute, is_cron_due_for_slot
 
 logger = logging.getLogger(__name__)
 
-# Stable advisory lock id for single-scheduler dispatch (bigint).
 SCHEDULER_ADVISORY_LOCK_ID = 0x4F4B4D53534348
-
-CONNECTOR_SYNC_LOCK_PREFIX = "connector_sync:"
 
 
 async def try_acquire_scheduler_lock(session: AsyncSession) -> bool:
@@ -36,9 +34,6 @@ async def release_scheduler_lock(session: AsyncSession) -> None:
 
 async def dispatch_due_schedules(session: AsyncSession, slot: datetime | None = None) -> int:
     """Defer jobs for triggers due at ``slot`` (UTC minute floor). Returns defer count."""
-    from app.jobs.defer import defer_task
-    from app.jobs.tasks import run_connector_sync
-
     slot_utc = floor_to_minute(slot or datetime.now(timezone.utc))
     deferred = 0
 
@@ -69,14 +64,15 @@ async def dispatch_due_schedules(session: AsyncSession, slot: datetime | None = 
                 )
                 continue
 
-            job_id: int | None = None
-            if trigger.kind == SCHEDULE_KIND_CONNECTOR_SYNC:
-                job_id = await defer_task(
-                    run_connector_sync.configure(lock=f"{CONNECTOR_SYNC_LOCK_PREFIX}{trigger.target_id}"),
-                    connector_id=trigger.target_id,
+            try:
+                job_id = await defer_scheduled_trigger(trigger)
+            except ValueError as exc:
+                logger.warning(
+                    "Skipping trigger %s (%s): %s",
+                    trigger.id,
+                    trigger.display_name,
+                    exc,
                 )
-            else:
-                logger.warning("Unknown schedule kind %s for trigger %s", trigger.kind, trigger.id)
                 continue
 
             trigger.last_fired_slot = slot_utc
@@ -109,6 +105,8 @@ async def update_trigger_after_sync(
     status: str,
 ) -> None:
     """Record completion/failure on the registry row after ``run_connector_sync``."""
+    from app.models.scheduled_trigger import SCHEDULE_KIND_CONNECTOR_SYNC
+
     result = await session.execute(
         select(ScheduledTrigger).where(
             ScheduledTrigger.kind == SCHEDULE_KIND_CONNECTOR_SYNC,

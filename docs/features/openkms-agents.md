@@ -5,7 +5,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 | Area | Status |
 |------|--------|
 | Sidebar + `/agents` (Projects) + `/agents/skills` (Skills) + `/projects/{id}/sessions/{sessionId}` | ✅ |
-| Project settings page `/projects/{id}/settings` (General + Agent + Skills tabs) | ✅ |
+| Project settings page `/projects/{id}/settings` (General + Agent + Skills + Schedules tabs) | ✅ |
 | Session API key (per conversation, creator identity) | ✅ |
 | Global skills registry + project install | ✅ |
 | Project CRUD + files API | ✅ |
@@ -50,6 +50,15 @@ HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar 
 - Set **default version** per skill (used when installing without picking a version).
 - Toggle **install on new projects** in skill settings (`is_default`); matching skills auto-install when creating a project.
 - **Project settings → Skills:** install/update/uninstall skills from the registry.
+
+## Scheduled agent runs
+
+- **Project settings → Schedules:** create cron jobs that send a fixed **prompt** to the project agent.
+- **Stateless:** new chat session each run; optional **delete session** after completion.
+- **Stateful:** reuses one existing session (`conversation_id`); keeps context between runs.
+- **Not supported:** plan mode and HITL (runs fail if the agent pauses for approval).
+- Auth uses a **session API key** minted for the schedule owner (`owner_sub` + optional realm roles in `config`).
+- All rows appear in **Job runs → Schedules** (`/job-runs/schedules`); worker task **`run_scheduled_project_agent`**.
 
 ## Configuration
 

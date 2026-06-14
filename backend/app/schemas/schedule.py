@@ -5,7 +5,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ScheduleKind = Literal["connector_sync"]
+ScheduleKind = Literal[
+    "connector_sync",
+    "project_agent_stateless",
+    "project_agent_stateful",
+]
 ScheduleStatusKind = Literal["queued", "running", "completed", "failed"]
 
 
@@ -26,6 +30,18 @@ class ScheduleOut(BaseModel):
         default=None,
         description="Set for connector_sync rows (same as target_id).",
     )
+    project_id: str | None = Field(
+        default=None,
+        description="Set for project agent schedule rows.",
+    )
+    conversation_id: str | None = Field(
+        default=None,
+        description="Set for stateful project agent schedules.",
+    )
+    mode: Literal["stateless", "stateful"] | None = Field(
+        default=None,
+        description="Agent schedules only.",
+    )
 
 
 class ScheduleListResponse(BaseModel):
@@ -37,6 +53,7 @@ class SchedulePatch(BaseModel):
     enabled: bool | None = None
     cron: str | None = None
     timezone: str | None = None
+    prompt: str | None = Field(default=None, max_length=48000)
 
 
 class ScheduleRunNowResponse(BaseModel):

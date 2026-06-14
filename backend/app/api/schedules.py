@@ -8,15 +8,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import require_auth, require_any_permission, require_permission
+from app.api.auth import require_auth, require_any_permission
 from app.database import get_db
 from app.models.connector import Connector
-from app.models.scheduled_trigger import SCHEDULE_KIND_CONNECTOR_SYNC, ScheduledTrigger
+from app.models.project import Project
+from app.models.scheduled_trigger import (
+    PROJECT_AGENT_SCHEDULE_KINDS,
+    SCHEDULE_KIND_CONNECTOR_SYNC,
+    ScheduledTrigger,
+)
 from app.schemas.schedule import ScheduleListResponse, ScheduleOut, SchedulePatch, ScheduleRunNowResponse
 from app.services.connector_catalog import CATEGORY_SYNC, get_kind_spec, normalize_and_validate_settings
 from app.services.connector_sync.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
-from app.services.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE
-from app.services.connector_catalog import validate_sync_run_outputs
+from app.services.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.project_agent_schedule import normalize_agent_schedule_config
 from app.services.scheduled_triggers import upsert_connector_sync_trigger
 
 router = APIRouter(
@@ -24,6 +29,16 @@ router = APIRouter(
     tags=["schedules"],
     dependencies=[Depends(require_auth)],
 )
+
+
+def _agent_fields(row: ScheduledTrigger) -> dict:
+    cfg = row.config if isinstance(row.config, dict) else {}
+    mode = "stateful" if row.kind == SCHEDULE_KIND_PROJECT_AGENT_STATEFUL else "stateless"
+    return {
+        "project_id": str(cfg.get("project_id") or "") or None,
+        "conversation_id": cfg.get("conversation_id"),
+        "mode": mode,
+    }
 
 
 def _to_schedule_out(row: ScheduledTrigger) -> ScheduleOut:
@@ -34,6 +49,7 @@ def _to_schedule_out(row: ScheduledTrigger) -> ScheduleOut:
         except ValueError:
             next_run = None
     connector_id = row.target_id if row.kind == SCHEDULE_KIND_CONNECTOR_SYNC else None
+    agent_extra = _agent_fields(row) if row.kind in PROJECT_AGENT_SCHEDULE_KINDS else {}
     return ScheduleOut(
         id=row.id,
         kind=row.kind,  # type: ignore[arg-type]
@@ -48,13 +64,18 @@ def _to_schedule_out(row: ScheduledTrigger) -> ScheduleOut:
         last_status=row.last_status,
         last_job_id=row.last_job_id,
         connector_id=connector_id,
+        project_id=agent_extra.get("project_id"),
+        conversation_id=agent_extra.get("conversation_id"),
+        mode=agent_extra.get("mode"),
     )
 
 
 @router.get(
     "",
     response_model=ScheduleListResponse,
-    dependencies=[Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE))],
+    dependencies=[
+        Depends(require_any_permission(PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE))
+    ],
 )
 async def list_schedules(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -67,7 +88,7 @@ async def list_schedules(db: AsyncSession = Depends(get_db)):
 @router.patch(
     "/{schedule_id}",
     response_model=ScheduleOut,
-    dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))],
+    dependencies=[Depends(require_any_permission(PERM_CONNECTORS_WRITE, PERM_PROJECTS_WRITE))],
 )
 async def patch_schedule(schedule_id: str, body: SchedulePatch, db: AsyncSession = Depends(get_db)):
     row = await db.get(ScheduledTrigger, schedule_id)
@@ -101,6 +122,17 @@ async def patch_schedule(schedule_id: str, body: SchedulePatch, db: AsyncSession
             await upsert_connector_sync_trigger(db, connector)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+    elif row.kind in PROJECT_AGENT_SCHEDULE_KINDS:
+        cfg = dict(row.config) if isinstance(row.config, dict) else {}
+        if body.prompt is not None:
+            cfg["prompt"] = body.prompt.strip()
+        try:
+            normalize_agent_schedule_config(cfg)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        row.config = cfg
+    else:
+        raise HTTPException(status_code=400, detail="Unsupported schedule kind")
 
     await db.commit()
     await db.refresh(row)
@@ -111,36 +143,40 @@ async def patch_schedule(schedule_id: str, body: SchedulePatch, db: AsyncSession
     "/{schedule_id}/run-now",
     response_model=ScheduleRunNowResponse,
     status_code=202,
-    dependencies=[Depends(require_permission(PERM_CONNECTORS_WRITE))],
+    dependencies=[Depends(require_any_permission(PERM_CONNECTORS_WRITE, PERM_PROJECTS_WRITE))],
 )
 async def run_schedule_now(schedule_id: str, db: AsyncSession = Depends(get_db)):
     row = await db.get(ScheduledTrigger, schedule_id)
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
-    if row.kind != SCHEDULE_KIND_CONNECTOR_SYNC:
+
+    if row.kind == SCHEDULE_KIND_CONNECTOR_SYNC:
+        connector = await db.get(Connector, row.target_id)
+        if not connector:
+            raise HTTPException(status_code=404, detail="Connector not found")
+        spec = get_kind_spec(connector.kind)
+        if not spec or spec.category != CATEGORY_SYNC:
+            raise HTTPException(status_code=400, detail="Connector kind does not support sync")
+        if not connector.enabled:
+            raise HTTPException(status_code=400, detail="Connector is disabled")
+        from app.services.connector_catalog import validate_sync_run_outputs
+
+        try:
+            validate_sync_run_outputs(connector.kind, connector.outputs)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    elif row.kind in PROJECT_AGENT_SCHEDULE_KINDS:
+        cfg = row.config if isinstance(row.config, dict) else {}
+        project_id = str(cfg.get("project_id") or "")
+        project = await db.get(Project, project_id)
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+    else:
         raise HTTPException(status_code=400, detail="Unsupported schedule kind")
 
-    connector = await db.get(Connector, row.target_id)
-    if not connector:
-        raise HTTPException(status_code=404, detail="Connector not found")
-    spec = get_kind_spec(connector.kind)
-    if not spec or spec.category != CATEGORY_SYNC:
-        raise HTTPException(status_code=400, detail="Connector kind does not support sync")
-    if not connector.enabled:
-        raise HTTPException(status_code=400, detail="Connector is disabled")
-    try:
-        validate_sync_run_outputs(connector.kind, connector.outputs)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    from app.services.schedule_handlers import defer_scheduled_trigger
 
-    from app.jobs.defer import defer_task
-    from app.jobs.tasks import run_connector_sync
-    from app.services.schedule_dispatch import CONNECTOR_SYNC_LOCK_PREFIX
-
-    job_id = await defer_task(
-        run_connector_sync.configure(lock=f"{CONNECTOR_SYNC_LOCK_PREFIX}{connector.id}"),
-        connector_id=connector.id,
-    )
+    job_id = await defer_scheduled_trigger(row)
     row.last_run_at = datetime.now(timezone.utc)
     row.last_job_id = int(job_id)
     row.last_status = "queued"

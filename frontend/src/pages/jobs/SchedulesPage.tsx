@@ -5,7 +5,7 @@ import { CalendarClock, Loader2, Play, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
-import { fetchSchedules, patchSchedule, runScheduleNow, type Schedule } from '../../data/schedulesApi';
+import { fetchSchedules, patchSchedule, runScheduleNow, scheduleKindLabel, type Schedule } from '../../data/schedulesApi';
 import './Jobs.scss';
 
 function formatDate(iso: string | null | undefined, dash: string): string {
@@ -120,11 +120,13 @@ export function SchedulesPage() {
                   <td>
                     {row.connector_id ? (
                       <Link to={`/connectors/${row.connector_id}`}>{row.display_name}</Link>
+                    ) : row.project_id ? (
+                      <Link to={`/projects/${row.project_id}/settings`}>{row.display_name}</Link>
                     ) : (
                       row.display_name
                     )}
                   </td>
-                  <td>{row.kind}</td>
+                  <td>{scheduleKindLabel(row.kind, t)}</td>
                   <td>
                     <span className="jobs-mono">{row.cron ?? dash}</span>
                     {row.timezone ? (

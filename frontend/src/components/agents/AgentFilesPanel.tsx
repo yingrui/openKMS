@@ -30,7 +30,10 @@ const TREE_MIN_PX = 160;
 const TREE_MAX_PX = 480;
 const TREE_DEFAULT_PX = 240;
 const VIEWER_MIN_PX = 160;
+const VIEWER_DEFAULT_PX = 480;
+const INNER_HANDLE_PX = 8;
 const TREE_WIDTH_KEY = 'openkms_agents_files_tree_width_px_v1';
+const VIEWER_WIDTH_KEY = 'openkms_agents_files_viewer_width_px_v1';
 
 function readTreeWidth(): number {
   try {
@@ -45,8 +48,21 @@ function readTreeWidth(): number {
   return TREE_DEFAULT_PX;
 }
 
-function clampTreeWidth(w: number, railWidthPx: number): number {
-  const max = Math.max(TREE_MIN_PX, railWidthPx - VIEWER_MIN_PX - 8);
+function readViewerWidth(): number {
+  try {
+    const raw = localStorage.getItem(VIEWER_WIDTH_KEY);
+    if (raw != null) {
+      const n = parseInt(raw, 10);
+      if (Number.isFinite(n)) return n;
+    }
+  } catch {
+    /* ignore */
+  }
+  return VIEWER_DEFAULT_PX;
+}
+
+function clampTreeWidth(w: number, totalRailPx: number, viewerWidthPx: number): number {
+  const max = Math.max(TREE_MIN_PX, totalRailPx - viewerWidthPx - INNER_HANDLE_PX);
   return Math.round(Math.min(Math.min(TREE_MAX_PX, max), Math.max(TREE_MIN_PX, w)));
 }
 
@@ -71,10 +87,17 @@ interface Props {
   projectId: string;
   gitInitialized: boolean;
   railWidthPx: number;
+  onRailWidthChange?: (width: number) => void;
   onGitChange?: () => void;
 }
 
-export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitChange }: Props) {
+export function AgentFilesPanel({
+  projectId,
+  gitInitialized,
+  railWidthPx,
+  onRailWidthChange,
+  onGitChange,
+}: Props) {
   const { t } = useTranslation('agents');
   const [cwd, setCwd] = useState('');
   const [entries, setEntries] = useState<ProjectFileEntry[]>([]);
@@ -94,6 +117,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   const [refreshing, setRefreshing] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const [treeWidthPx, setTreeWidthPx] = useState(readTreeWidth);
+  const [viewerWidthPx, setViewerWidthPx] = useState(readViewerWidth);
 
   useEffect(() => {
     if (!uploadMenuOpen) return;
@@ -105,9 +129,19 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [uploadMenuOpen]);
 
+  const fileOpen = selected !== null;
+
   useEffect(() => {
-    setTreeWidthPx((w) => clampTreeWidth(w, railWidthPx));
-  }, [railWidthPx]);
+    if (!fileOpen) {
+      setTreeWidthPx(railWidthPx);
+    }
+  }, [railWidthPx, fileOpen]);
+
+  useEffect(() => {
+    if (!fileOpen) return;
+    const viewerW = Math.max(VIEWER_MIN_PX, railWidthPx - treeWidthPx - INNER_HANDLE_PX);
+    setViewerWidthPx(viewerW);
+  }, [railWidthPx, fileOpen, treeWidthPx]);
 
   const onTreeResizePointerDown = useCallback(
     (e: React.MouseEvent) => {
@@ -115,21 +149,25 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
       e.stopPropagation();
       const startX = e.clientX;
       const startW = treeWidthPx;
+      const startViewerW = viewerWidthPx;
       let latest = startW;
       const prevUserSelect = document.body.style.userSelect;
       document.body.style.userSelect = 'none';
       const onMove = (ev: MouseEvent) => {
-        latest = clampTreeWidth(startW - (ev.clientX - startX), railWidthPx);
+        latest = clampTreeWidth(startW - (ev.clientX - startX), startW + startViewerW + INNER_HANDLE_PX, startViewerW);
         setTreeWidthPx(latest);
+        onRailWidthChange?.(latest + startViewerW + INNER_HANDLE_PX);
       };
       const onUp = () => {
         document.body.style.userSelect = prevUserSelect;
         window.removeEventListener('mousemove', onMove);
         window.removeEventListener('mouseup', onUp);
-        const final = clampTreeWidth(latest, railWidthPx);
-        setTreeWidthPx(final);
+        const finalTree = clampTreeWidth(latest, latest + startViewerW + INNER_HANDLE_PX, startViewerW);
+        const finalRail = finalTree + startViewerW + INNER_HANDLE_PX;
+        setTreeWidthPx(finalTree);
+        onRailWidthChange?.(finalRail);
         try {
-          localStorage.setItem(TREE_WIDTH_KEY, String(final));
+          localStorage.setItem(TREE_WIDTH_KEY, String(finalTree));
         } catch {
           /* ignore */
         }
@@ -137,7 +175,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     },
-    [treeWidthPx, railWidthPx],
+    [treeWidthPx, viewerWidthPx, onRailWidthChange],
   );
 
   const refresh = useCallback(async () => {
@@ -167,6 +205,21 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   };
 
   const closeFile = () => {
+    if (fileOpen) {
+      const treeW = treeWidthPx;
+      const viewerW = Math.max(VIEWER_MIN_PX, railWidthPx - treeW - INNER_HANDLE_PX);
+      try {
+        localStorage.setItem(VIEWER_WIDTH_KEY, String(viewerW));
+      } catch {
+        /* ignore */
+      }
+      onRailWidthChange?.(treeW);
+      try {
+        localStorage.setItem(TREE_WIDTH_KEY, String(treeW));
+      } catch {
+        /* ignore */
+      }
+    }
     setSelected(null);
     setPreview(null);
     setPreviewBinary(false);
@@ -178,6 +231,14 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
       setCwd(path);
       closeFile();
       return;
+    }
+    const openingFirst = selected === null;
+    if (openingFirst) {
+      const treeW = railWidthPx;
+      const viewerW = readViewerWidth();
+      setTreeWidthPx(treeW);
+      setViewerWidthPx(viewerW);
+      onRailWidthChange?.(treeW + viewerW + INNER_HANDLE_PX);
     }
     setSelected(path);
     setPreviewLoading(true);
@@ -284,7 +345,6 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
   };
 
   const changeCount = gitEntries.length;
-  const fileOpen = selected !== null;
   const uploadTargetLabel = cwd || t('files.projectRoot');
   const cwdLabel = cwd ? (cwd.split('/').pop() ?? cwd) : null;
   const headTitle = cwdLabel
@@ -292,20 +352,17 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
     : gitInitialized
       ? t('files.changes', { count: changeCount })
       : t('files.title');
-  const treeWidth = clampTreeWidth(treeWidthPx, railWidthPx);
+  const treeWidth = fileOpen
+    ? clampTreeWidth(treeWidthPx, railWidthPx, viewerWidthPx)
+    : railWidthPx;
   const railStyle = {
     flex: `0 0 ${railWidthPx}px`,
     width: railWidthPx,
   } as CSSProperties;
-  const treeStyle = fileOpen
-    ? ({
-        flex: `0 0 ${treeWidth}px`,
-        width: treeWidth,
-      } as CSSProperties)
-    : ({
-        flex: '1 1 auto',
-        width: '100%',
-      } as CSSProperties);
+  const treeStyle = {
+    flex: `0 0 ${treeWidth}px`,
+    width: treeWidth,
+  } as CSSProperties;
 
   return (
     <div
@@ -328,7 +385,7 @@ export function AgentFilesPanel({ projectId, gitInitialized, railWidthPx, onGitC
           aria-orientation="vertical"
           aria-valuenow={treeWidth}
           aria-valuemin={TREE_MIN_PX}
-          aria-valuemax={clampTreeWidth(TREE_MAX_PX, railWidthPx)}
+          aria-valuemax={clampTreeWidth(TREE_MAX_PX, railWidthPx, viewerWidthPx)}
           aria-label={t('workspace.resizeFileTree')}
           title={t('workspace.resizeFileTreeHint')}
           onMouseDown={onTreeResizePointerDown}

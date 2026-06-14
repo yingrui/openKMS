@@ -22,8 +22,8 @@ Pipelines define how a document is processed (command template + linked model). 
 | Job runs list pagination | ✅ | `GET /api/jobs` returns `total`, `limit`, `offset`; UI paginates with status/search server-side |
 | Job runs API | ✅ | `GET/POST/DELETE /api/jobs`, `GET /api/jobs/{id}`, `POST /api/jobs/{id}/retry`, `POST /api/jobs/{id}/mark-failed` |
 | Job runs UI | ✅ | `JobRuns.tsx` at `/job-runs` (legacy `/jobs` redirects), area nav with **Schedules** at `/job-runs/schedules`, status filter, queue run, retry failed, mark stale in-flight runs failed, delete |
-| Schedules hub | ✅ | `scheduled_triggers` registry; `GET/PATCH /api/schedules`, `POST /api/schedules/{id}/run-now`; connector sync cron write-through |
-| Central scheduler | ✅ | `backend/scheduler.py` (single instance): minute tick, `dispatch_due_schedules`, advisory lock; defers `run_connector_sync` with per-connector `lock` |
+| Schedules hub | ✅ | `scheduled_triggers` registry; `GET/PATCH /api/schedules`, `POST /api/schedules/{id}/run-now`; connector sync cron write-through; project agent schedules (`project_agent_stateless` / `project_agent_stateful`) |
+| Central scheduler | ✅ | `backend/scheduler.py` (single instance): minute tick, `dispatch_due_schedules`, advisory lock; defers `run_connector_sync` (per-connector lock) or `run_scheduled_project_agent` (per-schedule or per-conversation lock) |
 | Job run detail | ✅ | `JobDetail.tsx` at `/job-runs/:jobId` – timing, document link, pipeline info, rendered command, event log |
 | run_pipeline task | ✅ | Renders command template, spawns CLI subprocess; **`OPENKMS_PIPELINE_TIMEOUT_SECONDS`** (default **3600**) caps wait time; updates document status |
 | Worker | ✅ | `backend/worker.py` — procrastinate worker + minute heartbeat (`OPENKMS_WORKER_NAME` or hostname) |
