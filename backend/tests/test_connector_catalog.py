@@ -96,6 +96,7 @@ def test_tushare_outputs_requires_all_slots_when_any_set():
             "trade_calendar": "a" * 32,
             "stock_basic": "b" * 32,
             "stock_trade_daily": "c" * 32,
+            "daily_basic": "f" * 32,
             "stock_adj_daily": "d" * 32,
             "dividends": "e" * 32,
         },
@@ -104,6 +105,7 @@ def test_tushare_outputs_requires_all_slots_when_any_set():
         "trade_calendar",
         "stock_basic",
         "stock_trade_daily",
+        "daily_basic",
         "stock_adj_daily",
         "dividends",
     }
@@ -127,6 +129,7 @@ def test_validate_sync_run_outputs_requires_all_slots():
             "trade_calendar": "a" * 32,
             "stock_basic": "b" * 32,
             "stock_trade_daily": "c" * 32,
+            "daily_basic": "f" * 32,
             "stock_adj_daily": "d" * 32,
             "dividends": "e" * 32,
         },

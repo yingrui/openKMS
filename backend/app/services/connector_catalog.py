@@ -10,6 +10,7 @@ from typing import Any
 from app.services.connector_search.schemas import ZHIPU_WEB_SEARCH_OUTPUT_SCHEMA
 from app.services.connector_sync.schemas import ConnectorDatasetColumn
 from app.services.connector_sync.tushare.schemas import (
+    TUSHARE_DAILY_BASIC_COLUMNS,
     TUSHARE_DIVIDENDS_COLUMNS,
     TUSHARE_PG_SCHEMA,
     TUSHARE_STOCK_ADJ_DAILY_COLUMNS,
@@ -72,7 +73,7 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
         kind="tushare",
         category=CATEGORY_SYNC,
         label="Tushare",
-        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, daily quotes, adj factors, and dividends).",
+        description="China market data via tushare.pro (token + API URL; sync targets trade calendar, stock basic, daily quotes, daily basics, adj factors, and dividends).",
         secret_keys=frozenset({"TUSHARE_TOKEN"}),
         input_fields=(
             ConnectorInputField(
@@ -111,6 +112,15 @@ CONNECTOR_KINDS: dict[str, ConnectorKindSpec] = {
                 dataset_columns=TUSHARE_STOCK_TRADE_DAILY_COLUMNS,
                 default_pg_schema=TUSHARE_PG_SCHEMA,
                 default_table_name="stock_trade_daily",
+            ),
+            ConnectorOutputSlot(
+                slot="daily_basic",
+                label="Daily basic indicators",
+                description="Daily valuation and liquidity metrics (Tushare daily_basic API).",
+                resource="dataset",
+                dataset_columns=TUSHARE_DAILY_BASIC_COLUMNS,
+                default_pg_schema=TUSHARE_PG_SCHEMA,
+                default_table_name="daily_basic",
             ),
             ConnectorOutputSlot(
                 slot="stock_adj_daily",

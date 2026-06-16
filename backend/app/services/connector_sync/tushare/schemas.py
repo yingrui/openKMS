@@ -47,6 +47,28 @@ TUSHARE_STOCK_TRADE_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
     ConnectorDatasetColumn("amount", "NUMERIC", nullable=True),
 )
 
+TUSHARE_DAILY_BASIC_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
+    ConnectorDatasetColumn("ts_code", "TEXT", nullable=False, primary_key=True),
+    ConnectorDatasetColumn("trade_date", "DATE", nullable=False, primary_key=True),
+    ConnectorDatasetColumn("close", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("turnover_rate", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("turnover_rate_f", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("volume_ratio", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("pe", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("pe_ttm", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("pb", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("ps", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("ps_ttm", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("dv_ratio", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("dv_ttm", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("total_share", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("float_share", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("free_share", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("total_mv", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("circ_mv", "NUMERIC", nullable=True),
+    ConnectorDatasetColumn("limit_status", "INTEGER", nullable=True),
+)
+
 TUSHARE_STOCK_ADJ_DAILY_COLUMNS: tuple[ConnectorDatasetColumn, ...] = (
     ConnectorDatasetColumn("ts_code", "VARCHAR(10)", nullable=True, primary_key=True),
     ConnectorDatasetColumn("trade_date", "DATE", nullable=True, primary_key=True),

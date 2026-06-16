@@ -19,6 +19,7 @@ from app.services.connector_sync.tushare.sync import (
     _resolve_tushare_windows,
     _sync_settings,
     sync_stock_basic,
+    sync_daily_basic,
 )
 
 _START = date(1990, 1, 1)
@@ -101,6 +102,64 @@ def test_sync_stock_basic_single_api_call():
         client.query.assert_awaited_once()
         assert client.query.await_args.args[0] == "stock_basic"
         assert client.query.await_args.args[1] == {"list_status": "L"}
+        mock_upsert.assert_called_once()
+
+    asyncio.run(_run())
+
+
+def test_sync_daily_basic_one_api_call_per_trade_date():
+    connector = MagicMock()
+    connector.id = "conn-1"
+    connector.outputs = {"daily_basic": "dataset-1"}
+
+    dataset = MagicMock()
+    dataset.schema_name = "tushare"
+    dataset.table_name = "daily_basic"
+    data_source = MagicMock()
+    calendar_dataset = MagicMock()
+    calendar_dataset.schema_name = "tushare"
+    calendar_dataset.table_name = "trade_calendar"
+    client = MagicMock()
+    client.query = AsyncMock(
+        return_value=[
+            {
+                "ts_code": "000001.SZ",
+                "trade_date": "20260610",
+                "close": 10.5,
+                "turnover_rate": 1.2,
+                "limit_status": 1,
+            }
+        ]
+    )
+    engine = MagicMock()
+
+    async def _run():
+        with (
+            patch(
+                "app.services.connector_sync.tushare.sync._load_output_dataset",
+                new_callable=AsyncMock,
+                return_value=(dataset, data_source),
+            ),
+            patch(
+                "app.services.connector_sync.tushare.sync._resolve_open_trade_dates",
+                new_callable=AsyncMock,
+                return_value=["20260610"],
+            ),
+            patch("app.services.connector_sync.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+        ):
+            written = await sync_daily_basic(
+                client,
+                MagicMock(),
+                connector,
+                start=date(2026, 6, 10),
+                end=date(2026, 6, 10),
+                calendar_dataset=calendar_dataset,
+                calendar_engine=engine,
+            )
+        assert written == 1
+        client.query.assert_awaited_once()
+        assert client.query.await_args.args[0] == "daily_basic"
+        assert client.query.await_args.args[1] == {"trade_date": "20260610"}
         mock_upsert.assert_called_once()
 
     asyncio.run(_run())

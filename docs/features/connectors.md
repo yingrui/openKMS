@@ -51,6 +51,7 @@ China market data via [tushare.pro](https://tushare.pro). Secret: **`TUSHARE_TOK
 | `trade_calendar` | `tushare` | `trade_calendar` | `trade_cal`; skipped when table already spans window |
 | `stock_basic` | `tushare` | `stock_basic` | One `stock_basic` call per sync run |
 | `stock_trade_daily` | `tushare` | `stock_trade_daily` | `daily` OHLCV |
+| `daily_basic` | `tushare` | `daily_basic` | `daily_basic` — turnover, PE/PB/PS, market cap, limit status |
 | `stock_adj_daily` | `tushare` | `stock_adj_daily` | `adj_factor` |
 | `dividends` | `tushare` | `dividends` | `dividend` by `ex_date` |
 
