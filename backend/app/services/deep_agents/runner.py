@@ -23,6 +23,7 @@ from app.services.agent.wiki_runner import (
     assistant_lc_content_from_db_row,
     truncate_wiki_tool_output_for_storage,
 )
+from app.services.deep_agents.context_compaction import compact_project_context_if_needed
 from app.services.deep_agents.checkpointer import get_checkpointer
 from app.services.deep_agents.env import build_project_shell_env
 from app.services.deep_agents.hitl import interrupt_map
@@ -41,6 +42,8 @@ logger = logging.getLogger(__name__)
 
 # Reuse wiki storage key for tool trace replay in history.
 PROJECT_TOOL_TRANSCRIPTS_KEY = WIKI_TOOL_TRANSCRIPTS_KEY
+
+_MAX_SCHEDULED_HITL_ROUNDS = 20
 
 
 def new_id() -> str:
@@ -102,6 +105,8 @@ async def _build_agent(
     project_settings: dict,
     bearer_token: str,
     plan_mode: bool,
+    scheduled_run: bool = False,
+    build_ctx: dict[str, Any] | None = None,
 ):
     llm = await _build_llm(db, streaming=True)
     if not llm:
@@ -115,6 +120,9 @@ async def _build_agent(
         env=shell_env,
         timeout=settings.agent_sandbox_timeout_seconds,
     )
+    if build_ctx is not None:
+        build_ctx["llm"] = llm
+        build_ctx["backend"] = backend
     tools: list = []
     if not plan_mode:
         tools.extend(make_sandbox_tools(project_id, shell_env=shell_env))
@@ -134,12 +142,13 @@ async def _build_agent(
                 project_description=project_description,
                 installed_skills=project_settings.get("installed_skills"),
                 plan_mode=plan_mode,
+                scheduled_run=scheduled_run,
             ),
             subagents=build_subagents(plan_mode=plan_mode, include_shell=not plan_mode),
             skills=skills or None,
             backend=backend,
             permissions=plan_mode_permissions() if plan_mode else None,
-            interrupt_on=interrupt_map(plan_mode=plan_mode),
+            interrupt_on=interrupt_map(plan_mode=plan_mode, scheduled_run=scheduled_run),
             checkpointer=checkpointer,
         )
     except Exception as e:
@@ -203,6 +212,28 @@ def _build_hitl_resume_payload(
             entry["message"] = message
         decisions.append(entry)
     return {"decisions": decisions}
+
+
+async def _ainvoke_with_scheduled_auto_resume(agent, payload: Any, cfg: dict) -> dict:
+    """Run agent turn and auto-approve any HITL interrupts (scheduled runs only)."""
+    from langgraph.types import Command
+
+    out = await agent.ainvoke(payload, cfg)
+    for round_idx in range(_MAX_SCHEDULED_HITL_ROUNDS):
+        snap = await agent.aget_state(cfg)
+        if not snap.interrupts:
+            return out
+        count = _count_pending_hitl_decisions(snap.interrupts)
+        resume_payload = _build_hitl_resume_payload(decision="approve", count=count)
+        out = await agent.ainvoke(Command(resume=resume_payload), cfg)
+        logger.info("Scheduled run auto-approved HITL interrupt (round %s)", round_idx + 1)
+    snap = await agent.aget_state(cfg)
+    if snap.interrupts:
+        logger.warning(
+            "Scheduled run still has pending interrupts after %s auto-resume rounds",
+            _MAX_SCHEDULED_HITL_ROUNDS,
+        )
+    return out
 
 
 async def _pending_interrupt_parts(agent, cfg: dict) -> list[ProjectStreamPart]:
@@ -295,10 +326,12 @@ async def run_project_turn(
     *,
     plan_mode: bool = False,
     session_id: str | None = None,
+    scheduled_run: bool = False,
 ) -> tuple[str, dict[str, Any] | None]:
     del jwt_payload
     rows = await _conversation_message_rows(db, conversation.id)
     messages = _lc_messages_from_db(rows)
+    build_ctx: dict[str, Any] = {}
     agent, err = await _build_agent(
         db,
         project_id=project_id,
@@ -308,6 +341,8 @@ async def run_project_turn(
         project_settings=project_settings,
         bearer_token=bearer_token,
         plan_mode=plan_mode,
+        scheduled_run=scheduled_run,
+        build_ctx=build_ctx if scheduled_run else None,
     )
     if err or not agent:
         return err or "Agent failed to initialize", None
@@ -318,7 +353,18 @@ async def run_project_turn(
         plan_mode=plan_mode,
     )
     try:
-        out = await agent.ainvoke({"messages": messages}, cfg)
+        if scheduled_run:
+            llm = build_ctx.get("llm")
+            backend = build_ctx.get("backend")
+            if llm is not None and backend is not None:
+                await compact_project_context_if_needed(
+                    agent, cfg, llm=llm, backend=backend
+                )
+            out = await _ainvoke_with_scheduled_auto_resume(
+                agent, {"messages": messages}, cfg
+            )
+        else:
+            out = await agent.ainvoke({"messages": messages}, cfg)
     except GraphRecursionError as e:
         return f"Recursion limit exceeded ({e!s})", None
     traces = _tool_traces_from_messages(out.get("messages") or [])

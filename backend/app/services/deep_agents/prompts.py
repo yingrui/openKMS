@@ -34,6 +34,14 @@ Planning and confirmation:
 - Plan complex work with todos before executing.
 """
 
+_SCHEDULED_RUN_SECTION = """
+## Scheduled run (unattended)
+
+- No human is available to approve actions or answer questions.
+- For every openkms CLI command that mutates data, include `--yes` (or `-y`).
+- Complete the scheduled task with available tools; do not stop for confirmation.
+"""
+
 
 def _project_section(
     *,
@@ -90,6 +98,7 @@ def build_project_system_prompt(
     project_description: str | None = None,
     installed_skills: dict | None = None,
     plan_mode: bool = False,
+    scheduled_run: bool = False,
 ) -> str:
     agents_md = read_agents_md(project_id).strip()
     parts = [
@@ -104,6 +113,8 @@ def build_project_system_prompt(
     skills_section = _installed_skills_section(project_id, installed_skills)
     if skills_section:
         parts.append(skills_section)
+    if scheduled_run:
+        parts.append(_SCHEDULED_RUN_SECTION)
     if plan_mode:
         parts.append(
             "\n**Plan mode is active.** Do not write files, run shell commands, or mutate git. "

@@ -9,7 +9,11 @@ from typing import Any
 DEFAULT_INTERRUPT_ON: dict[str, bool | dict[str, Any]] = {}
 
 
-def interrupt_map(*, plan_mode: bool) -> dict[str, bool | dict[str, Any]]:
-    if plan_mode:
-        return {}
-    return dict(DEFAULT_INTERRUPT_ON)
+def interrupt_map(
+    *,
+    plan_mode: bool,
+    scheduled_run: bool = False,
+) -> dict[str, bool | dict[str, Any]] | None:
+    if plan_mode or scheduled_run:
+        return None
+    return dict(DEFAULT_INTERRUPT_ON) or None

@@ -22,8 +22,6 @@ from app.services.agent_session_api_key import ensure_session_api_key, get_sessi
 from app.services.agent_skill_install import ensure_skills_materialized
 from app.services.connector_sync.schedule import validate_cron_expression, validate_timezone
 from app.services.deep_agents.runner import (
-    _build_agent,
-    _runnable_config,
     new_id,
     run_project_turn,
 )
@@ -276,6 +274,7 @@ async def execute_scheduled_project_agent(
         project.settings or {},
         plan_mode=False,
         session_id=cfg.get("langfuse_session_id") or trigger.id,
+        scheduled_run=True,
     )
 
     lower = (content or "").lower()
@@ -283,23 +282,6 @@ async def execute_scheduled_project_agent(
         "failed to initialize" in lower or "recursion limit" in lower
     ):
         raise RuntimeError(content or "Scheduled agent run failed")
-
-    agent, build_err = await _build_agent(
-        db,
-        project_id=project.id,
-        project_name=project.name,
-        project_slug=project.slug,
-        project_description=project.description,
-        project_settings=project.settings or {},
-        bearer_token=bearer,
-        plan_mode=False,
-    )
-    if build_err or not agent:
-        raise RuntimeError(build_err or "Agent failed to initialize")
-    snap_cfg = _runnable_config(conversation.id, session_id=trigger.id, streaming=False)
-    snap = await agent.aget_state(snap_cfg)
-    if snap.interrupts:
-        raise RuntimeError("Scheduled run paused for human approval (HITL); not supported")
 
     asst = AgentMessage(
         id=new_id(),

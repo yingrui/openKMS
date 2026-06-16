@@ -56,7 +56,8 @@ HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar 
 - **Project settings → Schedules:** create cron jobs that send a fixed **prompt** to the project agent.
 - **Stateless:** new chat session each run; optional **delete session** after completion.
 - **Stateful:** reuses one existing session (`conversation_id`); keeps context between runs.
-- **Not supported:** plan mode and HITL (runs fail if the agent pauses for approval).
+- **Not supported:** plan mode.
+- **Unattended:** HITL is disabled; tool approvals are auto-approved. Context is compacted before each run when over the model budget (same rules as in-turn summarization).
 - Auth uses a **session API key** minted for the schedule owner (`owner_sub` + optional realm roles in `config`).
 - All rows appear in **Job runs → Schedules** (`/job-runs/schedules`); worker task **`run_scheduled_project_agent`**.
 

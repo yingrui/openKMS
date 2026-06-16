@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from app.services.deep_agents.hitl import interrupt_map
 from app.services.deep_agents.runner import (
     _build_hitl_resume_payload,
     _count_pending_hitl_decisions,
@@ -53,3 +54,11 @@ def test_build_hitl_resume_payload_reject_with_message():
         {"type": "reject", "message": "stop"},
         {"type": "reject", "message": "stop"},
     ]
+
+
+def test_interrupt_map_scheduled_run_disables_hitl():
+    assert interrupt_map(plan_mode=False, scheduled_run=True) is None
+
+
+def test_interrupt_map_plan_mode_disables_hitl():
+    assert interrupt_map(plan_mode=True, scheduled_run=False) is None
