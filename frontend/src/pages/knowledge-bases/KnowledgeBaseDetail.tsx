@@ -48,6 +48,7 @@ import {
 } from './KnowledgeBaseDetail.qaUtils';
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
+import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import './KnowledgeBaseDetail.scss';
 
 export function KnowledgeBaseDetail() {
@@ -168,6 +169,11 @@ export function KnowledgeBaseDetail() {
 
   if (vm.qaFullPage && vm.kb.agent_url) {
     return (
+      <ContentCommentsShell
+        resourceType="knowledge_base"
+        resourceId={vm.kb.id}
+        hideComments
+      >
       <div className="kb-detail kb-detail--qa-fullpage">
         <div className="kb-qa-shell">
           <div className="kb-qa-shell-body">
@@ -448,10 +454,12 @@ export function KnowledgeBaseDetail() {
         </div>
         {faqDialog}
       </div>
+      </ContentCommentsShell>
     );
   }
 
   return (
+    <ContentCommentsShell resourceType="knowledge_base" resourceId={vm.kb.id}>
     <div className="kb-detail">
       <Link to="/knowledge-bases" className="kb-detail-back">
         <ArrowLeft size={18} />
@@ -1930,6 +1938,7 @@ export function KnowledgeBaseDetail() {
 
       {faqDialog}
     </div>
+    </ContentCommentsShell>
   );
 }
 

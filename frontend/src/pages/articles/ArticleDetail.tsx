@@ -52,6 +52,7 @@ import {
   type ArticleReviewOut,
 } from '../../data/articlesApi';
 import { findChannel } from '../../data/channelUtils';
+import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import '../documents/DocumentDetail.scss';
 import './ArticleDetail.scss';
 
@@ -577,6 +578,7 @@ export function ArticleDetail() {
   };
 
   return (
+    <ContentCommentsShell resourceType="article" resourceId={id ?? ''} enabled={Boolean(id)}>
     <div className="document-detail article-detail-page">
       <Link to={backTo} className="document-detail-back">
         <ArrowLeft size={18} />
@@ -1307,5 +1309,6 @@ export function ArticleDetail() {
         </>
       )}
     </div>
+    </ContentCommentsShell>
   );
 }

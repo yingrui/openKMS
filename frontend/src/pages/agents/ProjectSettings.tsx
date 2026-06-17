@@ -27,6 +27,7 @@ import {
 } from '../../data/connectorsApi';
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import { ProjectSchedulesTab } from '../../components/agents/ProjectSchedulesTab';
+import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import './ProjectSettings.scss';
 
 type TabId = 'general' | 'agent' | 'skills' | 'schedules';
@@ -187,6 +188,7 @@ export function ProjectSettings() {
   }
 
   return (
+    <ContentCommentsShell resourceType="project" resourceId={projectId}>
     <div className="project-settings">
       <Link
         to={projectWorkspacePath(projectId, getStoredProjectConversationId(projectId))}
@@ -426,5 +428,6 @@ export function ProjectSettings() {
         ) : null}
       </div>
     </div>
+    </ContentCommentsShell>
   );
 }

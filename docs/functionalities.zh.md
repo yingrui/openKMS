@@ -9,6 +9,7 @@
 | [基础设施与质量](features/infrastructure.md) | Compose、测试、错误处理、代码分割、类型检查 |
 | [文档](features/documents.md) | 文档通道、上传、解析流水线（PaddleOCR-VL、百度云）、`openkms-cli` |
 | [文章](features/articles.md) | 文章通道、CRUD、关系、生命周期、附件、批量导入 |
+| [评论](features/comments.md) | 用户对文章、文档、知识库、维基空间、Agent 项目的评论与 0–5 分评分 |
 | [知识库](features/knowledge-bases.md) | 知识库 CRUD、FAQ、分块、语义检索、QA 代理、kb-index |
 | [维基空间](features/wiki-spaces.md) | 维基内容（路径寻址页面、文件、vault）、导入、图谱视图、Wiki Copilot Agent |
 | [评测](features/evaluation.md) | 评测集、条目、运行、对比（实验性；质量改进工作流规划中） |

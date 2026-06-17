@@ -8,6 +8,7 @@ import type { ChannelNode } from '../../data/channelsApi';
 import { fetchDocuments } from '../../data/documentsApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
   createWikiPage,
@@ -466,6 +467,7 @@ export function WikiSpaceSettings() {
   const pageCount = Math.max(1, Math.ceil(pagesTotal / WIKI_PAGES_LIST_PAGE_SIZE));
 
   return (
+    <ContentCommentsShell resourceType="wiki_space" resourceId={spaceId ?? ''} enabled={Boolean(spaceId)}>
     <div className="wiki-space-settings">
       <div className="wiki-space-settings-body">
         <div className="wiki-space-settings-toolbar-span">
@@ -1107,5 +1109,6 @@ export function WikiSpaceSettings() {
         </div>
       )}
     </div>
+    </ContentCommentsShell>
   );
 }

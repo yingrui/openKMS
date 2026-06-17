@@ -349,6 +349,16 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/articles/{id}/versions/{version_id}` | Full version snapshot |
 | POST | `/api/articles/{id}/versions/{version_id}/restore` | Restore working copy from version |
 
+## Comments
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/comments` | List comments for a resource. Query: `resource_type` (`article` \| `document` \| `knowledge_base` \| `wiki_space` \| `project`), `resource_id`, `limit`, `offset`. Returns nested top-level items with `replies[]`, plus `total`, `avg_rank`, `rank_count` |
+| POST | `/api/comments` | Create top-level comment: `resource_type`, `resource_id`, `body`, `rank` (0–5, required) |
+| POST | `/api/comments/{id}/replies` | Reply to a top-level comment: `body` only |
+| PATCH | `/api/comments/{id}` | Author update: `body`; top-level may also update `rank` |
+| DELETE | `/api/comments/{id}` | Author delete (cascades replies when top-level) |
+
 ## Wiki spaces
 
 | Method | Path | Description |

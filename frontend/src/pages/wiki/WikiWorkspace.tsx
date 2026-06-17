@@ -8,6 +8,7 @@ import { fetchAllWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from 
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
 import { WikiPagePanel, type WikiPagePanelHandle } from './WikiPagePanel';
+import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import './WikiPageEditor.scss';
 import './WikiWorkspace.scss';
 
@@ -53,6 +54,7 @@ function sortPageTabsForBar(openOrder: string[], activePageId: string | undefine
 
 export function WikiWorkspace() {
   const { t } = useTranslation('explore');
+  const { t: tWiki } = useTranslation('wikiSpace');
   const { id: spaceId, pageId: pageIdParam } = useParams<{ id: string; pageId?: string }>();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -358,6 +360,13 @@ export function WikiWorkspace() {
   const treeCurrentId = isGraph ? undefined : pageIdParam;
 
   return (
+    <ContentCommentsShell
+      resourceType="wiki_space"
+      resourceId={spaceId}
+      copilotOpen={wikiCopilotOpen}
+      onCopilotToggle={() => setCopilotOpenPersist(!wikiCopilotOpen)}
+      copilotLabel={tWiki('copilotLabel')}
+    >
     <div
       className={`wiki-page-editor-outer wiki-workspace-layout wiki-workspace-layout--split${
         !wikiCopilotOpen ? ' wiki-workspace-layout--agent-collapsed' : ''
@@ -543,5 +552,6 @@ export function WikiWorkspace() {
         </div>
       )}
     </div>
+    </ContentCommentsShell>
   );
 }

@@ -23,6 +23,8 @@ import './AuthContext.scss';
 const ADMIN_ROLE = 'admin';
 
 export interface AuthUser {
+  /** JWT ``sub`` — matches ``created_by`` on server records. */
+  id: string;
   username: string;
   email?: string;
   name?: string;
@@ -93,6 +95,7 @@ function parseUserFromOidc(user: User | null | undefined): AuthUser | null {
     (typeof p.sub === 'string' && p.sub) ||
     'user';
   return {
+    id: typeof p.sub === 'string' ? p.sub : username,
     username,
     email: typeof p.email === 'string' ? p.email : undefined,
     name: (typeof p.name === 'string' && p.name) || username,
@@ -102,6 +105,7 @@ function parseUserFromOidc(user: User | null | undefined): AuthUser | null {
 }
 
 function userFromMeJson(u: {
+  id?: string;
   username: string;
   email?: string;
   is_admin?: boolean;
@@ -112,6 +116,7 @@ function userFromMeJson(u: {
   const roles = u.roles?.length ? u.roles : u.is_admin ? [ADMIN_ROLE] : [];
   const ul = u.ui_locale === 'en' || u.ui_locale === 'zh-CN' ? u.ui_locale : null;
   return {
+    id: (u.id && u.id.trim()) || u.username,
     username: u.username,
     email: u.email,
     name: u.username,
@@ -241,6 +246,7 @@ async function fetchAuthMeWithBearer(accessToken: string): Promise<AuthUser | nu
     });
     if (!res.ok) return null;
     const data = (await res.json()) as {
+      id?: string;
       username: string;
       email?: string;
       is_admin?: boolean;

@@ -5,6 +5,7 @@ import { DocumentDetailInfoPanel } from './DocumentDetail.infoPanel';
 import { DocumentDetailVersionModals } from './DocumentDetail.modals';
 import { DocumentDetailLoading } from './DocumentDetail.loading';
 import { useDocumentDetail } from './useDocumentDetail';
+import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import './DocumentDetail.scss';
 
 export function DocumentDetail() {
@@ -12,6 +13,7 @@ export function DocumentDetail() {
   const v = useDocumentDetail(id);
 
   return (
+    <ContentCommentsShell resourceType="document" resourceId={id ?? ''} enabled={Boolean(id)}>
     <div className="document-detail">
       <Link
         to={v.document?.channel_id ? `/documents/channels/${v.document.channel_id}` : '/documents'}
@@ -187,5 +189,6 @@ export function DocumentDetail() {
         </>
       )}
     </div>
+    </ContentCommentsShell>
   );
 }

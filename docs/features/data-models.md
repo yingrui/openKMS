@@ -61,6 +61,11 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 - **ArticleAttachment**: `id`, `article_id`, `storage_path` (relative under article prefix), `original_filename`, `size_bytes`, `content_type`, `created_at`
 - **ArticleReview**: `id`, `article_id` (FK → articles, cascade delete), `review_model_id` (FK → api_models, nullable), `result` (JSONB: `overall_score`, `pass`, `summary`, `criteria[]`, `suggestions[]`), `created_by`, `created_by_name`, `created_at`
 
+### ContentComment
+
+- `id`, `resource_type` (`article` \| `document` \| `knowledge_base` \| `wiki_space` \| `project`), `resource_id` (no FK; polymorphic), `parent_comment_id` (FK → content_comments, CASCADE, nullable), `body`, `rank` (0–5, top-level only; null on replies), `created_by`, `created_by_name`, `created_at`, `updated_at`
+- User comments and ratings; replies attach only to top-level rows
+
 ## Knowledge bases and search
 
 ### KnowledgeBase
