@@ -22,7 +22,11 @@ ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_AUTH_MODE=${VITE_AUTH_MODE}
 ENV VITE_APP_VERSION=${VITE_APP_VERSION}
 
-RUN npm run build
+RUN npm run build \
+    && find dist -type f \( \
+         -name '*.js' -o -name '*.css' -o -name '*.html' \
+         -o -name '*.json' -o -name '*.svg' -o -name '*.woff2' \
+       \) ! -name '*.gz' -exec gzip -kf9 {} +
 
 FROM nginx:alpine
 

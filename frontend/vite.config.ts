@@ -24,10 +24,29 @@ process.env.VITE_APP_VERSION = resolveAppVersion()
 export default defineConfig({
   plugins: [react()],
   build: {
+    // Do not modulepreload heavy lazy-only chunks (mermaid, force-graph) on first paint.
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        return deps.filter(
+          (dep) =>
+            !dep.includes('mermaid') &&
+            !dep.includes('force-graph') &&
+            !dep.includes('graph-3d'),
+        );
+      },
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules/mermaid')) return 'mermaid';
+          // Pin React first — otherwise Rollup may place it inside force-graph/mermaid
+          // chunks and the entry bundle statically imports those (~3 MB on every page).
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
+            return 'vendor-react';
+          }
           if (id.includes('node_modules/katex')) return 'katex';
           // Keep three + 3d-force-graph stack in one chunk — splitting three out causes
           // "Cannot access … before initialization" TDZ errors at runtime (Rollup cycle).
@@ -40,9 +59,7 @@ export default defineConfig({
           ) {
             return 'graph-3d';
           }
-          if (id.includes('force-graph') || id.includes('d3-force') || id.includes('d3-quadtree')) {
-            return 'force-graph';
-          }
+          // mermaid + 2d force-graph: leave to dynamic import() — no manual chunk.
         },
       },
     },
