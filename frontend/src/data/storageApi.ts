@@ -25,17 +25,6 @@ export interface StorageListResponse {
   truncated: boolean;
 }
 
-export interface LegacyDocumentPrefixItem {
-  prefix: string;
-  suggested_destination: string;
-}
-
-export interface LegacyDocumentPrefixesResponse {
-  items: LegacyDocumentPrefixItem[];
-  next_continuation_token: string | null;
-  truncated: boolean;
-}
-
 export type StorageMoveItem = {
   type: 'prefix' | 'object';
   key: string;
@@ -85,20 +74,29 @@ export async function fetchStorageObjects(params: {
   return res.json();
 }
 
-export async function fetchLegacyDocumentPrefixes(params?: {
-  continuation_token?: string | null;
-  max_keys?: number;
-}): Promise<LegacyDocumentPrefixesResponse> {
-  const query = new URLSearchParams();
-  if (params?.continuation_token) query.set('continuation_token', params.continuation_token);
-  if (params?.max_keys != null) query.set('max_keys', String(params.max_keys));
-  const qs = query.toString();
+export interface StorageCreateFolderRequest {
+  parent_prefix?: string;
+  name: string;
+}
+
+export interface StorageCreateFolderResponse {
+  prefix: string;
+}
+
+export async function createStorageFolder(
+  body: StorageCreateFolderRequest,
+): Promise<StorageCreateFolderResponse> {
   const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/console/storage/legacy-document-prefixes${qs ? `?${qs}` : ''}`,
-    { headers, credentials: 'include' },
-  );
-  if (!res.ok) throw new Error('Failed to list legacy document prefixes');
+  const res = await authAwareFetch(`${config.apiUrl}/api/console/storage/folders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Failed to create folder');
+  }
   return res.json();
 }
 

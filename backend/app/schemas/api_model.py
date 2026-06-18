@@ -134,3 +134,5 @@ class ApiModelTestResponse(BaseModel):
     content: str | None = None
     error: str | None = None
     elapsed_ms: int = 0
+    image_url: str | None = None
+    video_url: str | None = None

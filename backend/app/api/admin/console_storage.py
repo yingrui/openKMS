@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_permission
 from app.config import settings
-from app.database import get_db
-from app.models.document import Document
-from app.services.document_storage import document_prefix, is_legacy_document_hash_prefix
 from app.services.permission_catalog import PERM_CONSOLE_STORAGE
 from app.services.storage import (
+    create_folder_placeholder,
     list_storage_page,
     move_object_key,
     move_prefix,
@@ -29,8 +24,6 @@ router = APIRouter(
     tags=["console-storage"],
     dependencies=[Depends(require_auth)],
 )
-
-_LEGACY_HASH_FOLDER_RE = re.compile(r"^[a-f0-9]{64}/$")
 
 
 class StorageBucketInfo(BaseModel):
@@ -56,17 +49,6 @@ class StorageListResponse(BaseModel):
     truncated: bool = False
 
 
-class LegacyDocumentPrefixItem(BaseModel):
-    prefix: str
-    suggested_destination: str
-
-
-class LegacyDocumentPrefixesResponse(BaseModel):
-    items: list[LegacyDocumentPrefixItem]
-    next_continuation_token: str | None = None
-    truncated: bool = False
-
-
 class StorageMoveItem(BaseModel):
     type: Literal["prefix", "object"]
     key: str = Field(min_length=1, max_length=2048)
@@ -82,6 +64,15 @@ class StorageMoveResponse(BaseModel):
     moved_count: int
     skipped_count: int
     errors: list[str]
+
+
+class StorageCreateFolderRequest(BaseModel):
+    parent_prefix: str = ""
+    name: str = Field(min_length=1, max_length=200)
+
+
+class StorageCreateFolderResponse(BaseModel):
+    prefix: str
 
 
 @router.get("", response_model=StorageBucketInfo, dependencies=[Depends(require_permission(PERM_CONSOLE_STORAGE))])
@@ -124,57 +115,22 @@ async def list_objects(
     )
 
 
-@router.get(
-    "/legacy-document-prefixes",
-    response_model=LegacyDocumentPrefixesResponse,
+@router.post(
+    "/folders",
+    response_model=StorageCreateFolderResponse,
     dependencies=[Depends(require_permission(PERM_CONSOLE_STORAGE))],
 )
-async def list_legacy_document_prefixes(
-    continuation_token: str | None = None,
-    max_keys: int = Query(default=100, ge=1, le=200),
-    db: AsyncSession = Depends(get_db),
-):
-    """Root-level legacy document hash folders ({64-hex}/) for bulk migration assist."""
+async def create_storage_folder(body: StorageCreateFolderRequest):
+    """Create a folder placeholder (zero-byte key ending in /) under parent_prefix."""
     if not settings.storage_enabled:
         raise HTTPException(status_code=503, detail="Object storage is not configured")
-    page = list_storage_page("", continuation_token=continuation_token, max_keys=max_keys)
-    db_hashes = {
-        (row[0] or "").lower()
-        for row in (await db.execute(select(Document.file_hash).where(Document.file_hash.isnot(None)))).all()
-        if row[0]
-    }
-    items: list[LegacyDocumentPrefixItem] = []
-    seen: set[str] = set()
-    for folder in page.folders:
-        if not is_legacy_document_hash_prefix(folder):
-            continue
-        hash_part = folder.rstrip("/").lower()
-        if hash_part in seen:
-            continue
-        seen.add(hash_part)
-        items.append(
-            LegacyDocumentPrefixItem(
-                prefix=folder,
-                suggested_destination=f"{document_prefix(hash_part)}/",
-            )
-        )
-    for h in sorted(db_hashes):
-        legacy = f"{h}/"
-        if legacy in seen or not _LEGACY_HASH_FOLDER_RE.match(legacy):
-            continue
-        if any(p.prefix.rstrip("/").lower() == h for p in items):
-            continue
-        items.append(
-            LegacyDocumentPrefixItem(
-                prefix=legacy,
-                suggested_destination=f"{document_prefix(h)}/",
-            )
-        )
-    return LegacyDocumentPrefixesResponse(
-        items=items,
-        next_continuation_token=page.next_continuation_token,
-        truncated=page.truncated,
-    )
+    try:
+        key = create_folder_placeholder(body.parent_prefix, body.name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    return StorageCreateFolderResponse(prefix=key)
 
 
 @router.post("/move", response_model=StorageMoveResponse, dependencies=[Depends(require_permission(PERM_CONSOLE_STORAGE))])

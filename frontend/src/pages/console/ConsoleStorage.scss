@@ -84,34 +84,10 @@
   text-decoration: underline;
 }
 
-.console-storage-row--legacy {
-  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
-}
-
 .console-storage-load-more {
   display: flex;
   justify-content: center;
   padding: var(--space-4);
-}
-
-.console-storage-move-form label {
-  display: block;
-  margin-bottom: var(--space-2);
-  font-size: var(--text-sm);
-  font-weight: 500;
-}
-
-.console-storage-move-form input[type='text'] {
-  width: 100%;
-  margin-bottom: var(--space-3);
-}
-
-.console-storage-move-form .checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-  font-size: var(--text-sm);
 }
 
 .console-storage-empty {

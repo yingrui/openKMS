@@ -6,23 +6,33 @@ import httpx
 
 from app.models.api_model import model_has_capability
 from app.schemas.api_model import ApiModelTestResponse
+from app.services.media_generation.zhipu import extract_result_url, poll_async_result
 
 logger = logging.getLogger(__name__)
 
 
-def _build_url(base_url: str, api_kind: str) -> str:
+def _api_root(base_url: str) -> str:
     base = base_url.rstrip("/")
+    if base.endswith("/paas/v4"):
+        return base
+    if base.endswith("/api"):
+        return f"{base}/paas/v4"
+    if "/paas/v4" not in base:
+        return f"{base}/paas/v4"
+    return base
+
+
+def _build_url(base_url: str, api_kind: str) -> str:
+    root = _api_root(base_url)
     if api_kind == "embeddings":
-        return f"{base}/embeddings"
+        return f"{base_url.rstrip('/')}/embeddings"
     if api_kind == "chat-completions":
-        return f"{base}/chat/completions"
+        return f"{base_url.rstrip('/')}/chat/completions"
     if api_kind == "image-generate":
-        root = base if "/paas/v4" in base else f"{base}/paas/v4" if not base.endswith("/api") else f"{base}/paas/v4"
         return f"{root.rstrip('/')}/async/images/generations"
     if api_kind == "video-generate":
-        root = base if "/paas/v4" in base else f"{base}/paas/v4" if not base.endswith("/api") else f"{base}/paas/v4"
         return f"{root.rstrip('/')}/videos/generations"
-    return base
+    return base_url.rstrip("/")
 
 
 def _build_headers(api_key: str | None) -> dict[str, str]:
@@ -115,6 +125,34 @@ def parse_response(data: dict, api_kind: str, prompt: str) -> str:
     return _parse_chat_response(data)
 
 
+async def _poll_generation_result(
+    *,
+    base_url: str,
+    api_key: str | None,
+    task_id: str,
+    api_kind: str,
+) -> ApiModelTestResponse:
+    if not api_key:
+        return ApiModelTestResponse(success=False, error="API key is required for generation polling")
+    media_kind = "image" if api_kind == "image-generate" else "video"
+    try:
+        result = await poll_async_result(base_url=base_url, api_key=api_key, task_id=task_id)
+        media_url = extract_result_url(result, media_kind)
+    except TimeoutError as e:
+        return ApiModelTestResponse(success=False, error=str(e))
+    except Exception as e:
+        logger.warning("Generation poll failed for task %s: %s", task_id, e)
+        return ApiModelTestResponse(success=False, error=str(e))
+
+    label = "Image" if media_kind == "image" else "Video"
+    return ApiModelTestResponse(
+        success=True,
+        content=f"{label} generated successfully.",
+        image_url=media_url if media_kind == "image" else None,
+        video_url=media_url if media_kind == "video" else None,
+    )
+
+
 async def execute_test(
     *,
     base_url: str,
@@ -148,6 +186,24 @@ async def execute_test(
             )
 
         data = resp.json()
+
+        if api_kind in ("image-generate", "video-generate"):
+            task_id = data.get("id") or data.get("request_id")
+            if not task_id:
+                return ApiModelTestResponse(
+                    success=False,
+                    error=f"No task id in generation response: {data}",
+                    elapsed_ms=elapsed,
+                )
+            polled = await _poll_generation_result(
+                base_url=base_url,
+                api_key=api_key,
+                task_id=str(task_id),
+                api_kind=api_kind,
+            )
+            polled.elapsed_ms = int((time.monotonic() - t0) * 1000)
+            return polled
+
         content = parse_response(data, api_kind, prompt)
         return ApiModelTestResponse(success=True, content=content, elapsed_ms=elapsed)
 

@@ -187,6 +187,8 @@ export interface ModelTestResponse {
   content?: string | null;
   error?: string | null;
   elapsed_ms: number;
+  image_url?: string | null;
+  video_url?: string | null;
 }
 
 export async function testModel(id: string, data: ModelTestRequest): Promise<ModelTestResponse> {

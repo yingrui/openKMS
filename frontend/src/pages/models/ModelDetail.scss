@@ -315,6 +315,21 @@
   object-fit: contain;
 }
 
+.playground-msg-image--result {
+  max-width: min(100%, 480px);
+  max-height: 480px;
+  width: auto;
+  height: auto;
+}
+
+.playground-msg-video {
+  max-width: min(100%, 640px);
+  max-height: 360px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: #000;
+}
+
 /* Composer footer (chat + optional vision attach) */
 .playground-composer {
   border-top: 1px solid var(--color-border);

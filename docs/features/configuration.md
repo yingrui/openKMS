@@ -18,7 +18,7 @@ Standard AWS env names — no `OPENKMS_` prefix:
 | `AWS_BUCKET_NAME` | Bucket name (default `openkms`) |
 | `AWS_REGION` | Region (default `us-east-1`) |
 
-Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read until migrated); articles under `articles/{id}/`; wiki spaces under `wiki/{space_id}/`. Dev: Vite proxies `/buckets/openkms` to MinIO for image loads. Console **Object storage** (`/console/storage`, `console:storage`) lists bucket metadata and moves prefixes/objects (no download).
+Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read until migrated); articles under `articles/{id}/`; wiki spaces under `wiki/{space_id}/`. Dev: Vite proxies `/buckets/openkms` to MinIO for image loads. Console **Object storage** (`/console/storage`, `console:storage`) lists bucket metadata, creates folder placeholders, and moves prefixes/objects (no download).
 
 ## Database
 

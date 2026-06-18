@@ -323,3 +323,32 @@ def move_prefix(
             errors.append(f"{key}: {e}")
     return moved, skipped, errors
 
+
+def validate_folder_name(name: str) -> str:
+    """Single path segment for a new folder (no slashes)."""
+    n = (name or "").strip()
+    if not n:
+        raise ValueError("Folder name is required")
+    if ".." in n:
+        raise ValueError("Folder name must not contain '..'")
+    if "/" in n or "\\" in n:
+        raise ValueError("Folder name must not contain slashes")
+    if len(n) > 200:
+        raise ValueError("Folder name is too long")
+    return n
+
+
+def create_folder_placeholder(parent_prefix: str, folder_name: str) -> str:
+    """Create an empty placeholder object so the prefix appears as a folder in listings."""
+    if not settings.storage_enabled:
+        raise RuntimeError("S3 storage is not configured")
+    parent = validate_storage_prefix(parent_prefix)
+    if parent and not parent.endswith("/"):
+        parent += "/"
+    seg = validate_folder_name(folder_name)
+    key = validate_storage_key(f"{parent}{seg}/")
+    if object_exists(key):
+        raise ValueError("Folder already exists")
+    upload_object(key, b"", content_type="application/x-directory")
+    return key
+

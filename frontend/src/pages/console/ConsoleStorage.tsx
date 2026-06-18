@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Folder, File, Loader2, MoveRight, RefreshCw } from 'lucide-react';
+import { Folder, File, FolderPlus, Loader2, MoveRight, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import {
   fetchStorageInfo,
   fetchStorageObjects,
+  createStorageFolder,
   moveStorageObjects,
   type StorageFolderItem,
   type StorageMoveItem,
   type StorageObjectItem,
 } from '../../data/storageApi';
+import '../ontology/ontology-admin.scss';
 import './ConsoleStorage.scss';
-
-const LEGACY_HASH_PREFIX_RE = /^[a-f0-9]{64}\/$/;
 
 type Row =
   | { kind: 'folder'; item: StorageFolderItem }
@@ -62,8 +62,11 @@ export function ConsoleStorage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [destPrefix, setDestPrefix] = useState('');
+  const [newFolderName, setNewFolderName] = useState('');
   const [deleteSource, setDeleteSource] = useState(true);
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   const rows: Row[] = useMemo(
     () => [
@@ -72,8 +75,6 @@ export function ConsoleStorage() {
     ],
     [folders, objects],
   );
-
-  const isRoot = prefix === '';
 
   const loadPage = useCallback(
     async (targetPrefix: string, token: string | null, append: boolean) => {
@@ -140,66 +141,10 @@ export function ConsoleStorage() {
     });
   };
 
-  const selectLegacyOnPage = () => {
-    const next = new Set(selected);
-    for (const row of rows) {
-      if (row.kind === 'folder' && isRoot && LEGACY_HASH_PREFIX_RE.test(row.item.prefix)) {
-        next.add(rowKey(row));
-      }
-    }
-    setSelected(next);
-  };
-
   const openMoveDialog = () => {
     if (selected.size === 0) return;
-    const onlyLegacyFolders =
-      isRoot &&
-      [...selected].every((k) => {
-        const row = rows.find((r) => rowKey(r) === k);
-        return row?.kind === 'folder' && LEGACY_HASH_PREFIX_RE.test(row.item.prefix);
-      });
-    if (onlyLegacyFolders && selected.size === 1) {
-      const row = rows.find((r) => rowKey(r) === [...selected][0]);
-      if (row?.kind === 'folder') {
-        const hash = row.item.prefix.replace(/\/$/, '');
-        setDestPrefix(`documents/${hash}/`);
-      } else {
-        setDestPrefix('');
-      }
-    } else {
-      setDestPrefix('');
-    }
+    setDestPrefix('');
     setShowMoveDialog(true);
-  };
-
-  const moveSelectedToDocuments = async () => {
-    setMoving(true);
-    try {
-      let totalMoved = 0;
-      for (const key of selected) {
-        const row = rows.find((r) => rowKey(r) === key);
-        if (!row || row.kind !== 'folder' || !LEGACY_HASH_PREFIX_RE.test(row.item.prefix)) continue;
-        const hash = row.item.prefix.replace(/\/$/, '');
-        const result = await moveStorageObjects({
-          items: [{ type: 'prefix', key: row.item.prefix }],
-          destination_prefix: `documents/${hash}/`,
-          delete_source: deleteSource,
-        });
-        totalMoved += result.moved_count;
-        if (result.errors.length) {
-          toast.error(result.errors[0]);
-        }
-      }
-      if (totalMoved > 0) {
-        toast.success(t('storage.moveToDocumentsDone', { count: totalMoved }));
-      }
-      setSelected(new Set());
-      await loadPage(prefix, null, false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('storage.moveFailed'));
-    } finally {
-      setMoving(false);
-    }
   };
 
   const confirmMove = async () => {
@@ -237,6 +182,30 @@ export function ConsoleStorage() {
     }
   };
 
+  const openCreateFolderDialog = () => {
+    setNewFolderName('');
+    setShowCreateFolderDialog(true);
+  };
+
+  const confirmCreateFolder = async () => {
+    const name = newFolderName.trim();
+    if (!name) {
+      toast.error(t('storage.folderNameRequired'));
+      return;
+    }
+    setCreatingFolder(true);
+    try {
+      await createStorageFolder({ parent_prefix: prefix, name });
+      setShowCreateFolderDialog(false);
+      toast.success(t('storage.createFolderSuccess'));
+      await loadPage(prefix, null, false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('storage.createFolderFailed'));
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
   return (
     <div className="console-storage">
       <div className="page-header">
@@ -252,33 +221,21 @@ export function ConsoleStorage() {
         <button
           type="button"
           className="btn btn-secondary"
+          onClick={openCreateFolderDialog}
+          disabled={loading || moving || creatingFolder}
+        >
+          <FolderPlus size={16} />
+          <span>{t('storage.newFolder')}</span>
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary"
           onClick={() => void loadPage(prefix, null, false)}
-          disabled={loading || moving}
+          disabled={loading || moving || creatingFolder}
         >
           <RefreshCw size={16} />
           <span>{t('storage.refresh')}</span>
         </button>
-        {isRoot && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={selectLegacyOnPage}
-            disabled={loading || moving || rows.length === 0}
-          >
-            {t('storage.selectLegacyOnPage')}
-          </button>
-        )}
-        {isRoot && selected.size > 0 && (
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => void moveSelectedToDocuments()}
-            disabled={moving}
-          >
-            <MoveRight size={16} />
-            <span>{t('storage.moveToDocuments')}</span>
-          </button>
-        )}
         <button
           type="button"
           className="btn btn-primary"
@@ -327,13 +284,8 @@ export function ConsoleStorage() {
             <tbody>
               {rows.map((row) => {
                 const key = rowKey(row);
-                const isLegacy =
-                  row.kind === 'folder' && isRoot && LEGACY_HASH_PREFIX_RE.test(row.item.prefix);
                 return (
-                  <tr
-                    key={key}
-                    className={`console-storage-row--${row.kind}${isLegacy ? ' console-storage-row--legacy' : ''}`}
-                  >
+                  <tr key={key} className={`console-storage-row--${row.kind}`}>
                     <td>
                       <input
                         type="checkbox"
@@ -392,25 +344,41 @@ export function ConsoleStorage() {
       )}
 
       {showMoveDialog && (
-        <div className="modal-overlay" role="presentation" onClick={() => setShowMoveDialog(false)}>
+        <div
+          className="console-modal-overlay"
+          role="presentation"
+          onClick={(e) => e.target === e.currentTarget && !moving && setShowMoveDialog(false)}
+        >
           <div
-            className="modal"
+            className="console-modal"
             role="dialog"
             aria-labelledby="storage-move-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="storage-move-title">{t('storage.moveDialogTitle')}</h2>
-            <p className="page-subtitle">{t('storage.moveDialogHint', { count: selected.size })}</p>
-            <div className="console-storage-move-form">
-              <label htmlFor="storage-dest">{t('storage.destLabel')}</label>
-              <input
-                id="storage-dest"
-                type="text"
-                value={destPrefix}
-                onChange={(e) => setDestPrefix(e.target.value)}
-                placeholder={t('storage.destPlaceholder')}
-              />
-              <label className="checkbox-row">
+            <div className="console-modal-header">
+              <h2 id="storage-move-title">{t('storage.moveDialogTitle')}</h2>
+              <button
+                type="button"
+                onClick={() => !moving && setShowMoveDialog(false)}
+                disabled={moving}
+                aria-label={t('storage.closeAria')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="console-modal-body">
+              <p className="console-modal-hint">{t('storage.moveDialogHint', { count: selected.size })}</p>
+              <label htmlFor="storage-dest">
+                <span>{t('storage.destLabel')}</span>
+                <input
+                  id="storage-dest"
+                  type="text"
+                  value={destPrefix}
+                  onChange={(e) => setDestPrefix(e.target.value)}
+                  placeholder={t('storage.destPlaceholder')}
+                />
+              </label>
+              <label className="console-modal-checkbox-row">
                 <input
                   type="checkbox"
                   checked={deleteSource}
@@ -419,8 +387,13 @@ export function ConsoleStorage() {
                 <span>{t('storage.deleteSource')}</span>
               </label>
             </div>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowMoveDialog(false)}>
+            <div className="console-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => !moving && setShowMoveDialog(false)}
+                disabled={moving}
+              >
                 {t('storage.cancel')}
               </button>
               <button
@@ -430,6 +403,69 @@ export function ConsoleStorage() {
                 onClick={() => void confirmMove()}
               >
                 {moving ? t('storage.moving') : t('storage.confirmMove')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateFolderDialog && (
+        <div
+          className="console-modal-overlay"
+          role="presentation"
+          onClick={(e) =>
+            e.target === e.currentTarget && !creatingFolder && setShowCreateFolderDialog(false)
+          }
+        >
+          <div
+            className="console-modal"
+            role="dialog"
+            aria-labelledby="storage-create-folder-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="console-modal-header">
+              <h2 id="storage-create-folder-title">{t('storage.createFolderDialogTitle')}</h2>
+              <button
+                type="button"
+                onClick={() => !creatingFolder && setShowCreateFolderDialog(false)}
+                disabled={creatingFolder}
+                aria-label={t('storage.closeAria')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="console-modal-body">
+              <p className="console-modal-hint">{t('storage.createFolderDialogHint')}</p>
+              <label htmlFor="storage-folder-name">
+                <span>{t('storage.folderNameLabel')}</span>
+                <input
+                  id="storage-folder-name"
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder={t('storage.folderNamePlaceholder')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void confirmCreateFolder();
+                  }}
+                />
+              </label>
+            </div>
+            <div className="console-modal-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                disabled={creatingFolder}
+                onClick={() => setShowCreateFolderDialog(false)}
+              >
+                {t('storage.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={creatingFolder}
+                onClick={() => void confirmCreateFolder()}
+              >
+                {creatingFolder ? t('storage.creatingFolder') : t('storage.confirmCreateFolder')}
               </button>
             </div>
           </div>

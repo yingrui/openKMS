@@ -102,7 +102,7 @@
       },
       "storage": {
         "title": "Object storage",
-        "description": "Browse the configured S3/MinIO bucket and move objects or folders (metadata only; no download)."
+        "description": "Browse the configured S3/MinIO bucket, create folders, and move objects or folders (metadata only; no download)."
       }
     }
   },
@@ -114,6 +114,16 @@
     "loading": "Loading…",
     "empty": "This folder is empty.",
     "refresh": "Refresh",
+    "newFolder": "New folder…",
+    "createFolderDialogTitle": "New folder",
+    "createFolderDialogHint": "Create a folder under the current path.",
+    "folderNameLabel": "Folder name",
+    "folderNamePlaceholder": "e.g. reports",
+    "folderNameRequired": "Enter a folder name",
+    "confirmCreateFolder": "Create",
+    "creatingFolder": "Creating…",
+    "createFolderSuccess": "Folder created",
+    "createFolderFailed": "Failed to create folder",
     "loadMore": "Load more",
     "root": "root",
     "breadcrumbAria": "Storage path",
@@ -125,9 +135,6 @@
     "colModified": "Last modified",
     "typeFolder": "Folder",
     "typeFile": "File",
-    "selectLegacyOnPage": "Select legacy document folders on this page",
-    "moveToDocuments": "Move selected to documents/",
-    "moveToDocumentsDone": "Moved {{count}} object(s) under documents/",
     "moveSelected": "Move selected…",
     "moveDialogTitle": "Move to prefix",
     "moveDialogHint": "Move {{count}} selected item(s) under the destination prefix.",
@@ -136,6 +143,7 @@
     "destRequired": "Enter a destination prefix",
     "deleteSource": "Delete source after successful copy",
     "cancel": "Cancel",
+    "closeAria": "Close",
     "confirmMove": "Move",
     "moving": "Moving…",
     "moveSuccess": "Moved {{moved}}, skipped {{skipped}}",

@@ -16,6 +16,8 @@ interface ChatMessage {
   role: 'user' | 'assistant' | 'error';
   content: string;
   elapsed_ms?: number;
+  imageUrl?: string;
+  videoUrl?: string;
 }
 
 function fileToDataUri(file: File): Promise<string> {
@@ -110,10 +112,16 @@ export function ModelDetail() {
         temperature,
       });
 
-      if (res.success && res.content) {
+      if (res.success && (res.content || res.image_url || res.video_url)) {
         setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: res.content!, elapsed_ms: res.elapsed_ms },
+          {
+            role: 'assistant',
+            content: res.content || '',
+            imageUrl: res.image_url || undefined,
+            videoUrl: res.video_url || undefined,
+            elapsed_ms: res.elapsed_ms,
+          },
         ]);
       } else {
         setMessages((prev) => [
@@ -166,7 +174,13 @@ export function ModelDetail() {
 
   const isEmbedding = model.api_kind === 'embeddings';
   const isChatCompletions = model.api_kind === 'chat-completions';
+  const isImageGenerate = model.api_kind === 'image-generate';
+  const isVideoGenerate = model.api_kind === 'video-generate';
+  const isMediaGenerate = isImageGenerate || isVideoGenerate;
   const hasVision = (model.capabilities || []).includes('vision');
+  const displayCapabilities = (model.capabilities || []).filter(
+    (cap) => cap !== model.api_kind && !(isMediaGenerate && (cap === 'image-generate' || cap === 'video-generate')),
+  );
 
   return (
     <div className="model-detail">
@@ -185,7 +199,7 @@ export function ModelDetail() {
         </div>
         <div className="model-detail-badges">
           <span className="model-detail-api-kind">{model.api_kind}</span>
-          {(model.capabilities || []).map((cap) => (
+          {displayCapabilities.map((cap) => (
             <span key={cap} className="model-detail-capability">
               {cap}
             </span>
@@ -239,7 +253,7 @@ export function ModelDetail() {
       <section className="model-detail-playground">
         <div className="playground-header">
           <h2>{t('modelDetail.playground')}</h2>
-          {!isEmbedding && (
+          {!isEmbedding && !isMediaGenerate && (
             <button
               type="button"
               className="playground-settings-toggle"
@@ -251,7 +265,7 @@ export function ModelDetail() {
           )}
         </div>
 
-        {showSettings && !isEmbedding && (
+        {showSettings && !isEmbedding && !isMediaGenerate && (
           <div className="playground-settings">
             <label>
               {t('modelDetail.maxTokens')}
@@ -323,7 +337,13 @@ export function ModelDetail() {
             <div className="playground-messages">
               {messages.length === 0 && (
                 <div className="playground-empty">
-                  {isChatCompletions ? t('modelDetail.emptyChatLLM') : t('modelDetail.emptyChatOther')}
+                  {isImageGenerate
+                    ? t('modelDetail.emptyImageGenerate')
+                    : isVideoGenerate
+                      ? t('modelDetail.emptyVideoGenerate')
+                      : isChatCompletions
+                        ? t('modelDetail.emptyChatLLM')
+                        : t('modelDetail.emptyChatOther')}
                 </div>
               )}
               {messages.map((msg, i) => (
@@ -335,7 +355,13 @@ export function ModelDetail() {
                         ? model.name
                         : t('modelDetail.roleError')}
                   </div>
-                  <div className="playground-msg-content">{msg.content}</div>
+                  {msg.imageUrl && (
+                    <img src={msg.imageUrl} alt="" className="playground-msg-image playground-msg-image--result" />
+                  )}
+                  {msg.videoUrl && (
+                    <video src={msg.videoUrl} controls className="playground-msg-video" />
+                  )}
+                  {msg.content ? <div className="playground-msg-content">{msg.content}</div> : null}
                   {msg.elapsed_ms !== undefined && msg.elapsed_ms > 0 && (
                     <div className="playground-msg-meta">{msg.elapsed_ms}ms</div>
                   )}
@@ -346,7 +372,15 @@ export function ModelDetail() {
                   <div className="playground-msg-role">{model.name}</div>
                   <div className="playground-msg-content playground-typing">
                     <Loader2 size={16} className="model-detail-spinner" />
-                    <span>{isChatCompletions ? t('modelDetail.thinking') : t('modelDetail.processing')}</span>
+                    <span>
+                      {isImageGenerate
+                        ? t('modelDetail.generatingImage')
+                        : isVideoGenerate
+                          ? t('modelDetail.generatingVideo')
+                          : isChatCompletions
+                            ? t('modelDetail.thinking')
+                            : t('modelDetail.processing')}
+                    </span>
                   </div>
                 </div>
               )}
@@ -391,11 +425,15 @@ export function ModelDetail() {
                 <textarea
                   rows={2}
                   placeholder={
-                    hasVision
-                      ? t('modelDetail.vlPlaceholder')
-                      : isChatCompletions
-                        ? t('modelDetail.placeholderChat')
-                        : t('modelDetail.placeholderOther')
+                    isImageGenerate
+                      ? t('modelDetail.placeholderImageGenerate')
+                      : isVideoGenerate
+                        ? t('modelDetail.placeholderVideoGenerate')
+                        : hasVision
+                          ? t('modelDetail.vlPlaceholder')
+                          : isChatCompletions
+                            ? t('modelDetail.placeholderChat')
+                            : t('modelDetail.placeholderOther')
                   }
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
