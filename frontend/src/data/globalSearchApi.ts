@@ -5,7 +5,7 @@ export type GlobalSearchHit = {
   id: string;
   name: string;
   title: string | null;
-  kind: 'document' | 'article' | 'wiki_space' | 'knowledge_base';
+  kind: 'document' | 'article' | 'wiki_space' | 'knowledge_base' | 'media';
   url_path: string;
   channel_id: string | null;
   channel_name: string | null;
@@ -24,6 +24,7 @@ export type GlobalSearchResponse = {
   articles: GlobalSearchSection;
   wiki_spaces: GlobalSearchSection;
   knowledge_bases: GlobalSearchSection;
+  media?: GlobalSearchSection;
 };
 
 export type GlobalSearchParams = {

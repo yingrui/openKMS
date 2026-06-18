@@ -84,6 +84,7 @@ export async function fetchResourceAclOwnerCandidates(
 export const RESOURCE_TYPES = {
   documentChannel: 'document_channel',
   articleChannel: 'article_channel',
+  mediaChannel: 'media_channel',
   wikiSpace: 'wiki_space',
   knowledgeBase: 'knowledge_base',
   evaluation: 'evaluation',

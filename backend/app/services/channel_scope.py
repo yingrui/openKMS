@@ -7,15 +7,18 @@ from app.services.context_guard import (
     require_channel_write,
     scoped_channel_ids,
 )
-from app.services.resource_acl_constants import RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL
+from app.services.resource_acl_constants import RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL, RT_MEDIA_CHANNEL
 
 __all__ = [
     "require_article_channel_in_scope",
     "require_article_channel_write",
     "require_document_channel_in_scope",
     "require_document_channel_write",
+    "require_media_channel_in_scope",
+    "require_media_channel_write",
     "scoped_article_channel_ids",
     "scoped_document_channel_ids",
+    "scoped_media_channel_ids",
 ]
 
 
@@ -50,4 +53,21 @@ async def require_document_channel_write(request, db, channel_id: str) -> None:
 async def require_article_channel_write(request, db, channel_id: str) -> None:
     await require_channel_write(
         db, request, RT_ARTICLE_CHANNEL, channel_id, detail="Article channel not found"
+    )
+
+
+async def scoped_media_channel_ids(request, db):
+    return await scoped_channel_ids(request, db, RT_MEDIA_CHANNEL)
+
+
+def require_media_channel_in_scope(
+    allowed: set[str] | None,
+    channel_id: str,
+) -> None:
+    require_channel_in_scope(allowed, channel_id, detail="Media channel not found")
+
+
+async def require_media_channel_write(request, db, channel_id: str) -> None:
+    await require_channel_write(
+        db, request, RT_MEDIA_CHANNEL, channel_id, detail="Media channel not found"
     )

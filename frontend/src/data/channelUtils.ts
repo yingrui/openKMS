@@ -53,6 +53,9 @@ export interface ChannelNode {
   review_model_id?: string | null;
   review_prompt?: string | null;
   review_criteria?: ReviewCriterionItem[] | null;
+  metadata_schema?: ExtractionSchemaField[] | null;
+  default_image_model_id?: string | null;
+  default_video_model_id?: string | null;
   children?: ChannelNode[];
 }
 

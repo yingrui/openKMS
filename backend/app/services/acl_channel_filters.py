@@ -10,9 +10,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
+from app.models.media_channel import MediaChannel
 from app.models.resource_acl import ResourceAclEntry
 from app.services.acl_resolve import check_resource_access
-from app.services.resource_acl_constants import PERM_READ, RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL
+from app.services.resource_acl_constants import (
+    PERM_READ,
+    RT_ARTICLE_CHANNEL,
+    RT_DOCUMENT_CHANNEL,
+    RT_MEDIA_CHANNEL,
+)
 
 def _expand_channel_ids(all_channels: list, roots: set[str], id_attr: str = "id", parent_attr: str = "parent_id") -> set[str]:
     by_parent: dict[str | None, list] = {}
@@ -136,3 +142,19 @@ async def accessible_article_channel_ids(
     if payload is None:
         return None
     return await readable_article_channel_ids(db, payload, subject)
+
+
+async def readable_media_channel_ids(
+    db: AsyncSession, payload: dict, subject: str
+) -> set[str] | None:
+    return await _readable_channel_ids_batched(
+        db, payload, subject, RT_MEDIA_CHANNEL, MediaChannel
+    )
+
+
+async def accessible_media_channel_ids(
+    db: AsyncSession, subject: str, payload: dict | None = None
+) -> set[str] | None:
+    if payload is None:
+        return None
+    return await readable_media_channel_ids(db, payload, subject)

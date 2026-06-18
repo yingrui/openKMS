@@ -13,11 +13,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
-from app.services.resource_acl_constants import PERM_WRITE, RT_ARTICLE_CHANNEL, RT_DOCUMENT_CHANNEL
+from app.models.media_channel import MediaChannel
+from app.services.resource_acl_constants import (
+    PERM_WRITE,
+    RT_ARTICLE_CHANNEL,
+    RT_DOCUMENT_CHANNEL,
+    RT_MEDIA_CHANNEL,
+)
 from app.services.resource_guard import resource_allowed
 from app.services.resource_acl_service import (
     readable_article_channel_ids,
     readable_document_channel_ids,
+    readable_media_channel_ids,
 )
 
 
@@ -41,6 +48,12 @@ CONTEXT_CHANNEL_REGISTRY: dict[str, ContextChannelSpec] = {
         RT_ARTICLE_CHANNEL,
         "Article channel not found",
         readable_ids=readable_article_channel_ids,
+    ),
+    RT_MEDIA_CHANNEL: ContextChannelSpec(
+        MediaChannel,
+        RT_MEDIA_CHANNEL,
+        "Media channel not found",
+        readable_ids=readable_media_channel_ids,
     ),
 }
 

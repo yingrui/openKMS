@@ -9,8 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article import Article
 from app.models.document import Document
+from app.models.media_asset import MediaAsset
 from app.models.wiki_models import WikiPage
-from app.services.acl_channel_filters import readable_article_channel_ids, readable_document_channel_ids
+from app.services.acl_channel_filters import (
+    readable_article_channel_ids,
+    readable_document_channel_ids,
+    readable_media_channel_ids,
+)
 from app.services.acl_context import acl_check_required
 from app.services.acl_resolve import check_resource_access
 from app.services.acl_scope import scope_applies
@@ -19,6 +24,7 @@ from app.services.resource_acl_constants import (
     PERM_WRITE,
     RT_ARTICLE_CHANNEL,
     RT_DOCUMENT_CHANNEL,
+    RT_MEDIA_CHANNEL,
     RT_WIKI_SPACE,
 )
 
@@ -135,4 +141,37 @@ async def channel_allowed_for_article_write(
         return False
     return await check_resource_access(
         db, payload, subject, RT_ARTICLE_CHANNEL, channel_id, PERM_WRITE
+    )
+
+
+async def scoped_media_predicate(db: AsyncSession, payload: dict, subject: str) -> Any | None:
+    if not isinstance(subject, str):
+        return false()
+    allowed_channels = await readable_media_channel_ids(db, payload, subject)
+    if not allowed_channels:
+        return false()
+    return MediaAsset.channel_id.in_(allowed_channels)
+
+
+async def media_visible_via_channel(
+    db: AsyncSession, payload: dict, subject: str, asset: MediaAsset
+) -> bool:
+    if not isinstance(subject, str):
+        return False
+    if not scope_applies(payload, subject):
+        return True
+    if not asset.channel_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_MEDIA_CHANNEL, asset.channel_id, PERM_READ
+    )
+
+
+async def channel_allowed_for_media_write(
+    db: AsyncSession, payload: dict, subject: str, channel_id: str
+) -> bool:
+    if not isinstance(subject, str) or not channel_id:
+        return False
+    return await check_resource_access(
+        db, payload, subject, RT_MEDIA_CHANNEL, channel_id, PERM_WRITE
     )

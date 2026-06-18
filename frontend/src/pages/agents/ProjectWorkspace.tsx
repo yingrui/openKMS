@@ -10,7 +10,6 @@ import { getProject } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
 import { useProjectAgentStream } from './useProjectAgentStream';
 import { useProjectSessionRouting } from './useProjectSessionRouting';
-import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import '../../components/agents/AgentsWorkspace.scss';
 
 const SESSIONS_WIDTH_PX = 240;
@@ -137,7 +136,6 @@ export function ProjectWorkspace() {
   const filesRailWidth = clampFilesRailWidth(filesRailWidthPx);
 
   return (
-    <ContentCommentsShell resourceType="project" resourceId={projectId}>
     <div className="agents-workspace">
       <div className="agents-workspace-body" ref={bodyRef}>
         <AgentSessionSidebar
@@ -190,6 +188,5 @@ export function ProjectWorkspace() {
         />
       </div>
     </div>
-    </ContentCommentsShell>
   );
 }

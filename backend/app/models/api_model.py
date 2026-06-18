@@ -11,6 +11,8 @@ API_KINDS = [
     ("chat-completions", "Chat completions"),
     ("embeddings", "Embeddings"),
     ("custom", "Custom endpoint"),
+    ("image-generate", "Image generation"),
+    ("video-generate", "Video generation"),
 ]
 
 MODEL_CAPABILITIES = [
@@ -18,6 +20,8 @@ MODEL_CAPABILITIES = [
     ("tools", "Tools"),
     ("thinking", "Thinking"),
     ("document-parse", "Document parse"),
+    ("image-generate", "Image generation"),
+    ("video-generate", "Video generation"),
 ]
 
 VALID_API_KINDS = frozenset(k for k, _ in API_KINDS)

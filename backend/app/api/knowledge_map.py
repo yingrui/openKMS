@@ -22,6 +22,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.article_channel import ArticleChannel
 from app.models.document_channel import DocumentChannel
+from app.models.media_channel import MediaChannel
 from app.models.knowledge_map import (
     DEFAULT_KNOWLEDGE_MAP_HTML_ARTIFACT_ID,
     KnowledgeMapHtmlArtifact,
@@ -51,11 +52,12 @@ from app.services.knowledge_map_html_designer_session import (
     persist_designer_turn_safe,
 )
 from app.services.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
+from app.services.feature_toggles import is_feature_enabled
 
 router = APIRouter(prefix="/knowledge-map", tags=["knowledge-map"])
 logger = logging.getLogger(__name__)
 
-RESOURCE_TYPES: frozenset[str] = frozenset({"document_channel", "article_channel", "wiki_space"})
+RESOURCE_TYPES: frozenset[str] = frozenset({"document_channel", "article_channel", "media_channel", "wiki_space"})
 
 
 def _auth_sub(request: Request) -> str:
@@ -174,7 +176,13 @@ class MapHtmlPreviewOut(BaseModel):
 async def _validate_resource(db: AsyncSession, resource_type: str, resource_id: str) -> None:
     if resource_type not in RESOURCE_TYPES:
         raise HTTPException(status_code=400, detail=f"resource_type must be one of: {sorted(RESOURCE_TYPES)}")
-    if resource_type == "document_channel":
+    if resource_type == "media_channel":
+        if not await is_feature_enabled(db, "media"):
+            raise HTTPException(status_code=404, detail="Media feature is disabled")
+        ch = await db.get(MediaChannel, resource_id)
+        if not ch:
+            raise HTTPException(status_code=400, detail="media_channel not found")
+    elif resource_type == "document_channel":
         ch = await db.get(DocumentChannel, resource_id)
         if not ch:
             raise HTTPException(status_code=400, detail="document_channel not found")

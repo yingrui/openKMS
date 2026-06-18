@@ -30,7 +30,7 @@ Detail pages expose a **right-side Comments rail** (Feishu-style):
 - **Utility rail** (far right): `MessageSquare` toggles comments. Wiki workspace also shows **Copilot**; opening one panel closes the other.
 - **Comments panel**: summary (average rank, count), composer with 0–5 stars, scrollable thread with inline replies.
 
-Integrated on: Article detail, Document detail, Knowledge base detail (hidden in Q&A full-page mode), Wiki workspace & wiki space settings, Agent project workspace & settings.
+Integrated on: Article detail, Document detail, Knowledge base detail (hidden in Q&A full-page mode), Wiki workspace & wiki space settings, Agent project settings.
 
 **Home** (`GET /api/home/hub`): signed-in users see **`recent_comments`** — up to **5** newest comments on resources they own (Sharing **Owner** row, including inherited channel ACL; fallback `created_by`). Includes the owner’s own comments. Each item includes resource title, body preview, rank (top-level), and reply flag; links open the resource detail page.
 

@@ -1,0 +1,71 @@
+{
+  "title": "Media",
+  "index": {
+    "title": "Media library",
+    "subtitle": "Images and videos as auditable research evidence — upload field photos, catalog specimens, or generate with AI.",
+    "statChannels": "Collections",
+    "statAssets": "Assets",
+    "quickActions": "Quick actions",
+    "manageChannels": "Manage collections",
+    "browseMedia": "Browse media"
+  },
+  "channels": {
+    "backToMedia": "Back to Media",
+    "pageTitle": "Media collections",
+    "pageSubtitle": "Organize images and videos in a tree of collections.",
+    "newChannel": "New collection",
+    "name": "Name",
+    "namePlaceholder": "e.g. Field season 2025",
+    "description": "Description",
+    "descPlaceholder": "Optional",
+    "parent": "Parent",
+    "parentNone": "None (root)",
+    "create": "Create",
+    "createFailed": "Failed to create collection"
+  },
+  "channel": {
+    "backToChannels": "All collections",
+    "settings": "Settings",
+    "upload": "Upload",
+    "createImage": "Create image",
+    "createVideo": "Create video",
+    "filterAll": "All",
+    "filterImages": "Images",
+    "filterVideos": "Videos",
+    "empty": "No media in this collection yet.",
+    "loadFailed": "Failed to load media",
+    "uploadFailed": "Upload failed",
+    "deleteConfirm": "Delete selected items?",
+    "generatePrompt": "Prompt",
+    "generateModel": "Model ID",
+    "generateSubmit": "Generate",
+    "generateStarted": "Generation job queued — check Job runs",
+    "searchPlaceholder": "Search title or description…"
+  },
+  "detail": {
+    "back": "Back to collection",
+    "save": "Save",
+    "saved": "Saved",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this asset?",
+    "title": "Title",
+    "description": "Description",
+    "capturedAt": "Captured",
+    "location": "Location",
+    "metadata": "Details",
+    "provenanceGenerated": "AI generated",
+    "provenanceUploaded": "Uploaded",
+    "prev": "Previous",
+    "next": "Next",
+    "tabDescription": "Description",
+    "tabDetails": "Details",
+    "moreInChannel": "More in this collection"
+  },
+  "settings": {
+    "title": "Collection settings",
+    "metadataSchema": "Metadata schema (JSON array)",
+    "defaultImageModel": "Default image model ID",
+    "defaultVideoModel": "Default video model ID",
+    "saved": "Settings saved"
+  }
+}

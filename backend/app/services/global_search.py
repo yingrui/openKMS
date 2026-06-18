@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.article import Article
@@ -13,12 +13,17 @@ from app.models.article_channel import ArticleChannel
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
 from app.models.knowledge_base import KnowledgeBase
+from app.models.media_asset import MediaAsset
+from app.models.media_channel import MediaChannel
 from app.models.wiki_models import WikiSpace
 from app.schemas.global_search import GlobalSearchHit, GlobalSearchResponse, GlobalSearchSection
 from app.services.article_scope import scoped_article_predicate
 from app.services.article_service import collect_channel_and_descendants
 from app.services.data_resource_policy import knowledge_base_visible, scoped_document_predicate
 from app.services.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.feature_toggles import is_feature_enabled
+from app.services.media_scope import scoped_media_predicate
+from app.services.media_service import collect_media_channel_and_descendants
 
 
 def _collect_document_channel_descendants(channels: list[DocumentChannel], channel_id: str, out: set[str]) -> None:
@@ -31,7 +36,7 @@ def _collect_document_channel_descendants(channels: list[DocumentChannel], chann
 def parse_types_param(raw: str | None) -> set[str]:
     """Return requested entity kinds: documents, articles, wiki_spaces, knowledge_bases."""
     s = (raw or "all").strip().lower()
-    all_kinds = frozenset({"documents", "articles", "wiki_spaces", "knowledge_bases"})
+    all_kinds = frozenset({"documents", "articles", "wiki_spaces", "knowledge_bases", "media"})
     if s == "all":
         return set(all_kinds)
     parts = [p.strip().lower() for p in s.split(",") if p.strip()]
@@ -49,11 +54,12 @@ def allowed_types_from_permissions(perms: frozenset[str]) -> set[str]:
         PERM_ARTICLES_READ,
         PERM_DOCUMENTS_READ,
         PERM_KB_READ,
+        PERM_MEDIA_READ,
         PERM_WIKIS_READ,
     )
 
     if PERM_ALL in perms:
-        return {"documents", "articles", "wiki_spaces", "knowledge_bases"}
+        return {"documents", "articles", "wiki_spaces", "knowledge_bases", "media"}
     out: set[str] = set()
     if PERM_DOCUMENTS_READ in perms:
         out.add("documents")
@@ -63,6 +69,8 @@ def allowed_types_from_permissions(perms: frozenset[str]) -> set[str]:
         out.add("wiki_spaces")
     if PERM_KB_READ in perms:
         out.add("knowledge_bases")
+    if PERM_MEDIA_READ in perms:
+        out.add("media")
     return out
 
 
@@ -199,6 +207,72 @@ async def search_articles_section(
     return items, total
 
 
+async def search_media_section(
+    db: AsyncSession,
+    *,
+    jwt_payload: dict,
+    sub: str | None,
+    q: str | None,
+    media_channel_id: str | None,
+    updated_after: datetime | None,
+    updated_before: datetime | None,
+    limit: int,
+) -> tuple[list[GlobalSearchHit], int]:
+    if not await is_feature_enabled(db, "media"):
+        return [], 0
+
+    base = select(MediaAsset, MediaChannel.name.label("channel_name")).join(
+        MediaChannel, MediaAsset.channel_id == MediaChannel.id
+    )
+    scope_pred = await scoped_media_predicate(db, jwt_payload, sub) if isinstance(sub, str) else None
+
+    if media_channel_id:
+        ch_result = await db.execute(select(MediaChannel).order_by(MediaChannel.sort_order))
+        all_channels = list(ch_result.scalars().all())
+        target = next((c for c in all_channels if c.id == media_channel_id), None)
+        if not target:
+            raise ValueError("media_channel_not_found")
+        ids_to_include: set[str] = set()
+        collect_media_channel_and_descendants(all_channels, media_channel_id, ids_to_include)
+        if not ids_to_include:
+            return [], 0
+        if scope_pred is not None:
+            base = base.where(and_(MediaAsset.channel_id.in_(ids_to_include), scope_pred))
+        else:
+            base = base.where(MediaAsset.channel_id.in_(ids_to_include))
+    elif scope_pred is not None:
+        base = base.where(scope_pred)
+
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        base = base.where(
+            or_(MediaAsset.title.ilike(term), MediaAsset.description.ilike(term))
+        )
+    base = _apply_updated_range(base, MediaAsset.updated_at, updated_after, updated_before)
+
+    count_q = select(func.count()).select_from(base.subquery())
+    total = int((await db.execute(count_q)).scalar_one() or 0)
+
+    rows_q = base.order_by(MediaAsset.updated_at.desc()).limit(limit)
+    result = await db.execute(rows_q)
+    rows = result.all()
+    items: list[GlobalSearchHit] = []
+    for asset, ch_name in rows:
+        items.append(
+            GlobalSearchHit(
+                id=asset.id,
+                name=asset.title,
+                title=asset.title,
+                kind="media",
+                url_path=f"/media/view/{asset.id}",
+                channel_id=asset.channel_id,
+                channel_name=ch_name,
+                updated_at=asset.updated_at,
+            )
+        )
+    return items, total
+
+
 async def search_wiki_spaces_section(
     db: AsyncSession,
     *,
@@ -294,6 +368,7 @@ async def run_global_search(
     q: str | None,
     document_channel_id: str | None,
     article_channel_id: str | None,
+    media_channel_id: str | None = None,
     updated_after: datetime | None,
     updated_before: datetime | None,
     limit: int,
@@ -302,6 +377,9 @@ async def run_global_search(
 
     requested = parse_types_param(types_param)
     allowed = allowed_types_from_permissions(perms)
+    if not await is_feature_enabled(db, "media"):
+        allowed.discard("media")
+        requested.discard("media")
     to_run = requested & allowed
 
     if not to_run:
@@ -311,6 +389,7 @@ async def run_global_search(
     arts_section: GlobalSearchSection | None = None
     wiki_section: GlobalSearchSection | None = None
     kb_section: GlobalSearchSection | None = None
+    media_section: GlobalSearchSection | None = None
 
     async def run_docs():
         nonlocal docs_section
@@ -378,20 +457,40 @@ async def run_global_search(
         )
         kb_section = GlobalSearchSection(items=items, total=total)
 
+    async def run_media():
+        nonlocal media_section
+        if "media" not in to_run:
+            media_section = GlobalSearchSection(items=[], total=0)
+            return
+        items, total = await search_media_section(
+            db,
+            jwt_payload=jwt_payload,
+            sub=sub,
+            q=q,
+            media_channel_id=media_channel_id,
+            updated_after=updated_after,
+            updated_before=updated_before,
+            limit=limit,
+        )
+        media_section = GlobalSearchSection(items=items, total=total)
+
     try:
         await run_docs()
         await run_arts()
         await run_wiki()
         await run_kb()
+        await run_media()
     except ValueError as e:
         if str(e) == "document_channel_not_found":
             return None, "document_channel_not_found"
         if str(e) == "article_channel_not_found":
             return None, "article_channel_not_found"
+        if str(e) == "media_channel_not_found":
+            return None, "media_channel_not_found"
         raise
 
     assert docs_section is not None and arts_section is not None
-    assert wiki_section is not None and kb_section is not None
+    assert wiki_section is not None and kb_section is not None and media_section is not None
 
     # Types not requested: empty sections without querying (already zeros from to_run logic)
     # Types requested but not permitted: show empty
@@ -406,6 +505,8 @@ async def run_global_search(
             return arts_section
         if kind == "wiki_spaces":
             return wiki_section
+        if kind == "media":
+            return media_section
         return kb_section
 
     resp = GlobalSearchResponse(
@@ -415,5 +516,6 @@ async def run_global_search(
         articles=section_for("articles"),
         wiki_spaces=section_for("wiki_spaces"),
         knowledge_bases=section_for("knowledge_bases"),
+        media=section_for("media"),
     )
     return resp, None

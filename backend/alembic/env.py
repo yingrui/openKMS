@@ -22,6 +22,8 @@ import app.models.article_review  # noqa: F401 - register models with Base.metad
 import app.models.pipeline  # noqa: F401 - register models with Base.metadata
 import app.models.api_model  # noqa: F401 - register models with Base.metadata
 import app.models.api_provider  # noqa: F401 - register models with Base.metadata
+import app.models.media_channel  # noqa: F401 - register models with Base.metadata
+import app.models.media_asset  # noqa: F401 - register models with Base.metadata
 import app.models.feature_toggle  # noqa: F401 - register models with Base.metadata
 import app.models.knowledge_base  # noqa: F401 - register models with Base.metadata
 import app.models.kb_document  # noqa: F401 - register models with Base.metadata

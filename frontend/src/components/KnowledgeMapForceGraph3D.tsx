@@ -328,6 +328,8 @@ export function KnowledgeMapForceGraph3D({
           void navigate(`/wikis/${encodeURIComponent(node.resourceId)}/pages/graph`);
         } else if (node.resourceType === 'article_channel') {
           void navigate(`/articles/channels/${encodeURIComponent(node.resourceId)}`);
+        } else if (node.resourceType === 'media_channel') {
+          void navigate(`/media/channels/${encodeURIComponent(node.resourceId)}`);
         } else {
           void navigate('/articles');
         }

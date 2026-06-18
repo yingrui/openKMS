@@ -13,6 +13,7 @@ DEFAULTS: dict[str, bool] = {
     "evaluations": False,
     "connectors": True,
     "agents": True,
+    "media": False,
 }
 
 
@@ -30,3 +31,8 @@ async def is_feature_enabled(db: AsyncSession, key: str) -> bool:
 async def require_agents_feature(db: AsyncSession = Depends(get_db)) -> None:
     if not await is_feature_enabled(db, "agents"):
         raise HTTPException(status_code=404, detail="Agents feature is disabled")
+
+
+async def require_media_feature(db: AsyncSession = Depends(get_db)) -> None:
+    if not await is_feature_enabled(db, "media"):
+        raise HTTPException(status_code=404, detail="Media feature is disabled")

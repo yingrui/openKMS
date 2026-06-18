@@ -84,6 +84,7 @@
   "resourceTypes": {
     "document_channel": "Document channel",
     "article_channel": "Article channel",
+    "media_channel": "Media collection",
     "wiki_space": "Wiki space"
   },
   "optionDocumentChannel": "Document channel",

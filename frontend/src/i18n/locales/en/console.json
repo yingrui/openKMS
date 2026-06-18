@@ -118,6 +118,10 @@
       "agents": {
         "name": "Agents",
         "description": "Project workspaces with Deep Agents chat, files, git, and research tools."
+      },
+      "media": {
+        "name": "Media library",
+        "description": "Image and video collections with metadata, upload, and AI generation (experimental)."
       }
     }
   },

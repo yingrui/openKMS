@@ -3,6 +3,7 @@ import {
   Home as HomeIcon,
   FileStack,
   FileText,
+  Image,
   Database,
   BookOpen,
   Folder,
@@ -38,6 +39,7 @@ import logo from '../../assets/logo.svg';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
+import { useMediaChannels } from '../../contexts/MediaChannelsContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
 import type { ChannelNode } from '../../data/channelUtils';
@@ -191,9 +193,11 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const navigate = useNavigate();
   const { channels, ensureLoaded: ensureDocumentChannels } = useDocumentChannels();
   const { channels: articleChannels, ensureLoaded: ensureArticleChannels } = useArticleChannels();
+  const { channels: mediaChannels, ensureLoaded: ensureMediaChannels } = useMediaChannels();
   const { systemName: sidebarBrandName } = useSystemPublic();
   const onDocuments = location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onArticles = location.pathname === '/articles' || location.pathname.startsWith('/articles/');
+  const onMedia = location.pathname === '/media' || location.pathname.startsWith('/media/');
 
   const defaultDocChannel = getFirstLeafChannelId(channels);
   const docChannelMatch = location.pathname.match(/^\/documents\/channels\/([^/]+)/);
@@ -214,6 +218,10 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   useEffect(() => {
     if (onArticles) void ensureArticleChannels();
   }, [onArticles, ensureArticleChannels]);
+
+  useEffect(() => {
+    if (onMedia) void ensureMediaChannels();
+  }, [onMedia, ensureMediaChannels]);
 
   useEffect(() => {
     if (onDocuments && channels.length > 0) {
@@ -465,6 +473,18 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
               </div>
             )}
           </div>
+        )}
+        {toggles.media && canAccessPath('/media') && (
+          <NavLink
+            to="/media"
+            title={t('media')}
+            className={({ isActive }) =>
+              `sidebar-link ${isActive || onMedia ? 'sidebar-link-active' : ''}`
+            }
+          >
+            <Image size={18} strokeWidth={1.75} />
+            <span>{t('media')}</span>
+          </NavLink>
         )}
         {canAccessPath('/documents') && (
         <div className="sidebar-menu-group">

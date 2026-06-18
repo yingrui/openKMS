@@ -10,6 +10,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.api.auth import api_auth_router, router as auth_router
 from app.api.article_channels import router as article_channels_router
 from app.api.articles import router as articles_router
+from app.api.media_channels import router as media_channels_router
+from app.api.media import router as media_router
 from app.api.comments import router as comments_router
 from app.api.channels import router as channels_router
 from app.api.documents import router as documents_router
@@ -125,6 +127,8 @@ app.include_router(channels_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(article_channels_router, prefix="/api")
 app.include_router(articles_router, prefix="/api")
+app.include_router(media_channels_router, prefix="/api")
+app.include_router(media_router, prefix="/api")
 app.include_router(comments_router, prefix="/api")
 app.include_router(feature_toggles_router, prefix="/api")
 app.include_router(pipelines_router, prefix="/api")

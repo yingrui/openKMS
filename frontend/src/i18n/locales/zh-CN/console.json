@@ -118,6 +118,10 @@
       "agents": {
         "name": "智能体",
         "description": "项目工作区：Deep Agents 对话、文件、git 与检索工具。"
+      },
+      "media": {
+        "name": "媒体库",
+        "description": "图片与视频合集、元数据、上传与 AI 生成（实验性）。"
       }
     }
   },

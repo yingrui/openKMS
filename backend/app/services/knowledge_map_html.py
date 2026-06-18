@@ -224,6 +224,8 @@ def _resource_href(frontend_base: str, resource_type: str, resource_id: str) -> 
         return f"{base}/wikis/{rid}/pages/graph"
     if resource_type == "article_channel":
         return f"{base}/articles/channels/{rid}"
+    if resource_type == "media_channel":
+        return f"{base}/media/channels/{rid}"
     return f"{base}/articles"
 
 

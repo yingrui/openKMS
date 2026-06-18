@@ -14,7 +14,7 @@ class GlobalSearchHit(BaseModel):
     id: str
     name: str
     title: str | None = None
-    kind: Literal["document", "article", "wiki_space", "knowledge_base"]
+    kind: Literal["document", "article", "wiki_space", "knowledge_base", "media"]
     url_path: str
     channel_id: str | None = None
     channel_name: str | None = None
@@ -33,3 +33,4 @@ class GlobalSearchResponse(BaseModel):
     articles: GlobalSearchSection
     wiki_spaces: GlobalSearchSection
     knowledge_bases: GlobalSearchSection
+    media: GlobalSearchSection = Field(default_factory=lambda: GlobalSearchSection(items=[], total=0))

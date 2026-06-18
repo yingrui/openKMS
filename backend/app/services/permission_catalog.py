@@ -26,6 +26,8 @@ PERM_DOCUMENTS_READ = "documents:read"
 PERM_DOCUMENTS_WRITE = "documents:write"
 PERM_ARTICLES_READ = "articles:read"
 PERM_ARTICLES_WRITE = "articles:write"
+PERM_MEDIA_READ = "media:read"
+PERM_MEDIA_WRITE = "media:write"
 PERM_CHANNELS_READ = "channels:read"
 PERM_CHANNELS_WRITE = "channels:write"
 PERM_KB_READ = "knowledge_bases:read"
@@ -149,6 +151,18 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_ARTICLES_WRITE,
         "Create and edit articles",
         "Article CRUD, markdown, attachments, versions; data scopes may apply.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_MEDIA_READ,
+        "View media library",
+        "Media channels, asset list and detail, file redirects; data scopes may apply.",
+        "content",
+    ),
+    OperationKeyHint(
+        PERM_MEDIA_WRITE,
+        "Create and edit media",
+        "Upload, edit, delete media assets and manage channel content; data scopes may apply.",
         "content",
     ),
     OperationKeyHint(

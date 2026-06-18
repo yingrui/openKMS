@@ -42,6 +42,8 @@ import enAgents from './locales/en/agents.json';
 import zhAgents from './locales/zh-CN/agents.json';
 import enComments from './locales/en/comments.json';
 import zhComments from './locales/zh-CN/comments.json';
+import enMedia from './locales/en/media.json';
+import zhMedia from './locales/zh-CN/media.json';
 
 export const OPENKMS_LOCALE_STORAGE_KEY = 'openkms_locale';
 
@@ -102,6 +104,7 @@ void i18n
       'knowledgeBase',
       'agents',
       'comments',
+      'media',
     ],
     defaultNS: 'common',
     interpolation: { escapeValue: false },
@@ -132,6 +135,7 @@ void i18n
         knowledgeBase: enKnowledgeBase,
         agents: enAgents,
         comments: enComments,
+        media: enMedia,
       },
       'zh-CN': {
         common: zhCommon,
@@ -154,6 +158,7 @@ void i18n
         knowledgeBase: zhKnowledgeBase,
         agents: zhAgents,
         comments: zhComments,
+        media: zhMedia,
       },
     },
   });

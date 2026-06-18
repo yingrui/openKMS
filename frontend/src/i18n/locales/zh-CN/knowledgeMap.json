@@ -84,6 +84,7 @@
   "resourceTypes": {
     "document_channel": "文档频道",
     "article_channel": "文章频道",
+    "media_channel": "媒体合集",
     "wiki_space": "Wiki 空间"
   },
   "optionDocumentChannel": "文档频道",

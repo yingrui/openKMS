@@ -11,8 +11,10 @@ from app.models.resource_acl import ResourceAclEntry
 from app.services.acl_channel_filters import (
     accessible_article_channel_ids,
     accessible_document_channel_ids,
+    accessible_media_channel_ids,
     readable_article_channel_ids,
     readable_document_channel_ids,
+    readable_media_channel_ids,
 )
 from app.services.acl_context import acl_check_required
 from app.services.acl_resolve import (
@@ -177,6 +179,10 @@ async def effective_channel_ids(db: AsyncSession, subject: str, payload: dict | 
 
 async def effective_article_channel_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
     return await accessible_article_channel_ids(db, subject, payload)
+
+
+async def effective_media_channel_ids(db: AsyncSession, subject: str, payload: dict | None = None) -> set[str] | None:
+    return await accessible_media_channel_ids(db, subject, payload)
 
 
 async def effective_channel_ids_with_data_resources(

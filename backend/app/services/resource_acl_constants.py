@@ -14,6 +14,8 @@ RT_DOCUMENT_CHANNEL = "document_channel"
 RT_DOCUMENT = "document"  # legacy rows only; not in SECURABLE_RESOURCE_TYPES
 RT_ARTICLE_CHANNEL = "article_channel"
 RT_ARTICLE = "article"  # legacy rows only
+RT_MEDIA_CHANNEL = "media_channel"
+RT_MEDIA_ASSET = "media_asset"  # legacy rows only; assets use channel ACL
 RT_WIKI_SPACE = "wiki_space"
 RT_WIKI_PAGE = "wiki_page"  # legacy rows only; pages use wiki_space ACL
 RT_KNOWLEDGE_BASE = "knowledge_base"
@@ -27,6 +29,7 @@ SECURABLE_RESOURCE_TYPES = frozenset(
     {
         RT_DOCUMENT_CHANNEL,
         RT_ARTICLE_CHANNEL,
+        RT_MEDIA_CHANNEL,
         RT_WIKI_SPACE,
         RT_KNOWLEDGE_BASE,
         RT_EVALUATION,
@@ -37,7 +40,7 @@ SECURABLE_RESOURCE_TYPES = frozenset(
     }
 )
 
-CONTAINER_TYPES = frozenset({RT_DOCUMENT_CHANNEL, RT_ARTICLE_CHANNEL, RT_WIKI_SPACE})
+CONTAINER_TYPES = frozenset({RT_DOCUMENT_CHANNEL, RT_ARTICLE_CHANNEL, RT_MEDIA_CHANNEL, RT_WIKI_SPACE})
 
 GRANTEE_USER = "user"
 GRANTEE_GROUP = "group"

@@ -16,6 +16,12 @@ def _build_url(base_url: str, api_kind: str) -> str:
         return f"{base}/embeddings"
     if api_kind == "chat-completions":
         return f"{base}/chat/completions"
+    if api_kind == "image-generate":
+        root = base if "/paas/v4" in base else f"{base}/paas/v4" if not base.endswith("/api") else f"{base}/paas/v4"
+        return f"{root.rstrip('/')}/async/images/generations"
+    if api_kind == "video-generate":
+        root = base if "/paas/v4" in base else f"{base}/paas/v4" if not base.endswith("/api") else f"{base}/paas/v4"
+        return f"{root.rstrip('/')}/videos/generations"
     return base
 
 
@@ -62,6 +68,10 @@ def _build_payload(
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+    elif api_kind == "image-generate":
+        payload = {"prompt": prompt, "size": "1280x1280", "quality": "hd"}
+    elif api_kind == "video-generate":
+        payload = {"prompt": prompt, "size": "1920x1080", "duration": 5}
     else:
         payload = {
             "messages": [{"role": "user", "content": prompt}],
@@ -98,6 +108,10 @@ def parse_response(data: dict, api_kind: str, prompt: str) -> str:
     """Parse model API response based on api_kind."""
     if api_kind == "embeddings":
         return _parse_embedding_response(data, prompt)
+    if api_kind in ("image-generate", "video-generate"):
+        task_id = data.get("id") or data.get("request_id")
+        status = data.get("task_status", "unknown")
+        return f"Async task submitted.\nTask ID: {task_id}\nStatus: {status}\nPoll GET .../async-result/{{id}} for the result."
     return _parse_chat_response(data)
 
 

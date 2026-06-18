@@ -825,6 +825,7 @@ export function KnowledgeMap() {
                         >
                           <option value="document_channel">{t('resourceTypes.document_channel')}</option>
                           <option value="article_channel">{t('resourceTypes.article_channel')}</option>
+                          <option value="media_channel">{t('resourceTypes.media_channel')}</option>
                           <option value="wiki_space">{t('resourceTypes.wiki_space')}</option>
                         </select>
                         {linkType === 'document_channel' && (
@@ -862,6 +863,15 @@ export function KnowledgeMap() {
                             type="text"
                             className="knowledge-map-input"
                             placeholder={t('articleChannelPlaceholder')}
+                            value={linkResourceId}
+                            onChange={(e) => setLinkResourceId(e.target.value)}
+                          />
+                        )}
+                        {linkType === 'media_channel' && (
+                          <input
+                            type="text"
+                            className="knowledge-map-input"
+                            placeholder={t('resourceTypes.media_channel')}
                             value={linkResourceId}
                             onChange={(e) => setLinkResourceId(e.target.value)}
                           />

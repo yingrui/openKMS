@@ -1,0 +1,71 @@
+{
+  "title": "媒体",
+  "index": {
+    "title": "媒体库",
+    "subtitle": "将图片与视频作为可审计的研究证据进行管理——上传野外照片、编目标本或通过 AI 生成。",
+    "statChannels": "合集",
+    "statAssets": "资产",
+    "quickActions": "快捷操作",
+    "manageChannels": "管理合集",
+    "browseMedia": "浏览媒体"
+  },
+  "channels": {
+    "backToMedia": "返回媒体",
+    "pageTitle": "媒体合集",
+    "pageSubtitle": "以树形结构组织图片与视频。",
+    "newChannel": "新建合集",
+    "name": "名称",
+    "namePlaceholder": "例如：2025 野外季",
+    "description": "描述",
+    "descPlaceholder": "可选",
+    "parent": "上级",
+    "parentNone": "无（根级）",
+    "create": "创建",
+    "createFailed": "创建合集失败"
+  },
+  "channel": {
+    "backToChannels": "全部合集",
+    "settings": "设置",
+    "upload": "上传",
+    "createImage": "生成图片",
+    "createVideo": "生成视频",
+    "filterAll": "全部",
+    "filterImages": "图片",
+    "filterVideos": "视频",
+    "empty": "此合集尚无媒体。",
+    "loadFailed": "加载媒体失败",
+    "uploadFailed": "上传失败",
+    "deleteConfirm": "删除所选项目？",
+    "generatePrompt": "提示词",
+    "generateModel": "模型 ID",
+    "generateSubmit": "生成",
+    "generateStarted": "已排队生成任务 — 请在作业运行中查看",
+    "searchPlaceholder": "搜索标题或描述…"
+  },
+  "detail": {
+    "back": "返回合集",
+    "save": "保存",
+    "saved": "已保存",
+    "delete": "删除",
+    "deleteConfirm": "删除此资产？",
+    "title": "标题",
+    "description": "描述",
+    "capturedAt": "拍摄时间",
+    "location": "地点",
+    "metadata": "详情",
+    "provenanceGenerated": "AI 生成",
+    "provenanceUploaded": "已上传",
+    "prev": "上一张",
+    "next": "下一张",
+    "tabDescription": "描述",
+    "tabDetails": "详情",
+    "moreInChannel": "本合集更多内容"
+  },
+  "settings": {
+    "title": "合集设置",
+    "metadataSchema": "元数据 schema（JSON 数组）",
+    "defaultImageModel": "默认图片模型 ID",
+    "defaultVideoModel": "默认视频模型 ID",
+    "saved": "设置已保存"
+  }
+}

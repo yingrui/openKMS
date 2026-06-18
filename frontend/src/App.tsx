@@ -7,6 +7,7 @@ import { SystemPublicProvider } from './contexts/SystemPublicContext';
 import { FeatureTogglesProvider } from './contexts/FeatureTogglesContext';
 import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
+import { MediaChannelsProvider } from './contexts/MediaChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
 import { BuildStamp } from './components/Layout/BuildStamp';
 import { Profile } from './pages/Profile';
@@ -80,6 +81,13 @@ const DocumentChannels = lazy(() => import('./pages/documents/DocumentChannels')
 const ArticlesIndex = lazy(() => import('./pages/articles/ArticlesIndex').then((m) => ({ default: m.ArticlesIndex })));
 const ArticleChannel = lazy(() => import('./pages/articles/ArticleChannel').then((m) => ({ default: m.ArticleChannel })));
 const ArticleChannels = lazy(() => import('./pages/articles/ArticleChannels').then((m) => ({ default: m.ArticleChannels })));
+const MediaIndex = lazy(() => import('./pages/media/MediaIndex').then((m) => ({ default: m.MediaIndex })));
+const MediaChannel = lazy(() => import('./pages/media/MediaChannel').then((m) => ({ default: m.MediaChannel })));
+const MediaChannels = lazy(() => import('./pages/media/MediaChannels').then((m) => ({ default: m.MediaChannels })));
+const MediaDetail = lazy(() => import('./pages/media/MediaDetail').then((m) => ({ default: m.MediaDetail })));
+const MediaChannelSettings = lazy(() =>
+  import('./pages/media/MediaChannelSettings').then((m) => ({ default: m.MediaChannelSettings })),
+);
 const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );
@@ -146,6 +154,7 @@ function App() {
       <FeatureTogglesProvider>
       <DocumentChannelsProvider>
       <ArticleChannelsProvider>
+      <MediaChannelsProvider>
       <ErrorBoundary>
       <Suspense fallback={<AppLoadingFallback />}>
       <Routes>
@@ -170,6 +179,13 @@ function App() {
             <Route path="channels/:channelId" element={<ArticleChannel />} />
             <Route path="channels" element={<ArticleChannels />} />
             <Route path="view/:id" element={<ArticleDetail />} />
+          </Route>
+          <Route path="media" element={<FeatureGate feature="media"><Outlet /></FeatureGate>}>
+            <Route index element={<MediaIndex />} />
+            <Route path="channels/:channelId/settings" element={<MediaChannelSettings />} />
+            <Route path="channels/:channelId" element={<MediaChannel />} />
+            <Route path="channels" element={<MediaChannels />} />
+            <Route path="view/:id" element={<MediaDetail />} />
           </Route>
           <Route path="knowledge-bases" element={<KnowledgeBaseList />} />
           <Route path="knowledge-bases/:id" element={<KnowledgeBaseDetail />} />
@@ -254,6 +270,7 @@ function App() {
       </Routes>
       </Suspense>
       </ErrorBoundary>
+      </MediaChannelsProvider>
       </ArticleChannelsProvider>
       </DocumentChannelsProvider>
       </FeatureTogglesProvider>
