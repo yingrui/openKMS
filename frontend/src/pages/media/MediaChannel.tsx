@@ -20,6 +20,7 @@ import {
   type MediaAssetOut,
   type MediaKind,
 } from '../../data/mediaApi';
+import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import '../documents/DocumentChannel.scss';
 import './Media.scss';
 
@@ -59,7 +60,67 @@ export function MediaChannel() {
   const [genPrompt, setGenPrompt] = useState('');
   const [genModelId, setGenModelId] = useState('');
   const [genBusy, setGenBusy] = useState(false);
+  const [imageModels, setImageModels] = useState<ApiModelResponse[]>([]);
+  const [videoModels, setVideoModels] = useState<ApiModelResponse[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setModelsLoading(true);
+      try {
+        const [images, videos] = await Promise.all([
+          fetchAllModels({ api_kind: 'image-generate' }),
+          fetchAllModels({ api_kind: 'video-generate' }),
+        ]);
+        if (!cancelled) {
+          setImageModels(images);
+          setVideoModels(videos);
+        }
+      } catch {
+        if (!cancelled) {
+          setImageModels([]);
+          setVideoModels([]);
+        }
+      } finally {
+        if (!cancelled) setModelsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const pickDefaultModelId = useCallback(
+    (kind: MediaKind) => {
+      const models = kind === 'image' ? imageModels : videoModels;
+      if (models.length === 0) return '';
+      const preferred =
+        kind === 'image'
+          ? currentChannel?.default_image_model_id
+          : currentChannel?.default_video_model_id;
+      if (preferred && models.some((m) => m.id === preferred)) return preferred;
+      const categoryDefault = models.find((m) => m.is_default_in_category);
+      return categoryDefault?.id ?? models[0].id;
+    },
+    [currentChannel?.default_image_model_id, currentChannel?.default_video_model_id, imageModels, videoModels],
+  );
+
+  const openGenerate = useCallback(
+    (kind: MediaKind) => {
+      setGenOpen(kind);
+      setGenPrompt('');
+      setGenModelId(pickDefaultModelId(kind));
+    },
+    [pickDefaultModelId],
+  );
+
+  const closeGenerate = useCallback(() => {
+    if (genBusy) return;
+    setGenOpen(null);
+    setGenPrompt('');
+  }, [genBusy]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
@@ -124,18 +185,17 @@ export function MediaChannel() {
   };
 
   const onGenerate = async () => {
-    if (!genOpen || !channelId || !genPrompt.trim() || !genModelId.trim()) return;
+    if (!genOpen || !channelId || !genPrompt.trim() || !genModelId) return;
     setGenBusy(true);
     try {
       await generateMediaAsset({
         channel_id: channelId,
         media_kind: genOpen,
-        model_id: genModelId.trim(),
+        model_id: genModelId,
         prompt: genPrompt.trim(),
       });
       toast.success(t('channel.generateStarted'));
-      setGenOpen(null);
-      setGenPrompt('');
+      closeGenerate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('channel.generateFailed'));
     } finally {
@@ -144,6 +204,9 @@ export function MediaChannel() {
   };
 
   const selectedCount = selected.size;
+  const activeGenModels = genOpen === 'image' ? imageModels : genOpen === 'video' ? videoModels : [];
+  const canCreateImage = !modelsLoading && imageModels.length > 0;
+  const canCreateVideo = !modelsLoading && videoModels.length > 0;
 
   if (chLoading) {
     return (
@@ -204,10 +267,9 @@ export function MediaChannel() {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => {
-              setGenOpen('image');
-              setGenModelId(currentChannel?.default_image_model_id || '');
-            }}
+            disabled={!canCreateImage}
+            title={!canCreateImage ? t('channel.noImageModels') : undefined}
+            onClick={() => openGenerate('image')}
           >
             <Sparkles size={18} />
             <span>{t('channel.createImage')}</span>
@@ -215,10 +277,9 @@ export function MediaChannel() {
           <button
             type="button"
             className="btn btn-secondary"
-            onClick={() => {
-              setGenOpen('video');
-              setGenModelId(currentChannel?.default_video_model_id || '');
-            }}
+            disabled={!canCreateVideo}
+            title={!canCreateVideo ? t('channel.noVideoModels') : undefined}
+            onClick={() => openGenerate('video')}
           >
             <Sparkles size={18} />
             <span>{t('channel.createVideo')}</span>
@@ -335,35 +396,81 @@ export function MediaChannel() {
       </div>
 
       {genOpen && (
-        <div className="media-modal-backdrop" role="presentation" onClick={() => !genBusy && setGenOpen(null)}>
-          <div className="media-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <h2>{genOpen === 'image' ? t('channel.createImage') : t('channel.createVideo')}</h2>
-            <div className="media-detail-field">
-              <label className="media-detail-field-label" htmlFor="media-gen-prompt">{t('channel.generatePrompt')}</label>
+        <div
+          className="documents-upload-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="media-generate-modal-title"
+          onClick={closeGenerate}
+          onKeyDown={(e) => e.key === 'Escape' && closeGenerate()}
+        >
+          <div className="documents-upload-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="documents-upload-modal-header">
+              <h2 id="media-generate-modal-title">
+                {genOpen === 'image' ? t('channel.createImage') : t('channel.createVideo')}
+              </h2>
+              <button
+                type="button"
+                className="documents-upload-modal-close"
+                onClick={closeGenerate}
+                disabled={genBusy}
+                aria-label={t('common.close')}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="documents-upload-modal-hint">
+              {genOpen === 'image' ? t('channel.generateImageHint') : t('channel.generateVideoHint')}
+            </p>
+            <div className="documents-move-form">
+              <label htmlFor="media-gen-prompt">{t('channel.generatePrompt')}</label>
               <textarea
                 id="media-gen-prompt"
-                className="document-detail-metadata-input media-detail-textarea"
+                className="documents-move-textarea"
                 rows={4}
                 value={genPrompt}
                 onChange={(e) => setGenPrompt(e.target.value)}
+                placeholder={t('channel.generatePromptPlaceholder')}
+                disabled={genBusy}
+                autoFocus
               />
             </div>
-            <div className="media-detail-field">
-              <label className="media-detail-field-label" htmlFor="media-gen-model">{t('channel.generateModel')}</label>
-              <input
+            <div className="documents-move-form">
+              <label htmlFor="media-gen-model">{t('channel.generateModel')}</label>
+              <select
                 id="media-gen-model"
-                type="text"
-                className="document-detail-metadata-input"
+                className="documents-move-select"
                 value={genModelId}
                 onChange={(e) => setGenModelId(e.target.value)}
-              />
+                disabled={genBusy || modelsLoading || activeGenModels.length === 0}
+              >
+                {activeGenModels.length === 0 ? (
+                  <option value="">{t('channel.generateModelNone')}</option>
+                ) : (
+                  activeGenModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.provider_name})
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
-            <div className="media-modal-actions">
-              <button type="button" className="btn btn-secondary" disabled={genBusy} onClick={() => setGenOpen(null)}>
+            <div className="documents-upload-modal-actions">
+              <button type="button" className="btn btn-secondary" disabled={genBusy} onClick={closeGenerate}>
                 {t('common.cancel')}
               </button>
-              <button type="button" className="btn btn-primary" disabled={genBusy} onClick={() => void onGenerate()}>
-                {genBusy ? <Loader2 size={16} className="documents-loading-spinner" /> : t('channel.generateSubmit')}
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={genBusy || !genPrompt.trim() || !genModelId}
+                onClick={() => void onGenerate()}
+              >
+                {genBusy ? (
+                  <Loader2 size={16} className="documents-upload-spinner" />
+                ) : (
+                  <Sparkles size={16} />
+                )}
+                <span>{genBusy ? t('channel.generating') : t('channel.generateSubmit')}</span>
               </button>
             </div>
           </div>

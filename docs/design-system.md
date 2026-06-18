@@ -53,6 +53,8 @@ Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-
 
 **Compile-time caps** (`_tokens.scss`): **`$km-layout-max`** (900px page width), **`$account-form-max-width`**, **`$account-input-min-flex`**, **`$z-settings-modal-overlay`** / **`$z-settings-import-overlay`** (wiki import stack).
 
+**Channel modals** (`DocumentChannel.scss`): upload, move, and Media generate dialogs share **`.documents-upload-modal-overlay`** / **`.documents-upload-modal`** (header + hint + footer actions). Form fields inside modals use **`.documents-move-form`** with **`.documents-move-select`** or **`.documents-move-textarea`** (full width, muted background, accent focus ring).
+
 ## Conventions
 
 1. **Colors & surfaces** — Prefer **`var(--color-*)`**, **`var(--status-doc-*)`**, **`var(--color-*-bg)`** / **fg** / **border** so dark mode stays correct. Avoid new raw hex in feature SCSS unless print/PDF or a one-off chart.

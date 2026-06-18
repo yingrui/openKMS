@@ -46,6 +46,10 @@ media/{asset_id}/poster.webp   # video
 
 Routes (when toggle on): `/media`, `/media/channels`, `/media/channels/:id`, `/media/view/:id`.
 
+- **Collection grid** — upload, bulk delete, filter by kind; **Create image** / **Create video** open the shared channel upload modal pattern (`documents-upload-modal-*`). Buttons are disabled when no registered `image-generate` / `video-generate` models exist; the dialog uses a model `<select>` (collection default → category default → first model).
+- **Image detail** — viewer + sticky metadata sidebar (title, captured time, location, description).
+- **Video detail** — YouTube-style layout: theater player (centered, no stretch letterboxing) + caption row; sidebar tabs for **Description** vs **Details** (technical metadata grid).
+
 Permissions: `media:read`, `media:write`.
 
 ## Integrations

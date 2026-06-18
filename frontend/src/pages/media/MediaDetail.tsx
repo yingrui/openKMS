@@ -31,7 +31,18 @@ type MediaDetailFormProps = {
   onDelete: () => void;
   nav: ReactNode;
   descriptionOnly?: boolean;
+  activeTab?: 'description' | 'details';
+  onTabChange?: (tab: 'description' | 'details') => void;
+  techDetails?: ReactNode;
 };
+
+function formatDuration(ms: number | null | undefined): string | null {
+  if (ms == null || ms <= 0) return null;
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
 
 function MediaDetailFormPanel({
   title,
@@ -49,19 +60,50 @@ function MediaDetailFormPanel({
   onDelete,
   nav,
   descriptionOnly = false,
+  activeTab,
+  onTabChange,
+  techDetails,
 }: MediaDetailFormProps) {
   const { t } = useTranslation('media');
+  const showVideoTabs = mediaKind === 'video' && activeTab && onTabChange;
 
   return (
     <section className="document-detail-info media-detail-info" aria-label={t('detail.metadataPanelAria')}>
-      <h2 className="document-detail-info-title">
-        {mediaKind === 'video' ? <Video size={18} strokeWidth={1.75} /> : <ImageIcon size={18} strokeWidth={1.75} />}
-        <span>{title.trim() || t('detail.untitled')}</span>
-      </h2>
-      <div className="document-detail-info-body">
-        <div className="media-detail-info-meta">
-          <span className="document-detail-metadata-pill">{provenanceLabel}</span>
+      {showVideoTabs ? (
+        <div className="media-detail-panel-tabs" role="tablist" aria-label={t('detail.videoTabsAria')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'description'}
+            className={`document-detail-panel-tab${activeTab === 'description' ? ' active' : ''}`}
+            onClick={() => onTabChange('description')}
+          >
+            {t('detail.tabDescription')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'details'}
+            className={`document-detail-panel-tab${activeTab === 'details' ? ' active' : ''}`}
+            onClick={() => onTabChange('details')}
+          >
+            {t('detail.tabDetails')}
+          </button>
         </div>
+      ) : (
+        <h2 className="document-detail-info-title">
+          {mediaKind === 'video' ? <Video size={18} strokeWidth={1.75} /> : <ImageIcon size={18} strokeWidth={1.75} />}
+          <span>{title.trim() || t('detail.untitled')}</span>
+        </h2>
+      )}
+      <div className="document-detail-info-body">
+        {!showVideoTabs && (
+          <div className="media-detail-info-meta">
+            <span className="document-detail-metadata-pill">{provenanceLabel}</span>
+          </div>
+        )}
+
+        {techDetails}
 
         <div className="media-detail-fields">
           {!descriptionOnly && (
@@ -111,9 +153,10 @@ function MediaDetailFormPanel({
             <textarea
               id="media-detail-desc"
               className="document-detail-metadata-input media-detail-textarea"
-              rows={descriptionOnly ? 10 : 6}
+              rows={descriptionOnly ? 12 : 6}
               value={description}
               onChange={(e) => onDescriptionChange(e.target.value)}
+              placeholder={descriptionOnly ? t('detail.descriptionPlaceholder') : undefined}
             />
           </div>
         </div>
@@ -257,6 +300,42 @@ export function MediaDetail() {
   const provenanceLabel =
     asset.provenance === 'generated' ? t('detail.provenanceGenerated') : t('detail.provenanceUploaded');
 
+  const durationLabel = formatDuration(asset.duration_ms);
+  const dimensionsLabel =
+    asset.width && asset.height ? t('detail.dimensionsValue', { width: asset.width, height: asset.height }) : null;
+
+  const techDetailsPanel =
+    tab === 'details' ? (
+      <dl className="media-detail-tech">
+        <div className="media-detail-tech-item">
+          <dt>{t('detail.provenance')}</dt>
+          <dd>{provenanceLabel}</dd>
+        </div>
+        {dimensionsLabel ? (
+          <div className="media-detail-tech-item">
+            <dt>{t('detail.dimensions')}</dt>
+            <dd>{dimensionsLabel}</dd>
+          </div>
+        ) : null}
+        {durationLabel ? (
+          <div className="media-detail-tech-item">
+            <dt>{t('detail.duration')}</dt>
+            <dd>{durationLabel}</dd>
+          </div>
+        ) : null}
+        {asset.content_type ? (
+          <div className="media-detail-tech-item">
+            <dt>{t('detail.format')}</dt>
+            <dd>{asset.content_type}</dd>
+          </div>
+        ) : null}
+        <div className="media-detail-tech-item">
+          <dt>{t('detail.added')}</dt>
+          <dd>{new Date(asset.created_at).toLocaleString()}</dd>
+        </div>
+      </dl>
+    ) : null;
+
   const formPanelProps = {
     title,
     description,
@@ -280,36 +359,29 @@ export function MediaDetail() {
           <ArrowLeft size={18} />
           <span>{t('detail.back')}</span>
         </Link>
-        <div className="media-video-layout">
-          <div className="document-detail-panel media-detail__viewer-panel">
-            <div className="media-detail__viewer-body media-detail__viewer-body--video">
-              {mediaUrl && <video src={mediaUrl} controls poster={posterUrl || undefined} />}
+        <div className="media-detail media-detail--video">
+          <div className="media-detail__main">
+            <div className="document-detail-panel media-detail__viewer-panel media-detail__viewer-panel--video">
+              <div className="media-detail__viewer-body media-detail__viewer-body--video">
+                {mediaUrl && <video src={mediaUrl} controls poster={posterUrl || undefined} />}
+              </div>
             </div>
-          </div>
-          <div className="media-video-layout__tabs" role="tablist" aria-label={t('detail.videoTabsAria')}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'description'}
-              className={`document-detail-panel-tab${tab === 'description' ? ' active' : ''}`}
-              onClick={() => setTab('description')}
-            >
-              {t('detail.tabDescription')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'details'}
-              className={`document-detail-panel-tab${tab === 'details' ? ' active' : ''}`}
-              onClick={() => setTab('details')}
-            >
-              {t('detail.tabDetails')}
-            </button>
+            <div className="media-detail__video-caption">
+              <h1 className="media-detail__video-title">{title.trim() || t('detail.untitled')}</h1>
+              <div className="media-detail__video-meta">
+                <span className="document-detail-metadata-pill">{provenanceLabel}</span>
+                {dimensionsLabel ? <span className="media-detail__video-meta-item">{dimensionsLabel}</span> : null}
+                {durationLabel ? <span className="media-detail__video-meta-item">{durationLabel}</span> : null}
+              </div>
+            </div>
           </div>
           <MediaDetailFormPanel
             {...formPanelProps}
             mediaKind="video"
             descriptionOnly={tab === 'description'}
+            activeTab={tab}
+            onTabChange={setTab}
+            techDetails={techDetailsPanel}
           />
         </div>
       </div>

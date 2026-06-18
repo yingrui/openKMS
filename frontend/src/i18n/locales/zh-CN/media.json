@@ -1,5 +1,10 @@
 {
   "title": "媒体",
+  "common": {
+    "cancel": "取消",
+    "close": "关闭",
+    "loading": "加载中…"
+  },
   "index": {
     "title": "媒体库",
     "subtitle": "将图片与视频作为可审计的研究证据进行管理——上传野外照片、编目标本或通过 AI 生成。",
@@ -37,8 +42,15 @@
     "uploadFailed": "上传失败",
     "deleteConfirm": "删除所选项目？",
     "generatePrompt": "提示词",
-    "generateModel": "模型 ID",
+    "generatePromptPlaceholder": "描述要生成的内容…",
+    "generateImageHint": "描述图像内容。生成在后台异步进行——请在「作业运行」中查看进度。",
+    "generateVideoHint": "描述视频内容。生成在后台异步进行——请在「作业运行」中查看进度。",
+    "generateModel": "模型",
+    "generateModelNone": "无可用模型",
+    "noImageModels": "未注册图像生成模型。请在「模型」中添加。",
+    "noVideoModels": "未注册视频生成模型。请在「模型」中添加。",
     "generateSubmit": "生成",
+    "generating": "生成中…",
     "generateStarted": "已排队生成任务 — 请在作业运行中查看",
     "searchPlaceholder": "搜索标题或描述…"
   },
@@ -59,6 +71,13 @@
     "next": "下一张",
     "tabDescription": "描述",
     "tabDetails": "详情",
+    "descriptionPlaceholder": "添加关于此视频的备注——物种、地点背景、研究笔记等…",
+    "provenance": "来源",
+    "dimensions": "尺寸",
+    "dimensionsValue": "{{width}} × {{height}}",
+    "duration": "时长",
+    "format": "格式",
+    "added": "添加时间",
     "moreInChannel": "本合集更多内容"
   },
   "settings": {
