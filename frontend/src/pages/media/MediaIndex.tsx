@@ -39,7 +39,7 @@ export function MediaIndex() {
     return (
       <div className="documents-index">
         <div className="page-header">
-          <p className="page-subtitle">{t('index.title')}</p>
+          <p className="page-subtitle">{t('common.loading')}</p>
         </div>
       </div>
     );

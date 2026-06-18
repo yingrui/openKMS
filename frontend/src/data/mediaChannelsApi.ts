@@ -124,6 +124,28 @@ export async function deleteMediaChannel(channelId: string): Promise<void> {
   }
 }
 
+export async function mergeMediaChannels(params: {
+  source_channel_id: string;
+  target_channel_id: string;
+  include_descendants?: boolean;
+}): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({
+      source_channel_id: params.source_channel_id,
+      target_channel_id: params.target_channel_id,
+      include_descendants: params.include_descendants ?? true,
+    }),
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to merge collections');
+  }
+}
+
 export async function reorderMediaChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(`${config.apiUrl}/api/media-channels/${channelId}/reorder`, {

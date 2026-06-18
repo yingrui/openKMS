@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Image as ImageIcon, Loader2, Trash2, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   deleteMediaAsset,
@@ -11,7 +11,130 @@ import {
   updateMediaAsset,
   type MediaAssetOut,
 } from '../../data/mediaApi';
+import '../documents/DocumentDetail.scss';
+import '../documents/DocumentChannel.scss';
 import './Media.scss';
+
+type MediaDetailFormProps = {
+  title: string;
+  description: string;
+  capturedAt: string;
+  locationLabel: string;
+  provenanceLabel: string;
+  mediaKind: 'image' | 'video';
+  saving: boolean;
+  onTitleChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onCapturedAtChange: (value: string) => void;
+  onLocationChange: (value: string) => void;
+  onSave: () => void;
+  onDelete: () => void;
+  nav: ReactNode;
+  descriptionOnly?: boolean;
+};
+
+function MediaDetailFormPanel({
+  title,
+  description,
+  capturedAt,
+  locationLabel,
+  provenanceLabel,
+  mediaKind,
+  saving,
+  onTitleChange,
+  onDescriptionChange,
+  onCapturedAtChange,
+  onLocationChange,
+  onSave,
+  onDelete,
+  nav,
+  descriptionOnly = false,
+}: MediaDetailFormProps) {
+  const { t } = useTranslation('media');
+
+  return (
+    <section className="document-detail-info media-detail-info" aria-label={t('detail.metadataPanelAria')}>
+      <h2 className="document-detail-info-title">
+        {mediaKind === 'video' ? <Video size={18} strokeWidth={1.75} /> : <ImageIcon size={18} strokeWidth={1.75} />}
+        <span>{title.trim() || t('detail.untitled')}</span>
+      </h2>
+      <div className="document-detail-info-body">
+        <div className="media-detail-info-meta">
+          <span className="document-detail-metadata-pill">{provenanceLabel}</span>
+        </div>
+
+        <div className="media-detail-fields">
+          {!descriptionOnly && (
+            <>
+              <div className="media-detail-field">
+                <label className="media-detail-field-label" htmlFor="media-detail-title">
+                  {t('detail.title')}
+                </label>
+                <input
+                  id="media-detail-title"
+                  type="text"
+                  className="document-detail-metadata-input"
+                  value={title}
+                  onChange={(e) => onTitleChange(e.target.value)}
+                />
+              </div>
+              <div className="media-detail-field">
+                <label className="media-detail-field-label" htmlFor="media-detail-captured">
+                  {t('detail.capturedAt')}
+                </label>
+                <input
+                  id="media-detail-captured"
+                  type="datetime-local"
+                  className="document-detail-metadata-input"
+                  value={capturedAt}
+                  onChange={(e) => onCapturedAtChange(e.target.value)}
+                />
+              </div>
+              <div className="media-detail-field">
+                <label className="media-detail-field-label" htmlFor="media-detail-location">
+                  {t('detail.location')}
+                </label>
+                <input
+                  id="media-detail-location"
+                  type="text"
+                  className="document-detail-metadata-input"
+                  value={locationLabel}
+                  onChange={(e) => onLocationChange(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+          <div className="media-detail-field">
+            <label className="media-detail-field-label" htmlFor="media-detail-desc">
+              {t('detail.description')}
+            </label>
+            <textarea
+              id="media-detail-desc"
+              className="document-detail-metadata-input media-detail-textarea"
+              rows={descriptionOnly ? 10 : 6}
+              value={description}
+              onChange={(e) => onDescriptionChange(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="media-detail-footer">
+          <div className="document-detail-metadata-edit-actions">
+            <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={onSave}>
+              {saving ? <Loader2 size={14} className="documents-loading-spinner" /> : null}
+              <span>{saving ? t('detail.saving') : t('detail.save')}</span>
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm documents-bulk-delete" onClick={onDelete}>
+              <Trash2 size={14} />
+              <span>{t('detail.delete')}</span>
+            </button>
+          </div>
+          {nav}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export function MediaDetail() {
   const { t } = useTranslation('media');
@@ -27,9 +150,11 @@ export function MediaDetail() {
   const [locationLabel, setLocationLabel] = useState('');
   const [tab, setTab] = useState<'description' | 'details'>('description');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!id) return;
+    setLoading(true);
     try {
       const row = await fetchMediaAsset(id);
       setAsset(row);
@@ -47,9 +172,11 @@ export function MediaDetail() {
       const list = await fetchMediaAssets({ channel_id: row.channel_id, limit: 500 });
       setSiblings(list.items);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load');
+      toast.error(e instanceof Error ? e.message : t('detail.loadFailed'));
+    } finally {
+      setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     void load();
@@ -72,7 +199,7 @@ export function MediaDetail() {
       setAsset(updated);
       toast.success(t('detail.saved'));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed');
+      toast.error(e instanceof Error ? e.message : t('detail.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -84,89 +211,124 @@ export function MediaDetail() {
       await deleteMediaAsset(asset.id);
       navigate(`/media/channels/${asset.channel_id}`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('detail.deleteFailed'));
     }
   };
 
-  if (!asset) {
-    return <div className="media-detail"><p>Loading…</p></div>;
+  const navRow =
+    prev || next ? (
+      <div className="media-detail-nav" aria-label={t('detail.siblingNavAria')}>
+        {prev ? (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate(`/media/view/${prev.id}`)}>
+            <ChevronLeft size={14} />
+            {t('detail.prev')}
+          </button>
+        ) : (
+          <span />
+        )}
+        {next ? (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => navigate(`/media/view/${next.id}`)}>
+            {t('detail.next')}
+            <ChevronRight size={14} />
+          </button>
+        ) : null}
+      </div>
+    ) : null;
+
+  if (loading) {
+    return (
+      <div className="document-detail media-detail-page">
+        <div className="document-detail-loading">
+          <Loader2 size={24} className="documents-loading-spinner" />
+          <span>{t('detail.loading')}</span>
+        </div>
+      </div>
+    );
   }
 
-  const isVideo = asset.media_kind === 'video';
-
-  if (isVideo) {
+  if (!asset) {
     return (
-      <div className="media-video-layout">
-        <Link to={`/media/channels/${asset.channel_id}`} className="document-channel-back">
-          <ArrowLeft size={16} /> {t('detail.back')}
+      <div className="document-detail media-detail-page">
+        <div className="document-detail-error">{t('detail.notFound')}</div>
+      </div>
+    );
+  }
+
+  const provenanceLabel =
+    asset.provenance === 'generated' ? t('detail.provenanceGenerated') : t('detail.provenanceUploaded');
+
+  const formPanelProps = {
+    title,
+    description,
+    capturedAt,
+    locationLabel,
+    provenanceLabel,
+    saving,
+    onTitleChange: setTitle,
+    onDescriptionChange: setDescription,
+    onCapturedAtChange: setCapturedAt,
+    onLocationChange: setLocationLabel,
+    onSave: () => void onSave(),
+    onDelete: () => void onDelete(),
+    nav: navRow,
+  };
+
+  if (asset.media_kind === 'video') {
+    return (
+      <div className="document-detail media-detail-page media-detail-page--video">
+        <Link to={`/media/channels/${asset.channel_id}`} className="document-detail-back">
+          <ArrowLeft size={18} />
+          <span>{t('detail.back')}</span>
         </Link>
-        <div className="media-video-layout__player">
-          {mediaUrl && (
-            <video src={mediaUrl} controls poster={posterUrl || undefined} />
-          )}
-        </div>
-        <div>
-          <h1>{title}</h1>
-          <span className="media-provenance">
-            {asset.provenance === 'generated' ? t('detail.provenanceGenerated') : t('detail.provenanceUploaded')}
-          </span>
-        </div>
-        <div className="media-toolbar">
-          <button type="button" className={tab === 'description' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('description')}>{t('detail.tabDescription')}</button>
-          <button type="button" className={tab === 'details' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setTab('details')}>{t('detail.tabDetails')}</button>
-          <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void onSave()}>{t('detail.save')}</button>
-          <button type="button" className="btn btn-danger" onClick={() => void onDelete()}><Trash2 size={16} /></button>
-        </div>
-        {tab === 'description' ? (
-          <textarea rows={8} value={description} onChange={(e) => setDescription(e.target.value)} style={{ width: '100%' }} />
-        ) : (
-          <div className="media-detail__panel">
-            <label>{t('detail.title')}</label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} />
-            <label>{t('detail.capturedAt')}</label>
-            <input type="datetime-local" value={capturedAt} onChange={(e) => setCapturedAt(e.target.value)} />
-            <label>{t('detail.location')}</label>
-            <input value={locationLabel} onChange={(e) => setLocationLabel(e.target.value)} />
+        <div className="media-video-layout">
+          <div className="document-detail-panel media-detail__viewer-panel">
+            <div className="media-detail__viewer-body media-detail__viewer-body--video">
+              {mediaUrl && <video src={mediaUrl} controls poster={posterUrl || undefined} />}
+            </div>
           </div>
-        )}
-        <div className="media-detail__nav">
-          {prev && <button type="button" className="btn btn-secondary" onClick={() => navigate(`/media/view/${prev.id}`)}><ChevronLeft size={16} /> {t('detail.prev')}</button>}
-          {next && <button type="button" className="btn btn-secondary" onClick={() => navigate(`/media/view/${next.id}`)}>{t('detail.next')} <ChevronRight size={16} /></button>}
+          <div className="media-video-layout__tabs" role="tablist" aria-label={t('detail.videoTabsAria')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'description'}
+              className={`document-detail-panel-tab${tab === 'description' ? ' active' : ''}`}
+              onClick={() => setTab('description')}
+            >
+              {t('detail.tabDescription')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'details'}
+              className={`document-detail-panel-tab${tab === 'details' ? ' active' : ''}`}
+              onClick={() => setTab('details')}
+            >
+              {t('detail.tabDetails')}
+            </button>
+          </div>
+          <MediaDetailFormPanel
+            {...formPanelProps}
+            mediaKind="video"
+            descriptionOnly={tab === 'description'}
+          />
         </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <Link to={`/media/channels/${asset.channel_id}`} className="document-channel-back">
-        <ArrowLeft size={16} /> {t('detail.back')}
+    <div className="document-detail media-detail-page">
+      <Link to={`/media/channels/${asset.channel_id}`} className="document-detail-back">
+        <ArrowLeft size={18} />
+        <span>{t('detail.back')}</span>
       </Link>
       <div className="media-detail">
-        <div className="media-detail__viewer">
-          {mediaUrl && <img src={mediaUrl} alt={title} />}
-        </div>
-        <div className="media-detail__panel">
-          <span className="media-provenance">
-            {asset.provenance === 'generated' ? t('detail.provenanceGenerated') : t('detail.provenanceUploaded')}
-          </span>
-          <label>{t('detail.title')}</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} />
-          <label>{t('detail.capturedAt')}</label>
-          <input type="datetime-local" value={capturedAt} onChange={(e) => setCapturedAt(e.target.value)} />
-          <label>{t('detail.location')}</label>
-          <input value={locationLabel} onChange={(e) => setLocationLabel(e.target.value)} />
-          <label>{t('detail.description')}</label>
-          <textarea rows={8} value={description} onChange={(e) => setDescription(e.target.value)} />
-          <div className="media-detail__nav">
-            <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void onSave()}>{t('detail.save')}</button>
-            <button type="button" className="btn btn-danger" onClick={() => void onDelete()}><Trash2 size={16} /> {t('detail.delete')}</button>
-          </div>
-          <div className="media-detail__nav">
-            {prev && <button type="button" className="btn btn-secondary" onClick={() => navigate(`/media/view/${prev.id}`)}><ChevronLeft size={16} /> {t('detail.prev')}</button>}
-            {next && <button type="button" className="btn btn-secondary" onClick={() => navigate(`/media/view/${next.id}`)}>{t('detail.next')} <ChevronRight size={16} /></button>}
+        <div className="document-detail-panel media-detail__viewer-panel">
+          <div className="media-detail__viewer-body">
+            {mediaUrl ? <img src={mediaUrl} alt={title} /> : null}
           </div>
         </div>
+        <MediaDetailFormPanel {...formPanelProps} mediaKind="image" />
       </div>
     </div>
   );

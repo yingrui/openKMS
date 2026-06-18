@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2 } from 'lucide-react';
+import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
-import { flattenChannels, getDocumentChannelName } from '../../data/channelUtils';
+import {
+  flattenChannels,
+  getDocumentChannelDescription,
+  getDocumentChannelName,
+} from '../../data/channelUtils';
 import {
   ACCEPTED_MEDIA,
   deleteMediaAsset,
@@ -29,7 +33,7 @@ function MediaThumb({ asset }: { asset: MediaAssetOut }) {
     void resolveMediaFileUrl(asset.id, path).then(setUrl).catch(() => setUrl(null));
   }, [asset]);
   if (!url) {
-    return asset.media_kind === 'video' ? <Video size={32} /> : <Image size={32} />;
+    return asset.media_kind === 'video' ? <Video size={32} strokeWidth={1.5} /> : <Image size={32} strokeWidth={1.5} />;
   }
   return <img src={url} alt="" loading="lazy" />;
 }
@@ -41,6 +45,7 @@ export function MediaChannel() {
   const { channels, loading: chLoading } = useEnsureMediaChannels();
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
+  const channelDescription = getDocumentChannelDescription(channels, channelId);
   const flatChannels = flattenChannels(channels);
   const currentChannel = flatChannels.find((c) => c.id === channelId);
 
@@ -48,12 +53,18 @@ export function MediaChannel() {
   const [listLoading, setListLoading] = useState(true);
   const [kindFilter, setKindFilter] = useState<'all' | MediaKind>('all');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [genOpen, setGenOpen] = useState<MediaKind | null>(null);
   const [genPrompt, setGenPrompt] = useState('');
   const [genModelId, setGenModelId] = useState('');
   const [genBusy, setGenBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const load = useCallback(async () => {
     if (!channelId || !channelIds.has(channelId)) {
@@ -66,7 +77,7 @@ export function MediaChannel() {
       const res = await fetchMediaAssets({
         channel_id: channelId,
         media_kind: kindFilter === 'all' ? undefined : kindFilter,
-        search: search.trim() || undefined,
+        search: debouncedSearch || undefined,
         limit: 200,
       });
       setItems(res.items);
@@ -76,11 +87,15 @@ export function MediaChannel() {
     } finally {
       setListLoading(false);
     }
-  }, [channelId, channelIds, kindFilter, search, t]);
+  }, [debouncedSearch, channelId, channelIds, kindFilter, t]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [channelId, debouncedSearch, kindFilter]);
 
   const onUpload = async (files: FileList | null) => {
     if (!files?.length || !channelId) return;
@@ -101,7 +116,7 @@ export function MediaChannel() {
       try {
         await deleteMediaAsset(id);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Delete failed');
+        toast.error(e instanceof Error ? e.message : t('channel.deleteFailed'));
       }
     }
     setSelected(new Set());
@@ -122,119 +137,233 @@ export function MediaChannel() {
       setGenOpen(null);
       setGenPrompt('');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Generation failed');
+      toast.error(e instanceof Error ? e.message : t('channel.generateFailed'));
     } finally {
       setGenBusy(false);
     }
   };
 
+  const selectedCount = selected.size;
+
   if (chLoading) {
-    return <div className="document-channel"><p>{t('index.title')}</p></div>;
+    return (
+      <div className="documents">
+        <div className="page-header">
+          <p className="page-subtitle">{t('channel.loadingChannels')}</p>
+        </div>
+      </div>
+    );
   }
 
-  if (!channelIds.has(channelId)) {
+  if (channels.length === 0) {
     return (
-      <div className="document-channel">
-        <Link to="/media/channels">{t('channel.backToChannels')}</Link>
-        <p>Collection not found</p>
+      <div className="documents">
+        <div className="documents-empty-state">
+          <Folder size={64} />
+          <h2>{t('channels.emptyTitle')}</h2>
+          <p>{t('channels.emptyHint')}</p>
+          <Link to="/media/channels" className="btn btn-primary">
+            <Folder size={18} />
+            <span>{t('index.manageChannels')}</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!channelId || !channelIds.has(channelId)) {
+    return (
+      <div className="documents">
+        <div className="page-header">
+          <h1>{t('channel.notFoundTitle')}</h1>
+          <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
+          <Link to="/media/channels" className="btn btn-secondary openkms-link-spaced">
+            {t('channel.backToChannels')}
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="document-channel">
-      <div className="document-channel-header">
+    <div className="documents">
+      <div className="page-header documents-header">
         <div>
-          <Link to="/media/channels" className="document-channel-back">{t('channel.backToChannels')}</Link>
-          <h1>{channelName}</h1>
+          <div className="documents-header-title">
+            <h1>{channelName}</h1>
+          </div>
+          <p className="page-subtitle">
+            {channelDescription?.trim() ? channelDescription : t('channel.defaultDescription')}
+          </p>
         </div>
-        <div className="document-channel-actions">
+        <div className="documents-header-actions">
           <Link to={`/media/channels/${channelId}/settings`} className="btn btn-secondary">
-            <Settings size={16} /> {t('channel.settings')}
+            <Settings size={18} />
+            <span>{t('channel.settings')}</span>
           </Link>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              setGenOpen('image');
+              setGenModelId(currentChannel?.default_image_model_id || '');
+            }}
+          >
+            <Sparkles size={18} />
+            <span>{t('channel.createImage')}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              setGenOpen('video');
+              setGenModelId(currentChannel?.default_video_model_id || '');
+            }}
+          >
+            <Sparkles size={18} />
+            <span>{t('channel.createVideo')}</span>
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => fileRef.current?.click()}>
+            <Upload size={18} />
+            <span>{t('channel.upload')}</span>
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPTED_MEDIA}
+            multiple
+            hidden
+            onChange={(e) => void onUpload(e.target.files)}
+          />
         </div>
       </div>
 
-      <div className="media-toolbar">
-        <input
-          type="search"
-          className="document-channel-search"
-          placeholder={t('channel.searchPlaceholder')}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value as 'all' | MediaKind)}>
-          <option value="all">{t('channel.filterAll')}</option>
-          <option value="image">{t('channel.filterImages')}</option>
-          <option value="video">{t('channel.filterVideos')}</option>
-        </select>
-        <button type="button" className="btn btn-primary" onClick={() => fileRef.current?.click()}>
-          <Upload size={16} /> {t('channel.upload')}
-        </button>
-        <input ref={fileRef} type="file" accept={ACCEPTED_MEDIA} multiple hidden onChange={(e) => void onUpload(e.target.files)} />
-        <button type="button" className="btn btn-secondary" onClick={() => { setGenOpen('image'); setGenModelId(currentChannel?.default_image_model_id || ''); }}>
-          <Sparkles size={16} /> {t('channel.createImage')}
-        </button>
-        <button type="button" className="btn btn-secondary" onClick={() => { setGenOpen('video'); setGenModelId(currentChannel?.default_video_model_id || ''); }}>
-          <Sparkles size={16} /> {t('channel.createVideo')}
-        </button>
-        {selected.size > 0 && (
-          <button type="button" className="btn btn-danger" onClick={() => void onBulkDelete()}>
-            <Trash2 size={16} /> ({selected.size})
-          </button>
+      <div className="documents-main">
+        <div className="documents-toolbar">
+          <div className="documents-search">
+            <Search size={18} />
+            <input
+              type="search"
+              aria-label={t('channel.searchAria')}
+              placeholder={t('channel.searchPlaceholder')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            aria-label={t('channel.filterKindAria')}
+            value={kindFilter}
+            onChange={(e) => setKindFilter(e.target.value as 'all' | MediaKind)}
+          >
+            <option value="all">{t('channel.filterAll')}</option>
+            <option value="image">{t('channel.filterImages')}</option>
+            <option value="video">{t('channel.filterVideos')}</option>
+          </select>
+        </div>
+
+        {selectedCount > 0 && (
+          <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
+            <span className="documents-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
+            <div className="documents-bulk-actions">
+              <button type="button" className="btn btn-secondary btn-sm documents-bulk-delete" onClick={() => void onBulkDelete()}>
+                <Trash2 size={16} />
+                <span>{t('channel.bulkDelete')}</span>
+              </button>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelected(new Set())}>
+                <X size={16} />
+                <span>{t('channel.clearSelection')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {listLoading ? (
+          <div className="media-loading-wrap">
+            <Loader2 size={24} className="documents-loading-spinner" />
+            <span>{t('channel.loading')}</span>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="media-empty-wrap documents-empty">
+            <Image size={48} strokeWidth={1.25} />
+            <p className="documents-empty-hint">{t('channel.empty')}</p>
+            <button type="button" className="btn btn-primary" onClick={() => fileRef.current?.click()}>
+              <Upload size={16} />
+              <span>{t('channel.upload')}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="media-grid-wrap">
+            <div className="media-grid">
+            {items.map((asset) => {
+              const isSelected = selected.has(asset.id);
+              return (
+                <div
+                  key={asset.id}
+                  className={`media-card${isSelected ? ' media-card--selected' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/media/view/${asset.id}`)}
+                  onKeyDown={(e) => e.key === 'Enter' && navigate(`/media/view/${asset.id}`)}
+                >
+                  <div className="media-card__select" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      aria-label={t('channel.selectAssetAria', { name: asset.title })}
+                      onChange={() => {
+                        setSelected((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(asset.id)) next.delete(asset.id);
+                          else next.add(asset.id);
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                  <div className="media-card__thumb">
+                    <MediaThumb asset={asset} />
+                  </div>
+                  <div className="media-card__body">
+                    <div className="media-card__title">{asset.title}</div>
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          </div>
         )}
       </div>
 
-      {listLoading ? (
-        <p><Loader2 className="spin" size={20} /></p>
-      ) : items.length === 0 ? (
-        <p className="page-subtitle">{t('channel.empty')}</p>
-      ) : (
-        <div className="media-grid">
-          {items.map((asset) => (
-            <div
-              key={asset.id}
-              className="media-card"
-              role="button"
-              tabIndex={0}
-              onClick={() => navigate(`/media/view/${asset.id}`)}
-              onKeyDown={(e) => e.key === 'Enter' && navigate(`/media/view/${asset.id}`)}
-            >
-              <div className="media-card__thumb" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selected.has(asset.id)}
-                  onChange={() => {
-                    setSelected((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(asset.id)) next.delete(asset.id);
-                      else next.add(asset.id);
-                      return next;
-                    });
-                  }}
-                />
-                <MediaThumb asset={asset} />
-              </div>
-              <div className="media-card__body">
-                <div className="media-card__title">{asset.title}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
       {genOpen && (
-        <div className="media-modal-backdrop" role="presentation" onClick={() => setGenOpen(null)}>
-          <div className="media-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="media-modal-backdrop" role="presentation" onClick={() => !genBusy && setGenOpen(null)}>
+          <div className="media-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <h2>{genOpen === 'image' ? t('channel.createImage') : t('channel.createVideo')}</h2>
-            <label>{t('channel.generatePrompt')}</label>
-            <textarea rows={4} value={genPrompt} onChange={(e) => setGenPrompt(e.target.value)} />
-            <label>{t('channel.generateModel')}</label>
-            <input type="text" value={genModelId} onChange={(e) => setGenModelId(e.target.value)} />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setGenOpen(null)}>Cancel</button>
+            <div className="media-detail-field">
+              <label className="media-detail-field-label" htmlFor="media-gen-prompt">{t('channel.generatePrompt')}</label>
+              <textarea
+                id="media-gen-prompt"
+                className="document-detail-metadata-input media-detail-textarea"
+                rows={4}
+                value={genPrompt}
+                onChange={(e) => setGenPrompt(e.target.value)}
+              />
+            </div>
+            <div className="media-detail-field">
+              <label className="media-detail-field-label" htmlFor="media-gen-model">{t('channel.generateModel')}</label>
+              <input
+                id="media-gen-model"
+                type="text"
+                className="document-detail-metadata-input"
+                value={genModelId}
+                onChange={(e) => setGenModelId(e.target.value)}
+              />
+            </div>
+            <div className="media-modal-actions">
+              <button type="button" className="btn btn-secondary" disabled={genBusy} onClick={() => setGenOpen(null)}>
+                {t('common.cancel')}
+              </button>
               <button type="button" className="btn btn-primary" disabled={genBusy} onClick={() => void onGenerate()}>
-                {genBusy ? <Loader2 className="spin" size={16} /> : t('channel.generateSubmit')}
+                {genBusy ? <Loader2 size={16} className="documents-loading-spinner" /> : t('channel.generateSubmit')}
               </button>
             </div>
           </div>
