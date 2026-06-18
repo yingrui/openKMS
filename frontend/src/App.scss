@@ -162,6 +162,33 @@
   padding: var(--space-3) var(--space-4);
 }
 
+/* Articles/documents/media channel rail when main sidebar is collapsed */
+.app-content--with-channel-rail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Keep channel tree pinned; scroll only the main column */
+body:has(.app-content--with-channel-rail) {
+  height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body:has(.app-content--with-channel-rail) #root,
+body:has(.app-content--with-channel-rail) .app-layout,
+body:has(.app-content--with-channel-rail) .app-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* Article page uses natural document height; do not force document-detail min-height there */
 .app-content--compact .document-detail:not(.article-detail-page) {
   min-height: calc(100vh - var(--header-height, 56px) - var(--space-6));

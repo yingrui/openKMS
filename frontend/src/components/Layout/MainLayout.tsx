@@ -5,6 +5,7 @@ import { X, LogIn, Home } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
+import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
 import '../../App.scss';
 
 const SIDEBAR_COLLAPSED_KEY = 'openkms_nav_sidebar_collapsed';
@@ -49,6 +50,12 @@ export function MainLayout() {
   const isObjectExplorerPage = location.pathname === '/object-explorer';
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
+  const onArticles =
+    location.pathname === '/articles' || location.pathname.startsWith('/articles/');
+  const onDocuments =
+    location.pathname === '/documents' || location.pathname.startsWith('/documents/');
+  const onMedia = location.pathname === '/media' || location.pathname.startsWith('/media/');
+  const showChannelRail = sidebarCollapsed && (onArticles || onDocuments || onMedia);
 
   const toggleSidebarCollapsed = useCallback(() => {
     setSidebarCollapsed((prev) => {
@@ -117,11 +124,13 @@ export function MainLayout() {
           </div>
         )}
         {!showAuthRequired && !showPathDenied && (
-          <div
-            className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isObjectExplorerPage ? ' app-content--object-explorer' : ''}`}
-          >
-            <Outlet />
-          </div>
+          <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
+            <div
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isObjectExplorerPage ? ' app-content--object-explorer' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}`}
+            >
+              <Outlet />
+            </div>
+          </SidebarLayoutProvider>
         )}
       </main>
     </div>

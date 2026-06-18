@@ -9,6 +9,11 @@ import { DocumentChannelsProvider } from './contexts/DocumentChannelsContext';
 import { ArticleChannelsProvider } from './contexts/ArticleChannelsContext';
 import { MediaChannelsProvider } from './contexts/MediaChannelsContext';
 import { MainLayout } from './components/Layout/MainLayout';
+import {
+  ArticlesSectionLayout,
+  DocumentsSectionLayout,
+  MediaSectionLayout,
+} from './components/channels/ChannelSectionLayout';
 import { BuildStamp } from './components/Layout/BuildStamp';
 import { Profile } from './pages/Profile';
 import { UserSettings } from './pages/UserSettings';
@@ -166,21 +171,21 @@ function App() {
           <Route index element={<Home />} />
           <Route path="knowledge-map" element={<KnowledgeMap />} />
           <Route path="search" element={<GlobalSearch />} />
-          <Route path="documents" element={<Outlet />}>
+          <Route path="documents" element={<DocumentsSectionLayout />}>
             <Route index element={<DocumentsIndex />} />
             <Route path="channels/:channelId/settings" element={<DocumentChannelSettings />} />
             <Route path="channels/:channelId" element={<DocumentChannel />} />
             <Route path="channels" element={<DocumentChannels />} />
             <Route path="view/:id" element={<DocumentDetail />} />
           </Route>
-          <Route path="articles" element={<Outlet />}>
+          <Route path="articles" element={<ArticlesSectionLayout />}>
             <Route index element={<ArticlesIndex />} />
             <Route path="channels/:channelId/settings" element={<ArticleChannelSettings />} />
             <Route path="channels/:channelId" element={<ArticleChannel />} />
             <Route path="channels" element={<ArticleChannels />} />
             <Route path="view/:id" element={<ArticleDetail />} />
           </Route>
-          <Route path="media" element={<FeatureGate feature="media"><Outlet /></FeatureGate>}>
+          <Route path="media" element={<FeatureGate feature="media"><MediaSectionLayout /></FeatureGate>}>
             <Route index element={<MediaIndex />} />
             <Route path="channels/:channelId/settings" element={<MediaChannelSettings />} />
             <Route path="channels/:channelId" element={<MediaChannel />} />

@@ -197,62 +197,6 @@
   margin-left: 10px;
 }
 
-.sidebar-channel-tree {
-  list-style: none;
-}
-
-.sidebar-channel-item {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  margin-bottom: 1px;
-  border-radius: var(--radius-sm);
-}
-
-.sidebar-channel-toggle {
-  padding: 2px;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.sidebar-channel-toggle .expanded {
-  transform: rotate(90deg);
-  display: inline-block;
-}
-
-.sidebar-channel-spacer {
-  width: 18px;
-  flex-shrink: 0;
-}
-
-.sidebar-channel-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  padding: 4px 8px;
-  text-align: left;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-  border-radius: var(--radius-sm);
-  min-width: 0;
-}
-
-.sidebar-channel-label:hover {
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-}
-
-.sidebar-channel-label svg {
-  color: var(--color-accent);
-  flex-shrink: 0;
-}
-
-.sidebar-channel-item.selected .sidebar-channel-label {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent);
-}
-
 /* Ontology expandable parent */
 .sidebar-link-parent {
   display: flex;

@@ -6,10 +6,7 @@ import {
   Image,
   Database,
   BookOpen,
-  Folder,
-  FolderOpen,
   ChevronLeft,
-  ChevronRight,
   GitBranch,
   ListTodo,
   Cpu,
@@ -42,71 +39,9 @@ import { useArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { useMediaChannels } from '../../contexts/MediaChannelsContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { getAllExpandableChannelIds, getFirstLeafChannelId } from '../../data/channelUtils';
-import type { ChannelNode } from '../../data/channelUtils';
+import { ChannelTree } from '../channels/ChannelTree';
 import { useFeatureToggles } from '../../contexts/FeatureTogglesContext';
 import './Sidebar.scss';
-
-function SidebarChannelTree({
-  channels,
-  selectedId,
-  expanded,
-  onSelect,
-  onToggle,
-  depth = 0,
-}: {
-  channels: ChannelNode[];
-  selectedId: string | null;
-  expanded: Record<string, boolean>;
-  onSelect: (id: string) => void;
-  onToggle: (id: string) => void;
-  depth?: number;
-}) {
-  const { t } = useTranslation('layout');
-  return (
-    <ul className="sidebar-channel-tree" style={{ paddingLeft: depth > 0 ? 8 : 0 }}>
-      {channels.map((ch) => (
-        <li key={ch.id}>
-          <div className={`sidebar-channel-item ${selectedId === ch.id ? 'selected' : ''}`}>
-            {ch.children && ch.children.length > 0 ? (
-              <button
-                type="button"
-                className="sidebar-channel-toggle"
-                onClick={() => onToggle(ch.id)}
-                aria-label={expanded[ch.id] ? t('collapseTree') : t('expandTree')}
-              >
-                <ChevronRight size={12} className={expanded[ch.id] ? 'expanded' : ''} />
-              </button>
-            ) : (
-              <span className="sidebar-channel-spacer" />
-            )}
-            <button
-              type="button"
-              className="sidebar-channel-label"
-              onClick={() => onSelect(ch.id)}
-            >
-              {ch.children && expanded[ch.id] ? (
-                <FolderOpen size={14} />
-              ) : (
-                <Folder size={14} />
-              )}
-              <span>{ch.name}</span>
-            </button>
-          </div>
-          {ch.children && expanded[ch.id] && (
-            <SidebarChannelTree
-              channels={ch.children}
-              selectedId={selectedId}
-              expanded={expanded}
-              onSelect={onSelect}
-              onToggle={onToggle}
-              depth={depth + 1}
-            />
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function OntologyChildNavLinks({ canAccessPath }: { canAccessPath: (path: string) => boolean }) {
   const { t } = useTranslation('layout');
@@ -207,9 +142,13 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   const defaultArtChannel = getFirstLeafChannelId(articleChannels);
   const artChannelMatch = location.pathname.match(/^\/articles\/channels\/([^/]+)/);
   const artChannel = onArticles ? (artChannelMatch?.[1] ?? defaultArtChannel) : null;
+  const defaultMediaChannel = getFirstLeafChannelId(mediaChannels);
+  const mediaChannelMatch = location.pathname.match(/^\/media\/channels\/([^/]+)/);
+  const mediaChannel = onMedia ? (mediaChannelMatch?.[1] ?? defaultMediaChannel) : null;
 
   const [docExpanded, setDocExpanded] = useState<Record<string, boolean>>({});
   const [artExpanded, setArtExpanded] = useState<Record<string, boolean>>({});
+  const [mediaExpanded, setMediaExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (onDocuments) void ensureDocumentChannels();
@@ -253,6 +192,21 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
     }
   }, [onArticles, articleChannels]);
 
+  useEffect(() => {
+    if (onMedia && mediaChannels.length > 0) {
+      const expandableIds = getAllExpandableChannelIds(mediaChannels);
+      startTransition(() => {
+        setMediaExpanded((prev) => {
+          const next = { ...prev };
+          for (const id of expandableIds) {
+            next[id] = true;
+          }
+          return next;
+        });
+      });
+    }
+  }, [onMedia, mediaChannels]);
+
   const setDocumentChannel = (id: string) => {
     if (location.pathname.startsWith('/documents')) {
       navigate(`/documents/channels/${id}`);
@@ -262,6 +216,9 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
   };
   const setArticleChannel = (id: string) => {
     navigate(`/articles/channels/${id}`);
+  };
+  const setMediaChannel = (id: string) => {
+    navigate(`/media/channels/${id}`);
   };
 
   const onOntology =
@@ -463,7 +420,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
             </NavLink>
             {onArticles && articleChannels.length > 0 && (
               <div className="sidebar-subnav">
-                <SidebarChannelTree
+                <ChannelTree
                   channels={articleChannels}
                   selectedId={artChannel}
                   expanded={artExpanded}
@@ -475,16 +432,29 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           </div>
         )}
         {toggles.media && canAccessPath('/media') && (
-          <NavLink
-            to="/media"
-            title={t('media')}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive || onMedia ? 'sidebar-link-active' : ''}`
-            }
-          >
-            <Image size={18} strokeWidth={1.75} />
-            <span>{t('media')}</span>
-          </NavLink>
+          <div className="sidebar-menu-group">
+            <NavLink
+              to="/media"
+              title={t('media')}
+              className={({ isActive }) =>
+                `sidebar-link ${isActive || onMedia ? 'sidebar-link-active' : ''}`
+              }
+            >
+              <Image size={18} strokeWidth={1.75} />
+              <span>{t('media')}</span>
+            </NavLink>
+            {onMedia && mediaChannels.length > 0 && (
+              <div className="sidebar-subnav">
+                <ChannelTree
+                  channels={mediaChannels}
+                  selectedId={mediaChannel}
+                  expanded={mediaExpanded}
+                  onSelect={setMediaChannel}
+                  onToggle={(id) => setMediaExpanded((p) => ({ ...p, [id]: !p[id] }))}
+                />
+              </div>
+            )}
+          </div>
         )}
         {canAccessPath('/documents') && (
         <div className="sidebar-menu-group">
@@ -500,7 +470,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
           </NavLink>
           {onDocuments && channels.length > 0 && (
             <div className="sidebar-subnav">
-              <SidebarChannelTree
+              <ChannelTree
                 channels={channels}
                 selectedId={docChannel}
                 expanded={docExpanded}
