@@ -188,14 +188,15 @@ export function MediaChannel() {
     if (!genOpen || !channelId || !genPrompt.trim() || !genModelId) return;
     setGenBusy(true);
     try {
-      await generateMediaAsset({
+      const { job_id } = await generateMediaAsset({
         channel_id: channelId,
         media_kind: genOpen,
         model_id: genModelId,
         prompt: genPrompt.trim(),
       });
-      toast.success(t('channel.generateStarted'));
       closeGenerate();
+      toast.success(t('channel.generateStarted', { jobId: job_id }));
+      navigate(`/job-runs/${job_id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t('channel.generateFailed'));
     } finally {

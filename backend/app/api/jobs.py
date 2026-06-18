@@ -129,6 +129,7 @@ def _jobs_list_filters(
             "OR COALESCE(args->>'document_id', '') ILIKE :search "
             "OR COALESCE(args->>'knowledge_base_id', '') ILIKE :search "
             "OR COALESCE(args->>'connector_id', '') ILIKE :search "
+            "OR COALESCE(args->>'channel_id', '') ILIKE :search "
             "OR COALESCE(args->>'trigger_id', '') ILIKE :search "
             "OR COALESCE(args->>'project_id', '') ILIKE :search)"
         )

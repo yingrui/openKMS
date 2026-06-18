@@ -81,9 +81,13 @@ def generate_video_poster(body: bytes, content_type: str | None) -> bytes | None
         return dst.read_bytes()
 
 
-def process_media_derivatives(asset_id: str, storage_key: str, media_kind: str) -> tuple[str | None, str | None]:
-    """Download original, produce thumb/poster, upload. Returns (thumbnail_key, poster_key)."""
-    body = get_object(storage_key)
+def build_and_upload_derivatives(
+    asset_id: str,
+    body: bytes,
+    media_kind: str,
+    content_type: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Produce thumb/poster from in-memory bytes and upload. Returns (thumbnail_key, poster_key)."""
     thumb_key: str | None = None
     poster_key: str | None = None
     if media_kind == "image":
@@ -92,9 +96,15 @@ def process_media_derivatives(asset_id: str, storage_key: str, media_kind: str) 
             thumb_key = media_thumbnail_key(asset_id)
             upload_object(thumb_key, thumb_bytes, content_type="image/webp")
     elif media_kind == "video":
-        poster_bytes = generate_video_poster(body, None)
+        poster_bytes = generate_video_poster(body, content_type)
         if poster_bytes:
             poster_key = media_poster_key(asset_id)
             upload_object(poster_key, poster_bytes, content_type="image/webp")
             thumb_key = poster_key
     return thumb_key, poster_key
+
+
+def process_media_derivatives(asset_id: str, storage_key: str, media_kind: str) -> tuple[str | None, str | None]:
+    """Download original, produce thumb/poster, upload. Returns (thumbnail_key, poster_key)."""
+    body = get_object(storage_key)
+    return build_and_upload_derivatives(asset_id, body, media_kind)

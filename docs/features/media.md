@@ -32,7 +32,7 @@ Register provider models with `api_kind`:
 - `image-generate` — e.g. Zhipu `glm-image` → `POST .../async/images/generations`
 - `video-generate` — e.g. `cogvideox-3` → `POST .../videos/generations`
 
-Worker task `run_media_generation` polls `GET .../async-result/{id}`, downloads the result, stores under `media/{asset_id}/`, and enqueues thumbnail/poster generation.
+Worker task `run_media_generation` polls `GET .../async-result/{id}`, downloads the result, stores under `media/{asset_id}/`, generates thumbnail/poster in the same job, and inserts the asset row. Uploads still enqueue a separate `generate_media_derivatives` job. The generation job appears in **Job runs** (`run_media_generation`; target ID = media channel) with worker logs on success or failure.
 
 ## Storage
 

@@ -904,6 +904,7 @@ async def generate_media_derivatives(context: JobContext, asset_id: str) -> None
     """Generate thumbnail/poster for a media asset."""
     from app.database import async_session_maker
     from app.models.media_asset import MediaAsset
+    from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
     from app.services.media_derivatives import process_media_derivatives
 
     async with async_session_maker() as session:
@@ -939,7 +940,9 @@ async def run_media_generation(
     from app.models.api_model import ApiModel
     from app.models.api_provider import ApiProvider
     from app.models.media_asset import MediaAsset
+    from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
     from app.services.feature_toggles import is_feature_enabled
+    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.media_generation.zhipu import (
         download_url,
         extract_result_url,
@@ -947,96 +950,109 @@ async def run_media_generation(
         submit_image_generation,
         submit_video_generation,
     )
+    from app.services.media_derivatives import build_and_upload_derivatives
     from app.services.media_storage import MEDIA_KIND_IMAGE, media_original_key
     from app.services.storage import upload_object
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = [f"Media generation started: {media_kind}"]
+    asset_id: str | None = None
 
-    async with async_session_maker() as session:
-        if not await is_feature_enabled(session, "media"):
-            log_lines.append("Media feature disabled; aborting")
-            logger.info("Media generation skipped: feature disabled")
-            return
+    try:
+        async with async_session_maker() as session:
+            if not await is_feature_enabled(session, "media"):
+                log_lines.append("Media feature disabled; aborting")
+                logger.info("Media generation skipped: feature disabled")
+                return
 
-        model = await session.get(ApiModel, model_id)
-        if not model:
-            raise RuntimeError(f"Model {model_id} not found")
-        provider = await session.get(ApiProvider, model.provider_id)
-        if not provider or not provider.base_url or not provider.api_key:
-            raise RuntimeError("Provider credentials not configured")
-        model_name = model.model_name or model.name
-        base_url = provider.base_url
-        api_key = provider.api_key
-        extra = params or {}
+            ch = await session.get(MediaChannel, channel_id)
+            if not ch:
+                raise RuntimeError(f"Media channel {channel_id} not found")
 
-        if media_kind == MEDIA_KIND_IMAGE:
-            task_id = await submit_image_generation(
-                base_url=base_url,
-                api_key=api_key,
-                model_name=model_name,
-                prompt=prompt,
-                size=size,
-                quality=quality,
-                extra=extra,
-            )
-        else:
-            task_id = await submit_video_generation(
-                base_url=base_url,
-                api_key=api_key,
-                model_name=model_name,
-                prompt=prompt,
-                size=size,
-                duration=duration,
-                image_url=image_url,
-                extra=extra,
-            )
-        log_lines.append(f"Provider task id: {task_id}")
+            model = await session.get(ApiModel, model_id)
+            if not model:
+                raise RuntimeError(f"Model {model_id} not found")
+            provider = await session.get(ApiProvider, model.provider_id)
+            if not provider or not provider.base_url or not provider.api_key:
+                raise RuntimeError("Provider credentials not configured")
+            model_name = model.model_name or model.name
+            base_url = provider.base_url
+            api_key = provider.api_key
+            extra = params or {}
 
-        result = await poll_async_result(base_url=base_url, api_key=api_key, task_id=task_id)
-        result_url = extract_result_url(result, media_kind)
-        log_lines.append("Result URL obtained")
+            if media_kind == MEDIA_KIND_IMAGE:
+                task_id = await submit_image_generation(
+                    base_url=base_url,
+                    api_key=api_key,
+                    model_name=model_name,
+                    prompt=prompt,
+                    size=size,
+                    quality=quality,
+                    extra=extra,
+                )
+            else:
+                task_id = await submit_video_generation(
+                    base_url=base_url,
+                    api_key=api_key,
+                    model_name=model_name,
+                    prompt=prompt,
+                    size=size,
+                    duration=duration,
+                    image_url=image_url,
+                    extra=extra,
+                )
+            log_lines.append(f"Provider task id: {task_id}")
 
-        body = await download_url(result_url)
-        asset_id = f"ma_{uuid4().hex[:12]}"
-        ext = "png" if media_kind == MEDIA_KIND_IMAGE else "mp4"
-        content_type = "image/png" if media_kind == MEDIA_KIND_IMAGE else "video/mp4"
-        storage_key = media_original_key(asset_id, ext)
-        upload_object(storage_key, body, content_type=content_type)
+            result = await poll_async_result(base_url=base_url, api_key=api_key, task_id=task_id)
+            result_url = extract_result_url(result, media_kind)
+            log_lines.append("Result URL obtained")
 
-        asset = MediaAsset(
-            id=asset_id,
-            channel_id=channel_id,
-            media_kind=media_kind,
-            title=(title or prompt[:80] or "Generated")[:512],
-            description=prompt,
-            storage_key=storage_key,
-            content_type=content_type,
-            provenance="generated",
-            generation={
-                "prompt": prompt,
-                "model_id": model_id,
-                "provider_task_id": task_id,
-                "params": {
-                    "size": size,
-                    "quality": quality,
-                    "duration": duration,
-                    "image_url": image_url,
-                    **extra,
+            body = await download_url(result_url)
+            asset_id = f"ma_{uuid4().hex[:12]}"
+            ext = "png" if media_kind == MEDIA_KIND_IMAGE else "mp4"
+            content_type = "image/png" if media_kind == MEDIA_KIND_IMAGE else "video/mp4"
+            storage_key = media_original_key(asset_id, ext)
+            upload_object(storage_key, body, content_type=content_type)
+            thumb_key, poster_key = build_and_upload_derivatives(asset_id, body, media_kind, content_type)
+            if thumb_key or poster_key:
+                log_lines.append("Thumbnail/poster generated")
+            else:
+                log_lines.append("Skipped thumbnail/poster (Pillow/ffmpeg unavailable)")
+
+            asset = MediaAsset(
+                id=asset_id,
+                channel_id=channel_id,
+                media_kind=media_kind,
+                title=(title or prompt[:80] or "Generated")[:512],
+                description=prompt,
+                storage_key=storage_key,
+                thumbnail_key=thumb_key,
+                poster_key=poster_key,
+                content_type=content_type,
+                provenance="generated",
+                generation={
+                    "prompt": prompt,
+                    "model_id": model_id,
+                    "provider_task_id": task_id,
+                    "params": {
+                        "size": size,
+                        "quality": quality,
+                        "duration": duration,
+                        "image_url": image_url,
+                        **extra,
+                    },
                 },
-            },
-            series_id=asset_id,
-        )
-        session.add(asset)
-        await session.commit()
-        log_lines.append(f"Created media asset {asset_id}")
+                series_id=asset_id,
+            )
+            session.add(asset)
+            await session.commit()
+            log_lines.append(f"Created media asset {asset_id}")
 
-    from app.jobs.defer import defer_task
-
-    await defer_task(generate_media_derivatives, asset_id=asset_id)
-
-    if job_id is not None:
-        from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
-
-        await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
-    logger.info("Media generation completed for channel %s", channel_id)
+        logger.info("Media generation completed for channel %s", channel_id)
+    except Exception as exc:
+        log_lines.append(f"Media generation failed: {exc}")
+        logger.exception("Media generation failed for channel %s", channel_id)
+        raise
+    finally:
+        if job_id is not None:
+            await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")

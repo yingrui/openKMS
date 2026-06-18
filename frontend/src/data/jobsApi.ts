@@ -35,8 +35,9 @@ export interface JobListResponse {
 const KB_INDEX_TASK_NAMES = new Set(['run_kb_index', 'run_kb_wiki_space_index']);
 const CONNECTOR_SYNC_TASK_NAMES = new Set(['run_connector_sync']);
 const SCHEDULED_AGENT_TASK_NAMES = new Set(['run_scheduled_project_agent']);
+const MEDIA_TASK_NAMES = new Set(['run_media_generation', 'generate_media_derivatives']);
 
-/** Primary ID the job runs against (document, knowledge base, or connector). */
+/** Primary ID the job runs against (document, knowledge base, connector, or media channel). */
 export function jobRunTargetId(job: Pick<JobResponse, 'task_name' | 'args'>): string {
   const args = job.args ?? {};
   if (KB_INDEX_TASK_NAMES.has(job.task_name)) {
@@ -44,6 +45,9 @@ export function jobRunTargetId(job: Pick<JobResponse, 'task_name' | 'args'>): st
   }
   if (CONNECTOR_SYNC_TASK_NAMES.has(job.task_name)) {
     return String(args.connector_id ?? '');
+  }
+  if (MEDIA_TASK_NAMES.has(job.task_name)) {
+    return String(args.channel_id ?? args.asset_id ?? '');
   }
   return String(args.document_id ?? '');
 }
@@ -58,6 +62,10 @@ export function isConnectorSyncJob(taskName: string): boolean {
 
 export function isScheduledAgentJob(taskName: string): boolean {
   return SCHEDULED_AGENT_TASK_NAMES.has(taskName);
+}
+
+export function isMediaGenerationJob(taskName: string): boolean {
+  return MEDIA_TASK_NAMES.has(taskName);
 }
 
 export interface JobCreate {

@@ -83,7 +83,7 @@
     "noVideoModels": "No video generation models registered. Add one under Models.",
     "generateSubmit": "Generate",
     "generating": "Generating…",
-    "generateStarted": "Generation job queued — check Job runs",
+    "generateStarted": "Generation job #{{jobId}} queued",
     "generateFailed": "Generation failed",
     "searchPlaceholder": "Search title or description…",
     "searchAria": "Search media in this collection",

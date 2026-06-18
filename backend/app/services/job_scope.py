@@ -9,8 +9,10 @@ from app.config import settings
 from app.models.connector import Connector
 from app.models.project import Project
 from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
+from app.services.context_guard import context_resource_allowed
 from app.services.document_scope import load_document_scoped
 from app.services.kb_scope import load_knowledge_base_scoped
+from app.services.media_scope import load_media_scoped
 from app.services.permission_catalog import (
     PERM_ALL,
     PERM_CONNECTORS_READ,
@@ -18,7 +20,7 @@ from app.services.permission_catalog import (
     PERM_PROJECTS_READ,
     PERM_PROJECTS_WRITE,
 )
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE
+from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_MEDIA_CHANNEL
 from app.services.resource_acl_service import scope_applies
 from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
@@ -122,6 +124,18 @@ async def job_args_allowed(
             return False
     if connector_id and isinstance(connector_id, str):
         return await _connector_job_visible(request, db, connector_id, require_write=require_write)
+    channel_id = args.get("channel_id")
+    if channel_id and isinstance(channel_id, str):
+        return await context_resource_allowed(
+            db, request, RT_MEDIA_CHANNEL, channel_id, PERM_READ if not require_write else PERM_WRITE
+        )
+    asset_id = args.get("asset_id")
+    if asset_id and isinstance(asset_id, str):
+        try:
+            await load_media_scoped(db, request, asset_id, PERM_READ if not require_write else PERM_WRITE)
+            return True
+        except HTTPException:
+            return False
     if args.get("trigger_id"):
         return await _scheduled_agent_job_visible(request, db, args, require_write=require_write)
     return False

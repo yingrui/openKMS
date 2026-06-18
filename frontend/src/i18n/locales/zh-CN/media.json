@@ -51,7 +51,7 @@
     "noVideoModels": "未注册视频生成模型。请在「模型」中添加。",
     "generateSubmit": "生成",
     "generating": "生成中…",
-    "generateStarted": "已排队生成任务 — 请在作业运行中查看",
+    "generateStarted": "已排队生成任务 #{{jobId}}",
     "searchPlaceholder": "搜索标题或描述…"
   },
   "detail": {
