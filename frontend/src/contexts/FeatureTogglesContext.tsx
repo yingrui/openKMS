@@ -47,11 +47,14 @@ export function FeatureTogglesProvider({ children }: { children: React.ReactNode
 
   const setToggle = useCallback((key: FeatureToggleKey, enabled: boolean) => {
     setToggles((prev) => {
+      const previous = prev;
       const next = { ...prev, [key]: enabled };
-      updateToggles({ [key]: enabled }).catch((e) => {
-        setToggles(prev);
-        toast.error(e instanceof Error ? e.message : 'Failed to update feature toggle');
-      });
+      updateToggles({ [key]: enabled })
+        .then((data) => setToggles(data))
+        .catch((e) => {
+          setToggles(previous);
+          toast.error(e instanceof Error ? e.message : 'Failed to update feature toggle');
+        });
       return next;
     });
   }, []);

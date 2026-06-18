@@ -310,7 +310,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `agents`, `hasNeo4jDataSource`; authenticated) |
+| GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `agents`, `media`, `hasNeo4jDataSource`; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
 ## Articles

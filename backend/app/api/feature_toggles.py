@@ -18,6 +18,7 @@ class FeatureTogglesResponse(BaseModel):
     evaluations: bool = False
     connectors: bool = True
     agents: bool = True
+    media: bool = False
     hasNeo4jDataSource: bool = False
 
 
@@ -25,6 +26,7 @@ class FeatureTogglesUpdate(BaseModel):
     evaluations: bool | None = None
     connectors: bool | None = None
     agents: bool | None = None
+    media: bool | None = None
 
 
 async def _load_toggles(db: AsyncSession) -> dict[str, bool]:
