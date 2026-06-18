@@ -52,10 +52,13 @@ def render_command(
     from settings. extraction_args is the full extraction flags block when
     channel has extraction config; empty otherwise.
     """
+    from app.services.document_storage import document_object_key, document_prefix, get_document_object
+
     base_api_url = (api_url or settings.openkms_backend_url).rstrip("/")
+    doc_prefix = document_prefix(file_hash)
     context = {
-        "input": f"s3://{settings.aws_bucket_name}/{file_hash}/original.{file_ext}",
-        "s3_prefix": file_hash,
+        "input": f"s3://{settings.aws_bucket_name}/{document_object_key(file_hash, f'original.{file_ext}')}",
+        "s3_prefix": doc_prefix,
         "file_hash": file_hash,
         "file_ext": file_ext,
         "bucket": settings.aws_bucket_name,
@@ -216,7 +219,7 @@ async def run_pipeline(
                 await _apply_cached_parse_to_document(document_id, file_hash, parsing_result, markdown)
                 log_out = (
                     f"Skipped openkms-cli: reused existing parse output on storage "
-                    f"(prefix {file_hash}/). Document marked completed."
+                    f"(prefix {document_prefix(file_hash)}/). Document marked completed."
                 )
                 if _metadata_extraction_requested(rendered):
                     log_out += " Metadata already has values."
@@ -340,7 +343,6 @@ async def run_spreadsheet_preview(
     from app.models.document import Document
     from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.spreadsheet_preview import build_xlsx_preview
-    from app.services.storage import get_object
 
     job_pk = context.job.id
     log_cmd = f"run_spreadsheet_preview document_id={document_id} file_hash={file_hash} ext={file_ext}"
@@ -354,7 +356,9 @@ async def run_spreadsheet_preview(
             await session.commit()
 
         try:
-            raw = await asyncio.to_thread(get_object, f"{file_hash}/original.{file_ext}")
+            from app.services.document_storage import get_document_object
+
+            raw = await asyncio.to_thread(get_document_object, file_hash, f"original.{file_ext}")
             preview, md = await asyncio.to_thread(build_xlsx_preview, raw, file_hash=file_hash)
         except Exception as exc:
             logger.exception("Spreadsheet preview failed for document %s", document_id)
@@ -402,7 +406,6 @@ async def run_mindmap_preview(
     from app.models.document import Document
     from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
     from app.services.mindmap_preview import build_xmind_preview
-    from app.services.storage import get_object
 
     job_pk = context.job.id
     log_cmd = f"run_mindmap_preview document_id={document_id} file_hash={file_hash} ext={file_ext}"
@@ -416,7 +419,9 @@ async def run_mindmap_preview(
             await session.commit()
 
         try:
-            raw = await asyncio.to_thread(get_object, f"{file_hash}/original.{file_ext}")
+            from app.services.document_storage import get_document_object
+
+            raw = await asyncio.to_thread(get_document_object, file_hash, f"original.{file_ext}")
             preview, md = await asyncio.to_thread(build_xmind_preview, raw, file_hash=file_hash)
         except Exception as exc:
             logger.exception("Mind map preview failed for document %s", document_id)
@@ -644,10 +649,10 @@ async def _apply_cached_parse_to_document(
 
 def _load_result_from_s3(file_hash: str) -> dict:
     """Load result.json from S3 after pipeline completes."""
-    from app.services.storage import get_object
+    from app.services.document_storage import get_document_object
 
     try:
-        data = get_object(f"{file_hash}/result.json")
+        data = get_document_object(file_hash, "result.json")
         return json.loads(data)
     except Exception:
         logger.warning("Could not load result.json for %s", file_hash)
@@ -656,15 +661,14 @@ def _load_result_from_s3(file_hash: str) -> dict:
 
 def _load_extracted_metadata_from_s3(file_hash: str) -> dict:
     """Load channel-extraction output written by openkms-cli during pipeline run."""
-    from app.services.storage import get_object, object_exists
+    from app.services.document_storage import get_document_object
 
-    key = f"{file_hash}/extracted_metadata.json"
-    if not object_exists(key):
-        return {}
     try:
-        data = get_object(key)
+        data = get_document_object(file_hash, "extracted_metadata.json")
         parsed = json.loads(data)
         return parsed if isinstance(parsed, dict) else {}
+    except FileNotFoundError:
+        return {}
     except Exception:
         logger.warning("Could not load extracted_metadata.json for %s", file_hash)
         return {}
@@ -685,27 +689,24 @@ def _s3_parse_cache_usable(parsing_result: dict) -> bool:
 
 def _load_parse_cache_from_s3(file_hash: str) -> tuple[dict, str] | None:
     """Return (parsing_result, markdown) if storage has a usable prior parse; else None."""
-    from app.services.storage import get_object, object_exists
+    from app.services.document_storage import get_document_object
 
     if not settings.storage_enabled or not file_hash:
         return None
-    rkey = f"{file_hash}/result.json"
-    if not object_exists(rkey):
-        return None
     try:
-        parsing_result = json.loads(get_object(rkey).decode("utf-8"))
+        parsing_result = json.loads(get_document_object(file_hash, "result.json").decode("utf-8"))
+    except FileNotFoundError:
+        return None
     except Exception:
         return None
     if not _s3_parse_cache_usable(parsing_result):
         return None
     markdown = (parsing_result.get("markdown") or "").strip()
     if not markdown:
-        mkey = f"{file_hash}/markdown.md"
-        if object_exists(mkey):
-            try:
-                markdown = get_object(mkey).decode("utf-8")
-            except Exception:
-                markdown = ""
+        try:
+            markdown = get_document_object(file_hash, "markdown.md").decode("utf-8")
+        except Exception:
+            markdown = ""
     return (parsing_result, markdown)
 
 
@@ -714,12 +715,13 @@ def _upload_page_index_from_hash(file_hash: str, doc_name: str | None, markdown:
     if not file_hash or not settings.storage_enabled or not markdown or not markdown.strip():
         return
     try:
+        from app.services.document_storage import document_object_key
         from app.services.page_index import md_to_tree_from_markdown
         from app.services.storage import upload_object
 
         page_index = md_to_tree_from_markdown(markdown, doc_name=doc_name or "document")
         upload_object(
-            f"{file_hash}/page_index.json",
+            document_object_key(file_hash, "page_index.json"),
             json.dumps(page_index).encode("utf-8"),
             content_type="application/json",
         )

@@ -34,6 +34,7 @@
   "dataSecurityIssues": "Issues",
   "consoleSection": "Console",
   "dataSources": "Data Sources",
+  "objectStorage": "Object storage",
   "connectors": "Connectors",
   "systemSettings": "System Settings",
   "usersAndRoles": "Users & roles",

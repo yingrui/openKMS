@@ -47,6 +47,7 @@ from app.api.admin.security_roles import router as admin_security_roles_router
 from app.api.admin.security_permissions import router as admin_security_permissions_router
 from app.api.admin.permission_reference import router as admin_permission_reference_router
 from app.api.admin.health_status import router as admin_health_status_router
+from app.api.admin.console_storage import router as admin_console_storage_router
 from app.api.global_search import router as global_search_router
 from app.api.home_hub import router as home_hub_router
 from app.api.system_settings import public_router as system_public_router
@@ -162,6 +163,7 @@ app.include_router(admin_security_roles_router, prefix="/api")
 app.include_router(admin_security_permissions_router, prefix="/api")
 app.include_router(admin_permission_reference_router, prefix="/api")
 app.include_router(admin_health_status_router, prefix="/api")
+app.include_router(admin_console_storage_router, prefix="/api")
 
 
 @app.get("/health")

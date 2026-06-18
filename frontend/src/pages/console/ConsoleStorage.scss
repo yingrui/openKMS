@@ -1,0 +1,121 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
+.console-storage {
+  max-width: 1100px;
+}
+
+.console-storage-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.console-storage-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.console-storage-breadcrumb button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.console-storage-breadcrumb button:hover {
+  text-decoration: underline;
+}
+
+.console-storage-table-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.console-storage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.console-storage-table th,
+.console-storage-table td {
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.console-storage-table th {
+  background: var(--color-bg-muted);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.console-storage-table tr:last-child td {
+  border-bottom: none;
+}
+
+.console-storage-row--folder button.console-storage-name {
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.console-storage-name {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.console-storage-name:hover {
+  text-decoration: underline;
+}
+
+.console-storage-row--legacy {
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+}
+
+.console-storage-load-more {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.console-storage-move-form label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.console-storage-move-form input[type='text'] {
+  width: 100%;
+  margin-bottom: var(--space-3);
+}
+
+.console-storage-move-form .checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.console-storage-empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+}

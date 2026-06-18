@@ -19,6 +19,7 @@ PERM_CONSOLE_DATASETS = "console:datasets"
 PERM_CONSOLE_OBJECT_TYPES = "console:object_types"
 PERM_CONSOLE_LINK_TYPES = "console:link_types"
 PERM_CONSOLE_SETTINGS = "console:settings"
+PERM_CONSOLE_STORAGE = "console:storage"
 PERM_CONSOLE_GROUPS = "console:groups"
 PERM_CONSOLE_PERMISSIONS = "console:permissions"
 
@@ -115,6 +116,12 @@ OPERATION_KEY_HINTS: tuple[OperationKeyHint, ...] = (
         PERM_CONSOLE_SETTINGS,
         "System settings",
         "Reserved for console settings; wire-up may be partial.",
+        "console",
+    ),
+    OperationKeyHint(
+        PERM_CONSOLE_STORAGE,
+        "Object storage manager",
+        "Browse and move objects in the configured S3/MinIO bucket (metadata only; no download).",
         "console",
     ),
     OperationKeyHint(

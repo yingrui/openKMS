@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
 import {
   flattenChannels,
+  findChannel,
   getDocumentChannelDescription,
   getDocumentChannelName,
 } from '../../data/channelUtils';
@@ -46,8 +47,7 @@ export function MediaChannel() {
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
-  const flatChannels = flattenChannels(channels);
-  const currentChannel = flatChannels.find((c) => c.id === channelId);
+  const currentChannel = findChannel(channels, channelId);
 
   const [items, setItems] = useState<MediaAssetOut[]>([]);
   const [listLoading, setListLoading] = useState(true);

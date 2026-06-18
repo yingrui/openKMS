@@ -313,6 +313,15 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/feature-toggles` | Get feature toggle state (`evaluations`, `connectors`, `agents`, `media`, `hasNeo4jDataSource`; authenticated) |
 | PUT | `/api/feature-toggles` | Update feature toggles (admin-only) |
 
+### Console object storage
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/console/storage` | Bucket name and whether storage is configured (`console:storage`) |
+| GET | `/api/console/storage/objects` | Paginated listing: `prefix`, `continuation_token`, `max_keys` (metadata only) |
+| GET | `/api/console/storage/legacy-document-prefixes` | Root-level legacy `{64-hex}/` folders for migration assist |
+| POST | `/api/console/storage/move` | Copy (and optionally delete) selected prefixes or objects to `destination_prefix` |
+
 ## Articles
 
 | Method | Path | Description |

@@ -57,7 +57,14 @@ from app.services.document_lifecycle import document_current_sql
 from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
 from app.services.metadata_extraction import extract_metadata, resolve_extraction_schema_for_llm
 from app.services.page_index import md_to_tree_from_markdown
-from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, object_exists, upload_object
+from app.services.document_storage import (
+    document_object_key,
+    document_prefix,
+    get_document_object,
+    legacy_document_prefix,
+    resolve_document_object_key,
+)
+from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
@@ -99,7 +106,7 @@ def _maybe_upload_page_index_from_markdown(doc: Document, markdown: str | None) 
         return
     try:
         page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
-        key = f"{doc.file_hash}/page_index.json"
+        key = document_object_key(doc.file_hash, "page_index.json")
         upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
     except Exception:
         pass
@@ -256,7 +263,7 @@ async def upload_document(
     suffix = Path(filename).suffix.lower()
     ext = suffix.lstrip(".") or "bin"
 
-    upload_object(f"{file_hash}/original.{ext}", content)
+    upload_object(document_object_key(file_hash, f"original.{ext}"), content)
 
     new_id = str(uuid4())
     doc = Document(
@@ -341,7 +348,8 @@ async def delete_document(
 ):
     """Delete a document and its files from storage."""
     if doc.file_hash and settings.storage_enabled:
-        delete_objects_by_prefix(f"{doc.file_hash}/")
+        delete_objects_by_prefix(f"{document_prefix(doc.file_hash)}/")
+        delete_objects_by_prefix(f"{legacy_document_prefix(doc.file_hash)}/")
 
     await db.delete(doc)
     await db.commit()
@@ -595,12 +603,10 @@ async def restore_document_markdown(
             status_code=503,
             detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
         )
-    key = f"{doc.file_hash}/markdown.md"
-    if not object_exists(key):
-        raise HTTPException(status_code=404, detail="Markdown file not found in storage")
     try:
-        content = get_object(key)
-        markdown = content.decode("utf-8")
+        markdown = get_document_object(doc.file_hash, "markdown.md").decode("utf-8")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Markdown file not found in storage") from None
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to read markdown: {e}") from e
     doc.markdown = markdown
@@ -638,7 +644,7 @@ async def rebuild_page_index(
     if not markdown:
         raise HTTPException(status_code=404, detail="Document has no markdown content")
     page_index = md_to_tree_from_markdown(markdown, doc_name=doc.name or "document")
-    key = f"{doc.file_hash}/page_index.json"
+    key = document_object_key(doc.file_hash, "page_index.json")
     upload_object(key, json.dumps(page_index).encode("utf-8"), content_type="application/json")
     return {
         "structure": page_index.get("structure", []),
@@ -668,10 +674,12 @@ async def get_document_page_index(
             status_code=503,
             detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
         )
-    key = f"{doc.file_hash}/page_index.json"
-    if not object_exists(key):
+    key = resolve_document_object_key(doc.file_hash, "page_index.json")
+    if not key:
         raise HTTPException(status_code=404, detail="Page index not found (re-process document to build)")
     try:
+        from app.services.storage import get_object
+
         content = get_object(key)
         data = json.loads(content.decode("utf-8"))
         return {
@@ -688,11 +696,10 @@ def _get_document_markdown(doc: Document) -> str:
         return doc.markdown
     if not doc.file_hash or not settings.storage_enabled:
         return ""
-    key = f"{doc.file_hash}/markdown.md"
-    if not object_exists(key):
+    try:
+        return get_document_object(doc.file_hash, "markdown.md").decode("utf-8")
+    except FileNotFoundError:
         return ""
-    content = get_object(key)
-    return content.decode("utf-8")
 
 
 @router.get("/{document_id}/section")
@@ -925,19 +932,11 @@ async def get_parsing_result(
 
 
 def _storage_key(file_hash: str, path: str) -> str:
-    """Build S3 key. Rejects path traversal.
-    Supports both formats: 'layout_det_0.png' (relative) and '{file_hash}/layout_det_0.png' (tmp style).
-    Path should be URL-decoded and stripped of leading slash before calling.
-    """
-    if ".." in path or path.startswith("/"):
+    """Resolve S3 key for a logical document file path (new prefix, then legacy)."""
+    key = resolve_document_object_key(file_hash, path)
+    if not key:
         raise ValueError("Invalid path")
-    # Path may already include file_hash (e.g. from tmp-style result.json)
-    # Use case-insensitive match for hex hash prefix
-    prefix = file_hash + "/"
-    if path.lower().startswith(prefix.lower()):
-        return path
-    # Relative path: prepend file_hash
-    return f"{file_hash}/{path}"
+    return key
 
 
 @router.get(

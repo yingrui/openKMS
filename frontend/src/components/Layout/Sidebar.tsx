@@ -3,6 +3,7 @@ import {
   Home as HomeIcon,
   FileStack,
   FileText,
+  HardDrive,
   Image,
   Database,
   BookOpen,
@@ -241,6 +242,7 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
 
   const showConsoleDataLabel =
     canAccessPath('/console/data-sources') ||
+    canAccessPath('/console/storage') ||
     canAccessPath('/console/settings') ||
     canAccessPath('/console/users') ||
     canAccessPath('/console/feature-toggles');
@@ -343,6 +345,16 @@ export function Sidebar({ collapsed, onToggleCollapsed }: SidebarProps) {
                 >
                   <Database size={18} strokeWidth={1.75} />
                   <span>{t('dataSources')}</span>
+                </NavLink>
+              )}
+              {canAccessPath('/console/storage') && (
+                <NavLink
+                  to="/console/storage"
+                  title={t('objectStorage')}
+                  className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
+                >
+                  <HardDrive size={18} strokeWidth={1.75} />
+                  <span>{t('objectStorage')}</span>
                 </NavLink>
               )}
               {canAccessPath('/console/settings') && (

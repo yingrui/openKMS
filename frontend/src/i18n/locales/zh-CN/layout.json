@@ -34,6 +34,7 @@
   "dataSecurityIssues": "问题",
   "consoleSection": "控制台",
   "dataSources": "数据源",
+  "objectStorage": "对象存储",
   "connectors": "连接器",
   "systemSettings": "系统设置",
   "usersAndRoles": "用户与角色",

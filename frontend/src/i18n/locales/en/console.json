@@ -99,8 +99,47 @@
       "systemSettings": {
         "title": "System settings",
         "description": "Reserved for deployment-specific options; extend here as new console settings are added."
+      },
+      "storage": {
+        "title": "Object storage",
+        "description": "Browse the configured S3/MinIO bucket and move objects or folders (metadata only; no download)."
       }
     }
+  },
+  "storage": {
+    "pageTitle": "Object storage",
+    "subtitle": "Bucket: {{bucket}}. Browse folders and move objects; file contents are not shown or downloadable.",
+    "notConfigured": "Object storage is not configured.",
+    "loadFailed": "Failed to load storage listing",
+    "loading": "Loading…",
+    "empty": "This folder is empty.",
+    "refresh": "Refresh",
+    "loadMore": "Load more",
+    "root": "root",
+    "breadcrumbAria": "Storage path",
+    "selectCol": "Select",
+    "selectItem": "Select item",
+    "colName": "Name",
+    "colType": "Type",
+    "colSize": "Size",
+    "colModified": "Last modified",
+    "typeFolder": "Folder",
+    "typeFile": "File",
+    "selectLegacyOnPage": "Select legacy document folders on this page",
+    "moveToDocuments": "Move selected to documents/",
+    "moveToDocumentsDone": "Moved {{count}} object(s) under documents/",
+    "moveSelected": "Move selected…",
+    "moveDialogTitle": "Move to prefix",
+    "moveDialogHint": "Move {{count}} selected item(s) under the destination prefix.",
+    "destLabel": "Destination prefix",
+    "destPlaceholder": "e.g. documents/abc…/",
+    "destRequired": "Enter a destination prefix",
+    "deleteSource": "Delete source after successful copy",
+    "cancel": "Cancel",
+    "confirmMove": "Move",
+    "moving": "Moving…",
+    "moveSuccess": "Moved {{moved}}, skipped {{skipped}}",
+    "moveFailed": "Move failed"
   },
   "featureToggles": {
     "pageTitle": "Feature toggles",

@@ -20,6 +20,7 @@ from app.services.permission_catalog import (
     PERM_CONSOLE_OBJECT_TYPES,
     PERM_CONSOLE_PERMISSIONS,
     PERM_CONSOLE_SETTINGS,
+    PERM_CONSOLE_STORAGE,
     PERM_CONSOLE_USERS,
     PERM_DOCUMENTS_READ,
     PERM_DOCUMENTS_WRITE,
@@ -128,6 +129,10 @@ DEFAULT_PATTERNS_BY_KEY: dict[str, tuple[list[str], list[str]]] = {
     PERM_CONSOLE_SETTINGS: (
         ["/console", "/console/settings"],
         ["GET /api/system/settings", "PUT /api/system/settings"],
+    ),
+    PERM_CONSOLE_STORAGE: (
+        ["/console", "/console/storage"],
+        ["/api/console/storage", "/api/console/storage/*"],
     ),
     PERM_CONSOLE_GROUPS: (
         [

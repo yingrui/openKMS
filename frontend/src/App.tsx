@@ -31,6 +31,7 @@ import { ConsoleOverview } from './pages/console/ConsoleOverview';
 import { ConsoleSettings } from './pages/console/ConsoleSettings';
 import { ConsoleUsers } from './pages/console/ConsoleUsers';
 import { ConsoleFeatureToggles } from './pages/console/ConsoleFeatureToggles';
+import { ConsoleStorage } from './pages/console/ConsoleStorage';
 import { ConsoleHealth } from './pages/console/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
@@ -270,6 +271,7 @@ function App() {
             <Route path="settings" element={<ConsoleSettings />} />
             <Route path="users" element={<ConsoleUsers />} />
             <Route path="feature-toggles" element={<ConsoleFeatureToggles />} />
+            <Route path="storage" element={<ConsoleStorage />} />
           </Route>
         </Route>
       </Routes>

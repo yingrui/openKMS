@@ -99,8 +99,47 @@
       "systemSettings": {
         "title": "系统设置",
         "description": "用于部署相关选项；新增控制台设置时可在此扩展。"
+      },
+      "storage": {
+        "title": "对象存储",
+        "description": "浏览已配置的 S3/MinIO 存储桶并移动对象或文件夹（仅元数据，不可下载）。"
       }
     }
+  },
+  "storage": {
+    "pageTitle": "对象存储",
+    "subtitle": "存储桶：{{bucket}}。浏览文件夹并移动对象；不显示或下载文件内容。",
+    "notConfigured": "未配置对象存储。",
+    "loadFailed": "加载存储列表失败",
+    "loading": "加载中…",
+    "empty": "此文件夹为空。",
+    "refresh": "刷新",
+    "loadMore": "加载更多",
+    "root": "根目录",
+    "breadcrumbAria": "存储路径",
+    "selectCol": "选择",
+    "selectItem": "选择项",
+    "colName": "名称",
+    "colType": "类型",
+    "colSize": "大小",
+    "colModified": "修改时间",
+    "typeFolder": "文件夹",
+    "typeFile": "文件",
+    "selectLegacyOnPage": "选择本页旧版文档文件夹",
+    "moveToDocuments": "移到 documents/",
+    "moveToDocumentsDone": "已在 documents/ 下移动 {{count}} 个对象",
+    "moveSelected": "移动所选…",
+    "moveDialogTitle": "移动到前缀",
+    "moveDialogHint": "将 {{count}} 个所选项移动到目标前缀下。",
+    "destLabel": "目标前缀",
+    "destPlaceholder": "例如 documents/abc…/",
+    "destRequired": "请输入目标前缀",
+    "deleteSource": "复制成功后删除源文件",
+    "cancel": "取消",
+    "confirmMove": "移动",
+    "moving": "移动中…",
+    "moveSuccess": "已移动 {{moved}} 个，跳过 {{skipped}} 个",
+    "moveFailed": "移动失败"
   },
   "featureToggles": {
     "pageTitle": "功能开关",
