@@ -32,6 +32,8 @@ Detail pages expose a **right-side Comments rail** (Feishu-style):
 
 Integrated on: Article detail, Document detail, Knowledge base detail (hidden in Q&A full-page mode), Wiki workspace & wiki space settings, Agent project workspace & settings.
 
+**Home** (`GET /api/home/hub`): signed-in users see **`recent_comments`** — up to **5** newest comments on resources they own (Sharing **Owner** row, including inherited channel ACL; fallback `created_by`). Includes the owner’s own comments. Each item includes resource title, body preview, rank (top-level), and reply flag; links open the resource detail page.
+
 ## Data model
 
 Table **`content_comments`**: polymorphic `resource_type` + `resource_id`, optional `parent_comment_id`, `body`, `rank` (top-level only), `created_by`, `created_by_name`, timestamps. See [Data models — Comments](data-models.md#contentcomment).

@@ -28,5 +28,14 @@
   "subtitleHomeWithoutKnowledgeMap": "Knowledge operations: document lifecycle signals and shortcuts. The Knowledge Map appears here when you have access to it.",
   "loading": "Loading…",
   "hubLoadError": "Could not load home data",
-  "mapLoadError": "Could not load Knowledge Map"
+  "mapLoadError": "Could not load Knowledge Map",
+  "recentComments": "Recent comments",
+  "recentCommentsIntro": "Latest comments on articles, documents, knowledge bases, wiki spaces, and agent projects you own.",
+  "recentCommentsEmpty": "No new comments on your content yet.",
+  "commentReply": "Reply",
+  "commentResourceArticle": "Article",
+  "commentResourceDocument": "Document",
+  "commentResourceKnowledgeBase": "Knowledge base",
+  "commentResourceWikiSpace": "Wiki space",
+  "commentResourceProject": "Agent project"
 }

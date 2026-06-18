@@ -32,6 +32,8 @@
 
 已接入：文章详情、文档详情、知识库详情（Q&A 全屏模式下隐藏）、Wiki 工作区与空间设置、Agent 项目工作区与设置。
 
+**首页**（`GET /api/home/hub`）：已登录用户可见 **`recent_comments`** — 其拥有资源上最新最多 **5** 条评论，含本人评论。含资源标题、正文预览、评分（顶层）与回复标记；链接跳转至对应详情页。
+
 ## 数据模型
 
 表 **`content_comments`**：多态 `resource_type` + `resource_id`，可选 `parent_comment_id`，`body`，`rank`（仅顶层），`created_by`，`created_by_name`，时间戳。见 [数据模型 — ContentComment](data-models.md#contentcomment)。

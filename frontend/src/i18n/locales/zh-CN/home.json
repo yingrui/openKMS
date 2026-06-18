@@ -28,5 +28,14 @@
   "subtitleHomeWithoutKnowledgeMap": "知识运维：文档生命周期信号与快捷入口。当您拥有知识地图访问权限时，知识地图将显示在此处。",
   "loading": "加载中…",
   "hubLoadError": "无法加载首页数据",
-  "mapLoadError": "无法加载知识地图"
+  "mapLoadError": "无法加载知识地图",
+  "recentComments": "最新评论",
+  "recentCommentsIntro": "您拥有的文章、文档、知识库、Wiki 空间与 Agent 项目上的最新评论。",
+  "recentCommentsEmpty": "您的内容暂无新评论。",
+  "commentReply": "回复",
+  "commentResourceArticle": "文章",
+  "commentResourceDocument": "文档",
+  "commentResourceKnowledgeBase": "知识库",
+  "commentResourceWikiSpace": "Wiki 空间",
+  "commentResourceProject": "Agent 项目"
 }

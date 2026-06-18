@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FileStack, Inbox, Loader2, Share2, Waypoints } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
+import { HomeCommentFeed } from '../components/home/HomeCommentFeed';
 import { config } from '../config';
 import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
 import type { KnowledgeMapHtmlStatus } from '../data/knowledgeMapApi';
@@ -86,6 +87,7 @@ export function Home() {
   const showHtmlHome = mapHtmlStatus?.has_artifact === true;
   const nodeCount = hub?.knowledge_map?.node_count ?? null;
   const linkCount = hub?.knowledge_map?.link_count ?? null;
+  const recentComments = hub?.recent_comments ?? [];
 
   return (
     <div className={`home home--hub${showKnowledgeMapHub ? ' home--hub-map-center' : ''}`}>
@@ -187,6 +189,8 @@ export function Home() {
           </section>
 
           <div className="home-under-map">
+            <HomeCommentFeed items={recentComments} />
+
             {showDocsWork && (
               <section className="home-hub-card">
                 <h2 className="home-hub-card-title">
@@ -268,6 +272,8 @@ export function Home() {
 
           <div className="home-hub-split">
             <div className="home-hub-split__right home-hub-split__right--solo">
+              <HomeCommentFeed items={recentComments} />
+
               {showDocsWork && (
                 <section className="home-hub-card">
                   <h2 className="home-hub-card-title">

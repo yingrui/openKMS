@@ -17,10 +17,25 @@ export type HomeHubWorkItem = {
   created_at: string;
 };
 
+export type HomeHubCommentItem = {
+  id: string;
+  resource_type: string;
+  resource_id: string;
+  resource_title: string;
+  parent_comment_id: string | null;
+  body: string;
+  rank: number | null;
+  created_by: string;
+  created_by_name: string | null;
+  created_at: string;
+  is_reply: boolean;
+};
+
 export type HomeHubResponse = {
   knowledge_map: HomeHubKnowledgeMapCounts | null;
   work_items: HomeHubWorkItem[];
   share_requests: unknown[];
+  recent_comments: HomeHubCommentItem[];
   knowledge_map_tree: KnowledgeMapNode[] | null;
   resource_links: ResourceLink[] | null;
   map_html_status: KnowledgeMapHtmlStatus | null;

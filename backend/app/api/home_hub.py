@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models.document import Document
 from app.models.document_relationship import DocumentRelationship
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
+from app.services.comment_owned_feed import load_recent_comments_on_owned_resources
 from app.services.knowledge_map_read import (
     KnowledgeMapHtmlStatusOut,
     KnowledgeMapNodeOut,
@@ -30,6 +31,8 @@ from app.services.permission_resolution import resolve_oidc_permission_keys, res
 from app.services.resource_acl_service import readable_document_channel_ids, scope_applies
 
 router = APIRouter(prefix="/home", tags=["home"])
+
+HOME_RECENT_COMMENTS_LIMIT = 5
 
 
 class KnowledgeMapSummary(BaseModel):
@@ -47,10 +50,25 @@ class WorkItem(BaseModel):
     created_at: datetime
 
 
+class HomeCommentFeedItem(BaseModel):
+    id: str
+    resource_type: str
+    resource_id: str
+    resource_title: str
+    parent_comment_id: str | None
+    body: str
+    rank: int | None
+    created_by: str
+    created_by_name: str | None
+    created_at: datetime
+    is_reply: bool
+
+
 class HomeHubResponse(BaseModel):
     knowledge_map: KnowledgeMapSummary | None = None
     work_items: list[WorkItem] = Field(default_factory=list)
     share_requests: list[dict] = Field(default_factory=list)
+    recent_comments: list[HomeCommentFeedItem] = Field(default_factory=list)
     knowledge_map_tree: list[KnowledgeMapNodeOut] | None = None
     resource_links: list[ResourceLinkOut] | None = None
     map_html_status: KnowledgeMapHtmlStatusOut | None = None
@@ -137,10 +155,18 @@ async def get_home_hub(request: Request, db: AsyncSession = Depends(get_db)):
             if len(work_items) >= 15:
                 break
 
+    recent_comments: list[HomeCommentFeedItem] = []
+    if sub:
+        feed_rows = await load_recent_comments_on_owned_resources(
+            db, sub, payload=payload, limit=HOME_RECENT_COMMENTS_LIMIT
+        )
+        recent_comments = [HomeCommentFeedItem(**row.__dict__) for row in feed_rows]
+
     return HomeHubResponse(
         knowledge_map=km_summary,
         work_items=work_items,
         share_requests=[],
+        recent_comments=recent_comments,
         knowledge_map_tree=km_tree,
         resource_links=resource_links,
         map_html_status=map_html_status,
