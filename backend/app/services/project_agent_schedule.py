@@ -305,6 +305,6 @@ async def execute_scheduled_project_agent(
         from app.services.deep_agents.checkpointer import delete_conversation_thread
 
         await revoke_session_api_key(db, created_conv)
-        await delete_conversation_thread(created_conv.id)
+        await delete_conversation_thread(db, created_conv.id)
         await db.delete(created_conv)
 

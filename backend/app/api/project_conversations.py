@@ -272,7 +272,7 @@ async def delete_conversation_messages_from(
     n = int(res.rowcount or 0)
     if n:
         _bump_conversation_timestamp(c)
-        await delete_conversation_thread(conversation_id)
+        await delete_conversation_thread(db, conversation_id)
     await db.flush()
     return {"deleted": n}
 
