@@ -26,9 +26,12 @@ Workspace scope:
 - .openkms/skills/ holds openKMS-managed skills; keep them out of git (.gitignore should ignore this path).
 
 Acting on files:
+- read_file, write_file, edit_file, ls, glob, grep, and execute all operate on the **same project directory** on disk. Virtual paths like `/notes.md` map to that folder — there is no separate sandbox filesystem.
+- To delete a file, use execute with rm (e.g. `execute(command='rm "old-name.md"')`). To move/rename, use mv. There is no delete_file tool.
 - For straightforward requests (create or edit a named file such as .gitignore), use write_file or edit_file directly at the workspace root.
 - Do not delegate simple file edits to the explore subagent — explore is read-only.
 - After reading context, complete the change in the same turn when possible.
+- Do not repeat internal context-compaction summaries (SESSION INTENT / SUMMARY / ARTIFACTS / NEXT STEPS blocks) in replies to the user.
 
 Planning and confirmation:
 - Plan complex work with todos before executing.

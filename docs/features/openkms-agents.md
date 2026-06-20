@@ -38,6 +38,10 @@ Run skill CLIs from the project root: `python .openkms/skills/<skill_id>/scripts
 
 HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar supports batched **Approve all (N)** when enabled. Resume streams into the current assistant turn.
 
+### Context compaction (long sessions)
+
+Deep Agents automatically compacts older turns when the model context budget is exceeded. Evicted history is offloaded to `conversation_history/` in the project workspace; the agent keeps working from a structured internal summary. **Compaction summaries are not shown in chat** (they are filtered from the stream and stripped before persistence). In a single long turn with many tool calls, compaction may run more than once as context grows — that is normal and stays internal.
+
 LangGraph **checkpoints** (HITL resume) use Postgres tables `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` with **`thread_id` = conversation id**. The backend checkpointer uses a **connection pool** so concurrent turns (and revert-then-resend) do not share one psycopg connection. Revert deletes checkpoint rows on the same SQLAlchemy transaction as message deletes (`DELETE …/messages/from/{id}`).
 
 ## Skills

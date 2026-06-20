@@ -34,6 +34,7 @@ from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
 from app.services.deep_agents.prompts import build_project_system_prompt
 from app.services.deep_agents.sandbox import make_sandbox_tools
 from app.services.deep_agents.skills.loader import list_skill_paths
+from app.services.deep_agents.stream_accumulator import strip_leaked_compaction_text
 from app.services.deep_agents.stream_events import ProjectStreamPart, iter_langgraph_stream_parts
 from app.services.deep_agents.subagents.profiles import build_subagents
 from app.services.deep_agents.tools.web_search import make_web_search_tools
@@ -407,6 +408,7 @@ async def run_project_turn(
         last = after[-1]
         if isinstance(last, AIMessage) and last.content:
             visible = last.content if isinstance(last.content, str) else str(last.content)
+            visible = strip_leaked_compaction_text(visible)
     lower = (visible or "").lower()
     if not traces and (
         "failed to initialize" in lower or "recursion limit" in lower

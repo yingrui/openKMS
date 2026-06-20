@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from langchain_core.messages import AIMessageChunk
+
 from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 from app.services.deep_agents.stream_events import LangGraphStreamAdapter
 
@@ -50,6 +52,48 @@ def test_write_todos_emits_on_tool_end_output():
     assert len(todo_parts) == 1
     assert todo_parts[0]["todos"][0]["status"] == "completed"
     assert todo_parts[0]["todos"][1]["status"] == "in_progress"
+
+
+def test_accumulator_strips_leaked_compaction_blocks():
+    acc = ProjectStreamAccumulator()
+    acc.absorb(
+        {
+            "type": "delta",
+            "t": (
+                "SESSION INTENT\nGoal\n\nSUMMARY\nDone\n\nARTIFACTS\nfile.md\n\n"
+                "NEXT STEPS\nNone\n\n已完成移动。"
+            ),
+        }
+    )
+    assert acc.assistant_text == "已完成移动。"
+
+
+def test_summarization_model_stream_is_suppressed():
+    adapter = LangGraphStreamAdapter()
+    adapter.parts_from_event(
+        {
+            "event": "on_chat_model_start",
+            "run_id": "sum-run-1",
+            "metadata": {"lc_source": "summarization"},
+        }
+    )
+    parts = adapter.parts_from_event(
+        {
+            "event": "on_chat_model_stream",
+            "run_id": "sum-run-1",
+            "data": {"chunk": {"content": "SESSION INTENT\nsecret"}},
+        }
+    )
+    assert parts == []
+    adapter.parts_from_event({"event": "on_chat_model_end", "run_id": "sum-run-1"})
+    agent_parts = adapter.parts_from_event(
+        {
+            "event": "on_chat_model_stream",
+            "run_id": "agent-run-1",
+            "data": {"chunk": AIMessageChunk(content="Hello")},
+        }
+    )
+    assert agent_parts == [{"type": "delta", "t": "Hello"}]
 
 
 def test_accumulator_collects_tool_input_on_end():

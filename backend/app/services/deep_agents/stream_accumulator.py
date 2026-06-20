@@ -2,10 +2,24 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal
 
 from app.services.deep_agents.stream_events import ProjectStreamPart
+
+_COMPACTION_BLOCK_RE = re.compile(
+    r"SESSION INTENT\s*\n.*?\nNEXT STEPS\s*\n.*?(?=\n\n|\nSESSION INTENT|\Z)",
+    re.DOTALL,
+)
+
+
+def strip_leaked_compaction_text(text: str) -> str:
+    """Drop Deep Agents SESSION INTENT blocks if they leaked into assistant text."""
+    if "SESSION INTENT" not in text or "NEXT STEPS" not in text:
+        return text
+    cleaned = _COMPACTION_BLOCK_RE.sub("", text).strip()
+    return cleaned if cleaned else text
 
 
 @dataclass
@@ -54,4 +68,4 @@ class ProjectStreamAccumulator:
 
     @property
     def assistant_text(self) -> str:
-        return "".join(self.text_parts)
+        return strip_leaked_compaction_text("".join(self.text_parts))

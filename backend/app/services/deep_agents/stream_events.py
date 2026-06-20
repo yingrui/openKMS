@@ -74,6 +74,16 @@ def _extract_todos_from_tool_data(data: dict[str, Any]) -> list[Any] | None:
     return None
 
 
+def _event_metadata(ev: dict) -> dict[str, Any]:
+    meta = ev.get("metadata")
+    return meta if isinstance(meta, dict) else {}
+
+
+def _is_summarization_model_event(ev: dict) -> bool:
+    """True for LangGraph events from Deep Agents context-compaction LLM calls."""
+    return _event_metadata(ev).get("lc_source") == "summarization"
+
+
 def _message_to_stream_text_raw(chunk: Any) -> str:
     if chunk is None:
         return ""
@@ -100,13 +110,29 @@ class LangGraphStreamAdapter:
 
     def __init__(self) -> None:
         self._pending_subagent: str | None = None
+        self._suppressed_model_run_ids: set[str] = set()
 
     def parts_from_event(self, ev: dict) -> list[ProjectStreamPart]:
         ename = (ev.get("event") or "") if isinstance(ev, dict) else ""
         data = ev.get("data") or {}
+        run_id = str(ev.get("run_id") or "")
         out: list[ProjectStreamPart] = []
 
+        if ename == "on_chat_model_start":
+            if _is_summarization_model_event(ev) and run_id:
+                self._suppressed_model_run_ids.add(run_id)
+            return out
+
+        if ename == "on_chat_model_end":
+            if run_id:
+                self._suppressed_model_run_ids.discard(run_id)
+            return out
+
         if ename == "on_chat_model_stream":
+            if run_id and run_id in self._suppressed_model_run_ids:
+                return out
+            if _is_summarization_model_event(ev):
+                return out
             t = _message_to_stream_text_raw(data.get("chunk"))
             if t:
                 out.append({"type": "delta", "t": t})
