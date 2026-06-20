@@ -69,6 +69,26 @@ HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar 
 | `OPENKMS_AGENT_SKILLS_ROOT` | `data/agent-skills` | Global skills registry |
 | `OPENKMS_DEEP_AGENT_MODEL_ID` | — | Falls back to `OPENKMS_AGENT_MODEL_ID` |
 | `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project dir |
+| `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project agent turn logs (`agent_turn_start` / `agent_turn_done` at INFO; **`agent_turn_failed` at ERROR**). Use `DEBUG` for verbose deep-agents detail. |
+| `OPENKMS_BACKEND_LOG_LEVEL` | — | Root log level for all `app.*` loggers when set (default INFO). |
+
+### Observability (without Langfuse)
+
+Interactive agent turns run in the **backend** container; scheduled cron runs run in the **worker** container. Tail both:
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f backend worker
+```
+
+Filter failed turns (visible at default `OPENKMS_AGENT_LOG_LEVEL=INFO`):
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f backend 2>&1 | rg 'ERROR.*agent_turn'
+```
+
+Each turn logs grep-friendly fields: `turn_id`, `project_id`, `conversation_id`, `duration_ms`, and on failure `error=…`. Scheduled run failures also appear in **Job runs → detail** (`worker_log`).
+
+The latest turn summary is stored on the conversation as **`context.last_turn`** (`turn_id`, `status`, `error`, `duration_ms`, `tool_count`) — visible via `GET …/conversations/{id}` for debugging. Failed stream turns also persist an assistant message in the thread.
 
 **Langfuse (optional):** Same variables as [qa-agent](../features/knowledge-bases.md): **`LANGFUSE_SECRET_KEY`**, **`LANGFUSE_PUBLIC_KEY`**, and **`LANGFUSE_BASE_URL`** must all be set or tracing is off. Pass optional **`session_id`** on `POST …/messages` to group turns in one Langfuse **Session** (defaults to conversation id). Tags: `deep-agent`, `project-stream` \| `project-sync`, and `plan-mode` when applicable. **`LANGFUSE_HEALTHCHECK`** (default true) probes the host before callbacks; **`LANGFUSE_TRACE_STREAMING`** (default true) controls streaming turns.
 

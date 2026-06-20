@@ -54,7 +54,13 @@ from app.api.system_settings import public_router as system_public_router
 from app.api.system_settings import router as system_settings_router
 from app.api.knowledge_map import router as knowledge_map_router
 from app.config import settings
+from app.logging_config import configure_logging
 from app.middleware.strict_permission_patterns import StrictPermissionPatternMiddleware
+
+configure_logging(
+    backend_level=settings.backend_log_level,
+    agent_level=settings.agent_log_level,
+)
 
 logger = logging.getLogger(__name__)
 

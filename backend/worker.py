@@ -18,7 +18,14 @@ from dotenv import load_dotenv
 _env = Path(__file__).resolve().parent / ".env"
 load_dotenv(_env)
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-8s %(name)s: %(message)s")
+from app.config import settings
+from app.logging_config import configure_logging
+
+configure_logging(
+    backend_level=settings.backend_log_level,
+    agent_level=settings.agent_log_level,
+)
+
 logger = logging.getLogger("openkms.worker")
 
 

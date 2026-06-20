@@ -225,6 +225,7 @@ export interface ProjectStreamEffects {
   setTodos: Dispatch<SetStateAction<unknown[]>>;
   setInterrupt: Dispatch<SetStateAction<string | null>>;
   onFatal: (message: string) => void;
+  onError?: (detail: string) => void;
 }
 
 const projectCopilotEffects = (effects: ProjectStreamEffects): CopilotStreamEffects<ChatMessage> => ({
@@ -252,7 +253,7 @@ export function applyProjectStreamEvent(
     return;
   }
 
-  const { setMessages, setTodos, setInterrupt, onFatal } = effects;
+  const { setMessages, setTodos, setInterrupt, onFatal, onError } = effects;
 
   if (ev.type === 'subagent_start') {
     setMessages((prev) =>
@@ -279,6 +280,23 @@ export function applyProjectStreamEvent(
     setInterrupt(JSON.stringify(ev.interrupt ?? {}));
   } else if (ev.type === 'fatal') {
     onFatal(ev.message);
+  } else if (ev.type === 'error') {
+    onError?.(ev.detail);
+    setMessages((prev) =>
+      prev.map((p) => {
+        if (p.id !== asstStreamId) return p;
+        const historyParts = assistantHistoryStreamParts(
+          ev.message.content,
+          ev.message.tool_calls,
+        );
+        return {
+          role: 'assistant',
+          content: ev.message.content,
+          id: ev.message.id,
+          streamParts: p.streamParts && p.streamParts.length > 0 ? p.streamParts : historyParts,
+        };
+      }),
+    );
   } else if (ev.type === 'done') {
     setMessages((prev) =>
       prev.map((p) => {

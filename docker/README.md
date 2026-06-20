@@ -44,6 +44,15 @@ Values substitute `${…}` in the YAML only — the file is **not** mounted into
 For OIDC or extra backend-only vars, see **`backend/.env.example`** (you may merge those into `docker/.env` or pass `--env-file backend/.env` in addition).
 
 - **UI:** http://localhost:8082 — nginx → `/api`, `/internal-api`, `/login`, sessions, MinIO bucket path. Backend is **not** on the host; use this origin for API calls.
+- **Agent logs:** Interactive project agent turns log to the **`backend`** container; scheduled agent cron runs log to **`worker`**. Do not tail **`frontend`** (nginx only proxies). Example:
+
+  ```bash
+  docker compose logs -f backend worker
+  docker compose logs -f backend 2>&1 | rg 'ERROR.*agent_turn'
+  ```
+
+  Set **`OPENKMS_AGENT_LOG_LEVEL=DEBUG`** in **`docker/.env`** for verbose deep-agents detail (failures always log at **ERROR** at default INFO).
+
 - **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
 - **Neo4j:** Host maps use **7476** (Browser) and **7689** (Bolt)—Neo4j defaults **7474** / **7687** plus **2** when those ports are already in use on the machine. **Inside the stack** (Console data source, backend) use hostname **`neo4j`** and port **`7687`** (container port, not 7689). Default auth: user **`neo4j`**, password **`openkms-neo4j-dev`**.
 

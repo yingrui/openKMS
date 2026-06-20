@@ -123,6 +123,16 @@ class Settings(BaseSettings):
         le=600,
         validation_alias="OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS",
     )
+    agent_log_level: str = Field(
+        default="INFO",
+        validation_alias="OPENKMS_AGENT_LOG_LEVEL",
+        description="Log level for app.services.deep_agents (project agent turns). DEBUG adds verbose middleware detail.",
+    )
+    backend_log_level: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_BACKEND_LOG_LEVEL",
+        description="Root log level for app.* loggers; defaults to INFO when unset.",
+    )
 
     agent_kb_qa_max_context_messages: int = Field(
         default=120,

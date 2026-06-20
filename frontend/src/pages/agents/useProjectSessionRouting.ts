@@ -83,8 +83,12 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
 
   useEffect(() => {
     if (streamingRef.current) return;
-    if (convId) loadMessages(convId).catch(() => setMessages([]));
-    else setMessages([]);
+    if (convId) {
+      loadMessages(convId).catch((e) => {
+        toast.error(e instanceof Error ? e.message : String(e));
+        setMessages([]);
+      });
+    } else setMessages([]);
   }, [convId, loadMessages]);
 
   const onNewChat = async () => {

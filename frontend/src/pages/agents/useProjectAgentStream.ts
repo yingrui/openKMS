@@ -55,6 +55,7 @@ export function useProjectAgentStream({
           setTodos,
           setInterrupt,
           onFatal: (message) => toast.error(message),
+          onError: (detail) => toast.error(detail),
         },
       );
     },

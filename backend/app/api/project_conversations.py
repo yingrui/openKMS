@@ -32,6 +32,7 @@ from app.services.conversation_title import suggest_conversation_title
 from app.services.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
 from app.services.agent_skill_install import ensure_skills_materialized
 from app.services.deep_agents.checkpointer import delete_conversation_thread
+from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
@@ -41,6 +42,49 @@ router = APIRouter()
 
 def _ndjson_line(obj: dict) -> bytes:
     return (json.dumps(obj, ensure_ascii=False, default=str) + "\n").encode()
+
+
+async def _persist_stream_error(
+    db: AsyncSession,
+    conversation: AgentConversation,
+    turn: AgentTurnContext,
+    err: str,
+    *,
+    assistant_id: str | None = None,
+    tool_count: int = 0,
+    exc: BaseException | None = None,
+) -> AgentMessage:
+    """Persist failed turn as assistant message and record last_turn metadata."""
+    asst = AgentMessage(
+        id=assistant_id or new_id(),
+        conversation_id=conversation.id,
+        role="assistant",
+        content=err,
+    )
+    db.add(asst)
+    _bump_conversation_timestamp(conversation)
+    if turn._finished:
+        turn.apply_last_turn(conversation, status="failed", error=err, tool_count=tool_count)
+    else:
+        turn.log_failed(
+            err,
+            exc=exc,
+            conversation=conversation,
+            tool_count=tool_count,
+        )
+    await db.flush()
+    await db.refresh(asst)
+    return asst
+
+
+def _error_ndjson_line(err: str, asst: AgentMessage) -> bytes:
+    return _ndjson_line(
+        {
+            "type": "error",
+            "detail": err,
+            "message": _msg_to_out(asst).model_dump(mode="json"),
+        }
+    )
 
 
 def _conv_to_out(c: AgentConversation) -> AgentConversationResponse:
@@ -310,10 +354,16 @@ async def post_message(
     if body.stream:
 
         async def stream() -> AsyncIterator[bytes]:
+            turn = AgentTurnContext.start(
+                project_id=project_id,
+                conversation_id=c.id,
+                plan_mode=plan_mode,
+                streaming=True,
+            )
+            acc = ProjectStreamAccumulator()
             try:
                 yield _ndjson_line({"type": "user", "message": _msg_to_out(user_msg).model_dump(mode="json")})
                 assistant_id = new_id()
-                acc = ProjectStreamAccumulator()
                 async for part in iter_project_stream_parts(
                     db,
                     c,
@@ -326,9 +376,19 @@ async def post_message(
                     project.settings or {},
                     plan_mode=plan_mode,
                     session_id=body.session_id,
+                    turn=turn,
                 ):
                     if acc.absorb(part) == "fatal":
-                        yield _ndjson_line(part)
+                        err = str(part.get("message") or "Error") if isinstance(part, dict) else "Error"
+                        asst = await _persist_stream_error(
+                            db,
+                            c,
+                            turn,
+                            err,
+                            assistant_id=assistant_id,
+                            tool_count=len(acc.tool_traces),
+                        )
+                        yield _error_ndjson_line(err, asst)
                         return
                     yield _ndjson_line(part)
                 content = acc.assistant_text
@@ -342,6 +402,11 @@ async def post_message(
                 )
                 db.add(asst)
                 await db.flush()
+                turn.log_done(
+                    tool_count=len(acc.tool_traces),
+                    assistant_chars=len(content or ""),
+                    conversation=c,
+                )
                 yield _ndjson_line(
                     {
                         "type": "done",
@@ -349,7 +414,11 @@ async def post_message(
                     }
                 )
             except Exception as e:
-                yield _ndjson_line({"type": "fatal", "message": str(e)})
+                err = str(e)
+                asst = await _persist_stream_error(
+                    db, c, turn, err, exc=e, tool_count=len(acc.tool_traces)
+                )
+                yield _error_ndjson_line(err, asst)
 
         return StreamingResponse(
             stream(),
@@ -405,6 +474,13 @@ async def resume_message(
     await ensure_skills_materialized(db, project)
 
     async def stream() -> AsyncIterator[bytes]:
+        turn = AgentTurnContext.start(
+            project_id=project_id,
+            conversation_id=c.id,
+            streaming=True,
+            resume=True,
+        )
+        acc = ProjectStreamAccumulator()
         try:
             await db.refresh(c, attribute_names=["messages"])
             rows = sorted(c.messages, key=lambda m: (m.created_at, m.id))
@@ -415,7 +491,6 @@ async def resume_message(
                 if isinstance(raw, list):
                     existing_traces = [t for t in raw if isinstance(t, dict)]
 
-            acc = ProjectStreamAccumulator()
             async for part in resume_project_interrupt(
                 db,
                 c,
@@ -429,14 +504,28 @@ async def resume_message(
                 decision=body.decision,
                 edited_args=body.edited_args,
                 message=body.message,
+                turn=turn,
             ):
                 status = acc.absorb(part)
                 if status == "fatal":
-                    yield _ndjson_line(part)
+                    err = str(part.get("message") or "Error") if isinstance(part, dict) else "Error"
+                    asst = await _persist_stream_error(
+                        db,
+                        c,
+                        turn,
+                        err,
+                        tool_count=len(existing_traces) + len(acc.tool_traces),
+                    )
+                    yield _error_ndjson_line(err, asst)
                     return
                 yield _ndjson_line(part)
 
             if acc.interrupted:
+                turn.log_done(
+                    tool_count=len(acc.tool_traces),
+                    assistant_chars=len(acc.assistant_text),
+                    conversation=c,
+                )
                 return
 
             resume_text = acc.assistant_text
@@ -460,9 +549,18 @@ async def resume_message(
                 db.add(asst)
                 await db.flush()
             _bump_conversation_timestamp(c)
+            turn.log_done(
+                tool_count=len(merged_traces),
+                assistant_chars=len(resume_text or ""),
+                conversation=c,
+            )
             yield _ndjson_line({"type": "done", "assistant": _msg_to_out(asst).model_dump(mode="json")})
         except Exception as e:
-            yield _ndjson_line({"type": "fatal", "message": str(e)})
+            err = str(e)
+            asst = await _persist_stream_error(
+                db, c, turn, err, exc=e, tool_count=len(acc.tool_traces)
+            )
+            yield _error_ndjson_line(err, asst)
 
     return StreamingResponse(
         stream(),

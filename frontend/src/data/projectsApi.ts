@@ -8,10 +8,24 @@ async function parseError(res: Response): Promise<string> {
   try {
     const j = await res.json();
     if (typeof j.detail === 'string') return j.detail;
+    if (j.detail && typeof j.detail === 'object' && typeof j.detail.message === 'string') {
+      return j.detail.message;
+    }
+    if (Array.isArray(j.detail) && j.detail.length > 0) {
+      const first = j.detail[0];
+      if (typeof first === 'object' && first && typeof first.msg === 'string') return first.msg;
+    }
   } catch {
     /* ignore */
   }
   return res.statusText;
+}
+
+function handleNetworkError(e: unknown): never {
+  if (e instanceof TypeError && e.message === 'Failed to fetch') {
+    throw new Error(`Cannot connect to backend at ${config.apiUrl}. Is it running?`);
+  }
+  throw e;
 }
 
 export interface ProjectResponse {
@@ -369,6 +383,7 @@ export type ProjectStreamEvent =
   | { type: 'subagent_start'; name: string }
   | { type: 'subagent_end'; name: string }
   | { type: 'fatal'; message: string }
+  | { type: 'error'; detail: string; message: AgentMessageItem }
   | { type: 'done'; assistant: AgentMessageItem };
 
 export async function postProjectMessageStream(
@@ -378,29 +393,34 @@ export async function postProjectMessageStream(
   opts?: { mode?: 'plan' | 'agent'; sessionId?: string },
   onEvent?: (ev: ProjectStreamEvent) => void,
 ): Promise<AgentMessageItem | null> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        content,
-        stream: true,
-        mode: opts?.mode ?? 'agent',
-        session_id: opts?.sessionId ?? null,
-      }),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  if (!res.body) throw new Error('No response body');
-  let assistant: AgentMessageItem | null = null;
-  await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
-    onEvent?.(ev);
-    if (ev.type === 'done') assistant = ev.assistant;
-  });
-  return assistant;
+  try {
+    const headers = await getAuthHeaders();
+    const res = await authAwareFetch(
+      `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages`,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          content,
+          stream: true,
+          mode: opts?.mode ?? 'agent',
+          session_id: opts?.sessionId ?? null,
+        }),
+      },
+    );
+    if (!res.ok) throw new Error(await parseError(res));
+    if (!res.body) throw new Error('No response body');
+    let assistant: AgentMessageItem | null = null;
+    await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
+      onEvent?.(ev);
+      if (ev.type === 'done') assistant = ev.assistant;
+      if (ev.type === 'error') assistant = ev.message;
+    });
+    return assistant;
+  } catch (e) {
+    handleNetworkError(e);
+  }
 }
 
 export async function resumeProjectInterrupt(
@@ -409,24 +429,29 @@ export async function resumeProjectInterrupt(
   body: { decision: string; edited_args?: Record<string, unknown>; message?: string },
   onEvent?: (ev: ProjectStreamEvent) => void,
 ): Promise<AgentMessageItem | null> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages/resume`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  if (!res.body) throw new Error('No response body');
-  let assistant: AgentMessageItem | null = null;
-  await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
-    onEvent?.(ev);
-    if (ev.type === 'done') assistant = ev.assistant;
-  });
-  return assistant;
+  try {
+    const headers = await getAuthHeaders();
+    const res = await authAwareFetch(
+      `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages/resume`,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) throw new Error(await parseError(res));
+    if (!res.body) throw new Error('No response body');
+    let assistant: AgentMessageItem | null = null;
+    await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
+      onEvent?.(ev);
+      if (ev.type === 'done') assistant = ev.assistant;
+      if (ev.type === 'error') assistant = ev.message;
+    });
+    return assistant;
+  } catch (e) {
+    handleNetworkError(e);
+  }
 }
 
 export async function gitInit(projectId: string): Promise<void> {

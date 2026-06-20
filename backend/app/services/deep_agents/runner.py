@@ -28,6 +28,7 @@ from app.services.deep_agents.checkpointer import get_checkpointer
 from app.services.deep_agents.env import build_project_shell_env
 from app.services.deep_agents.hitl import interrupt_map
 from app.services.deep_agents.langfuse import build_deep_agent_langgraph_config
+from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.plan_mode import plan_mode_permissions
 from app.services.deep_agents.project_backend import ProjectWorkspaceBackend
 from app.services.deep_agents.prompts import build_project_system_prompt
@@ -263,6 +264,7 @@ async def iter_project_stream_parts(
     *,
     plan_mode: bool = False,
     session_id: str | None = None,
+    turn: AgentTurnContext | None = None,
 ) -> AsyncIterator[ProjectStreamPart]:
     del jwt_payload
     rows = await _conversation_message_rows(db, conversation.id)
@@ -278,7 +280,10 @@ async def iter_project_stream_parts(
         plan_mode=plan_mode,
     )
     if err or not agent:
-        yield {"type": "fatal", "message": err or "Agent failed to initialize"}
+        msg = err or "Agent failed to initialize"
+        if turn is not None:
+            turn.log_failed(msg, conversation=conversation)
+        yield {"type": "fatal", "message": msg}
         return
     cfg = _runnable_config(
         conversation.id,
@@ -293,8 +298,15 @@ async def iter_project_stream_parts(
                 any_text = True
             yield part
     except GraphRecursionError as e:
-        yield {"type": "fatal", "message": f"Recursion limit exceeded ({e!s})"}
+        msg = f"Recursion limit exceeded ({e!s})"
+        if turn is not None:
+            turn.log_failed(msg, conversation=conversation)
+        yield {"type": "fatal", "message": msg}
         return
+    except Exception as e:
+        if turn is not None:
+            turn.log_failed(str(e), exc=e, conversation=conversation)
+        raise
     interrupt_parts = await _pending_interrupt_parts(agent, cfg)
     for part in interrupt_parts:
         yield part
@@ -310,7 +322,10 @@ async def iter_project_stream_parts(
                     text = last.content if isinstance(last.content, str) else str(last.content)
                     yield {"type": "delta", "t": text}
         except GraphRecursionError as e:
-            yield {"type": "fatal", "message": f"Recursion limit exceeded ({e!s})"}
+            msg = f"Recursion limit exceeded ({e!s})"
+            if turn is not None:
+                turn.log_failed(msg, conversation=conversation)
+            yield {"type": "fatal", "message": msg}
 
 
 async def run_project_turn(
@@ -329,6 +344,13 @@ async def run_project_turn(
     scheduled_run: bool = False,
 ) -> tuple[str, dict[str, Any] | None]:
     del jwt_payload
+    turn = AgentTurnContext.start(
+        project_id=project_id,
+        conversation_id=conversation.id,
+        plan_mode=plan_mode,
+        scheduled_run=scheduled_run,
+        streaming=False,
+    )
     rows = await _conversation_message_rows(db, conversation.id)
     messages = _lc_messages_from_db(rows)
     build_ctx: dict[str, Any] = {}
@@ -345,7 +367,9 @@ async def run_project_turn(
         build_ctx=build_ctx if scheduled_run else None,
     )
     if err or not agent:
-        return err or "Agent failed to initialize", None
+        msg = err or "Agent failed to initialize"
+        turn.log_failed(msg, conversation=conversation)
+        return msg, None
     cfg = _runnable_config(
         conversation.id,
         session_id=session_id,
@@ -357,16 +381,25 @@ async def run_project_turn(
             llm = build_ctx.get("llm")
             backend = build_ctx.get("backend")
             if llm is not None and backend is not None:
-                await compact_project_context_if_needed(
-                    agent, cfg, llm=llm, backend=backend
-                )
+                try:
+                    await compact_project_context_if_needed(
+                        agent, cfg, llm=llm, backend=backend
+                    )
+                except Exception as e:
+                    turn.log_failed(f"Context compaction failed: {e}", exc=e, conversation=conversation)
+                    return f"Context compaction failed: {e}", None
             out = await _ainvoke_with_scheduled_auto_resume(
                 agent, {"messages": messages}, cfg
             )
         else:
             out = await agent.ainvoke({"messages": messages}, cfg)
     except GraphRecursionError as e:
-        return f"Recursion limit exceeded ({e!s})", None
+        msg = f"Recursion limit exceeded ({e!s})"
+        turn.log_failed(msg, conversation=conversation)
+        return msg, None
+    except Exception as e:
+        turn.log_failed(str(e), exc=e, conversation=conversation)
+        raise
     traces = _tool_traces_from_messages(out.get("messages") or [])
     after = list(out.get("messages") or [])
     visible = ""
@@ -374,6 +407,17 @@ async def run_project_turn(
         last = after[-1]
         if isinstance(last, AIMessage) and last.content:
             visible = last.content if isinstance(last.content, str) else str(last.content)
+    lower = (visible or "").lower()
+    if not traces and (
+        "failed to initialize" in lower or "recursion limit" in lower
+    ):
+        turn.log_failed(visible or "Scheduled agent run failed", conversation=conversation)
+        return visible or "Scheduled agent run failed", None
+    turn.log_done(
+        tool_count=len(traces),
+        assistant_chars=len(visible),
+        conversation=conversation,
+    )
     if traces:
         return visible, {PROJECT_TOOL_TRANSCRIPTS_KEY: traces}
     return visible, None
@@ -394,6 +438,7 @@ async def resume_project_interrupt(
     edited_args: dict | None = None,
     message: str | None = None,
     session_id: str | None = None,
+    turn: AgentTurnContext | None = None,
 ) -> AsyncIterator[ProjectStreamPart]:
     from langgraph.types import Command
 
@@ -409,7 +454,10 @@ async def resume_project_interrupt(
         plan_mode=False,
     )
     if err or not agent:
-        yield {"type": "fatal", "message": err or "Agent failed to initialize"}
+        msg = err or "Agent failed to initialize"
+        if turn is not None:
+            turn.log_failed(msg, conversation=conversation)
+        yield {"type": "fatal", "message": msg}
         return
     cfg = _runnable_config(conversation.id, session_id=session_id, streaming=True)
     snap = await agent.aget_state(cfg)
@@ -427,7 +475,13 @@ async def resume_project_interrupt(
         for part in interrupt_parts:
             yield part
     except GraphRecursionError as e:
-        yield {"type": "fatal", "message": f"Recursion limit exceeded ({e!s})"}
+        msg = f"Recursion limit exceeded ({e!s})"
+        if turn is not None:
+            turn.log_failed(msg, conversation=conversation)
+        yield {"type": "fatal", "message": msg}
     except Exception as e:
-        logger.exception("resume_project_interrupt failed for conversation %s", conversation.id)
+        if turn is not None:
+            turn.log_failed(str(e), exc=e, conversation=conversation)
+        else:
+            logger.exception("resume_project_interrupt failed for conversation %s", conversation.id)
         yield {"type": "fatal", "message": str(e)}

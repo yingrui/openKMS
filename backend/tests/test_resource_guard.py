@@ -112,12 +112,12 @@ def test_check_resource_access_default_closed_without_acl():
     async def _run():
         with patch("app.config.settings.enforce_resource_acl", True):
             with patch(
-                "app.services.resource_acl_service.acl_check_required",
+                "app.services.acl_resolve.acl_check_required",
                 new_callable=AsyncMock,
                 return_value=True,
             ):
                 with patch(
-                    "app.services.resource_acl_service.effective_permissions",
+                    "app.services.acl_resolve.effective_permissions",
                     new_callable=AsyncMock,
                     return_value=0,
                 ):

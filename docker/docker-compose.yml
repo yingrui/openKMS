@@ -81,6 +81,8 @@ x-backend-env: &backend_env
   LANGFUSE_HEALTHCHECK: ${LANGFUSE_HEALTHCHECK:-true}
   OPENKMS_PROJECTS_ROOT: /data/projects
   OPENKMS_AGENT_SKILLS_ROOT: /data/agent-skills
+  OPENKMS_AGENT_LOG_LEVEL: ${OPENKMS_AGENT_LOG_LEVEL:-INFO}
+  OPENKMS_BACKEND_LOG_LEVEL: ${OPENKMS_BACKEND_LOG_LEVEL:-}
 
 # qa-agent: local service auth (OIDC: see docker/.env.example and backend/.env.example).
 x-qa-agent-env: &qa_agent_env

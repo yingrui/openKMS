@@ -17,9 +17,9 @@ def test_article_visible_denied_when_channel_not_readable():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.resource_acl_service.scope_applies", return_value=True):
+        with patch("app.services.acl_content_visibility.scope_applies", return_value=True):
             with patch(
-                "app.services.resource_acl_service.check_resource_access",
+                "app.services.acl_content_visibility.check_resource_access",
                 new_callable=AsyncMock,
                 return_value=False,
             ) as check:
@@ -64,7 +64,7 @@ def test_scoped_article_predicate_uses_channel_ids_only():
 
     async def _run():
         with patch(
-            "app.services.resource_acl_service.readable_article_channel_ids",
+            "app.services.acl_content_visibility.readable_article_channel_ids",
             new_callable=AsyncMock,
             return_value={"ch-a"},
         ):

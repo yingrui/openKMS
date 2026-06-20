@@ -875,12 +875,24 @@ async def run_scheduled_project_agent(
 
         log_lines.append(f"Scheduled agent started: {trigger.display_name} ({trigger.kind})")
         try:
+            from app.models.agent_models import AgentConversation
             from app.services.project_agent_schedule import execute_scheduled_project_agent
 
             await execute_scheduled_project_agent(session, trigger)
             await update_trigger_after_agent_job(
                 session, trigger.id, job_id=job_id, status="completed"
             )
+            cfg = trigger.config if isinstance(trigger.config, dict) else {}
+            conv_id = cfg.get("last_conversation_id")
+            if conv_id:
+                conv = await session.get(AgentConversation, conv_id)
+                if conv:
+                    lt = (conv.context or {}).get("last_turn")
+                    if isinstance(lt, dict) and lt.get("turn_id"):
+                        log_lines.append(
+                            f"turn_id={lt['turn_id']} conversation_id={conv_id} "
+                            f"status={lt.get('status')}"
+                        )
             await session.commit()
             log_lines.append("Scheduled agent completed")
             logger.info("Scheduled agent finished for trigger %s", trigger_id)
@@ -888,6 +900,19 @@ async def run_scheduled_project_agent(
             await update_trigger_after_agent_job(
                 session, trigger.id, job_id=job_id, status="failed"
             )
+            cfg = trigger.config if isinstance(trigger.config, dict) else {}
+            conv_id = cfg.get("last_conversation_id")
+            if conv_id:
+                conv = await session.get(AgentConversation, conv_id)
+                if conv:
+                    lt = (conv.context or {}).get("last_turn")
+                    if isinstance(lt, dict) and lt.get("turn_id"):
+                        log_lines.append(
+                            f"turn_id={lt['turn_id']} conversation_id={conv_id} "
+                            f"status={lt.get('status')}"
+                        )
+                        if lt.get("error"):
+                            log_lines.append(f"error={lt['error']}")
             await session.commit()
             log_lines.append(f"Scheduled agent failed: {exc}")
             logger.exception("Scheduled agent failed for %s (%s)", trigger_id, label)

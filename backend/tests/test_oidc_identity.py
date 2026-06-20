@@ -57,13 +57,15 @@ def test_upsert_oidc_identity_inserts_and_updates(monkeypatch):
 
 
 def test_resolve_subject_display_uses_oidc_directory(monkeypatch):
+    from app.config import settings
+
     oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
     db = AsyncMock()
 
     async def fake_label(_db, sub):
         return "bob" if sub == oidc_sub else None
 
-    monkeypatch.setattr(acl_svc.settings, "auth_mode", "oidc")
+    monkeypatch.setattr(settings, "auth_mode", "oidc")
     monkeypatch.setattr(
         "app.services.oidc_identity_service.display_label_for_oidc_sub",
         fake_label,

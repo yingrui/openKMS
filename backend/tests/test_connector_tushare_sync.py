@@ -145,6 +145,7 @@ def test_sync_daily_basic_one_api_call_per_trade_date():
                 new_callable=AsyncMock,
                 return_value=["20260610"],
             ),
+            patch("app.services.connector_sync.tushare.sync.pg_engine_for_datasource", return_value=engine),
             patch("app.services.connector_sync.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_daily_basic(

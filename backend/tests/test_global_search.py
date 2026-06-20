@@ -14,9 +14,12 @@ from app.services.permission_pattern_engine import compile_rules_from_rows, reso
 from app.models.security_permission import SecurityPermission
 
 
+_ALL_TYPES = {"documents", "articles", "wiki_spaces", "knowledge_bases", "media"}
+
+
 def test_parse_types_all():
-    assert parse_types_param(None) == {"documents", "articles", "wiki_spaces", "knowledge_bases"}
-    assert parse_types_param("ALL") == {"documents", "articles", "wiki_spaces", "knowledge_bases"}
+    assert parse_types_param(None) == _ALL_TYPES
+    assert parse_types_param("ALL") == _ALL_TYPES
 
 
 def test_parse_types_comma():
@@ -29,12 +32,7 @@ def test_parse_types_invalid_tokens_ignored():
 
 
 def test_allowed_types_all_perm():
-    assert allowed_types_from_permissions(frozenset({PERM_ALL})) == {
-        "documents",
-        "articles",
-        "wiki_spaces",
-        "knowledge_bases",
-    }
+    assert allowed_types_from_permissions(frozenset({PERM_ALL})) == _ALL_TYPES
 
 
 def test_allowed_types_granular():
