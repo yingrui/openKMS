@@ -4,7 +4,7 @@ External integrations configured in the SPA at **`/connectors`** (detail **`/con
 
 Toggle: **`connectors`** (default on). Permissions: **`connectors:read`** (list, kinds, schedules, playground search responses) and **`connectors:write`** (create, update, delete, sync, provision datasets). Credential encryption uses **`OPENKMS_DATASOURCE_ENCRYPTION_KEY`** — see [Configuration](configuration.md).
 
-Related: [Ontology datasets](ontology.md#data-sources-and-datasets), [Pipelines, jobs & models](pipelines-and-jobs.md) (`run_connector_sync`, scheduler), [Agents](openkms-agents.md) (`web_search` tool), [API reference — Connectors](api-reference.md#connectors-connectorsread--connectorswrite).
+Related: [Ontology datasets](ontology.md#data-sources-and-datasets), [Pipelines, jobs & models](pipelines-and-jobs.md) (`run_connector_sync`, scheduler), [Agents](openkms-agents.md) (`web_search` tool), [API reference — Connectors](api-reference.md#connectors-connectorsread-connectorswrite).
 
 ## Categories
 
