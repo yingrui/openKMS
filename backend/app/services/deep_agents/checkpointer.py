@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 
+_pool: AsyncConnectionPool | None = None
 _saver: AsyncPostgresSaver | None = None
-_cm: AsyncIterator[AsyncPostgresSaver] | None = None
 
 # Same tables/order as langgraph AsyncPostgresSaver.adelete_thread (no pipeline mode).
 _CHECKPOINT_THREAD_DELETE_STATEMENTS = (
@@ -22,20 +22,36 @@ _CHECKPOINT_THREAD_DELETE_STATEMENTS = (
 
 
 async def get_checkpointer() -> AsyncPostgresSaver:
-    """Return a process-wide AsyncPostgresSaver (enters from_conn_string context once)."""
-    global _saver, _cm
+    """Return a process-wide checkpointer backed by a connection pool.
+
+    A single shared psycopg connection (from_conn_string) breaks under concurrent agent
+    turns with ``another command is already in progress``. The pool checks out one
+    connection per checkpoint operation.
+    """
+    global _pool, _saver
     if _saver is None:
-        _cm = AsyncPostgresSaver.from_conn_string(settings.database_url_sync)
-        _saver = await _cm.__aenter__()
+        _pool = AsyncConnectionPool(
+            conninfo=settings.database_url_sync,
+            kwargs={
+                "autocommit": True,
+                "prepare_threshold": 0,
+                "row_factory": dict_row,
+            },
+            min_size=2,
+            max_size=20,
+            open=False,
+        )
+        await _pool.open()
+        _saver = AsyncPostgresSaver(_pool)
         await _saver.setup()
     return _saver
 
 
 async def close_checkpointer() -> None:
-    global _saver, _cm
-    if _cm is not None:
-        await _cm.__aexit__(None, None, None)
-    _cm = None
+    global _pool, _saver
+    if _pool is not None:
+        await _pool.close()
+    _pool = None
     _saver = None
 
 
