@@ -83,6 +83,9 @@ Documents land under `documents/{file_hash}/` (legacy `{file_hash}/` still read 
 | `OPENKMS_AGENT_MODEL_ID` | unset | `api_models.id` for the LLM used by `POST /api/agent/.../messages`; falls back to the first available LLM |
 | `OPENKMS_AGENT_MAX_OUTPUT_TOKENS` | `65537` | Upper bound on completion length passed as `max_tokens`; raise if your model supports more |
 | `OPENKMS_AGENT_RECURSION_LIMIT` | `200` | Max LangGraph supersteps per turn (each tool+model cycle uses steps; bulk get/upsert needs a high value) |
+| `OPENKMS_AGENT_LOG_LEVEL` | `INFO` | Project Deep Agents turn logs (`agent_turn_start` / `agent_turn_done`; **`agent_turn_failed` at ERROR**). See [Agents — Observability](openkms-agents.md#observability-without-langfuse). |
+| `OPENKMS_BACKEND_LOG_LEVEL` | — | Optional root log level for all `app.*` loggers when set |
+| `OPENKMS_AGENT_SANDBOX_TIMEOUT_SECONDS` | `60` | Python sandbox in project workspace (Deep Agents `execute`) |
 | `OPENKMS_AGENT_LLM_EXTRA_BODY` | unset | Optional JSON merged into OpenAI-compat **`extra_body`** for the wiki embedded agent and for **Knowledge Map HTML Designer** (`POST /api/knowledge-map/map-html/designer/chat`). **enable_thinking** is always forced to **false** after merge — these paths do not support thinking / full **`reasoning_content`** round-trip beyond what the shim echoes. |
 | `OPENKMS_AGENT_LLM_REASONING_CONTENT_SHIM` | unset | **auto**: inject **`reasoning_content`** on assistant messages for every **base_url** except **`api.openai.com`** (covers generic OpenAI-compat proxies). Used by **Wiki Copilot** (LangChain) and **Knowledge Map Designer** (native OpenAI SDK + tool loop). **`true`** / **`1`**: always inject. **`false`** / **`0`**: never inject. Legacy alias: **`OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM`**. |
 | `OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES` | `120` | Max prior `agent_messages` rows loaded into one embedded wiki agent turn (tail). |

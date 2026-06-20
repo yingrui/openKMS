@@ -20,7 +20,7 @@ In-product **Agents** area: personal **projects** with an on-disk workspace (`{O
 
 - **Agents area:** **Projects | Skills** tabs at `/agents` and `/agents/skills`.
 - **Left:** conversation sessions (month-grouped), like KB Q&A.
-- **Center:** chat thread + collapsible **Plan** checklist (from `write_todos`, dismissible) + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot).
+- **Center:** chat thread + collapsible **Plan** checklist (from `write_todos`, dismissible) + plan toggle + composer. Assistant replies interleave text with compact **tool** and **subagent** rows (click a row to expand input/output); history reloads tool rows from persisted transcripts. Composer ignores Enter while an IME composition is active (same as wiki Copilot). **Revert** (under a user bubble): removes that message and all later turns, clears LangGraph checkpoint state for the session, and puts the user text back in the composer to edit and resend.
 - **Right:** file tree + preview split; git actions in the files rail. Drag pane dividers to resize; widths persist in `localStorage`. **Upload** menu: pick multiple files or a folder. Refresh, parent-folder navigation, and per-row delete (`.openkms` and `.openkms/skills` folders protected; other paths including files under `.openkms/` may be deleted).
 
 ## Session API key
@@ -37,6 +37,8 @@ Run skill CLIs from the project root: `python .openkms/skills/<skill_id>/scripts
 ## Human-in-the-loop (HITL)
 
 HITL is optional per tool name in `hitl.py` (currently none). The interrupt bar supports batched **Approve all (N)** when enabled. Resume streams into the current assistant turn.
+
+LangGraph **checkpoints** (HITL resume) use Postgres tables `checkpoints`, `checkpoint_blobs`, `checkpoint_writes` with **`thread_id` = conversation id**. The backend checkpointer uses a **connection pool** so concurrent turns (and revert-then-resend) do not share one psycopg connection. Revert deletes checkpoint rows on the same SQLAlchemy transaction as message deletes (`DELETE …/messages/from/{id}`).
 
 ## Skills
 
@@ -88,13 +90,24 @@ docker compose -f docker/docker-compose.yml logs -f backend 2>&1 | rg 'ERROR.*ag
 
 Each turn logs grep-friendly fields: `turn_id`, `project_id`, `conversation_id`, `duration_ms`, and on failure `error=…`. Scheduled run failures also appear in **Job runs → detail** (`worker_log`).
 
-The latest turn summary is stored on the conversation as **`context.last_turn`** (`turn_id`, `status`, `error`, `duration_ms`, `tool_count`) — visible via `GET …/conversations/{id}` for debugging. Failed stream turns also persist an assistant message in the thread.
+The latest turn summary is stored on the conversation as **`context.last_turn`** (`turn_id`, `status`, `error`, `duration_ms`, `tool_count`) — visible via `GET …/conversations/{id}` for debugging. Failed stream turns also persist an assistant message in the thread and emit an NDJSON **`error`** line (`detail` + persisted `message`) before the stream closes.
 
 **Langfuse (optional):** Same variables as [qa-agent](../features/knowledge-bases.md): **`LANGFUSE_SECRET_KEY`**, **`LANGFUSE_PUBLIC_KEY`**, and **`LANGFUSE_BASE_URL`** must all be set or tracing is off. Pass optional **`session_id`** on `POST …/messages` to group turns in one Langfuse **Session** (defaults to conversation id). Tags: `deep-agent`, `project-stream` \| `project-sync`, and `plan-mode` when applicable. **`LANGFUSE_HEALTHCHECK`** (default true) probes the host before callbacks; **`LANGFUSE_TRACE_STREAMING`** (default true) controls streaming turns.
 
 **Project search:** In **Agent** settings, enable **web search** and pick a **`search_tool`** connector. Stored as `web_search` and `search_connector_id` in `projects.settings`.
 
 Docker: `projects_data` volume on `backend` and `worker` (include `agent-skills` under the same volume or a sibling mount).
+
+### Troubleshooting
+
+| Symptom | Likely cause | What to check |
+|---------|----------------|---------------|
+| Toast **network error** / fetch failed after ~5 min pending | **Proxy read timeout** while the agent is still running but not streaming bytes (long tool/LLM gap). Stack: browser → **host nginx** → Docker frontend nginx (`proxy_read_timeout` **300s** in `docker/nginx-frontend.conf`) → backend. | Raise **`proxy_read_timeout`** (and **`proxy_send_timeout`**) on **both** nginx layers for `location /api/`; tail host `/var/log/nginx/error.log` for `upstream timed out`. |
+| **`agent_turn_failed`** in backend logs with LLM/tool text; error line in chat after refresh | In-app failure (misconfigured model, recursion limit, tool error). HTTP **200** + NDJSON **`error`**. | `docker compose logs -f backend 2>&1 \| rg 'ERROR.*agent_turn'`; conversation **`context.last_turn`**. |
+| **`another command is already in progress`** (psycopg) on revert + resend | Fixed: checkpointer now uses **`AsyncConnectionPool`**. Redeploy backend if still seen on an old image. | Ensure no overlapping streams on the same session (wait for revert toast before resend). |
+| Empty chat after reload, toast on load | **`GET …/messages`** failed (auth/network). | Browser network tab; backend access log. |
+
+Local dev (**`./dev.sh`**, Vite **5173**) has no nginx; long-turn timeouts are uncommon unless a host reverse proxy sits in front.
 
 ## Project folder
 

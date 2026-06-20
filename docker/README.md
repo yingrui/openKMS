@@ -53,6 +53,8 @@ For OIDC or extra backend-only vars, see **`backend/.env.example`** (you may mer
 
   Set **`OPENKMS_AGENT_LOG_LEVEL=DEBUG`** in **`docker/.env`** for verbose deep-agents detail (failures always log at **ERROR** at default INFO).
 
+- **Long agent turns (production):** Compose frontend nginx uses **`proxy_read_timeout 300s`** on `/api/`. If the UI sits behind **another** reverse proxy (e.g. host nginx → `:8082`), raise **`proxy_read_timeout`** / **`proxy_send_timeout`** on **both** layers for `/api/` (e.g. **900s**) and set **`proxy_buffering off`** for NDJSON streams. Symptom: browser request pending ~5 minutes then **network error**; host **`error.log`**: `upstream timed out while reading upstream` on `POST …/conversations/…/messages`. See [Agents — Troubleshooting](../features/openkms-agents.md#troubleshooting).
+
 - **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
 - **Neo4j:** Host maps use **7476** (Browser) and **7689** (Bolt)—Neo4j defaults **7474** / **7687** plus **2** when those ports are already in use on the machine. **Inside the stack** (Console data source, backend) use hostname **`neo4j`** and port **`7687`** (container port, not 7689). Default auth: user **`neo4j`**, password **`openkms-neo4j-dev`**.
 

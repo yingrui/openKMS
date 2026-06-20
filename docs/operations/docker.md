@@ -14,6 +14,8 @@ The full stack ships as a single `docker compose` file. This page is a runtime /
 
 The browser only ever talks to nginx on **`http://localhost:8082`**, which proxies `/api`, `/internal-api`, the auth routes, and the MinIO bucket path through to the backend.
 
+In production, a **host reverse proxy** (TLS, domain) often sits in front of `:8082`. Project agent streams are long-lived NDJSON; set **`proxy_read_timeout`** high enough on **both** nginx hops (see [Agents — Troubleshooting](../features/openkms-agents.md#troubleshooting) and [`docker/README.md`](https://github.com/yingrui/openKMS/blob/main/docker/README.md)).
+
 ## Bring it up
 
 From the repo root:
