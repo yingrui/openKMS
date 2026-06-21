@@ -15,6 +15,7 @@ from app.services.storage import (
     list_storage_page,
     move_object_key,
     move_prefix,
+    prefix_destination_under_parent,
     validate_storage_key,
     validate_storage_prefix,
 )
@@ -154,7 +155,8 @@ async def move_storage_objects(body: StorageMoveRequest):
                 src = validate_storage_prefix(item.key)
                 if not src.endswith("/"):
                     src += "/"
-                m, s, errs = move_prefix(src, dest_prefix, delete_source=body.delete_source)
+                folder_dest = prefix_destination_under_parent(dest_prefix, src)
+                m, s, errs = move_prefix(src, folder_dest, delete_source=body.delete_source)
                 moved += m
                 skipped += s
                 errors.extend(errs)

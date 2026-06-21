@@ -295,7 +295,11 @@ def move_prefix(
     *,
     delete_source: bool = True,
 ) -> tuple[int, int, list[str]]:
-    """Move all objects under source_prefix into destination_prefix (preserving relatives)."""
+    """Move all objects under source_prefix into destination_prefix (preserving relatives).
+
+    For folder moves, destination_prefix must be the full target folder path (e.g.
+    documents/{hash}/), typically built via prefix_destination_under_parent.
+    """
     src_prefix = validate_storage_prefix(source_prefix)
     if src_prefix and not src_prefix.endswith("/"):
         src_prefix += "/"
@@ -305,6 +309,12 @@ def move_prefix(
     moved = 0
     skipped = 0
     errors: list[str] = []
+    if object_exists(src_prefix):
+        try:
+            if move_object_key(src_prefix, dest_prefix, delete_source=delete_source):
+                moved += 1
+        except Exception as e:
+            errors.append(f"{src_prefix}: {e}")
     for key in iter_object_keys(src_prefix):
         if not key.startswith(src_prefix):
             skipped += 1
@@ -322,6 +332,23 @@ def move_prefix(
         except Exception as e:
             errors.append(f"{key}: {e}")
     return moved, skipped, errors
+
+
+def prefix_folder_basename(prefix: str) -> str:
+    """Last path segment of a storage prefix (folder name without trailing slash)."""
+    p = validate_storage_prefix(prefix).rstrip("/")
+    if not p:
+        raise ValueError("Cannot move bucket root")
+    return p.rsplit("/", 1)[-1]
+
+
+def prefix_destination_under_parent(parent_prefix: str, folder_prefix: str) -> str:
+    """Destination prefix when moving a folder under a parent (preserves folder name)."""
+    parent = validate_storage_prefix(parent_prefix)
+    if parent and not parent.endswith("/"):
+        parent += "/"
+    child = prefix_folder_basename(folder_prefix)
+    return validate_storage_prefix(f"{parent}{child}/")
 
 
 def validate_folder_name(name: str) -> str:

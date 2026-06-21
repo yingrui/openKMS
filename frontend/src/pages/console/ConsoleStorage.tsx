@@ -76,6 +76,11 @@ export function ConsoleStorage() {
     [folders, objects],
   );
 
+  const rowKeysOnPage = useMemo(() => rows.map((row) => rowKey(row)), [rows]);
+  const allOnPageSelected =
+    rowKeysOnPage.length > 0 && rowKeysOnPage.every((key) => selected.has(key));
+  const someOnPageSelected = rowKeysOnPage.some((key) => selected.has(key)) && !allOnPageSelected;
+
   const loadPage = useCallback(
     async (targetPrefix: string, token: string | null, append: boolean) => {
       if (append) setLoadingMore(true);
@@ -137,6 +142,19 @@ export function ConsoleStorage() {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAllOnPage = () => {
+    setSelected((prev) => {
+      if (allOnPageSelected) {
+        const next = new Set(prev);
+        for (const key of rowKeysOnPage) next.delete(key);
+        return next;
+      }
+      const next = new Set(prev);
+      for (const key of rowKeysOnPage) next.add(key);
       return next;
     });
   };
@@ -273,7 +291,16 @@ export function ConsoleStorage() {
             <thead>
               <tr>
                 <th style={{ width: 40 }}>
-                  <span className="sr-only">{t('storage.selectCol')}</span>
+                  <input
+                    type="checkbox"
+                    checked={allOnPageSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someOnPageSelected;
+                    }}
+                    onChange={toggleSelectAllOnPage}
+                    disabled={rows.length === 0}
+                    aria-label={t('storage.selectAll')}
+                  />
                 </th>
                 <th>{t('storage.colName')}</th>
                 <th>{t('storage.colType')}</th>
