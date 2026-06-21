@@ -32,7 +32,8 @@ COPY backend/worker.py .
 
 COPY openkms-cli /openkms-cli
 
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev \
+    && uv pip install --python /app/.venv/bin/python -e "/openkms-cli[pipeline,metadata,kb,parse,baidu]"
 
 WORKDIR /app
 

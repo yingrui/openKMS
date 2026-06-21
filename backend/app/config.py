@@ -168,6 +168,14 @@ class Settings(BaseSettings):
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
 
     # --- Worker: document pipeline subprocess (openkms-cli pipeline run) ---
+    openkms_cli_executable: str = Field(
+        default="",
+        validation_alias="OPENKMS_CLI_EXECUTABLE",
+        description=(
+            "How to invoke openkms-cli from the worker (e.g. /app/.venv/bin/openkms-cli "
+            "or 'python -m openkms_cli'). Empty: auto-detect on PATH, else python -m."
+        ),
+    )
     pipeline_timeout_seconds: int = Field(
         default=3600,
         ge=1,

@@ -11,7 +11,10 @@ from procrastinate.job_context import JobContext
 from app.config import settings
 from app.constants import DocumentStatus
 from app.jobs import job_app
-from app.services.openkms_cli_subprocess import build_openkms_cli_subprocess_env
+from app.services.openkms_cli_subprocess import (
+    build_openkms_cli_subprocess_env,
+    prepare_openkms_cli_argv,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +233,7 @@ async def run_pipeline(
                 )
                 return
 
-        cmd = shlex.split(rendered)
+        cmd = prepare_openkms_cli_argv(rendered)
 
         pipeline_timeout = float(settings.pipeline_timeout_seconds)
         logger.info(
@@ -491,7 +494,7 @@ async def run_kb_index(
 
         subprocess_env = build_openkms_cli_subprocess_env(OPENKMS_API_URL=base_api_url)
 
-        cmd = shlex.split(cmd_str)
+        cmd = prepare_openkms_cli_argv(cmd_str)
         log_cmd = cmd_str
         logger.info("Running KB index for %s: %s", knowledge_base_id, cmd_str)
 
@@ -568,7 +571,7 @@ async def run_kb_wiki_space_index(
 
         subprocess_env = build_openkms_cli_subprocess_env(OPENKMS_API_URL=base_api_url)
 
-        cmd = shlex.split(cmd_str)
+        cmd = prepare_openkms_cli_argv(cmd_str)
         log_cmd = cmd_str
         logger.info("Running KB wiki-space index for %s / %s: %s", knowledge_base_id, wiki_space_id, cmd_str)
 
