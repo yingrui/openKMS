@@ -3,9 +3,6 @@
 import hashlib
 import io
 import json
-import os
-import shutil
-import tempfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -68,6 +65,7 @@ from app.services.document_storage import (
     legacy_document_prefix,
     resolve_document_object_key,
 )
+from app.services.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
 from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, iter_object_keys, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
@@ -1117,31 +1115,143 @@ async def import_document_parsing_chunked(
     if chunk_index < 0 or total_chunks < 1 or chunk_index >= total_chunks:
         raise HTTPException(status_code=400, detail="Invalid chunk_index or total_chunks")
 
-    tmp_dir = os.path.join(tempfile.gettempdir(), "openkms-import-chunks", document_id)
-    os.makedirs(tmp_dir, exist_ok=True)
+    data = await archive.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty chunk")
 
-    chunk_path = os.path.join(tmp_dir, f"chunk_{chunk_index:06d}")
-    chunk_data = await archive.read()
-    with open(chunk_path, "wb") as f:
-        f.write(chunk_data)
+    store_chunk(document_id, chunk_index, data)
 
-    # Check if all chunks have arrived
-    existing = [int(f.split("_")[1]) for f in os.listdir(tmp_dir) if f.startswith("chunk_")]
-    if len(existing) < total_chunks:
-        return DocumentResponse.model_validate(doc)  # Not all chunks yet; return current doc
+    if chunk_count(document_id) < total_chunks:
+        return DocumentResponse.model_validate(doc)
 
-    # Reassemble
-    raw = bytearray()
-    for i in range(total_chunks):
-        cp = os.path.join(tmp_dir, f"chunk_{i:06d}")
-        if not os.path.exists(cp):
-            raise HTTPException(status_code=400, detail=f"Missing chunk {i}")
-        with open(cp, "rb") as f:
-            raw.extend(f.read())
+    raw = reassemble(document_id, total_chunks)
+    cleanup(document_id)
+    doc = await _process_import_zip(db, doc, raw)
+    return DocumentResponse.model_validate(doc)
 
-    # Clean up
-    shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    doc = await _process_import_zip(db, doc, bytes(raw))
+@router.post("/upload-chunk", response_model=DocumentResponse)
+async def upload_document_chunked(
+    request: Request,
+    file_chunk: UploadFile = File(...),
+    chunk_index: int = Form(...),
+    total_chunks: int = Form(...),
+    channel_id: str = Form(...),
+    filename: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Chunked document upload. When the last chunk arrives, reassemble and process like /upload."""
+    from app.services.channel_scope import require_document_channel_write
+
+    p = request.state.openkms_jwt_payload
+    sub = p.get("sub")
+    if isinstance(sub, str) and scope_applies(p, sub):
+        try:
+            await require_document_channel_write(request, db, channel_id)
+        except HTTPException:
+            raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND") from None
+
+    channel = await db.get(DocumentChannel, channel_id)
+    if not channel:
+        raise http_error(request, 404, "DOCUMENT_CHANNEL_NOT_FOUND")
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+    if chunk_index < 0 or total_chunks < 1 or chunk_index >= total_chunks:
+        raise HTTPException(status_code=400, detail="Invalid chunk_index or total_chunks")
+
+    data = await file_chunk.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty chunk")
+
+    chunk_session_id = f"doc-upload-{chunk_index}-{total_chunks}-{channel_id}"
+    # Use channel_id as session root so parallel uploads to different channels don't conflict
+    session_dir = f"doc-upload-{channel_id}"
+    store_chunk(session_dir, chunk_index, data)
+
+    if chunk_count(session_dir) < total_chunks:
+        return {"id": "pending"}
+
+    raw = reassemble(session_dir, total_chunks)
+    cleanup(session_dir)
+
+    if not raw:
+        raise http_error(request, 400, "DOCUMENT_EMPTY_FILE")
+
+    file_hash = hashlib.sha256(raw).hexdigest()
+    suffix = Path(filename or "document.pdf").suffix.lower()
+    ext = suffix.lstrip(".") or "bin"
+
+    upload_object(document_object_key(file_hash, f"original.{ext}"), raw)
+
+    new_id = str(uuid4())
+    doc = Document(
+        id=new_id,
+        name=filename or "document",
+        file_type=(filename or "document.pdf").split(".")[-1].upper() if "." in (filename or "") else "PDF",
+        size_bytes=len(raw),
+        channel_id=channel_id,
+        file_hash=file_hash,
+        status=DocumentStatus.UPLOADED,
+        series_id=new_id,
+    )
+    db.add(doc)
+    await db.flush()
+
+    ext_lower = ext.lower()
+    if ext_lower == "xlsx":
+        import asyncio
+        from app.services.spreadsheet_preview import build_xlsx_preview
+        try:
+            preview, md = await asyncio.to_thread(build_xlsx_preview, raw, file_hash=file_hash)
+            doc.parsing_result = preview
+            doc.markdown = md
+            doc.status = DocumentStatus.COMPLETED
+            _maybe_upload_page_index_from_markdown(doc, md)
+        except Exception:
+            doc.parsing_result = {
+                "document_kind": "spreadsheet",
+                "file_hash": file_hash,
+                "error": "Could not read this workbook. The file may be corrupt or not a valid .xlsx.",
+            }
+            doc.status = DocumentStatus.FAILED
+    elif ext_lower == "xmind":
+        import asyncio
+        from app.services.mindmap_preview import build_xmind_preview
+        try:
+            preview, md = await asyncio.to_thread(build_xmind_preview, raw, file_hash=file_hash)
+            doc.parsing_result = preview
+            doc.markdown = md
+            doc.status = DocumentStatus.COMPLETED
+            _maybe_upload_page_index_from_markdown(doc, md)
+        except Exception:
+            doc.parsing_result = {
+                "document_kind": "mindmap",
+                "file_hash": file_hash,
+                "error": "Could not read this mind map. The file may be corrupt or not a valid .xmind.",
+            }
+            doc.status = DocumentStatus.FAILED
+    elif channel.auto_process and channel.pipeline_id:
+        from app.models.pipeline import Pipeline
+        pipeline = await db.get(Pipeline, channel.pipeline_id)
+        if pipeline:
+            from app.jobs.defer import defer_task
+            from app.jobs.tasks import run_pipeline
+            await defer_task(
+                run_pipeline,
+                document_id=doc.id,
+                pipeline_id=pipeline.id,
+                file_hash=file_hash,
+                file_ext=ext,
+                command=pipeline.command,
+                default_args=pipeline.default_args,
+                model_id=pipeline.model_id,
+            )
+            doc.status = DocumentStatus.PENDING
+
+    await db.commit()
+    await db.refresh(doc)
     return DocumentResponse.model_validate(doc)
 

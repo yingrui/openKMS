@@ -44,6 +44,7 @@ from app.services.media_storage import (
     media_prefix,
 )
 from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_MEDIA_CHANNEL
+from app.services.chunked_upload import chunk_count, cleanup, reassemble, store_chunk
 from app.services.storage import delete_objects_by_prefix, get_redirect_url, upload_object
 
 router = APIRouter(
@@ -297,3 +298,75 @@ async def generate_media_asset(
         params=body.params,
     )
     return MediaGenerateResponse(job_id=job_id, provider_task_id="pending")
+
+
+@router.post("/upload-chunk", response_model=MediaAssetResponse)
+async def upload_media_chunked(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    channel_id: str = Form(...),
+    file_chunk: UploadFile = File(...),
+    chunk_index: int = Form(...),
+    total_chunks: int = Form(...),
+    filename: str = Form(...),
+    content_type: str = Form(default=""),
+    title: str | None = Form(default=None),
+    description: str | None = Form(default=None),
+):
+    """Chunked media upload. When the last chunk arrives, reassemble and process like /upload."""
+    from app.services.media_scope import require_media_channel_write
+
+    await require_media_channel_write(request, db, channel_id)
+    ch = await db.get(MediaChannel, channel_id)
+    if not ch:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    if chunk_index < 0 or total_chunks < 1 or chunk_index >= total_chunks:
+        raise HTTPException(status_code=400, detail="Invalid chunk_index or total_chunks")
+
+    data = await file_chunk.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty chunk")
+
+    session_id = f"media-upload-{channel_id}"
+    store_chunk(session_id, chunk_index, data)
+
+    if chunk_count(session_id) < total_chunks:
+        return {"id": "pending"}
+
+    raw = reassemble(session_id, total_chunks)
+    cleanup(session_id)
+
+    if not raw:
+        raise HTTPException(status_code=400, detail="Empty file")
+
+    fname = filename or "upload"
+    ct = content_type or mimetypes.guess_type(fname)[0]
+    media_kind = _guess_media_kind(fname, ct)
+    if not media_kind:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Upload an image or video.")
+
+    asset_id = f"ma_{uuid4().hex[:12]}"
+    ext = _safe_ext(fname, media_kind)
+    storage_key = media_original_key(asset_id, ext)
+    upload_object(storage_key, raw, content_type=ct)
+
+    asset = MediaAsset(
+        id=asset_id,
+        channel_id=channel_id,
+        media_kind=media_kind,
+        title=(title or os.path.splitext(fname)[0] or "Untitled")[:512],
+        description=description,
+        storage_key=storage_key,
+        content_type=ct,
+        provenance="uploaded",
+        series_id=asset_id,
+    )
+    db.add(asset)
+    await db.commit()
+    await db.refresh(asset)
+
+    from app.jobs.defer import defer_task
+    from app.jobs.tasks import generate_media_derivatives
+    await defer_task(generate_media_derivatives, asset_id=asset_id)
+
+    return _asset_response(asset)

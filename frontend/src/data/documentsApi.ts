@@ -258,8 +258,12 @@ export async function fetchParsingResult(
 
 export async function uploadDocument(
   channelId: string,
-  file: File
+  file: File,
+  onProgress?: (pct: number) => void,
 ): Promise<DocumentResponse> {
+  if (file.size > CHUNK_SIZE) {
+    return uploadDocumentChunked(channelId, file, onProgress);
+  }
   const formData = new FormData();
   formData.append('file', file);
   formData.append('channel_id', channelId);
@@ -277,6 +281,47 @@ export async function uploadDocument(
     throw new Error(typeof err.detail === 'string' ? err.detail : 'Upload failed');
   }
   return res.json();
+}
+
+export async function uploadDocumentChunked(
+  channelId: string,
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<DocumentResponse> {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  let lastResponse: DocumentResponse | undefined;
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
+
+    const formData = new FormData();
+    formData.append('file_chunk', chunk);
+    formData.append('chunk_index', String(i));
+    formData.append('total_chunks', String(totalChunks));
+    formData.append('channel_id', channelId);
+    formData.append('filename', file.name);
+
+    const headers = await getAuthHeaders();
+    const res = await authAwareFetch(
+      `${config.apiUrl}/api/documents/upload-chunk`,
+      { method: 'POST', headers: { ...headers }, body: formData, credentials: 'include' }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(typeof err.detail === 'string' ? err.detail : 'Upload failed');
+    }
+
+    const data = await res.json();
+    if (data.id !== 'pending') {
+      lastResponse = data;
+    }
+    onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
+  }
+
+  if (!lastResponse) throw new Error('Upload produced no response');
+  return lastResponse;
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
@@ -642,7 +687,7 @@ export async function importDocumentParsing(
   return res.json();
 }
 
-const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function importDocumentParsingChunked(
   documentId: string,

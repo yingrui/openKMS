@@ -455,7 +455,7 @@ export function useDocumentDetail(id: string | undefined) {
     setImporting(true);
     setImportProgress(0);
     try {
-      const useChunked = file.size > 50 * 1024 * 1024;
+      const useChunked = file.size > 10 * 1024 * 1024;
       const updated = useChunked
         ? await importDocumentParsingChunked(id, file, setImportProgress)
         : await importDocumentParsing(id, file);
