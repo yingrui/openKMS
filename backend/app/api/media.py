@@ -300,7 +300,7 @@ async def generate_media_asset(
     return MediaGenerateResponse(job_id=job_id, provider_task_id="pending")
 
 
-@router.post("/upload-chunk", response_model=MediaAssetResponse)
+@router.post("/upload-chunk")
 async def upload_media_chunked(
     request: Request,
     db: AsyncSession = Depends(get_db),

@@ -1095,7 +1095,7 @@ async def import_document_parsing(
     return DocumentResponse.model_validate(doc)
 
 
-@router.post("/{document_id}/import-chunk", response_model=DocumentResponse)
+@router.post("/{document_id}/import-chunk")
 async def import_document_parsing_chunked(
     document_id: str,
     archive: UploadFile = File(...),
@@ -1122,7 +1122,7 @@ async def import_document_parsing_chunked(
     store_chunk(document_id, chunk_index, data)
 
     if chunk_count(document_id) < total_chunks:
-        return DocumentResponse.model_validate(doc)
+        return {"id": "pending"}
 
     raw = reassemble(document_id, total_chunks)
     cleanup(document_id)
@@ -1130,7 +1130,7 @@ async def import_document_parsing_chunked(
     return DocumentResponse.model_validate(doc)
 
 
-@router.post("/upload-chunk", response_model=DocumentResponse)
+@router.post("/upload-chunk")
 async def upload_document_chunked(
     request: Request,
     file_chunk: UploadFile = File(...),
