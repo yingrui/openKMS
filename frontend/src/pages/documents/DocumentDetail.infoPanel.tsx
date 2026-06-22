@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   Bookmark,
   ChevronDown,
   ChevronUp,
+  Download,
   Edit3,
   GitBranch,
   History,
@@ -14,6 +16,7 @@ import {
   RotateCcw,
   Sparkles,
   Trash2,
+  Upload,
   X as XIcon,
 } from 'lucide-react';
 import {
@@ -44,6 +47,8 @@ interface DocumentDetailInfoPanelProps {
   processBlockedByMissingPipeline: boolean;
   forceFullReparse: boolean;
   resetting: boolean;
+  exporting: boolean;
+  importing: boolean;
   versionSnapshotLoading: boolean;
   latestVersionSnapshot: { created_at: string; version_number: number } | null;
   showSaveVersionButton: boolean;
@@ -80,6 +85,8 @@ interface DocumentDetailInfoPanelProps {
   onProcess: () => void;
   onForceFullReparseChange: (checked: boolean) => void;
   onReset: () => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
   onOpenVersionsModal: () => void;
   onOpenSaveVersion: () => void;
   onEnterMetadataEdit: () => void;
@@ -122,6 +129,8 @@ export function DocumentDetailInfoPanel({
   processBlockedByMissingPipeline,
   forceFullReparse,
   resetting,
+  exporting,
+  importing,
   versionSnapshotLoading,
   latestVersionSnapshot,
   showSaveVersionButton,
@@ -158,6 +167,8 @@ export function DocumentDetailInfoPanel({
   onProcess,
   onForceFullReparseChange,
   onReset,
+  onExport,
+  onImport,
   onOpenVersionsModal,
   onOpenSaveVersion,
   onEnterMetadataEdit,
@@ -180,6 +191,7 @@ export function DocumentDetailInfoPanel({
   onDeleteRelationship,
 }: DocumentDetailInfoPanelProps) {
   const { t } = useTranslation('documents');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
     <section className={`document-detail-info document-detail-info-combined ${infoVisible ? '' : 'document-detail-info--collapsed'}`}>
@@ -257,6 +269,41 @@ export function DocumentDetailInfoPanel({
                   </span>
                 )}
               </dd>
+              {!docConfig && !infoEditMode && (
+                <div className="document-detail-info-name-row-actions">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".zip"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        onImport(file);
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="document-detail-info-name-row-btn"
+                    onClick={onExport}
+                    disabled={exporting || !fileHash}
+                    title={t('detail.exportParsingTitle')}
+                  >
+                    {exporting ? <Loader2 size={14} className="doc-detail-spinner" /> : <Download size={14} />}
+                  </button>
+                  <button
+                    type="button"
+                    className="document-detail-info-name-row-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={importing || !fileHash}
+                    title={t('detail.importParsingTitle')}
+                  >
+                    {importing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Upload size={14} />}
+                  </button>
+                </div>
+              )}
             </div>
           </dl>
           <div className="document-detail-info-stats-grid">

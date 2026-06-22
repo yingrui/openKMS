@@ -41,6 +41,8 @@ export function DocumentDetail() {
               processBlockedByMissingPipeline={v.processBlockedByMissingPipeline}
               forceFullReparse={v.forceFullReparse}
               resetting={v.resetting}
+              exporting={v.exporting}
+              importing={v.importing}
               versionSnapshotLoading={v.versionSnapshotLoading}
               latestVersionSnapshot={v.latestVersionSnapshot}
               showSaveVersionButton={v.showSaveVersionButton}
@@ -77,6 +79,8 @@ export function DocumentDetail() {
               onProcess={v.handleProcess}
               onForceFullReparseChange={v.setForceFullReparse}
               onReset={v.handleReset}
+              onExport={v.handleExport}
+              onImport={v.handleImport}
               onOpenVersionsModal={v.handleOpenVersionsModal}
               onOpenSaveVersion={v.openSaveVersionModal}
               onEnterMetadataEdit={v.handleEnterMetadataEdit}

@@ -408,6 +408,12 @@
     "titleResetStatus": "Reset status to uploaded",
     "editMetadataTitle": "Edit metadata",
     "ariaEditMetadata": "Edit metadata",
-    "noMarkdownContent": "No markdown content"
+    "noMarkdownContent": "No markdown content",
+    "exportParsingTitle": "Download parsing results as a ZIP archive",
+    "importParsingTitle": "Upload a previously exported parsing ZIP to restore results",
+    "toastExportSuccess": "Parsing results exported",
+    "toastExportFail": "Export failed",
+    "toastImportSuccess": "Parsing results imported",
+    "toastImportFail": "Import failed"
   }
 }

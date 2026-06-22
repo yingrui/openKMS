@@ -1,18 +1,19 @@
 """Document API routes."""
 
 import hashlib
+import io
 import json
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy import and_, func, not_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
-
-from fastapi.responses import RedirectResponse
 
 from app.api.auth import get_jwt_payload, require_auth
 from app.config import settings
@@ -64,7 +65,7 @@ from app.services.document_storage import (
     legacy_document_prefix,
     resolve_document_object_key,
 )
-from app.services.storage import delete_objects_by_prefix, get_redirect_url, object_exists, upload_object
+from app.services.storage import delete_objects_by_prefix, get_object, get_redirect_url, iter_object_keys, object_exists, upload_object
 
 router = APIRouter(prefix="/documents", tags=["documents"], dependencies=[Depends(require_auth)])
 
@@ -973,4 +974,113 @@ async def get_document_file(
     if url_only:
         return DocumentFileUrlResponse(url=url)
     return RedirectResponse(url=url, status_code=302)
+
+
+@router.get("/{document_id}/export")
+async def export_document_parsing(
+    document_id: str,
+    doc: Document = Depends(get_scoped_document),
+):
+    """Export all stored parsing files for a document as a zip archive."""
+    if not doc.file_hash:
+        raise HTTPException(status_code=400, detail="Document has no stored files")
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+
+    new_prefix = f"{document_prefix(doc.file_hash)}/"
+    legacy_prefix = f"{legacy_document_prefix(doc.file_hash)}/"
+
+    all_keys: list[str] = []
+    all_keys.extend(iter_object_keys(new_prefix))
+    all_keys.extend(k for k in iter_object_keys(legacy_prefix) if k not in all_keys)
+
+    if not all_keys:
+        raise HTTPException(status_code=404, detail="No stored files found for this document")
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for key in all_keys:
+            try:
+                content = get_object(key)
+            except Exception:
+                continue
+            if key.startswith(new_prefix):
+                arcname = key[len(new_prefix):]
+            elif key.startswith(legacy_prefix):
+                arcname = key[len(legacy_prefix):]
+            else:
+                arcname = key.rsplit("/", 1)[-1] if "/" in key else key
+            if not arcname:
+                continue
+            zf.writestr(arcname, content)
+
+    zip_buffer.seek(0)
+    safe_name = doc.name or "document"
+    safe_filename = "".join(c if c.isalnum() or c in "._-" else "_" for c in safe_name).rstrip("_") or "document"
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{safe_filename}-parsing.zip"'},
+    )
+
+
+@router.post("/{document_id}/import", response_model=DocumentResponse)
+async def import_document_parsing(
+    document_id: str,
+    archive: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    doc: Document = Depends(get_scoped_document_write),
+):
+    """Import a previously exported parsing zip, restoring stored files and document state."""
+    if not doc.file_hash:
+        raise HTTPException(status_code=400, detail="Document has no file hash. Upload a file first.")
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+
+    raw = await archive.read()
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
+            entries = [(info.filename, zf.read(info.filename)) for info in zf.infolist() if not info.is_dir()]
+    except zipfile.BadZipFile as e:
+        raise HTTPException(status_code=400, detail=f"Invalid zip: {e}") from e
+
+    if not entries:
+        raise HTTPException(status_code=400, detail="Zip archive is empty")
+
+    imported_markdown: str | None = None
+    imported_parsing: dict | None = None
+
+    for filename, content in entries:
+        key = document_object_key(doc.file_hash, filename)
+        upload_object(key, content)
+        if filename == "markdown.md":
+            try:
+                imported_markdown = content.decode("utf-8")
+            except UnicodeDecodeError:
+                pass
+        elif filename == "result.json":
+            try:
+                imported_parsing = json.loads(content.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                pass
+
+    if imported_markdown:
+        doc.markdown = imported_markdown
+    if imported_parsing:
+        doc.parsing_result = imported_parsing
+    doc.status = DocumentStatus.COMPLETED
+
+    await db.commit()
+    await db.refresh(doc)
+
+    _maybe_upload_page_index_from_markdown(doc, imported_markdown or doc.markdown)
+
+    return DocumentResponse.model_validate(doc)
 

@@ -406,6 +406,12 @@
     "titleResetStatus": "将状态重置为已上传",
     "editMetadataTitle": "编辑元数据",
     "ariaEditMetadata": "编辑元数据",
-    "noMarkdownContent": "暂无 Markdown 内容"
+    "noMarkdownContent": "暂无 Markdown 内容",
+    "exportParsingTitle": "将解析结果下载为 ZIP 归档",
+    "importParsingTitle": "上传之前导出的解析 ZIP 以恢复解析结果",
+    "toastExportSuccess": "解析结果已导出",
+    "toastExportFail": "导出失败",
+    "toastImportSuccess": "解析结果已导入",
+    "toastImportFail": "导入失败"
   }
 }

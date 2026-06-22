@@ -9,6 +9,7 @@ import {
   createDocumentRelationship,
   createDocumentVersion,
   deleteDocumentRelationship,
+  exportDocumentParsing,
   extractDocumentMetadata,
   fetchDocumentById,
   fetchDocumentRelationships,
@@ -16,6 +17,7 @@ import {
   getDocumentFileUrl,
   getDocumentFilesBaseUrl,
   getDocumentVersion,
+  importDocumentParsing,
   listDocumentVersions,
   patchDocumentLifecycle,
   rebuildPageIndex,
@@ -60,6 +62,8 @@ export function useDocumentDetail(id: string | undefined) {
   const [processing, setProcessing] = useState(false);
   const [forceFullReparse, setForceFullReparse] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [markdownEditMode, setMarkdownEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -430,6 +434,35 @@ export function useDocumentDetail(id: string | undefined) {
       setResetting(false);
     }
   }, [id, document, t]);
+
+  const handleExport = useCallback(async () => {
+    if (!id) return;
+    setExporting(true);
+    try {
+      await exportDocumentParsing(id);
+      toast.success(t('detail.toastExportSuccess'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastExportFail'));
+    } finally {
+      setExporting(false);
+    }
+  }, [id, t]);
+
+  const handleImport = useCallback(async (file: File) => {
+    if (!id) return;
+    setImporting(true);
+    try {
+      const updated = await importDocumentParsing(id, file);
+      setDocument(updated);
+      setMarkdown(updated.markdown ?? '');
+      setParsingResult((updated.parsing_result ?? null) as ParsingResult | null);
+      toast.success(t('detail.toastImportSuccess'));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('detail.toastImportFail'));
+    } finally {
+      setImporting(false);
+    }
+  }, [id, t]);
 
   const handleExtract = useCallback(async () => {
     if (!id || !document) return;
@@ -871,6 +904,10 @@ export function useDocumentDetail(id: string | undefined) {
     handleProcess,
     setForceFullReparse,
     handleReset,
+    exporting,
+    importing,
+    handleExport,
+    handleImport,
     handleOpenVersionsModal,
     openSaveVersionModal,
     handleEnterMetadataEdit,

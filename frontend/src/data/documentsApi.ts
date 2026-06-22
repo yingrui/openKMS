@@ -606,3 +606,38 @@ export async function restoreDocumentVersion(
   }
   return res.json();
 }
+
+export async function exportDocumentParsing(documentId: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/documents/${documentId}/export`,
+    { headers, credentials: 'include' }
+  );
+  if (!res.ok) {
+    const msg = await res.text().catch(() => 'Export failed');
+    throw new Error(msg || `Export failed (${res.status})`);
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match?.[1] || 'document-parsing.zip';
+  triggerBlobDownload(blob, filename);
+}
+
+export async function importDocumentParsing(
+  documentId: string,
+  file: File
+): Promise<DocumentResponse> {
+  const formData = new FormData();
+  formData.append('archive', file);
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/documents/${documentId}/import`,
+    { method: 'POST', headers: { ...headers }, body: formData, credentials: 'include' }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : 'Import failed');
+  }
+  return res.json();
+}

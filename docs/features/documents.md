@@ -20,6 +20,7 @@ Document channels (folder tree), per-channel pipelines and metadata extraction, 
 | Document info & metadata edit | ✅ | Edit document name and channel (PUT /api/documents/{id}); Edit metadata fields inline (PUT /metadata); Move document to channel via modal |
 | Document metadata (unified) | ✅ | All metadata (extracted + manual) in single `metadata` JSONB; manual labels configure in channel settings Manual Labels tab (type: object_type or list[object_type]); object-instance pickers in METADATA section |
 | Channel description | ✅ | Channel description shown on channel page; stored in `document_channels.description` |
+| Parsing export/import | ✅ | Icon buttons on document detail NAME row: download parsing zip (`GET /export` — all S3 objects under `documents/{file_hash}/`), upload a previously exported zip (`POST /import` — restores S3 files, markdown, parsing_result, and status to completed; rebuilds page index). Useful for backup and transferring parse results between deployments |
 
 ## Document parsing (PaddleOCR-VL and Baidu Cloud)
 

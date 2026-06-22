@@ -117,6 +117,8 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | GET | `/api/documents/{id}/relationships` | List outgoing and incoming document relationships |
 | POST | `/api/documents/{id}/relationships` | Create outgoing edge (`target_document_id`, `relation_type`, optional `note`) |
 | DELETE | `/api/documents/{id}/relationships/{relationship_id}` | Delete an outgoing relationship (source must be this document) |
+| GET | `/api/documents/{id}/export` | Export all stored parsing files (original, markdown, result.json, images, page index) as a zip archive. Response: `Content-Type: application/zip` with `Content-Disposition: attachment` |
+| POST | `/api/documents/{id}/import` | Import a previously exported parsing zip (`archive` multipart field). Restores S3 files and document state (markdown, parsing_result, status→completed); rebuilds page index |
 
 ## Pipelines, jobs, providers, models
 

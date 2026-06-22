@@ -2200,3 +2200,35 @@
 .document-detail-mindmap-attachments code {
   font-size: var(--text-sm);
 }
+
+.document-detail-info-name-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.document-detail-info-name-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-1) + 2px);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.document-detail-info-name-row-btn:hover:not(:disabled) {
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.document-detail-info-name-row-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
