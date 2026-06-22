@@ -121,6 +121,8 @@ User-visible text: **what** the feature does, not **how** it is stored or called
 
 Short **imperative** subject (`Add article channels API`). Body only when the reason or risk is not obvious.
 
+**Do not commit without explicit permission.** Agents must not `git commit`, `git commit --amend`, or push unless the user explicitly asks. When the user says "commit", only stage files owned by the current task — never include unrelated working-tree changes.
+
 ### Docs in `docs/`
 
 Technical detail is fine there; keep tables and headings consistent with surrounding files.
