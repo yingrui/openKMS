@@ -18,6 +18,7 @@ import {
   getDocumentFilesBaseUrl,
   getDocumentVersion,
   importDocumentParsing,
+  importDocumentParsingChunked,
   listDocumentVersions,
   patchDocumentLifecycle,
   rebuildPageIndex,
@@ -64,6 +65,7 @@ export function useDocumentDetail(id: string | undefined) {
   const [resetting, setResetting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
   const [extracting, setExtracting] = useState(false);
   const [markdownEditMode, setMarkdownEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -451,8 +453,12 @@ export function useDocumentDetail(id: string | undefined) {
   const handleImport = useCallback(async (file: File) => {
     if (!id) return;
     setImporting(true);
+    setImportProgress(0);
     try {
-      const updated = await importDocumentParsing(id, file);
+      const useChunked = file.size > 50 * 1024 * 1024;
+      const updated = useChunked
+        ? await importDocumentParsingChunked(id, file, setImportProgress)
+        : await importDocumentParsing(id, file);
       setDocument(updated);
       setMarkdown(updated.markdown ?? '');
       setParsingResult((updated.parsing_result ?? null) as ParsingResult | null);
@@ -461,6 +467,7 @@ export function useDocumentDetail(id: string | undefined) {
       toast.error(e instanceof Error ? e.message : t('detail.toastImportFail'));
     } finally {
       setImporting(false);
+      setImportProgress(0);
     }
   }, [id, t]);
 
@@ -906,6 +913,7 @@ export function useDocumentDetail(id: string | undefined) {
     handleReset,
     exporting,
     importing,
+    importProgress,
     handleExport,
     handleImport,
     handleOpenVersionsModal,

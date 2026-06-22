@@ -49,6 +49,7 @@ interface DocumentDetailInfoPanelProps {
   resetting: boolean;
   exporting: boolean;
   importing: boolean;
+  importProgress: number;
   versionSnapshotLoading: boolean;
   latestVersionSnapshot: { created_at: string; version_number: number } | null;
   showSaveVersionButton: boolean;
@@ -131,6 +132,7 @@ export function DocumentDetailInfoPanel({
   resetting,
   exporting,
   importing,
+  importProgress,
   versionSnapshotLoading,
   latestVersionSnapshot,
   showSaveVersionButton,
@@ -298,9 +300,9 @@ export function DocumentDetailInfoPanel({
                     className="document-detail-info-name-row-btn"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={importing || !fileHash}
-                    title={t('detail.importParsingTitle')}
+                    title={importProgress > 0 ? `${t('detail.importing')} ${importProgress}%` : t('detail.importParsingTitle')}
                   >
-                    {importing ? <Loader2 size={14} className="doc-detail-spinner" /> : <Upload size={14} />}
+                    {importing ? (importProgress > 0 ? <span className="document-detail-info-name-row-progress">{importProgress}%</span> : <Loader2 size={14} className="doc-detail-spinner" />) : <Upload size={14} />}
                   </button>
                 </div>
               )}

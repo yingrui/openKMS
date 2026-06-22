@@ -43,6 +43,7 @@ export function DocumentDetail() {
               resetting={v.resetting}
               exporting={v.exporting}
               importing={v.importing}
+              importProgress={v.importProgress}
               versionSnapshotLoading={v.versionSnapshotLoading}
               latestVersionSnapshot={v.latestVersionSnapshot}
               showSaveVersionButton={v.showSaveVersionButton}

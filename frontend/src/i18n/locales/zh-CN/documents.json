@@ -409,6 +409,7 @@
     "noMarkdownContent": "暂无 Markdown 内容",
     "exportParsingTitle": "将解析结果下载为 ZIP 归档",
     "importParsingTitle": "上传之前导出的解析 ZIP 以恢复解析结果",
+    "importing": "导入中…",
     "toastExportSuccess": "解析结果已导出",
     "toastExportFail": "导出失败",
     "toastImportSuccess": "解析结果已导入",

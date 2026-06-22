@@ -641,3 +641,42 @@ export async function importDocumentParsing(
   }
   return res.json();
 }
+
+const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB
+
+export async function importDocumentParsingChunked(
+  documentId: string,
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<DocumentResponse> {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  let lastResponse: DocumentResponse | undefined;
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
+
+    const formData = new FormData();
+    formData.append('archive', chunk, `${file.name}.chunk`);
+    formData.append('chunk_index', String(i));
+    formData.append('total_chunks', String(totalChunks));
+
+    const headers = await getAuthHeaders();
+    const res = await authAwareFetch(
+      `${config.apiUrl}/api/documents/${documentId}/import-chunk`,
+      { method: 'POST', headers: { ...headers }, body: formData, credentials: 'include' }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(typeof err.detail === 'string' ? err.detail : 'Import failed');
+    }
+
+    const data = await res.json();
+    lastResponse = data;
+    onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
+  }
+
+  if (!lastResponse) throw new Error('Import produced no response');
+  return lastResponse;
+}

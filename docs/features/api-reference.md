@@ -119,6 +119,7 @@ The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the 
 | DELETE | `/api/documents/{id}/relationships/{relationship_id}` | Delete an outgoing relationship (source must be this document) |
 | GET | `/api/documents/{id}/export` | Export all stored parsing files (original, result.json, markdown.md, page_index.json, extracted_metadata.json, layout images, block images, markdown_out) as a zip archive. Response: `Content-Type: application/zip` with `Content-Disposition: attachment` |
 | POST | `/api/documents/{id}/import` | Import a previously exported parsing zip (`archive` multipart field). Restores S3 files and document state (markdown, parsing_result, status→completed); rebuilds page index |
+| POST | `/api/documents/{id}/import-chunk` | Chunked import of a parsing zip. Fields: `archive` (chunk bytes), `chunk_index` (0-based), `total_chunks`. Chunks stored under `/tmp/openkms-import-chunks/{id}/`; when all arrive, reassembled and processed like `/import`. Frontend auto-splits files > 50 MB into 50 MB chunks |
 
 ## Pipelines, jobs, providers, models
 

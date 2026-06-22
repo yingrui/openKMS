@@ -3,6 +3,9 @@
 import hashlib
 import io
 import json
+import os
+import shutil
+import tempfile
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1028,23 +1031,11 @@ async def export_document_parsing(
     )
 
 
-@router.post("/{document_id}/import", response_model=DocumentResponse)
-async def import_document_parsing(
-    document_id: str,
-    archive: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
-    doc: Document = Depends(get_scoped_document_write),
-):
-    """Import a previously exported parsing zip, restoring stored files and document state."""
-    if not doc.file_hash:
-        raise HTTPException(status_code=400, detail="Document has no file hash. Upload a file first.")
-    if not settings.storage_enabled:
-        raise HTTPException(
-            status_code=503,
-            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
-        )
-
-    raw = await archive.read()
+async def _process_import_zip(
+    db: AsyncSession,
+    doc: Document,
+    raw: bytes,
+) -> Document:
     try:
         with zipfile.ZipFile(io.BytesIO(raw), "r") as zf:
             entries = [(info.filename, zf.read(info.filename)) for info in zf.infolist() if not info.is_dir()]
@@ -1082,5 +1073,75 @@ async def import_document_parsing(
 
     _maybe_upload_page_index_from_markdown(doc, imported_markdown or doc.markdown)
 
+    return doc
+
+
+@router.post("/{document_id}/import", response_model=DocumentResponse)
+async def import_document_parsing(
+    document_id: str,
+    archive: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    doc: Document = Depends(get_scoped_document_write),
+):
+    """Import a previously exported parsing zip, restoring stored files and document state."""
+    if not doc.file_hash:
+        raise HTTPException(status_code=400, detail="Document has no file hash. Upload a file first.")
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+
+    raw = await archive.read()
+    doc = await _process_import_zip(db, doc, raw)
+    return DocumentResponse.model_validate(doc)
+
+
+@router.post("/{document_id}/import-chunk", response_model=DocumentResponse)
+async def import_document_parsing_chunked(
+    document_id: str,
+    archive: UploadFile = File(...),
+    chunk_index: int = Form(...),
+    total_chunks: int = Form(...),
+    db: AsyncSession = Depends(get_db),
+    doc: Document = Depends(get_scoped_document_write),
+):
+    """Chunked import: upload a single chunk of a previously exported parsing zip. When the last chunk arrives, reassemble and process."""
+    if not doc.file_hash:
+        raise HTTPException(status_code=400, detail="Document has no file hash. Upload a file first.")
+    if not settings.storage_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Storage not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.",
+        )
+    if chunk_index < 0 or total_chunks < 1 or chunk_index >= total_chunks:
+        raise HTTPException(status_code=400, detail="Invalid chunk_index or total_chunks")
+
+    tmp_dir = os.path.join(tempfile.gettempdir(), "openkms-import-chunks", document_id)
+    os.makedirs(tmp_dir, exist_ok=True)
+
+    chunk_path = os.path.join(tmp_dir, f"chunk_{chunk_index:06d}")
+    chunk_data = await archive.read()
+    with open(chunk_path, "wb") as f:
+        f.write(chunk_data)
+
+    # Check if all chunks have arrived
+    existing = [int(f.split("_")[1]) for f in os.listdir(tmp_dir) if f.startswith("chunk_")]
+    if len(existing) < total_chunks:
+        return DocumentResponse.model_validate(doc)  # Not all chunks yet; return current doc
+
+    # Reassemble
+    raw = bytearray()
+    for i in range(total_chunks):
+        cp = os.path.join(tmp_dir, f"chunk_{i:06d}")
+        if not os.path.exists(cp):
+            raise HTTPException(status_code=400, detail=f"Missing chunk {i}")
+        with open(cp, "rb") as f:
+            raw.extend(f.read())
+
+    # Clean up
+    shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    doc = await _process_import_zip(db, doc, bytes(raw))
     return DocumentResponse.model_validate(doc)
 
