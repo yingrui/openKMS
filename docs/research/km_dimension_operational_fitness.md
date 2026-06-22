@@ -88,7 +88,7 @@ Use evidence-based levels (similar spirit to APQC Level 1–5). Advance only whe
 |-------|--------|-------------|------------------|
 | **1** | **Ad hoc** | Knowledge lives outside the KMS; tool is optional. | No shared taxonomy; no citation habit; shadow IT and oral norms dominate. |
 | **2** | **Accessible** | Content is uploaded; search exists; trust is uneven. | Global search or folders used sometimes; few lifecycle fields; AI answers often without traceable sources. |
-| **3** | **Accountable** | Structure, permissions, and citations are standard for critical domains. | Channels/maps defined; ACL on sensitive trees; Q&A or articles cite sources; versions on key documents. |
+| **3** | **Traceable** | Structure, permissions, and citations are standard for critical domains. | Channels/maps defined; ACL on sensitive trees; Q&A or articles cite sources; versions on key documents. |
 | **4** | **Adaptive** | Currency and quality are measured; gaps drive remediation. | Lifecycle/supersedes used; evaluations or audits on KB/wiki; connector/sync for major sources; role-based dashboards. |
 | **5** | **Agent-ready** | Humans and agents share the same governed context layer with closed-loop improvement. | Agents use same ACL and “current for RAG” semantics; eval regressions block releases; contribution paths after Q&A are routine. |
 
@@ -179,7 +179,7 @@ Document weights in the KM charter so scores are comparable year over year.
 | Currency | 2 | Lifecycle fields on docs; no impact workflow | Ship policy-change dependent queue |
 | Reuse | 2 | Low wiki edits; high repeat Slack questions | Ask→contribute shortcut after KB chat |
 
-**Headline OKF (equal weights):** (3+2+3+2+2)/5 = **2.4 → Level 2–3 (“Accessible” trending toward “Accountable”)**.
+**Headline OKF (equal weights):** (3+2+3+2+2)/5 = **2.4 → Level 2–3 (“Accessible” trending toward “Traceable”)**.
 
 ---
 
