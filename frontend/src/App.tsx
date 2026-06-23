@@ -126,6 +126,7 @@ const DatasetSettings = lazy(() => import('./pages/console/DatasetSettings').the
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));
 const ProjectWorkspace = lazy(() => import('./pages/agents/ProjectWorkspace').then((m) => ({ default: m.ProjectWorkspace })));
+const SessionReviewPage = lazy(() => import('./pages/agents/SessionReviewPage').then((m) => ({ default: m.SessionReviewPage })));
 const ProjectSettings = lazy(() => import('./pages/agents/ProjectSettings').then((m) => ({ default: m.ProjectSettings })));
 const AgentSkillsPage = lazy(() => import('./pages/agents/AgentSkillsPage').then((m) => ({ default: m.AgentSkillsPage })));
 const AgentSkillSettings = lazy(() =>
@@ -199,6 +200,7 @@ function App() {
           <Route path="agents/skills/:skillId/settings" element={<FeatureGate feature="agents"><AgentSkillSettings /></FeatureGate>} />
           <Route path="agents/skills" element={<FeatureGate feature="agents"><AgentSkillsPage /></FeatureGate>} />
           <Route path="projects/:projectId/settings" element={<FeatureGate feature="agents"><ProjectSettings /></FeatureGate>} />
+          <Route path="projects/:projectId/sessions/:sessionId/review" element={<FeatureGate feature="agents"><SessionReviewPage /></FeatureGate>} />
           <Route path="projects/:projectId/sessions/:sessionId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
           <Route path="projects/:projectId" element={<FeatureGate feature="agents"><ProjectWorkspace /></FeatureGate>} />
           <Route path="agents/:projectId/settings" element={<AgentProjectSettingsRedirect />} />

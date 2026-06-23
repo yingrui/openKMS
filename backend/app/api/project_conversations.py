@@ -36,6 +36,9 @@ from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.project_fs import read_lessons_json, write_lessons_json
+from app.services.session_review import review_session
+from app.services.agent.improvement_runner import iter_improvement_stream_parts
 
 router = APIRouter()
 
@@ -229,6 +232,39 @@ async def suggest_conversation_title_route(
     return _conv_to_out(c)
 
 
+@router.post(
+    "/{project_id}/conversations/{conversation_id}/review",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def review_conversation_route(
+    project_id: str,
+    conversation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_conv(db, conversation_id, sub, project_id)
+    model_config = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
+    if not model_config:
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM model configured. Add an LLM in Console > Models.",
+        )
+    r = await db.execute(
+        select(AgentMessage)
+        .where(AgentMessage.conversation_id == conversation_id)
+        .order_by(AgentMessage.created_at.asc(), AgentMessage.id.asc())
+    )
+    messages = list(r.scalars().all())
+    try:
+        events = await review_session(messages, model_config)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM error: {e}") from e
+    return {"events": events}
+
+
 @router.delete(
     "/{project_id}/conversations/{conversation_id}",
     status_code=204,
@@ -280,6 +316,93 @@ async def list_messages(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get(
+    "/{project_id}/lessons",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_READ))],
+)
+async def get_lessons(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_project(db, project_id, sub)
+    raw = read_lessons_json(project_id)
+    if not raw:
+        return []
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+
+
+@router.put(
+    "/{project_id}/lessons",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def put_lessons(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_project(db, project_id, sub)
+    body = await request.json()
+    if not isinstance(body, list):
+        raise HTTPException(status_code=400, detail="Body must be a JSON array")
+    write_lessons_json(project_id, json.dumps(body, ensure_ascii=False, indent=2))
+    return {"status": "ok", "count": len(body)}
+
+
+@router.post(
+    "/{project_id}/improvements/chat",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def chat_improvements_route(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    project = await _get_project(db, project_id, sub)
+    model_config = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
+    if not model_config:
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM model configured. Add an LLM in Console > Models.",
+        )
+    body = await request.json()
+    user_message = str(body.get("message") or "").strip()
+    if not user_message:
+        raise HTTPException(status_code=400, detail="message is required")
+
+    jwt_payload = request.state.openkms_jwt_payload
+
+    async def stream() -> AsyncIterator[bytes]:
+        async for part in iter_improvement_stream_parts(
+            db,
+            project_id=project_id,
+            project_name=project.name,
+            project_settings=project.settings or {},
+            bearer_token=jwt_payload.get("token", ""),
+            user_message=user_message,
+        ):
+            if part.get("type") == "fatal":
+                yield _ndjson_line({"type": "error", "detail": part.get("message", "Unknown error")})
+                return
+            yield _ndjson_line(part)
+
+    return StreamingResponse(
+        stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

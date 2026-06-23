@@ -94,6 +94,19 @@ class ProjectMessageResume(BaseModel):
     message: str | None = None
 
 
+class LessonEventItem(BaseModel):
+    type: str  # "error", "lesson", "pattern"
+    severity: str  # "low", "medium", "high"
+    context: str
+    what_went_wrong: str
+    what_fixed_it: str | None = None
+    message_ids: list[str] = Field(default_factory=list)
+
+
+class ProjectSessionReviewResponse(BaseModel):
+    events: list[LessonEventItem]
+
+
 class GitInitResponse(BaseModel):
     git_initialized: bool
 

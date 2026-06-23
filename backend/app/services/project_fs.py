@@ -189,3 +189,31 @@ def read_agents_md(project_id: str) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
     return ""
+
+
+LESSONS_PATH = ".openkms/lessons.json"
+
+
+def read_memory_md(project_id: str) -> str:
+    path = resolve_project_path(project_id, "MEMORY.md")
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return ""
+
+
+def write_memory_md(project_id: str, content: str) -> None:
+    path = resolve_project_path(project_id, "MEMORY.md")
+    path.write_text(content, encoding="utf-8")
+
+
+def read_lessons_json(project_id: str) -> str:
+    path = resolve_project_path(project_id, LESSONS_PATH)
+    if path.exists():
+        return path.read_text(encoding="utf-8")
+    return ""
+
+
+def write_lessons_json(project_id: str, content: str) -> None:
+    path = resolve_project_path(project_id, LESSONS_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")

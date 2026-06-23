@@ -39,6 +39,7 @@ export function MainLayout() {
 
   const isAgentsWorkspace =
     /^\/projects\/[^/]+\/sessions\/[^/]+$/.test(location.pathname) ||
+    /^\/projects\/[^/]+\/sessions\/[^/]+\/review$/.test(location.pathname) ||
     /^\/projects\/[^/]+$/.test(location.pathname);
   const isDetailPage =
     location.pathname.startsWith('/documents/view') ||

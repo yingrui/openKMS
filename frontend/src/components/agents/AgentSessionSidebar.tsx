@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, MoreHorizontal, Pencil, Plus, Settings, Sparkles, Trash2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2, MoreHorizontal, Pencil, Plus, Settings, Sparkles, Trash2 } from 'lucide-react';
 import type { AgentConversationResponse } from '../../data/agentApi';
 import { projectWorkspacePath } from '../../data/projectsApi';
+import { sessionReviewPath } from '../../data/sessionReviewApi';
 import './AgentsWorkspace.scss';
 
 function label(c: AgentConversationResponse): string {
@@ -198,18 +199,28 @@ export function AgentSessionSidebar({
                       </button>
                     ) : null}
                     {onDelete ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        className="agents-session-menu-item agents-session-menu-item--danger"
-                        onClick={() => {
-                          setMenuOpenId(null);
-                          void onDelete(c.id);
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        <span>{t('sessions.delete')}</span>
-                      </button>
+                      <>
+                        <Link
+                          to={sessionReviewPath(projectId, c.id)}
+                          className="agents-session-menu-item"
+                          onClick={() => setMenuOpenId(null)}
+                        >
+                          <BookOpen size={14} />
+                          <span>{t('sessions.review')}</span>
+                        </Link>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="agents-session-menu-item agents-session-menu-item--danger"
+                          onClick={() => {
+                            setMenuOpenId(null);
+                            void onDelete(c.id);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                          <span>{t('sessions.delete')}</span>
+                        </button>
+                      </>
                     ) : null}
                   </div>
                 ) : null}
