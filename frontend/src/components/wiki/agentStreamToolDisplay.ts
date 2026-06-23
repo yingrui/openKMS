@@ -161,3 +161,112 @@ export function formatToolOutputForDisplay(_name: string, output?: string): stri
 export function toolUsesCodeIcon(name: string): boolean {
   return name === 'run_python';
 }
+
+/** Generate a short human-readable detail label from tool name + input (e.g. "package.json", "git status"). */
+export function toolDetailLabel(name: string, input?: string): string | undefined {
+  if (!input?.trim()) return undefined;
+
+  if (name === 'read_file' || name === 'edit_file' || name === 'write_file') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const fp = typeof obj.filePath === 'string' ? obj.filePath : typeof obj.path === 'string' ? obj.path : '';
+      if (!fp) return undefined;
+      const fname = fp.split(/[/\\]/).pop() || fp;
+      if (name === 'read_file') {
+        const off = typeof obj.offset === 'number' ? obj.offset : 0;
+        const lim = typeof obj.limit === 'number' ? obj.limit : 0;
+        if (off > 0 || lim > 0) {
+          const start = off > 0 ? off + 1 : 1;
+          const end = lim > 0 ? off + lim : '';
+          return `${fname} L${start}${end ? `-${end}` : ''}`;
+        }
+      }
+      return fname;
+    } catch {
+      return input.slice(0, 50);
+    }
+  }
+
+  if (name.startsWith('git_')) {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      return legacyGitInputDisplay(name, obj) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (name === 'bash' || name === 'execute' || name === 'shell') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const cmd = typeof obj.command === 'string' ? obj.command : typeof obj.description === 'string' ? obj.description : '';
+      if (cmd) return firstLine(cmd, 50);
+    } catch {
+      return firstLine(input, 50);
+    }
+    return undefined;
+  }
+
+  if (name === 'search_documents' || name === 'search_wiki' || name === 'search_knowledge_bases' || name === 'web_search') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const q = typeof obj.query === 'string' ? obj.query : typeof obj.question === 'string' ? obj.question : '';
+      if (q) return firstLine(q, 50);
+    } catch {
+      return firstLine(input, 50);
+    }
+    return undefined;
+  }
+
+  if (name === 'ls') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const p = typeof obj.path === 'string' ? obj.path : '';
+      if (p) return p.split(/[/\\]/).pop() || p;
+    } catch {
+      return input;
+    }
+    return undefined;
+  }
+
+  if (name === 'glob') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const p = typeof obj.pattern === 'string' ? obj.pattern : typeof obj.path === 'string' ? obj.path : '';
+      if (p) return p.length > 40 ? p.slice(0, 38) + '…' : p;
+    } catch {
+      return input.length > 40 ? input.slice(0, 38) + '…' : input;
+    }
+    return undefined;
+  }
+
+  if (name === 'grep') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const p = typeof obj.pattern === 'string' ? obj.pattern : '';
+      if (p) return p.length > 40 ? p.slice(0, 38) + '…' : p;
+    } catch {
+      return input.length > 40 ? input.slice(0, 38) + '…' : input;
+    }
+    return undefined;
+  }
+
+  if (name === 'explore') {
+    try {
+      const obj = JSON.parse(input) as Record<string, unknown>;
+      const q = typeof obj.description === 'string' ? obj.description : typeof obj.prompt === 'string' ? obj.prompt : '';
+      if (q) return firstLine(q, 60);
+    } catch {
+      return firstLine(input, 60);
+    }
+    return undefined;
+  }
+
+  if (name === 'run_python') {
+    const code = extractCodeFromInput(input);
+    if (code) return firstLine(code, 50);
+    return 'Python script';
+  }
+
+  return firstLine(input, 50) || undefined;
+}

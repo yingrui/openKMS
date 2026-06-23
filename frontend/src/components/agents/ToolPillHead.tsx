@@ -7,15 +7,19 @@ interface Props {
   running?: boolean;
   expandable?: boolean;
   icon?: LucideIcon;
+  detail?: string;
 }
 
-export function ToolPillHead({ name, kind, running, expandable, icon }: Props) {
+export function ToolPillHead({ name, kind, running, expandable, icon, detail }: Props) {
   const Icon = icon ?? (toolUsesCodeIcon(name) ? Code2 : Terminal);
 
   return (
     <>
       <Icon size={12} strokeWidth={2} className="agents-stream__tool-pill-ico" aria-hidden />
       <span className="agents-stream__tool-pill-kind">{kind}</span>
+      {detail ? (
+        <span className="agents-stream__tool-pill-detail" title={detail}>{detail}</span>
+      ) : null}
       {running ? <span className="agents-stream__tool-pill-running">…</span> : null}
       {expandable ? (
         <ChevronRight

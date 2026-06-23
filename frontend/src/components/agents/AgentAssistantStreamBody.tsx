@@ -7,6 +7,7 @@ import {
   formatToolInputForDisplay,
   formatToolOutputForDisplay,
   shouldHideToolRow,
+  toolDetailLabel,
   toolKindLabel,
 } from '../wiki/agentStreamToolDisplay';
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
@@ -45,6 +46,7 @@ function ToolIoBlock({
 function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }> }) {
   const { step } = part;
   const kind = toolKindLabel(step.name);
+  const detail = toolDetailLabel(step.name, step.input);
   const hasIo = Boolean(step.input || step.output || step.error);
   const expandable = hasIo && (step.status !== 'running' || Boolean(step.input));
 
@@ -52,7 +54,7 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
     return (
       <div className="agents-stream__tool-row">
         <div className="agents-stream__tool-pill-line">
-          <ToolPillHead name={step.name} kind={kind} running={step.status === 'running'} />
+          <ToolPillHead name={step.name} kind={kind} running={step.status === 'running'} detail={detail} />
         </div>
       </div>
     );
@@ -66,6 +68,7 @@ function ToolRow({ part }: { part: Extract<AssistantStreamPart, { type: 'tool' }
           kind={kind}
           running={step.status === 'running'}
           expandable
+          detail={detail}
         />
       </summary>
       <ToolIoBlock name={step.name} input={step.input} output={step.output} error={step.error} />
