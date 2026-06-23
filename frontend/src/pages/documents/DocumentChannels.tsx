@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Folder, Plus, ArrowRightLeft, Settings, Trash2, GitMerge, ChevronUp, ChevronDown } from 'lucide-react';
-import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { useDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import {
   createDocumentChannel,
   updateChannel,
@@ -27,7 +27,11 @@ function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: 
 
 export function DocumentChannels() {
   const { t } = useTranslation('documents');
-  const { channels, loading, error, refetch } = useEnsureDocumentChannels();
+  const { channels, loading, error, refetch } = useDocumentChannels();
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
   const [createName, setCreateName] = useState('');
   const [createDescription, setCreateDescription] = useState('');
   const [createParentId, setCreateParentId] = useState<string>('');

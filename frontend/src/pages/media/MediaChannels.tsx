@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -13,7 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
+import { useMediaChannels } from '../../contexts/MediaChannelsContext';
 import {
   createMediaChannel,
   deleteMediaChannel,
@@ -35,7 +35,11 @@ function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: 
 
 export function MediaChannels() {
   const { t } = useTranslation('media');
-  const { channels, loading, error, refetch } = useEnsureMediaChannels();
+  const { channels, loading, error, refetch } = useMediaChannels();
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
   const [createName, setCreateName] = useState('');
   const [createDescription, setCreateDescription] = useState('');
   const [createParentId, setCreateParentId] = useState<string>('');
