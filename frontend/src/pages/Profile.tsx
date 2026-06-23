@@ -3,13 +3,10 @@ import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Loader2, UserCircle } from 'lucide-react';
 import { fetchAuthMe, type AuthMeResponse } from '../data/authApi';
-import { GitCredentialsSection } from '../components/agents/GitCredentialsSection';
-import { useFeatureToggles } from '../contexts/FeatureTogglesContext';
 import './Profile.scss';
 
 export function Profile() {
   const { t } = useTranslation('profile');
-  const { toggles } = useFeatureToggles();
   const [me, setMe] = useState<AuthMeResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,8 +124,6 @@ export function Profile() {
             </dl>
           </section>
         )}
-
-        {!loading && me && toggles.agents ? <GitCredentialsSection /> : null}
       </div>
     </div>
   );

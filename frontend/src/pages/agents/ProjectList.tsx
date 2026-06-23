@@ -109,7 +109,7 @@ export function ProjectList() {
         <div className="page-header agents-toolbar">
           <h1>{t('list.pageTitle')}</h1>
           <div className="agents-toolbar-actions">
-            <Link to="/profile#agent-git-credentials" className="btn btn-secondary agents-settings-btn">
+            <Link to="/settings#agent-git-credentials" className="btn btn-secondary agents-settings-btn">
               <Settings size={18} aria-hidden />
               <span>{t('list.settings')}</span>
             </Link>

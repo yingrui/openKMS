@@ -41,3 +41,18 @@ export async function patchAuthUiLocale(ui_locale: 'en' | 'zh-CN'): Promise<Auth
   }
   return res.json() as Promise<AuthMeResponse>;
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/auth/me`, {
+    method: 'PATCH',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = typeof err.detail === 'string' ? err.detail : `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+}

@@ -27,11 +27,21 @@
   "revoking": "Revoking…",
   "revoke": "Revoke",
   "confirmRevoke": "Revoke this key? Apps using it will stop working.",
+  "passwordTitle": "Change password",
+  "passwordIntro": "Update your account password. Available in local auth mode only.",
+  "currentPassword": "Current password",
+  "newPassword": "New password",
+  "changePassword": "Change password",
+  "changingPassword": "Changing…",
+  "passwordChanged": "Password changed",
+  "close": "Close",
+  "cancel": "Cancel",
   "errors": {
     "loadKeys": "Could not load API keys",
     "createKey": "Could not create key",
     "revokeKey": "Could not revoke key",
     "localeSave": "Could not save display language",
-    "copy": "Could not copy to clipboard"
+    "copy": "Could not copy to clipboard",
+    "passwordChange": "Could not change password"
   }
 }

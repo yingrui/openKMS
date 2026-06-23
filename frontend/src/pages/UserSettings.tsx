@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, Copy, KeyRound, Languages, Loader2, Settings } from 'lucide-react';
+import { AlertTriangle, Copy, KeyRound, Languages, Loader2, Lock, Settings, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createApiKey,
@@ -9,15 +9,16 @@ import {
   type ApiKeyCreated,
   type ApiKeyListItem,
 } from '../data/userApiKeysApi';
-import { patchAuthUiLocale } from '../data/authApi';
+import { patchAuthUiLocale, changePassword } from '../data/authApi';
 import { useAuth } from '../contexts/AuthContext';
+import { GitCredentialsSection } from '../components/agents/GitCredentialsSection';
 import i18n from '../i18n/config';
 import './UserSettings.scss';
 
 export function UserSettings() {
   const { t } = useTranslation('settings');
   const { t: tLayout } = useTranslation('layout');
-  const { isAuthenticated, refreshUser } = useAuth();
+  const { isAuthenticated, refreshUser, authMode } = useAuth();
   const [keys, setKeys] = useState<ApiKeyListItem[]>([]);
   const [keysLoading, setKeysLoading] = useState(true);
   const [keysError, setKeysError] = useState<string | null>(null);
@@ -27,6 +28,12 @@ export function UserSettings() {
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [localeSaving, setLocaleSaving] = useState(false);
   const [localeError, setLocaleError] = useState<string | null>(null);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
 
   const currentUiLocale = i18n.language?.startsWith('zh') ? 'zh-CN' : 'en';
 
@@ -103,6 +110,30 @@ export function UserSettings() {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (!currentPassword || !newPassword) return;
+    setPasswordSaving(true);
+    setPasswordError(null);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setShowPasswordDialog(false);
+      toast.success(t('passwordChanged'));
+    } catch (e) {
+      setPasswordError(e instanceof Error ? e.message : t('errors.passwordChange'));
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const openPasswordDialog = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setPasswordError(null);
+    setShowPasswordDialog(true);
+  };
+
   return (
     <div className="account-page">
       <header className="account-page-header">
@@ -156,6 +187,118 @@ export function UserSettings() {
             </div>
           )}
         </section>
+
+        {isAuthenticated && authMode === 'local' && (
+          <section className="account-card" aria-labelledby="settings-password-heading">
+            <div className="account-card-head">
+              <span className="account-card-icon account-card-icon--muted" aria-hidden>
+                <Lock size={18} strokeWidth={1.75} />
+              </span>
+              <div>
+                <h2 id="settings-password-heading" className="account-card-title">
+                  {t('passwordTitle')}
+                </h2>
+                <p className="account-card-desc">{t('passwordIntro')}</p>
+              </div>
+            </div>
+
+            <div className="account-create-panel account-create-panel--last">
+              <button
+                type="button"
+                className="account-btn account-btn--primary"
+                onClick={openPasswordDialog}
+              >
+                {t('changePassword')}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {showPasswordDialog && (
+          <div
+            className="console-modal-overlay"
+            role="presentation"
+            onClick={(e) => e.target === e.currentTarget && !passwordSaving && setShowPasswordDialog(false)}
+          >
+            <div
+              className="console-modal"
+              role="dialog"
+              aria-labelledby="settings-password-dialog-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="console-modal-header">
+                <h2 id="settings-password-dialog-title">{t('passwordTitle')}</h2>
+                <button
+                  type="button"
+                  onClick={() => !passwordSaving && setShowPasswordDialog(false)}
+                  disabled={passwordSaving}
+                  aria-label={t('close')}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="console-modal-body">
+                <div className="account-form-grid account-form-grid--2col">
+                  <div className="account-field">
+                    <label className="account-field-label" htmlFor="settings-current-password">
+                      {t('currentPassword')}
+                    </label>
+                    <input
+                      id="settings-current-password"
+                      className="account-input"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  <div className="account-field">
+                    <label className="account-field-label" htmlFor="settings-new-password">
+                      {t('newPassword')}
+                    </label>
+                    <input
+                      id="settings-new-password"
+                      className="account-input"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      autoComplete="new-password"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !passwordSaving) void handlePasswordChange();
+                      }}
+                    />
+                  </div>
+                </div>
+                {passwordError && <p className="account-error">{passwordError}</p>}
+              </div>
+              <div className="console-modal-actions">
+                <button
+                  type="button"
+                  className="account-btn account-btn--secondary"
+                  onClick={() => setShowPasswordDialog(false)}
+                  disabled={passwordSaving}
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  className="account-btn account-btn--primary"
+                  disabled={passwordSaving || !currentPassword || !newPassword}
+                  onClick={() => void handlePasswordChange()}
+                >
+                  {passwordSaving ? (
+                    <>
+                      <Loader2 size={16} className="account-spin" aria-hidden />
+                      {t('changingPassword')}
+                    </>
+                  ) : (
+                    t('changePassword')
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <section className="account-card" aria-labelledby="settings-api-keys-heading">
           <div className="account-card-head">
@@ -285,6 +428,8 @@ export function UserSettings() {
             </div>
           )}
         </section>
+
+        {isAuthenticated && <GitCredentialsSection />}
       </div>
     </div>
   );

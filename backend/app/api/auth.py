@@ -808,7 +808,15 @@ async def revoke_api_key(
 
 
 class MePatchBody(BaseModel):
-    ui_locale: Literal["en", "zh-CN"]
+    ui_locale: Literal["en", "zh-CN"] | None = None
+    current_password: str | None = None
+    new_password: str | None = None
+
+    def model_post_init(self, __context):
+        if self.new_password is not None and not self.current_password:
+            raise ValueError("current_password is required to change password")
+        if self.current_password is not None and not self.new_password:
+            raise ValueError("new_password is required to change password")
 
 
 async def _pref_ui_locale(db: AsyncSession, sub: str) -> str | None:
@@ -888,7 +896,18 @@ async def patch_auth_me(request: Request, body: MePatchBody, db: AsyncSession = 
     sub = p.get("sub")
     if not isinstance(sub, str) or sub == "local-cli":
         raise http_error(request, 403, "CANNOT_EDIT_PROFILE_PRINCIPAL")
-    await _save_pref_ui_locale(db, sub, body.ui_locale)
+    if body.ui_locale is not None:
+        await _save_pref_ui_locale(db, sub, body.ui_locale)
+    if body.new_password is not None:
+        if settings.auth_mode != "local":
+            raise http_error(request, 403, "PASSWORD_CHANGE_LOCAL_ONLY")
+        u = await db.get(User, sub)
+        if u is None:
+            raise http_error(request, 404, "USER_NOT_FOUND")
+        if not _verify_password(body.current_password, u.password_hash):
+            raise http_error(request, 400, "CURRENT_PASSWORD_INCORRECT")
+        u.password_hash = _hash_password(body.new_password)
+        await db.flush()
     await db.commit()
     return await build_auth_user_out(request, db)
 
