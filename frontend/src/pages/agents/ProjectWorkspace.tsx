@@ -167,6 +167,12 @@ export function ProjectWorkspace() {
           onPrefillApplied={() => stream.setPrefillInput(null)}
           onRevertUserMessage={session.convId ? stream.onRevertUserMessage : undefined}
           reverting={stream.reverting}
+          hasMoreOlder={session.hasMoreOlder}
+          onLoadOlderMessages={
+            session.convId
+              ? () => session.loadOlderMessages(session.convId!)
+              : undefined
+          }
         />
         <div
           className="agents-pane-resize-handle"

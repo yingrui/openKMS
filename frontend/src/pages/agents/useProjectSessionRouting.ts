@@ -16,13 +16,30 @@ import {
   updateProjectConversation,
 } from '../../data/projectsApi';
 
+const TAIL_LIMIT = 50;
+const PAGE_SIZE = 50;
+
+function mapItems(items: { id: string; role: string; content: string; tool_calls?: unknown }[]): ChatMessage[] {
+  return items.map((m) => ({
+    role: m.role as 'user' | 'assistant',
+    content: m.content,
+    id: m.id,
+    ...(m.role === 'assistant'
+      ? { streamParts: assistantHistoryStreamParts(m.content, m.tool_calls) }
+      : {}),
+  }));
+}
+
 export function useProjectSessionRouting(projectId: string, sessionId?: string) {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<AgentConversationResponse[]>([]);
   const [conversationsReady, setConversationsReady] = useState(false);
   const [convId, setConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const streamingRef = useRef(false);
+  const oldestOffsetRef = useRef(0);
 
   const loadConversations = useCallback(async () => {
     setConversationsReady(false);
@@ -34,19 +51,40 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
 
   const loadMessages = useCallback(
     async (id: string) => {
-      const items = await listProjectMessages(projectId, id);
-      setMessages(
-        items.map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          id: m.id,
-          ...(m.role === 'assistant'
-            ? { streamParts: assistantHistoryStreamParts(m.content, m.tool_calls) }
-            : {}),
-        })),
-      );
+      const result = await listProjectMessages(projectId, id, { limit: TAIL_LIMIT });
+      const { items, total } = result;
+      let tailItems = items;
+      if (total > TAIL_LIMIT) {
+        const tailOffset = Math.max(0, total - TAIL_LIMIT);
+        if (tailOffset > 0) {
+          const tail = await listProjectMessages(projectId, id, { limit: TAIL_LIMIT, offset: tailOffset });
+          tailItems = tail.items;
+        }
+      }
+      const tailOffset = Math.max(0, total - tailItems.length);
+      oldestOffsetRef.current = tailOffset;
+      setHasMoreOlder(tailOffset > 0);
+      setMessages(mapItems(tailItems));
     },
     [projectId],
+  );
+
+  const loadOlderMessages = useCallback(
+    async (id: string) => {
+      if (loadingOlder || oldestOffsetRef.current <= 0) return false;
+      setLoadingOlder(true);
+      try {
+        const offset = Math.max(0, oldestOffsetRef.current - PAGE_SIZE);
+        const result = await listProjectMessages(projectId, id, { limit: PAGE_SIZE, offset });
+        oldestOffsetRef.current = offset;
+        setHasMoreOlder(offset > 0);
+        setMessages((prev) => [...mapItems(result.items), ...prev]);
+        return true;
+      } finally {
+        setLoadingOlder(false);
+      }
+    },
+    [projectId, loadingOlder],
   );
 
   useEffect(() => {
@@ -157,6 +195,9 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
     loadConversations,
     loadMessages,
     streamingRef,
+    hasMoreOlder,
+    loadingOlder,
+    loadOlderMessages,
     onNewChat,
     onRenameConv,
     onAutoRenameConv,

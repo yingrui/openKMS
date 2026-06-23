@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Bot } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ToolPillHead } from './ToolPillHead';
@@ -92,7 +93,7 @@ function SubagentRow({ part }: { part: Extract<AssistantStreamPart, { type: 'sub
   );
 }
 
-export function AgentAssistantStreamBody({ streamParts, fallbackText = '' }: Props) {
+export const AgentAssistantStreamBody = memo(function AgentAssistantStreamBody({ streamParts, fallbackText = '' }: Props) {
   const { t } = useTranslation('agents');
 
   if (!streamParts?.length) {
@@ -118,4 +119,4 @@ export function AgentAssistantStreamBody({ streamParts, fallbackText = '' }: Pro
       })}
     </div>
   );
-}
+});

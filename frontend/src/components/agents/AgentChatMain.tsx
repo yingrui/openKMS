@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, RefreshCw } from 'lucide-react';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
@@ -33,7 +33,89 @@ interface Props {
   onPrefillApplied?: () => void;
   onRevertUserMessage?: (msg: ChatMessage) => void;
   reverting?: boolean;
+  hasMoreOlder?: boolean;
+  onLoadOlderMessages?: () => Promise<boolean>;
 }
+
+/** Deferred content wrapper: only renders children when scrolled within rootMargin px of viewport. */
+function LazyContent({ children, rootMargin = 400 }: { children: React.ReactNode; rootMargin?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) {
+          setVisible(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: `${rootMargin}px 0px ${rootMargin}px 0px` },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [rootMargin]);
+
+  return (
+    <div ref={ref}>
+      {visible ? children : <div style={{ minHeight: 60 }} aria-hidden />}
+    </div>
+  );
+}
+
+interface MessageRowProps {
+  message: ChatMessage;
+  onRevertUserMessage?: (msg: ChatMessage) => void;
+  reverting: boolean;
+  loading: boolean;
+  tRevertTitle: string;
+  tRevertAria: string;
+}
+
+const MessageRow = memo(function MessageRow({
+  message,
+  onRevertUserMessage,
+  reverting,
+  loading,
+  tRevertTitle,
+  tRevertAria,
+}: MessageRowProps) {
+  if (message.role === 'user') {
+    return (
+      <div className={`agents-chat-msg agents-chat-msg--user`}>
+        <div className="agents-chat-msg-user-col">
+          <div className="agents-chat-msg-body">{message.content}</div>
+          {onRevertUserMessage && message.id && PERSISTED_AGENT_MESSAGE_ID.test(message.id) ? (
+            <div className="agents-chat-msg-revert">
+              <button
+                type="button"
+                className="agents-chat-revert-btn"
+                onClick={() => onRevertUserMessage(message)}
+                disabled={loading || reverting}
+                title={tRevertTitle}
+                aria-label={tRevertAria}
+              >
+                <RefreshCw size={15} strokeWidth={2} aria-hidden />
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className={`agents-chat-msg agents-chat-msg--assistant`}>
+      <div className="agents-chat-msg-body">
+        <AgentAssistantStreamBody
+          streamParts={message.streamParts}
+          fallbackText={message.content}
+        />
+      </div>
+    </div>
+  );
+});
 
 export function AgentChatMain({
   sessionTitle,
@@ -53,11 +135,15 @@ export function AgentChatMain({
   onPrefillApplied,
   onRevertUserMessage,
   reverting = false,
+  hasMoreOlder = false,
+  onLoadOlderMessages,
 }: Props) {
   const { t } = useTranslation('agents');
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pendingScrollRestoreRef = useRef(0);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   useEffect(() => {
     if (prefillInput == null) return;
@@ -72,8 +158,24 @@ export function AgentChatMain({
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    if (pendingScrollRestoreRef.current > 0) {
+      el.scrollTop = el.scrollHeight - pendingScrollRestoreRef.current;
+      pendingScrollRestoreRef.current = 0;
+      return;
+    }
+    el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || loadingOlder || !hasMoreOlder || !onLoadOlderMessages) return;
+    if (el.scrollTop > 80) return;
+    setLoadingOlder(true);
+    const prevHeight = el.scrollHeight;
+    pendingScrollRestoreRef.current = prevHeight;
+    onLoadOlderMessages().finally(() => setLoadingOlder(false));
+  }, [hasMoreOlder, loadingOlder, onLoadOlderMessages]);
 
   const resizeTextarea = () => {
     const el = textareaRef.current;
@@ -106,39 +208,21 @@ export function AgentChatMain({
           onDismiss={onDismissPlan}
         />
       ) : null}
-      <div className="agents-chat-scroll" ref={scrollRef}>
+      <div className="agents-chat-scroll" ref={scrollRef} onScroll={handleScroll}>
         {messages.length === 0 ? (
           <p className="agents-chat-empty">{t('chat.hero')}</p>
         ) : (
-          messages.map((m, i) => (
-            <div key={m.id ?? i} className={`agents-chat-msg agents-chat-msg--${m.role}`}>
-              {m.role === 'user' ? (
-                <div className="agents-chat-msg-user-col">
-                  <div className="agents-chat-msg-body">{m.content}</div>
-                  {onRevertUserMessage && m.id && PERSISTED_AGENT_MESSAGE_ID.test(m.id) ? (
-                    <div className="agents-chat-msg-revert">
-                      <button
-                        type="button"
-                        className="agents-chat-revert-btn"
-                        onClick={() => onRevertUserMessage(m)}
-                        disabled={loading || reverting}
-                        title={t('chat.revertTitle')}
-                        aria-label={t('chat.revertAria')}
-                      >
-                        <RefreshCw size={15} strokeWidth={2} aria-hidden />
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <div className="agents-chat-msg-body">
-                  <AgentAssistantStreamBody
-                    streamParts={m.streamParts}
-                    fallbackText={m.content}
-                  />
-                </div>
-              )}
-            </div>
+          messages.map((m) => (
+            <LazyContent key={m.id}>
+              <MessageRow
+                message={m}
+                onRevertUserMessage={onRevertUserMessage}
+                reverting={reverting}
+                loading={loading}
+                tRevertTitle={t('chat.revertTitle')}
+                tRevertAria={t('chat.revertAria')}
+              />
+            </LazyContent>
           ))
         )}
         {loading ? <div className="agents-chat-typing">{t('chat.thinking')}</div> : null}

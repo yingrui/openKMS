@@ -361,15 +361,20 @@ export async function truncateProjectMessagesFromMessage(
 export async function listProjectMessages(
   projectId: string,
   convId: string,
-): Promise<AgentMessageItem[]> {
+  opts?: { limit?: number; offset?: number },
+): Promise<{ items: AgentMessageItem[]; total: number }> {
+  const params = new URLSearchParams();
+  params.set('limit', String(opts?.limit ?? 50));
+  if (opts?.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
+  const qs = params.toString();
   const headers = await getAuthHeaders();
   const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages?limit=500`,
+    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages?${qs}`,
     { headers, credentials: 'include' },
   );
   if (!res.ok) throw new Error(await parseError(res));
   const data = await res.json();
-  return data.items as AgentMessageItem[];
+  return { items: data.items as AgentMessageItem[], total: data.total as number };
 }
 
 export type ProjectStreamEvent =

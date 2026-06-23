@@ -169,3 +169,13 @@ Stage doc updates with the code commit.
 - Any change to `backend/app/models/` → **migration** (`cd backend && alembic revision --autogenerate -m "…"`), **review**, then `alembic upgrade head`.
 - The API **does not** create tables or extensions at startup. **Local:** `backend/dev.sh` → `scripts/ensure_pgvector.py`, then Alembic. **Docker:** `CMD` runs Alembic (bootstrap creates `vector` if needed), then uvicorn.
 - Register new models in `backend/alembic/env.py`. Do not migrate Procrastinate tables (`include_name` excludes them).
+
+---
+
+## Frontend Build Verification
+
+**Source:** `.cursor/rules/frontend-build.mdc`
+
+- Any change to `frontend/src/**` → verify with `npm run build` (which runs `tsc -b && vite build`) before marking the task complete.
+- `tsc --noEmit` alone is not sufficient; `tsc -b` with project references catches cross-package type errors that `--noEmit` may miss.
+- Run from the `frontend/` directory.

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import type { Components } from 'react-markdown';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
@@ -78,7 +78,7 @@ function useMarkdownComponents(): Partial<Components> {
 }
 
 /** Renders agent message text: GFM markdown for user/assistant, plain pre-wrap for intro lines. */
-export function AgentMessageBody({ text, variant }: AgentMessageBodyProps) {
+export const AgentMessageBody = memo(function AgentMessageBody({ text, variant }: AgentMessageBodyProps) {
   const components = useMarkdownComponents();
   if (variant === 'plain') {
     return <p className="agents-msg__text agents-msg__text--plain">{text}</p>;
@@ -94,4 +94,4 @@ export function AgentMessageBody({ text, variant }: AgentMessageBodyProps) {
       </ReactMarkdown>
     </div>
   );
-}
+});
