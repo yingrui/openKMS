@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowUp, ChevronDown, ChevronRight, FileText, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText, MessageSquare, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import ReactMarkdown from 'react-markdown';
+import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
 import { SessionReviewEventCard } from '../../components/agents/SessionReviewEventCard';
 import {
   chatImprovementsStream,
@@ -37,6 +37,7 @@ export function SessionReviewPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const [lessonsCollapsed, setLessonsCollapsed] = useState(false);
 
   useEffect(() => {
     getProject(projectId).then(setProject).catch(() => toast.error('Failed to load project'));
@@ -219,13 +220,23 @@ export function SessionReviewPage() {
       </header>
 
       <div className="sreview-columns">
-        {/* ——— Left: Events ——— */}
-        <div className="sreview-col sreview-col--events" style={{ minWidth: COL_MIN }}>
+        {/* ——— Left: Lessons ——— */}
+        <div className={`sreview-col sreview-col--events${lessonsCollapsed ? ' sreview-col--collapsed' : ''}`}
+             style={lessonsCollapsed ? { width: 44, minWidth: 44, maxWidth: 44 } : { minWidth: COL_MIN }}>
           <div className="sreview-col-head">
             <FileText size={14} />
-            <span>{t('sessions.reviewEvents')}</span>
-            <span className="sreview-col-count">{allLessons.length}</span>
+            {!lessonsCollapsed && <span>{t('sessions.reviewEvents')}</span>}
+            {!lessonsCollapsed && <span className="sreview-col-count">{allLessons.length}</span>}
+            <button
+              type="button"
+              className="sreview-col-collapse-btn"
+              onClick={() => setLessonsCollapsed((v) => !v)}
+              title={lessonsCollapsed ? 'Expand lessons' : 'Collapse lessons'}
+            >
+              {lessonsCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+            </button>
           </div>
+          {!lessonsCollapsed ? (
           <div className="sreview-col-body">
             {allLessons.length === 0 && !analyzing ? (
               <div className="sreview-empty">
@@ -257,6 +268,7 @@ export function SessionReviewPage() {
               </div>
             )}
           </div>
+          ) : null}
         </div>
 
         {/* ——— Middle: Chat ——— */}
@@ -294,20 +306,19 @@ export function SessionReviewPage() {
                   </div>
                 ) : (
                   chatMessages.map((m, i) => (
-                    <div key={i} className={`sreview-chat-msg sreview-chat-msg--${m.role}`}>
+                    <div key={i} className={`agents-chat-msg agents-chat-msg--${m.role}`}>
                       {m.role === 'tool' ? (
                         <div className="sreview-chat-tool">
                           <span className="sreview-chat-tool-name">{m.toolName}</span>
                         </div>
+                      ) : m.role === 'user' ? (
+                        <div className="agents-chat-msg-user-col">
+                          <div className="agents-chat-msg-body">{m.content}</div>
+                        </div>
                       ) : (
-                        <>
-                          <span className="sreview-chat-role">
-                            {m.role === 'user' ? 'You' : 'AI'}
-                          </span>
-                          <div className="sreview-chat-content">
-                            <ReactMarkdown>{m.content}</ReactMarkdown>
-                          </div>
-                        </>
+                        <div className="agents-chat-msg-body">
+                          <AgentMessageBody text={m.content} variant="assistant" />
+                        </div>
                       )}
                     </div>
                   ))

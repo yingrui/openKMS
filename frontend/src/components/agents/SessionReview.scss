@@ -106,8 +106,39 @@
   letter-spacing: 0.04em;
 }
 
-.sreview-col-count {
+.sreview-col-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
   margin-left: auto;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+}
+
+.sreview-col--collapsed {
+  .sreview-col-head {
+    flex-direction: column;
+    padding: 10px 8px;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .sreview-col-collapse-btn {
+    margin-left: 0;
+  }
+}
+
+.sreview-col-count {
   font-size: 0.625rem;
   line-height: 1;
   padding: 1px 5px;
@@ -481,39 +512,6 @@
   padding: 8px 14px;
 
   &:first-child { padding-top: 14px; }
-}
-
-.sreview-chat-role {
-  display: block;
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 2px;
-  color: var(--color-text-muted);
-
-  .sreview-chat-msg--assistant & { color: var(--color-accent); }
-}
-
-.sreview-chat-content {
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--color-text);
-
-  p { margin: 0 0 4px; }
-
-  pre {
-    margin: 4px 0;
-    padding: 6px 10px;
-    background: var(--color-bg-muted);
-    border-radius: var(--radius-sm);
-    font-size: 0.6875rem;
-    overflow-x: auto;
-  }
-
-  code {
-    font-size: 0.75rem;
-  }
 }
 
 .sreview-chat-typing {
