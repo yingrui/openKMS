@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.agent_models import AgentConversation, AgentMessage
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.agent.wiki_runner import (
+from app.services.agent.shared import (
     WIKI_TOOL_TRANSCRIPTS_KEY,
     assistant_lc_content_from_db_row,
     truncate_wiki_tool_output_for_storage,

@@ -44,11 +44,11 @@ class Settings(BaseSettings):
     # --- Metadata extraction (LLM for document metadata) ---
     extraction_model_id: str | None = Field(default=None, validation_alias="OPENKMS_EXTRACTION_MODEL_ID")
 
-    # --- Embedded agent (LangGraph; wiki / future surfaces) ---
+    # --- Embedded agent (Deep Agents) ---
     agent_model_id: str | None = Field(
         default=None,
         validation_alias="OPENKMS_AGENT_MODEL_ID",
-        description="api_models.id for the LLM used by POST /api/agent/.../messages. If unset, the first available LLM model is used.",
+        description="api_models.id fallback for the LLM used by Deep Agents. If unset, the first available LLM model is used.",
     )
     agent_max_output_tokens: int = Field(
         default=65_537,
@@ -56,9 +56,8 @@ class Settings(BaseSettings):
         le=200_000,
         validation_alias="OPENKMS_AGENT_MAX_OUTPUT_TOKENS",
         description=(
-            "Upper bound on **completion length** for the embedded wiki agent: passed as `max_tokens` to OpenAPI-compatible "
-            "chat APIs (token-based). Default is conservative so smaller or stricter models do not error; raise via "
-            "**OPENKMS_AGENT_MAX_OUTPUT_TOKENS** if your model supports a higher output cap. Effective limit may be lower on the provider."
+            "Upper bound on completion length for Deep Agents: passed as `max_tokens` to OpenAI-compatible "
+            "chat APIs (token-based). Raise via OPENKMS_AGENT_MAX_OUTPUT_TOKENS if your model supports a higher output cap."
         ),
     )
     agent_recursion_limit: int = Field(
@@ -66,17 +65,14 @@ class Settings(BaseSettings):
         ge=20,
         le=10_000,
         validation_alias="OPENKMS_AGENT_RECURSION_LIMIT",
-        description="Max LangGraph supersteps for the wiki ReAct agent (each tool+model cycle uses steps; bulk get/upsert needs a high value).",
+        description="Max LangGraph supersteps for Deep Agents.",
     )
     agent_llm_extra_body_json: str | None = Field(
         default=None,
         validation_alias="OPENKMS_AGENT_LLM_EXTRA_BODY",
         description=(
-            "Optional JSON object merged into ChatOpenAI **extra_body** for the wiki embedded agent. "
-            "Wiki Copilot does **not** support provider “thinking” / reasoning round-trip mode: "
-            "**enable_thinking** is always forced to **false** after this merge (avoids some OpenAI-compat "
-            "`reasoning_content must be passed back` errors during tool loops). Use only for other "
-            "provider-specific flags your endpoint documents."
+            "Optional JSON object merged into ChatOpenAI extra_body for agent calls. "
+            "enable_thinking is always forced to false after this merge."
         ),
     )
     agent_llm_reasoning_content_shim: str | None = Field(
@@ -86,19 +82,9 @@ class Settings(BaseSettings):
             "OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM",
         ),
         description=(
-            "Wiki agent (OpenAI SDK only): whether to inject **reasoning_content** on outgoing assistant messages for "
-            "OpenAI-compatible gateways that require it in tool loops. **auto** (unset): **on** for every **base_url** "
-            "except **api.openai.com**; set **0**/**false** to disable. **1**/**true**: always on (including api.openai.com). "
-            "Legacy alias: **OPENKMS_AGENT_DASHSCOPE_REASONING_SHIM**."
+            "Whether to inject reasoning_content on outgoing assistant messages for "
+            "OpenAI-compatible gateways that require it in tool loops."
         ),
-    )
-
-    agent_wiki_max_context_messages: int = Field(
-        default=120,
-        ge=20,
-        le=500,
-        validation_alias="OPENKMS_AGENT_WIKI_MAX_CONTEXT_MESSAGES",
-        description="Max prior messages loaded into the embedded wiki agent LLM context (tail of thread; GET /messages can paginate beyond this).",
     )
 
     # --- Agent workspace projects (Deep Agents) ---

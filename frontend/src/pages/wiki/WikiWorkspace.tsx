@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bot, Network, Save, Settings, X } from 'lucide-react';
+import { ArrowLeft, Network, Save, Settings, X } from 'lucide-react';
 import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
-import { WikiSpaceAgentPanel } from '../../components/wiki/WikiSpaceAgentPanel';
 import { fetchAllWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from '../../data/wikiSpacesApi';
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
@@ -543,7 +542,6 @@ export function WikiWorkspace() {
             onMouseDown={onCopilotResizePointerDown}
           />
           <div className="wiki-workspace-agent-rail-inner">
-            <WikiSpaceAgentPanel
               spaceId={spaceId}
               spaceName={spaceName}
               onRequestCollapse={() => setCopilotOpenPersist(false)}

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.agent.wiki_runner import truncate_wiki_tool_output_for_storage
+from app.services.agent.shared import truncate_wiki_tool_output_for_storage
 
 WIKI_ASSISTANT_STREAM_PARTS_KEY = "wiki_assistant_stream_parts_v1"
 

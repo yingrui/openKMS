@@ -17,7 +17,7 @@ from sqlalchemy import func as sa_func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
-from app.services.agent.wiki_runner import (
+from app.services.agent.shared import (
     _wiki_agent_chat_extra_body,
     _wiki_use_llm_reasoning_content_shim,
 )

@@ -30,7 +30,7 @@ from app.models.agent_models import AgentConversation, AgentMessage
 from app.models.evaluation import Evaluation
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
-from app.services.agent.wiki_runner import new_id
+from app.services.agent.shared import new_id
 from app.services.acl.data_resource_policy import knowledge_base_visible
 
 router = APIRouter(tags=["evaluations"])
@@ -214,7 +214,7 @@ async def delete_eval_agent_messages_from(
     ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.api.agent import _bump_conversation_timestamp
+    from app.services.agent.shared import _bump_conversation_timestamp
 
     _ = ev
     c = await _get_eval_conversation(db, conversation_id, get_jwt_sub(request), evaluation_id)
@@ -249,7 +249,7 @@ async def post_eval_agent_message(
     ev: Evaluation = Depends(get_evaluation_scoped),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.api.agent import _bump_conversation_timestamp, _maybe_set_conversation_title_from_first_user_message
+    from app.services.agent.shared import _bump_conversation_timestamp, _maybe_set_conversation_title_from_first_user_message
     from app.api.kb_agent_conversations import KB_QA_SOURCES_KEY
 
     _ = ev

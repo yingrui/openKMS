@@ -13,7 +13,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.agent import (
+from app.services.agent.shared import (
     _bump_conversation_timestamp,
     _maybe_set_conversation_title_from_first_user_message,
     _msg_to_out,
@@ -27,7 +27,7 @@ from app.models.project import Project
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
+from app.services.agent.shared import WIKI_TOOL_TRANSCRIPTS_KEY
 from app.services.agent.conversation_title import suggest_conversation_title
 from app.services.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
 from app.services.agent.agent_skill_install import ensure_skills_materialized
