@@ -19,11 +19,12 @@ import {
 const TAIL_LIMIT = 50;
 const PAGE_SIZE = 50;
 
-function mapItems(items: { id: string; role: string; content: string; tool_calls?: unknown }[]): ChatMessage[] {
+function mapItems(items: { id: string; role: string; content: string; created_at: string; tool_calls?: unknown }[]): ChatMessage[] {
   return items.map((m) => ({
     role: m.role as 'user' | 'assistant',
     content: m.content,
     id: m.id,
+    created_at: m.created_at,
     ...(m.role === 'assistant'
       ? { streamParts: assistantHistoryStreamParts(m.content, m.tool_calls) }
       : {}),

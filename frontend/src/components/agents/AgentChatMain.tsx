@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp, RefreshCw } from 'lucide-react';
+import { ArrowUp, Copy, RefreshCw } from 'lucide-react';
 import { AgentAssistantStreamBody } from './AgentAssistantStreamBody';
 import { PERSISTED_AGENT_MESSAGE_ID } from './agentConstants';
 import { AgentInterruptBar } from './AgentInterruptBar';
@@ -13,6 +13,7 @@ export interface ChatMessage {
   content: string;
   streamParts?: AssistantStreamPart[];
   id?: string;
+  created_at?: string;
 }
 
 interface Props {
@@ -74,6 +75,13 @@ interface MessageRowProps {
   tRevertAria: string;
 }
 
+function formatTime(ts?: string): string {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 const MessageRow = memo(function MessageRow({
   message,
   onRevertUserMessage,
@@ -82,23 +90,29 @@ const MessageRow = memo(function MessageRow({
   tRevertTitle,
   tRevertAria,
 }: MessageRowProps) {
+  const time = formatTime(message.created_at);
+
   if (message.role === 'user') {
+    const showRevert = onRevertUserMessage && message.id && PERSISTED_AGENT_MESSAGE_ID.test(message.id);
     return (
-      <div className={`agents-chat-msg agents-chat-msg--user`}>
+      <div className="agents-chat-msg agents-chat-msg--user">
         <div className="agents-chat-msg-user-col">
           <div className="agents-chat-msg-body">{message.content}</div>
-          {onRevertUserMessage && message.id && PERSISTED_AGENT_MESSAGE_ID.test(message.id) ? (
-            <div className="agents-chat-msg-revert">
-              <button
-                type="button"
-                className="agents-chat-revert-btn"
-                onClick={() => onRevertUserMessage(message)}
-                disabled={loading || reverting}
-                title={tRevertTitle}
-                aria-label={tRevertAria}
-              >
-                <RefreshCw size={15} strokeWidth={2} aria-hidden />
-              </button>
+          {(showRevert || time) ? (
+            <div className="agents-chat-msg-meta">
+              {time ? <span className="agents-chat-msg-time">{time}</span> : null}
+              {showRevert ? (
+                <button
+                  type="button"
+                  className="agents-chat-revert-btn"
+                  onClick={() => onRevertUserMessage!(message)}
+                  disabled={loading || reverting}
+                  title={tRevertTitle}
+                  aria-label={tRevertAria}
+                >
+                  <RefreshCw size={13} strokeWidth={2} aria-hidden />
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -106,13 +120,28 @@ const MessageRow = memo(function MessageRow({
     );
   }
   return (
-    <div className={`agents-chat-msg agents-chat-msg--assistant`}>
+    <div className="agents-chat-msg agents-chat-msg--assistant">
       <div className="agents-chat-msg-body">
         <AgentAssistantStreamBody
           streamParts={message.streamParts}
           fallbackText={message.content}
         />
       </div>
+      {time ? (
+        <div className="agents-chat-msg-meta">
+          <button
+            type="button"
+            className="agents-chat-copy-btn"
+            title="Copy message"
+            onClick={() => {
+              void navigator.clipboard.writeText(message.content);
+            }}
+          >
+            <Copy size={13} strokeWidth={2} aria-hidden />
+          </button>
+          <span className="agents-chat-msg-time">{time}</span>
+        </div>
+      ) : null}
     </div>
   );
 });

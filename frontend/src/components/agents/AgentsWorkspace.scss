@@ -383,13 +383,33 @@ $agents-pane-header-height: 49px;
   line-height: 1.55;
 }
 
-.agents-chat-msg-revert {
+.agents-chat-msg-meta {
   display: flex;
+  align-items: center;
+  gap: 6px;
   justify-content: flex-end;
   margin-top: 0.2rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
 }
 
-.agents-chat-revert-btn {
+.agents-chat-msg:hover .agents-chat-msg-meta {
+  opacity: 1;
+}
+
+.agents-chat-msg--assistant .agents-chat-msg-meta {
+  justify-content: flex-start;
+  margin-left: 0;
+}
+
+.agents-chat-msg-time {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.agents-chat-revert-btn,
+.agents-chat-copy-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -402,7 +422,8 @@ $agents-pane-header-height: 49px;
   transition: color 0.15s ease, background 0.15s ease;
 }
 
-.agents-chat-revert-btn:hover:not(:disabled) {
+.agents-chat-revert-btn:hover:not(:disabled),
+.agents-chat-copy-btn:hover {
   color: var(--color-accent);
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
