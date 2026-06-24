@@ -441,6 +441,31 @@
   margin-left: auto;
 }
 
+.sreview-col-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: auto;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+  }
+
+  &:disabled { cursor: wait; }
+}
+
+.sreview-artifact-refresh--spin {
+  animation: sreview-spin 0.7s linear infinite;
+}
+
 .sreview-artifact-body {
   border-top: 1px solid var(--color-border);
 }

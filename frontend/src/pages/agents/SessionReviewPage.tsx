@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowUp, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText, GitMerge, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText, GitMerge, MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
 import { SessionReviewEventCard } from '../../components/agents/SessionReviewEventCard';
@@ -40,6 +40,7 @@ export function SessionReviewPage() {
   const [chatBusy, setChatBusy] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [lessonsCollapsed, setLessonsCollapsed] = useState(false);
+  const [refreshingArtifacts, setRefreshingArtifacts] = useState(false);
 
   useEffect(() => {
     getProject(projectId).then(setProject).catch(() => toast.error('Failed to load project'));
@@ -391,6 +392,18 @@ export function SessionReviewPage() {
           <div className="sreview-col-head">
             <Sparkles size={14} />
             <span>{t('sessions.improveArtifacts')}</span>
+            <button
+              type="button"
+              className="sreview-col-refresh-btn"
+              title="Refresh from disk"
+              disabled={refreshingArtifacts}
+              onClick={() => {
+                setRefreshingArtifacts(true);
+                getArtifacts(projectId).then(setArtifacts).catch(() => {}).finally(() => setRefreshingArtifacts(false));
+              }}
+            >
+              <RefreshCw size={13} className={refreshingArtifacts ? 'sreview-artifact-refresh--spin' : ''} />
+            </button>
           </div>
           <div className="sreview-col-body">
             <div className="sreview-artifacts">
