@@ -37,7 +37,7 @@ from app.services.deep_agents.runner import iter_project_stream_parts, new_id, r
 from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.project_fs import read_lessons_json, write_lessons_json
-from app.services.session_review import review_session
+from app.services.session_review import merge_lessons, review_session
 from app.services.agent.improvement_runner import iter_improvement_stream_parts
 
 router = APIRouter()
@@ -355,6 +355,41 @@ async def put_lessons(
         raise HTTPException(status_code=400, detail="Body must be a JSON array")
     write_lessons_json(project_id, json.dumps(body, ensure_ascii=False, indent=2))
     return {"status": "ok", "count": len(body)}
+
+
+@router.post(
+    "/{project_id}/lessons/merge",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def merge_lessons_route(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_project(db, project_id, sub)
+    model_config = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
+    if not model_config:
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM model configured. Add an LLM in Console > Models.",
+        )
+    body = await request.json()
+    lessons_list = body if isinstance(body, list) else body.get("lessons", [])
+    if not isinstance(lessons_list, list):
+        raise HTTPException(status_code=400, detail="Body must be a JSON array of lessons")
+
+    session_id = str(body.get("session_id") or "")
+
+    try:
+        merged = await merge_lessons(lessons_list, [], session_id, model_config)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM error: {e}") from e
+
+    write_lessons_json(project_id, json.dumps(merged, ensure_ascii=False, indent=2))
+    return {"events": merged, "count": len(merged)}
 
 
 @router.post(

@@ -59,6 +59,11 @@ export function SessionReviewEventCard({
         <span className="sreview-card-badge">
           {SEVERITY_ICON[event.severity] ?? '⚪'} {TYPE_LABEL[event.type] ?? event.type} · {event.severity}
         </span>
+        {event.occurrence_count && event.occurrence_count > 1 ? (
+          <span className="sreview-card-occurrence" title={`Occurred in ${event.occurrence_count} sessions`}>
+            ×{event.occurrence_count}
+          </span>
+        ) : null}
         {isApproved && <span className="sreview-card-status sreview-card-status--approved">✓ Approved</span>}
         {isRejected && <span className="sreview-card-status sreview-card-status--rejected">✗ Rejected</span>}
       </div>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ArrowUp, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText, MessageSquare, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowUp, ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, FileText, GitMerge, MessageSquare, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
 import { SessionReviewEventCard } from '../../components/agents/SessionReviewEventCard';
@@ -10,6 +10,7 @@ import {
   getArtifacts,
   getLessons,
   makeEventId,
+  mergeLessons,
   putLessons,
   reviewSession,
   saveArtifact,
@@ -29,6 +30,7 @@ export function SessionReviewPage() {
   const { t } = useTranslation('agents');
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [merging, setMerging] = useState(false);
   const [lessons, setLessons] = useState<LessonEventWithState[]>([]);
   const [artifacts, setArtifacts] = useState<ArtifactFile[]>([]);
   const [chatMessages, setChatMessages] = useState<
@@ -94,6 +96,23 @@ export function SessionReviewPage() {
       setAnalyzing(false);
     }
   }, [projectId, sessionId, saveToBackend, t]);
+
+  const handleMerge = useCallback(async () => {
+    if (lessons.length === 0) {
+      toast.info(t('sessions.mergeNoEvents'));
+      return;
+    }
+    setMerging(true);
+    try {
+      const merged = await mergeLessons(projectId, lessons, sessionId);
+      setLessons(merged);
+      toast.success(t('sessions.mergeDone', { count: merged.length }));
+    } catch (e) {
+      toast.error(`Merge failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setMerging(false);
+    }
+  }, [projectId, sessionId, lessons, t]);
 
   const handleApprove = useCallback(
     (event: LessonEvent, status: 'pending' | 'approved' | 'rejected') => {
@@ -216,6 +235,20 @@ export function SessionReviewPage() {
             <Sparkles size={14} />
           )}
           {analyzing ? t('sessions.reviewAnalyzing') : t('sessions.reviewAnalyze')}
+        </button>
+        <button
+          type="button"
+          className="sreview-analyze-btn sreview-merge-btn"
+          disabled={merging}
+          onClick={handleMerge}
+          title={t('sessions.mergeHint')}
+        >
+          {merging ? (
+            <span className="sreview-analyze-spinner" />
+          ) : (
+            <GitMerge size={14} />
+          )}
+          {merging ? t('sessions.mergeRunning') : t('sessions.mergeButton')}
         </button>
       </header>
 

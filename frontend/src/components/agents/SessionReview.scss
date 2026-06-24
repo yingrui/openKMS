@@ -58,6 +58,18 @@
   &:disabled { opacity: 0.6; cursor: wait; }
 }
 
+.sreview-merge-btn {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-color: var(--color-border);
+
+  &:hover:not(:disabled) {
+    background: var(--color-bg-hover);
+    color: var(--color-text);
+    border-color: var(--color-accent);
+  }
+}
+
 .sreview-analyze-spinner {
   width: 14px;
   height: 14px;
@@ -110,8 +122,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   margin-left: auto;
   border: none;
   border-radius: var(--radius-sm);
@@ -215,6 +227,15 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text);
+}
+
+.sreview-card-occurrence {
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  color: var(--color-accent-hover);
 }
 
 .sreview-card-status {

@@ -20,6 +20,9 @@ export interface LessonEvent {
   what_went_wrong: string;
   what_fixed_it: string | null;
   message_ids: string[];
+  occurrence_count?: number;
+  session_ids?: string[];
+  source_message_ids?: string[];
 }
 
 export interface LessonEventWithState extends LessonEvent {
@@ -164,6 +167,26 @@ export async function chatImprovementsStream(
   }
   if (!res.body) throw new Error('No response body');
   await readNdjsonStream<ImprovementStreamEvent>(res.body, onEvent);
+}
+
+export async function mergeLessons(
+  projectId: string,
+  lessons: LessonEventWithState[],
+  sessionId: string,
+): Promise<LessonEventWithState[]> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/projects/${projectId}/lessons/merge`,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ lessons, session_id: sessionId }),
+    },
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = await res.json();
+  return (data.events ?? []) as LessonEventWithState[];
 }
 
 let _idCounter = 0;
