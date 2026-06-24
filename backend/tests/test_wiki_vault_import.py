@@ -3,7 +3,7 @@
 import io
 import zipfile
 
-from app.services.wiki_vault_import import (
+from app.services.wiki.wiki_vault_import import (
     iter_zip_vault_entries,
     join_and_norm_dir_rel,
     md_relative_path_to_wiki_path,

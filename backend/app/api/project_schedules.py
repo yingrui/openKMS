@@ -20,9 +20,9 @@ from app.schemas.project_agent_schedule import (
     ProjectAgentSchedulePatch,
     ProjectAgentScheduleRunNowResponse,
 )
-from app.services.connector_sync.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
-from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
-from app.services.project_agent_schedule import (
+from app.services.connectors.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
+from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.schedules.project_agent_schedule import (
     create_agent_schedule,
     delete_agent_schedule_row,
     get_agent_schedule_for_project,
@@ -188,7 +188,7 @@ def build_project_schedules_router() -> APIRouter:
         sub = get_jwt_sub(request)
         await get_project_owned(db, project_id, sub)
         row = await get_agent_schedule_for_project(db, project_id, schedule_id)
-        from app.services.schedule_handlers import defer_scheduled_trigger
+        from app.services.schedules.schedule_handlers import defer_scheduled_trigger
 
         job_id = await defer_scheduled_trigger(row)
         row.last_run_at = datetime.now(timezone.utc)

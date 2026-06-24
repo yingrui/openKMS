@@ -32,15 +32,15 @@ from app.schemas.evaluation import (
     EvaluationUpdate,
     SearchResultSnippet,
 )
-from app.services.data_resource_policy import knowledge_base_visible, wiki_space_visible
-from app.services.data_scope import bootstrap_owner_acl
-from app.services.evaluation_scope import (
+from app.services.acl.data_resource_policy import knowledge_base_visible, wiki_space_visible
+from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.evaluations.evaluation_scope import (
     load_evaluation_scoped,
     require_evaluation_manage,
     require_evaluation_write,
 )
-from app.services.resource_acl_constants import PERM_READ, RT_EVALUATION
-from app.services.evaluation.execute import (
+from app.services.acl.resource_acl_constants import PERM_READ, RT_EVALUATION
+from app.services.evaluations.execute import (
     ALLOWED_EVALUATION_TYPES,
     EVALUATION_TYPE_QA_ANSWER,
     EVALUATION_TYPE_SEARCH_RETRIEVAL,
@@ -50,8 +50,8 @@ from app.services.evaluation.execute import (
     run_qa_answer_evaluation,
     run_search_retrieval_evaluation,
 )
-from app.services.evaluation.wiki_execute import run_wiki_content_coverage_evaluation
-from app.services.evaluation_read import (
+from app.services.evaluations.wiki_execute import run_wiki_content_coverage_evaluation
+from app.services.evaluations.evaluation_read import (
     evaluation_to_response,
     item_count,
     list_evaluations_page,

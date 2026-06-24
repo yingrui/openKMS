@@ -3,8 +3,8 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
-from app.services import oidc_identity_service as svc
-from app.services import resource_acl_service as acl_svc
+import app.services.users.oidc_identity_service as svc
+import app.services.acl.resource_acl_service as acl_svc
 
 
 def test_should_upsert_skips_api_key_and_local_cli(monkeypatch):
@@ -23,7 +23,7 @@ def test_upsert_oidc_identity_inserts_and_updates(monkeypatch):
             setattr(row, key, val)
         return row
 
-    monkeypatch.setattr("app.services.oidc_identity_service.OidcIdentity", _make_row)
+    monkeypatch.setattr("app.services.users.oidc_identity_service.OidcIdentity", _make_row)
     db = AsyncMock()
     db.get = AsyncMock(return_value=None)
 
@@ -67,7 +67,7 @@ def test_resolve_subject_display_uses_oidc_directory(monkeypatch):
 
     monkeypatch.setattr(settings, "auth_mode", "oidc")
     monkeypatch.setattr(
-        "app.services.oidc_identity_service.display_label_for_oidc_sub",
+        "app.services.users.oidc_identity_service.display_label_for_oidc_sub",
         fake_label,
     )
 

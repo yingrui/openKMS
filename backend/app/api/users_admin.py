@@ -13,8 +13,8 @@ from app.config import settings
 from app.database import get_db
 from app.models.oidc_identity import OidcIdentity
 from app.models.user import User
-from app.services.permission_catalog import PERM_CONSOLE_USERS
-from app.services.user_roles_sync import sync_security_roles_for_user
+from app.services.permissions.permission_catalog import PERM_CONSOLE_USERS
+from app.services.users.user_roles_sync import sync_security_roles_for_user
 
 router = APIRouter(prefix="/admin/users", tags=["admin-users"])
 

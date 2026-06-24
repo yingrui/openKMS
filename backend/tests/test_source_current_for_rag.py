@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from app.constants import DocumentLifecycleStatus
 from app.models.document import Document
-from app.services.document_lifecycle import document_effective_for_rag
+from app.services.documents.document_lifecycle import document_effective_for_rag
 
 
 def _doc(**kwargs) -> Document:

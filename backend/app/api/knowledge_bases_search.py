@@ -40,7 +40,7 @@ async def semantic_search(
     Filtered requests (label/metadata/historical) skip qa-agent because the hybrid
     pipeline does not honor those filters; they go straight to the dense-only service.
     """
-    from app.services.kb_search import search_knowledge_base
+    from app.services.knowledge_bases.kb_search import search_knowledge_base
 
     has_filters = bool(
         body.label_filters

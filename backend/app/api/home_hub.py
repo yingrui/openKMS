@@ -16,8 +16,8 @@ from app.database import get_db
 from app.models.document import Document
 from app.models.document_relationship import DocumentRelationship
 from app.models.knowledge_map import KnowledgeMapNode, KnowledgeMapResourceLink
-from app.services.comment_owned_feed import load_recent_comments_on_owned_resources
-from app.services.knowledge_map_read import (
+from app.services.comments.comment_owned_feed import load_recent_comments_on_owned_resources
+from app.services.knowledge_map.knowledge_map_read import (
     KnowledgeMapHtmlStatusOut,
     KnowledgeMapNodeOut,
     ResourceLinkOut,
@@ -26,9 +26,9 @@ from app.services.knowledge_map_read import (
     load_resource_labels,
     load_resource_links,
 )
-from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_KNOWLEDGE_MAP_READ
-from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
-from app.services.resource_acl_service import readable_document_channel_ids, scope_applies
+from app.services.permissions.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_KNOWLEDGE_MAP_READ
+from app.services.permissions.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
+from app.services.acl.resource_acl_service import readable_document_channel_ids, scope_applies
 
 router = APIRouter(prefix="/home", tags=["home"])
 

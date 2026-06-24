@@ -1,7 +1,7 @@
 """Wiki semantic index helpers (text shaping)."""
 
 from app.models.wiki_models import WikiPage
-from app.services.wiki_semantic_index import WIKI_PAGE_EMBED_TEXT_MAX_CHARS, wiki_page_text_for_embedding
+from app.services.wiki.wiki_semantic_index import WIKI_PAGE_EMBED_TEXT_MAX_CHARS, wiki_page_text_for_embedding
 
 
 def test_wiki_page_text_for_embedding_truncates() -> None:

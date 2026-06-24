@@ -1,6 +1,6 @@
 """Tests for job run worker log text builder."""
 
-from app.services.job_run_worker_log import build_job_run_worker_log_text
+from app.services.jobs.job_run_worker_log import build_job_run_worker_log_text
 
 
 def test_build_job_run_worker_log_text_no_truncation():

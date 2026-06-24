@@ -23,7 +23,7 @@ def _refresh_eval_permission_patterns(conn) -> None:
     insp = sa.inspect(conn)
     if "security_permissions" not in insp.get_table_names():
         return
-    from app.services.permission_default_patterns import default_patterns_for_key
+    from app.services.permissions.permission_default_patterns import default_patterns_for_key
 
     for key in ("evaluation:read", "evaluation:write"):
         fe, be = default_patterns_for_key(key)

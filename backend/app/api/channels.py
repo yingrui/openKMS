@@ -10,16 +10,16 @@ from app.api.auth import require_auth
 from app.database import get_db
 from app.models.document import Document
 from app.models.document_channel import DocumentChannel
-from app.services.channel_scope import (
+from app.services.channels.channel_scope import (
     require_document_channel_in_scope,
     require_document_channel_write,
     scoped_document_channel_ids,
 )
-from app.services.data_scope import bootstrap_owner_acl
-from app.services.resource_acl_constants import RT_DOCUMENT_CHANNEL
+from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.acl.resource_acl_constants import RT_DOCUMENT_CHANNEL
 from app.models.object_type import ObjectType
 from app.schemas.channel import ChannelCreate, ChannelMergeBody, ChannelNode, ChannelReorderBody, ChannelTreeListResponse, ChannelUpdate
-from app.services.channel_tree_list import paginate_channels_for_tree
+from app.services.channels.channel_tree_list import paginate_channels_for_tree
 
 router = APIRouter(prefix="/document-channels", tags=["document-channels"], dependencies=[Depends(require_auth)])
 

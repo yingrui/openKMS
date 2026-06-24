@@ -9,8 +9,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permission_catalog import OPERATION_KEY_HINTS, PERM_CONSOLE_STORAGE
-from app.services.permission_default_patterns import default_patterns_for_key
+from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS, PERM_CONSOLE_STORAGE
+from app.services.permissions.permission_default_patterns import default_patterns_for_key
 
 revision: str = "n8o9p0q1r2s3"
 down_revision: Union[str, Sequence[str], None] = "m7n8o9p0q1r2"

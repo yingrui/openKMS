@@ -43,7 +43,7 @@ from app.services.agent.wiki_runner import (
     WIKI_TOOL_TRANSCRIPTS_KEY,
     new_id,
 )
-from app.services.permission_catalog import PERM_KB_READ
+from app.services.permissions.permission_catalog import PERM_KB_READ
 
 logger = logging.getLogger(__name__)
 

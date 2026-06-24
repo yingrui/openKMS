@@ -55,7 +55,7 @@ def render_command(
     from settings. extraction_args is the full extraction flags block when
     channel has extraction config; empty otherwise.
     """
-    from app.services.document_storage import document_object_key, document_prefix, get_document_object
+    from app.services.documents.document_storage import document_object_key, document_prefix, get_document_object
 
     base_api_url = (api_url or settings.openkms_backend_url).rstrip("/")
     doc_prefix = document_prefix(file_hash)
@@ -200,7 +200,7 @@ async def run_pipeline(
                 "(same credentials the API accepts for HTTP Basic); see backend/.env.example."
             )
 
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     try:
         async with async_session_maker() as session:
@@ -344,8 +344,8 @@ async def run_spreadsheet_preview(
 
     from app.database import async_session_maker
     from app.models.document import Document
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.spreadsheet_preview import build_xlsx_preview
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.documents.spreadsheet_preview import build_xlsx_preview
 
     job_pk = context.job.id
     log_cmd = f"run_spreadsheet_preview document_id={document_id} file_hash={file_hash} ext={file_ext}"
@@ -359,7 +359,7 @@ async def run_spreadsheet_preview(
             await session.commit()
 
         try:
-            from app.services.document_storage import get_document_object
+            from app.services.documents.document_storage import get_document_object
 
             raw = await asyncio.to_thread(get_document_object, file_hash, f"original.{file_ext}")
             preview, md = await asyncio.to_thread(build_xlsx_preview, raw, file_hash=file_hash)
@@ -407,8 +407,8 @@ async def run_mindmap_preview(
 
     from app.database import async_session_maker
     from app.models.document import Document
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.mindmap_preview import build_xmind_preview
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.documents.mindmap_preview import build_xmind_preview
 
     job_pk = context.job.id
     log_cmd = f"run_mindmap_preview document_id={document_id} file_hash={file_hash} ext={file_ext}"
@@ -422,7 +422,7 @@ async def run_mindmap_preview(
             await session.commit()
 
         try:
-            from app.services.document_storage import get_document_object
+            from app.services.documents.document_storage import get_document_object
 
             raw = await asyncio.to_thread(get_document_object, file_hash, f"original.{file_ext}")
             preview, md = await asyncio.to_thread(build_xmind_preview, raw, file_hash=file_hash)
@@ -470,7 +470,7 @@ async def run_kb_index(
     """
     from app.database import async_session_maker
     from app.models.knowledge_base import KnowledgeBase
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_pk = context.job.id
     log_cmd: str | None = f"run_kb_index knowledge_base_id={knowledge_base_id}"
@@ -533,7 +533,7 @@ async def run_kb_wiki_space_index(
     from app.database import async_session_maker
     from app.models.knowledge_base import KnowledgeBase
     from app.models.kb_wiki_space import KBWikiSpace
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_pk = context.job.id
     log_cmd: str | None = (
@@ -616,7 +616,7 @@ def _needs_metadata_extraction_after_parse_cache(
     """True when parse output can be reused but document metadata fields are still empty."""
     if not _metadata_extraction_requested(command):
         return False
-    from app.services.pipeline_metadata_state import document_metadata_needs_extraction
+    from app.services.documents.pipeline_metadata_state import document_metadata_needs_extraction
 
     return document_metadata_needs_extraction(doc_metadata, extraction_schema)
 
@@ -652,7 +652,7 @@ async def _apply_cached_parse_to_document(
 
 def _load_result_from_s3(file_hash: str) -> dict:
     """Load result.json from S3 after pipeline completes."""
-    from app.services.document_storage import get_document_object
+    from app.services.documents.document_storage import get_document_object
 
     try:
         data = get_document_object(file_hash, "result.json")
@@ -664,7 +664,7 @@ def _load_result_from_s3(file_hash: str) -> dict:
 
 def _load_extracted_metadata_from_s3(file_hash: str) -> dict:
     """Load channel-extraction output written by openkms-cli during pipeline run."""
-    from app.services.document_storage import get_document_object
+    from app.services.documents.document_storage import get_document_object
 
     try:
         data = get_document_object(file_hash, "extracted_metadata.json")
@@ -692,7 +692,7 @@ def _s3_parse_cache_usable(parsing_result: dict) -> bool:
 
 def _load_parse_cache_from_s3(file_hash: str) -> tuple[dict, str] | None:
     """Return (parsing_result, markdown) if storage has a usable prior parse; else None."""
-    from app.services.document_storage import get_document_object
+    from app.services.documents.document_storage import get_document_object
 
     if not settings.storage_enabled or not file_hash:
         return None
@@ -718,8 +718,8 @@ def _upload_page_index_from_hash(file_hash: str, doc_name: str | None, markdown:
     if not file_hash or not settings.storage_enabled or not markdown or not markdown.strip():
         return
     try:
-        from app.services.document_storage import document_object_key
-        from app.services.page_index import md_to_tree_from_markdown
+        from app.services.documents.document_storage import document_object_key
+        from app.services.wiki.page_index import md_to_tree_from_markdown
         from app.services.storage import upload_object
 
         page_index = md_to_tree_from_markdown(markdown, doc_name=doc_name or "document")
@@ -754,10 +754,10 @@ async def run_connector_sync(
     """Run a sync connector job (Tushare and other sync kinds)."""
     from app.database import async_session_maker
     from app.models.connector import Connector
-    from app.services.connector_catalog import CATEGORY_SYNC, get_kind_spec
-    from app.services.connector_sync.run import run_connector_sync_for_row
-    from app.services.connector_sync.sync_range import parse_sync_date_range
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec
+    from app.services.connectors.run import run_connector_sync_for_row
+    from app.services.connectors.sync_range import parse_sync_date_range
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = []
@@ -787,7 +787,7 @@ async def run_connector_sync(
             )
             for slot, count in stats.items():
                 log_lines.append(f"{slot}: {count} rows upserted")
-            from app.services.schedule_dispatch import update_trigger_after_sync
+            from app.services.schedules.schedule_dispatch import update_trigger_after_sync
 
             await update_trigger_after_sync(
                 session,
@@ -799,7 +799,7 @@ async def run_connector_sync(
             logger.info("Connector sync finished for %s: %s", connector_id, stats)
             log_lines.append(f"Connector sync finished: {stats}")
         except Exception as exc:
-            from app.services.connector_sync.tushare.client import TushareRateLimitError
+            from app.services.connectors.tushare.client import TushareRateLimitError
 
             if isinstance(exc, TushareRateLimitError):
                 wait = int(exc.retry_after_seconds)
@@ -830,7 +830,7 @@ async def run_connector_sync(
                     wait,
                 )
                 return
-            from app.services.schedule_dispatch import update_trigger_after_sync
+            from app.services.schedules.schedule_dispatch import update_trigger_after_sync
 
             await update_trigger_after_sync(
                 session,
@@ -860,8 +860,8 @@ async def run_scheduled_project_agent(
     """Run a scheduled project agent turn (stateful or stateless)."""
     from app.database import async_session_maker
     from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.schedule_dispatch import update_trigger_after_agent_job
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.schedules.schedule_dispatch import update_trigger_after_agent_job
 
     job_id = int(context.job.id) if context.job and context.job.id else None
     log_lines: list[str] = []
@@ -879,7 +879,7 @@ async def run_scheduled_project_agent(
         log_lines.append(f"Scheduled agent started: {trigger.display_name} ({trigger.kind})")
         try:
             from app.models.agent_models import AgentConversation
-            from app.services.project_agent_schedule import execute_scheduled_project_agent
+            from app.services.schedules.project_agent_schedule import execute_scheduled_project_agent
 
             await execute_scheduled_project_agent(session, trigger)
             await update_trigger_after_agent_job(
@@ -933,7 +933,7 @@ async def generate_media_derivatives(context: JobContext, asset_id: str) -> None
     from app.database import async_session_maker
     from app.models.media_asset import MediaAsset
     from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
-    from app.services.media_derivatives import process_media_derivatives
+    from app.services.media.media_derivatives import process_media_derivatives
 
     async with async_session_maker() as session:
         asset = await session.get(MediaAsset, asset_id)
@@ -970,16 +970,16 @@ async def run_media_generation(
     from app.models.media_asset import MediaAsset
     from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
     from app.services.feature_toggles import is_feature_enabled
-    from app.services.job_run_worker_log import persist_job_run_worker_log_best_effort
-    from app.services.media_generation.zhipu import (
+    from app.services.jobs.job_run_worker_log import persist_job_run_worker_log_best_effort
+    from app.services.media.zhipu import (
         download_url,
         extract_result_url,
         poll_async_result,
         submit_image_generation,
         submit_video_generation,
     )
-    from app.services.media_derivatives import build_and_upload_derivatives
-    from app.services.media_storage import MEDIA_KIND_IMAGE, media_original_key
+    from app.services.media.media_derivatives import build_and_upload_derivatives
+    from app.services.media.media_storage import MEDIA_KIND_IMAGE, media_original_key
     from app.services.storage import upload_object
 
     job_id = int(context.job.id) if context.job and context.job.id else None

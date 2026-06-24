@@ -1,10 +1,10 @@
 """Tests for sync connector dataset provision helpers."""
 
-from app.services.connector_sync.provision import (
+from app.services.connectors.provision import (
     build_create_table_ddl,
     validate_table_columns,
 )
-from app.services.connector_sync.tushare.schemas import (
+from app.services.connectors.tushare.schemas import (
     TUSHARE_DIVIDENDS_COLUMNS,
     TUSHARE_STOCK_BASIC_COLUMNS,
     TUSHARE_TRADE_CALENDAR_COLUMNS,

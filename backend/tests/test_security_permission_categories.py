@@ -1,7 +1,7 @@
 """Category filter for security permission list API."""
 
 from app.api.admin import security_permissions as mod
-from app.services.permission_catalog import (
+from app.services.permissions.permission_catalog import (
     PERM_ALL,
     PERM_ARTICLES_READ,
     PERM_CONSOLE_ACCESS,

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services.document_storage import (
+from app.services.documents.document_storage import (
     document_object_key,
     document_prefix,
     is_legacy_document_hash_prefix,
@@ -40,19 +40,19 @@ def test_normalize_logical_path_strips_hash_prefix() -> None:
 
 def test_resolve_prefers_new_path() -> None:
     new_key = document_object_key(_HASH, "result.json")
-    with patch("app.services.document_storage.object_exists", side_effect=lambda k: k == new_key):
+    with patch("app.services.documents.document_storage.object_exists", side_effect=lambda k: k == new_key):
         assert resolve_document_object_key(_HASH, "result.json") == new_key
 
 
 def test_resolve_falls_back_to_legacy() -> None:
     old_key = f"{legacy_document_prefix(_HASH)}/result.json"
     with patch(
-        "app.services.document_storage.object_exists",
+        "app.services.documents.document_storage.object_exists",
         side_effect=lambda k: k == old_key,
     ):
         assert resolve_document_object_key(_HASH, "result.json") == old_key
 
 
 def test_resolve_returns_none_when_missing() -> None:
-    with patch("app.services.document_storage.object_exists", return_value=False):
+    with patch("app.services.documents.document_storage.object_exists", return_value=False):
         assert resolve_document_object_key(_HASH, "missing.bin") is None

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.services.channel_tree_list import paginate_channels_for_tree
+from app.services.channels.channel_tree_list import paginate_channels_for_tree
 
 
 @dataclass

@@ -9,8 +9,8 @@ from pydantic import ValidationError
 
 from app.models.content_comment import ContentComment
 from app.schemas.content_comment import ContentCommentCreate, ContentCommentUpdate
-from app.services.comment_resource_types import COMMENT_RESOURCE_TYPES
-from app.services.content_comment_service import build_comment_tree
+from app.services.comments.comment_resource_types import COMMENT_RESOURCE_TYPES
+from app.services.comments.content_comment_service import build_comment_tree
 
 
 def _row(

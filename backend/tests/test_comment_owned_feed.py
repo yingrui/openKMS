@@ -2,8 +2,8 @@
 
 import asyncio
 
-from app.services.acl_identity import user_grant_matches
-from app.services.comment_owned_feed import preview_comment_body
+from app.services.acl.acl_identity import user_grant_matches
+from app.services.comments.comment_owned_feed import preview_comment_body
 
 
 def test_preview_comment_body_short_unchanged():

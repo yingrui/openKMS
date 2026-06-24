@@ -13,8 +13,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permission_catalog import PERM_CONSOLE_ACCESS
-from app.services.permission_default_patterns import default_patterns_for_key
+from app.services.permissions.permission_catalog import PERM_CONSOLE_ACCESS
+from app.services.permissions.permission_default_patterns import default_patterns_for_key
 
 revision: str = "r8s9t0u1v2w3"
 down_revision: Union[str, Sequence[str], None] = "q7r8s9t0u1v2"

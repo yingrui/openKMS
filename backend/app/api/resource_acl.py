@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import get_jwt_payload, require_auth
 from app.database import get_db
 from app.models.access_group import AccessGroup
-from app.services.resource_acl_constants import (
+from app.services.acl.resource_acl_constants import (
     GRANTEE_AUTHENTICATED,
     GRANTEE_GROUP,
     GRANTEE_USER,
@@ -26,7 +26,7 @@ from app.services.resource_acl_constants import (
     SECURABLE_RESOURCE_TYPES,
     perm_label,
 )
-from app.services.resource_acl_service import (
+from app.services.acl.resource_acl_service import (
     check_resource_access,
     effective_permissions,
     list_acl_entries,
@@ -78,7 +78,7 @@ class ResourceAclPut(BaseModel):
 
 
 def _parse_grants(body: ResourceAclPut) -> list[dict]:
-    from app.services.resource_acl_constants import parse_perm_string
+    from app.services.acl.resource_acl_constants import parse_perm_string
 
     out: list[dict] = []
     for g in body.grants:
@@ -117,7 +117,7 @@ async def _resource_creator_identity(
     from app.models.link_type import LinkType
     from app.models.object_type import ObjectType
     from app.models.wiki_models import WikiSpace
-    from app.services.resource_acl_constants import (
+    from app.services.acl.resource_acl_constants import (
         RT_DATASET,
         RT_EVALUATION,
         RT_GLOSSARY,

@@ -28,9 +28,9 @@ SCHEDULER_INSTANCE_ID = "scheduler"
 
 async def _run_loop(shutdown: asyncio.Event) -> None:
     from app.database import async_session_maker
-    from app.services.process_heartbeat_client import report_process_heartbeat
-    from app.services.schedule_dispatch import dispatch_due_schedules
-    from app.services.schedule_slots import floor_to_minute, sleep_until_next_minute
+    from app.services.heartbeat.process_heartbeat_client import report_process_heartbeat
+    from app.services.schedules.schedule_dispatch import dispatch_due_schedules
+    from app.services.schedules.schedule_slots import floor_to_minute, sleep_until_next_minute
 
     while not shutdown.is_set():
         slot = floor_to_minute(datetime.now(timezone.utc))

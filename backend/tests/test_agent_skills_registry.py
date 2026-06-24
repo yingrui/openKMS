@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.services.agent_skills_registry import unwrap_single_skill_root, validate_skill_tree
+from app.services.agent.agent_skills_registry import unwrap_single_skill_root, validate_skill_tree
 
 
 def test_unwrap_single_skill_root_hoists_folder_wrapper(tmp_path: Path) -> None:

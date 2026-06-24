@@ -17,10 +17,10 @@ from app.api.auth import (
 )
 from app.config import settings
 from app.database import async_session_maker
-from app.services.permission_catalog import PERM_ALL
-from app.services.permission_pattern_cache import get_compiled_pattern_rules
-from app.services.permission_pattern_engine import resolve_required_permission_keys
-from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
+from app.services.permissions.permission_catalog import PERM_ALL
+from app.services.permissions.permission_pattern_cache import get_compiled_pattern_rules
+from app.services.permissions.permission_pattern_engine import resolve_required_permission_keys
+from app.services.permissions.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
 
 # No authentication required. Prefer /api/public/<resource> for non-auth data reads (not /api/auth/*).
 _UNAUTH_EXACT: frozenset[tuple[str, str]] = frozenset(

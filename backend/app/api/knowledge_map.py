@@ -31,7 +31,7 @@ from app.models.knowledge_map import (
 )
 from app.models.wiki_models import WikiSpace
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.knowledge_map_html import (
+from app.services.knowledge_map.knowledge_map_html import (
     designer_chat_via_llm,
     ensure_spa_link_targets,
     finalize_html_document,
@@ -42,7 +42,7 @@ from app.services.knowledge_map_html import (
     knowledge_map_nodes_last_modified_at,
     static_html_for_empty_knowledge_map,
 )
-from app.services.knowledge_map_html_designer_session import (
+from app.services.knowledge_map.knowledge_map_html_designer_session import (
     append_designer_turn,
     create_designer_conversation,
     delete_designer_conversation,
@@ -51,7 +51,7 @@ from app.services.knowledge_map_html_designer_session import (
     list_designer_conversations,
     persist_designer_turn_safe,
 )
-from app.services.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
+from app.services.permissions.permission_catalog import PERM_KNOWLEDGE_MAP_READ, PERM_KNOWLEDGE_MAP_WRITE
 from app.services.feature_toggles import is_feature_enabled
 
 router = APIRouter(prefix="/knowledge-map", tags=["knowledge-map"])
@@ -91,7 +91,7 @@ def _nid() -> str:
     return uuid.uuid4().hex[:32]
 
 
-from app.services.knowledge_map_read import (
+from app.services.knowledge_map.knowledge_map_read import (
     KnowledgeMapHtmlStatusOut,
     KnowledgeMapNodeOut,
     ResourceLinkOut,

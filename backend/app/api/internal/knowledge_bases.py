@@ -12,7 +12,7 @@ from sqlalchemy.orm import load_only
 from app.api.auth import require_internal_client
 from app.api.kb_router_deps import ensure_wiki_page_in_kb_wiki_spaces
 from app.api.knowledge_bases import _base64_to_floats
-from app.services.knowledge_base_read import kb_stats, kb_to_response
+from app.services.knowledge_bases.knowledge_base_read import kb_stats, kb_to_response
 from app.database import get_db
 from app.models.chunk import Chunk
 from app.models.document import Document

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.api.auth import require_auth, require_permission
 from app.config import settings
-from app.services.permission_catalog import PERM_CONSOLE_STORAGE
+from app.services.permissions.permission_catalog import PERM_CONSOLE_STORAGE
 from app.services.storage import (
     create_folder_placeholder,
     list_storage_page,

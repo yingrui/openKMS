@@ -7,13 +7,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.dialects import postgresql
 
 from app.models.scheduled_trigger import SCHEDULE_KIND_CONNECTOR_SYNC, ScheduledTrigger
-from app.services.schedule_dispatch import dispatch_due_schedules
+from app.services.schedules.schedule_dispatch import dispatch_due_schedules
 
 
 def test_dispatch_skips_when_lock_not_acquired():
     session = AsyncMock()
     with patch(
-        "app.services.schedule_dispatch.try_acquire_scheduler_lock",
+        "app.services.schedules.schedule_dispatch.try_acquire_scheduler_lock",
         AsyncMock(return_value=False),
     ):
         count = asyncio.run(
@@ -43,15 +43,15 @@ def test_dispatch_defers_due_trigger():
 
     with (
         patch(
-            "app.services.schedule_dispatch.try_acquire_scheduler_lock",
+            "app.services.schedules.schedule_dispatch.try_acquire_scheduler_lock",
             AsyncMock(return_value=True),
         ),
         patch(
-            "app.services.schedule_dispatch.release_scheduler_lock",
+            "app.services.schedules.schedule_dispatch.release_scheduler_lock",
             AsyncMock(),
         ),
-        patch("app.services.schedule_dispatch.is_cron_due_for_slot", return_value=True),
-        patch("app.services.schedule_dispatch.defer_scheduled_trigger", AsyncMock(return_value=99)) as defer_mock,
+        patch("app.services.schedules.schedule_dispatch.is_cron_due_for_slot", return_value=True),
+        patch("app.services.schedules.schedule_dispatch.defer_scheduled_trigger", AsyncMock(return_value=99)) as defer_mock,
     ):
         count = asyncio.run(dispatch_due_schedules(session, slot))
 
@@ -80,11 +80,11 @@ def test_dispatch_queries_only_enabled_triggers():
 
     with (
         patch(
-            "app.services.schedule_dispatch.try_acquire_scheduler_lock",
+            "app.services.schedules.schedule_dispatch.try_acquire_scheduler_lock",
             AsyncMock(return_value=True),
         ),
         patch(
-            "app.services.schedule_dispatch.release_scheduler_lock",
+            "app.services.schedules.schedule_dispatch.release_scheduler_lock",
             AsyncMock(),
         ),
     ):
@@ -112,14 +112,14 @@ def test_dispatch_does_not_defer_when_no_enabled_triggers():
 
     with (
         patch(
-            "app.services.schedule_dispatch.try_acquire_scheduler_lock",
+            "app.services.schedules.schedule_dispatch.try_acquire_scheduler_lock",
             AsyncMock(return_value=True),
         ),
         patch(
-            "app.services.schedule_dispatch.release_scheduler_lock",
+            "app.services.schedules.schedule_dispatch.release_scheduler_lock",
             AsyncMock(),
         ),
-        patch("app.services.schedule_dispatch.defer_scheduled_trigger", AsyncMock(return_value=99)) as defer_mock,
+        patch("app.services.schedules.schedule_dispatch.defer_scheduled_trigger", AsyncMock(return_value=99)) as defer_mock,
     ):
         count = asyncio.run(dispatch_due_schedules(session, slot))
 

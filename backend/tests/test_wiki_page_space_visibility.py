@@ -4,8 +4,8 @@ import asyncio
 from unittest.mock import AsyncMock, patch
 
 from app.models.wiki_models import WikiPage
-from app.services.resource_acl_constants import PERM_READ, RT_WIKI_SPACE
-from app.services.resource_acl_service import wiki_page_visible_via_space
+from app.services.acl.resource_acl_constants import PERM_READ, RT_WIKI_SPACE
+from app.services.acl.resource_acl_service import wiki_page_visible_via_space
 
 
 def test_wiki_page_visible_denied_when_space_not_readable():
@@ -13,9 +13,9 @@ def test_wiki_page_visible_denied_when_space_not_readable():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.acl_content_visibility.scope_applies", return_value=True):
+        with patch("app.services.acl.acl_content_visibility.scope_applies", return_value=True):
             with patch(
-                "app.services.acl_content_visibility.check_resource_access",
+                "app.services.acl.acl_content_visibility.check_resource_access",
                 new_callable=AsyncMock,
                 return_value=False,
             ) as check:
@@ -40,7 +40,7 @@ def test_wiki_page_visible_denied_without_space_id():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.acl_content_visibility.scope_applies", return_value=True):
+        with patch("app.services.acl.acl_content_visibility.scope_applies", return_value=True):
             ok = await wiki_page_visible_via_space(db, {"sub": "alice"}, "alice", page)
             assert ok is False
 

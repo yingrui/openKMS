@@ -1,6 +1,6 @@
 """Tests for Zhipu search response normalization."""
 
-from app.services.connector_search.zhipu import _normalize_zhipu_response
+from app.services.connectors.zhipu import _normalize_zhipu_response
 
 SAMPLE_RAW = {
     "created": 1780888049,

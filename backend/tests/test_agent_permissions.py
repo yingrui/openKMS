@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.permission_resolution import jwt_payload_is_admin, resolve_agent_permission_keys
+from app.services.permissions.permission_resolution import jwt_payload_is_admin, resolve_agent_permission_keys
 
 
 def test_jwt_payload_is_admin():

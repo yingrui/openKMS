@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import invalidate_permission_catalog_cache, require_permission
 from app.database import get_db
 from app.models.security_permission import SecurityPermission
-from app.services.permission_catalog import OPERATION_KEY_HINTS, PERM_CONSOLE_PERMISSIONS, PERM_ALL
-from app.services.permission_default_patterns import default_patterns_for_key
-from app.services.permission_pattern_cache import invalidate_permission_pattern_cache
-from app.services.security_permission_service import (
+from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS, PERM_CONSOLE_PERMISSIONS, PERM_ALL
+from app.services.permissions.permission_default_patterns import default_patterns_for_key
+from app.services.permissions.permission_pattern_cache import invalidate_permission_pattern_cache
+from app.services.permissions.security_permission_service import (
     get_permission_by_key,
     next_sort_order,
     permission_key_in_use,

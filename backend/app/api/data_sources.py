@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_permission
-from app.services.permission_catalog import PERM_CONSOLE_DATA_SOURCES
+from app.services.permissions.permission_catalog import PERM_CONSOLE_DATA_SOURCES
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
@@ -16,9 +16,9 @@ from app.schemas.data_source import (
     DataSourceResponse,
     DataSourceUpdate,
 )
-from app.services.credential_encryption import decrypt, encrypt
-from app.services.data_source_connection import test_data_source_connection_async
-from app.services.neo4j_async import neo4j_delete_all
+from app.services.credentials.credential_encryption import decrypt, encrypt
+from app.services.connectors.data_source_connection import test_data_source_connection_async
+from app.services.ontology.neo4j_async import neo4j_delete_all
 
 router = APIRouter(
     prefix="/data-sources",

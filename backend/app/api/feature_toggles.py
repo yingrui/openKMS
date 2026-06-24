@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_auth, require_permission
-from app.services.permission_catalog import PERM_CONSOLE_FEATURE_TOGGLES
+from app.services.permissions.permission_catalog import PERM_CONSOLE_FEATURE_TOGGLES
 from app.database import get_db
 from app.models.data_source import DataSource
 from app.models.feature_toggle import FeatureToggle

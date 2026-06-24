@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.connector_sync.schedule import (
+from app.services.connectors.schedule import (
     daily_time_to_cron,
     normalize_sync_schedule_in_settings,
     parse_daily_time_from_cron,

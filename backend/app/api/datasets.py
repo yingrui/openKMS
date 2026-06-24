@@ -12,16 +12,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth, require_permission
-from app.services.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
+from app.services.permissions.permission_catalog import PERM_CONSOLE_DATASETS, PERM_ONTOLOGY_READ
 from app.database import get_db
-from app.services.data_scope import bootstrap_owner_acl
-from app.services.data_resource_policy import dataset_visible
-from app.services.dataset_scope import (
+from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.acl.data_resource_policy import dataset_visible
+from app.services.evaluations.dataset_scope import (
     load_dataset_scoped,
     require_dataset_manage,
     require_dataset_write,
 )
-from app.services.resource_acl_constants import PERM_READ, RT_DATASET
+from app.services.acl.resource_acl_constants import PERM_READ, RT_DATASET
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -33,7 +33,7 @@ from app.schemas.dataset import (
     DatasetUpdate,
     TableInfo,
 )
-from app.services.credential_encryption import decrypt
+from app.services.credentials.credential_encryption import decrypt
 
 
 def _pg_engine_for_datasource(ds: DataSource):

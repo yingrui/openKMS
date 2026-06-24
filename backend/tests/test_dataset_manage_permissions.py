@@ -1,7 +1,7 @@
 """Dataset API: manage vs view permission split."""
 
 from app.api import datasets as datasets_api
-from app.services.permission_catalog import (
+from app.services.permissions.permission_catalog import (
     PERM_CONSOLE_DATASETS,
     PERM_ONTOLOGY_READ,
     PERM_ONTOLOGY_WRITE,

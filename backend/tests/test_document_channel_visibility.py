@@ -7,9 +7,9 @@ import pytest
 from fastapi import HTTPException
 
 from app.models.document import Document
-from app.services.document_scope import load_document_scoped
-from app.services.resource_acl_constants import PERM_READ, RT_DOCUMENT_CHANNEL
-from app.services.resource_acl_service import document_visible_via_channel, scoped_document_predicate
+from app.services.documents.document_scope import load_document_scoped
+from app.services.acl.resource_acl_constants import PERM_READ, RT_DOCUMENT_CHANNEL
+from app.services.acl.resource_acl_service import document_visible_via_channel, scoped_document_predicate
 
 
 def test_document_visible_denied_when_channel_not_readable():
@@ -17,9 +17,9 @@ def test_document_visible_denied_when_channel_not_readable():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.acl_content_visibility.scope_applies", return_value=True):
+        with patch("app.services.acl.acl_content_visibility.scope_applies", return_value=True):
             with patch(
-                "app.services.acl_content_visibility.check_resource_access",
+                "app.services.acl.acl_content_visibility.check_resource_access",
                 new_callable=AsyncMock,
                 return_value=False,
             ) as check:
@@ -44,9 +44,9 @@ def test_document_visible_allowed_when_channel_readable():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.acl_content_visibility.scope_applies", return_value=True):
+        with patch("app.services.acl.acl_content_visibility.scope_applies", return_value=True):
             with patch(
-                "app.services.acl_content_visibility.check_resource_access",
+                "app.services.acl.acl_content_visibility.check_resource_access",
                 new_callable=AsyncMock,
                 return_value=True,
             ):
@@ -67,7 +67,7 @@ def test_load_document_scoped_returns_404_when_channel_denied():
 
     async def _run():
         with patch(
-            "app.services.document_scope.document_visible_via_channel",
+            "app.services.documents.document_scope.document_visible_via_channel",
             new_callable=AsyncMock,
             return_value=False,
         ):
@@ -83,7 +83,7 @@ def test_scoped_document_predicate_uses_channel_ids_only():
 
     async def _run():
         with patch(
-            "app.services.acl_content_visibility.readable_document_channel_ids",
+            "app.services.acl.acl_content_visibility.readable_document_channel_ids",
             new_callable=AsyncMock,
             return_value={"ch-a", "ch-b"},
         ):

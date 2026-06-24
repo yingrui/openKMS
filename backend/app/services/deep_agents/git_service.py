@@ -11,7 +11,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
-from app.services.credential_crypto import decrypt_secret
+from app.services.credentials.credential_crypto import decrypt_secret
 from app.services.project_fs import ensure_project_gitignore, project_root, resolve_project_path
 
 

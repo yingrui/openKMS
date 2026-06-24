@@ -116,8 +116,8 @@ def _seed_media_permissions(conn) -> None:
     if "security_permissions" not in sa.inspect(conn).get_table_names():
         return
 
-    from app.services.permission_catalog import OPERATION_KEY_HINTS, PERM_MEDIA_READ, PERM_MEDIA_WRITE
-    from app.services.permission_default_patterns import default_patterns_for_key
+    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS, PERM_MEDIA_READ, PERM_MEDIA_WRITE
+    from app.services.permissions.permission_default_patterns import default_patterns_for_key
 
     hints_by_key = {h.key: h for h in OPERATION_KEY_HINTS}
     for key in (PERM_MEDIA_READ, PERM_MEDIA_WRITE):

@@ -16,17 +16,17 @@ from app.api.auth import jwt_payload_is_admin
 from app.config import settings
 from app.models.document import Document
 from app.models.wiki_models import WikiPage, WikiSpace, WikiSpaceDocument
-from app.services.data_resource_policy import document_passes_scoped_predicate
-from app.services.data_scope import effective_wiki_space_ids, scope_applies
-from app.services.page_index import md_to_tree_from_markdown
-from app.services.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_WIKIS_WRITE
-from app.services.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
-from app.services.wiki_semantic_index import (
+from app.services.acl.data_resource_policy import document_passes_scoped_predicate
+from app.services.acl.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.wiki.page_index import md_to_tree_from_markdown
+from app.services.permissions.permission_catalog import PERM_ALL, PERM_DOCUMENTS_READ, PERM_WIKIS_WRITE
+from app.services.permissions.permission_resolution import resolve_oidc_permission_keys, resolve_user_permission_keys
+from app.services.wiki.wiki_semantic_index import (
     semantic_match_pages,
     wiki_pages_string_match_ids,
     wiki_space_has_any_embedding,
 )
-from app.services.wiki_vault_import import upload_wiki_page_markdown_mirror
+from app.services.wiki.wiki_vault_import import upload_wiki_page_markdown_mirror
 
 
 def _recompute_page_index(page: WikiPage) -> None:

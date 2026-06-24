@@ -18,8 +18,8 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permission_catalog import PERM_ALL
-from app.services.permission_seed import default_permission_seed_rows
+from app.services.permissions.permission_catalog import PERM_ALL
+from app.services.permissions.permission_seed import default_permission_seed_rows
 
 revision: str = "k5l6m7n8o9p1"
 down_revision: Union[str, Sequence[str], None] = "i3j4k5l6m7n8"

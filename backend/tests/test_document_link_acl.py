@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.services.document_scope import require_document_by_id_read
+from app.services.documents.document_scope import require_document_by_id_read
 
 
 def test_require_document_by_id_read_denied_when_channel_inaccessible():
@@ -17,7 +17,7 @@ def test_require_document_by_id_read_denied_when_channel_inaccessible():
 
     async def _run():
         with patch(
-            "app.services.document_scope.document_visible_via_channel",
+            "app.services.documents.document_scope.document_visible_via_channel",
             new_callable=AsyncMock,
             return_value=False,
         ):

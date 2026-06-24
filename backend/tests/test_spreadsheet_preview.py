@@ -5,7 +5,7 @@ import io
 import openpyxl
 import pytest
 
-from app.services.spreadsheet_preview import build_xlsx_preview
+from app.services.documents.spreadsheet_preview import build_xlsx_preview
 
 
 def _sample_xlsx_bytes() -> bytes:

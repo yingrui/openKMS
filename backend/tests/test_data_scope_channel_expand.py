@@ -1,6 +1,6 @@
 """Channel subtree expansion for group data scopes (document + article trees share the same walk)."""
 
-from app.services.data_scope import _expand_article_channel_ids, _expand_channel_ids
+from app.services.acl.data_scope import _expand_article_channel_ids, _expand_channel_ids
 
 
 class _Node:

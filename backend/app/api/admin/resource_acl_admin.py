@@ -17,10 +17,10 @@ from app.api.resource_acl import (
     serialize_resource_acl,
 )
 from app.database import get_db
-from app.services.permission_catalog import PERM_CONSOLE_GROUPS
-from app.services.resource_acl_constants import SECURABLE_RESOURCE_TYPES
-from app.services.resource_acl_issue_detection import ISSUE_TYPES_ORDER
-from app.services.resource_acl_issue_scan import (
+from app.services.permissions.permission_catalog import PERM_CONSOLE_GROUPS
+from app.services.acl.resource_acl_constants import SECURABLE_RESOURCE_TYPES
+from app.services.acl.resource_acl_issue_detection import ISSUE_TYPES_ORDER
+from app.services.acl.resource_acl_issue_scan import (
     aggregate_issue_counts,
     list_issue_page,
     scan_resources_with_issues,

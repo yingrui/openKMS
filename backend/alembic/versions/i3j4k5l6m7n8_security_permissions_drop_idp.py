@@ -15,7 +15,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-from app.services.permission_seed import default_permission_seed_rows
+from app.services.permissions.permission_seed import default_permission_seed_rows
 
 revision: str = "i3j4k5l6m7n8"
 down_revision: Union[str, Sequence[str], None] = "h2i3j4k5l6m7"

@@ -6,12 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-from app.services.context_guard import (
+from app.services.acl.context_guard import (
     CONTEXT_CHANNEL_REGISTRY,
     context_resource_allowed,
     require_channel_in_scope,
 )
-from app.services.resource_acl_constants import (
+from app.services.acl.resource_acl_constants import (
     PERM_READ,
     RT_ARTICLE_CHANNEL,
     RT_DOCUMENT_CHANNEL,
@@ -36,7 +36,7 @@ def test_context_read_delegates_to_resource_allowed():
 
     async def _run():
         with patch(
-            "app.services.context_guard.resource_allowed",
+            "app.services.acl.context_guard.resource_allowed",
             new_callable=AsyncMock,
             return_value=True,
         ) as allowed:

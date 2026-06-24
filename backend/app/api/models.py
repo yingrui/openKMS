@@ -159,7 +159,7 @@ async def delete_model(model_id: str, db: AsyncSession = Depends(get_db)):
 @router.post("/{model_id}/test", response_model=ApiModelTestResponse)
 async def test_model(model_id: str, body: ApiModelTestRequest, db: AsyncSession = Depends(get_db)):
     """Proxy a test request to the model's API endpoint."""
-    from app.services.model_testing import execute_test
+    from app.services.models.model_testing import execute_test
 
     result = await db.execute(
         select(ApiModel).options(selectinload(ApiModel.provider_rel)).where(ApiModel.id == model_id)

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, Field
 
 from app.api.auth import require_internal_client
-from app.services import process_heartbeat_registry as registry
+import app.services.heartbeat.process_heartbeat_registry as registry
 
 router = APIRouter(
     prefix="/internal-api",

@@ -45,7 +45,7 @@ class DocumentListItemResponse(BaseModel):
         if isinstance(data, dict):
             return data
 
-        from app.services.document_lifecycle import document_effective_for_rag
+        from app.services.documents.document_lifecycle import document_effective_for_rag
 
         return {
             "id": data.id,
@@ -98,7 +98,7 @@ class DocumentResponse(BaseModel):
     def _map_doc_metadata(cls, data: Any) -> Any:
         """Map Document.doc_metadata to metadata (SQLAlchemy reserves 'metadata')."""
         if hasattr(data, "doc_metadata"):
-            from app.services.document_lifecycle import document_effective_for_rag
+            from app.services.documents.document_lifecycle import document_effective_for_rag
 
             return {
                 "id": data.id,

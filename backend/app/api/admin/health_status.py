@@ -23,9 +23,9 @@ from app.schemas.health_status import (
     HealthStatusKind,
     ProcessInstanceHealth,
 )
-from app.services import process_heartbeat_registry as heartbeat_registry
-from app.services.data_source_connection import test_data_source_connection
-from app.services.permission_catalog import PERM_CONSOLE_ACCESS, PERM_CONSOLE_DATA_SOURCES
+import app.services.heartbeat.process_heartbeat_registry as heartbeat_registry
+from app.services.connectors.data_source_connection import test_data_source_connection
+from app.services.permissions.permission_catalog import PERM_CONSOLE_ACCESS, PERM_CONSOLE_DATA_SOURCES
 
 router = APIRouter(
     prefix="/admin",

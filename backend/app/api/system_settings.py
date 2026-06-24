@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import require_permission
 from app.database import get_db
 from app.models.system_settings import SystemSettings as SystemSettingsRow
-from app.services.permission_catalog import PERM_CONSOLE_SETTINGS
+from app.services.permissions.permission_catalog import PERM_CONSOLE_SETTINGS
 
 # Unauthenticated reads live under /api/public/<resource> (see strict_permission_patterns).
 public_router = APIRouter(prefix="/public", tags=["public"])

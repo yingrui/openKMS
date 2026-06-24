@@ -13,9 +13,9 @@ from app.models.document_channel import DocumentChannel
 from app.models.job_run_worker_log import JobRunWorkerLog
 from app.models.pipeline import Pipeline
 from app.schemas.job import JobCreate, JobEvent, JobListResponse, JobResponse
-from app.services.job_scope import job_args_allowed, require_job_args_access
-from app.services.document_scope import load_document_scoped
-from app.services.resource_acl_constants import PERM_WRITE
+from app.services.jobs.job_scope import job_args_allowed, require_job_args_access
+from app.services.documents.document_scope import load_document_scoped
+from app.services.acl.resource_acl_constants import PERM_WRITE
 
 logger = logging.getLogger(__name__)
 
@@ -408,7 +408,7 @@ async def retry_job(job_id: int, request: Request, db: AsyncSession = Depends(ge
         if not trigger_id or not isinstance(trigger_id, str):
             raise HTTPException(status_code=400, detail="Job has no trigger_id in args")
         from app.models.scheduled_trigger import PROJECT_AGENT_SCHEDULE_KINDS, ScheduledTrigger
-        from app.services.schedule_handlers import defer_scheduled_trigger
+        from app.services.schedules.schedule_handlers import defer_scheduled_trigger
 
         trigger = await db.get(ScheduledTrigger, trigger_id.strip())
         if not trigger or trigger.kind not in PROJECT_AGENT_SCHEDULE_KINDS:
@@ -527,7 +527,7 @@ async def mark_job_failed(job_id: int, request: Request, db: AsyncSession = Depe
     args = row.args or {}
     document_id = args.get("document_id")
     if document_id:
-        from app.services.document_processing_status import sync_document_processing_status_from_jobs
+        from app.services.documents.document_processing_status import sync_document_processing_status_from_jobs
 
         await sync_document_processing_status_from_jobs(db, document_id)
     await db.commit()

@@ -28,16 +28,16 @@ from app.schemas.agent import AgentConversationResponse, AgentMessageListRespons
 from app.schemas.project import ProjectConversationCreate, ProjectConversationPatch, ProjectMessageCreate, ProjectMessageResume
 from app.services.agent.llm import resolve_agent_llm_config
 from app.services.agent.wiki_runner import WIKI_TOOL_TRANSCRIPTS_KEY
-from app.services.conversation_title import suggest_conversation_title
-from app.services.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
-from app.services.agent_skill_install import ensure_skills_materialized
+from app.services.agent.conversation_title import suggest_conversation_title
+from app.services.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
+from app.services.agent.agent_skill_install import ensure_skills_materialized
 from app.services.deep_agents.checkpointer import delete_conversation_thread
 from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
 from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
-from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.project_fs import read_lessons_json, write_lessons_json
-from app.services.session_review import merge_lessons, review_session
+from app.services.agent.session_review import merge_lessons, review_session
 from app.services.agent.improvement_runner import iter_improvement_stream_parts
 
 router = APIRouter()

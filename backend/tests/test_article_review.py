@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.article_review import (
+from app.services.articles.article_review import (
     ArticleReviewLLMOutput,
     ReviewCriterionScore,
     _build_review_prompt,

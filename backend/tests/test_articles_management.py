@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.article_service import collect_channel_and_descendants, rewrite_markdown_links
-from app.services.article_storage import (
+from app.services.articles.article_service import collect_channel_and_descendants, rewrite_markdown_links
+from app.services.articles.article_storage import (
     article_bundle_prefix,
     article_object_key,
     is_allowed_article_file_path,

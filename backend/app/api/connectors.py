@@ -32,7 +32,7 @@ from app.schemas.connector import (
     ConnectorSyncTriggerResponse,
     ConnectorUpdate,
 )
-from app.services.connector_catalog import (
+from app.services.connectors.connector_catalog import (
     CATEGORY_SEARCH_TOOL,
     CATEGORY_SYNC,
     get_kind_spec,
@@ -47,19 +47,19 @@ from app.services.connector_catalog import (
     validate_kind,
     validate_secrets_for_kind,
 )
-from app.services.connector_search.run import run_connector_search
-from app.services.connector_sync.provision import (
+from app.services.connectors.run import run_connector_search
+from app.services.connectors.provision import (
     provision_dataset_for_slot,
     validate_connector_outputs,
 )
-from app.services.scheduled_triggers import (
+from app.services.schedules.scheduled_triggers import (
     delete_connector_sync_trigger,
     get_trigger_for_connector,
     merge_sync_schedule_response,
     upsert_connector_sync_trigger,
 )
-from app.services.connector_sync.sync_range import parse_sync_date_range
-from app.services.permission_catalog import (
+from app.services.connectors.sync_range import parse_sync_date_range
+from app.services.permissions.permission_catalog import (
     PERM_CONNECTORS_READ,
     PERM_CONNECTORS_WRITE,
     PERM_CONSOLE_DATASETS,
@@ -317,7 +317,7 @@ async def trigger_connector_sync(
 
     from app.jobs.defer import defer_task
     from app.jobs.tasks import run_connector_sync
-    from app.services.schedule_handlers import CONNECTOR_SYNC_LOCK_PREFIX
+    from app.services.schedules.schedule_handlers import CONNECTOR_SYNC_LOCK_PREFIX
 
     defer_kwargs: dict[str, str] = {"connector_id": row.id}
     if req.start_date is not None and req.end_date is not None:
@@ -365,8 +365,8 @@ async def search_connector(connector_id: str, body: ConnectorSearchRequest, db: 
 )
 async def probe_connector(connector_id: str, body: ConnectorProbeRequest, db: AsyncSession = Depends(get_db)):
     """Call a live Tushare API from the connector detail Probe tab (no dataset writes)."""
-    from app.services.connector_sync.tushare.client import TushareRateLimitError
-    from app.services.connector_sync.tushare.probe import run_tushare_probe
+    from app.services.connectors.tushare.client import TushareRateLimitError
+    from app.services.connectors.tushare.probe import run_tushare_probe
 
     row = await db.get(Connector, connector_id)
     if not row:

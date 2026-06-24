@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.services.connector_sync.sync_range import parse_sync_date_range
+from app.services.connectors.sync_range import parse_sync_date_range
 
 
 def test_parse_omitted_dates():

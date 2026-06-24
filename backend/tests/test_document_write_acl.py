@@ -7,8 +7,8 @@ import pytest
 from fastapi import HTTPException
 
 from app.models.document import Document
-from app.services.document_scope import load_document_scoped, require_document_write
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
+from app.services.documents.document_scope import load_document_scoped, require_document_write
+from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_DOCUMENT_CHANNEL
 
 
 def test_null_channel_id_denied_on_read():
@@ -16,9 +16,9 @@ def test_null_channel_id_denied_on_read():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.resource_acl_service.scope_applies", return_value=True):
+        with patch("app.services.acl.resource_acl_service.scope_applies", return_value=True):
             ok = await __import__(
-                "app.services.resource_acl_service", fromlist=["document_visible_via_channel"]
+                "app.services.acl.resource_acl_service", fromlist=["document_visible_via_channel"]
             ).document_visible_via_channel(db, {"sub": "alice"}, "alice", doc)
             assert ok is False
 
@@ -32,9 +32,9 @@ def test_require_document_write_denied_without_channel_write():
     db = AsyncMock()
 
     async def _run():
-        with patch("app.services.document_scope.scope_applies", return_value=True):
+        with patch("app.services.documents.document_scope.scope_applies", return_value=True):
             with patch(
-                "app.services.document_scope.channel_allowed_for_document_upload",
+                "app.services.documents.document_scope.channel_allowed_for_document_upload",
                 new_callable=AsyncMock,
                 return_value=False,
             ):
@@ -54,7 +54,7 @@ def test_require_document_write_allows_local_cli_without_channel_acl():
 
     async def _run():
         with patch(
-            "app.services.document_scope.channel_allowed_for_document_upload",
+            "app.services.documents.document_scope.channel_allowed_for_document_upload",
             new_callable=AsyncMock,
             return_value=False,
         ) as upload_check:
@@ -74,7 +74,7 @@ def test_load_document_scoped_write_checks_write_bit():
 
     async def _run():
         with patch(
-            "app.services.document_scope.require_document_write",
+            "app.services.documents.document_scope.require_document_write",
             new_callable=AsyncMock,
             return_value=doc,
         ) as write_check:
@@ -83,7 +83,7 @@ def test_load_document_scoped_write_checks_write_bit():
             write_check.assert_awaited_once()
 
         with patch(
-            "app.services.document_scope.require_document_read",
+            "app.services.documents.document_scope.require_document_read",
             new_callable=AsyncMock,
             return_value=doc,
         ) as read_check:

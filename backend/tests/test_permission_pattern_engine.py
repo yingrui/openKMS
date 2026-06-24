@@ -1,7 +1,7 @@
 """Tests for permission_pattern_engine."""
 
 from app.models.security_permission import SecurityPermission
-from app.services.permission_pattern_engine import (
+from app.services.permissions.permission_pattern_engine import (
     compile_rules_from_rows,
     frontend_path_matches_pattern,
     parse_backend_pattern,

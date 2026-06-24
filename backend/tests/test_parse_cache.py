@@ -5,7 +5,7 @@ from app.jobs.tasks import (
     _needs_metadata_extraction_after_parse_cache,
     _s3_parse_cache_usable,
 )
-from app.services.pipeline_metadata_state import document_metadata_needs_extraction
+from app.services.documents.pipeline_metadata_state import document_metadata_needs_extraction
 
 SCHEMA = [{"key": "abstract", "type": "string"}, {"key": "tags", "type": "array"}]
 

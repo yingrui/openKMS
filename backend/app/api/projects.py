@@ -28,15 +28,15 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
-from app.services.agent_skill_install import (
+from app.services.agent.agent_skill_install import (
     install_default_skills_for_project,
     install_skill_to_project,
     uninstall_skill_from_project,
 )
-from app.services.agent_skills_registry import validate_skill_id
+from app.services.agent.agent_skills_registry import validate_skill_id
 from app.services.deep_agents import git_service
 from app.services.feature_toggles import require_agents_feature
-from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.project_fs import (
     delete_path,
     list_dir,

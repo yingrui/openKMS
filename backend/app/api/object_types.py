@@ -8,16 +8,16 @@ from sqlalchemy import String, cast, exists, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
-from app.services.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
+from app.services.permissions.permission_catalog import PERM_CONSOLE_OBJECT_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count
 from app.database import get_db
-from app.services.data_resource_policy import object_type_visible
-from app.services.data_scope import bootstrap_owner_acl
-from app.services.ontology_type_scope import require_object_type_permission
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
+from app.services.acl.data_resource_policy import object_type_visible
+from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.ontology.ontology_type_scope import require_object_type_permission
+from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_OBJECT_TYPE
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
-from app.services.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
+from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType
 from app.schemas.ontology import (

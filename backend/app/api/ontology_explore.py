@@ -13,8 +13,8 @@ from app.models.data_source import DataSource
 from app.models.link_type import LinkType
 from app.models.object_type import ObjectType
 from app.services.agent.llm import resolve_agent_llm_config
-from app.services.credential_encryption import decrypt
-from app.services.text_to_cypher import (
+from app.services.credentials.credential_encryption import decrypt
+from app.services.ontology.text_to_cypher import (
     generate_cypher_from_question,
     summarize_answer,
 )

@@ -18,14 +18,14 @@ from app.schemas.article_channel import (
     ArticleChannelTreeListResponse,
     ArticleChannelUpdate,
 )
-from app.services.channel_tree_list import paginate_channels_for_tree
-from app.services.channel_scope import (
+from app.services.channels.channel_tree_list import paginate_channels_for_tree
+from app.services.channels.channel_scope import (
     require_article_channel_in_scope,
     require_article_channel_write,
     scoped_article_channel_ids,
 )
-from app.services.data_scope import bootstrap_owner_acl
-from app.services.resource_acl_constants import RT_ARTICLE_CHANNEL
+from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.acl.resource_acl_constants import RT_ARTICLE_CHANNEL
 
 router = APIRouter(prefix="/article-channels", tags=["article-channels"], dependencies=[Depends(require_auth)])
 

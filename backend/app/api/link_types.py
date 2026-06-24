@@ -9,17 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
 from app.api.object_types import _neo4j_safe_label, _resolve_neo4j_id_column_for_row
-from app.services.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
+from app.services.permissions.permission_catalog import PERM_CONSOLE_LINK_TYPES, PERM_ONTOLOGY_WRITE
 from app.api.datasets import fetch_dataset_rows, get_dataset_row_count, get_dataset_row_count_where_not_null
 from app.database import get_db
-from app.services.data_resource_policy import link_type_visible
-from app.services.data_scope import bootstrap_owner_acl
-from app.services.ontology_type_scope import require_link_type_permission
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_TYPE
+from app.services.acl.data_resource_policy import link_type_visible
+from app.services.acl.data_scope import bootstrap_owner_acl
+from app.services.ontology.ontology_type_scope import require_link_type_permission
+from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_LINK_TYPE
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.models.link_instance import LinkInstance
-from app.services.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
+from app.services.ontology.neo4j_async import open_neo4j_driver, run_with_neo4j_driver
 from app.models.link_type import CARDINALITY_CHOICES, LinkType
 from app.models.object_instance import ObjectInstance
 from app.models.object_type import ObjectType

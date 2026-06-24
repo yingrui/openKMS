@@ -12,7 +12,7 @@ import uuid
 import sqlalchemy as sa
 from alembic import op
 
-from app.services.permission_catalog import ADMIN_ROLE_NAME, PERM_ALL
+from app.services.permissions.permission_catalog import ADMIN_ROLE_NAME, PERM_ALL
 
 revision: str = "e8f0a1b2c3d4"
 down_revision: Union[str, Sequence[str], None] = ("b13ff4a1796a", "a1b2c3d4e5f6")

@@ -3,7 +3,7 @@
 import asyncio
 
 from app.config import settings
-from app.services.acl_identity import (
+from app.services.acl.acl_identity import (
     _add_owner_candidate,
     _pick_richer_owner_label,
     normalize_owner_grantee_id,
@@ -12,8 +12,8 @@ from app.services.acl_identity import (
     subject_aliases,
     user_grant_matches,
 )
-from app.services.resource_acl_constants import PERM_MANAGE, PERM_READ, PERM_WRITE, perm_satisfies, parse_perm_string
-from app.services.resource_acl_service import _authenticated_bits_from_chain
+from app.services.acl.resource_acl_constants import PERM_MANAGE, PERM_READ, PERM_WRITE, perm_satisfies, parse_perm_string
+from app.services.acl.resource_acl_service import _authenticated_bits_from_chain
 
 
 def test_perm_satisfies_manage_implies_all():
@@ -126,7 +126,7 @@ def test_resolve_subject_display_maps_oidc_sub_via_user_row(monkeypatch):
     db.execute = fake_execute
     monkeypatch.setattr(settings, "auth_mode", "oidc")
     monkeypatch.setattr(
-        "app.services.oidc_identity_service.display_label_for_oidc_sub",
+        "app.services.users.oidc_identity_service.display_label_for_oidc_sub",
         fake_directory_label,
     )
 
@@ -191,7 +191,7 @@ def test_normalize_user_grantee_id_maps_local_user_id_to_oidc_sub(monkeypatch):
             return oidc_sub
 
         monkeypatch.setattr(
-            "app.services.acl_identity._oidc_sub_for_user_row",
+            "app.services.acl.acl_identity._oidc_sub_for_user_row",
             fake_oidc_sub,
         )
         as_admin = await normalize_user_grantee_id(db, local_id, None)
@@ -214,7 +214,7 @@ def test_normalize_owner_grantee_id_keeps_unresolved_username(monkeypatch):
         return raw
 
     monkeypatch.setattr(
-        "app.services.acl_identity.normalize_user_grantee_id",
+        "app.services.acl.acl_identity.normalize_user_grantee_id",
         fake_normalize,
     )
 
@@ -236,7 +236,7 @@ def test_normalize_owner_grantee_id_accepts_uuid(monkeypatch):
 
     monkeypatch.setattr(settings, "auth_mode", "oidc")
     monkeypatch.setattr(
-        "app.services.acl_identity.normalize_user_grantee_id",
+        "app.services.acl.acl_identity.normalize_user_grantee_id",
         fake_normalize,
     )
 
@@ -250,7 +250,7 @@ def test_normalize_owner_grantee_id_accepts_uuid(monkeypatch):
 def test_canonicalize_group_member_subjects_dedupes(monkeypatch):
     from unittest.mock import AsyncMock
 
-    from app.services.acl_identity import canonicalize_group_member_subjects
+    from app.services.acl.acl_identity import canonicalize_group_member_subjects
 
     oidc_sub = "11dcdd51-b251-4a69-9288-05ab2952be38"
     db = AsyncMock()
@@ -261,7 +261,7 @@ def test_canonicalize_group_member_subjects_dedupes(monkeypatch):
         return raw
 
     monkeypatch.setattr(
-        "app.services.acl_identity.normalize_user_grantee_id",
+        "app.services.acl.acl_identity.normalize_user_grantee_id",
         fake_normalize,
     )
 
@@ -285,7 +285,7 @@ def test_add_owner_candidate_merges_aliases_to_canonical(monkeypatch):
         return raw
 
     monkeypatch.setattr(
-        "app.services.acl_identity.normalize_user_grantee_id",
+        "app.services.acl.acl_identity.normalize_user_grantee_id",
         fake_normalize,
     )
 

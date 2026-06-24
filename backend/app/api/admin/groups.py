@@ -12,14 +12,14 @@ from app.database import get_db
 from app.models.access_group import AccessGroup, AccessGroupMember
 from app.models.resource_acl import ResourceAclEntry
 from app.models.user import User
-from app.services.permission_catalog import PERM_CONSOLE_GROUPS
-from app.services.resource_acl_admin_helpers import (
+from app.services.permissions.permission_catalog import PERM_CONSOLE_GROUPS
+from app.services.acl.resource_acl_admin_helpers import (
     resolve_resource_label,
     resource_type_label,
     share_path_for,
 )
-from app.services.resource_acl_constants import GRANTEE_GROUP, perm_label
-from app.services.resource_acl_service import canonicalize_group_member_subjects
+from app.services.acl.resource_acl_constants import GRANTEE_GROUP, perm_label
+from app.services.acl.resource_acl_service import canonicalize_group_member_subjects
 
 router = APIRouter(prefix="/admin/groups", tags=["admin-access-groups"])
 

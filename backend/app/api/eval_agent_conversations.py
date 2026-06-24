@@ -31,7 +31,7 @@ from app.models.evaluation import Evaluation
 from app.models.knowledge_base import KnowledgeBase
 from app.schemas.agent import AgentConversationResponse, AgentMessageListResponse, AgentMessagePostResponse
 from app.services.agent.wiki_runner import new_id
-from app.services.data_resource_policy import knowledge_base_visible
+from app.services.acl.data_resource_policy import knowledge_base_visible
 
 router = APIRouter(tags=["evaluations"])
 

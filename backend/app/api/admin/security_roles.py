@@ -12,13 +12,13 @@ from app.api.auth import require_permission
 from app.config import settings
 from app.database import get_db
 from app.models.security_role import SecurityRole, SecurityRolePermission
-from app.services.permission_catalog import (
+from app.services.permissions.permission_catalog import (
     ADMIN_ROLE_NAME,
     MEMBER_ROLE_NAME,
     PERM_ALL,
     PERM_CONSOLE_PERMISSIONS,
 )
-from app.services.security_permission_service import all_defined_permission_keys
+from app.services.permissions.security_permission_service import all_defined_permission_keys
 
 router = APIRouter(prefix="/admin/security-roles", tags=["admin-security-roles"])
 

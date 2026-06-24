@@ -20,8 +20,8 @@ from app.schemas.agent_skill import (
     AgentSkillPatch,
     AgentSkillVersionOut,
 )
-from app.services.agent_skill_hash import compute_content_hash
-from app.services.agent_skills_registry import (
+from app.services.agent.agent_skill_hash import compute_content_hash
+from app.services.agent.agent_skills_registry import (
     extract_folder_upload,
     extract_zip_upload,
     skill_dir,
@@ -29,7 +29,7 @@ from app.services.agent_skills_registry import (
     version_dir,
 )
 from app.services.feature_toggles import require_agents_feature
-from app.services.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 
 router = APIRouter(
     prefix="/agent-skills",
@@ -115,7 +115,7 @@ async def upload_agent_skill(
         else:
             raise HTTPException(status_code=400, detail="Provide archive (zip) or files[]")
 
-        from app.services.agent_skills_registry import validate_skill_tree
+        from app.services.agent.agent_skills_registry import validate_skill_tree
 
         validate_skill_tree(staging)
         content_hash = compute_content_hash(staging)

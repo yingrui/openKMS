@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.connector_catalog import (
+from app.services.connectors.connector_catalog import (
     CATEGORY_SEARCH_TOOL,
     CATEGORY_SYNC,
     merge_secrets_encrypted,
@@ -112,7 +112,7 @@ def test_tushare_outputs_requires_all_slots_when_any_set():
 
 
 def test_validate_sync_run_outputs_requires_all_slots():
-    from app.services.connector_catalog import validate_sync_run_outputs
+    from app.services.connectors.connector_catalog import validate_sync_run_outputs
 
     with pytest.raises(ValueError, match="Configure all output datasets"):
         validate_sync_run_outputs("tushare", {})
@@ -137,7 +137,7 @@ def test_validate_sync_run_outputs_requires_all_slots():
 
 
 def test_validate_sync_schedule_outputs_requires_datasets_when_enabled():
-    from app.services.connector_catalog import validate_sync_schedule_outputs
+    from app.services.connectors.connector_catalog import validate_sync_schedule_outputs
 
     with pytest.raises(ValueError, match="Scheduled sync requires"):
         validate_sync_schedule_outputs(

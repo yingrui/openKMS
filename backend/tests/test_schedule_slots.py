@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from app.services.schedule_slots import floor_to_minute, is_cron_due_for_slot
+from app.services.schedules.schedule_slots import floor_to_minute, is_cron_due_for_slot
 
 
 def test_floor_to_minute_strips_seconds():

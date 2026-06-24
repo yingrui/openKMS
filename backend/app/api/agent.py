@@ -27,8 +27,8 @@ from app.schemas.agent import (
     AgentMessageListResponse,
     AgentMessagePostResponse,
 )
-from app.services.data_scope import effective_wiki_space_ids, scope_applies
-from app.services.permission_catalog import PERM_WIKIS_READ
+from app.services.acl.data_scope import effective_wiki_space_ids, scope_applies
+from app.services.permissions.permission_catalog import PERM_WIKIS_READ
 from app.services.agent.assistant_stream_parts import (
     WIKI_ASSISTANT_STREAM_PARTS_KEY,
     AssistantStreamPartsBuilder,

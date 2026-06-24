@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from app.constants import DocumentStatus
-from app.services.document_processing_status import derive_document_processing_status
+from app.services.documents.document_processing_status import derive_document_processing_status
 
 
 @pytest.mark.parametrize(

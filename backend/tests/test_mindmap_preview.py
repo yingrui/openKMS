@@ -6,7 +6,7 @@ import zipfile
 
 import pytest
 
-from app.services.mindmap_preview import MindmapPreviewError, build_xmind_preview
+from app.services.documents.mindmap_preview import MindmapPreviewError, build_xmind_preview
 
 
 def _xmind_bytes(payload: dict | list) -> bytes:

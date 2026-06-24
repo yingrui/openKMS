@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.services.connector_sync.tushare.probe import (
+from app.services.connectors.tushare.probe import (
     _build_daily_params,
     _normalize_optional_date,
     run_tushare_probe,
@@ -66,11 +66,11 @@ def test_run_tushare_probe_daily():
     async def _run():
         with (
             patch(
-                "app.services.connector_sync.tushare.probe.decrypt_secrets_blob",
+                "app.services.connectors.tushare.probe.decrypt_secrets_blob",
                 return_value={"TUSHARE_TOKEN": "token"},
             ),
             patch(
-                "app.services.connector_sync.tushare.probe.TushareClient.query",
+                "app.services.connectors.tushare.probe.TushareClient.query",
                 new_callable=AsyncMock,
                 return_value=rows,
             ) as mock_query,

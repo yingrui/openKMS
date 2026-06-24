@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.services.agent_skill_hash import compute_content_hash
+from app.services.agent.agent_skill_hash import compute_content_hash
 
 
 def test_content_hash_stable_by_path_order(tmp_path: Path):

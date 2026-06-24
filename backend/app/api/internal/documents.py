@@ -21,7 +21,7 @@ from app.schemas.document import (
     MarkdownUpdateBody,
     MetadataUpdateBody,
 )
-from app.services.pipeline_metadata_state import document_metadata_needs_extraction
+from app.services.documents.pipeline_metadata_state import document_metadata_needs_extraction
 
 router = APIRouter(
     prefix="/internal-api/documents",

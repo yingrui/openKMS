@@ -44,14 +44,14 @@ from app.schemas.article_review import (
     ArticleReviewRequest,
     ArticleReviewResponse,
 )
-from app.services.article_scope import (
+from app.services.articles.article_scope import (
     article_list_predicate,
     load_article_scoped,
     require_article_read,
 )
-from app.services.channel_list_filter import channel_subtree_ids_for_list
-from app.services.channel_scope import require_article_channel_write
-from app.services.article_service import (
+from app.services.channels.channel_list_filter import channel_subtree_ids_for_list
+from app.services.channels.channel_scope import require_article_channel_write
+from app.services.articles.article_service import (
     ArticleData,
     ImportAttachment,
     ImportImage,
@@ -64,9 +64,9 @@ from app.services.article_service import (
     store_article_image,
     update_article,
 )
-from app.services.article_storage import article_object_key, is_allowed_article_file_path
-from app.services.data_scope import scope_applies
-from app.services.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
+from app.services.articles.article_storage import article_object_key, is_allowed_article_file_path
+from app.services.acl.data_scope import scope_applies
+from app.services.acl.resource_acl_constants import PERM_READ, PERM_WRITE, RT_ARTICLE_CHANNEL
 from app.services.storage import delete_object, get_redirect_url, object_exists
 from app.config import settings
 
@@ -705,7 +705,7 @@ async def review_article(
 ):
     """Run an LLM content review using the article channel's review configuration."""
     from app.models.api_model import ApiModel
-    from app.services.article_review import run_article_review
+    from app.services.articles.article_review import run_article_review
     from sqlalchemy.orm import selectinload
 
     channel = await db.get(ArticleChannel, row.channel_id)

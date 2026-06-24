@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from app.services.global_search import allowed_types_from_permissions, parse_types_param
-from app.services.permission_catalog import (
+from app.services.global_search.global_search import allowed_types_from_permissions, parse_types_param
+from app.services.permissions.permission_catalog import (
     PERM_ALL,
     PERM_ARTICLES_READ,
     PERM_DOCUMENTS_READ,
     PERM_KB_READ,
     PERM_WIKIS_READ,
 )
-from app.services.permission_pattern_engine import compile_rules_from_rows, resolve_required_permission_keys
+from app.services.permissions.permission_pattern_engine import compile_rules_from_rows, resolve_required_permission_keys
 from app.models.security_permission import SecurityPermission
 
 

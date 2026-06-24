@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from app.services.faq_generation import polish_faq_answer
+from app.services.knowledge_bases.faq_generation import polish_faq_answer
 
 
 def test_polish_faq_answer_requires_both_fields():

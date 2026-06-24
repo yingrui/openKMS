@@ -144,8 +144,8 @@ def upgrade() -> None:
     if "security_permissions" not in insp.get_table_names():
         return
 
-    from app.services.permission_catalog import OPERATION_KEY_HINTS
-    from app.services.permission_default_patterns import default_patterns_for_key
+    from app.services.permissions.permission_catalog import OPERATION_KEY_HINTS
+    from app.services.permissions.permission_default_patterns import default_patterns_for_key
 
     for hint in OPERATION_KEY_HINTS:
         fe, be = default_patterns_for_key(hint.key)

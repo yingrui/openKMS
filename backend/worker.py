@@ -37,7 +37,7 @@ def _worker_instance_id() -> str:
 
 
 async def _heartbeat_loop(shutdown: asyncio.Event, instance_id: str) -> None:
-    from app.services.process_heartbeat_client import report_process_heartbeat
+    from app.services.heartbeat.process_heartbeat_client import report_process_heartbeat
 
     while not shutdown.is_set():
         await report_process_heartbeat("worker", instance_id)

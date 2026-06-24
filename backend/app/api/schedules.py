@@ -19,11 +19,11 @@ from app.models.scheduled_trigger import (
     ScheduledTrigger,
 )
 from app.schemas.schedule import ScheduleListResponse, ScheduleOut, SchedulePatch, ScheduleRunNowResponse
-from app.services.connector_catalog import CATEGORY_SYNC, get_kind_spec, normalize_and_validate_settings
-from app.services.connector_sync.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
-from app.services.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
-from app.services.project_agent_schedule import normalize_agent_schedule_config
-from app.services.scheduled_triggers import upsert_connector_sync_trigger
+from app.services.connectors.connector_catalog import CATEGORY_SYNC, get_kind_spec, normalize_and_validate_settings
+from app.services.connectors.schedule import compute_next_run_at, validate_cron_expression, validate_timezone
+from app.services.permissions.permission_catalog import PERM_CONNECTORS_READ, PERM_CONNECTORS_WRITE, PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
+from app.services.schedules.project_agent_schedule import normalize_agent_schedule_config
+from app.services.schedules.scheduled_triggers import upsert_connector_sync_trigger
 
 router = APIRouter(
     prefix="/schedules",
@@ -177,7 +177,7 @@ async def run_schedule_now(schedule_id: str, db: AsyncSession = Depends(get_db))
             raise HTTPException(status_code=400, detail="Connector kind does not support sync")
         if not connector.enabled:
             raise HTTPException(status_code=400, detail="Connector is disabled")
-        from app.services.connector_catalog import validate_sync_run_outputs
+        from app.services.connectors.connector_catalog import validate_sync_run_outputs
 
         try:
             validate_sync_run_outputs(connector.kind, connector.outputs)
@@ -192,7 +192,7 @@ async def run_schedule_now(schedule_id: str, db: AsyncSession = Depends(get_db))
     else:
         raise HTTPException(status_code=400, detail="Unsupported schedule kind")
 
-    from app.services.schedule_handlers import defer_scheduled_trigger
+    from app.services.schedules.schedule_handlers import defer_scheduled_trigger
 
     job_id = await defer_scheduled_trigger(row)
     row.last_run_at = datetime.now(timezone.utc)

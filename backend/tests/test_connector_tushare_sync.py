@@ -6,16 +6,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.connector_sync.pg import date_to_ymd, ymd_to_date
-from app.services.connector_sync.sync_range import SyncDateRange
-from app.services.connector_sync.tushare.client import (
+from app.services.connectors.pg import date_to_ymd, ymd_to_date
+from app.services.connectors.sync_range import SyncDateRange
+from app.services.connectors.tushare.client import (
     DEFER_RETRY_AFTER_SECONDS,
     TushareClient,
     TushareRateLimitError,
     is_tushare_rate_limit_error,
     parse_tushare_rate_limit_wait_seconds,
 )
-from app.services.connector_sync.tushare.sync import (
+from app.services.connectors.tushare.sync import (
     _resolve_tushare_windows,
     _sync_settings,
     sync_stock_basic,
@@ -91,11 +91,11 @@ def test_sync_stock_basic_single_api_call():
     async def _run():
         with (
             patch(
-                "app.services.connector_sync.tushare.sync._load_output_dataset",
+                "app.services.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, data_source),
             ),
-            patch("app.services.connector_sync.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_stock_basic(client, MagicMock(), connector, engine=engine)
         assert written == 1
@@ -136,17 +136,17 @@ def test_sync_daily_basic_one_api_call_per_trade_date():
     async def _run():
         with (
             patch(
-                "app.services.connector_sync.tushare.sync._load_output_dataset",
+                "app.services.connectors.tushare.sync._load_output_dataset",
                 new_callable=AsyncMock,
                 return_value=(dataset, data_source),
             ),
             patch(
-                "app.services.connector_sync.tushare.sync._resolve_open_trade_dates",
+                "app.services.connectors.tushare.sync._resolve_open_trade_dates",
                 new_callable=AsyncMock,
                 return_value=["20260610"],
             ),
-            patch("app.services.connector_sync.tushare.sync.pg_engine_for_datasource", return_value=engine),
-            patch("app.services.connector_sync.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
+            patch("app.services.connectors.tushare.sync.pg_engine_for_datasource", return_value=engine),
+            patch("app.services.connectors.tushare.sync.upsert_rows", return_value=1) as mock_upsert,
         ):
             written = await sync_daily_basic(
                 client,

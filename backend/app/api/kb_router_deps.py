@@ -10,11 +10,11 @@ from app.database import get_db
 from app.models.knowledge_base import KnowledgeBase
 from app.models.kb_wiki_space import KBWikiSpace
 from app.models.wiki_models import WikiPage
-from app.services.kb_scope import (
+from app.services.knowledge_bases.kb_scope import (
     load_knowledge_base_scoped,
     require_knowledge_base_write,
 )
-from app.services.resource_acl_constants import PERM_READ
+from app.services.acl.resource_acl_constants import PERM_READ
 
 
 async def _get_kb_or_404(
