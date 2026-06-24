@@ -16,8 +16,8 @@ import {
   updateProjectConversation,
 } from '../../data/projectsApi';
 
-const TAIL_LIMIT = 50;
-const PAGE_SIZE = 50;
+const TAIL_LIMIT = 10;
+const PAGE_SIZE = 10;
 
 function mapItems(items: { id: string; role: string; content: string; created_at: string; tool_calls?: unknown }[]): ChatMessage[] {
   return items.map((m) => ({
