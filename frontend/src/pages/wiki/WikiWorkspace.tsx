@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Network, Save, Settings, X } from 'lucide-react';
 import { WikiPagesTree } from '../../components/wiki/WikiPagesTree';
-import { fetchAllWikiPages, fetchWikiSemanticPageMatches, fetchWikiSpace } from '../../data/wikiSpacesApi';
+import { fetchAllWikiPages, fetchWikiSemanticPageMatches } from '../../data/wikiSpacesApi';
 import type { WikiPageListItem } from '../../data/wikiSpacesApi';
 import { WikiSpaceGraphPanel } from './WikiSpaceGraph';
 import { WikiPagePanel, type WikiPagePanelHandle } from './WikiPagePanel';
@@ -12,24 +12,6 @@ import './WikiPageEditor.scss';
 import './WikiWorkspace.scss';
 
 const GRAPH_KEY = 'graph';
-
-const COPILOT_WIDTH_MIN = 400;
-const COPILOT_WIDTH_MAX = 720;
-/** Keep at least this much horizontal room for tree + editor when Copilot is open. */
-const COPILOT_MAIN_RESERVE = 280;
-
-function defaultCopilotWidthPx(): number {
-  return COPILOT_WIDTH_MIN;
-}
-
-function maxCopilotWidthPx(): number {
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
-  return Math.min(COPILOT_WIDTH_MAX, Math.max(COPILOT_WIDTH_MIN + 40, vw - COPILOT_MAIN_RESERVE));
-}
-
-function clampCopilotWidthPx(w: number): number {
-  return Math.round(Math.min(maxCopilotWidthPx(), Math.max(COPILOT_WIDTH_MIN, w)));
-}
 
 function tabKeyForPage(pageId: string): string {
   return `page:${pageId}`;
@@ -53,7 +35,6 @@ function sortPageTabsForBar(openOrder: string[], activePageId: string | undefine
 
 export function WikiWorkspace() {
   const { t } = useTranslation('explore');
-  const { t: tWiki } = useTranslation('wikiSpace');
   const { id: spaceId, pageId: pageIdParam } = useParams<{ id: string; pageId?: string }>();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -81,111 +62,6 @@ export function WikiWorkspace() {
   const [pageTreeMatchPending, setPageTreeMatchPending] = useState(false);
   const lastPageIdRef = useRef<string | undefined>(undefined);
   const panelRefMap = useRef<Map<string, WikiPagePanelHandle | null>>(new Map());
-
-  const [spaceName, setSpaceName] = useState<string | null>(null);
-  const copilotStorageKey = spaceId ? `openkms_wiki_workspace_copilot_open_v1_${spaceId}` : null;
-  const copilotWidthLocalKey = spaceId ? `openkms_wiki_workspace_copilot_width_px_v1_${spaceId}` : null;
-  const [wikiCopilotOpen, setWikiCopilotOpen] = useState(false);
-  const [copilotWidthPx, setCopilotWidthPx] = useState(defaultCopilotWidthPx);
-
-  useEffect(() => {
-    if (!copilotWidthLocalKey) {
-      setCopilotWidthPx(defaultCopilotWidthPx());
-      return;
-    }
-    try {
-      const raw = localStorage.getItem(copilotWidthLocalKey);
-      if (raw != null) {
-        const n = parseInt(raw, 10);
-        if (Number.isFinite(n)) setCopilotWidthPx(clampCopilotWidthPx(n));
-        else setCopilotWidthPx(defaultCopilotWidthPx());
-      } else {
-        setCopilotWidthPx(defaultCopilotWidthPx());
-      }
-    } catch {
-      setCopilotWidthPx(defaultCopilotWidthPx());
-    }
-  }, [copilotWidthLocalKey]);
-
-  useEffect(() => {
-    const onResize = () => setCopilotWidthPx((w) => clampCopilotWidthPx(w));
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
-  useEffect(() => {
-    if (!copilotStorageKey) {
-      setWikiCopilotOpen(false);
-      return;
-    }
-    try {
-      setWikiCopilotOpen(sessionStorage.getItem(copilotStorageKey) === '1');
-    } catch {
-      setWikiCopilotOpen(false);
-    }
-  }, [copilotStorageKey]);
-
-  const setCopilotOpenPersist = useCallback(
-    (open: boolean) => {
-      setWikiCopilotOpen(open);
-      if (!copilotStorageKey) return;
-      try {
-        if (open) sessionStorage.setItem(copilotStorageKey, '1');
-        else sessionStorage.removeItem(copilotStorageKey);
-      } catch {
-        /* ignore */
-      }
-    },
-    [copilotStorageKey]
-  );
-
-  const onCopilotResizePointerDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const startX = e.clientX;
-      const startW = copilotWidthPx;
-      let latest = startW;
-      const prevUserSelect = document.body.style.userSelect;
-      document.body.style.userSelect = 'none';
-      const onMove = (ev: MouseEvent) => {
-        latest = clampCopilotWidthPx(startW - (ev.clientX - startX));
-        setCopilotWidthPx(latest);
-      };
-      const onUp = () => {
-        document.body.style.userSelect = prevUserSelect;
-        window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup', onUp);
-        const final = clampCopilotWidthPx(latest);
-        setCopilotWidthPx(final);
-        if (copilotWidthLocalKey) {
-          try {
-            localStorage.setItem(copilotWidthLocalKey, String(final));
-          } catch {
-            /* ignore */
-          }
-        }
-      };
-      window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup', onUp);
-    },
-    [copilotWidthPx, copilotWidthLocalKey]
-  );
-
-  useEffect(() => {
-    if (!spaceId) return;
-    let cancelled = false;
-    void fetchWikiSpace(spaceId)
-      .then((sp) => {
-        if (!cancelled) setSpaceName(sp.name);
-      })
-      .catch(() => {
-        if (!cancelled) setSpaceName(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [spaceId]);
 
   const pageTabKeysForBar = useMemo(
     () => sortPageTabsForBar(openOrder, pageIdParam, !isGraph && !!pageIdParam),
@@ -362,19 +238,9 @@ export function WikiWorkspace() {
     <ContentCommentsShell
       resourceType="wiki_space"
       resourceId={spaceId}
-      copilotOpen={wikiCopilotOpen}
-      onCopilotToggle={() => setCopilotOpenPersist(!wikiCopilotOpen)}
-      copilotLabel={tWiki('copilotLabel')}
     >
     <div
-      className={`wiki-page-editor-outer wiki-workspace-layout wiki-workspace-layout--split${
-        !wikiCopilotOpen ? ' wiki-workspace-layout--agent-collapsed' : ''
-      }`}
-      style={
-        wikiCopilotOpen
-          ? ({ '--wiki-agent-w': `${clampCopilotWidthPx(copilotWidthPx)}px` } as CSSProperties)
-          : undefined
-      }
+      className="wiki-page-editor-outer wiki-workspace-layout wiki-workspace-layout--split"
     >
       <div className="wiki-page-editor">
         <div className="wiki-page-editor-shell">
@@ -471,16 +337,6 @@ export function WikiWorkspace() {
                       )}
                     </div>
                   )}
-                  <button
-                    type="button"
-                    className={`wiki-page-editor-back wiki-workspace-toolbar-icon-link${wikiCopilotOpen ? ' wiki-workspace-toolbar-icon-link--active' : ''}`}
-                    aria-label={t('wiki.workspace.copilotToggle')}
-                    title={t('wiki.workspace.copilotToggleHint')}
-                    aria-pressed={wikiCopilotOpen}
-                    onClick={() => setCopilotOpenPersist(!wikiCopilotOpen)}
-                  >
-                    <Bot size={18} aria-hidden />
-                  </button>
                   <Link
                     to={`/wikis/${spaceId}/settings`}
                     className="wiki-page-editor-back wiki-workspace-toolbar-icon-link"
@@ -528,27 +384,6 @@ export function WikiWorkspace() {
           </div>
         </div>
       </div>
-      {wikiCopilotOpen && spaceId && (
-        <div className="wiki-workspace-agent-rail">
-          <div
-            className="wiki-workspace-agent-resize-handle"
-            role="separator"
-            aria-orientation="vertical"
-            aria-valuenow={clampCopilotWidthPx(copilotWidthPx)}
-            aria-valuemin={COPILOT_WIDTH_MIN}
-            aria-valuemax={maxCopilotWidthPx()}
-            aria-label={t('wiki.workspace.copilotResize')}
-            title={t('wiki.workspace.copilotResizeHint')}
-            onMouseDown={onCopilotResizePointerDown}
-          />
-          <div className="wiki-workspace-agent-rail-inner">
-              spaceId={spaceId}
-              spaceName={spaceName}
-              onRequestCollapse={() => setCopilotOpenPersist(false)}
-            />
-          </div>
-        </div>
-      )}
     </div>
     </ContentCommentsShell>
   );

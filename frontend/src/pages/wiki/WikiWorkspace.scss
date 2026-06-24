@@ -222,64 +222,6 @@ button.wiki-workspace-toolbar-icon-link {
 }
 
 @include min-width(ds.$bp-lg-min) {
-  .wiki-workspace-layout--split:not(.wiki-workspace-layout--agent-collapsed) .wiki-page-editor-shell {
-    padding-right: calc(var(--wiki-agent-w) + 1.25rem);
-    box-sizing: border-box;
-  }
-
-  .wiki-workspace-layout--split .wiki-workspace-agent-rail {
-    position: fixed;
-    z-index: 3;
-    top: calc(var(--header-height, 56px) + 12px);
-    right: 16px;
-    width: var(--wiki-agent-w);
-    height: calc(100dvh - var(--header-height, 56px) - 24px);
-    max-height: calc(100dvh - var(--header-height, 56px) - 24px);
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
-    min-width: 0;
-  }
-
-  .wiki-workspace-agent-rail-inner {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-
-  .wiki-workspace-agent-resize-handle {
-    flex-shrink: 0;
-    width: 6px;
-    margin-left: -3px;
-    cursor: col-resize;
-    touch-action: none;
-    align-self: stretch;
-    border-radius: 2px;
-    background: transparent;
-  }
-
-  .wiki-workspace-agent-resize-handle:hover {
-    background: var(--color-bg-muted);
-  }
-
-  .wiki-workspace-agent-resize-handle:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-
-  .wiki-workspace-layout--split .wiki-workspace-agent-rail .wiki-space-agent-panel {
-    position: relative;
-    top: auto;
-    height: 100%;
-    max-height: none;
-    min-height: 0;
-  }
-
-  .wiki-workspace-layout--split.wiki-workspace-layout--agent-collapsed .wiki-page-editor-shell {
-    padding-right: 0;
-  }
 }
 
 @include max-width(ds.$bp-lg-max) {
@@ -299,31 +241,4 @@ button.wiki-workspace-toolbar-icon-link {
     min-height: 0;
   }
 
-  .wiki-workspace-layout--split .wiki-workspace-agent-rail {
-    position: relative;
-    flex-shrink: 0;
-    width: 100%;
-    max-height: min(50vh, 420px);
-    min-height: 240px;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .wiki-workspace-agent-resize-handle {
-    display: none;
-  }
-
-  .wiki-workspace-agent-rail-inner {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .wiki-workspace-layout--split .wiki-workspace-agent-rail .wiki-space-agent-panel {
-    height: auto;
-    max-height: min(50vh, 420px);
-    min-height: 240px;
-  }
 }
