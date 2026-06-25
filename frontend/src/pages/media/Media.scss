@@ -389,6 +389,50 @@ textarea.document-detail-metadata-input {
   justify-content: center;
 }
 
+.documents-move-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.documents-move-checkbox-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--color-accent);
+}
+
+.media-gen-image-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.media-gen-image-row input[type='text'] {
+  flex: 1;
+}
+
+.media-gen-image-row .btn-sm {
+  flex-shrink: 0;
+  padding: var(--padding-compact-y) calc(var(--space-2) + var(--space-1) / 2);
+  font-size: var(--text-sm);
+}
+
+.media-gen-image-clear {
+  flex-shrink: 0;
+}
+
+.media-gen-image-spinner {
+  flex-shrink: 0;
+  animation: spin 1s linear infinite;
+  color: var(--color-text-muted);
+}
+
 .media-loading-wrap {
   display: flex;
   align-items: center;

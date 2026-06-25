@@ -65,7 +65,10 @@ async def submit_video_generation(
     model_name: str,
     prompt: str,
     size: str | None = None,
+    quality: str | None = None,
     duration: int | None = None,
+    fps: int | None = None,
+    with_audio: bool | None = None,
     image_url: str | None = None,
     extra: dict[str, Any] | None = None,
 ) -> str:
@@ -73,8 +76,14 @@ async def submit_video_generation(
     payload: dict[str, Any] = {"model": model_name, "prompt": prompt}
     if size:
         payload["size"] = size
+    if quality:
+        payload["quality"] = quality
     if duration is not None:
         payload["duration"] = duration
+    if fps is not None:
+        payload["fps"] = fps
+    if with_audio is not None:
+        payload["with_audio"] = with_audio
     if image_url:
         payload["image_url"] = image_url
     if extra:
@@ -106,7 +115,11 @@ async def poll_async_result(
                 url,
                 headers={"Authorization": f"Bearer {api_key}"},
             )
-            resp.raise_for_status()
+            if resp.is_error:
+                data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+                raise RuntimeError(
+                    f"Async result query failed (HTTP {resp.status_code}): {data.get('error', {}).get('message', resp.text[:200])}"
+                )
             data = resp.json()
             status = (data.get("task_status") or "").upper()
             if status == "SUCCESS":

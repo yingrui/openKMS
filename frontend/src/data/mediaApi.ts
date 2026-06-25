@@ -137,6 +137,8 @@ export async function generateMediaAsset(body: {
   size?: string;
   quality?: string;
   duration?: number;
+  fps?: number;
+  with_audio?: boolean;
   image_url?: string;
 }): Promise<{ job_id: number; provider_task_id: string }> {
   const headers = await getAuthHeaders();
@@ -168,6 +170,27 @@ export async function resolveMediaFileUrl(assetId: string, filePath: string): Pr
   if (!res.ok) throw new Error('Failed to resolve media URL');
   const data = await res.json();
   return data.url as string;
+}
+
+export async function uploadTempMedia(
+  channelId: string,
+  file: File,
+): Promise<{ url: string; key: string }> {
+  const form = new FormData();
+  form.append('channel_id', channelId);
+  form.append('file', file);
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(`${config.apiUrl}/api/media/upload-temp`, {
+    method: 'POST',
+    headers: { ...headers },
+    body: form,
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Temp upload failed');
+  }
+  return res.json();
 }
 
 export const ACCEPTED_MEDIA = 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime';

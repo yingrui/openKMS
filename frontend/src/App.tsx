@@ -94,6 +94,7 @@ const MediaDetail = lazy(() => import('./pages/media/MediaDetail').then((m) => (
 const MediaChannelSettings = lazy(() =>
   import('./pages/media/MediaChannelSettings').then((m) => ({ default: m.MediaChannelSettings })),
 );
+const MediaGenerate = lazy(() => import('./pages/media/MediaGenerate').then((m) => ({ default: m.MediaGenerate })));
 const KnowledgeBaseDetail = lazy(() =>
   import('./pages/knowledge-bases/KnowledgeBaseDetail').then((m) => ({ default: m.KnowledgeBaseDetail })),
 );
@@ -190,6 +191,7 @@ function App() {
           <Route path="media" element={<FeatureGate feature="media"><MediaSectionLayout /></FeatureGate>}>
             <Route index element={<MediaIndex />} />
             <Route path="channels/:channelId/settings" element={<MediaChannelSettings />} />
+            <Route path="channels/:channelId/generate" element={<MediaGenerate />} />
             <Route path="channels/:channelId" element={<MediaChannel />} />
             <Route path="channels" element={<MediaChannels />} />
             <Route path="view/:id" element={<MediaDetail />} />

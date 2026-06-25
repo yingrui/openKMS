@@ -231,14 +231,14 @@ async def upload_media_asset(
         provenance="uploaded",
         series_id=asset_id,
     )
+    from app.services.media.media_derivatives import build_and_upload_derivatives
+
+    thumb_key, poster_key = build_and_upload_derivatives(asset_id, body, media_kind, content_type)
+    asset.thumbnail_key = thumb_key
+    asset.poster_key = poster_key
     db.add(asset)
     await db.commit()
     await db.refresh(asset)
-
-    from app.jobs.defer import defer_task
-    from app.jobs.tasks import generate_media_derivatives
-
-    await defer_task(generate_media_derivatives, asset_id=asset_id)
 
     return _asset_response(asset)
 
@@ -257,6 +257,28 @@ async def get_media_file(
     if url_only:
         return {"url": url}
     return RedirectResponse(url=url, status_code=302)
+
+
+@router.post("/upload-temp")
+async def upload_temp_media(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    channel_id: str = Form(...),
+    file: UploadFile = File(...),
+):
+    await require_media_channel_write(request, db, channel_id)
+    filename = file.filename or "upload"
+    content_type = file.content_type or mimetypes.guess_type(filename)[0]
+    if not content_type or not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are accepted for temp upload")
+    body = await file.read()
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty file")
+    ext = os.path.splitext(filename)[1] or ".png"
+    key = f"_temp/{uuid4().hex}{ext}"
+    upload_object(key, body, content_type=content_type)
+    url = get_redirect_url(key)
+    return {"url": url, "key": key}
 
 
 @router.post("/generate", response_model=MediaGenerateResponse)
@@ -294,6 +316,8 @@ async def generate_media_asset(
         size=body.size,
         quality=body.quality,
         duration=body.duration,
+        fps=body.fps,
+        with_audio=body.with_audio,
         image_url=body.image_url,
         params=body.params,
     )
@@ -361,12 +385,13 @@ async def upload_media_chunked(
         provenance="uploaded",
         series_id=asset_id,
     )
+    from app.services.media.media_derivatives import build_and_upload_derivatives
+
+    thumb_key, poster_key = build_and_upload_derivatives(asset_id, raw, media_kind, ct)
+    asset.thumbnail_key = thumb_key
+    asset.poster_key = poster_key
     db.add(asset)
     await db.commit()
     await db.refresh(asset)
-
-    from app.jobs.defer import defer_task
-    from app.jobs.tasks import generate_media_derivatives
-    await defer_task(generate_media_derivatives, asset_id=asset_id)
 
     return _asset_response(asset)

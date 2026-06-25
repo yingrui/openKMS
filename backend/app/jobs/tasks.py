@@ -1,5 +1,6 @@
 """Procrastinate task definitions for document processing."""
 import asyncio
+import base64
 import json
 import logging
 import shlex
@@ -927,26 +928,6 @@ async def run_scheduled_project_agent(
         await persist_job_run_worker_log_best_effort(job_id, None, "\n".join(log_lines), "")
 
 
-@job_app.task(name="generate_media_derivatives", pass_context=True)
-async def generate_media_derivatives(context: JobContext, asset_id: str) -> None:
-    """Generate thumbnail/poster for a media asset."""
-    from app.database import async_session_maker
-    from app.models.media_asset import MediaAsset
-    from app.models.media_channel import MediaChannel  # noqa: F401 - register FK target for ORM flush
-    from app.services.media.media_derivatives import process_media_derivatives
-
-    async with async_session_maker() as session:
-        asset = await session.get(MediaAsset, asset_id)
-        if not asset:
-            logger.warning("Media asset %s not found for derivatives", asset_id)
-            return
-        thumb_key, poster_key = process_media_derivatives(asset_id, asset.storage_key, asset.media_kind)
-        asset.thumbnail_key = thumb_key
-        asset.poster_key = poster_key
-        await session.commit()
-        logger.info("Media derivatives generated for %s", asset_id)
-
-
 @job_app.task(name="run_media_generation", pass_context=True)
 async def run_media_generation(
     context: JobContext,
@@ -958,6 +939,8 @@ async def run_media_generation(
     size: str | None = None,
     quality: str | None = None,
     duration: int | None = None,
+    fps: int | None = None,
+    with_audio: bool | None = None,
     image_url: str | None = None,
     params: dict | None = None,
 ) -> None:
@@ -1008,6 +991,18 @@ async def run_media_generation(
             api_key = provider.api_key
             extra = params or {}
 
+            resolved_image_url = image_url
+            if image_url and ("localhost" in image_url or "127.0.0.1" in image_url or "minio" in image_url.lower()):
+                try:
+                    image_bytes = await download_url(image_url)
+                    b64 = base64.b64encode(image_bytes).decode("ascii")
+                    mime = "image/jpeg" if image_url.lower().endswith((".jpg", ".jpeg")) else "image/png"
+                    resolved_image_url = f"data:{mime};base64,{b64}"
+                    log_lines.append(f"Converted local image_url to base64 ({len(image_bytes)} bytes)")
+                except Exception as exc:
+                    log_lines.append(f"Failed to download image_url for base64 conversion: {exc}")
+                    raise
+
             if media_kind == MEDIA_KIND_IMAGE:
                 task_id = await submit_image_generation(
                     base_url=base_url,
@@ -1025,8 +1020,11 @@ async def run_media_generation(
                     model_name=model_name,
                     prompt=prompt,
                     size=size,
+                    quality=quality,
                     duration=duration,
-                    image_url=image_url,
+                    fps=fps,
+                    with_audio=bool(with_audio) if with_audio is not None else None,
+                    image_url=resolved_image_url,
                     extra=extra,
                 )
             log_lines.append(f"Provider task id: {task_id}")
@@ -1066,6 +1064,8 @@ async def run_media_generation(
                         "size": size,
                         "quality": quality,
                         "duration": duration,
+                        "fps": fps,
+                        "with_audio": bool(with_audio) if with_audio is not None else None,
                         "image_url": image_url,
                         **extra,
                     },

@@ -6,6 +6,8 @@ from openkms_cli.logging_config import configure_cli_logging
 
 
 def test_configure_cli_logging_stderr_handler(capsys):
+    # force fresh handler so it captures the current sys.stderr (replaced by capsys)
+    logging.getLogger("openkms_cli").handlers.clear()
     configure_cli_logging(level="INFO")
     log = logging.getLogger("openkms_cli.baidu")
     log.info("hello worker")

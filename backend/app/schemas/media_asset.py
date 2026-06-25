@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 MediaKind = Literal["image", "video"]
@@ -59,13 +59,21 @@ class MediaGenerateRequest(BaseModel):
     channel_id: str
     media_kind: MediaKind
     model_id: str
-    prompt: str = Field(..., min_length=1, max_length=512)
+    prompt: str = Field(default="", max_length=512)
     title: str | None = Field(default=None, max_length=512)
     size: str | None = None
     quality: str | None = None
     duration: int | None = None
+    fps: int | None = None
+    with_audio: bool | None = None
     image_url: str | None = None
     params: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def check_prompt_or_image(self) -> "MediaGenerateRequest":
+        if not self.prompt.strip() and not self.image_url:
+            raise ValueError("Either prompt or image_url must be provided")
+        return self
 
 
 class MediaGenerateResponse(BaseModel):

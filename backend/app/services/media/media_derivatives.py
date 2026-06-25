@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 from app.services.media.media_storage import media_poster_key, media_thumbnail_key
-from app.services.storage import get_object, upload_object
+from app.services.storage import upload_object
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +102,3 @@ def build_and_upload_derivatives(
             upload_object(poster_key, poster_bytes, content_type="image/webp")
             thumb_key = poster_key
     return thumb_key, poster_key
-
-
-def process_media_derivatives(asset_id: str, storage_key: str, media_kind: str) -> tuple[str | None, str | None]:
-    """Download original, produce thumb/poster, upload. Returns (thumbnail_key, poster_key)."""
-    body = get_object(storage_key)
-    return build_and_upload_derivatives(asset_id, body, media_kind)
