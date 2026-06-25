@@ -28,6 +28,8 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
+from app.services.acl.acl_store import bootstrap_owner_acl
+from app.services.acl.resource_acl_constants import RT_PROJECT
 from app.services.agent.agent_skill_install import (
     install_default_skills_for_project,
     install_skill_to_project,
@@ -110,19 +112,22 @@ async def create_project(request: Request, body: ProjectCreate, db: AsyncSession
     slug = body.slug.strip() if body.slug else make_slug(body.name, existing)
     if slug in existing:
         raise HTTPException(status_code=409, detail="Slug already in use")
+    p_jwt = request.state.openkms_jwt_payload
+    uname = p_jwt.get("preferred_username") or p_jwt.get("name")
+    created_by_name = str(uname)[:256] if isinstance(uname, str) and uname.strip() else None
     p = Project(
         user_sub=sub,
         name=body.name.strip(),
         description=body.description,
         slug=slug,
         settings={},
+        created_by=sub,
+        created_by_name=created_by_name,
     )
     db.add(p)
     await db.flush()
+    await bootstrap_owner_acl(db, RT_PROJECT, p.id, sub)
     scaffold_project_dir(p.id)
-    p_jwt = request.state.openkms_jwt_payload
-    uname = p_jwt.get("preferred_username") or p_jwt.get("name")
-    created_by_name = str(uname)[:256] if isinstance(uname, str) and uname.strip() else None
     await install_default_skills_for_project(
         db,
         p,

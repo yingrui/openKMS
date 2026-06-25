@@ -92,4 +92,5 @@ export const RESOURCE_TYPES = {
   objectType: 'object_type',
   linkType: 'link_type',
   glossary: 'glossary',
+  project: 'project',
 } as const;

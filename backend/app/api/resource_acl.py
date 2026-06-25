@@ -116,6 +116,7 @@ async def _resource_creator_identity(
     from app.models.knowledge_base import KnowledgeBase
     from app.models.link_type import LinkType
     from app.models.object_type import ObjectType
+    from app.models.project import Project
     from app.models.wiki_models import WikiSpace
     from app.services.acl.resource_acl_constants import (
         RT_DATASET,
@@ -123,6 +124,7 @@ async def _resource_creator_identity(
         RT_GLOSSARY,
         RT_LINK_TYPE,
         RT_OBJECT_TYPE,
+        RT_PROJECT,
     )
 
     ch = None
@@ -144,6 +146,8 @@ async def _resource_creator_identity(
         ch = await db.get(ObjectType, resource_id)
     elif resource_type == RT_LINK_TYPE:
         ch = await db.get(LinkType, resource_id)
+    elif resource_type == RT_PROJECT:
+        ch = await db.get(Project, resource_id)
     if not ch:
         return None, None
     return ch.created_by, ch.created_by_name

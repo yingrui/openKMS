@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Bot, CalendarClock, Loader2, Puzzle, Settings } from 'lucide-react';
+import { ArrowLeft, Bot, CalendarClock, Loader2, Puzzle, Settings, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   getProject,
@@ -28,9 +28,11 @@ import {
 import { AgentsSettingsSkeleton } from '../../components/agents/AgentsPageSkeleton';
 import { ProjectSchedulesTab } from '../../components/agents/ProjectSchedulesTab';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
+import { ResourceSharePanel } from '../../components/ResourceSharePanel';
+import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import './ProjectSettings.scss';
 
-type TabId = 'general' | 'agent' | 'skills' | 'schedules';
+type TabId = 'general' | 'agent' | 'skills' | 'schedules' | 'sharing';
 
 export function ProjectSettings() {
   const { projectId = '' } = useParams<{ projectId: string }>();
@@ -66,6 +68,7 @@ export function ProjectSettings() {
       { id: 'general' as const, label: t('settings.tabGeneral'), icon: Settings },
       { id: 'agent' as const, label: t('settings.tabAgent'), icon: Bot },
       { id: 'skills' as const, label: t('settings.tabSkills'), icon: Puzzle },
+      { id: 'sharing' as const, label: t('settings.tabSharing'), icon: Users },
       { id: 'schedules' as const, label: t('settings.tabSchedules'), icon: CalendarClock },
     ],
     [t],
@@ -410,9 +413,19 @@ export function ProjectSettings() {
 
         {activeTab === 'schedules' ? <ProjectSchedulesTab projectId={projectId} /> : null}
 
+        {activeTab === 'sharing' ? (
+          <section className="project-settings-section">
+            <ResourceSharePanel
+              resourceType={RESOURCE_TYPES.project}
+              resourceId={projectId}
+              title={t('settings.sharingTitle')}
+            />
+          </section>
+        ) : null}
+
         {error ? <p className="project-settings-error">{error}</p> : null}
 
-        {activeTab !== 'skills' && activeTab !== 'schedules' ? (
+        {activeTab !== 'skills' && activeTab !== 'schedules' && activeTab !== 'sharing' ? (
           <div className="project-settings-actions">
             <button type="button" className="btn btn-primary" disabled={saving || !name.trim()} onClick={() => void save()}>
               {saving ? (
