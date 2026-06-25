@@ -393,6 +393,78 @@ async def merge_lessons_route(
 
 
 @router.post(
+    "/{project_id}/skills/generate",
+    dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
+)
+async def generate_skill_route(
+    project_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = get_jwt_sub(request)
+    await _get_project(db, project_id, sub)
+    model_config = await resolve_agent_llm_config(db, model_id=settings.deep_agent_model_id)
+    if not model_config:
+        raise HTTPException(status_code=503, detail="No LLM model configured")
+    body = await request.json()
+    event = body.get("event") if isinstance(body, dict) else body
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="event object is required")
+
+    etype = str(event.get("type") or "")
+    www = str(event.get("what_went_wrong") or "")
+    wfi = str(event.get("what_fixed_it") or "")
+    ctx = str(event.get("context") or "")
+
+    base_url = (model_config.get("base_url") or "").rstrip("/")
+    if not base_url.endswith("/v1"):
+        base_url = f"{base_url}/v1"
+
+    from openai import AsyncOpenAI
+    client = AsyncOpenAI(base_url=base_url, api_key=model_config.get("api_key") or "no-key")
+    model_name = model_config.get("model_name") or "gpt-4o-mini"
+
+    system_prompt = (
+        "You generate SKILL.md files for agent capabilities. "
+        "A SKILL.md describes a reusable workflow the agent can follow.\n\n"
+        "Format:\n"
+        "# Skill Name\n\n"
+        "## Description\n"
+        "Brief one-line description of what this skill enables the agent to do.\n\n"
+        "## When to Use\n"
+        "When the agent should invoke this skill.\n\n"
+        "## Instructions\n"
+        "Step-by-step guidance. Include exact tool names, CLI commands, or parameters "
+        "that were observed to work correctly.\n\n"
+        "Be concise. Only include what was observed to work. Do not fabricate steps."
+    )
+
+    user_prompt = (
+        f"Generate a SKILL.md for this agent capability:\n\n"
+        f"Pattern: {www}\n"
+        f"Why reusable: {wfi or 'N/A'}\n"
+        f"Context from conversation: {ctx}\n\n"
+        "Return only the markdown content for SKILL.md."
+    )
+
+    try:
+        response = await client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.4,
+            max_tokens=2048,
+        )
+        content = (response.choices[0].message.content or "").strip()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"LLM error: {e}") from e
+
+    return {"content": content}
+
+
+@router.post(
     "/{project_id}/improvements/chat",
     dependencies=[Depends(require_permission(PERM_PROJECTS_WRITE))],
 )

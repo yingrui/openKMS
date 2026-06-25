@@ -383,6 +383,15 @@
   }
 
   &--cancel { color: var(--color-text-muted); }
+
+  &--skill {
+    color: var(--color-accent-hover);
+    border-color: var(--color-accent);
+    &:hover:not(:disabled) {
+      background: var(--color-accent-subtle);
+      color: var(--color-accent);
+    }
+  }
 }
 
 .sreview-hint {
@@ -646,4 +655,92 @@
 
   &:hover:not(:disabled) { background: var(--color-accent-hover); }
   &:disabled { opacity: 0.45; cursor: not-allowed; }
+}
+
+/* ===== Skill generation modal ===== */
+.sreview-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sreview-modal {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 24px;
+  width: min(640px, 90vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sreview-modal-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.sreview-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.sreview-skill-slug-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.sreview-skill-slug-prefix,
+.sreview-skill-slug-suffix {
+  color: var(--color-text-muted);
+  user-select: none;
+}
+
+.sreview-skill-slug-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  outline: none;
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-subtle);
+  }
+}
+
+.sreview-skill-content-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent-subtle);
+  }
 }

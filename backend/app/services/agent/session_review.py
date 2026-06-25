@@ -42,8 +42,8 @@ _REVIEW_PROFILE = OpenAIModelProfile(
 class LessonEvent(BaseModel):
     type: str = Field(
         ...,
-        pattern=r"^(error|lesson|pattern)$",
-        description="Event kind: error, lesson, or pattern",
+        pattern=r"^(error|lesson|pattern|skill_candidate)$",
+        description="Event kind: error, lesson, pattern, or skill_candidate (reusable workflow)",
     )
     severity: str = Field(
         default="medium",
@@ -58,12 +58,12 @@ class LessonEvent(BaseModel):
     what_went_wrong: str = Field(
         ...,
         max_length=500,
-        description="Clear description of the issue or learning moment",
+        description="Clear description of the issue, learning moment, or successful workflow (for skill_candidate)",
     )
     what_fixed_it: str | None = Field(
         default=None,
         max_length=500,
-        description="What resolved the issue, or null if unresolved",
+        description="What resolved the issue, null if unresolved, or why the workflow is reusable (for skill_candidate)",
     )
     message_ids: list[str] = Field(
         default_factory=list,
@@ -116,9 +116,18 @@ For NEW events, omit id and timestamp (these will be assigned by the caller)."""
 _SYSTEM_PROMPT = (
     "You are a session reviewer. Review the agent conversation transcript\n"
     "and extract structured lesson events.\n\n"
+    "Event types:\n"
+    "- error: the assistant made a mistake and corrected it\n"
+    "- lesson: an insight the assistant gained\n"
+    "- pattern: a repeated behavior (positive or negative)\n"
+    "- skill_candidate: a successful multi-step workflow executed by the assistant\n"
+    "  that would be worth codifying as a reusable skill. This means the assistant\n"
+    "  used tools in a specific sequence or with specific parameters that produced\n"
+    "  a correct result. For skill_candidate: what_went_wrong describes the\n"
+    "  successful workflow, what_fixed_it describes why this pattern is reusable.\n\n"
     "Rules:\n"
     "- Only extract events with clear, quotable evidence in the transcript.\n"
-    "- If the session was straightforward with no notable issues, return an empty events list.\n"
+    "- If the session was straightforward with no notable events, return an empty events list.\n"
     "- Each context quote must be a real, verbatim snippet from the transcript.\n"
     "- Events should be about the ASSISTANT's behavior, not the user's requests.\n"
     "- A single mistake that was immediately corrected is 1 event, not 2.\n"
@@ -341,7 +350,7 @@ def _coerce_event(raw: dict) -> LessonEvent | None:
         or ""
     )
     etype = str(etype).strip().lower()
-    if etype not in ("error", "lesson", "pattern"):
+    if etype not in ("error", "lesson", "pattern", "skill_candidate"):
         return None
 
     severity = (

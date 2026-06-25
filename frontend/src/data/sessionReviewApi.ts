@@ -14,7 +14,7 @@ async function parseError(res: Response): Promise<string> {
 }
 
 export interface LessonEvent {
-  type: 'error' | 'lesson' | 'pattern';
+  type: 'error' | 'lesson' | 'pattern' | 'skill_candidate';
   severity: 'low' | 'medium' | 'high';
   context: string;
   what_went_wrong: string;
@@ -79,13 +79,15 @@ export interface ArtifactFile {
 }
 
 export async function getArtifacts(projectId: string): Promise<ArtifactFile[]> {
-  // AGENTS.md and MEMORY.md are read via standard file content API
   const files: ArtifactFile[] = [];
+  const headers = await getAuthHeaders();
+  const base = `${config.apiUrl}/api/projects/${projectId}`;
+
+  // AGENTS.md and MEMORY.md
   for (const path of ['AGENTS.md', 'MEMORY.md']) {
     try {
-      const headers = await getAuthHeaders();
       const res = await authAwareFetch(
-        `${config.apiUrl}/api/projects/${projectId}/files/content?path=${encodeURIComponent(path)}`,
+        `${base}/files/content?path=${encodeURIComponent(path)}`,
         { headers, credentials: 'include' },
       );
       if (res.ok) {
@@ -98,6 +100,37 @@ export async function getArtifacts(projectId: string): Promise<ArtifactFile[]> {
       files.push({ path, content: '' });
     }
   }
+
+  // Skills from .openkms/skills/<name>/SKILL.md
+  try {
+    const listRes = await authAwareFetch(
+      `${base}/files?path=${encodeURIComponent('.openkms/skills')}`,
+      { headers, credentials: 'include' },
+    );
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      const entries = (listData.entries ?? []) as { name: string; is_dir: boolean }[];
+      for (const entry of entries) {
+        if (!entry.is_dir) continue;
+        const skillPath = `.openkms/skills/${entry.name}/SKILL.md`;
+        try {
+          const contentRes = await authAwareFetch(
+            `${base}/files/content?path=${encodeURIComponent(skillPath)}`,
+            { headers, credentials: 'include' },
+          );
+          if (contentRes.ok) {
+            const contentData = await contentRes.json();
+            files.push({ path: skillPath, content: contentData.content ?? '' });
+          }
+        } catch {
+          // skill exists but SKILL.md not readable — skip
+        }
+      }
+    }
+  } catch {
+    // skills dir doesn't exist — fine
+  }
+
   return files;
 }
 
@@ -187,6 +220,25 @@ export async function mergeLessons(
   if (!res.ok) throw new Error(await parseError(res));
   const data = await res.json();
   return (data.events ?? []) as LessonEventWithState[];
+}
+
+export async function generateSkill(
+  projectId: string,
+  event: LessonEvent,
+): Promise<string> {
+  const headers = await getAuthHeaders();
+  const res = await authAwareFetch(
+    `${config.apiUrl}/api/projects/${projectId}/skills/generate`,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ event }),
+    },
+  );
+  if (!res.ok) throw new Error(await parseError(res));
+  const data = await res.json();
+  return data.content as string;
 }
 
 let _idCounter = 0;

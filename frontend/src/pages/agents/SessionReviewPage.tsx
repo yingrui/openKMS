@@ -284,6 +284,7 @@ export function SessionReviewPage() {
                     key={l.id}
                     event={l}
                     status={l.status}
+                    projectId={projectId}
                     onApprove={(ev, status) => handleApprove(ev, status)}
                     onEdit={(oldEv, upd, status) => handleEdit(oldEv, upd, status)}
                     onReject={() => handleReject(l.id)}
@@ -294,6 +295,7 @@ export function SessionReviewPage() {
                     key={l.id}
                     event={l}
                     status={l.status}
+                    projectId={projectId}
                     onApprove={(ev, status) => handleApprove(ev, status)}
                     onEdit={(oldEv, upd, status) => handleEdit(oldEv, upd, status)}
                     onReject={() => handleReject(l.id)}
@@ -443,6 +445,11 @@ function ArtifactPanel({
 
   const isNew = !artifact.content?.trim();
 
+  const isSkill = artifact.path.startsWith('.openkms/skills/');
+  const displayName = isSkill
+    ? artifact.path.replace(/^\.openkms\/skills\//, '').replace(/\/SKILL\.md$/, '')
+    : artifact.path;
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -465,7 +472,7 @@ function ArtifactPanel({
         onClick={() => setOpen((v) => !v)}
       >
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        <span className="sreview-artifact-name">{artifact.path}</span>
+        <span className="sreview-artifact-name" title={artifact.path}>{displayName}</span>
         {isNew ? <span className="sreview-artifact-new">new</span> : null}
       </button>
       {open ? (

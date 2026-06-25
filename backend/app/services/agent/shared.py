@@ -73,20 +73,25 @@ def _msg_to_out(m: AgentMessage) -> AgentMessageItem:
 
 
 async def _maybe_set_conversation_title_from_first_user_message(
-    db: Any, c: AgentConversation,
+    db: Any, c: AgentConversation, first_user_text: str,
 ) -> None:
-    """Set conversation title from first user message content (if title is empty)."""
-    from sqlalchemy import select
-    r = await db.execute(
-        select(AgentMessage)
-        .where(AgentMessage.conversation_id == c.id, AgentMessage.role == "user")
-        .order_by(AgentMessage.created_at.asc())
-        .limit(1)
-    )
-    first = r.scalar_one_or_none()
-    if first and not (c.title or "").strip():
-        text = (first.content or "").strip().replace("\n", " ")
-        c.title = text[:80] if len(text) > 80 else text
+    """Set conversation title from the first user line when the row has no title yet."""
+    if c.title and c.title.strip():
+        return
+    t = (first_user_text or "").strip().replace("\n", " ")
+    if not t:
+        return
+    from sqlalchemy import func, select
+    n = (
+        await db.execute(
+            select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == c.id)
+        )
+    ).scalar_one()
+    if n != 1:
+        return
+    if len(t) > 80:
+        t = t[:80]
+    c.title = t
 
 
 def _bump_conversation_timestamp(c: AgentConversation) -> None:
