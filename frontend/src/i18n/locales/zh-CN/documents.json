@@ -180,6 +180,8 @@
     "tabProcessing": "处理",
     "tabExtraction": "元数据抽取",
     "tabLabels": "手动标签",
+    "tabSharing": "共享",
+    "sharingHeading": "共享与访问控制",
     "generalHeading": "常规",
     "namePlaceholder": "频道名称",
     "descPlaceholder": "可选描述",
