@@ -57,8 +57,8 @@ const ontologyActive = (pathname: string) =>
  * 1. Agent workspaces, then document capture
  * 2. Core content (articles → wiki → knowledge bases)
  * 3. Media
- * 4. Knowledge structure (map → terms → ontology)
- * 5. Quality (evaluations)
+ * 4. Knowledge structure (terms → ontology → evaluations)
+ * 5. Knowledge Map (overview — last)
  */
 export const APP_MODULES: AppModule[] = [
   {
@@ -142,22 +142,9 @@ export const APP_MODULES: AppModule[] = [
     isActive: (p) => p === '/media' || p.startsWith('/media/'),
   },
   {
-    id: 'knowledge-map',
-    kind: 'suite_app',
-    order: 70,
-    homePath: '/knowledge-map',
-    icon: FolderTree,
-    labelKey: 'knowledgeMap',
-    taglineKey: 'appTaglineKnowledgeMap',
-    showInLauncher: true,
-    showInMainSidebar: true,
-    showInConsoleNav: false,
-    isActive: knowledgeMapActive,
-  },
-  {
     id: 'glossaries',
     kind: 'suite_app',
-    order: 80,
+    order: 70,
     homePath: '/glossaries',
     icon: BookOpen,
     labelKey: 'glossaries',
@@ -170,7 +157,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'ontology',
     kind: 'suite_app',
-    order: 90,
+    order: 80,
     homePath: '/ontology',
     icon: Network,
     labelKey: 'ontology',
@@ -183,7 +170,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'evaluations',
     kind: 'suite_app',
-    order: 100,
+    order: 90,
     homePath: '/evaluations',
     icon: ClipboardList,
     labelKey: 'evaluation',
@@ -193,6 +180,19 @@ export const APP_MODULES: AppModule[] = [
     showInConsoleNav: false,
     featureToggle: 'evaluations',
     isActive: (p) => p === '/evaluations' || p.startsWith('/evaluations/'),
+  },
+  {
+    id: 'knowledge-map',
+    kind: 'suite_app',
+    order: 100,
+    homePath: '/knowledge-map',
+    icon: FolderTree,
+    labelKey: 'knowledgeMap',
+    taglineKey: 'appTaglineKnowledgeMap',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: knowledgeMapActive,
   },
 ];
 

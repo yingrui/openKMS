@@ -20,7 +20,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-12);
 }
 
 .header-brand {
@@ -28,7 +28,8 @@
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  max-width: 200px;
+  min-width: 0;
+  max-width: min(20rem, 36vw);
   text-decoration: none;
   color: var(--color-text);
 }
@@ -44,6 +45,7 @@
 }
 
 .header-brand-name {
+  min-width: 0;
   font-size: 0.9375rem;
   font-weight: 600;
   white-space: nowrap;
