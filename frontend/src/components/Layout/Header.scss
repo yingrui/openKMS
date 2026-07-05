@@ -15,9 +15,50 @@
   z-index: 10;
 }
 
+.header-start {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  max-width: 200px;
+  text-decoration: none;
+  color: var(--color-text);
+}
+
+.header-brand:hover {
+  color: var(--color-accent);
+}
+
+.header-brand-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.header-brand-name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-exit-brand {
+  flex-shrink: 0;
+}
+
 .header-search {
   flex: 1;
   max-width: 480px;
+  min-width: 120px;
   display: flex;
   align-items: center;
   background: var(--color-bg-muted);

@@ -4,14 +4,19 @@
 .sidebar {
   width: var(--sidebar-width);
   min-width: var(--sidebar-width);
-  height: 100vh;
+  flex-shrink: 0;
+  align-self: stretch;
   background: var(--color-bg-elevated);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 0;
+  min-height: 0;
   transition: width 0.18s ease, min-width 0.18s ease;
+}
+
+.sidebar--console {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
 }
 
 .sidebar--collapsed {
@@ -130,7 +135,7 @@
 }
 
 .sidebar-nav.sidebar-nav--collapsed {
-  padding: 6px 4px;
+  padding: 8px 4px 6px;
 }
 
 .sidebar-nav--console {

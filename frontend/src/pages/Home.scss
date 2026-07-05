@@ -560,3 +560,165 @@
 .home-quick-links a:hover {
   text-decoration: underline;
 }
+
+/* Platform operations center (phase 1 home) */
+.home--operations {
+  width: 100%;
+  max-width: ds.$km-layout-max;
+  margin-inline: auto;
+  padding-block: var(--space-5);
+  min-height: calc(100vh - var(--header-height, 56px) - 2 * var(--app-page-padding-y));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-5);
+  text-align: center;
+}
+
+.home--operations .app-page-section {
+  margin-bottom: 0;
+}
+
+.home--operations .home-ops-loading,
+.home--operations .home-error {
+  justify-content: center;
+}
+
+.home-section-heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.home-apps-header {
+  margin-bottom: var(--space-3);
+}
+
+.home-apps-intro {
+  max-width: 32rem;
+  margin: 0 auto;
+  font-size: var(--text-sm);
+}
+
+.home--operations .app-catalog-grid--home {
+  text-align: left;
+}
+
+.home--operations .app-catalog-item--home {
+  align-items: flex-start;
+  text-align: left;
+}
+
+@include max-width(ds.$bp-sm-min) {
+  .home--operations .app-catalog-grid--home,
+  .app-catalog-grid--home {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.home--operations .home-quick-start-grid {
+  text-align: left;
+}
+
+.home-ops-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.home-ops-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.home-welcome {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  text-align: center;
+}
+
+.home-welcome-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+}
+
+.home-welcome-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.home-welcome-body {
+  max-width: 32rem;
+  margin: 0 auto;
+  font-size: var(--text-sm);
+}
+
+.home-section-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.home-quick-start {
+  margin: 0;
+}
+
+.home-quick-start-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.home-quick-start-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.home-quick-start-card:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.home-quick-start-card-icon {
+  display: flex;
+  color: var(--color-accent);
+}
+
+.home-quick-start-card-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.home-quick-start-card-desc {
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}
+
+@include max-width(ds.$bp-sm-min) {
+  .home-quick-start-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

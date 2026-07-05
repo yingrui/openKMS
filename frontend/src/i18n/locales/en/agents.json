@@ -2,7 +2,7 @@
   "loading": "Loading…",
   "nav": {
     "areaLabel": "Agents area",
-    "projects": "Projects",
+    "projects": "Agent Projects",
     "skills": "Skills"
   },
   "skills": {
@@ -66,8 +66,8 @@
     "deleteSkillError": "Could not delete skill"
   },
   "list": {
-    "title": "Agents",
-    "pageTitle": "Projects",
+    "title": "Agent Projects",
+    "pageTitle": "Agent Projects",
     "settings": "Settings",
     "subtitle": "Create a project workspace and chat with an agent that can read and update files, research your knowledge, and run code.",
     "namePlaceholder": "Project name",
@@ -88,7 +88,7 @@
     "dialogNew": "New project"
   },
   "sessions": {
-    "back": "All projects",
+    "back": "All agent projects",
     "newChat": "New session",
     "actions": "Session actions",
     "rename": "Rename",

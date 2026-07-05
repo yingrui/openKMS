@@ -2,8 +2,21 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MessageSquare } from 'lucide-react';
 import { CommentRankStars } from '../comments/CommentRankStars';
-import type { HomeHubCommentItem } from '../../data/homeHubApi';
 import './HomeCommentFeed.scss';
+
+export type HomeCommentFeedItem = {
+  id: string;
+  resource_type: string;
+  resource_id: string;
+  resource_title: string;
+  parent_comment_id: string | null;
+  body: string;
+  rank: number | null;
+  created_by: string;
+  created_by_name: string | null;
+  created_at: string;
+  is_reply: boolean;
+};
 
 function commentResourcePath(resourceType: string, resourceId: string): string {
   switch (resourceType) {
@@ -52,7 +65,7 @@ function formatWhen(iso: string, locale: string): string {
   }
 }
 
-export function HomeCommentFeed({ items }: { items: HomeHubCommentItem[] }) {
+export function HomeCommentFeed({ items }: { items: HomeCommentFeedItem[] }) {
   const { t, i18n } = useTranslation('home');
 
   return (

@@ -8,6 +8,8 @@
     "prepare": "npm run prebuild",
     "prebuild": "mkdir -p public/examples && cp -r src/data/examples/* public/examples/ 2>/dev/null || true",
     "build": "tsc -b && vite build",
+    "check:app-layout": "bash scripts/check-app-page-gutters.sh",
+    "check:app-modules": "bash scripts/check-app-modules.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",

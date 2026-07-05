@@ -177,5 +177,15 @@ Stage doc updates with the code commit.
 **Source:** `.cursor/rules/frontend-build.mdc`
 
 - Any change to `frontend/src/**` → verify with `npm run build` (which runs `tsc -b && vite build`) before marking the task complete.
-- `tsc --noEmit` alone is not sufficient; `tsc -b` with project references catches cross-package type errors that `--noEmit` may miss.
+- When changing **app shell layout** (`App.scss`, `styles/app-page.scss`, `ChannelSectionLayout*`, `MainLayout.tsx`) → also run **`npm run check:app-layout`** from `frontend/`.
+- When changing **suite app list or order** (`config/appModules.ts`, `useAppModules.ts`, `Sidebar`, `AppLauncher`, `Home` Apps) → set **`order`** on each module in `APP_MODULES` only; run **`npm run check:app-modules`**. App Rail, Launcher, and Home Apps share the same sorted list.
+- **`tsc --noEmit` alone is not sufficient**; `tsc -b` with project references catches cross-package type errors that `--noEmit` may miss.
 - Run from the `frontend/` directory.
+
+### App page layout (gutters)
+
+- **Single gutter source:** `--app-page-padding-x/y` applied only in **`.app-content`** (main column) or **`.app-page-pane`** (channel / ontology second column).
+- **Do not** stack padding on `.app-content` and the page root (e.g. Home wrapper).
+- Use global **`.page-header`** / **`.page-subtitle`** — avoid copying `h1` typography into each `*Index.scss`.
+- Full-bleed routes: comment **`app-layout-exception:`** in SCSS and add a row to **`docs/design-system.md` § App shell layout**.
+- Details: **`docs/design-system.md`** (App shell layout + conventions §11).

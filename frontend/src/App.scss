@@ -5,7 +5,14 @@
 
 .app-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
+}
+
+.app-shell-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 .app-main {
@@ -113,17 +120,16 @@
 .app-content {
   flex: 1;
   min-height: 0;
-  padding: var(--space-6) var(--space-8);
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
   overflow-y: auto;
 }
 
-/* Home hub: give the centered Knowledge Map more horizontal room */
+/* Home uses the same gutters as other apps (no extra override) */
 .app-content--home {
-  padding-left: var(--space-5);
-  padding-right: var(--space-5);
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
-/* Global search: wider usable width for results */
+/* app-layout-exception: global search — wider horizontal gutters for results */
 .app-content--search {
   padding-left: clamp(var(--space-4), 2.5vw, 28px);
   padding-right: clamp(var(--space-4), 2.5vw, 28px);
@@ -138,13 +144,13 @@
   overflow: hidden;
 }
 
-/* Object Explorer: fill main column height (no bottom dead band), tighter gutters */
+/* app-layout-exception: object explorer — flex fill; token padding, no page root */
 .app-content--object-explorer {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: var(--space-3) clamp(var(--space-3), 2vw, var(--space-6)) var(--space-3);
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
   overflow: hidden;
 }
 
@@ -159,10 +165,10 @@
 }
 
 .app-content--compact {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
 }
 
-/* Articles/documents/media channel rail when main sidebar is collapsed */
+/* app-layout-exception: rail layouts — gutter on .app-page-pane, not .app-content */
 .app-content--with-channel-rail {
   display: flex;
   flex-direction: column;
@@ -183,7 +189,44 @@ body:has(.app-content--with-channel-rail) {
 
 body:has(.app-content--with-channel-rail) #root,
 body:has(.app-content--with-channel-rail) .app-layout,
+body:has(.app-content--with-channel-rail) .app-shell-body,
 body:has(.app-content--with-channel-rail) .app-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* app-layout-exception: ontology rail — gutter on .app-page-pane */
+.app-content--with-ontology-rail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.ontology-section-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Ontology main column uses .app-page-pane on the element */
+
+body:has(.app-content--with-ontology-rail) {
+  height: 100vh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+body:has(.app-content--with-ontology-rail) #root,
+body:has(.app-content--with-ontology-rail) .app-layout,
+body:has(.app-content--with-ontology-rail) .app-shell-body,
+body:has(.app-content--with-ontology-rail) .app-main {
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -198,15 +241,15 @@ body:has(.app-content--with-channel-rail) .app-main {
   height: calc(100vh - var(--header-height, 56px) - var(--space-6));
 }
 
-/* Wiki editor: use full main column height; cancel compact padding so no “dead” band */
+/* app-layout-exception: wiki editor — negative margin cancels .app-content padding for full height */
 .app-content--compact .wiki-page-editor-outer {
-  margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4));
-  width: calc(100% + var(--space-8));
+  margin: calc(-1 * var(--app-page-padding-y)) calc(-1 * var(--app-page-padding-x));
+  width: calc(100% + 2 * var(--app-page-padding-x));
   height: calc(100vh - var(--header-height, 56px));
   min-height: 0;
 }
 
-/* KB Q&A full-page: no outer padding band between nav rail and chat shell */
+/* app-layout-exception: KB Q&A full-page — no outer padding; scroll inside chat column */
 .app-content--compact:has(.kb-detail--qa-fullpage) {
   padding: 0;
   flex: 1;
@@ -268,6 +311,12 @@ body.openkms-kb-qa-fullpage .app-layout {
   overflow: hidden;
 }
 
+body.openkms-kb-qa-fullpage .app-shell-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 body.openkms-kb-qa-fullpage .app-main {
   min-height: 0;
   overflow: hidden;
@@ -277,6 +326,7 @@ body.openkms-agents-fullpage .header {
   display: none;
 }
 
+/* app-layout-exception: agents full-page — no outer padding; immersive project UI */
 body.openkms-agents-fullpage .app-content.app-content--compact {
   padding: 0;
   height: 100%;
@@ -294,6 +344,7 @@ body.openkms-agents-fullpage {
 
 body.openkms-agents-fullpage #root,
 body.openkms-agents-fullpage .app-layout,
+body.openkms-agents-fullpage .app-shell-body,
 body.openkms-agents-fullpage .app-main {
   height: 100%;
   min-height: 0;
@@ -307,11 +358,13 @@ body.openkms-agents-fullpage .agents-workspace {
 }
 
 @include max-width(ds.$bp-md-min) {
-  .app-content {
-    padding: var(--space-4);
+  :root {
+    --app-page-padding-x: var(--space-4);
+    --app-page-padding-y: var(--space-4);
   }
+
   .app-content--compact {
-    padding: var(--padding-compact-y) var(--space-3);
+    padding: var(--app-page-padding-y) var(--app-page-padding-x);
   }
 
   .app-content--compact:has(.kb-detail--qa-fullpage) {
@@ -319,7 +372,7 @@ body.openkms-agents-fullpage .agents-workspace {
   }
 
   .app-content--compact .wiki-page-editor-outer {
-    margin: calc(-1 * var(--padding-compact-y)) calc(-1 * var(--space-3));
-    width: calc(100% + var(--space-6));
+    margin: calc(-1 * var(--app-page-padding-y)) calc(-1 * var(--app-page-padding-x));
+    width: calc(100% + 2 * var(--app-page-padding-x));
   }
 }

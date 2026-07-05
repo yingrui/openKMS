@@ -1,0 +1,34 @@
+.app-launcher {
+  position: relative;
+}
+
+.app-launcher-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-launcher-trigger:hover,
+.app-launcher-trigger--open {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.app-launcher-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  max-height: min(70vh, 480px);
+  overflow: auto;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  z-index: var(--z-dropdown);
+}

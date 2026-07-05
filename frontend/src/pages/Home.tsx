@@ -1,28 +1,39 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { FileStack, Inbox, Loader2, Share2, Waypoints } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Database,
+  FileStack,
+  FolderTree,
+  Loader2,
+  MessageCircleQuestion,
+  Upload,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { HomeStaticLanding } from '../components/HomeStaticLanding';
-import { HomeCommentFeed } from '../components/home/HomeCommentFeed';
-import { config } from '../config';
-import { fetchHomeHub, type HomeHubResponse } from '../data/homeHubApi';
-import type { KnowledgeMapHtmlStatus } from '../data/knowledgeMapApi';
+import { AppCatalogGrid } from '../components/Layout/AppCatalogGrid';
+import { fetchHomeHub, siteHasContent, type HomeHubResponse } from '../data/homeHubApi';
+import { useVisibleLauncherModules } from '../hooks/useAppModules';
 import './Home.scss';
+import '../components/Layout/AppCatalogGrid.scss';
 
-const KnowledgeMapForceGraph = lazy(() =>
-  import('../components/KnowledgeMapForceGraph').then((m) => ({ default: m.KnowledgeMapForceGraph })),
-);
+type QuickStartCard = {
+  id: string;
+  icon: typeof Upload;
+  titleKey: string;
+  descKey: string;
+  visible: boolean;
+  onClick: () => void;
+};
 
 export function Home() {
   const { t } = useTranslation('home');
   const { isAuthenticated, login, hasPermission } = useAuth();
   const navigate = useNavigate();
+  const launcherModules = useVisibleLauncherModules();
   const [hub, setHub] = useState<HomeHubResponse | null>(null);
   const [hubError, setHubError] = useState<string | null>(null);
   const [hubLoading, setHubLoading] = useState(false);
-
-  const showKnowledgeMapHub = hasPermission('knowledge_map:read') || hasPermission('all');
 
   const loadHub = useCallback(async () => {
     setHubLoading(true);
@@ -46,296 +57,120 @@ export function Home() {
     }
   }, [isAuthenticated, loadHub]);
 
-  const knowledgeMapTree = showKnowledgeMapHub ? (hub?.knowledge_map_tree ?? null) : null;
-  const resourceLinks = showKnowledgeMapHub ? (hub?.resource_links ?? []) : [];
-  const mapHtmlStatus: KnowledgeMapHtmlStatus | null = showKnowledgeMapHub ? (hub?.map_html_status ?? null) : null;
-  const resourceLabelMap = useMemo(
-    () => new Map(Object.entries(hub?.resource_labels ?? {})),
-    [hub?.resource_labels],
-  );
-
-  const resolveResourceLabel = useCallback(
-    (resourceType: string, resourceId: string) => {
-      return resourceLabelMap.get(`${resourceType}:${resourceId}`) ?? resourceId;
-    },
-    [resourceLabelMap],
-  );
-
-  const openTermOnMap = useCallback(
-    (id: string) => {
-      void navigate(`/knowledge-map?node=${encodeURIComponent(id)}`);
-    },
-    [navigate],
-  );
-
-  const mapHtmlIframeSrc = useMemo(() => {
-    const base = config.apiUrl.replace(/\/$/, '');
-    const path = '/api/knowledge-map/map-html';
-    return base ? `${base}${path}` : path;
-  }, []);
-
   if (!isAuthenticated) {
     return <HomeStaticLanding onSignIn={login} />;
   }
 
-  const showKnowledgeMapWrite = hasPermission('knowledge_map:write') || hasPermission('all');
-  const showDocsWork = hasPermission('documents:read') || hasPermission('all');
-  const knowledgeMapTreeLoading = hubLoading && knowledgeMapTree === null && showKnowledgeMapHub;
-  const knowledgeMapTreeError = hubError && showKnowledgeMapHub && !hubLoading ? hubError : null;
-  const mapLoaded = knowledgeMapTree !== null;
-  const mapHasTerms = Boolean(knowledgeMapTree?.length);
-  const showHtmlHome = mapHtmlStatus?.has_artifact === true;
-  const nodeCount = hub?.knowledge_map?.node_count ?? null;
-  const linkCount = hub?.knowledge_map?.link_count ?? null;
-  const recentComments = hub?.recent_comments ?? [];
+  const canDocuments = hasPermission('documents:read') || hasPermission('all');
+  const canKb = hasPermission('knowledge_bases:read') || hasPermission('all');
+  const canKm = hasPermission('knowledge_map:read') || hasPermission('all');
+  const showWelcome = !hubLoading && !siteHasContent(hub?.site_summary);
+  const hasApps = launcherModules.length > 0;
+
+  const cards: QuickStartCard[] = [
+    {
+      id: 'upload',
+      icon: Upload,
+      titleKey: 'quickStartUploadTitle',
+      descKey: 'quickStartUploadDesc',
+      visible: canDocuments,
+      onClick: () => void navigate('/documents'),
+    },
+    {
+      id: 'create-kb',
+      icon: Database,
+      titleKey: 'quickStartCreateKbTitle',
+      descKey: 'quickStartCreateKbDesc',
+      visible: canKb,
+      onClick: () => void navigate('/knowledge-bases'),
+    },
+    {
+      id: 'ask',
+      icon: MessageCircleQuestion,
+      titleKey: 'quickStartAskTitle',
+      descKey: 'quickStartAskDesc',
+      visible: canKb,
+      onClick: () => void navigate('/knowledge-bases'),
+    },
+    {
+      id: 'km',
+      icon: FolderTree,
+      titleKey: 'quickStartKmTitle',
+      descKey: 'quickStartKmDesc',
+      visible: canKm,
+      onClick: () => void navigate('/knowledge-map'),
+    },
+  ].filter((c) => c.visible);
 
   return (
-    <div className={`home home--hub${showKnowledgeMapHub ? ' home--hub-map-center' : ''}`}>
-      {showKnowledgeMapHub ? (
-        <>
-          <header className="home-map-hero-header">
-            <div className="home-map-hero-header-text">
-              <h1>{t('title')}</h1>
-              <p className="page-subtitle home-map-hero-subtitle">
-                {t('subtitleMap')}
-              </p>
-            </div>
-            <div className="home-map-hero-header-aside">
-              {nodeCount != null && linkCount != null ? (
-                <div className="home-map-hero-stats" aria-live="polite">
-                  <span className="home-map-hero-stat">
-                    <span className="home-map-hero-stat-value">{nodeCount}</span>
-                    <span className="home-map-hero-stat-label">{t('nodes')}</span>
-                  </span>
-                  <span className="home-map-hero-stat-divider" aria-hidden />
-                  <span className="home-map-hero-stat">
-                    <span className="home-map-hero-stat-value">{linkCount}</span>
-                    <span className="home-map-hero-stat-label">{t('links')}</span>
-                  </span>
-                </div>
-              ) : hubLoading ? (
-                <span className="home-muted home-map-hero-stats-muted">{t('loadingOverview')}</span>
-              ) : null}
-              <Link to="/knowledge-map" className="btn btn-secondary home-map-manage-btn">
-                {showKnowledgeMapWrite ? t('editKnowledgeMap') : t('openKnowledgeMap')}
-              </Link>
-            </div>
-          </header>
+    <div className="home home--operations app-page-shell">
+      {hubLoading && (
+        <p className="home-muted home-ops-loading">
+          <Loader2 className="home-ops-spinner" size={18} aria-hidden />
+          {t('loading')}
+        </p>
+      )}
+      {hubError && (
+        <p className="home-error" role="alert">
+          {hubError}
+        </p>
+      )}
 
-          {hubError && (
-            <p className="home-error home-map-hero-banner" role="alert">
-              {hubError}
-            </p>
+      {showWelcome && (
+        <section className="home-welcome" aria-label={t('welcomeTitle')}>
+          <div className="home-welcome-icon" aria-hidden>
+            <FileStack size={24} strokeWidth={1.5} />
+          </div>
+          <h1 className="home-welcome-title">{t('welcomeTitle')}</h1>
+          <p className="home-muted home-welcome-body">{t('welcomeBody')}</p>
+        </section>
+      )}
+
+      {cards.length > 0 && (
+        <section className="home-quick-start app-page-section" aria-label={t('quickStartHeading')}>
+          {showWelcome ? (
+            <h2 className="home-section-heading">{t('quickStartHeading')}</h2>
+          ) : (
+            <h1 className="home-section-heading">{t('quickStartHeading')}</h1>
           )}
+          <div className="home-quick-start-grid">
+            {cards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  className="home-quick-start-card"
+                  onClick={card.onClick}
+                >
+                  <span className="home-quick-start-card-icon" aria-hidden>
+                    <Icon size={20} strokeWidth={1.75} />
+                  </span>
+                  <span className="home-quick-start-card-title">{t(card.titleKey)}</span>
+                  <span className="home-quick-start-card-desc">{t(card.descKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-          <section className="home-map-stage" aria-label={t('sectionKnowledgeMap')}>
-            <div className="home-map-stage-title">
-              <Waypoints size={22} aria-hidden />
-              <span>{showHtmlHome ? t('knowledgeMapPublishedHeading') : t('knowledgeMapHeading')}</span>
-            </div>
-            {knowledgeMapTreeLoading && !mapLoaded ? (
-              <div className="home-map-stage-loading">
-                <Loader2 className="home-map-stage-spinner" size={32} aria-hidden />
-                <span>{t('loadingGraph')}</span>
-              </div>
-            ) : knowledgeMapTreeError && !showHtmlHome ? (
-              <p className="home-error home-map-stage-error" role="alert">
-                {knowledgeMapTreeError}
-              </p>
-            ) : showHtmlHome ? (
-              <iframe
-                title={t('knowledgeMapPublishedHeading')}
-                className="home-map-stage__html-frame"
-                src={mapHtmlIframeSrc}
-                sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"
-                referrerPolicy="no-referrer"
-              />
-            ) : !mapHasTerms ? (
-              <div className="home-map-stage-empty">
-                <p className="home-map-stage-empty-title">{t('noNodesTitle')}</p>
-                <p className="home-muted">
-                  {showKnowledgeMapWrite ? t('noNodesEditor') : t('noNodesViewer')}
-                </p>
-                {showKnowledgeMapWrite ? (
-                  <Link to="/knowledge-map" className="btn btn-primary home-map-stage-empty-cta">
-                    {t('goToKnowledgeMap')}
-                  </Link>
-                ) : null}
-              </div>
-            ) : knowledgeMapTree ? (
-              <Suspense
-                fallback={
-                  <div className="home-map-stage-loading">
-                    <Loader2 className="home-map-stage-spinner" size={32} aria-hidden />
-                    <span>{t('loadingGraph')}</span>
-                  </div>
-                }
-              >
-                <KnowledgeMapForceGraph
-                  tree={knowledgeMapTree}
-                  links={resourceLinks}
-                  selectedNodeId={null}
-                  onSelectNode={openTermOnMap}
-                  resolveResourceLabel={resolveResourceLabel}
-                  className="km-map-graph--home"
-                />
-              </Suspense>
-            ) : null}
-            {showHtmlHome ? (
-              <p className="home-muted home-map-stage-hint">{t('mapHtmlHint')}</p>
-            ) : mapHasTerms ? (
-              <p className="home-muted home-map-stage-hint">{t('mapHint')}</p>
-            ) : null}
-          </section>
-
-          <div className="home-under-map">
-            <HomeCommentFeed items={recentComments} />
-
-            {showDocsWork && (
-              <section className="home-hub-card">
-                <h2 className="home-hub-card-title">
-                  <Inbox size={20} aria-hidden />
-                  {t('workItems')}
-                </h2>
-                <p className="home-muted home-hub-card-intro">
-                  {t('workItemsIntro')}
-                </p>
-                {!hub?.work_items?.length ? (
-                  <p className="home-muted">{t('workItemsEmpty')}</p>
-                ) : (
-                  <ul className="home-work-list">
-                    {hub.work_items.map((w) => (
-                      <li key={w.id} className="home-work-item">
-                        <span className="home-work-type">{w.relation_type}</span>
-                        <Link to={`/documents/view/${w.source_document_id}`} className="home-work-link">
-                          {w.source_title}
-                        </Link>
-                        <span className="home-work-arrow" aria-hidden>
-                          →
-                        </span>
-                        <Link to={`/documents/view/${w.target_document_id}`} className="home-work-link">
-                          {w.target_title}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
+      {hasApps && (
+        <section className="home-apps app-page-section" aria-label={t('appsHeading')}>
+          <header className="home-apps-header">
+            {showWelcome || cards.length > 0 ? (
+              <h2 className="home-section-heading">{t('appsHeading')}</h2>
+            ) : (
+              <h1 className="home-section-heading">{t('appsHeading')}</h1>
             )}
-
-            <div className="home-under-map-row">
-              <section className="home-hub-card home-hub-card--compact">
-                <h2 className="home-hub-card-title">
-                  <Share2 size={20} aria-hidden />
-                  {t('shareRequests')}
-                </h2>
-                <p className="home-muted">{t('shareRequestsEmpty')}</p>
-              </section>
-
-              <section className="home-hub-card home-hub-card--compact">
-                <h2 className="home-hub-card-title">
-                  <FileStack size={20} aria-hidden />
-                  {t('browseContent')}
-                </h2>
-                <ul className="home-quick-links">
-                  <li>
-                    <Link to="/documents">{t('linkDocuments')}</Link>
-                  </li>
-                  <li>
-                    <Link to="/articles">{t('linkArticles')}</Link>
-                  </li>
-                  <li>
-                    <Link to="/wikis">{t('linkWikis')}</Link>
-                  </li>
-                </ul>
-              </section>
-            </div>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="page-header home-header">
-            <div>
-              <h1>{t('title')}</h1>
-              <p className="page-subtitle">
-                {t('subtitleHomeWithoutKnowledgeMap')}
-              </p>
-            </div>
-          </div>
-
-          {hubLoading && <p className="home-muted">{t('loading')}</p>}
-          {hubError && (
-            <p className="home-error" role="alert">
-              {hubError}
-            </p>
-          )}
-
-          <div className="home-hub-split">
-            <div className="home-hub-split__right home-hub-split__right--solo">
-              <HomeCommentFeed items={recentComments} />
-
-              {showDocsWork && (
-                <section className="home-hub-card">
-                  <h2 className="home-hub-card-title">
-                    <Inbox size={20} aria-hidden />
-                    {t('workItems')}
-                  </h2>
-                  <p className="home-muted home-hub-card-intro">
-                    {t('workItemsIntro')}
-                  </p>
-                  {!hub?.work_items?.length ? (
-                    <p className="home-muted">{t('workItemsEmpty')}</p>
-                  ) : (
-                    <ul className="home-work-list">
-                      {hub.work_items.map((w) => (
-                        <li key={w.id} className="home-work-item">
-                          <span className="home-work-type">{w.relation_type}</span>
-                          <Link to={`/documents/view/${w.source_document_id}`} className="home-work-link">
-                            {w.source_title}
-                          </Link>
-                          <span className="home-work-arrow" aria-hidden>
-                            →
-                          </span>
-                          <Link to={`/documents/view/${w.target_document_id}`} className="home-work-link">
-                            {w.target_title}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              )}
-
-              <div className="home-hub-split__right-row">
-                <section className="home-hub-card home-hub-card--compact">
-                  <h2 className="home-hub-card-title">
-                    <Share2 size={20} aria-hidden />
-                    {t('shareRequests')}
-                  </h2>
-                  <p className="home-muted">{t('shareRequestsEmpty')}</p>
-                </section>
-
-                <section className="home-hub-card home-hub-card--compact">
-                  <h2 className="home-hub-card-title">
-                    <FileStack size={20} aria-hidden />
-                    {t('browseContent')}
-                  </h2>
-                  <ul className="home-quick-links">
-                    <li>
-                      <Link to="/documents">{t('linkDocuments')}</Link>
-                    </li>
-                    <li>
-                      <Link to="/articles">{t('linkArticles')}</Link>
-                    </li>
-                    <li>
-                      <Link to="/wikis">{t('linkWikis')}</Link>
-                    </li>
-                  </ul>
-                </section>
-              </div>
-            </div>
-          </div>
-        </>
+            <p className="page-subtitle home-apps-intro">{t('appsIntro')}</p>
+          </header>
+          <AppCatalogGrid
+            variant="home"
+            modules={launcherModules}
+            onSelect={(mod) => void navigate(mod.homePath)}
+          />
+        </section>
       )}
     </div>
   );

@@ -1,0 +1,114 @@
+/* Google Apps–style launcher tiles + Home app catalog */
+
+.app-catalog--launcher {
+  padding: var(--space-2) 0;
+}
+
+.app-catalog-section--launcher + .app-catalog-section--launcher {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+
+.app-catalog-section-label {
+  margin: 0 0 var(--space-1) var(--space-2);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.app-catalog-grid--launcher {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+}
+
+.app-catalog-item--launcher {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s;
+}
+
+.app-catalog-item--launcher:hover {
+  background: var(--color-bg-muted);
+}
+
+.app-catalog-item--launcher .app-catalog-item-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-bg-muted);
+  color: var(--color-accent);
+}
+
+.app-catalog-item--launcher:hover .app-catalog-item-icon-wrap {
+  background: var(--color-accent-subtle);
+}
+
+.app-catalog-item--launcher .app-catalog-item-label {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: var(--color-text-secondary);
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Home — compact 4-column cards with tagline */
+.app-catalog-grid--home {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.app-catalog-item--home {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-align: left;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.app-catalog-item--home:hover {
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-catalog-item--home .app-catalog-item-icon-wrap {
+  display: flex;
+  color: var(--color-accent);
+}
+
+.app-catalog-item--home .app-catalog-item-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.app-catalog-item--home .app-catalog-item-tagline {
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  color: var(--color-text-muted);
+}

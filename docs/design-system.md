@@ -29,15 +29,66 @@ SCSS tokens, shared layouts, and styling conventions for the SPA (`frontend/src/
 | Card stack / create block bottom margin | `--space-5` (20px) |
 | Last form row → primary actions | `--space-6` (24px) |
 | Page header → content | `--space-6` (+ `--space-1` in account pages) |
+| **App page gutters** | **`--app-page-padding-x` / `--app-page-padding-y`** (default `--space-6`) — `.app-content`, `.app-page-pane`, channel/ontology main columns |
 | Settings / account page max width | **`ds.$km-layout-max`** (900px) — same cap as document channel, project, and evaluation settings pages |
 
 Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-compact-x`** (chips, compact inputs).
+
+## App shell layout
+
+**Goal:** one gutter source per scroll column — no stacked `padding` on shell + page root.
+
+### Decision tree
+
+| Route shape | Who provides horizontal/vertical gutter | Page TSX / SCSS |
+|-------------|----------------------------------------|-----------------|
+| Default (list, settings, console page in main column) | **`.app-content`** in `App.scss` via `--app-page-padding-*` | Use **`.page-header`** + **`.page-subtitle`**; **do not** add root `padding` on the page wrapper |
+| Documents / Articles / Media (channel rail) | **`.app-page-pane`** on `channel-section-layout__main` | Same; channel SCSS must **not** set `padding` on `__main` |
+| Ontology app (second nav rail) | **`.app-page-pane`** on `ontology-section-layout__main` | Same |
+| Platform Home | **`.app-content`** only | Optional **`.app-page-shell`** for max-width; **no extra page padding** |
+| Full-bleed / immersive | **Exception** — see below | Comment **`app-layout-exception:`** + update this table |
+
+### Primitives (`app-page.scss`, loaded from `index.scss`)
+
+| Class | Role |
+|-------|------|
+| **`.app-page-pane`** | Scroll column inside channel / ontology layout; applies `--app-page-padding-*` |
+| **`.app-page-shell`** | `max-width: $km-layout-max` only — not padding |
+| **`.app-page-section*`** | Home-style sections (title, desc, spacing) |
+| **`.page-header` / `.page-subtitle`** | Global page title block — **do not** re-declare `h1` font-size in feature SCSS unless truly different |
+
+### Registered exceptions (`App.scss` / feature SCSS)
+
+Mark with comment `app-layout-exception: <reason>` when bypassing shell gutters:
+
+| Pattern | Reason |
+|---------|--------|
+| `.app-content--search` | Wider horizontal gutters for search results |
+| `.app-content--with-channel-rail` / `--with-ontology-rail` → `padding: 0` | Rail layouts; gutter on `.app-page-pane` |
+| `.app-content--compact:has(.kb-detail--qa-fullpage)` → `padding: 0` | KB Q&A full-page chat |
+| `.app-content--compact .wiki-page-editor-outer` negative margin | Wiki editor edge-to-edge |
+| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; zero shell padding |
+| `.app-content--object-explorer` | Uses token padding but flex fill — not a second page root |
+
+New exceptions require a row here and a one-line SCSS comment.
+
+### Verification
+
+From `frontend/`:
+
+```bash
+npm run check:app-layout   # gutter guardrails
+npm run build
+```
+
+Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `ChannelSectionLayout*`, or `MainLayout.tsx`.
 
 ## Shared layout (`frontend/src/styles/`)
 
 | File | Role |
 |------|------|
 | **`account-page.scss`** | Cross-route **account / personal settings** chrome (Profile, Settings, Git credentials). Import via **`@use '../styles/account-page'`** in page SCSS, or **`import '…/account-page.scss'`** in a colocated component. |
+| **`app-page.scss`** | Global **`.page-header`**, **`.page-subtitle`**, **`.app-page-shell`**, **`.app-page-section*`** — loaded from **`index.scss`**. Use **`var(--app-page-padding-*)`** for in-app gutters. |
 
 **Structure:** `.account-page` → `.account-page-header` + `.account-stack` → one or more `.account-card` sections.
 
@@ -65,8 +116,9 @@ Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-
 6. **Motion** — Use **`var(--duration-fast)`** / **`var(--ease-standard)`** (or **`@include motion-tokens`** plus an explicit **`transition-property`**); global stylesheet respects **`prefers-reduced-motion`**.
 7. **TSX** — Prefer **`className`** + **`_utilities.scss`** / colocated SCSS for colors and spacing. Keep **`style={{…}}`** only for **data-driven geometry** (percent widths, tree indent from depth, crop box coordinates, CSS variables like `--home-knowledge-map-depth`).
 8. **Settings page width** — **`width: 100%`**, **`max-width: ds.$km-layout-max`**, left-aligned (no **`margin: 0 auto`**). Reuse **`account-page.scss`** for personal account surfaces; channel/project/wiki settings may keep colocated `*Settings.scss` but should use the same width and spacing tokens.
-9. **Reuse before inventing** — Prefer **`account-page.scss`**, **`.btn*`** / **`_utilities.scss`**, and existing settings layouts over one-off hex, magic `px`, or inline **`style={{}}`** for static chrome.
+9. **Reuse before inventing** — Prefer **`account-page.scss`**, **`app-page.scss`** (`.page-header`, `.app-page-pane`), **`.btn*`** / **`_utilities.scss`**, and existing settings layouts over one-off hex, magic `px`, or inline **`style={{}}`** for static chrome.
 10. **Tokens** — Add project-wide semantics in **`_css-variables.scss`** / **`_tokens.scss`**; do not copy token values into feature SCSS.
+11. **App page gutters** — Use **`--app-page-padding-*`** only via **`.app-content`** or **`.app-page-pane`**. Do **not** add root `padding` on page wrappers. Full-bleed routes need **`app-layout-exception:`** comment + row in **`docs/design-system.md` § App shell layout**. Run **`npm run check:app-layout`** from `frontend/` when editing shell layout files.
 
 ## New feature stylesheet
 

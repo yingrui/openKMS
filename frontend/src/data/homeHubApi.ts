@@ -1,45 +1,15 @@
 import { config } from '../config';
 import { authAwareFetch, getAuthHeaders } from './apiClient';
-import type { KnowledgeMapHtmlStatus, KnowledgeMapNode, ResourceLink } from './knowledgeMapApi';
 
-export type HomeHubKnowledgeMapCounts = {
-  node_count: number;
-  link_count: number;
-};
-
-export type HomeHubWorkItem = {
-  id: string;
-  relation_type: string;
-  source_document_id: string;
-  target_document_id: string;
-  source_title: string;
-  target_title: string;
-  created_at: string;
-};
-
-export type HomeHubCommentItem = {
-  id: string;
-  resource_type: string;
-  resource_id: string;
-  resource_title: string;
-  parent_comment_id: string | null;
-  body: string;
-  rank: number | null;
-  created_by: string;
-  created_by_name: string | null;
-  created_at: string;
-  is_reply: boolean;
+export type HomeSiteSummary = {
+  document_count: number;
+  kb_count: number;
+  wiki_page_count: number;
+  article_count: number;
 };
 
 export type HomeHubResponse = {
-  knowledge_map: HomeHubKnowledgeMapCounts | null;
-  work_items: HomeHubWorkItem[];
-  share_requests: unknown[];
-  recent_comments: HomeHubCommentItem[];
-  knowledge_map_tree: KnowledgeMapNode[] | null;
-  resource_links: ResourceLink[] | null;
-  map_html_status: KnowledgeMapHtmlStatus | null;
-  resource_labels: Record<string, string>;
+  site_summary: HomeSiteSummary;
 };
 
 export async function fetchHomeHub(): Promise<HomeHubResponse> {
@@ -53,4 +23,14 @@ export async function fetchHomeHub(): Promise<HomeHubResponse> {
     throw new Error((err as { detail?: string }).detail || `Home hub failed (${res.status})`);
   }
   return res.json() as Promise<HomeHubResponse>;
+}
+
+export function siteHasContent(summary: HomeSiteSummary | null | undefined): boolean {
+  if (!summary) return false;
+  return (
+    summary.document_count > 0 ||
+    summary.kb_count > 0 ||
+    summary.wiki_page_count > 0 ||
+    summary.article_count > 0
+  );
 }

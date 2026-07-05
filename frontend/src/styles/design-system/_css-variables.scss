@@ -112,6 +112,9 @@
   --radius-pill: 999px;
   --sidebar-width: 220px;
   --header-height: 56px;
+  /* Standard in-app page gutters (main column, channel pane, ontology pane) */
+  --app-page-padding-y: var(--space-6);
+  --app-page-padding-x: var(--space-6);
 
   --shadow-sm: 0 1px 2px rgba(44, 41, 37, 0.06);
   --shadow-md: 0 4px 12px rgba(44, 41, 37, 0.08);

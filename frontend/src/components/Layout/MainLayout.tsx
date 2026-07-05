@@ -1,22 +1,17 @@
-import { useCallback, useState, type CSSProperties } from 'react';
+import { type CSSProperties } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X, LogIn, Home } from 'lucide-react';
+import { isConsoleShellPath } from '../../config/appModules';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
+import { OntologyNavRail, isOntologyAppPath } from '../ontology/OntologyNavRail';
 import '../../App.scss';
 
-const SIDEBAR_COLLAPSED_KEY = 'openkms_nav_sidebar_collapsed';
-
-function readSidebarCollapsed(): boolean {
-  try {
-    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
-  } catch {
-    return false;
-  }
-}
+const SIDEBAR_COLLAPSED_WIDTH = '56px';
+const SIDEBAR_CONSOLE_WIDTH = '220px';
 
 export function MainLayout() {
   const { t } = useTranslation('layout');
@@ -50,42 +45,31 @@ export function MainLayout() {
   const isSearchPage = location.pathname === '/search';
   const isObjectExplorerPage = location.pathname === '/object-explorer';
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => readSidebarCollapsed());
+  const sidebarCollapsed = true;
   const onArticles =
     location.pathname === '/articles' || location.pathname.startsWith('/articles/');
   const onDocuments =
     location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onMedia = location.pathname === '/media' || location.pathname.startsWith('/media/');
-  const showChannelRail = sidebarCollapsed && (onArticles || onDocuments || onMedia);
-
-  const toggleSidebarCollapsed = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        if (next) {
-          window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, '1');
-        } else {
-          window.localStorage.removeItem(SIDEBAR_COLLAPSED_KEY);
-        }
-      } catch {
-        /* ignore quota / private mode */
-      }
-      return next;
-    });
-  }, []);
+  const showChannelRail = onArticles || onDocuments || onMedia;
+  const showOntologyRail = isOntologyAppPath(location.pathname);
+  const consoleShell = isConsoleShellPath(location.pathname);
 
   return (
     <div
-      className={`app-layout${sidebarCollapsed ? ' app-layout--sidebar-collapsed' : ''}`}
+      className={`app-layout ${consoleShell ? 'app-layout--console' : 'app-layout--sidebar-collapsed'}`}
       style={
-        sidebarCollapsed
-          ? ({ ['--sidebar-width' as string]: '56px' } as CSSProperties)
-          : undefined
+        {
+          ['--sidebar-width' as string]: consoleShell
+            ? SIDEBAR_CONSOLE_WIDTH
+            : SIDEBAR_COLLAPSED_WIDTH,
+        } as CSSProperties
       }
     >
-      <Sidebar collapsed={sidebarCollapsed} onToggleCollapsed={toggleSidebarCollapsed} />
-      <main className="app-main">
-        <Header />
+      <Header />
+      <div className="app-shell-body">
+        <Sidebar />
+        <main className="app-main">
         {showAuthRequired && (
           <div className="auth-required-message" role="alert">
             <h2 className="auth-required-title">{t('authRequiredTitle')}</h2>
@@ -127,13 +111,23 @@ export function MainLayout() {
         {!showAuthRequired && !showPathDenied && (
           <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
             <div
-              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isObjectExplorerPage ? ' app-content--object-explorer' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}`}
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isObjectExplorerPage ? ' app-content--object-explorer' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${showOntologyRail ? ' app-content--with-ontology-rail' : ''}`}
             >
-              <Outlet />
+              {showOntologyRail ? (
+                <div className="ontology-section-layout">
+                  <OntologyNavRail />
+                  <div className="ontology-section-layout__main app-page-pane">
+                    <Outlet />
+                  </div>
+                </div>
+              ) : (
+                <Outlet />
+              )}
             </div>
           </SidebarLayoutProvider>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

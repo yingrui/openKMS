@@ -2,7 +2,7 @@
   "loading": "加载中…",
   "nav": {
     "areaLabel": "智能体区域",
-    "projects": "项目",
+    "projects": "智能体项目",
     "skills": "技能"
   },
   "skills": {
@@ -66,8 +66,8 @@
     "deleteSkillError": "无法删除技能"
   },
   "list": {
-    "title": "智能体",
-    "pageTitle": "项目",
+    "title": "智能体项目",
+    "pageTitle": "智能体项目",
     "settings": "设置",
     "subtitle": "创建项目工作区，与可读写文件、检索知识、运行代码的智能体对话。",
     "namePlaceholder": "项目名称",
@@ -88,7 +88,7 @@
     "dialogNew": "新建项目"
   },
   "sessions": {
-    "back": "全部项目",
+    "back": "全部智能体项目",
     "newChat": "新建会话",
     "actions": "会话操作",
     "rename": "重命名",

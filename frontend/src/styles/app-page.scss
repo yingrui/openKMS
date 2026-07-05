@@ -1,0 +1,70 @@
+@use './design-system/tokens' as ds;
+
+/*
+ * App shell page chrome — loaded globally from index.scss.
+ *
+ * Gutter token: --app-page-padding-x / --app-page-padding-y (_css-variables.scss).
+ *
+ * Where padding comes from (do not stack):
+ * - Standard route → .app-content (App.scss)
+ * - Channel / ontology second column → .app-page-pane on the scroll element
+ * - Full-bleed exceptions → see docs/design-system.md § App shell layout
+ *
+ * Mark SCSS exceptions with: app-layout-exception: <reason>
+ */
+
+.page-header {
+  margin-bottom: var(--space-6);
+}
+
+.page-header h1 {
+  font-size: var(--text-page-title);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  margin: 0 0 var(--space-2);
+  color: var(--color-text);
+}
+
+.page-subtitle {
+  font-size: var(--text-base);
+  line-height: var(--text-base--line);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+/* Scrollable main column inside channel / ontology layouts */
+.app-page-pane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
+}
+
+/* Optional width cap for platform Home, settings-style pages */
+.app-page-shell {
+  width: 100%;
+  max-width: ds.$km-layout-max;
+}
+
+.app-page-section {
+  margin-bottom: var(--space-8);
+}
+
+.app-page-section:last-child {
+  margin-bottom: 0;
+}
+
+.app-page-section-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.app-page-section-desc {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
