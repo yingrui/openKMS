@@ -54,17 +54,31 @@ const ontologyActive = (pathname: string) =>
  * Canonical suite app order — App Rail, App Launcher, and Home Apps must all use
  * `sortSuiteApps()` after visibility filtering. Reorder here only; do not sort in UI code.
  *
- * 1. Core content (capture → publish → wiki)
- * 2. Knowledge bases & agent workspaces
+ * 1. Agent workspaces, then document capture
+ * 2. Core content (articles → wiki → knowledge bases)
  * 3. Media
  * 4. Knowledge structure (map → terms → ontology)
  * 5. Quality (evaluations)
  */
 export const APP_MODULES: AppModule[] = [
   {
-    id: 'documents',
+    id: 'agents',
     kind: 'suite_app',
     order: 10,
+    homePath: '/agents',
+    icon: Bot,
+    labelKey: 'agents',
+    taglineKey: 'appTaglineAgents',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    featureToggle: 'agents',
+    isActive: agentsActive,
+  },
+  {
+    id: 'documents',
+    kind: 'suite_app',
+    order: 20,
     homePath: '/documents',
     icon: FileStack,
     labelKey: 'documents',
@@ -77,7 +91,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'articles',
     kind: 'suite_app',
-    order: 20,
+    order: 30,
     homePath: '/articles',
     icon: FileText,
     labelKey: 'articles',
@@ -90,7 +104,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'wikis',
     kind: 'suite_app',
-    order: 30,
+    order: 40,
     homePath: '/wikis',
     icon: BookOpen,
     labelKey: 'wikiSpaces',
@@ -103,7 +117,7 @@ export const APP_MODULES: AppModule[] = [
   {
     id: 'knowledge-bases',
     kind: 'suite_app',
-    order: 40,
+    order: 50,
     homePath: '/knowledge-bases',
     icon: Database,
     labelKey: 'knowledgeBases',
@@ -112,20 +126,6 @@ export const APP_MODULES: AppModule[] = [
     showInMainSidebar: true,
     showInConsoleNav: false,
     isActive: (p) => p === '/knowledge-bases' || p.startsWith('/knowledge-bases/'),
-  },
-  {
-    id: 'agents',
-    kind: 'suite_app',
-    order: 50,
-    homePath: '/agents',
-    icon: Bot,
-    labelKey: 'agents',
-    taglineKey: 'appTaglineAgents',
-    showInLauncher: true,
-    showInMainSidebar: true,
-    showInConsoleNav: false,
-    featureToggle: 'agents',
-    isActive: agentsActive,
   },
   {
     id: 'media',
