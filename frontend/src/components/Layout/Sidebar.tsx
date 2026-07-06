@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Home as HomeIcon,
   HardDrive,
   Database,
   LayoutDashboard,
@@ -181,34 +180,23 @@ export function Sidebar() {
             )}
           </div>
         ) : (
-          <>
-            <NavLink
-              to="/"
-              end
-              title={moduleTooltip(t('home'), t('appTaglineHome'))}
-              className={({ isActive }) => `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
-            >
-              <HomeIcon size={18} strokeWidth={1.75} />
-              <span>{t('home')}</span>
-            </NavLink>
-            {appModules.map((mod) => {
-              const Icon = mod.icon;
-              const label = t(mod.labelKey);
-              const tagline = t(mod.taglineKey);
-              const active = mod.isActive(location.pathname);
-              return (
-                <NavLink
-                  key={mod.id}
-                  to={mod.homePath}
-                  title={moduleTooltip(label, tagline)}
-                  className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
-                >
-                  <Icon size={18} strokeWidth={1.75} />
-                  <span>{label}</span>
-                </NavLink>
-              );
-            })}
-          </>
+          appModules.map((mod) => {
+            const Icon = mod.icon;
+            const label = t(mod.labelKey);
+            const tagline = t(mod.taglineKey);
+            const active = mod.isActive(location.pathname);
+            return (
+              <NavLink
+                key={mod.id}
+                to={mod.homePath}
+                title={moduleTooltip(label, tagline)}
+                className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
+              >
+                <Icon size={18} strokeWidth={1.75} />
+                <span>{label}</span>
+              </NavLink>
+            );
+          })
         )}
       </nav>
     </aside>
