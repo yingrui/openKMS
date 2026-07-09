@@ -116,10 +116,49 @@
 }
 
 .object-type-actions-col {
-  width: 100px;
+  min-width: 140px;
+  max-width: 280px;
 }
 
-.object-type-actions-col button {
+.object-type-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.object-type-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, var(--color-border));
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.object-type-action-btn:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.object-type-action-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.object-type-action-btn__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+.object-type-actions-col button:not(.object-type-action-btn) {
   display: inline-flex;
   align-items: center;
   justify-content: center;

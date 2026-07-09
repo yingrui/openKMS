@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { X, LogIn, Home } from 'lucide-react';
@@ -7,11 +7,26 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
-import { OntologyNavRail, isOntologyAppPath } from '../ontology/OntologyNavRail';
+import { ManagerNavRail } from '../ontology/ManagerNavRail';
+import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
+import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
+import {
+  getOntologySubApp,
+  isFunctionEditorWorkspacePath,
+  isObjectExplorerExplorePath,
+  isOntologySuitePath,
+} from '../ontology/getOntologySubApp';
 import '../../App.scss';
 
 const SIDEBAR_COLLAPSED_WIDTH = '56px';
 const SIDEBAR_CONSOLE_WIDTH = '220px';
+
+function OntologyRail({ subApp }: { subApp: ReturnType<typeof getOntologySubApp> }) {
+  if (subApp === 'ontology-manager') return <ManagerNavRail />;
+  if (subApp === 'object-explorer') return <ExplorerNavRail />;
+  if (subApp === 'function-editor') return <FunctionEditorNavRail />;
+  return null;
+}
 
 export function MainLayout() {
   const { t } = useTranslation('layout');
@@ -43,7 +58,11 @@ export function MainLayout() {
     location.pathname.startsWith('/wikis/') ||
     isAgentsWorkspace;
   const isSearchPage = location.pathname === '/search';
-  const isObjectExplorerPage = location.pathname === '/object-explorer';
+
+  const ontologySubApp = getOntologySubApp(location.pathname);
+  const showOntologyRail = isOntologySuitePath(location.pathname) && !isFunctionEditorWorkspacePath(location.pathname);
+  const isExplorePage = isObjectExplorerExplorePath(location.pathname);
+  const isEditorWorkspace = isFunctionEditorWorkspacePath(location.pathname);
 
   const sidebarCollapsed = true;
   const onArticles =
@@ -52,8 +71,24 @@ export function MainLayout() {
     location.pathname === '/documents' || location.pathname.startsWith('/documents/');
   const onMedia = location.pathname === '/media' || location.pathname.startsWith('/media/');
   const showChannelRail = onArticles || onDocuments || onMedia;
-  const showOntologyRail = isOntologyAppPath(location.pathname);
   const consoleShell = isConsoleShellPath(location.pathname);
+
+  let ontologyRailModifier = '';
+  if (ontologySubApp === 'ontology-manager') ontologyRailModifier = ' app-content--with-ontology-manager-rail';
+  else if (ontologySubApp === 'object-explorer') ontologyRailModifier = ' app-content--with-object-explorer-rail';
+  else if (ontologySubApp === 'function-editor') ontologyRailModifier = ' app-content--with-function-editor-rail';
+
+  let ontologyOutlet: ReactNode = <Outlet />;
+  if (showOntologyRail) {
+    ontologyOutlet = (
+      <div className="ontology-section-layout">
+        <OntologyRail subApp={ontologySubApp} />
+        <div className="ontology-section-layout__main app-page-pane">
+          <Outlet />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -111,18 +146,9 @@ export function MainLayout() {
         {!showAuthRequired && !showPathDenied && (
           <SidebarLayoutProvider sidebarCollapsed={sidebarCollapsed}>
             <div
-              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isObjectExplorerPage ? ' app-content--object-explorer' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${showOntologyRail ? ' app-content--with-ontology-rail' : ''}`}
+              className={`app-content ${isDetailPage ? 'app-content--compact' : ''}${isHome ? ' app-content--home' : ''}${isSearchPage ? ' app-content--search' : ''}${isExplorePage ? ' app-content--object-explorer' : ''}${isEditorWorkspace ? ' app-content--function-editor-workspace' : ''}${showChannelRail ? ' app-content--with-channel-rail' : ''}${ontologyRailModifier}`}
             >
-              {showOntologyRail ? (
-                <div className="ontology-section-layout">
-                  <OntologyNavRail />
-                  <div className="ontology-section-layout__main app-page-pane">
-                    <Outlet />
-                  </div>
-                </div>
-              ) : (
-                <Outlet />
-              )}
+              {ontologyOutlet}
             </div>
           </SidebarLayoutProvider>
         )}

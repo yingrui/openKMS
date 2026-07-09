@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Pencil, Trash2, X, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Pencil, Trash2, X, Search as SearchIcon, Loader2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -14,6 +14,11 @@ import {
   type ObjectInstanceResponse,
   type PropertyDef,
 } from '../../data/ontologyApi';
+import {
+  executeOntologyAction,
+  fetchOntologyActionTypes,
+  type OntologyActionTypeResponse,
+} from '../../data/ontologyFunctionsApi';
 import './ObjectTypeDetail.scss';
 
 export function ObjectTypeDetail() {
@@ -38,6 +43,10 @@ export function ObjectTypeDetail() {
   const [editInstance, setEditInstance] = useState<ObjectInstanceResponse | null>(null);
   const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  const [actions, setActions] = useState<OntologyActionTypeResponse[]>([]);
+  const [runningActionKey, setRunningActionKey] = useState<string | null>(null);
+
+  const runnableActions = actions.filter((a) => a.status === 'active' && a.function_id);
 
   const loadType = useCallback(async () => {
     if (!typeId) return;
@@ -72,6 +81,20 @@ export function ObjectTypeDetail() {
   useEffect(() => {
     loadType();
   }, [loadType]);
+
+  const loadActions = useCallback(async () => {
+    if (!typeId) return;
+    try {
+      const rows = await fetchOntologyActionTypes({ object_type_id: typeId });
+      setActions(rows);
+    } catch {
+      setActions([]);
+    }
+  }, [typeId]);
+
+  useEffect(() => {
+    void loadActions();
+  }, [loadActions]);
 
   const prevTypeIdRef = useRef<string | null>(null);
   const prevSearchRef = useRef<string | null>(null);
@@ -155,6 +178,25 @@ export function ObjectTypeDetail() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const runAction = async (action: OntologyActionTypeResponse, inst: ObjectInstanceResponse) => {
+    const key = `${action.id}:${inst.id}`;
+    setRunningActionKey(key);
+    try {
+      const res = await executeOntologyAction(action.id, { object_id: inst.id });
+      if (res.status === 'ok') {
+        toast.success(
+          res.output ? JSON.stringify(res.output) : t('ontology.objectTypeDetail.actionRunOk', { name: action.display_name }),
+        );
+      } else {
+        toast.error(res.error || t('ontology.objectTypeDetail.actionRunFailed'));
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : t('ontology.objectTypeDetail.actionRunFailed'));
+    } finally {
+      setRunningActionKey(null);
+    }
+  };
+
   if (loading || !objectType) {
     return (
       <div className="object-type-detail">
@@ -164,12 +206,13 @@ export function ObjectTypeDetail() {
   }
 
   const properties: PropertyDef[] = objectType.properties ?? [];
-  const cols = [...properties.map((p) => p.name), 'actions'];
+  const showActionsCol = runnableActions.length > 0 || isAdmin;
+  const cols = [...properties.map((p) => p.name), ...(showActionsCol ? ['actions'] : [])];
 
   return (
     <div className="object-type-detail">
       <div className="object-type-detail-header">
-        <Link to="/objects" className="object-type-back">
+        <Link to="/object-explorer/objects" className="object-type-back">
           <ArrowLeft size={18} />
           <span>{t('ontology.objectTypeDetail.backObjects')}</span>
         </Link>
@@ -205,7 +248,9 @@ export function ObjectTypeDetail() {
               {properties.map((p) => (
                 <th key={p.name}>{p.name}</th>
               ))}
-              {isAdmin && <th className="object-type-actions-col" />}
+              {showActionsCol && (
+                <th className="object-type-actions-col">{t('ontology.objectTypeDetail.actionsCol')}</th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -234,24 +279,52 @@ export function ObjectTypeDetail() {
                   {properties.map((p) => (
                     <td key={p.name}>{displayValue(inst.data?.[p.name])}</td>
                   ))}
-                  {isAdmin && (
+                  {showActionsCol && (
                     <td className="object-type-actions-col">
-                      <button
-                        type="button"
-                        title={t('ontology.objectTypeDetail.editTitle')}
-                        aria-label={t('ontology.objectTypeDetail.editTitle')}
-                        onClick={() => openEdit(inst)}
-                      >
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        title={t('ontology.objectTypeDetail.deleteTitle')}
-                        aria-label={t('ontology.objectTypeDetail.deleteTitle')}
-                        onClick={() => handleDelete(inst)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="object-type-row-actions">
+                        {runnableActions.map((action) => {
+                          const key = `${action.id}:${inst.id}`;
+                          const running = runningActionKey === key;
+                          return (
+                            <button
+                              key={action.id}
+                              type="button"
+                              className="object-type-action-btn"
+                              title={action.display_name}
+                              aria-label={t('ontology.objectTypeDetail.runAction', { name: action.display_name })}
+                              disabled={running}
+                              onClick={() => void runAction(action, inst)}
+                            >
+                              {running ? (
+                                <Loader2 size={14} className="object-type-spinner" aria-hidden />
+                              ) : (
+                                <Zap size={14} aria-hidden />
+                              )}
+                              <span className="object-type-action-btn__label">{action.display_name}</span>
+                            </button>
+                          );
+                        })}
+                        {isAdmin && (
+                          <>
+                            <button
+                              type="button"
+                              title={t('ontology.objectTypeDetail.editTitle')}
+                              aria-label={t('ontology.objectTypeDetail.editTitle')}
+                              onClick={() => openEdit(inst)}
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              title={t('ontology.objectTypeDetail.deleteTitle')}
+                              aria-label={t('ontology.objectTypeDetail.deleteTitle')}
+                              onClick={() => handleDelete(inst)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>

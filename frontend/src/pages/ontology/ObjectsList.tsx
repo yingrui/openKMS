@@ -46,7 +46,7 @@ export function ObjectsList() {
 
       <div className="objects-grid">
         {types.map((ot) => (
-          <Link key={ot.id} to={`/objects/${ot.id}`} className="objects-card">
+          <Link key={ot.id} to={`/object-explorer/objects/${ot.id}`} className="objects-card">
             <div className="objects-card-top">
               <div className="objects-icon">
                 <Box size={28} strokeWidth={1.5} />

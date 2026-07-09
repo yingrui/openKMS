@@ -196,14 +196,26 @@ body:has(.app-content--with-channel-rail) .app-main {
   overflow: hidden;
 }
 
-/* app-layout-exception: ontology rail — gutter on .app-page-pane */
-.app-content--with-ontology-rail {
+/* app-layout-exception: ontology suite rails — gutter on .app-page-pane */
+.app-content--with-ontology-rail,
+.app-content--with-ontology-manager-rail,
+.app-content--with-object-explorer-rail,
+.app-content--with-function-editor-rail {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   height: 100%;
   padding: 0;
+  overflow: hidden;
+}
+
+.app-content--function-editor-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: var(--app-page-padding-y) var(--app-page-padding-x);
   overflow: hidden;
 }
 
@@ -215,9 +227,24 @@ body:has(.app-content--with-channel-rail) .app-main {
   overflow: hidden;
 }
 
-/* Ontology main column uses .app-page-pane on the element */
+.ontology-section-layout__main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
 
-body:has(.app-content--with-ontology-rail) {
+.app-content--with-object-explorer-rail.app-content--object-explorer {
+  padding: 0;
+  overflow: hidden;
+}
+
+body:has(.app-content--with-ontology-rail),
+body:has(.app-content--with-ontology-manager-rail),
+body:has(.app-content--with-object-explorer-rail),
+body:has(.app-content--with-function-editor-rail),
+body:has(.app-content--function-editor-workspace) {
   height: 100vh;
   max-height: 100dvh;
   overflow: hidden;
@@ -226,7 +253,23 @@ body:has(.app-content--with-ontology-rail) {
 body:has(.app-content--with-ontology-rail) #root,
 body:has(.app-content--with-ontology-rail) .app-layout,
 body:has(.app-content--with-ontology-rail) .app-shell-body,
-body:has(.app-content--with-ontology-rail) .app-main {
+body:has(.app-content--with-ontology-rail) .app-main,
+body:has(.app-content--with-ontology-manager-rail) #root,
+body:has(.app-content--with-ontology-manager-rail) .app-layout,
+body:has(.app-content--with-ontology-manager-rail) .app-shell-body,
+body:has(.app-content--with-ontology-manager-rail) .app-main,
+body:has(.app-content--with-object-explorer-rail) #root,
+body:has(.app-content--with-object-explorer-rail) .app-layout,
+body:has(.app-content--with-object-explorer-rail) .app-shell-body,
+body:has(.app-content--with-object-explorer-rail) .app-main,
+body:has(.app-content--with-function-editor-rail) #root,
+body:has(.app-content--with-function-editor-rail) .app-layout,
+body:has(.app-content--with-function-editor-rail) .app-shell-body,
+body:has(.app-content--with-function-editor-rail) .app-main,
+body:has(.app-content--function-editor-workspace) #root,
+body:has(.app-content--function-editor-workspace) .app-layout,
+body:has(.app-content--function-editor-workspace) .app-shell-body,
+body:has(.app-content--function-editor-workspace) .app-main {
   height: 100%;
   min-height: 0;
   overflow: hidden;

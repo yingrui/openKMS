@@ -1,0 +1,122 @@
+.entity-view {
+  display: flex;
+  gap: var(--space-6);
+  min-height: 0;
+}
+
+.entity-view__sidebar {
+  width: var(--ontology-app-rail-width, 200px);
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-border);
+  padding-right: var(--space-4);
+}
+
+.entity-view__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+  padding: 0;
+}
+
+.entity-view__back:hover {
+  color: var(--color-accent);
+}
+
+.entity-view__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 var(--space-1);
+}
+
+.entity-view__meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-4);
+}
+
+.entity-view__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.entity-view__nav-item {
+  font-size: var(--text-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.entity-view__nav-item:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.entity-view__nav-item--active {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.entity-view__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.entity-view__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.entity-view__dl {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-4) 0;
+  font-size: var(--text-sm);
+}
+
+.entity-view__dl dt {
+  color: var(--color-text-muted);
+}
+
+.entity-view__section {
+  margin-top: var(--space-6);
+}
+
+.entity-view__section h3 {
+  font-size: var(--text-base);
+  margin-bottom: var(--space-3);
+}
+
+.entity-view__form {
+  max-width: 560px;
+  margin-top: var(--space-4);
+}
+
+.entity-view__checkbox-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.entity-view__checkbox-list li + li {
+  margin-top: var(--space-1);
+}

@@ -1,9 +1,17 @@
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 
+/* app-layout-exception: explore graph fills pane — flex chain on .app-page-pane when hosting Object Explorer */
+.app-page-pane:has(> .object-explorer) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .object-explorer {
   flex: 1;
   min-height: 0;
+  height: 100%;
   width: 100%;
   display: flex;
   flex-direction: column;

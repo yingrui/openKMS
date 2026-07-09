@@ -3,6 +3,7 @@ import {
   Bot,
   BookOpen,
   ClipboardList,
+  Code2,
   Cpu,
   Database,
   FileStack,
@@ -13,6 +14,7 @@ import {
   ListTodo,
   Network,
   Plug,
+  Compass,
 } from 'lucide-react';
 import type { FeatureToggleKey } from '../data/featureTogglesApi';
 
@@ -44,11 +46,20 @@ const agentsActive = (pathname: string) =>
 const knowledgeMapActive = (pathname: string) =>
   pathname === '/knowledge-map' || pathname.startsWith('/knowledge-map/');
 
-const ontologyActive = (pathname: string) =>
-  pathname.startsWith('/ontology') ||
+const ontologyManagerActive = (pathname: string) =>
+  pathname === '/ontology-manager' ||
+  pathname.startsWith('/ontology-manager/') ||
+  pathname === '/ontology' ||
+  pathname.startsWith('/ontology/');
+
+const objectExplorerActive = (pathname: string) =>
+  pathname === '/object-explorer' ||
+  pathname.startsWith('/object-explorer/') ||
   pathname.startsWith('/objects') ||
-  pathname.startsWith('/links') ||
-  pathname.startsWith('/object-explorer');
+  pathname.startsWith('/links');
+
+const functionEditorActive = (pathname: string) =>
+  pathname === '/function-editor' || pathname.startsWith('/function-editor/');
 
 /**
  * Canonical suite app order — App Rail, App Launcher, and Home Apps must all use
@@ -155,17 +166,45 @@ export const APP_MODULES: AppModule[] = [
     isActive: (p) => p === '/glossaries' || p.startsWith('/glossaries/'),
   },
   {
-    id: 'ontology',
+    id: 'ontology-manager',
     kind: 'suite_app',
     order: 80,
-    homePath: '/ontology',
+    homePath: '/ontology-manager',
     icon: Network,
-    labelKey: 'ontology',
-    taglineKey: 'appTaglineOntology',
+    labelKey: 'ontologyManager',
+    taglineKey: 'appTaglineOntologyManager',
     showInLauncher: true,
     showInMainSidebar: true,
     showInConsoleNav: false,
-    isActive: ontologyActive,
+    accessPaths: ['/ontology', '/ontology/*'],
+    isActive: ontologyManagerActive,
+  },
+  {
+    id: 'object-explorer',
+    kind: 'suite_app',
+    order: 81,
+    homePath: '/object-explorer/objects',
+    icon: Compass,
+    labelKey: 'objectExplorer',
+    taglineKey: 'appTaglineObjectExplorer',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    accessPaths: ['/objects', '/objects/*', '/links', '/links/*'],
+    isActive: objectExplorerActive,
+  },
+  {
+    id: 'function-editor',
+    kind: 'suite_app',
+    order: 82,
+    homePath: '/function-editor',
+    icon: Code2,
+    labelKey: 'functionEditor',
+    taglineKey: 'appTaglineFunctionEditor',
+    showInLauncher: true,
+    showInMainSidebar: true,
+    showInConsoleNav: false,
+    isActive: functionEditorActive,
   },
   {
     id: 'evaluations',

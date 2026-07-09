@@ -251,7 +251,11 @@
       "cancel": "取消",
       "saving": "保存中…",
       "save": "保存",
-      "create": "创建"
+      "create": "创建",
+      "actionsCol": "操作",
+      "runAction": "运行 {{name}}",
+      "actionRunOk": "{{name}} 已完成",
+      "actionRunFailed": "操作执行失败"
     }
   },
   "objects": {

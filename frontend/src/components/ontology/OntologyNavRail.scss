@@ -1,5 +1,5 @@
 .ontology-nav-rail {
-  width: 200px;
+  width: var(--ontology-app-rail-width, 200px);
   flex-shrink: 0;
   border-right: 1px solid var(--color-border);
   background: var(--color-bg-elevated);

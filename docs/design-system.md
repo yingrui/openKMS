@@ -30,6 +30,7 @@ SCSS tokens, shared layouts, and styling conventions for the SPA (`frontend/src/
 | Last form row → primary actions | `--space-6` (24px) |
 | Page header → content | `--space-6` (+ `--space-1` in account pages) |
 | **App page gutters** | **`--app-page-padding-x` / `--app-page-padding-y`** (default `--space-6`) — `.app-content`, `.app-page-pane`, channel/ontology main columns |
+| **Ontology NavRail** | **`--ontology-app-rail-width`** (default `200px`) — Manager / Explorer / Function Editor second column |
 | Settings / account page max width | **`ds.$km-layout-max`** (900px) — same cap as document channel, project, and evaluation settings pages |
 
 Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-compact-x`** (chips, compact inputs).
@@ -64,7 +65,8 @@ Mark with comment `app-layout-exception: <reason>` when bypassing shell gutters:
 | Pattern | Reason |
 |---------|--------|
 | `.app-content--search` | Wider horizontal gutters for search results |
-| `.app-content--with-channel-rail` / `--with-ontology-rail` → `padding: 0` | Rail layouts; gutter on `.app-page-pane` |
+| `.app-content--with-channel-rail` / `--with-ontology-rail` / `--with-ontology-manager-rail` / `--with-object-explorer-rail` / `--with-function-editor-rail` → `padding: 0` | Rail layouts; gutter on `.app-page-pane` |
+| `.app-content--function-editor-workspace` | Function Editor IDE — full-height workspace; negative margin in feature SCSS |
 | `.app-content--compact:has(.kb-detail--qa-fullpage)` → `padding: 0` | KB Q&A full-page chat |
 | `.app-content--compact .wiki-page-editor-outer` negative margin | Wiki editor edge-to-edge |
 | `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; zero shell padding |

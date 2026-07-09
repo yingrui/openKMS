@@ -46,7 +46,7 @@ export function LinksList() {
 
       <div className="links-grid">
         {types.map((lt) => (
-          <Link key={lt.id} to={`/links/${lt.id}`} className="links-card">
+          <Link key={lt.id} to={`/object-explorer/links/${lt.id}`} className="links-card">
             <div className="links-card-top">
               <div className="links-icon">
                 <Link2 size={28} strokeWidth={1.5} />

@@ -168,6 +168,39 @@
   padding: 48px 20px !important;
 }
 
+.ontology-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-muted);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+}
+
+.ontology-status-badge--active {
+  color: var(--color-success, #15803d);
+  background: color-mix(in srgb, var(--color-success, #15803d) 10%, var(--color-bg-muted));
+  border-color: color-mix(in srgb, var(--color-success, #15803d) 28%, var(--color-border));
+}
+
+.ontology-manager-list__api-link {
+  color: var(--color-text);
+  font-weight: 500;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-sm);
+  text-decoration: none;
+
+  &:hover {
+    color: var(--color-accent);
+    text-decoration: underline;
+  }
+}
+
 .console-table-muted {
   color: var(--color-text-muted);
   font-size: var(--text-md);

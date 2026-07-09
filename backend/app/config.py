@@ -152,6 +152,16 @@ class Settings(BaseSettings):
 
     # --- Backend URL for CLI (worker passes to openkms-cli --api-url) ---
     openkms_backend_url: str = Field(default="http://localhost:8102", validation_alias="OPENKMS_BACKEND_URL")
+    ontology_function_service_url: str = Field(
+        default="http://localhost:8105",
+        validation_alias="OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL",
+    )
+    ontology_function_timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=300,
+        validation_alias="OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS",
+    )
 
     # --- Worker: document pipeline subprocess (openkms-cli pipeline run) ---
     openkms_cli_executable: str = Field(

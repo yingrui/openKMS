@@ -251,7 +251,11 @@
       "cancel": "Cancel",
       "saving": "Saving…",
       "save": "Save",
-      "create": "Create"
+      "create": "Create",
+      "actionsCol": "Actions",
+      "runAction": "Run {{name}}",
+      "actionRunOk": "{{name}} completed",
+      "actionRunFailed": "Action failed"
     }
   },
   "objects": {

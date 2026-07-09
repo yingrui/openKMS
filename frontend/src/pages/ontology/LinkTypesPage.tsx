@@ -329,7 +329,7 @@ export function LinkTypesPage() {
                           </button>
                         ) : null}
                         <Link
-                          to={`/ontology/link-types/${t.id}/settings?tab=sharing`}
+                          to={`/ontology-manager/link-types/${t.id}/settings?tab=sharing`}
                           title="Sharing"
                           className="console-table-icon-link"
                         >

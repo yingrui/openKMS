@@ -178,11 +178,11 @@ export function OntologySchemaGraph({
             }}
             onNodeClick={(n) => {
               const node = n as OntologySchemaNode;
-              void navigate(`/objects/${node.id}`);
+              void navigate(`/object-explorer/objects/${node.id}`);
             }}
             onLinkClick={(l) => {
               const link = l as OntologySchemaLink;
-              void navigate(`/links/${link.id}`);
+              void navigate(`/object-explorer/links/${link.id}`);
             }}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const n = node as OntologySchemaNode & { x?: number; y?: number };

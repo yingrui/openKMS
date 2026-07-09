@@ -155,7 +155,7 @@ export function LinkTypeDetail() {
   return (
     <div className="link-type-detail">
       <div className="link-type-detail-header">
-        <Link to="/links" className="link-type-back">
+        <Link to="/object-explorer/links" className="link-type-back">
           <ArrowLeft size={18} />
           <span>{t('ontology.linkTypeDetail.backLinks')}</span>
         </Link>

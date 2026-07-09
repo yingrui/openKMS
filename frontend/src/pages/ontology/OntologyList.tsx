@@ -105,7 +105,7 @@ export function OntologyList() {
   const renderObjectCards = (items: ObjectTypeResponse[]) => (
     <div className="ontology-grid">
       {items.map((ot) => (
-        <Link key={ot.id} to={`/objects/${ot.id}`} className="ontology-card">
+        <Link key={ot.id} to={`/object-explorer/objects/${ot.id}`} className="ontology-card">
           <div className="ontology-card-top">
             <div className="ontology-icon ontology-icon-object">
               <Box size={24} strokeWidth={1.5} />
@@ -127,7 +127,7 @@ export function OntologyList() {
   const renderLinkCards = (items: LinkTypeResponse[]) => (
     <div className="ontology-grid">
       {items.map((lt) => (
-        <Link key={lt.id} to={`/links/${lt.id}`} className="ontology-card">
+        <Link key={lt.id} to={`/object-explorer/links/${lt.id}`} className="ontology-card">
           <div className="ontology-card-top">
             <div className="ontology-icon ontology-icon-link">
               <Link2 size={24} strokeWidth={1.5} />
@@ -163,7 +163,7 @@ export function OntologyList() {
           {items.map((ot) => (
             <tr key={ot.id}>
               <td>
-                <Link to={`/objects/${ot.id}`} className="ds-resource-table__link">
+                <Link to={`/object-explorer/objects/${ot.id}`} className="ds-resource-table__link">
                   {ot.name}
                 </Link>
               </td>
@@ -191,7 +191,7 @@ export function OntologyList() {
           {items.map((lt) => (
             <tr key={lt.id}>
               <td>
-                <Link to={`/links/${lt.id}`} className="ds-resource-table__link">
+                <Link to={`/object-explorer/links/${lt.id}`} className="ds-resource-table__link">
                   {lt.name}
                 </Link>
               </td>

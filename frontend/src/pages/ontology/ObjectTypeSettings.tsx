@@ -50,7 +50,7 @@ export function ObjectTypeSettings() {
 
   useEffect(() => {
     if (!typeId) {
-      navigate('/ontology/object-types');
+      navigate('/ontology-manager/object-types');
       return;
     }
     void load();
@@ -75,7 +75,7 @@ export function ObjectTypeSettings() {
   if (!objectType) {
     return (
       <div className="ontology-type-settings document-channel-settings">
-        <Link to="/ontology/object-types" className="document-channel-settings-back">
+        <Link to="/ontology-manager/object-types" className="document-channel-settings-back">
           <ArrowLeft size={18} />
           <span>{t('ontologySettings.backObjectTypes')}</span>
         </Link>
@@ -88,7 +88,7 @@ export function ObjectTypeSettings() {
 
   return (
     <div className="ontology-type-settings document-channel-settings">
-      <Link to="/ontology/object-types" className="document-channel-settings-back">
+      <Link to="/ontology-manager/object-types" className="document-channel-settings-back">
         <ArrowLeft size={18} />
         <span>{t('ontologySettings.backObjectTypes')}</span>
       </Link>

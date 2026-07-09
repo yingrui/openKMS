@@ -50,7 +50,7 @@ export function LinkTypeSettings() {
 
   useEffect(() => {
     if (!linkTypeId) {
-      navigate('/ontology/link-types');
+      navigate('/ontology-manager/link-types');
       return;
     }
     void load();
@@ -75,7 +75,7 @@ export function LinkTypeSettings() {
   if (!linkType) {
     return (
       <div className="ontology-type-settings document-channel-settings">
-        <Link to="/ontology/link-types" className="document-channel-settings-back">
+        <Link to="/ontology-manager/link-types" className="document-channel-settings-back">
           <ArrowLeft size={18} />
           <span>{t('ontologySettings.backLinkTypes')}</span>
         </Link>
@@ -88,7 +88,7 @@ export function LinkTypeSettings() {
 
   return (
     <div className="ontology-type-settings document-channel-settings">
-      <Link to="/ontology/link-types" className="document-channel-settings-back">
+      <Link to="/ontology-manager/link-types" className="document-channel-settings-back">
         <ArrowLeft size={18} />
         <span>{t('ontologySettings.backLinkTypes')}</span>
       </Link>

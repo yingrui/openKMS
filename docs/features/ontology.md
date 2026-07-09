@@ -1,6 +1,16 @@
 # Ontology — objects, links, datasets
 
-Object types and link types model an entity-relationship layer that can be backed by PostgreSQL datasets and optionally indexed into Neo4j for graph exploration. The **Objects & links** sidebar group is shown when route patterns allow; a **Neo4j** data source still drives graph counts and Object Explorer behavior where applicable.
+Object types and link types model an entity-relationship layer that can be backed by PostgreSQL datasets and optionally indexed into Neo4j for graph exploration. **Three Suite Apps** split schema governance, instance exploration, and function authoring:
+
+| App | Routes | Focus |
+|-----|--------|-------|
+| **Ontology Manager** | `/ontology-manager/*` | Object/link types, datasets, functions registry, groups, actions |
+| **Object Explorer** | `/object-explorer/*` | Objects, links, Cypher explore |
+| **Function Editor** | `/function-editor/*` | Python function CRUD and Live Preview |
+
+Legacy `/ontology`, `/objects`, `/links` redirect to the new prefixes. See [Ontology Functions](ontology-functions.md).
+
+The **Objects & links** sidebar group is shown when route patterns allow; a **Neo4j** data source still drives graph counts and Object Explorer behavior where applicable.
 
 ## Objects and links
 
