@@ -14,6 +14,8 @@ import {
 import '../ontology/ontology-admin.scss';
 import './entity-view.scss';
 
+type DetailTab = 'overview' | 'observability';
+
 export function FunctionDetailPage() {
   const { t } = useTranslation('ontology');
   const { functionId = '' } = useParams();
@@ -22,6 +24,7 @@ export function FunctionDetailPage() {
   const [executions, setExecutions] = useState<OntologyFunctionExecutionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [tab, setTab] = useState<DetailTab>('overview');
 
   const load = useCallback(async () => {
     if (!functionId) return;
@@ -88,71 +91,96 @@ export function FunctionDetailPage() {
         <h2 className="entity-view__title">{fn.display_name}</h2>
         <p className="entity-view__meta">{fn.api_name}</p>
         <nav className="entity-view__nav">
-          <span className="entity-view__nav-item entity-view__nav-item--active">{t('functions.overview')}</span>
-          <span className="entity-view__nav-item">{t('functions.observability')}</span>
+          <button
+            type="button"
+            className={`entity-view__nav-item${tab === 'overview' ? ' entity-view__nav-item--active' : ''}`}
+            onClick={() => setTab('overview')}
+          >
+            {t('functions.overview')}
+          </button>
+          <button
+            type="button"
+            className={`entity-view__nav-item${tab === 'observability' ? ' entity-view__nav-item--active' : ''}`}
+            onClick={() => setTab('observability')}
+          >
+            {t('functions.observability')}
+          </button>
         </nav>
       </aside>
       <div className="entity-view__main">
-        <header className="page-header">
-          <div>
-            <h1>{fn.display_name}</h1>
-            <p className="page-subtitle">{fn.description || t('functions.noDescription')}</p>
-          </div>
-          <div className="entity-view__actions">
-            <Link to={`/function-editor/${fn.id}`} className="btn btn-secondary">
-              <ExternalLink size={16} aria-hidden />
-              {t('functions.openInEditor')}
-            </Link>
-            <button type="button" className="btn btn-primary" onClick={() => void onPublish()} disabled={publishing}>
-              <Upload size={16} aria-hidden />
-              {publishing ? t('shared.saving') : t('functions.publish')}
-            </button>
-          </div>
-        </header>
-        <dl className="entity-view__dl">
-          <dt>{t('functions.publishedVersion')}</dt>
-          <dd>{fn.published_version ?? '—'}</dd>
-          <dt>{t('functions.latestVersion')}</dt>
-          <dd>{fn.latest_version ?? '—'}</dd>
-          <dt>{t('functions.developmentStatus')}</dt>
-          <dd>{fn.development_status}</dd>
-        </dl>
-        {fn.published_version_id && (
-          <button type="button" className="btn btn-secondary" onClick={() => void onTestPublished()}>
-            {t('functions.testPublished')}
-          </button>
+        {tab === 'overview' && (
+          <>
+            <header className="page-header">
+              <div>
+                <h1>{fn.display_name}</h1>
+                <p className="page-subtitle">{fn.description || t('functions.noDescription')}</p>
+              </div>
+              <div className="entity-view__actions">
+                <Link to={`/function-editor/${fn.id}`} className="btn btn-secondary">
+                  <ExternalLink size={16} aria-hidden />
+                  {t('functions.openInEditor')}
+                </Link>
+                <button type="button" className="btn btn-primary" onClick={() => void onPublish()} disabled={publishing}>
+                  <Upload size={16} aria-hidden />
+                  {publishing ? t('shared.saving') : t('functions.publish')}
+                </button>
+              </div>
+            </header>
+            <dl className="entity-view__dl">
+              <dt>{t('functions.publishedVersion')}</dt>
+              <dd>{fn.published_version ?? '—'}</dd>
+              <dt>{t('functions.latestVersion')}</dt>
+              <dd>{fn.latest_version ?? '—'}</dd>
+              <dt>{t('functions.developmentStatus')}</dt>
+              <dd>{fn.development_status}</dd>
+            </dl>
+            {fn.published_version_id && (
+              <button type="button" className="btn btn-secondary" onClick={() => void onTestPublished()}>
+                {t('functions.testPublished')}
+              </button>
+            )}
+          </>
         )}
-        <section className="entity-view__section">
-          <h3>{t('functions.recentExecutions')}</h3>
-          <div className="ontology-admin-table-wrap">
-            <table className="console-table">
-              <thead>
-                <tr>
-                  <th>{t('functions.execStatus')}</th>
-                  <th>{t('functions.execDuration')}</th>
-                  <th>{t('functions.execTime')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {executions.length === 0 ? (
+        {tab === 'observability' && (
+          <section className="entity-view__section">
+            <header className="page-header">
+              <div>
+                <h1>{t('functions.observability')}</h1>
+                <p className="page-subtitle">{t('functions.recentExecutions')}</p>
+              </div>
+            </header>
+            <div className="ontology-admin-table-wrap">
+              <table className="console-table">
+                <thead>
                   <tr>
-                    <td colSpan={3} className="console-table-empty">
-                      {t('functions.noExecutions')}
-                    </td>
+                    <th>{t('functions.execStatus')}</th>
+                    <th>{t('functions.execDuration')}</th>
+                    <th>{t('functions.execTime')}</th>
+                    <th>{t('functions.execError')}</th>
                   </tr>
-                ) : (
-                  executions.map((ex) => (
-                    <tr key={ex.id}>
-                      <td>{ex.status}</td>
-                      <td className="console-table-muted">{ex.duration_ms != null ? `${ex.duration_ms}ms` : '—'}</td>
-                      <td className="console-table-muted">{new Date(ex.created_at).toLocaleString()}</td>
+                </thead>
+                <tbody>
+                  {executions.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="console-table-empty">
+                        {t('functions.noExecutions')}
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                  ) : (
+                    executions.map((ex) => (
+                      <tr key={ex.id}>
+                        <td>{ex.status}</td>
+                        <td className="console-table-muted">{ex.duration_ms != null ? `${ex.duration_ms}ms` : '—'}</td>
+                        <td className="console-table-muted">{new Date(ex.created_at).toLocaleString()}</td>
+                        <td className="console-table-muted">{ex.error_message || '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 Research note for the Palantir-aligned **Ontology Logic** layer in openKMS: three Suite Apps, PostgreSQL-backed Functions, and the **ontology-function-service** (ofs) executor.
 
-**Related:** [Ontology](../features/ontology.md) · [Object Explorer](../features/object-explorer.md) · [Goals — from retrieval to decision](../goals.md#goals-decision) · [ontology_manager_alignment.md](ontology_manager_alignment.md)
+**Related:** [Ontology](../features/ontology.md) · [Ontology Functions](../features/ontology-functions.md) · [Ontology SDK](../features/ontology-sdk.md) · [Object Explorer](../features/object-explorer.md) · [ontology_manager_alignment.md](ontology_manager_alignment.md)
 
 ---
 
@@ -13,11 +13,48 @@ Research note for the Palantir-aligned **Ontology Logic** layer in openKMS: thre
 | Schema governance | Ontology Manager | **Ontology Manager** (`/ontology-manager`) |
 | Instance browse + Cypher | Object Explorer | **Object Explorer** (`/object-explorer`) |
 | Python Logic authoring | Code Repositories / Functions | **Function Editor** (`/function-editor`) |
-| Function storage | Foundry versioned repos | **PostgreSQL** `ontology_functions` + `ontology_function_versions` |
-| Execution | Restricted serverless | **ofs** subprocess on `:8105`; backend is system of record |
-| Author SDK | `@foundry/ontology-api` in Functions | **`openkms_functions`** (`ExecuteContext`, `OntologyClient`) |
+| Function storage | Foundry versioned repos | **PostgreSQL** `ontology_functions` + versions |
+| Execution | Restricted serverless | **ofs** subprocess on `:8105` |
+| Author + caller SDK | `@osdk/client` + generated ontology SDK | **`openkms_functions.Client`** + **`openkms_ontology_sdk`** |
+| Entry registration | `@function` / `export default` | **`@function`** + DB `entrypoint` |
 
-**Compute paths (Palantir):** Pipeline/Spark is **not** FaaS; OSDK + Functions are **FaaS-like** restricted serverless. openKMS MVP implements only the **Function** path.
+**Core Palantir lesson:** function authors and external apps share one client language (`client(Entity).method(...)`). Only construction differs (injected vs explicit token).
+
+---
+
+## Palantir OSDK model (two layers)
+
+```mermaid
+flowchart TB
+  subgraph platform [Platform packages]
+    ClientPkg["@osdk/client / openkms_functions.Client"]
+    Helpers["@osdk/functions / openkms_functions.edits"]
+  end
+  subgraph generated [Generated ontology SDK]
+    Types["Object types + query markers"]
+  end
+  subgraph authors [Function runtime]
+    Decorated["@function def fn(input, client)"]
+  end
+  subgraph external [External scripts / apps]
+    Explicit["Client(base_url, token)"]
+  end
+  ClientPkg --> authors
+  ClientPkg --> external
+  generated --> authors
+  generated --> external
+  Helpers --> authors
+```
+
+| Concern | Palantir | openKMS |
+|---------|----------|---------|
+| Register entry | `@function(api_name=…)` / TS default export | `@function` + `entrypoint` column |
+| Ontology read | `client(Aircraft).fetchOne` | `client(Employee).fetch_one` / `.search` |
+| Compose functions | `client(query).executeFunction` | `client(query).execute_function` |
+| Dependencies | `@Uses` / resource imports | `@function(uses=[…])` publish gate |
+| Writes | Edit batch → Action | `create_edit_batch` (apply via Actions next) |
+
+`execute` as a function name is **not** required by Palantir; openKMS keeps it as the default entrypoint for templates and legacy code.
 
 ---
 
@@ -25,46 +62,48 @@ Research note for the Palantir-aligned **Ontology Logic** layer in openKMS: thre
 
 ### Ontology Manager
 
-- **Groups** (P1): organize object types
-- **Object types / Link types**: schema, datasets, sharing, index to Neo4j
-- **Functions**: registry, publish, observability — **not** primary code editor
-- **Actions** (P1): action types, rules, log
-- **Datasets**: backing tables for object types
+- Groups, object/link types, datasets
+- Functions: registry, publish (triggers SDK regen), Observability tab
+- Actions: types, execute, logs
 
 ### Object Explorer
 
-- **Objects** / **Links**: instance lists and CRUD (within ACL)
-- **Explore**: Cypher / NL query page (existing `ObjectExplorer.tsx`)
+- Instance browse / CRUD; can trigger Actions
 
 ### Function Editor
 
-- **Create / Update / Delete** Python functions
-- **Run** draft via backend → ofs (Live Preview)
-- **Publish** only in Manager
+- Author `@function` Python code, Live Preview, published-queries sidebar
+- Publish only in Manager
 
 ---
 
-## Data model
+## Backend structure (clean architecture)
 
-### `ontology_functions`
+| Layer | Module |
+|-------|--------|
+| HTTP | Thin routers in `app/api/ontology_*.py` |
+| Shared deps | `app/api/ontology/deps.py` — token, api_name, JWT user |
+| Services | `function_service.py`, `execution_service.py`, `sdk_codegen.py` |
+| Runtime | `function_runtime.py` → ofs HTTP |
+| Validation | `function_templates.py`, `input_schema.py` |
 
-`id`, `api_name`, `display_name`, `description`, `source` (`code` | `web-api`), `object_type_id`, `development_status`, `status`, `published_version_id`, `web_api_config`, ACL fields.
+---
 
-### `ontology_function_versions`
+## Author SDK
 
-`function_id`, `version`, `source_code`, `input_schema`, `output_schema`, `entrypoint` (default `execute`), `runtime` (`python3`), `validation_result`, `created_by`, `created_at`.
+```python
+from openkms_functions import Client, function, create_edit_batch
+from openkms_ontology_sdk import helloGreeting
 
-### `ontology_function_executions`
+@function(uses=["helloGreeting"])
+def execute(input: dict, client: Client) -> dict:
+    greeting = client(helloGreeting).execute_function({"name": input.get("name", "")})
+    return {"greeting": greeting}
+```
 
-Audit: `function_id`, `version_id`, `caller_user_id`, `duration_ms`, `status`, truncated input/output.
+Legacy `def execute(input, ctx)` still works (deprecation warning).
 
-### `ontology_groups` (P1)
-
-`id`, `display_name`, `description`; M2M with object types via `ontology_group_object_types`.
-
-### `ontology_action_types` / `ontology_action_log` (P1)
-
-Action type metadata and submission audit.
+**Composition safety:** max call depth 5; `X-OpenKMS-Function-Call-Stack` cycle detection.
 
 ---
 
@@ -73,77 +112,42 @@ Action type metadata and submission audit.
 ```mermaid
 sequenceDiagram
   participant FE as Function Editor
-  participant BE as Backend :8102
-  participant OFS as ontology-function-service :8105
+  participant BE as Backend
+  participant OFS as ofs
   participant PG as PostgreSQL
 
-  FE->>BE: POST validate / execute (draft)
-  BE->>PG: load source_code
+  FE->>BE: POST execute
+  BE->>PG: load version + entrypoint
+  BE->>BE: input_schema + call stack checks
   BE->>OFS: POST /execute
-  OFS->>OFS: subprocess bootstrap + openkms_functions
-  OFS->>BE: OntologyClient HTTP (caller token)
-  OFS-->>BE: result / error
-  BE->>PG: ontology_function_executions
+  OFS->>OFS: @function resolve + Client inject
+  OFS->>BE: Client HTTP (token)
+  OFS-->>BE: result
+  BE->>PG: audit execution
   BE-->>FE: output
 ```
 
-- **No** same-process `importlib` of user code in the API gateway
-- **Subprocess** with timeout (default 30s)
-- User code may only use **`openkms_functions`** (validate import allowlist)
+---
+
+## Phasing status
+
+| Phase | Status |
+|-------|--------|
+| Three Apps + PG + ofs MVP | Done |
+| Service-layer refactor + tests | Done |
+| `@function` + unified Client + composition | Done |
+| Codegen + regenerate on publish | Done |
+| Editor hooks / queries sidebar / Observability tab | Done |
+| External same-package Client | Done (docs + path) |
+| Edit batch apply via Actions | Foundation only (`create_edit_batch`) |
+| Web API function source / TS runtime / Dev Console apps | Out of scope |
 
 ---
 
-## Author SDK (`openkms_functions`)
-
-```python
-from openkms_functions import ExecuteContext
-
-def execute(input: dict, ctx: ExecuteContext) -> dict:
-    rows = ctx.ontology.search_objects("Employee", limit=10)
-    return {"count": len(rows)}
-```
-
-| Module | Role |
-|--------|------|
-| `ExecuteContext` | Injected by ofs bootstrap |
-| `OntologyClient` | Read-only ontology HTTP to backend |
-| `testing.stub_context` | Local dev against backend |
-
-**Caller OSDK** (apps calling published functions via `POST /api/ontology/functions/{apiName}/execute`) is separate — P3.
-
----
-
-## API surface (MVP)
-
-| Endpoint | App |
-|----------|-----|
-| `GET/POST /api/ontology/functions` | Manager / Editor |
-| `GET/PATCH/DELETE /api/ontology/functions/{id}` | Manager / Editor |
-| `POST .../versions` | Editor (save draft) |
-| `POST .../validate` | Editor |
-| `POST .../publish` | Manager |
-| `POST .../execute` | Editor (draft) / callers (published) |
-| `GET .../executions` | Manager Observability |
-| `GET/POST /api/ontology/groups` | Manager (P1) |
-| `GET/POST /api/ontology/action-types` | Manager (P1) |
-
----
-
-## Phasing
-
-| Phase | Deliverables |
-|-------|----------------|
-| **P0a** | Three App shells, route migration, NavRails |
-| **P0b** | PG models, ofs, SDK, Function CRUD + Run + Manager Publish |
-| **P1** | Groups, Actions, Explorer Home |
-| **P2** | Discover, ontology-level draft review |
-| **P3** | Web API functions, multi-file, caller OSDK |
-
----
-
-## Non-goals (MVP)
+## Non-goals
 
 - Generic Git multi-repo IDE
 - Pipeline / Spark in Function Editor
 - Arbitrary `pip install` in user functions
-- Ontology global draft transaction (P2)
+- TypeScript Function runtime
+- Per-app Developer Console SDK subsets

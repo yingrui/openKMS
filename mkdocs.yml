@@ -173,6 +173,8 @@ nav:
       - Knowledge map & home: features/knowledge-map.md
       - Global search: features/global-search.md
       - Ontology — objects, links, datasets: features/ontology.md
+      - Ontology Functions: features/ontology-functions.md
+      - Ontology SDK: features/ontology-sdk.md
       - Object Explorer: features/object-explorer.md
       - Connectors: features/connectors.md
       - Pipelines, jobs & models: features/pipelines-and-jobs.md

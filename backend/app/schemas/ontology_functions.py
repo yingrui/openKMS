@@ -1,7 +1,13 @@
 """Pydantic schemas for ontology functions, groups, and actions."""
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+FunctionDevelopmentStatus = Literal["experimental", "active", "deprecated"]
+FunctionStatus = Literal["active", "archived"]
+ExecutionStatus = Literal["ok", "error"]
+ActionTypeStatus = Literal["active", "inactive", "archived"]
 
 
 class OntologyFunctionVersionResponse(BaseModel):
@@ -26,8 +32,8 @@ class OntologyFunctionResponse(BaseModel):
     description: str | None = None
     source: str
     object_type_id: str | None = None
-    development_status: str
-    status: str
+    development_status: FunctionDevelopmentStatus | str
+    status: FunctionStatus | str
     published_version_id: str | None = None
     published_version: int | None = None
     latest_version: int | None = None
@@ -56,8 +62,8 @@ class OntologyFunctionUpdate(BaseModel):
     display_name: str | None = None
     description: str | None = None
     object_type_id: str | None = None
-    development_status: str | None = None
-    status: str | None = None
+    development_status: FunctionDevelopmentStatus | None = None
+    status: FunctionStatus | None = None
 
 
 class OntologyFunctionVersionCreate(BaseModel):
@@ -79,7 +85,7 @@ class OntologyFunctionExecuteRequest(BaseModel):
 
 
 class OntologyFunctionExecuteResponse(BaseModel):
-    status: str
+    status: ExecutionStatus | str
     output: dict | None = None
     error: str | None = None
     duration_ms: int | None = None
@@ -92,7 +98,7 @@ class OntologyFunctionExecutionResponse(BaseModel):
     version_id: str
     caller_user_id: str | None = None
     duration_ms: int | None = None
-    status: str
+    status: ExecutionStatus | str
     input_payload: dict | None = None
     output_payload: dict | None = None
     error_message: str | None = None

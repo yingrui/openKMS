@@ -13,7 +13,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 SERVICE_ROOT = Path(__file__).resolve().parent.parent
-SDK_ROOT = SERVICE_ROOT
 DEFAULT_TIMEOUT = int(os.environ.get("OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS", "30"))
 
 app = FastAPI(title="ontology-function-service", version="0.1.0")
@@ -24,8 +23,11 @@ class ExecuteRequest(BaseModel):
     input: dict = Field(default_factory=dict)
     api_name: str = ""
     version: int = 1
+    entrypoint: str = "execute"
     backend_url: str
     caller_token: str
+    call_depth: int = 0
+    call_stack: list[str] = Field(default_factory=list)
 
 
 class ExecuteResponse(BaseModel):
@@ -44,15 +46,18 @@ def health():
 def execute(body: ExecuteRequest):
     bootstrap = SERVICE_ROOT / "ofs" / "bootstrap.py"
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(SDK_ROOT)
+    env["PYTHONPATH"] = str(SERVICE_ROOT)
     payload = json.dumps(
         {
             "source_code": body.source_code,
             "input": body.input,
             "api_name": body.api_name,
             "version": body.version,
+            "entrypoint": body.entrypoint,
             "backend_url": body.backend_url.rstrip("/"),
             "caller_token": body.caller_token,
+            "call_depth": body.call_depth,
+            "call_stack": body.call_stack,
         }
     )
     started = time.perf_counter()

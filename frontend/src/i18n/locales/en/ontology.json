@@ -34,6 +34,7 @@
     "execStatus": "Status",
     "execDuration": "Duration",
     "execTime": "Time",
+    "execError": "Error",
     "emptyList": "No functions yet.",
     "noExecutions": "No executions yet."
   },
@@ -107,6 +108,7 @@
     "saveFailed": "Save failed",
     "created": "Function created",
     "deleted": "Function deleted",
+    "deleteFailed": "Delete failed",
     "runOk": "Run completed",
     "validateOk": "Validation passed",
     "validateFailed": "Validation failed",
@@ -119,6 +121,9 @@
     "invalidJson": "Input must be valid JSON",
     "outputPlaceholder": "Run to see output here",
     "statusOk": "ok",
-    "statusError": "error"
+    "statusError": "error",
+    "availableQueries": "Published queries",
+    "availableQueriesHint": "Click to insert client(\"...\").execute_function()",
+    "noPublishedQueries": "No other published functions yet."
   }
 }

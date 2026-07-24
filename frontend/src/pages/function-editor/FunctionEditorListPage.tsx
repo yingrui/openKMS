@@ -1,32 +1,13 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Loader2, Pencil } from 'lucide-react';
-import { toast } from 'sonner';
-import { fetchOntologyFunctions, type OntologyFunctionResponse } from '../../data/ontologyFunctionsApi';
+import { useOntologyFunctionsList } from './useOntologyFunctionsList';
 import '../ontology/ontology-admin.scss';
 import './function-editor.scss';
 
 export function FunctionEditorListPage() {
   const { t } = useTranslation('ontology');
-  const [items, setItems] = useState<OntologyFunctionResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetchOntologyFunctions();
-      setItems(res.items);
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('functions.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { items, loading } = useOntologyFunctionsList();
 
   return (
     <div className="ontology-admin function-editor-list">

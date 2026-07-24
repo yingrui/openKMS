@@ -1,7 +1,7 @@
 """Ontology Action Types API."""
+
 from __future__ import annotations
 
-import re
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -9,14 +9,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import require_any_permission, require_auth
+from app.api.ontology.deps import jwt_user_from_request, require_caller_token, validate_api_name
 from app.database import get_db
 from app.models.object_instance import ObjectInstance
-from app.models.ontology_function import (
-    OntologyActionLog,
-    OntologyActionType,
-    OntologyFunction,
-    OntologyFunctionVersion,
-)
+from app.models.ontology_function import OntologyActionLog, OntologyActionType
 from app.schemas.ontology_functions import (
     OntologyActionExecuteRequest,
     OntologyActionExecuteResponse,
@@ -25,12 +21,11 @@ from app.schemas.ontology_functions import (
     OntologyActionTypeResponse,
     OntologyActionTypeUpdate,
 )
-from app.services.ontology.function_runtime import FunctionExecutionError, execute_in_ofs
+from app.services.ontology.constants import ACTION_TYPE_ID_PREFIX, ID_HEX_LENGTH
+from app.services.ontology import execution_service
 from app.services.permissions.permission_catalog import PERM_ONTOLOGY_READ, PERM_ONTOLOGY_WRITE
 
 router = APIRouter(prefix="/ontology/action-types", tags=["ontology-action-types"], dependencies=[Depends(require_auth)])
-
-_API_NAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]*$")
 
 
 def _to_response(at: OntologyActionType) -> OntologyActionTypeResponse:
@@ -48,18 +43,6 @@ def _to_response(at: OntologyActionType) -> OntologyActionTypeResponse:
         created_at=at.created_at,
         updated_at=at.updated_at,
     )
-
-
-def _caller_token(request: Request) -> str | None:
-    auth = request.headers.get("Authorization")
-    if auth and auth.startswith("Bearer "):
-        return auth[7:]
-    return request.cookies.get("access_token")
-
-
-def _user_from_request(request: Request) -> tuple[str | None, str | None]:
-    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
-    return payload.get("sub"), payload.get("preferred_username") or payload.get("name")
 
 
 async def _get_action_type(db: AsyncSession, action_type_id: str) -> OntologyActionType:
@@ -98,16 +81,15 @@ async def create_action_type(
     db: AsyncSession = Depends(get_db),
     _: None = Depends(require_any_permission(PERM_ONTOLOGY_WRITE)),
 ):
-    if not _API_NAME_RE.match(body.api_name):
-        raise HTTPException(status_code=400, detail="api_name must be a valid identifier")
+    validate_api_name(body.api_name)
     exists = (
         await db.execute(select(OntologyActionType.id).where(OntologyActionType.api_name == body.api_name))
     ).scalar_one_or_none()
     if exists:
         raise HTTPException(status_code=409, detail="api_name already exists")
-    payload = getattr(request.state, "openkms_jwt_payload", None) or {}
+    uid, uname = jwt_user_from_request(request)
     at = OntologyActionType(
-        id=f"at-{uuid.uuid4().hex[:12]}",
+        id=f"{ACTION_TYPE_ID_PREFIX}{uuid.uuid4().hex[:ID_HEX_LENGTH]}",
         api_name=body.api_name,
         display_name=body.display_name,
         description=body.description,
@@ -116,8 +98,8 @@ async def create_action_type(
         function_id=body.function_id,
         function_version=body.function_version,
         parameters=body.parameters,
-        created_by=payload.get("sub"),
-        created_by_name=payload.get("preferred_username") or payload.get("name"),
+        created_by=uid,
+        created_by_name=uname,
     )
     db.add(at)
     await db.commit()
@@ -167,17 +149,12 @@ async def execute_action_type(
     if not at.function_id:
         raise HTTPException(status_code=400, detail="Action has no bound function")
 
-    fn = (await db.execute(select(OntologyFunction).where(OntologyFunction.id == at.function_id))).scalar_one_or_none()
-    if not fn or not fn.published_version_id:
-        raise HTTPException(status_code=400, detail="Bound function has no published version")
-
-    ver = (
-        await db.execute(
-            select(OntologyFunctionVersion).where(OntologyFunctionVersion.id == fn.published_version_id)
+    try:
+        fn, ver = await execution_service.resolve_published_version_for_function(
+            db, at.function_id, pinned_version=at.function_version
         )
-    ).scalar_one_or_none()
-    if not ver:
-        raise HTTPException(status_code=404, detail="Published function version not found")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     input_payload = dict(body.input or {})
     object_id = body.object_id
@@ -190,50 +167,16 @@ async def execute_action_type(
         input_payload.setdefault("object_id", instance.id)
         input_payload.setdefault("object", instance.data or {})
 
-    uid, _ = _user_from_request(request)
-    log_id = f"al-{uuid.uuid4().hex[:12]}"
-    try:
-        output, err, duration_ms = await execute_in_ofs(
-            source_code=ver.source_code,
-            input_payload=input_payload,
-            api_name=fn.api_name,
-            version=ver.version,
-            caller_token=_caller_token(request),
-        )
-    except FunctionExecutionError as e:
-        log = OntologyActionLog(
-            id=log_id,
-            action_type_id=at.id,
-            object_id=object_id,
-            caller_user_id=uid,
-            status="error",
-            input_payload=input_payload,
-            error_message=str(e),
-        )
-        db.add(log)
-        await db.commit()
-        return OntologyActionExecuteResponse(status="error", error=str(e), log_id=log_id)
-
-    status = "ok" if err is None else "error"
-    output_dict = output if isinstance(output, dict) else {"result": output} if output is not None else None
-    log = OntologyActionLog(
-        id=log_id,
-        action_type_id=at.id,
+    uid, _ = jwt_user_from_request(request)
+    return await execution_service.execute_action_and_audit(
+        db,
+        at,
+        fn,
+        ver,
+        input_payload=input_payload,
         object_id=object_id,
         caller_user_id=uid,
-        status=status,
-        input_payload=input_payload,
-        output_payload=output_dict,
-        error_message=err,
-    )
-    db.add(log)
-    await db.commit()
-    return OntologyActionExecuteResponse(
-        status=status,
-        output=output_dict,
-        error=err,
-        duration_ms=duration_ms,
-        log_id=log_id,
+        caller_token=require_caller_token(request),
     )
 
 

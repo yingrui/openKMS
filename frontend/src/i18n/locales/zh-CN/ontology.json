@@ -34,6 +34,7 @@
     "execStatus": "状态",
     "execDuration": "耗时",
     "execTime": "时间",
+    "execError": "错误",
     "emptyList": "暂无函数。",
     "noExecutions": "暂无执行记录。"
   },
@@ -107,6 +108,7 @@
     "saveFailed": "保存失败",
     "created": "函数已创建",
     "deleted": "函数已删除",
+    "deleteFailed": "删除失败",
     "runOk": "运行完成",
     "validateOk": "校验通过",
     "validateFailed": "校验失败",
@@ -119,6 +121,9 @@
     "invalidJson": "输入必须是有效的 JSON",
     "outputPlaceholder": "运行后在此查看输出",
     "statusOk": "成功",
-    "statusError": "失败"
+    "statusError": "失败",
+    "availableQueries": "已发布查询",
+    "availableQueriesHint": "点击插入 client(\"...\").execute_function()",
+    "noPublishedQueries": "暂无其他已发布函数。"
   }
 }

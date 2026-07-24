@@ -127,6 +127,14 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: row;
+}
+
+.function-editor-workspace__center {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
   flex-direction: column;
 }
 
@@ -136,6 +144,92 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.function-editor-queries {
+  flex: 0 0 220px;
+  min-width: 180px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+  min-height: 0;
+}
+
+.function-editor-queries__header {
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  flex-shrink: 0;
+}
+
+.function-editor-queries__title {
+  display: block;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
+
+.function-editor-queries__hint {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.function-editor-queries__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.function-editor-queries__empty {
+  margin: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.function-editor-queries__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-text);
+
+  &:hover {
+    background: var(--color-bg-muted);
+    border-color: var(--color-border);
+  }
+}
+
+.function-editor-queries__api {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.function-editor-queries__name {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .function-editor-workspace__editor-header {

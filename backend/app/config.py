@@ -162,6 +162,11 @@ class Settings(BaseSettings):
         le=300,
         validation_alias="OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS",
     )
+    ontology_sdk_output_dir: str | None = Field(
+        default=None,
+        validation_alias="OPENKMS_ONTOLOGY_SDK_OUTPUT_DIR",
+        description="Directory for generated openkms_ontology_sdk (defaults to repo ontology-function-service/openkms_ontology_sdk).",
+    )
 
     # --- Worker: document pipeline subprocess (openkms-cli pipeline run) ---
     openkms_cli_executable: str = Field(

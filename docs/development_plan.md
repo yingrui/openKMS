@@ -81,7 +81,7 @@ Product direction (not a commitment order). Shipped basics live under **Current 
 3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **knowledge administrators** and **legal/compliance / standards** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
-6. **Ontology logic** — **Three Suite Apps** (Ontology Manager, Object Explorer, Function Editor); PostgreSQL function versions; **ontology-function-service** subprocess executor; author SDK `openkms_functions`. See [Ontology Functions](features/ontology-functions.md).
+6. **Ontology logic** — **Three Suite Apps** (Ontology Manager, Object Explorer, Function Editor); PostgreSQL function versions; **ontology-function-service** subprocess executor; `@function` + unified `Client`; generated `openkms_ontology_sdk` (regen on publish). See [Ontology Functions](features/ontology-functions.md) · [Ontology SDK](features/ontology-sdk.md).
 
 ## Backlog {#backlog}
 
