@@ -9,6 +9,18 @@
   min-height: 100vh;
 }
 
+.app-layout--sidebar-collapsed {
+  --sidebar-width: 56px;
+}
+
+.app-layout--console {
+  --sidebar-width: 220px;
+}
+
+.mobile-rail-backdrop {
+  display: none;
+}
+
 .app-shell-body {
   display: flex;
   flex: 1;
@@ -227,6 +239,17 @@ body:has(.app-content--with-channel-rail) .app-main {
   overflow: hidden;
 }
 
+.ontology-section-layout__rail {
+  display: flex;
+  flex-shrink: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.ontology-section-layout__rail .ontology-nav-rail {
+  height: 100%;
+}
+
 .ontology-section-layout__main {
   display: flex;
   flex-direction: column;
@@ -404,6 +427,47 @@ body.openkms-agents-fullpage .agents-workspace {
   :root {
     --app-page-padding-x: var(--space-4);
     --app-page-padding-y: var(--space-4);
+  }
+
+  .app-layout--sidebar-collapsed,
+  .app-layout--console {
+    --sidebar-width: 0px;
+  }
+
+  .mobile-rail-backdrop {
+    display: block;
+    position: fixed;
+    top: var(--header-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: calc(var(--z-modal) - 1);
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: var(--overlay-backdrop);
+    cursor: pointer;
+  }
+
+  .ontology-section-layout__rail {
+    position: fixed;
+    top: var(--header-height);
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-modal);
+    height: auto;
+    transform: translateX(-100%);
+    transition: transform var(--duration-fast) var(--ease-standard);
+    pointer-events: none;
+
+    &.is-open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+  }
+
+  .ontology-section-layout__rail .ontology-nav-rail {
+    box-shadow: var(--shadow-lg);
   }
 
   .app-content--compact {

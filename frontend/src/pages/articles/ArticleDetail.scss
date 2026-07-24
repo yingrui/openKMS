@@ -298,6 +298,16 @@
   }
 }
 
+@include max-width(ds.$bp-md-min) {
+  .article-detail-inline-edit {
+    flex-wrap: wrap;
+  }
+
+  .article-detail-inline-edit-input {
+    flex: 1 1 100%;
+  }
+}
+
 .article-detail-editor-dropzone--active::after {
   content: '';
   position: absolute;

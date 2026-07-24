@@ -147,6 +147,8 @@
   display: flex;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .documents-search {
@@ -200,7 +202,8 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 
   .ds-pagination {
     border-radius: 0;
@@ -984,4 +987,11 @@
 .doc-status-failed {
   background: var(--status-doc-failed-bg);
   color: var(--status-doc-failed-fg);
+}
+
+@include max-width(ds.$bp-md-min) {
+  .documents-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }

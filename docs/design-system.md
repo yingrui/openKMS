@@ -39,6 +39,22 @@ Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-
 
 **Goal:** one gutter source per scroll column — no stacked `padding` on shell + page root.
 
+### Mobile shell (≤ `$bp-md-min` / 768px)
+
+Phase 1 phone chrome — desktop (≥769px) unchanged:
+
+| Element | Mobile behavior |
+|---------|-----------------|
+| App Rail / Console sidebar | Hidden from flow; `--sidebar-width: 0` via `.app-layout--sidebar-collapsed` / `--console` |
+| App Launcher | Full-width panel under header + backdrop (`--overlay-backdrop`, `z-modal`) |
+| Channel rail (Documents / Articles / Media) | Overlay drawer; Header **PanelLeft** toggle; backdrop + Escape + route change close |
+| Ontology rail (Manager / Explorer / Function Editor list) | Same drawer pattern |
+| Header | Logo only (hide brand name); hide `⌘K`; hide Console link (keep Exit Console); login icon-only |
+
+Context: `MobileShellContext` in `MainLayout`. Toggle buttons use `.header-rail-toggle` (visible only ≤768px).
+
+Reading surfaces (≤768): channel/KB tables use `overflow-x: auto`; list toolbars and wiki/article headers wrap; document split drops tall `min-height` when stacked; KB FAQ/chunk dialogs use `width: min(…, 100vw - 2rem)`; KB Q&A session rail stacks at `$bp-md-min`.
+
 ### Decision tree
 
 | Route shape | Who provides horizontal/vertical gutter | Page TSX / SCSS |

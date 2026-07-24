@@ -242,7 +242,7 @@
   gap: var(--space-5);
 }
 
-@include min-width(ds.$bp-sm-min) {
+@include min-width(ds.$bp-md-min) {
   .home-hub-split__right-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -610,7 +610,7 @@
   text-align: left;
 }
 
-@include max-width(ds.$bp-sm-min) {
+@include max-width(ds.$bp-md-min) {
   .home--operations .app-catalog-grid--home,
   .app-catalog-grid--home {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -717,7 +717,7 @@
   color: var(--color-text-muted);
 }
 
-@include max-width(ds.$bp-sm-min) {
+@include max-width(ds.$bp-md-min) {
   .home-quick-start-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

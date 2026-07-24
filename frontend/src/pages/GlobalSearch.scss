@@ -201,3 +201,17 @@
   color: var(--color-error);
   font-size: var(--text-md);
 }
+
+@include max-width(ds.$bp-md-min) {
+  .global-search {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .global-search-results-shell {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+}

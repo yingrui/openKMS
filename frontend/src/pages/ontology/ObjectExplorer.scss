@@ -21,6 +21,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   align-items: stretch;
 }
 
@@ -34,6 +35,19 @@
   border-radius: var(--radius-md);
   padding: 10px 8px 12px;
   overflow-y: auto;
+}
+
+@include max-width(ds.$bp-md-min) {
+  .object-explorer-layout {
+    overflow-x: auto;
+  }
+
+  .object-explorer-sidebar {
+    width: 200px;
+    min-width: 180px;
+    max-width: none;
+    flex-shrink: 0;
+  }
 }
 
 .object-explorer-sidebar-title {

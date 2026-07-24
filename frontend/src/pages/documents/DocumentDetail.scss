@@ -1549,6 +1549,7 @@
 @include max-width(ds.$km-layout-max) {
   .document-detail-split {
     grid-template-columns: 1fr !important;
+    min-height: 0;
   }
   .document-detail-split[data-extended-images="true"],
   .document-detail-split[data-extended-markdown="true"] {
@@ -1562,6 +1563,18 @@
   }
   .document-detail-metadata-body {
     padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
+  }
+
+  .document-detail-panel-header {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-height: 0;
+    height: auto;
+  }
+
+  .document-detail-panel-header span {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 }
 

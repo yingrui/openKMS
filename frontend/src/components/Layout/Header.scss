@@ -294,3 +294,67 @@
 .header-user-dropdown-item--danger:hover {
   color: var(--color-error);
 }
+
+.header-rail-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.header-rail-toggle:hover,
+.header-rail-toggle--open {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+@include max-width(ds.$bp-md-min) {
+  .header {
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .header-start {
+    gap: var(--space-2);
+  }
+
+  .header-rail-toggle {
+    display: inline-flex;
+  }
+
+  .header-brand {
+    max-width: none;
+  }
+
+  .header-brand-name {
+    display: none;
+  }
+
+  .header-search {
+    min-width: 0;
+    padding: 0 var(--space-3);
+  }
+
+  .header-search-kbd {
+    display: none;
+  }
+
+  .header-console-link:not(.header-console-link--exit) {
+    display: none;
+  }
+
+  .header-login-label {
+    display: none;
+  }
+
+  .header-login-btn {
+    padding: 8px;
+  }
+}

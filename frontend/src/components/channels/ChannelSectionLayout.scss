@@ -1,3 +1,6 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
 .channel-section-layout {
   display: flex;
   flex: 1;
@@ -7,4 +10,38 @@
   overflow: hidden;
 }
 
+.channel-section-layout__rail {
+  display: flex;
+  flex-shrink: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.channel-section-layout__rail .content-channel-rail {
+  height: 100%;
+}
+
 /* Main column: .app-page-pane on the element (padding + flex scroll) */
+
+@include max-width(ds.$bp-md-min) {
+  .channel-section-layout__rail {
+    position: fixed;
+    top: var(--header-height);
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-modal);
+    height: auto;
+    transform: translateX(-100%);
+    transition: transform var(--duration-fast) var(--ease-standard);
+    pointer-events: none;
+
+    &.is-open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+  }
+
+  .channel-section-layout__rail .content-channel-rail {
+    box-shadow: var(--shadow-lg);
+  }
+}

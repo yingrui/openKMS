@@ -152,6 +152,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
 
@@ -315,7 +317,8 @@
 .kb-table-wrap {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .kb-table {
@@ -1070,7 +1073,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   gap: calc(var(--space-2) + var(--space-1) / 2);
 }
 
-@include max-width(ds.$bp-sm-min) {
+@include max-width(ds.$bp-md-min) {
   .kb-qa-shell-body {
     flex-direction: column;
   }
@@ -1975,7 +1978,8 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-faq-dialog {
-  min-width: 480px;
+  min-width: 0;
+  width: min(640px, calc(100vw - 2rem));
   max-width: 640px;
 }
 
@@ -2140,7 +2144,8 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-chunk-dialog {
-  min-width: 560px;
+  min-width: 0;
+  width: min(800px, calc(100vw - 2rem));
   max-width: 800px;
 }
 

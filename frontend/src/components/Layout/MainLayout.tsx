@@ -1,12 +1,13 @@
-import { type CSSProperties, type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { X, LogIn, Home } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { isConsoleShellPath } from '../../config/appModules';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
+import { MobileShellProvider, useMobileShell } from '../../contexts/MobileShellContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
 import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
 import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
@@ -18,9 +19,6 @@ import {
 } from '../ontology/getOntologySubApp';
 import '../../App.scss';
 
-const SIDEBAR_COLLAPSED_WIDTH = '56px';
-const SIDEBAR_CONSOLE_WIDTH = '220px';
-
 function OntologyRail({ subApp }: { subApp: ReturnType<typeof getOntologySubApp> }) {
   if (subApp === 'ontology-manager') return <ManagerNavRail />;
   if (subApp === 'object-explorer') return <ExplorerNavRail />;
@@ -28,7 +26,43 @@ function OntologyRail({ subApp }: { subApp: ReturnType<typeof getOntologySubApp>
   return null;
 }
 
-export function MainLayout() {
+function OntologySection({
+  subApp,
+  children,
+}: {
+  subApp: ReturnType<typeof getOntologySubApp>;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation('layout');
+  const { ontologyRailOpen, setOntologyRailAvailable, closeRails } = useMobileShell();
+
+  useEffect(() => {
+    setOntologyRailAvailable(true);
+    return () => setOntologyRailAvailable(false);
+  }, [setOntologyRailAvailable]);
+
+  return (
+    <div className="ontology-section-layout">
+      {ontologyRailOpen ? (
+        <button
+          type="button"
+          className="mobile-rail-backdrop"
+          aria-label={t('closeNavRail')}
+          onClick={closeRails}
+        />
+      ) : null}
+      <div
+        className={`ontology-section-layout__rail${ontologyRailOpen ? ' is-open' : ''}`}
+        id="ontology-nav-rail-drawer"
+      >
+        <OntologyRail subApp={subApp} />
+      </div>
+      <div className="ontology-section-layout__main app-page-pane">{children}</div>
+    </div>
+  );
+}
+
+function MainLayoutInner() {
   const { t } = useTranslation('layout');
   const location = useLocation();
   const navigate = useNavigate();
@@ -81,25 +115,15 @@ export function MainLayout() {
   let ontologyOutlet: ReactNode = <Outlet />;
   if (showOntologyRail) {
     ontologyOutlet = (
-      <div className="ontology-section-layout">
-        <OntologyRail subApp={ontologySubApp} />
-        <div className="ontology-section-layout__main app-page-pane">
-          <Outlet />
-        </div>
-      </div>
+      <OntologySection subApp={ontologySubApp}>
+        <Outlet />
+      </OntologySection>
     );
   }
 
   return (
     <div
       className={`app-layout ${consoleShell ? 'app-layout--console' : 'app-layout--sidebar-collapsed'}`}
-      style={
-        {
-          ['--sidebar-width' as string]: consoleShell
-            ? SIDEBAR_CONSOLE_WIDTH
-            : SIDEBAR_COLLAPSED_WIDTH,
-        } as CSSProperties
-      }
     >
       <Header />
       <div className="app-shell-body">
@@ -155,5 +179,13 @@ export function MainLayout() {
         </main>
       </div>
     </div>
+  );
+}
+
+export function MainLayout() {
+  return (
+    <MobileShellProvider>
+      <MainLayoutInner />
+    </MobileShellProvider>
   );
 }

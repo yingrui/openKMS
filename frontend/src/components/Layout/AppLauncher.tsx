@@ -21,8 +21,15 @@ export function AppLauncher() {
         setOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   const hasApps = launcherModules.length > 0;
@@ -42,16 +49,24 @@ export function AppLauncher() {
         <LayoutGrid size={20} strokeWidth={1.75} />
       </button>
       {open && (
-        <div className="app-launcher-panel" role="menu">
-          <AppCatalogGrid
-            variant="launcher"
-            modules={launcherModules}
-            onSelect={(mod) => {
-              setOpen(false);
-              void navigate(mod.homePath);
-            }}
+        <>
+          <button
+            type="button"
+            className="app-launcher-backdrop"
+            aria-label={t('closeAppLauncher')}
+            onClick={() => setOpen(false)}
           />
-        </div>
+          <div className="app-launcher-panel" role="menu">
+            <AppCatalogGrid
+              variant="launcher"
+              modules={launcherModules}
+              onSelect={(mod) => {
+                setOpen(false);
+                void navigate(mod.homePath);
+              }}
+            />
+          </div>
+        </>
       )}
     </div>
   );

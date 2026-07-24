@@ -23,6 +23,8 @@
   display: flex;
   gap: var(--space-4);
   margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .articles-search {
@@ -65,7 +67,8 @@
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .articles-table {
@@ -206,5 +209,12 @@
 .articles-new-modal-field textarea:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+
+@include max-width(ds.$bp-md-min) {
+  .articles-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
 }
 

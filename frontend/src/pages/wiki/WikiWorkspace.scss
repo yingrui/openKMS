@@ -242,3 +242,24 @@ button.wiki-workspace-toolbar-icon-link {
   }
 
 }
+
+@include max-width(ds.$bp-md-min) {
+  .wiki-workspace-toolbar {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .wiki-workspace-toolbar-tail {
+    flex: 1 1 100%;
+  }
+
+  .wiki-workspace-toolbar-end {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .wiki-workspace-toolbar-controls {
+    flex-wrap: wrap;
+  }
+}

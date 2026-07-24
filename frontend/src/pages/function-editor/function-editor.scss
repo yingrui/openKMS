@@ -18,6 +18,7 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  min-width: 0;
   margin: calc(-1 * var(--app-page-padding-y, 24px)) calc(-1 * var(--app-page-padding-x, 24px));
   background: var(--color-bg);
 }
@@ -126,8 +127,20 @@
 .function-editor-workspace__main {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: row;
+}
+
+@media (max-width: 768px) {
+  .function-editor-workspace__main {
+    overflow-x: auto;
+  }
+
+  .function-editor-queries {
+    flex: 0 0 160px;
+    min-width: 140px;
+  }
 }
 
 .function-editor-workspace__center {

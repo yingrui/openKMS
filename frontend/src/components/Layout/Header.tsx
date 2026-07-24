@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn } from 'lucide-react';
+import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, PanelLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
+import { useMobileShell } from '../../contexts/MobileShellContext';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
 import { AppLauncher } from './AppLauncher';
@@ -16,6 +17,14 @@ export function Header() {
   const consoleShell = isConsoleShellPath(location.pathname);
   const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
   const { systemName } = useSystemPublic();
+  const {
+    channelRailAvailable,
+    ontologyRailAvailable,
+    channelRailOpen,
+    ontologyRailOpen,
+    toggleChannelRail,
+    toggleOntologyRail,
+  } = useMobileShell();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -59,10 +68,36 @@ export function Header() {
   }, []);
 
   const brandName = systemName || 'openKMS';
+  const showChannelToggle = channelRailAvailable;
+  const showOntologyToggle = ontologyRailAvailable;
 
   return (
     <header className="header">
       <div className="header-start">
+        {showChannelToggle && (
+          <button
+            type="button"
+            className={`header-rail-toggle${channelRailOpen ? ' header-rail-toggle--open' : ''}`}
+            onClick={toggleChannelRail}
+            aria-expanded={channelRailOpen}
+            aria-controls="channel-nav-rail-drawer"
+            aria-label={t('openChannelRail')}
+          >
+            <PanelLeft size={20} strokeWidth={1.75} />
+          </button>
+        )}
+        {showOntologyToggle && (
+          <button
+            type="button"
+            className={`header-rail-toggle${ontologyRailOpen ? ' header-rail-toggle--open' : ''}`}
+            onClick={toggleOntologyRail}
+            aria-expanded={ontologyRailOpen}
+            aria-controls="ontology-nav-rail-drawer"
+            aria-label={t('openOntologyRail')}
+          >
+            <PanelLeft size={20} strokeWidth={1.75} />
+          </button>
+        )}
         <Link to="/" className="header-brand" title={brandName}>
           <img src={logo} alt="" className="header-brand-icon" />
           <span className="header-brand-name">{brandName}</span>
@@ -126,7 +161,7 @@ export function Header() {
               aria-label={t('logIn')}
             >
               <LogIn size={20} strokeWidth={1.75} />
-              <span>{t('logIn')}</span>
+              <span className="header-login-label">{t('logIn')}</span>
             </button>
           ) : (
             <>
