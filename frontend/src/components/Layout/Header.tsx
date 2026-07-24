@@ -30,6 +30,17 @@ export function Header() {
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [headerQuery, setHeaderQuery] = useState('');
+  const [compactSearch, setCompactSearch] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const sync = () => setCompactSearch(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     if (location.pathname === '/search') {
@@ -115,7 +126,7 @@ export function Header() {
                 navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
               }
             }}
-            placeholder={t('searchPlaceholder')}
+            placeholder={t(compactSearch ? 'searchPlaceholderShort' : 'searchPlaceholder')}
             className="header-search-input"
             aria-label={t('searchAriaLabel')}
           />

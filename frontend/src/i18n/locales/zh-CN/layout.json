@@ -1,5 +1,6 @@
 {
   "searchPlaceholder": "搜索文档、文章…",
+  "searchPlaceholderShort": "搜索…",
   "searchAriaLabel": "搜索",
   "exitConsole": "退出控制台",
   "console": "控制台",

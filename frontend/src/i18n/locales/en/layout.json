@@ -1,5 +1,6 @@
 {
   "searchPlaceholder": "Search documents, articles, …",
+  "searchPlaceholderShort": "Search…",
   "searchAriaLabel": "Search",
   "exitConsole": "Exit Console",
   "console": "Console",
