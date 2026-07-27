@@ -1,37 +1,30 @@
-import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useMobileShell } from '../../contexts/MobileShellContext';
+import { Outlet, useLocation } from 'react-router-dom';
 import { ContentChannelRail } from './ContentChannelRail';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import './ChannelSectionLayout.scss';
 
 function ChannelSection({ variant }: { variant: 'documents' | 'articles' | 'media' }) {
-  const { t } = useTranslation('layout');
-  const { channelRailOpen, setChannelRailAvailable, closeRails } = useMobileShell();
+  const location = useLocation();
+  const isMobile = useIsMobile();
 
-  useEffect(() => {
-    setChannelRailAvailable(true);
-    return () => setChannelRailAvailable(false);
-  }, [setChannelRailAvailable]);
+  const basePath = `/${variant}`;
+  const isSectionIndex =
+    location.pathname === basePath || location.pathname === `${basePath}/`;
+  /** Mobile index: full-page channel tree. No drawer on any mobile channel route. */
+  const mobileLanding = isMobile && isSectionIndex;
+  const showDesktopRail = !isMobile;
 
   return (
-    <div className="channel-section-layout">
-      {channelRailOpen ? (
-        <button
-          type="button"
-          className="mobile-rail-backdrop"
-          aria-label={t('closeNavRail')}
-          onClick={closeRails}
-        />
+    <div
+      className={`channel-section-layout${mobileLanding ? ' channel-section-layout--mobile-landing' : ''}`}
+    >
+      {showDesktopRail ? (
+        <div className="channel-section-layout__rail">
+          <ContentChannelRail variant={variant} />
+        </div>
       ) : null}
-      <div
-        className={`channel-section-layout__rail${channelRailOpen ? ' is-open' : ''}`}
-        id="channel-nav-rail-drawer"
-      >
-        <ContentChannelRail variant={variant} />
-      </div>
       <div className="channel-section-layout__main app-page-pane">
-        <Outlet />
+        {mobileLanding ? <ContentChannelRail variant={variant} /> : <Outlet />}
       </div>
     </div>
   );

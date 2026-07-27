@@ -24,24 +24,37 @@
 /* Main column: .app-page-pane on the element (padding + flex scroll) */
 
 @include max-width(ds.$bp-md-min) {
-  .channel-section-layout__rail {
-    position: fixed;
-    top: var(--header-height);
-    bottom: 0;
-    left: 0;
-    z-index: var(--z-modal);
-    height: auto;
-    transform: translateX(-100%);
-    transition: transform var(--duration-fast) var(--ease-standard);
-    pointer-events: none;
-
-    &.is-open {
-      transform: translateX(0);
-      pointer-events: auto;
+  /* Index landing: channel tree is the main pane (not the stats page). */
+  .channel-section-layout--mobile-landing {
+    .channel-section-layout__main {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
-  }
 
-  .channel-section-layout__rail .content-channel-rail {
-    box-shadow: var(--shadow-lg);
+    .content-channel-rail {
+      width: 100%;
+      min-width: 0;
+      flex: 1;
+      border-right: none;
+      background: var(--color-bg);
+    }
+
+    .content-channel-rail-head {
+      padding: var(--space-4) var(--space-4) var(--space-3);
+    }
+
+    .content-channel-rail-title {
+      font-size: var(--text-lg, 1.125rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+      text-transform: none;
+    }
+
+    .content-channel-rail-scroll {
+      padding: var(--space-2) var(--space-3) var(--space-4);
+    }
   }
 }

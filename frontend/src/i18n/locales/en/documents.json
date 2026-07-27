@@ -108,6 +108,7 @@
     "notFoundTitle": "Channel not found",
     "notFoundSubtitle": "This channel does not exist or you do not have access.",
     "backToDocuments": "Back to Documents",
+    "backToTree": "All channels",
     "defaultDescription": "Upload PDF, HTML, ZIP, or images. Documents are converted to Markdown. Organize by channel.",
     "channelSettings": "Channel settings",
     "searchAria": "Search in channel",

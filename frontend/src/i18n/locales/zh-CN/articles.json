@@ -132,6 +132,7 @@
     "notFoundTitle": "未找到频道",
     "notFoundSubtitle": "该频道不存在或您无权访问。",
     "backToArticles": "返回文章",
+    "backToTree": "全部频道",
     "defaultDescription": "本频道中的文章支持 Markdown、附件与版本历史。在侧栏选择其他频道可切换上下文。",
     "channelSettings": "频道设置",
     "newArticle": "新建文章",

@@ -12,7 +12,7 @@ import {
   type MediaAssetOut,
 } from '../../data/mediaApi';
 import '../documents/DocumentDetail.scss';
-import '../documents/DocumentChannel.scss';
+import '../../styles/channel-page.scss';
 import './Media.scss';
 
 type MediaDetailFormProps = {
@@ -164,10 +164,10 @@ function MediaDetailFormPanel({
         <div className="media-detail-footer">
           <div className="document-detail-metadata-edit-actions">
             <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={onSave}>
-              {saving ? <Loader2 size={14} className="documents-loading-spinner" /> : null}
+              {saving ? <Loader2 size={14} className="channel-page-spinner" /> : null}
               <span>{saving ? t('detail.saving') : t('detail.save')}</span>
             </button>
-            <button type="button" className="btn btn-secondary btn-sm documents-bulk-delete" onClick={onDelete}>
+            <button type="button" className="btn btn-secondary btn-sm channel-page-bulk-delete" onClick={onDelete}>
               <Trash2 size={14} />
               <span>{t('detail.delete')}</span>
             </button>
@@ -282,7 +282,7 @@ export function MediaDetail() {
     return (
       <div className="document-detail media-detail-page">
         <div className="document-detail-loading">
-          <Loader2 size={24} className="documents-loading-spinner" />
+          <Loader2 size={24} className="channel-page-spinner" />
           <span>{t('detail.loading')}</span>
         </div>
       </div>

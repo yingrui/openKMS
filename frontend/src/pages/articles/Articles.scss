@@ -1,152 +1,13 @@
-@use '../../styles/design-system/mixins' as *;
-@use '../../styles/design-system/tokens' as ds;
+// Articles channel page. Shared channel shell lives in `styles/channel-page.scss`.
 
-.articles {
-  width: 100%;
-}
-
-.articles-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  gap: var(--space-5);
-  margin-bottom: var(--space-6);
-}
-
-.articles-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.articles-toolbar {
-  display: flex;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.articles-search {
-  flex: 1;
-  max-width: 360px;
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-}
-
-.articles-search svg {
-  color: var(--color-text-muted);
-}
-
-.articles-search input {
-  flex: 1;
-  border: none;
-  background: none;
-  font-size: var(--text-base);
-}
-
-.articles-search input:focus {
-  outline: none;
-}
-
-.articles-toolbar select {
-  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-size: var(--text-base);
-  color: var(--color-text);
-}
-
-.articles-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.articles-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-base);
-}
-
-.articles-table th,
-.articles-table td {
-  padding: var(--space-3) var(--space-4);
-  text-align: left;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.articles-table-source {
+.article-source-cell {
   max-width: 220px;
   word-break: break-word;
   font-size: var(--text-md);
 }
 
-.articles-table-source a {
+.article-source-cell a {
   color: var(--color-accent);
-}
-
-.articles-table th {
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  background: var(--color-bg-muted);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.articles-table-row-clickable {
-  cursor: pointer;
-}
-
-.articles-table tbody tr:hover {
-  background: var(--color-bg-muted);
-}
-
-.articles-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.articles-table-title {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-}
-
-.articles-table-title svg {
-  color: var(--color-accent);
-  flex-shrink: 0;
-}
-
-.articles-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: calc(var(--space-12) + var(--space-1) * 3) var(--space-6);
-  color: var(--color-text-muted);
-}
-
-.articles-empty svg {
-  margin-bottom: var(--space-4);
-  opacity: 0.5;
-}
-
-.articles-empty-hint {
-  font-size: var(--text-md);
-  margin-top: var(--space-1);
-}
-
-.articles-table-wrap .articles-empty {
-  min-height: 240px;
 }
 
 .article-status {
@@ -169,6 +30,7 @@
 [data-theme="dark"] .article-status-published { background: #14532d; color: #86efac; }
 [data-theme="dark"] .article-status-draft { background: #422006; color: #fcd34d; }
 
+/* New-article modal body */
 .articles-new-modal-fields {
   display: flex;
   flex-direction: column;
@@ -210,11 +72,3 @@
   outline: none;
   border-color: var(--color-accent);
 }
-
-@include max-width(ds.$bp-md-min) {
-  .articles-search {
-    flex: 1 1 100%;
-    max-width: none;
-  }
-}
-

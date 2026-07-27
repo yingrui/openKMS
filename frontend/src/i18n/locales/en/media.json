@@ -62,6 +62,7 @@
   },
   "channel": {
     "backToChannels": "All collections",
+    "backToTree": "All collections",
     "settings": "Settings",
     "upload": "Upload",
     "createImage": "Create image",

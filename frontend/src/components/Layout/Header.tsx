@@ -5,6 +5,7 @@ import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, PanelLeft
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { useMobileShell } from '../../contexts/MobileShellContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
 import { AppLauncher } from './AppLauncher';
@@ -17,30 +18,13 @@ export function Header() {
   const consoleShell = isConsoleShellPath(location.pathname);
   const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
   const { systemName } = useSystemPublic();
-  const {
-    channelRailAvailable,
-    ontologyRailAvailable,
-    channelRailOpen,
-    ontologyRailOpen,
-    toggleChannelRail,
-    toggleOntologyRail,
-  } = useMobileShell();
+  const { ontologyRailAvailable, ontologyRailOpen, toggleOntologyRail } = useMobileShell();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [headerQuery, setHeaderQuery] = useState('');
-  const [compactSearch, setCompactSearch] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 768px)');
-    const sync = () => setCompactSearch(mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
+  const compactSearch = useIsMobile();
 
   useEffect(() => {
     if (location.pathname === '/search') {
@@ -79,24 +63,11 @@ export function Header() {
   }, []);
 
   const brandName = systemName || 'openKMS';
-  const showChannelToggle = channelRailAvailable;
   const showOntologyToggle = ontologyRailAvailable;
 
   return (
     <header className="header">
       <div className="header-start">
-        {showChannelToggle && (
-          <button
-            type="button"
-            className={`header-rail-toggle${channelRailOpen ? ' header-rail-toggle--open' : ''}`}
-            onClick={toggleChannelRail}
-            aria-expanded={channelRailOpen}
-            aria-controls="channel-nav-rail-drawer"
-            aria-label={t('openChannelRail')}
-          >
-            <PanelLeft size={20} strokeWidth={1.75} />
-          </button>
-        )}
         {showOntologyToggle && (
           <button
             type="button"

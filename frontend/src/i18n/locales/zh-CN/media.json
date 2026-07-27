@@ -62,6 +62,7 @@
   },
   "channel": {
     "backToChannels": "全部合集",
+    "backToTree": "全部合集",
     "settings": "设置",
     "upload": "上传",
     "createImage": "生成图片",

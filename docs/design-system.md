@@ -47,13 +47,15 @@ Phase 1 phone chrome — desktop (≥769px) unchanged:
 |---------|-----------------|
 | App Rail / Console sidebar | Hidden from flow; `--sidebar-width: 0` via `.app-layout--sidebar-collapsed` / `--console` |
 | App Launcher | Full-width panel under header + backdrop (`--overlay-backdrop`, `z-modal`) |
-| Channel rail (Documents / Articles / Media) | Overlay drawer; Header **PanelLeft** toggle; backdrop + Escape + route change close |
-| Ontology rail (Manager / Explorer / Function Editor list) | Same drawer pattern |
+| Channel rail (Documents / Articles / Media) | No drawer — section index becomes the channel tree; channel pages show the **All channels** back link |
+| Ontology rail (Manager / Explorer / Function Editor list) | Overlay drawer; Header **PanelLeft** toggle; backdrop + Escape + route change close |
 | Header | Logo only (hide brand name); hide `⌘K`; hide Console link (keep Exit Console); login icon-only |
 
-Context: `MobileShellContext` in `MainLayout`. Toggle buttons use `.header-rail-toggle` (visible only ≤768px).
+Context: ontology drawer state lives in `MobileShellContext` (`MainLayout`); its toggle uses `.header-rail-toggle` (visible only ≤768px). Components that need the breakpoint in JS use **`useIsMobile()`** (`src/hooks/useIsMobile.ts`) — the single TS mirror of `$bp-md-min`; do not re-write `matchMedia('(max-width: 768px)')`.
 
 Reading surfaces (≤768): channel/KB tables use `overflow-x: auto`; list toolbars and wiki/article headers wrap; document split drops tall `min-height` when stacked; KB FAQ/chunk dialogs use `width: min(…, 100vw - 2rem)`; KB Q&A session rail stacks at `$bp-md-min`.
+
+Documents / Articles / Media **section index** on ≤768: channel tree is the main pane (`channel-section-layout--mobile-landing`); stats/quick-actions index stays desktop-only. Inside a channel on mobile, use **All channels** back link (`.channel-browse-back`) — no header drawer for the channel tree.
 
 ### Decision tree
 
@@ -107,6 +109,7 @@ Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `C
 |------|------|
 | **`account-page.scss`** | Cross-route **account / personal settings** chrome (Profile, Settings, Git credentials). Import via **`@use '../styles/account-page'`** in page SCSS, or **`import '…/account-page.scss'`** in a colocated component. |
 | **`app-page.scss`** | Global **`.page-header`**, **`.page-subtitle`**, **`.app-page-shell`**, **`.app-page-section*`** — loaded from **`index.scss`**. Use **`var(--app-page-padding-*)`** for in-app gutters. |
+| **`channel-page.scss`** | Shared chrome for **channel browse pages** (Documents / Articles / Media). Import with **`import '../../styles/channel-page.scss'`** in the page TSX. |
 
 **Structure:** `.account-page` → `.account-page-header` + `.account-stack` → one or more `.account-card` sections.
 
@@ -122,7 +125,20 @@ Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `C
 
 **Compile-time caps** (`_tokens.scss`): **`$km-layout-max`** (900px page width), **`$account-form-max-width`**, **`$account-input-min-flex`**, **`$z-settings-modal-overlay`** / **`$z-settings-import-overlay`** (wiki import stack).
 
-**Channel modals** (`DocumentChannel.scss`): upload, move, and Media generate dialogs share **`.documents-upload-modal-overlay`** / **`.documents-upload-modal`** (header + hint + footer actions). Form fields inside modals use **`.documents-move-form`** with **`.documents-move-select`** or **`.documents-move-textarea`** (full width, muted background, accent focus ring).
+### Channel pages (`channel-page.scss`)
+
+Documents, Articles and Media browse pages share one stylesheet; page SCSS keeps only what is unique to that area (upload dropzone, status pills, source cell).
+
+| Class family | Role |
+|--------------|------|
+| **`.channel-page`** + **`.channel-page-header*`** / **`-main`** / **`-toolbar*`** / **`-search`** | Page root, title block, filter bar |
+| **`.channel-page-bulk-*`** | Selection bar above the list |
+| **`.channel-page-empty*`** / **`-loading`** / **`-error`** / **`-spinner`** | List states |
+| **`.channel-page-modal*`** / **`-move-*`** | Upload, move and Media generate dialogs (header + hint + footer actions; fields sit in `.channel-page-move-form`) |
+| **`.channel-table*`** | Table shell: `-wrap`, `-row` / `-row--selected`, `-select-col`, `-cell--primary` |
+| **`.channel-item*`** | Primary cell content: leading icon + `-text` / `-title` / `-meta-row` / `-meta` / `-actions` |
+
+**Responsive rule:** at ≤ `$bp-md-min` a `.channel-table` row becomes a card that shows **only** the checkbox and `.channel-table-cell--primary`; every other `<td>` is hidden generically, so new columns need no mobile rule. Row meta and row actions live in `.channel-item-meta-row`, which is desktop-hidden. Pages render row actions **once** — `useIsMobile()` decides between the meta line and the desktop action column.
 
 ## Conventions
 

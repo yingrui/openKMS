@@ -16,7 +16,7 @@ import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import '../documents/DocumentChannelSettings.scss';
-import '../documents/DocumentChannel.scss';
+import '../../styles/channel-page.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
   const out: { id: string; name: string; depth: number }[] = [];
@@ -166,7 +166,7 @@ export function MediaChannelSettings() {
     return (
       <div className="document-channel-settings">
         <div className="document-detail-loading">
-          <Loader2 size={24} className="documents-loading-spinner" />
+          <Loader2 size={24} className="channel-page-spinner" />
           <span>{t('common.loading')}</span>
         </div>
       </div>
@@ -322,7 +322,7 @@ export function MediaChannelSettings() {
 
             <div className="document-channel-settings-actions">
               <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void onSave()}>
-                {saving ? <Loader2 size={16} className="documents-loading-spinner" /> : null}
+                {saving ? <Loader2 size={16} className="channel-page-spinner" /> : null}
                 <span>{saving ? t('settings.saving') : t('settings.save')}</span>
               </button>
               <button type="button" className="btn btn-secondary" onClick={() => navigate(`/media/channels/${channelId}`)}>

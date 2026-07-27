@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder } from 'lucide-react';
+import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useEnsureMediaChannels } from '../../contexts/MediaChannelsContext';
 import {
@@ -18,7 +18,7 @@ import {
   type MediaAssetOut,
   type MediaKind,
 } from '../../data/mediaApi';
-import '../documents/DocumentChannel.scss';
+import '../../styles/channel-page.scss';
 import './Media.scss';
 
 function MediaThumb({ asset }: { asset: MediaAssetOut }) {
@@ -120,7 +120,7 @@ export function MediaChannel() {
 
   if (chLoading) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <p className="page-subtitle">{t('channel.loadingChannels')}</p>
         </div>
@@ -130,8 +130,8 @@ export function MediaChannel() {
 
   if (channels.length === 0) {
     return (
-      <div className="documents">
-        <div className="documents-empty-state">
+      <div className="channel-page">
+        <div className="channel-page-empty-state">
           <Folder size={64} />
           <h2>{t('channels.emptyTitle')}</h2>
           <p>{t('channels.emptyHint')}</p>
@@ -146,7 +146,7 @@ export function MediaChannel() {
 
   if (!channelId || !channelIds.has(channelId)) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <h1>{t('channel.notFoundTitle')}</h1>
           <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
@@ -159,17 +159,21 @@ export function MediaChannel() {
   }
 
   return (
-    <div className="documents">
-      <div className="page-header documents-header">
+    <div className="channel-page">
+      <Link to="/media" className="channel-browse-back">
+        <ArrowLeft size={16} strokeWidth={1.75} />
+        <span>{t('channel.backToTree')}</span>
+      </Link>
+      <div className="page-header channel-page-header">
         <div>
-          <div className="documents-header-title">
+          <div className="channel-page-header-title">
             <h1>{channelName}</h1>
           </div>
           <p className="page-subtitle">
             {channelDescription?.trim() ? channelDescription : t('channel.defaultDescription')}
           </p>
         </div>
-        <div className="documents-header-actions">
+        <div className="channel-page-header-actions">
           <Link to={`/media/channels/${channelId}/settings`} className="btn btn-secondary">
             <Settings size={18} />
             <span>{t('channel.settings')}</span>
@@ -193,9 +197,9 @@ export function MediaChannel() {
         </div>
       </div>
 
-      <div className="documents-main">
-        <div className="documents-toolbar">
-          <div className="documents-search">
+      <div className="channel-page-main">
+        <div className="channel-page-toolbar">
+          <div className="channel-page-search">
             <Search size={18} />
             <input
               type="search"
@@ -217,10 +221,10 @@ export function MediaChannel() {
         </div>
 
         {selectedCount > 0 && (
-          <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
-            <span className="documents-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
-            <div className="documents-bulk-actions">
-              <button type="button" className="btn btn-secondary btn-sm documents-bulk-delete" onClick={() => void onBulkDelete()}>
+          <div className="channel-page-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
+            <span className="channel-page-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
+            <div className="channel-page-bulk-actions">
+              <button type="button" className="btn btn-secondary btn-sm channel-page-bulk-delete" onClick={() => void onBulkDelete()}>
                 <Trash2 size={16} />
                 <span>{t('channel.bulkDelete')}</span>
               </button>
@@ -234,13 +238,13 @@ export function MediaChannel() {
 
         {listLoading ? (
           <div className="media-loading-wrap">
-            <Loader2 size={24} className="documents-loading-spinner" />
+            <Loader2 size={24} className="channel-page-spinner" />
             <span>{t('channel.loading')}</span>
           </div>
         ) : items.length === 0 ? (
-          <div className="media-empty-wrap documents-empty">
+          <div className="media-empty-wrap channel-page-empty">
             <Image size={48} strokeWidth={1.25} />
-            <p className="documents-empty-hint">{t('channel.empty')}</p>
+            <p className="channel-page-empty-hint">{t('channel.empty')}</p>
             <button type="button" className="btn btn-primary" onClick={() => fileRef.current?.click()}>
               <Upload size={16} />
               <span>{t('channel.upload')}</span>

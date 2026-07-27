@@ -20,6 +20,7 @@ import {
   GitBranch,
   RotateCcw,
   RefreshCw,
+  ArrowLeft,
 } from 'lucide-react';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
 import {
@@ -49,6 +50,8 @@ import {
   Pagination,
 } from '../../styles/design-system';
 import { createJob } from '../../data/jobsApi';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import '../../styles/channel-page.scss';
 import './DocumentChannel.scss';
 
 const DOCS_PAGE_SIZE_DEFAULT = 25;
@@ -98,6 +101,7 @@ export function DocumentChannel() {
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error, refetch: refetchChannels } = useEnsureDocumentChannels();
+  const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatSize = useCallback(
@@ -553,7 +557,7 @@ export function DocumentChannel() {
 
   if (loading) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <p className="page-subtitle">{t('channel.loadingChannels')}</p>
         </div>
@@ -563,7 +567,7 @@ export function DocumentChannel() {
 
   if (error) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
@@ -573,8 +577,8 @@ export function DocumentChannel() {
 
   if (channels.length === 0) {
     return (
-      <div className="documents">
-        <div className="documents-empty-state">
+      <div className="channel-page">
+        <div className="channel-page-empty-state">
           <Folder size={64} />
           <h2>{t('channel.noChannelsTitle')}</h2>
           <p>{t('channel.noChannelsHint')}</p>
@@ -589,7 +593,7 @@ export function DocumentChannel() {
 
   if (!channelId || !channelIds.has(channelId)) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <h1>{t('channel.notFoundTitle')}</h1>
           <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
@@ -602,17 +606,21 @@ export function DocumentChannel() {
   }
 
   return (
-    <div className="documents">
-      <div className="page-header documents-header">
+    <div className="channel-page">
+      <Link to="/documents" className="channel-browse-back">
+        <ArrowLeft size={16} strokeWidth={1.75} />
+        <span>{t('channel.backToTree')}</span>
+      </Link>
+      <div className="page-header channel-page-header">
         <div>
-          <div className="documents-header-title">
+          <div className="channel-page-header-title">
             <h1>{channelName}</h1>
           </div>
           <p className="page-subtitle">
             {channelDescription ?? t('channel.defaultDescription')}
           </p>
         </div>
-        <div className="documents-header-actions">
+        <div className="channel-page-header-actions">
           <Link
             to={`/documents/channels/${channelId}/settings`}
             className="btn btn-secondary"
@@ -631,9 +639,9 @@ export function DocumentChannel() {
         </div>
       </div>
 
-      <div className="documents-main">
-        <div className="documents-toolbar">
-          <div className="documents-search">
+      <div className="channel-page-main">
+        <div className="channel-page-toolbar">
+          <div className="channel-page-search">
             <Search size={18} />
             <input
               type="search"
@@ -667,21 +675,21 @@ export function DocumentChannel() {
           </select>
           <button
             type="button"
-            className="btn btn-secondary documents-toolbar-refresh"
+            className="btn btn-secondary channel-page-toolbar-refresh"
             onClick={() => void loadDocuments()}
             disabled={docsLoading}
             title={t('channel.refreshTitle')}
             aria-label={t('channel.refreshAria')}
           >
-            <RefreshCw size={18} className={docsLoading ? 'documents-loading-spinner' : undefined} />
+            <RefreshCw size={18} className={docsLoading ? 'channel-page-spinner' : undefined} />
           </button>
         </div>
         {selectedCount > 0 && (
-          <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
-            <span className="documents-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
-            <div className="documents-bulk-actions">
+          <div className="channel-page-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
+            <span className="channel-page-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
+            <div className="channel-page-bulk-actions">
               {bulkProcessDisabled ? (
-                <span className="documents-bulk-action-wrap" title={bulkProcessTitle}>
+                <span className="channel-page-bulk-action-wrap" title={bulkProcessTitle}>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
@@ -689,7 +697,7 @@ export function DocumentChannel() {
                     aria-label={bulkProcessTitle}
                   >
                     {bulkBusy === 'process' ? (
-                      <Loader2 size={16} className="documents-loading-spinner" />
+                      <Loader2 size={16} className="channel-page-spinner" />
                     ) : (
                       <Play size={16} />
                     )}
@@ -704,7 +712,7 @@ export function DocumentChannel() {
                   title={bulkProcessTitle}
                 >
                   {bulkBusy === 'process' ? (
-                    <Loader2 size={16} className="documents-loading-spinner" />
+                    <Loader2 size={16} className="channel-page-spinner" />
                   ) : (
                     <Play size={16} />
                   )}
@@ -712,7 +720,7 @@ export function DocumentChannel() {
                 </button>
               )}
               {bulkResetDisabled ? (
-                <span className="documents-bulk-action-wrap" title={bulkResetTitle}>
+                <span className="channel-page-bulk-action-wrap" title={bulkResetTitle}>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
@@ -720,7 +728,7 @@ export function DocumentChannel() {
                     aria-label={bulkResetTitle}
                   >
                     {bulkBusy === 'reset' ? (
-                      <Loader2 size={16} className="documents-loading-spinner" />
+                      <Loader2 size={16} className="channel-page-spinner" />
                     ) : (
                       <RotateCcw size={16} />
                     )}
@@ -735,7 +743,7 @@ export function DocumentChannel() {
                   title={bulkResetTitle}
                 >
                   {bulkBusy === 'reset' ? (
-                    <Loader2 size={16} className="documents-loading-spinner" />
+                    <Loader2 size={16} className="channel-page-spinner" />
                   ) : (
                     <RotateCcw size={16} />
                   )}
@@ -749,7 +757,7 @@ export function DocumentChannel() {
                 disabled={bulkActionsDisabled}
               >
                 {bulkBusy === 'move' ? (
-                  <Loader2 size={16} className="documents-loading-spinner" />
+                  <Loader2 size={16} className="channel-page-spinner" />
                 ) : (
                   <FolderInput size={16} />
                 )}
@@ -757,12 +765,12 @@ export function DocumentChannel() {
               </button>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm documents-bulk-delete"
+                className="btn btn-secondary btn-sm channel-page-bulk-delete"
                 onClick={() => void handleBulkDelete()}
                 disabled={bulkActionsDisabled}
               >
                 {bulkBusy === 'delete' ? (
-                  <Loader2 size={16} className="documents-loading-spinner" />
+                  <Loader2 size={16} className="channel-page-spinner" />
                 ) : (
                   <Trash2 size={16} />
                 )}
@@ -780,22 +788,22 @@ export function DocumentChannel() {
             </div>
           </div>
         )}
-        <div className="documents-table-wrap">
+        <div className="channel-table-wrap">
           {docsLoading ? (
-            <div className="documents-loading">
-              <Loader2 size={32} className="documents-loading-spinner" />
+            <div className="channel-page-loading">
+              <Loader2 size={32} className="channel-page-spinner" />
               <p>{t('channel.loadingDocs')}</p>
             </div>
           ) : docsError ? (
-            <div className="documents-error">
+            <div className="channel-page-error">
               <p>{docsError}</p>
             </div>
           ) : docsTotal > 0 ? (
             <>
-              <table className="documents-table">
+              <table className="channel-table">
               <thead>
                 <tr>
-                  <th className="documents-table-select-col">
+                  <th className="channel-table-select-col">
                     <input
                       type="checkbox"
                       checked={allDocsSelected}
@@ -807,7 +815,7 @@ export function DocumentChannel() {
                       onClick={(e) => e.stopPropagation()}
                     />
                   </th>
-                  <th>{t('channel.tableName')}</th>
+                  <th className="channel-table-cell--primary">{t('channel.tableName')}</th>
                   <th>{t('channel.tableType')}</th>
                   <th>{t('channel.tableSize')}</th>
                   <th>{t('channel.tableStatus')}</th>
@@ -819,16 +827,56 @@ export function DocumentChannel() {
                 {documents.map((doc) => {
                   const Icon = fileTypeIcons[doc.file_type] || FileText;
                   const isSelected = selectedDocIds.has(doc.id);
+                  const statusLabel = doc.status || 'completed';
+                  /** Mobile puts these on the meta line; desktop keeps its own action column. */
+                  const rowActions = (
+                    <TableRowActions>
+                      {(doc.status === 'uploaded' || doc.status === 'failed') && (
+                        <TableRowActionButton
+                          title={
+                            isProcessBlockedByMissingPipeline(doc.file_type, channelPipelineId)
+                              ? t('channel.processNoPipeline')
+                              : t('common.process')
+                          }
+                          aria-label={t('channel.ariaProcess', { name: doc.name })}
+                          onClick={(e) => void handleProcessClick(e, doc)}
+                          disabled={isProcessBlockedByMissingPipeline(doc.file_type, channelPipelineId)}
+                          loading={processingId === doc.id}
+                          icon={<Play size={16} />}
+                        />
+                      )}
+                      <TableRowActionButton
+                        title={t('common.move')}
+                        aria-label={t('channel.ariaMoveDoc', { name: doc.name })}
+                        onClick={(e) => handleMoveClick(e, doc)}
+                        icon={<FolderInput size={16} />}
+                      />
+                      <TableRowActionButton
+                        title={t('common.download')}
+                        aria-label={t('channel.ariaDownload')}
+                        onClick={(e) => void handleDownloadClick(e, doc)}
+                        icon={<Download size={16} />}
+                      />
+                      <TableRowActionButton
+                        title={t('common.delete')}
+                        aria-label={t('channel.ariaDeleteDoc', { name: doc.name })}
+                        variant="danger"
+                        onClick={(e) => void handleDeleteClick(e, doc)}
+                        loading={deletingId === doc.id}
+                        icon={<Trash2 size={16} />}
+                      />
+                    </TableRowActions>
+                  );
                   return (
                     <tr
                       key={doc.id}
-                      className={`documents-table-row-clickable${isSelected ? ' documents-table-row-selected' : ''}`}
+                      className={`channel-table-row${isSelected ? ' channel-table-row--selected' : ''}`}
                       onClick={() => navigate(`/documents/view/${doc.id}`)}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && navigate(`/documents/view/${doc.id}`)}
                     >
-                      <td className="documents-table-select-col" onClick={(e) => e.stopPropagation()}>
+                      <td className="channel-table-select-col" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -837,58 +885,40 @@ export function DocumentChannel() {
                           onClick={(e) => e.stopPropagation()}
                         />
                       </td>
-                      <td>
-                        <div className="documents-table-name">
+                      <td className="channel-table-cell--primary">
+                        <div className="channel-item">
                           <Icon size={18} strokeWidth={1.5} />
-                          <span>{doc.name}</span>
+                          <div className="channel-item-text">
+                            <span className="channel-item-title">{doc.name}</span>
+                            <div className="channel-item-meta-row">
+                              <span className="channel-item-meta">
+                                {doc.file_type}
+                                {' · '}
+                                {formatSize(doc.size_bytes)}
+                                {' · '}
+                                {statusLabel}
+                              </span>
+                              {isMobile ? (
+                                <div
+                                  className="channel-item-actions"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {rowActions}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td>{doc.file_type}</td>
                       <td>{formatSize(doc.size_bytes)}</td>
                       <td>
-                        <span className={`doc-status doc-status-${doc.status || 'completed'}`}>
-                          {doc.status || 'completed'}
+                        <span className={`doc-status doc-status-${statusLabel}`}>
+                          {statusLabel}
                         </span>
                       </td>
                       <td>{formatDate(doc.created_at)}</td>
-                      <TableRowActionCell>
-                        <TableRowActions>
-                          {(doc.status === 'uploaded' || doc.status === 'failed') && (
-                            <TableRowActionButton
-                              title={
-                                isProcessBlockedByMissingPipeline(doc.file_type, channelPipelineId)
-                                  ? t('channel.processNoPipeline')
-                                  : t('common.process')
-                              }
-                              aria-label={t('channel.ariaProcess', { name: doc.name })}
-                              onClick={(e) => void handleProcessClick(e, doc)}
-                              disabled={isProcessBlockedByMissingPipeline(doc.file_type, channelPipelineId)}
-                              loading={processingId === doc.id}
-                              icon={<Play size={16} />}
-                            />
-                          )}
-                          <TableRowActionButton
-                            title={t('common.move')}
-                            aria-label={t('channel.ariaMoveDoc', { name: doc.name })}
-                            onClick={(e) => handleMoveClick(e, doc)}
-                            icon={<FolderInput size={16} />}
-                          />
-                          <TableRowActionButton
-                            title={t('common.download')}
-                            aria-label={t('channel.ariaDownload')}
-                            onClick={(e) => void handleDownloadClick(e, doc)}
-                            icon={<Download size={16} />}
-                          />
-                          <TableRowActionButton
-                            title={t('common.delete')}
-                            aria-label={t('channel.ariaDeleteDoc', { name: doc.name })}
-                            variant="danger"
-                            onClick={(e) => void handleDeleteClick(e, doc)}
-                            loading={deletingId === doc.id}
-                            icon={<Trash2 size={16} />}
-                          />
-                        </TableRowActions>
-                      </TableRowActionCell>
+                      {isMobile ? null : <TableRowActionCell>{rowActions}</TableRowActionCell>}
                     </tr>
                   );
                 })}
@@ -911,10 +941,10 @@ export function DocumentChannel() {
               />
             </>
           ) : (
-            <div className="documents-empty">
+            <div className="channel-page-empty">
               <Folder size={48} />
               <p>{t('channel.emptyTitle')}</p>
-              <p className="documents-empty-hint">{t('channel.emptyHint')}</p>
+              <p className="channel-page-empty-hint">{t('channel.emptyHint')}</p>
             </div>
           )}
         </div>
@@ -922,7 +952,7 @@ export function DocumentChannel() {
 
       {showUploadModal && (
         <div
-          className="documents-upload-modal-overlay"
+          className="channel-page-modal-overlay"
           onClick={closeUploadModal}
           onKeyDown={(e) => e.key === 'Escape' && closeUploadModal()}
           role="dialog"
@@ -930,14 +960,14 @@ export function DocumentChannel() {
           aria-labelledby="upload-modal-title"
         >
           <div
-            className="documents-upload-modal"
+            className="channel-page-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="documents-upload-modal-header">
+            <div className="channel-page-modal-header">
               <h2 id="upload-modal-title">{t('channel.uploadModalTitle')}</h2>
               <button
                 type="button"
-                className="documents-upload-modal-close"
+                className="channel-page-modal-close"
                 onClick={closeUploadModal}
                 disabled={uploading}
                 aria-label={t('common.close')}
@@ -945,7 +975,7 @@ export function DocumentChannel() {
                 <X size={20} />
               </button>
             </div>
-            <p className="documents-upload-modal-hint">
+            <p className="channel-page-modal-hint">
               {t('channel.uploadModalHint')}
             </p>
             <input
@@ -1002,7 +1032,7 @@ export function DocumentChannel() {
                 ))}
               </div>
             )}
-            <div className="documents-upload-modal-actions">
+            <div className="channel-page-modal-actions">
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -1019,7 +1049,7 @@ export function DocumentChannel() {
               >
                 {uploading ? (
                   <>
-                    <Loader2 size={18} className="documents-upload-spinner" />
+                    <Loader2 size={18} className="channel-page-modal-spinner" />
                     <span>{t('common.uploading')}</span>
                   </>
                 ) : (
@@ -1036,7 +1066,7 @@ export function DocumentChannel() {
 
       {moveModalDocIds && moveModalDocIds.length > 0 && (
         <div
-          className="documents-upload-modal-overlay"
+          className="channel-page-modal-overlay"
           onClick={closeMoveModal}
           onKeyDown={(e) => e.key === 'Escape' && closeMoveModal()}
           role="dialog"
@@ -1044,10 +1074,10 @@ export function DocumentChannel() {
           aria-labelledby="move-modal-title"
         >
           <div
-            className="documents-upload-modal"
+            className="channel-page-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="documents-upload-modal-header">
+            <div className="channel-page-modal-header">
               <h2 id="move-modal-title">
                 {moveModalDocIds.length > 1
                   ? t('channel.moveModalTitleBulk')
@@ -1055,7 +1085,7 @@ export function DocumentChannel() {
               </h2>
               <button
                 type="button"
-                className="documents-upload-modal-close"
+                className="channel-page-modal-close"
                 onClick={closeMoveModal}
                 disabled={moveLoading}
                 aria-label={t('common.close')}
@@ -1063,18 +1093,18 @@ export function DocumentChannel() {
                 <X size={20} />
               </button>
             </div>
-            <p className="documents-upload-modal-hint">
+            <p className="channel-page-modal-hint">
               {moveModalDocIds.length > 1
                 ? t('channel.moveModalHintBulk', { count: moveModalDocIds.length })
                 : t('channel.moveModalHint', { name: moveModalDocs[0]?.name ?? '' })}
             </p>
-            <div className="documents-move-form">
+            <div className="channel-page-move-form">
               <label htmlFor="move-target-channel">{t('common.targetChannel')}</label>
               <select
                 id="move-target-channel"
                 value={moveTargetChannelId}
                 onChange={(e) => setMoveTargetChannelId(e.target.value)}
-                className="documents-move-select"
+                className="channel-page-move-select"
               >
                 {channelOptions.map((ch) => (
                   <option key={ch.id} value={ch.id}>
@@ -1083,7 +1113,7 @@ export function DocumentChannel() {
                 ))}
               </select>
             </div>
-            <div className="documents-upload-modal-actions">
+            <div className="channel-page-modal-actions">
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -1104,7 +1134,7 @@ export function DocumentChannel() {
               >
                 {moveLoading ? (
                   <>
-                    <Loader2 size={18} className="documents-upload-spinner" />
+                    <Loader2 size={18} className="channel-page-modal-spinner" />
                     <span>{t('common.moving')}</span>
                   </>
                 ) : (

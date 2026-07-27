@@ -14,7 +14,7 @@ import {
   type MediaKind,
 } from '../../data/mediaApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
-import '../documents/DocumentChannel.scss';
+import '../../styles/channel-page.scss';
 import './MediaGenerate.scss';
 
 function PickerThumb({ asset }: { asset: MediaAssetOut }) {
@@ -175,7 +175,7 @@ export function MediaGenerate() {
   const canGenerate = !busy && !imageUploading && modelId && (prompt.trim() || imageUrl.trim());
 
   if (chLoading) {
-    return <div className="documents"><p className="page-subtitle">{t('channel.loadingChannels')}</p></div>;
+    return <div className="channel-page"><p className="page-subtitle">{t('channel.loadingChannels')}</p></div>;
   }
 
   return (
@@ -351,7 +351,7 @@ export function MediaGenerate() {
               </p>
             ) : (
               <select
-                className="documents-move-select"
+                className="channel-page-move-select"
                 value={modelId}
                 onChange={(e) => setModelId(e.target.value)}
                 disabled={busy}
@@ -368,7 +368,7 @@ export function MediaGenerate() {
           <div className="media-generate-sidebar-section">
             <h3 className="media-generate-sidebar-title">{t('channel.generateResolution')}</h3>
             <select
-              className="documents-move-select"
+              className="channel-page-move-select"
               value={size}
               onChange={(e) => setSize(e.target.value)}
               disabled={busy}
@@ -386,7 +386,7 @@ export function MediaGenerate() {
           <div className="media-generate-sidebar-section">
             <h3 className="media-generate-sidebar-title">{t('channel.generateQuality')}</h3>
             <select
-              className="documents-move-select"
+              className="channel-page-move-select"
               value={quality}
               onChange={(e) => setQuality(e.target.value)}
               disabled={busy}
@@ -401,7 +401,7 @@ export function MediaGenerate() {
               <div className="media-generate-sidebar-section">
                 <h3 className="media-generate-sidebar-title">{t('channel.generateDuration')}</h3>
                 <select
-                  className="documents-move-select"
+                  className="channel-page-move-select"
                   value={duration}
                   onChange={(e) => setDuration(Number(e.target.value))}
                   disabled={busy}
@@ -414,7 +414,7 @@ export function MediaGenerate() {
               <div className="media-generate-sidebar-section">
                 <h3 className="media-generate-sidebar-title">{t('channel.generateFps')}</h3>
                 <select
-                  className="documents-move-select"
+                  className="channel-page-move-select"
                   value={fps}
                   onChange={(e) => setFps(Number(e.target.value))}
                   disabled={busy}
@@ -425,7 +425,7 @@ export function MediaGenerate() {
               </div>
 
               <div className="media-generate-sidebar-section">
-                <label className="documents-move-checkbox-label">
+                <label className="channel-page-move-checkbox-label">
                   <input
                     type="checkbox"
                     checked={withAudio}
@@ -445,7 +445,7 @@ export function MediaGenerate() {
             onClick={() => void onGenerate()}
           >
             {busy ? (
-              <Loader2 size={16} className="documents-upload-spinner" />
+              <Loader2 size={16} className="channel-page-modal-spinner" />
             ) : (
               <Sparkles size={16} />
             )}

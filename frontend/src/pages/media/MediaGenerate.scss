@@ -274,25 +274,6 @@
   font-size: var(--text-md);
 }
 
-/* ---- Shared checkbox style ---- */
-.documents-move-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-md);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  user-select: none;
-}
-
-.documents-move-checkbox-label input[type='checkbox'] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  accent-color: var(--color-accent);
-}
-
 /* ---- Recent generations ---- */
 .media-generate-recent {
   margin-top: var(--space-8);

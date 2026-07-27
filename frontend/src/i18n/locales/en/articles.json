@@ -132,6 +132,7 @@
     "notFoundTitle": "Channel not found",
     "notFoundSubtitle": "This channel does not exist or you do not have access.",
     "backToArticles": "Back to Articles",
+    "backToTree": "All channels",
     "defaultDescription": "Articles in this channel use markdown, attachments, and version history. Pick a channel in the sidebar to switch context.",
     "channelSettings": "Channel settings",
     "newArticle": "New article",

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FileText, Plus, Search, Folder, Settings, X, FolderInput, Trash2, Loader2 } from 'lucide-react';
+import { FileText, Plus, Search, Folder, Settings, X, FolderInput, Trash2, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   TableRowActionButton,
@@ -19,7 +19,8 @@ import {
   patchArticle,
   type ArticleOut,
 } from '../../data/articlesApi';
-import '../documents/DocumentChannel.scss';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import '../../styles/channel-page.scss';
 import './Articles.scss';
 
 const ARTICLES_PAGE_SIZE_DEFAULT = 25;
@@ -37,6 +38,7 @@ export function ArticleChannel() {
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
   const { channels, loading, error, refetch: refetchChannels } = useEnsureArticleChannels();
+  const isMobile = useIsMobile();
 
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
@@ -276,7 +278,7 @@ export function ArticleChannel() {
 
   if (loading) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <p className="page-subtitle">{t('channel.loadingChannels')}</p>
         </div>
@@ -286,7 +288,7 @@ export function ArticleChannel() {
 
   if (error) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
@@ -296,8 +298,8 @@ export function ArticleChannel() {
 
   if (channels.length === 0) {
     return (
-      <div className="documents">
-        <div className="documents-empty-state">
+      <div className="channel-page">
+        <div className="channel-page-empty-state">
           <Folder size={64} />
           <h2>{t('channel.noChannelsTitle')}</h2>
           <p>{t('channel.noChannelsHint')}</p>
@@ -312,7 +314,7 @@ export function ArticleChannel() {
 
   if (!channelId || !channelIds.has(channelId)) {
     return (
-      <div className="documents">
+      <div className="channel-page">
         <div className="page-header">
           <h1>{t('channel.notFoundTitle')}</h1>
           <p className="page-subtitle">{t('channel.notFoundSubtitle')}</p>
@@ -325,10 +327,14 @@ export function ArticleChannel() {
   }
 
   return (
-    <div className="documents">
-      <div className="page-header documents-header">
+    <div className="channel-page">
+      <Link to="/articles" className="channel-browse-back">
+        <ArrowLeft size={16} strokeWidth={1.75} />
+        <span>{t('channel.backToTree')}</span>
+      </Link>
+      <div className="page-header channel-page-header">
         <div>
-          <div className="documents-header-title">
+          <div className="channel-page-header-title">
             <h1>{channelName}</h1>
           </div>
           <p className="page-subtitle">
@@ -337,7 +343,7 @@ export function ArticleChannel() {
               : t('channel.defaultDescription')}
           </p>
         </div>
-        <div className="documents-header-actions">
+        <div className="channel-page-header-actions">
           <Link to={`/articles/channels/${channelId}/settings`} className="btn btn-secondary">
             <Settings size={18} />
             <span>{t('channel.channelSettings')}</span>
@@ -349,9 +355,9 @@ export function ArticleChannel() {
         </div>
       </div>
 
-      <div className="documents-main">
-        <div className="articles-toolbar">
-          <div className="articles-search">
+      <div className="channel-page-main">
+        <div className="channel-page-toolbar">
+          <div className="channel-page-search">
             <Search size={18} />
             <input
               type="search"
@@ -363,9 +369,9 @@ export function ArticleChannel() {
           </div>
         </div>
         {selectedCount > 0 && (
-          <div className="documents-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
-            <span className="documents-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
-            <div className="documents-bulk-actions">
+          <div className="channel-page-bulk-bar" role="toolbar" aria-label={t('channel.selectedCount', { count: selectedCount })}>
+            <span className="channel-page-bulk-count">{t('channel.selectedCount', { count: selectedCount })}</span>
+            <div className="channel-page-bulk-actions">
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -373,7 +379,7 @@ export function ArticleChannel() {
                 onClick={() => openMoveModal([...selectedArticleIds])}
               >
                 {bulkBusy === 'move' ? (
-                  <Loader2 size={16} className="documents-loading-spinner" />
+                  <Loader2 size={16} className="channel-page-spinner" />
                 ) : (
                   <FolderInput size={16} />
                 )}
@@ -381,12 +387,12 @@ export function ArticleChannel() {
               </button>
               <button
                 type="button"
-                className="btn btn-secondary btn-sm documents-bulk-delete"
+                className="btn btn-secondary btn-sm channel-page-bulk-delete"
                 disabled={bulkActionsDisabled}
                 onClick={() => void deleteArticlesById([...selectedArticleIds])}
               >
                 {bulkBusy === 'delete' ? (
-                  <Loader2 size={16} className="documents-loading-spinner" />
+                  <Loader2 size={16} className="channel-page-spinner" />
                 ) : (
                   <Trash2 size={16} />
                 )}
@@ -404,15 +410,15 @@ export function ArticleChannel() {
             </div>
           </div>
         )}
-        <div className="articles-table-wrap">
+        <div className="channel-table-wrap">
           {listLoading ? (
-            <p className="articles-empty-hint">{t('channel.loading')}</p>
+            <p className="channel-page-empty-hint">{t('channel.loading')}</p>
           ) : items.length > 0 ? (
             <>
-            <table className="articles-table">
+            <table className="channel-table">
               <thead>
                 <tr>
-                  <th className="documents-table-select-col">
+                  <th className="channel-table-select-col">
                     <input
                       type="checkbox"
                       checked={allVisibleSelected}
@@ -424,7 +430,7 @@ export function ArticleChannel() {
                       onClick={(e) => e.stopPropagation()}
                     />
                   </th>
-                  <th>{t('channel.colTitle')}</th>
+                  <th className="channel-table-cell--primary">{t('channel.colTitle')}</th>
                   <th>{t('channel.colSource')}</th>
                   <th>{t('channel.colLifecycle')}</th>
                   <th>{t('channel.colApplicable')}</th>
@@ -433,83 +439,106 @@ export function ArticleChannel() {
                 </tr>
               </thead>
               <tbody>
-                {items.map((article) => (
-                  <tr
-                    key={article.id}
-                    className={`articles-table-row-clickable${selectedArticleIds.has(article.id) ? ' documents-table-row-selected' : ''}`}
-                    onClick={() => navigate(`/articles/view/${article.id}`)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && navigate(`/articles/view/${article.id}`)}
-                  >
-                    <td className="documents-table-select-col" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedArticleIds.has(article.id)}
-                        onChange={() => toggleArticleSelected(article.id)}
-                        aria-label={t('channel.selectArticleAria', { name: article.name })}
+                {items.map((article) => {
+                  /** Mobile puts these on the meta line; desktop keeps its own action column. */
+                  const rowActions = (
+                    <TableRowActions>
+                      <TableRowActionButton
+                        title={t('channel.move')}
+                        aria-label={t('channel.ariaMoveArticle', { name: article.name })}
+                        disabled={bulkBusy !== null || moveChannelOptions.length === 0}
+                        onClick={() => openMoveModal([article.id])}
+                        icon={<FolderInput size={16} />}
                       />
-                    </td>
-                    <td>
-                      <div className="articles-table-title">
-                        <FileText size={18} strokeWidth={1.5} />
-                        <span>{article.name}</span>
-                      </div>
-                    </td>
-                    <td className="articles-table-source">
-                      {article.origin_article_id?.trim() ? (
-                        /^https?:\/\//i.test(article.origin_article_id.trim()) ? (
-                          <a
-                            href={article.origin_article_id.trim()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {article.origin_article_id.trim().length > 40
-                              ? `${article.origin_article_id.trim().slice(0, 38)}…`
-                              : article.origin_article_id.trim()}
-                          </a>
+                      <TableRowActionButton
+                        title={t('channel.delete')}
+                        aria-label={t('channel.ariaDeleteArticle', { name: article.name })}
+                        variant="danger"
+                        disabled={bulkBusy !== null}
+                        onClick={() => void deleteArticlesById([article.id])}
+                        icon={<Trash2 size={16} />}
+                      />
+                    </TableRowActions>
+                  );
+                  return (
+                    <tr
+                      key={article.id}
+                      className={`channel-table-row${selectedArticleIds.has(article.id) ? ' channel-table-row--selected' : ''}`}
+                      onClick={() => navigate(`/articles/view/${article.id}`)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && navigate(`/articles/view/${article.id}`)}
+                    >
+                      <td className="channel-table-select-col" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedArticleIds.has(article.id)}
+                          onChange={() => toggleArticleSelected(article.id)}
+                          aria-label={t('channel.selectArticleAria', { name: article.name })}
+                        />
+                      </td>
+                      <td className="channel-table-cell--primary">
+                        <div className="channel-item">
+                          <FileText size={18} strokeWidth={1.5} />
+                          <div className="channel-item-text">
+                            <span className="channel-item-title">{article.name}</span>
+                            <div className="channel-item-meta-row">
+                              <span className="channel-item-meta">
+                                {article.lifecycle_status ?? t('channel.dash')}
+                                {' · '}
+                                {formatUpdated(article.updated_at)}
+                              </span>
+                              {isMobile ? (
+                                <div
+                                  className="channel-item-actions"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {rowActions}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="article-source-cell">
+                        {article.origin_article_id?.trim() ? (
+                          /^https?:\/\//i.test(article.origin_article_id.trim()) ? (
+                            <a
+                              href={article.origin_article_id.trim()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {article.origin_article_id.trim().length > 40
+                                ? `${article.origin_article_id.trim().slice(0, 38)}…`
+                                : article.origin_article_id.trim()}
+                            </a>
+                          ) : (
+                            <span title={article.origin_article_id}>
+                              {article.origin_article_id.length > 40
+                                ? `${article.origin_article_id.slice(0, 38)}…`
+                                : article.origin_article_id}
+                            </span>
+                          )
                         ) : (
-                          <span title={article.origin_article_id}>
-                            {article.origin_article_id.length > 40
-                              ? `${article.origin_article_id.slice(0, 38)}…`
-                              : article.origin_article_id}
-                          </span>
-                        )
-                      ) : (
-                        t('channel.dash')
-                      )}
-                    </td>
-                    <td>
-                      <span
-                        className={`article-status article-status-${(article.lifecycle_status ?? 'unset').toLowerCase()}`}
-                      >
-                        {article.lifecycle_status ?? t('channel.dash')}
-                      </span>
-                    </td>
-                    <td>{article.is_current_for_rag ? t('channel.yes') : t('channel.no')}</td>
-                    <td>{formatUpdated(article.updated_at)}</td>
-                    <TableRowActionCell>
-                      <TableRowActions>
-                        <TableRowActionButton
-                          title={t('channel.move')}
-                          aria-label={t('channel.ariaMoveArticle', { name: article.name })}
-                          disabled={bulkBusy !== null || moveChannelOptions.length === 0}
-                          onClick={() => openMoveModal([article.id])}
-                          icon={<FolderInput size={16} />}
-                        />
-                        <TableRowActionButton
-                          title={t('channel.delete')}
-                          aria-label={t('channel.ariaDeleteArticle', { name: article.name })}
-                          variant="danger"
-                          disabled={bulkBusy !== null}
-                          onClick={() => void deleteArticlesById([article.id])}
-                          icon={<Trash2 size={16} />}
-                        />
-                      </TableRowActions>
-                    </TableRowActionCell>
-                  </tr>
-                ))}
+                          t('channel.dash')
+                        )}
+                      </td>
+                      <td>
+                        <span
+                          className={`article-status article-status-${(article.lifecycle_status ?? 'unset').toLowerCase()}`}
+                        >
+                          {article.lifecycle_status ?? t('channel.dash')}
+                        </span>
+                      </td>
+                      <td>
+                        {article.is_current_for_rag ? t('channel.yes') : t('channel.no')}
+                      </td>
+                      <td>{formatUpdated(article.updated_at)}</td>
+                      {isMobile ? null : <TableRowActionCell>{rowActions}</TableRowActionCell>}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <Pagination
@@ -529,10 +558,10 @@ export function ArticleChannel() {
             />
             </>
           ) : (
-            <div className="articles-empty">
+            <div className="channel-page-empty">
               <Folder size={48} />
               <p>{t('channel.emptyTitle')}</p>
-              <p className="articles-empty-hint">
+              <p className="channel-page-empty-hint">
                 {total === 0 && debouncedSearch ? t('channel.emptyHintSearch') : t('channel.emptyHintDefault')}
               </p>
             </div>
@@ -542,21 +571,21 @@ export function ArticleChannel() {
 
       {moveModalArticleIds && moveModalArticleIds.length > 0 && (
         <div
-          className="documents-upload-modal-overlay"
+          className="channel-page-modal-overlay"
           onClick={closeMoveModal}
           onKeyDown={(e) => e.key === 'Escape' && closeMoveModal()}
           role="dialog"
           aria-modal="true"
           aria-labelledby="article-move-title"
         >
-          <div className="documents-upload-modal documents-move-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="documents-upload-modal-header">
+          <div className="channel-page-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="channel-page-modal-header">
               <h2 id="article-move-title">
                 {moveModalArticleIds.length === 1 ? t('channel.moveModalTitle') : t('channel.moveModalTitleBulk')}
               </h2>
               <button
                 type="button"
-                className="documents-upload-modal-close"
+                className="channel-page-modal-close"
                 onClick={closeMoveModal}
                 disabled={moveLoading}
                 aria-label={t('channel.closeAria')}
@@ -564,30 +593,30 @@ export function ArticleChannel() {
                 <X size={20} />
               </button>
             </div>
-            <p className="documents-upload-modal-hint">
+            <p className="channel-page-modal-hint">
               {moveModalArticleIds.length === 1
                 ? t('channel.moveModalHint', {
                     name: items.find((a) => a.id === moveModalArticleIds[0])?.name ?? '',
                   })
                 : t('channel.moveModalHintBulk', { count: moveModalArticleIds.length })}
             </p>
-            <label className="documents-move-modal-label" htmlFor="article-move-channel">
-              {t('channel.targetChannel')}
-            </label>
-            <select
-              id="article-move-channel"
-              className="documents-move-modal-select"
-              value={moveTargetChannelId}
-              onChange={(e) => setMoveTargetChannelId(e.target.value)}
-              disabled={moveLoading || moveChannelOptions.length === 0}
-            >
-              {moveChannelOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <div className="documents-upload-modal-actions">
+            <div className="channel-page-move-form">
+              <label htmlFor="article-move-channel">{t('channel.targetChannel')}</label>
+              <select
+                id="article-move-channel"
+                className="channel-page-move-select"
+                value={moveTargetChannelId}
+                onChange={(e) => setMoveTargetChannelId(e.target.value)}
+                disabled={moveLoading || moveChannelOptions.length === 0}
+              >
+                {moveChannelOptions.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="channel-page-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeMoveModal} disabled={moveLoading}>
                 {t('channel.cancel')}
               </button>
@@ -606,19 +635,19 @@ export function ArticleChannel() {
 
       {newArticleOpen && (
         <div
-          className="documents-upload-modal-overlay"
+          className="channel-page-modal-overlay"
           onClick={closeNewArticleModal}
           onKeyDown={(e) => e.key === 'Escape' && closeNewArticleModal()}
           role="dialog"
           aria-modal="true"
           aria-labelledby="article-new-title"
         >
-          <div className="documents-upload-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="documents-upload-modal-header">
+          <div className="channel-page-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="channel-page-modal-header">
               <h2 id="article-new-title">{t('channel.modalTitle')}</h2>
               <button
                 type="button"
-                className="documents-upload-modal-close"
+                className="channel-page-modal-close"
                 onClick={closeNewArticleModal}
                 disabled={newCreating}
                 aria-label={t('channel.closeAria')}
@@ -626,7 +655,7 @@ export function ArticleChannel() {
                 <X size={20} />
               </button>
             </div>
-            <p className="documents-upload-modal-hint">{t('channel.modalHint')}</p>
+            <p className="channel-page-modal-hint">{t('channel.modalHint')}</p>
             <div className="articles-new-modal-fields">
               <div className="articles-new-modal-field">
                 <label htmlFor="article-new-name">{t('channel.titleLabel')}</label>
@@ -663,7 +692,7 @@ export function ArticleChannel() {
                 />
               </div>
             </div>
-            <div className="documents-upload-modal-actions">
+            <div className="channel-page-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={closeNewArticleModal} disabled={newCreating}>
                 {t('channel.cancel')}
               </button>
