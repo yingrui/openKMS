@@ -642,6 +642,7 @@
 
   .channel-table tbody td.channel-table-select-col {
     display: block;
+    width: auto;
     padding: 3px 0 0 0 !important;
   }
 
@@ -650,9 +651,14 @@
     min-width: 0;
   }
 
+  /* Meta already shows type; leading icon just eats title width. */
+  .channel-item > svg {
+    display: none;
+  }
+
   .channel-item {
     align-items: flex-start;
-    gap: var(--space-2);
+    gap: 0;
   }
 
   .channel-item-text {
@@ -688,7 +694,6 @@
     margin-right: calc(var(--space-1) * -1);
   }
 
-  /* Keep row actions muted; `.channel-item > svg` only tints the leading icon. */
   .channel-item-actions .ds-table-row-action {
     padding: var(--space-1);
   }

@@ -303,6 +303,12 @@ body:has(.app-content--function-editor-workspace) .app-main {
   min-height: calc(100vh - var(--header-height, 56px) - var(--space-6));
 }
 
+@include max-width(ds.$bp-md-min) {
+  .app-content--compact .document-detail:not(.article-detail-page) {
+    min-height: 0;
+  }
+}
+
 .app-content--compact .kb-detail {
   height: calc(100vh - var(--header-height, 56px) - var(--space-6));
 }
@@ -470,8 +476,20 @@ body.openkms-agents-fullpage .agents-workspace {
     box-shadow: var(--shadow-lg);
   }
 
-  .app-content--compact {
+  /* Do not re-apply compact padding on rail layouts — pane already has the gutter. */
+  .app-content--compact:not(
+    .app-content--with-channel-rail,
+    .app-content--with-ontology-rail,
+    .app-content--with-ontology-manager-rail,
+    .app-content--with-object-explorer-rail,
+    .app-content--with-function-editor-rail
+  ) {
     padding: var(--app-page-padding-y) var(--app-page-padding-x);
+  }
+
+  /* Belt-and-suspenders: rail + compact must stay padding: 0 (matches list pages). */
+  .app-content--with-channel-rail.app-content--compact {
+    padding: 0;
   }
 
   .app-content--compact:has(.kb-detail--qa-fullpage) {

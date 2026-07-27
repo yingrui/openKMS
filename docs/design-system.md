@@ -57,6 +57,8 @@ Reading surfaces (≤768): channel/KB tables use `overflow-x: auto`; list toolba
 
 List footers (`.ds-pagination`, `_pagination.scss`): stack into range + page size on one line and a full-width `prev / status / next` row with 40px tap targets. Inside a channel list the footer drops its surface (`.channel-table-wrap .ds-pagination`) because the wrap is transparent on phones.
 
+**Comments** (`ContentCommentsRail.scss`): desktop keeps a fixed right utility rail + push panel. At ≤900px the open panel overlays with a backdrop (no layout push). At ≤768px the right chrome is gone — utility buttons become a floating chip, and the open panel is a bottom sheet (~85vh) with a drag handle affordance.
+
 Documents / Articles / Media **section index** on ≤768: channel tree is the main pane (`channel-section-layout--mobile-landing`); stats/quick-actions index stays desktop-only. Inside a channel on mobile, use **All channels** back link (`.channel-browse-back`) — no header drawer for the channel tree.
 
 ### Decision tree
@@ -85,7 +87,7 @@ Mark with comment `app-layout-exception: <reason>` when bypassing shell gutters:
 | Pattern | Reason |
 |---------|--------|
 | `.app-content--search` | Wider horizontal gutters for search results |
-| `.app-content--with-channel-rail` / `--with-ontology-rail` / `--with-ontology-manager-rail` / `--with-object-explorer-rail` / `--with-function-editor-rail` → `padding: 0` | Rail layouts; gutter on `.app-page-pane` |
+| `.app-content--with-channel-rail` / `--with-ontology-rail` / `--with-ontology-manager-rail` / `--with-object-explorer-rail` / `--with-function-editor-rail` → `padding: 0` | Rail layouts; gutter on `.app-page-pane` only. On ≤768, re-assert `padding: 0` for `--with-channel-rail.app-content--compact` so detail pages do not stack shell + pane gutters (lists already omit `--compact`) |
 | `.app-content--function-editor-workspace` | Function Editor IDE — full-height workspace; negative margin in feature SCSS |
 | `.app-content--compact:has(.kb-detail--qa-fullpage)` → `padding: 0` | KB Q&A full-page chat |
 | `.app-content--compact .wiki-page-editor-outer` negative margin | Wiki editor edge-to-edge |

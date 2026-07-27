@@ -53,6 +53,7 @@ import {
 } from '../../data/articlesApi';
 import { findChannel } from '../../data/channelUtils';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
+import { isMobileViewport } from '../../hooks/useIsMobile';
 import '../../styles/document-detail.scss';
 import './ArticleDetail.scss';
 
@@ -87,7 +88,7 @@ export function ArticleDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { channels } = useEnsureArticleChannels();
-  const [infoVisible, setInfoVisible] = useState(true);
+  const [infoVisible, setInfoVisible] = useState(() => !isMobileViewport());
   const [article, setArticle] = useState<ArticleOut | null>(null);
   const [attachments, setAttachments] = useState<ArticleAttachmentOut[]>([]);
   const [error, setError] = useState<string | null>(null);

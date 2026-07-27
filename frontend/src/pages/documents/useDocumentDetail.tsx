@@ -37,6 +37,7 @@ import {
 import { fetchObjectType, fetchObjectInstances } from '../../data/ontologyApi';
 import { createJob } from '../../data/jobsApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
+import { isMobileViewport } from '../../hooks/useIsMobile';
 import { findChannel, normalizeExtractionSchemaToFields, type LabelConfigItem, isProcessBlockedByMissingPipeline } from '../../data/channelUtils';
 import type { PageBlock, ParsingResult } from './DocumentDetail.types';
 import {
@@ -58,7 +59,7 @@ export function useDocumentDetail(id: string | undefined) {
   const [hoveredBlockKey, setHoveredBlockKey] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<PageBlock | null>(null);
   const [pageDimensions, setPageDimensions] = useState<Record<number, { w: number; h: number }>>({});
-  const [infoVisible, setInfoVisible] = useState(true);
+  const [infoVisible, setInfoVisible] = useState(() => !isMobileViewport());
   const [document, setDocument] = useState<DocumentResponse | null>(null);
   const [processing, setProcessing] = useState(false);
   const [forceFullReparse, setForceFullReparse] = useState(false);

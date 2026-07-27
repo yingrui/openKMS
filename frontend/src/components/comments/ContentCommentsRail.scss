@@ -471,3 +471,86 @@ body.openkms-kb-qa-fullpage .content-comments-rail {
     box-shadow: -12px 0 32px rgba(0, 0, 0, 0.12);
   }
 }
+
+/* Phones: no right chrome. Utility becomes a floating chip; comments open as a bottom sheet. */
+@include max-width(ds.$bp-md-min) {
+  .content-comments-shell--has-utility .content-comments-shell__main,
+  .content-comments-shell--comments-open .content-comments-shell__main {
+    padding-right: 0;
+  }
+
+  /* Room for the floating chip so the last list/composer line is not covered. */
+  .content-comments-shell--has-utility:not(.content-comments-shell--comments-open) .content-comments-shell__main {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .content-comments-shell__backdrop {
+    z-index: 40;
+  }
+
+  .content-comments-utility-rail {
+    top: auto;
+    right: var(--space-4);
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    height: auto;
+    flex-direction: row;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-elevated);
+    box-shadow: var(--shadow-md);
+    z-index: 35;
+  }
+
+  .content-comments-utility-rail__btn {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  /* Hide the floating chip while the sheet is open — close lives in the panel header. */
+  .content-comments-shell--comments-open .content-comments-utility-rail {
+    display: none;
+  }
+
+  .content-comments-rail {
+    top: auto;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100% !important;
+    max-height: min(85vh, 640px);
+    flex-direction: column;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.14);
+    z-index: 41;
+  }
+
+  .content-comments-rail__resize {
+    display: none;
+  }
+
+  .content-comments-rail__inner {
+    min-height: 0;
+  }
+
+  .content-comments-panel__head {
+    position: relative;
+    padding-top: calc(var(--space-3) + var(--space-2));
+  }
+
+  .content-comments-panel__head::before {
+    content: '';
+    position: absolute;
+    top: var(--space-2);
+    left: 50%;
+    width: 2.25rem;
+    height: 4px;
+    margin-left: -1.125rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-border);
+  }
+}

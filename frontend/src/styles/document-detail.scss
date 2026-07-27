@@ -10,7 +10,8 @@
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - var(--header-height) - var(--space-12));
-  padding: 0 var(--space-1);
+  /* Horizontal gutter comes from .app-page-pane / .app-content only — do not stack. */
+  padding: 0;
 }
 
 .document-detail-back {
@@ -747,9 +748,20 @@
 }
 
 @include max-width(ds.$bp-md-min) {
-  .document-detail-info {
-    padding: calc(var(--space-3) + var(--space-1) / 2) calc(var(--space-4) + var(--space-1) / 2);
+  .document-detail {
+    min-height: 0;
+    padding: 0;
   }
+
+  .document-detail-back {
+    margin-bottom: var(--space-3);
+  }
+
+  .document-detail-info,
+  .document-detail-info--collapsed {
+    padding: var(--space-3);
+  }
+
   .document-detail-info-list,
   .document-detail-info-list--with-hash {
     grid-template-columns: 1fr 1fr;
@@ -759,6 +771,11 @@
   .document-detail-labels-list .document-detail-info-item {
     grid-template-columns: 1fr;
     gap: var(--space-1) 0;
+  }
+
+  .document-detail-panel {
+    max-height: none;
+    border-radius: var(--radius-md);
   }
 }
 @include max-width(ds.$bp-phone-max) {
@@ -1562,10 +1579,10 @@
 @include max-width(ds.$bp-md-min) {
   .document-detail-images-body,
   .document-detail-markdown-body {
-    padding: var(--space-4) 18px;
+    padding: var(--space-3);
   }
   .document-detail-metadata-body {
-    padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
+    padding: var(--space-3);
   }
 
   .document-detail-panel-header {
@@ -1573,6 +1590,7 @@
     gap: var(--space-2);
     min-height: 0;
     height: auto;
+    padding: var(--space-3);
   }
 
   .document-detail-panel-header span {

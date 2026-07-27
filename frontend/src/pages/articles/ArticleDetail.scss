@@ -43,7 +43,8 @@
 }
 
 .article-detail-page.document-detail {
-  padding: 0 var(--space-1);
+  /* Keep padding: 0 — shell/pane owns the gutter (same as channel list on mobile). */
+  padding: 0;
   --article-markdown-split-panel-height: min(96dvh, calc(100dvh - var(--header-height, 56px) - 0.75rem));
 }
 

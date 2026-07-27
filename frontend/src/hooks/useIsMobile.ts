@@ -21,3 +21,8 @@ export function useIsMobile(): boolean {
 
   return isMobile;
 }
+
+/** One-shot check for initial UI state (e.g. collapsed panels). Prefer `useIsMobile` for reactive layout. */
+export function isMobileViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches;
+}
