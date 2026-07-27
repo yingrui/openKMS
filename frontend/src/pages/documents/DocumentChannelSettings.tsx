@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { updateChannel, type LabelConfigItem } from '../../data/channelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
+import '../../styles/settings-page.scss';
 import './DocumentChannelSettings.scss';
 
 const SCHEMA_PRESETS: Record<string, ExtractionSchemaField[]> = {
@@ -276,8 +277,8 @@ export function DocumentChannelSettings() {
   );
 
   return (
-    <div className="document-channel-settings">
-      <Link to={`/documents/channels/${channelId}`} className="document-channel-settings-back">
+    <div className="settings-page">
+      <Link to={`/documents/channels/${channelId}`} className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('common.backToDocuments')}</span>
       </Link>
@@ -289,12 +290,12 @@ export function DocumentChannelSettings() {
         </p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -303,11 +304,11 @@ export function DocumentChannelSettings() {
         ))}
       </div>
 
-      <div className="document-channel-settings-form">
+      <div className="settings-page-form">
         {activeTab === 'general' && (
-        <section className="document-channel-settings-section">
+        <section className="settings-page-section">
           <h2>{t('settings.generalHeading')}</h2>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label htmlFor="channel-name">{t('common.name')}</label>
             <input
               id="channel-name"
@@ -317,7 +318,7 @@ export function DocumentChannelSettings() {
               placeholder={t('settings.namePlaceholder')}
             />
           </div>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label htmlFor="channel-description">{t('common.description')}</label>
             <textarea
               id="channel-description"
@@ -331,9 +332,9 @@ export function DocumentChannelSettings() {
         )}
 
         {activeTab === 'processing' && (
-        <section className="document-channel-settings-section">
+        <section className="settings-page-section">
           <h2>{t('settings.pipelineHeading')}</h2>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label htmlFor="pipeline">{t('settings.pipelineLabel')}</label>
             {pipelinesLoading ? (
               <div className="dcs-inline-loading">
@@ -358,7 +359,7 @@ export function DocumentChannelSettings() {
           </div>
 
           <h2>{t('settings.autoProcessHeading')}</h2>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label>
               <input
                 type="checkbox"
@@ -367,7 +368,7 @@ export function DocumentChannelSettings() {
               />
               <span>{t('settings.autoProcessLabel')}</span>
             </label>
-            <p className="document-channel-settings-hint">
+            <p className="settings-page-hint">
               {t('settings.autoProcessHint')}
             </p>
           </div>
@@ -375,12 +376,12 @@ export function DocumentChannelSettings() {
         )}
 
         {activeTab === 'extraction' && (
-        <section className="document-channel-settings-section">
+        <section className="settings-page-section">
           <h2>{t('settings.extractionHeading')}</h2>
-          <p className="document-channel-settings-hint">
+          <p className="settings-page-hint">
             {t('settings.extractionIntro')}
           </p>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label htmlFor="extraction-model">{t('settings.extractionModel')}</label>
             {modelsLoading ? (
               <div className="dcs-inline-loading">
@@ -402,9 +403,9 @@ export function DocumentChannelSettings() {
               </select>
             )}
           </div>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label>{t('settings.schemaLabel')}</label>
-            <p className="document-channel-settings-hint">
+            <p className="settings-page-hint">
               {t('settings.schemaHint')}
             </p>
             <div className="dcs-schema-presets">
@@ -546,7 +547,7 @@ export function DocumentChannelSettings() {
                   : '{\n  "type": "object",\n  "properties": {},\n  "required": []\n}'}
               </pre>
             )}
-            <div className="document-channel-settings-field document-channel-settings-field--spaced">
+            <div className="settings-page-field settings-page-field--spaced">
               <label htmlFor="extraction-max-instances">{t('settings.maxInstancesLabel')}</label>
               <input
                 id="extraction-max-instances"
@@ -557,12 +558,12 @@ export function DocumentChannelSettings() {
                 onChange={(e) => setObjectTypeExtractionMaxInstances(e.target.value === '' ? '' : Number(e.target.value))}
                 className="dcs-schema-input dcs-input-w-120"
               />
-              <p className="document-channel-settings-hint">
+              <p className="settings-page-hint">
                 {t('settings.maxInstancesHint')}
               </p>
             </div>
             {extractionModelId && extractionSchema.length === 0 && (
-              <p className="document-channel-settings-hint dcs-schema-empty-hint">
+              <p className="settings-page-hint dcs-schema-empty-hint">
                 {t('settings.schemaEmptyHint')}
               </p>
             )}
@@ -571,12 +572,12 @@ export function DocumentChannelSettings() {
         )}
 
         {activeTab === 'labels' && (
-        <section className="document-channel-settings-section">
+        <section className="settings-page-section">
           <h2>{t('settings.labelsHeading')}</h2>
-          <p className="document-channel-settings-hint">
+          <p className="settings-page-hint">
             {t('settings.labelsIntro')}
           </p>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label>{t('settings.labelConfigs')}</label>
             <div className="dcs-schema-list">
               {labelConfig.map((item, i) => (
@@ -634,7 +635,7 @@ export function DocumentChannelSettings() {
                 <span>{t('settings.loadingObjectTypes')}</span>
               </div>
             ) : masterDataObjectTypes.length === 0 ? (
-              <p className="document-channel-settings-hint">
+              <p className="settings-page-hint">
                 {t('settings.noMasterDataTypes')}
               </p>
             ) : null}
@@ -655,7 +656,7 @@ export function DocumentChannelSettings() {
         )}
 
         {activeTab !== 'sharing' && (
-        <div className="document-channel-settings-actions">
+        <div className="settings-page-actions">
           <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving}>
             {saving ? t('settings.saving') : t('settings.save')}
           </button>

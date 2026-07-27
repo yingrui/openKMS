@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { fetchDataset, updateDataset, type DatasetResponse } from '../../data/datasetsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import './DatasetSettings.scss';
 
 type TabId = 'general' | 'sharing';
@@ -87,7 +87,7 @@ export function DatasetSettings() {
 
   if (loading) {
     return (
-      <div className="dataset-settings document-channel-settings">
+      <div className="dataset-settings settings-page">
         <p className="page-subtitle">{t('datasetSettings.loading')}</p>
       </div>
     );
@@ -95,8 +95,8 @@ export function DatasetSettings() {
 
   if (!dataset) {
     return (
-      <div className="dataset-settings document-channel-settings">
-        <Link to="/ontology/datasets" className="document-channel-settings-back">
+      <div className="dataset-settings settings-page">
+        <Link to="/ontology/datasets" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('datasetSettings.backDatasets')}</span>
         </Link>
@@ -110,8 +110,8 @@ export function DatasetSettings() {
   const headerName = dataset.display_name?.trim() || tableLabel;
 
   return (
-    <div className="dataset-settings document-channel-settings">
-      <Link to={`/ontology/datasets/${datasetId}`} className="document-channel-settings-back">
+    <div className="dataset-settings settings-page">
+      <Link to={`/ontology/datasets/${datasetId}`} className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('datasetSettings.backDataset')}</span>
       </Link>
@@ -120,12 +120,12 @@ export function DatasetSettings() {
         <p className="page-subtitle">{headerName}</p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -135,7 +135,7 @@ export function DatasetSettings() {
       </div>
 
       {activeTab === 'sharing' ? (
-        <div className="document-channel-settings-form dataset-settings-panel">
+        <div className="settings-page-form dataset-settings-panel">
           <ResourceSharePanel
             resourceType={RESOURCE_TYPES.dataset}
             resourceId={datasetId}
@@ -145,11 +145,11 @@ export function DatasetSettings() {
       ) : null}
 
       {activeTab === 'general' ? (
-        <div className="document-channel-settings-form dataset-settings-panel">
-          <section className="document-channel-settings-section">
+        <div className="settings-page-form dataset-settings-panel">
+          <section className="settings-page-section">
             <h2>{t('datasetSettings.generalHeading')}</h2>
-            <p className="document-channel-settings-hint">{t('datasetSettings.generalHint')}</p>
-            <div className="document-channel-settings-field">
+            <p className="settings-page-hint">{t('datasetSettings.generalHint')}</p>
+            <div className="settings-page-field">
               <label htmlFor="dataset-settings-display-name">{t('datasetSettings.displayName')}</label>
               <input
                 id="dataset-settings-display-name"
@@ -159,18 +159,18 @@ export function DatasetSettings() {
                 placeholder={tableLabel}
               />
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label>{t('datasetSettings.tableLabel')}</label>
               <p className="dataset-settings-readonly">{tableLabel}</p>
             </div>
             {dataset.data_source_name ? (
-              <div className="document-channel-settings-field">
+              <div className="settings-page-field">
                 <label>{t('datasetSettings.dataSourceLabel')}</label>
                 <p className="dataset-settings-readonly">{dataset.data_source_name}</p>
               </div>
             ) : null}
           </section>
-          <div className="document-channel-settings-actions">
+          <div className="settings-page-actions">
             <button
               type="button"
               className="btn btn-primary"

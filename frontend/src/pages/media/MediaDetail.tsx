@@ -11,7 +11,7 @@ import {
   updateMediaAsset,
   type MediaAssetOut,
 } from '../../data/mediaApi';
-import '../documents/DocumentDetail.scss';
+import '../../styles/document-detail.scss';
 import '../../styles/channel-page.scss';
 import './Media.scss';
 

@@ -15,7 +15,7 @@ import {
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import '../../styles/channel-page.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
@@ -164,7 +164,7 @@ export function MediaChannelSettings() {
 
   if (loading) {
     return (
-      <div className="document-channel-settings">
+      <div className="settings-page">
         <div className="document-detail-loading">
           <Loader2 size={24} className="channel-page-spinner" />
           <span>{t('common.loading')}</span>
@@ -175,7 +175,7 @@ export function MediaChannelSettings() {
 
   if (error) {
     return (
-      <div className="document-channel-settings">
+      <div className="settings-page">
         <p className="page-subtitle page-subtitle--error">{error}</p>
       </div>
     );
@@ -184,8 +184,8 @@ export function MediaChannelSettings() {
   const channelIds = new Set(flattenChannels(channels).map((c) => c.id));
   if (!channelIds.has(channelId)) {
     return (
-      <div className="document-channel-settings">
-        <Link to="/media/channels" className="document-channel-settings-back">
+      <div className="settings-page">
+        <Link to="/media/channels" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('channel.backToChannels')}</span>
         </Link>
@@ -203,8 +203,8 @@ export function MediaChannelSettings() {
   ];
 
   return (
-    <div className="document-channel-settings">
-      <Link to={`/media/channels/${channelId}`} className="document-channel-settings-back">
+    <div className="settings-page">
+      <Link to={`/media/channels/${channelId}`} className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('settings.backToCollection')}</span>
       </Link>
@@ -214,12 +214,12 @@ export function MediaChannelSettings() {
         <p className="page-subtitle">{t('settings.configureSubtitle', { name: channelName })}</p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => selectTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -228,13 +228,13 @@ export function MediaChannelSettings() {
         ))}
       </div>
 
-      <div className="document-channel-settings-form">
+      <div className="settings-page-form">
         {activeTab === 'general' && (
           <>
-            <section className="document-channel-settings-section">
+            <section className="settings-page-section">
               <h2>{t('settings.sectionGeneral')}</h2>
-              <p className="document-channel-settings-hint">{t('settings.generalHint')}</p>
-              <div className="document-channel-settings-field">
+              <p className="settings-page-hint">{t('settings.generalHint')}</p>
+              <div className="settings-page-field">
                 <label htmlFor="media-settings-name">{t('channels.name')}</label>
                 <input
                   id="media-settings-name"
@@ -245,7 +245,7 @@ export function MediaChannelSettings() {
                   required
                 />
               </div>
-              <div className="document-channel-settings-field">
+              <div className="settings-page-field">
                 <label htmlFor="media-settings-desc">{t('channels.description')}</label>
                 <textarea
                   id="media-settings-desc"
@@ -255,7 +255,7 @@ export function MediaChannelSettings() {
                   rows={3}
                 />
               </div>
-              <div className="document-channel-settings-field">
+              <div className="settings-page-field">
                 <label htmlFor="media-settings-parent">{t('channels.parent')}</label>
                 <select id="media-settings-parent" value={parentId} onChange={(e) => setParentId(e.target.value)}>
                   {moveParentChoices.map((p) => (
@@ -264,14 +264,14 @@ export function MediaChannelSettings() {
                     </option>
                   ))}
                 </select>
-                <p className="document-channel-settings-hint">{t('settings.parentHint')}</p>
+                <p className="settings-page-hint">{t('settings.parentHint')}</p>
               </div>
             </section>
 
-            <section className="document-channel-settings-section">
+            <section className="settings-page-section">
               <h2>{t('settings.sectionMetadata')}</h2>
-              <p className="document-channel-settings-hint">{t('settings.metadataHint')}</p>
-              <div className="document-channel-settings-field">
+              <p className="settings-page-hint">{t('settings.metadataHint')}</p>
+              <div className="settings-page-field">
                 <label htmlFor="media-settings-schema">{t('settings.metadataSchema')}</label>
                 <textarea
                   id="media-settings-schema"
@@ -283,10 +283,10 @@ export function MediaChannelSettings() {
               </div>
             </section>
 
-            <section className="document-channel-settings-section">
+            <section className="settings-page-section">
               <h2>{t('settings.sectionGeneration')}</h2>
-              <p className="document-channel-settings-hint">{t('settings.generationHint')}</p>
-              <div className="document-channel-settings-field">
+              <p className="settings-page-hint">{t('settings.generationHint')}</p>
+              <div className="settings-page-field">
                 <label htmlFor="media-settings-image-model">{t('settings.defaultImageModel')}</label>
                 <select
                   id="media-settings-image-model"
@@ -302,7 +302,7 @@ export function MediaChannelSettings() {
                   ))}
                 </select>
               </div>
-              <div className="document-channel-settings-field">
+              <div className="settings-page-field">
                 <label htmlFor="media-settings-video-model">{t('settings.defaultVideoModel')}</label>
                 <select
                   id="media-settings-video-model"
@@ -320,7 +320,7 @@ export function MediaChannelSettings() {
               </div>
             </section>
 
-            <div className="document-channel-settings-actions">
+            <div className="settings-page-actions">
               <button type="button" className="btn btn-primary" disabled={saving} onClick={() => void onSave()}>
                 {saving ? <Loader2 size={16} className="channel-page-spinner" /> : null}
                 <span>{saving ? t('settings.saving') : t('settings.save')}</span>
@@ -333,9 +333,9 @@ export function MediaChannelSettings() {
         )}
 
         {activeTab === 'sharing' && channel && (
-          <section className="document-channel-settings-section">
+          <section className="settings-page-section">
             <h2>{t('settings.tabSharing')}</h2>
-            <p className="document-channel-settings-hint">{t('settings.sharingHint')}</p>
+            <p className="settings-page-hint">{t('settings.sharingHint')}</p>
             <ResourceSharePanel resourceType={RESOURCE_TYPES.mediaChannel} resourceId={channel.id} />
           </section>
         )}

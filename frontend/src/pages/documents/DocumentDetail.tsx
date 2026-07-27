@@ -6,7 +6,7 @@ import { DocumentDetailVersionModals } from './DocumentDetail.modals';
 import { DocumentDetailLoading } from './DocumentDetail.loading';
 import { useDocumentDetail } from './useDocumentDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
-import './DocumentDetail.scss';
+import '../../styles/document-detail.scss';
 
 export function DocumentDetail() {
   const { id } = useParams<{ id: string }>();

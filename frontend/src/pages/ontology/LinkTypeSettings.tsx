@@ -9,7 +9,7 @@ import {
 } from '../../data/ontologyApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import './OntologyTypeSettings.scss';
 
 type TabId = 'general' | 'sharing';
@@ -66,7 +66,7 @@ export function LinkTypeSettings() {
 
   if (loading) {
     return (
-      <div className="ontology-type-settings document-channel-settings">
+      <div className="ontology-type-settings settings-page">
         <p className="page-subtitle">{t('ontologySettings.loading')}</p>
       </div>
     );
@@ -74,8 +74,8 @@ export function LinkTypeSettings() {
 
   if (!linkType) {
     return (
-      <div className="ontology-type-settings document-channel-settings">
-        <Link to="/ontology-manager/link-types" className="document-channel-settings-back">
+      <div className="ontology-type-settings settings-page">
+        <Link to="/ontology-manager/link-types" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('ontologySettings.backLinkTypes')}</span>
         </Link>
@@ -87,8 +87,8 @@ export function LinkTypeSettings() {
   }
 
   return (
-    <div className="ontology-type-settings document-channel-settings">
-      <Link to="/ontology-manager/link-types" className="document-channel-settings-back">
+    <div className="ontology-type-settings settings-page">
+      <Link to="/ontology-manager/link-types" className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('ontologySettings.backLinkTypes')}</span>
       </Link>
@@ -97,12 +97,12 @@ export function LinkTypeSettings() {
         <p className="page-subtitle">{linkType.name}</p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -112,7 +112,7 @@ export function LinkTypeSettings() {
       </div>
 
       {activeTab === 'sharing' && linkTypeId ? (
-        <div className="document-channel-settings-form ontology-type-settings-panel">
+        <div className="settings-page-form ontology-type-settings-panel">
           <ResourceSharePanel
             resourceType={RESOURCE_TYPES.linkType}
             resourceId={linkTypeId}
@@ -122,10 +122,10 @@ export function LinkTypeSettings() {
       ) : null}
 
       {activeTab === 'general' ? (
-        <div className="document-channel-settings-form ontology-type-settings-panel">
-          <section className="document-channel-settings-section">
+        <div className="settings-page-form ontology-type-settings-panel">
+          <section className="settings-page-section">
             <h2>{t('ontologySettings.generalHeading')}</h2>
-            <p className="document-channel-settings-hint">{t('ontologySettings.linkTypeGeneralHint')}</p>
+            <p className="settings-page-hint">{t('ontologySettings.linkTypeGeneralHint')}</p>
             <p>
               <strong>{linkType.name}</strong>
             </p>

@@ -13,7 +13,7 @@ import {
   uploadAgentSkillZip,
   type AgentSkill,
 } from '../../data/agentSkillsApi';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import './AgentSkillSettings.scss';
 
 type TabId = 'general' | 'versions';
@@ -184,7 +184,7 @@ export function AgentSkillSettings() {
 
   if (loading) {
     return (
-      <div className="agent-skill-settings document-channel-settings">
+      <div className="agent-skill-settings settings-page">
         <p className="page-subtitle">{t('skills.settings.loading')}</p>
       </div>
     );
@@ -192,8 +192,8 @@ export function AgentSkillSettings() {
 
   if (!skill) {
     return (
-      <div className="agent-skill-settings document-channel-settings">
-        <Link to="/agents/skills" className="document-channel-settings-back">
+      <div className="agent-skill-settings settings-page">
+        <Link to="/agents/skills" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('skills.settings.backToSkills')}</span>
         </Link>
@@ -212,8 +212,8 @@ export function AgentSkillSettings() {
   });
 
   return (
-    <div className="agent-skill-settings document-channel-settings">
-      <Link to="/agents/skills" className="document-channel-settings-back">
+    <div className="agent-skill-settings settings-page">
+      <Link to="/agents/skills" className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('skills.settings.backToSkills')}</span>
       </Link>
@@ -223,12 +223,12 @@ export function AgentSkillSettings() {
         <p className="page-subtitle">{t('skills.settings.configureSubtitle', { name: skill.display_name })}</p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => selectTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -237,16 +237,16 @@ export function AgentSkillSettings() {
         ))}
       </div>
 
-      <div className="document-channel-settings-form">
+      <div className="settings-page-form">
         {activeTab === 'general' ? (
-          <section className="document-channel-settings-section">
+          <section className="settings-page-section">
             <h2>{t('skills.settings.generalHeading')}</h2>
-            <p className="document-channel-settings-hint">{t('skills.settings.generalHint')}</p>
-            <div className="document-channel-settings-field">
+            <p className="settings-page-hint">{t('skills.settings.generalHint')}</p>
+            <div className="settings-page-field">
               <label htmlFor="skill-settings-id">{t('skills.skillId')}</label>
               <input id="skill-settings-id" type="text" value={skill.id} readOnly disabled />
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label htmlFor="skill-settings-display-name">{t('skills.displayName')}</label>
               <input
                 id="skill-settings-display-name"
@@ -256,7 +256,7 @@ export function AgentSkillSettings() {
                 autoComplete="off"
               />
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label htmlFor="skill-settings-default-version">{t('skills.defaultVersion')}</label>
               <select
                 id="skill-settings-default-version"
@@ -270,9 +270,9 @@ export function AgentSkillSettings() {
                   </option>
                 ))}
               </select>
-              <p className="document-channel-settings-hint">{t('skills.settings.defaultVersionHint')}</p>
+              <p className="settings-page-hint">{t('skills.settings.defaultVersionHint')}</p>
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label className="agent-skill-settings-default-install">
                 <input
                   type="checkbox"
@@ -281,14 +281,14 @@ export function AgentSkillSettings() {
                 />
                 <span>{t('skills.defaultForNewProjects')}</span>
               </label>
-              <p className="document-channel-settings-hint">{t('skills.settings.defaultInstallHint')}</p>
+              <p className="settings-page-hint">{t('skills.settings.defaultInstallHint')}</p>
             </div>
             {skill.created_by_name ? (
-              <p className="document-channel-settings-hint">
+              <p className="settings-page-hint">
                 {t('skills.createdBy', { name: skill.created_by_name })}
               </p>
             ) : null}
-            <div className="document-channel-settings-actions">
+            <div className="settings-page-actions">
               <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
                 {saving ? ts('shared.saving') : ts('shared.save')}
               </button>
@@ -297,12 +297,12 @@ export function AgentSkillSettings() {
         ) : null}
 
         {activeTab === 'versions' ? (
-          <section className="document-channel-settings-section">
+          <section className="settings-page-section">
             <h2>{t('skills.settings.versionsHeading')}</h2>
-            <p className="document-channel-settings-hint">{t('skills.settings.versionsHint')}</p>
+            <p className="settings-page-hint">{t('skills.settings.versionsHint')}</p>
 
             <div className="agent-skill-settings-upload">
-              <div className="document-channel-settings-field">
+              <div className="settings-page-field">
                 <label htmlFor="skill-settings-new-version">{t('skills.version')}</label>
                 <input
                   id="skill-settings-new-version"
@@ -313,7 +313,7 @@ export function AgentSkillSettings() {
                   autoComplete="off"
                 />
               </div>
-              <div className="document-channel-settings-field">
+              <div className="settings-page-field">
                 <label htmlFor="skill-settings-new-notes">{t('skills.notes')}</label>
                 <input
                   id="skill-settings-new-notes"
@@ -369,7 +369,7 @@ export function AgentSkillSettings() {
             </div>
 
             {sortedVersions.length === 0 ? (
-              <p className="document-channel-settings-hint">{t('skills.settings.noVersions')}</p>
+              <p className="settings-page-hint">{t('skills.settings.noVersions')}</p>
             ) : (
               <table className="agent-skill-settings-versions">
                 <thead>
@@ -414,9 +414,9 @@ export function AgentSkillSettings() {
         ) : null}
       </div>
 
-      <section className="agent-skill-settings-danger document-channel-settings-form">
+      <section className="agent-skill-settings-danger settings-page-form">
         <h2>{t('skills.settings.dangerZone')}</h2>
-        <p className="document-channel-settings-hint">{t('skills.settings.dangerHint')}</p>
+        <p className="settings-page-hint">{t('skills.settings.dangerHint')}</p>
         <button
           type="button"
           className="btn agent-skill-settings-delete-skill"

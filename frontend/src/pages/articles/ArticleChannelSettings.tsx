@@ -21,7 +21,8 @@ import {
   getReviewPresets,
   type ReviewPresetId,
 } from './articleReviewPresets';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
+import './ArticleChannelSettings.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
   const out: { id: string; name: string; depth: number }[] = [];
@@ -197,7 +198,7 @@ export function ArticleChannelSettings() {
 
   if (loading) {
     return (
-      <div className="document-channel-settings">
+      <div className="settings-page">
         <p className="page-subtitle">{t('channelSettings.loading')}</p>
       </div>
     );
@@ -205,7 +206,7 @@ export function ArticleChannelSettings() {
 
   if (error) {
     return (
-      <div className="document-channel-settings">
+      <div className="settings-page">
         <p className="page-subtitle page-subtitle--error">{error}</p>
       </div>
     );
@@ -214,8 +215,8 @@ export function ArticleChannelSettings() {
   const channelIds = new Set(flattenChannels(channels).map((c) => c.id));
   if (!channelIds.has(channelId)) {
     return (
-      <div className="document-channel-settings">
-        <Link to="/articles/channels" className="document-channel-settings-back">
+      <div className="settings-page">
+        <Link to="/articles/channels" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('channelSettings.backToManagement')}</span>
         </Link>
@@ -243,8 +244,8 @@ export function ArticleChannelSettings() {
   };
 
   return (
-    <div className="document-channel-settings">
-      <Link to={`/articles/channels/${channelId}`} className="document-channel-settings-back">
+    <div className="settings-page">
+      <Link to={`/articles/channels/${channelId}`} className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('channelSettings.backToChannel')}</span>
       </Link>
@@ -254,12 +255,12 @@ export function ArticleChannelSettings() {
         <p className="page-subtitle">{t('channelSettings.configureSubtitle', { name: channelName })}</p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => selectTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -268,12 +269,12 @@ export function ArticleChannelSettings() {
         ))}
       </div>
 
-      <div className="document-channel-settings-form">
+      <div className="settings-page-form">
         {activeTab === 'general' && (
-          <section className="document-channel-settings-section">
+          <section className="settings-page-section">
             <h2>{t('channelSettings.general')}</h2>
-            <p className="document-channel-settings-hint">{t('channelSettings.generalHint')}</p>
-            <div className="document-channel-settings-field">
+            <p className="settings-page-hint">{t('channelSettings.generalHint')}</p>
+            <div className="settings-page-field">
               <label htmlFor="ac-settings-name">{t('channelSettings.name')}</label>
               <input
                 id="ac-settings-name"
@@ -283,7 +284,7 @@ export function ArticleChannelSettings() {
                 placeholder={t('channelSettings.namePlaceholder')}
               />
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label htmlFor="ac-settings-description">{t('channelSettings.description')}</label>
               <textarea
                 id="ac-settings-description"
@@ -293,7 +294,7 @@ export function ArticleChannelSettings() {
                 rows={3}
               />
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label htmlFor="ac-settings-parent">{t('channelSettings.parent')}</label>
               <select
                 id="ac-settings-parent"
@@ -306,9 +307,9 @@ export function ArticleChannelSettings() {
                   </option>
                 ))}
               </select>
-              <p className="document-channel-settings-hint">{t('channelSettings.parentHint')}</p>
+              <p className="settings-page-hint">{t('channelSettings.parentHint')}</p>
             </div>
-            <div className="document-channel-settings-actions">
+            <div className="settings-page-actions">
               <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
                 {saving ? t('channelSettings.saving') : t('channelSettings.save')}
               </button>
@@ -317,11 +318,11 @@ export function ArticleChannelSettings() {
         )}
 
         {activeTab === 'review' && (
-          <section className="document-channel-settings-section ac-review-settings">
+          <section className="settings-page-section ac-review-settings">
             <div className="ac-review-settings-header">
               <div>
                 <h2>{t('channelSettings.tabReview')}</h2>
-                <p className="document-channel-settings-hint ac-review-settings-lead">{t('channelSettings.reviewHint')}</p>
+                <p className="settings-page-hint ac-review-settings-lead">{t('channelSettings.reviewHint')}</p>
               </div>
               <div
                 className={`ac-review-status ${reviewReady ? 'ac-review-status--ready' : 'ac-review-status--warn'}`}
@@ -340,7 +341,7 @@ export function ArticleChannelSettings() {
 
             <div className="ac-review-card">
               <h3 className="ac-review-card-title">{t('channelSettings.reviewModel')}</h3>
-              <div className="document-channel-settings-field ac-review-card-field">
+              <div className="settings-page-field ac-review-card-field">
                 <select
                   id="ac-settings-review-model"
                   className="ac-review-model-select"
@@ -356,7 +357,7 @@ export function ArticleChannelSettings() {
                     </option>
                   ))}
                 </select>
-                <p className="document-channel-settings-hint">{t('channelSettings.reviewModelHint')}</p>
+                <p className="settings-page-hint">{t('channelSettings.reviewModelHint')}</p>
               </div>
             </div>
 
@@ -383,7 +384,7 @@ export function ArticleChannelSettings() {
                   </div>
                 </div>
               </div>
-              <div className="document-channel-settings-field ac-review-card-field">
+              <div className="settings-page-field ac-review-card-field">
                 <textarea
                   id="ac-settings-review-prompt"
                   className="ac-review-prompt-textarea"
@@ -392,7 +393,7 @@ export function ArticleChannelSettings() {
                   placeholder={t('channelSettings.reviewPromptPlaceholder')}
                   rows={12}
                 />
-                <p className="document-channel-settings-hint">{t('channelSettings.reviewPromptHint')}</p>
+                <p className="settings-page-hint">{t('channelSettings.reviewPromptHint')}</p>
               </div>
             </div>
 
@@ -406,7 +407,7 @@ export function ArticleChannelSettings() {
                     </p>
                   )}
                 </div>
-                <div className="document-channel-settings-inline-actions">
+                <div className="settings-page-inline-actions">
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
@@ -450,7 +451,7 @@ export function ArticleChannelSettings() {
                       </li>
                     ))}
                   </ul>
-                  <p className="document-channel-settings-hint">{t('channelSettings.reviewCriteriaEmpty')}</p>
+                  <p className="settings-page-hint">{t('channelSettings.reviewCriteriaEmpty')}</p>
                 </div>
               ) : (
                 <div className="ac-review-criteria-table-wrap">
@@ -521,10 +522,10 @@ export function ArticleChannelSettings() {
                   </table>
                 </div>
               )}
-              <p className="document-channel-settings-hint ac-review-criteria-foot">{t('channelSettings.reviewCriteriaHint')}</p>
+              <p className="settings-page-hint ac-review-criteria-foot">{t('channelSettings.reviewCriteriaHint')}</p>
             </div>
 
-            <div className="document-channel-settings-actions ac-review-save-bar">
+            <div className="settings-page-actions ac-review-save-bar">
               <button
                 type="button"
                 className="btn btn-primary"
@@ -539,7 +540,7 @@ export function ArticleChannelSettings() {
 
         {activeTab === 'sharing' && channelId && (
           <>
-            <p className="document-channel-settings-hint">{t('channelSettings.sharingHint')}</p>
+            <p className="settings-page-hint">{t('channelSettings.sharingHint')}</p>
             <ResourceSharePanel
               resourceType={RESOURCE_TYPES.articleChannel}
               resourceId={channelId}

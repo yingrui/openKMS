@@ -22,7 +22,7 @@ import {
   updateMediaChannel,
 } from '../../data/mediaChannelsApi';
 import { getDescendantIds, type ChannelNode } from '../../data/channelUtils';
-import '../documents/DocumentChannels.scss';
+import '../../styles/channel-tree.scss';
 
 function flattenForParent(nodes: ChannelNode[], depth = 0): { id: string; name: string; depth: number }[] {
   const out: { id: string; name: string; depth: number }[] = [];
@@ -83,8 +83,8 @@ export function MediaChannels() {
   };
 
   return (
-    <div className="document-channels">
-      <Link to="/media" className="document-channels-back">
+    <div className="channel-tree">
+      <Link to="/media" className="channel-tree-back">
         <ArrowLeft size={18} />
         <span>{t('channels.backToMedia')}</span>
       </Link>
@@ -95,19 +95,19 @@ export function MediaChannels() {
       </div>
 
       {(error || createError) && (
-        <div className="document-channels-error" role="alert">
+        <div className="channel-tree-error" role="alert">
           {createError || error}
         </div>
       )}
 
-      <div className="document-channels-layout">
-        <section className="document-channels-create">
+      <div className="channel-tree-layout">
+        <section className="channel-tree-create">
           <h2>
             <Plus size={20} />
             {t('channels.newChannel')}
           </h2>
-          <form onSubmit={handleCreate} className="document-channels-form">
-            <div className="document-channels-field">
+          <form onSubmit={handleCreate} className="channel-tree-form">
+            <div className="channel-tree-field">
               <label htmlFor="mc-name">{t('channels.name')}</label>
               <input
                 id="mc-name"
@@ -118,7 +118,7 @@ export function MediaChannels() {
                 required
               />
             </div>
-            <div className="document-channels-field">
+            <div className="channel-tree-field">
               <label htmlFor="mc-desc">{t('channels.description')}</label>
               <textarea
                 id="mc-desc"
@@ -128,7 +128,7 @@ export function MediaChannels() {
                 rows={2}
               />
             </div>
-            <div className="document-channels-field">
+            <div className="channel-tree-field">
               <label htmlFor="mc-parent">{t('channels.parent')}</label>
               <select id="mc-parent" value={createParentId} onChange={(e) => setCreateParentId(e.target.value)}>
                 <option value="">{parentNoneLabel}</option>
@@ -145,21 +145,21 @@ export function MediaChannels() {
           </form>
         </section>
 
-        <section className="document-channels-list">
+        <section className="channel-tree-list">
           <h2>
             <Folder size={20} />
             {t('channels.listHeading')}
           </h2>
           {loading ? (
-            <p className="document-channels-loading">{t('channels.loading')}</p>
+            <p className="channel-tree-loading">{t('channels.loading')}</p>
           ) : channels.length === 0 ? (
-            <div className="document-channels-empty">
+            <div className="channel-tree-empty">
               <Folder size={40} />
               <p>{t('channels.emptyTitle')}</p>
-              <p className="document-channels-empty-hint">{t('channels.emptyHint')}</p>
+              <p className="channel-tree-empty-hint">{t('channels.emptyHint')}</p>
             </div>
           ) : (
-            <ul className="document-channels-tree">
+            <ul className="channel-tree-items">
               {channels.map((ch, index) => (
                 <MediaChannelTreeItem
                   key={ch.id}
@@ -279,15 +279,15 @@ function MediaChannelTreeItem({
   };
 
   return (
-    <li style={{ paddingLeft: depth * 20 }} className="document-channels-tree-li">
-      <span className="document-channels-tree-item">
+    <li style={{ paddingLeft: depth * 20 }} className="channel-tree-item-li">
+      <span className="channel-tree-item">
         <Folder size={16} />
         <Link to={`/media/channels/${node.id}`}>{node.name}</Link>
-        <span className="document-channels-tree-id">{node.id}</span>
-        <span className="document-channels-tree-actions">
+        <span className="channel-tree-item-id">{node.id}</span>
+        <span className="channel-tree-item-actions">
           <button
             type="button"
-            className="document-channels-tree-action"
+            className="channel-tree-item-action"
             title={t('channels.moveUpTitle')}
             aria-label={t('channels.moveUpAria')}
             onClick={() => void handleReorder('up')}
@@ -297,7 +297,7 @@ function MediaChannelTreeItem({
           </button>
           <button
             type="button"
-            className="document-channels-tree-action"
+            className="channel-tree-item-action"
             title={t('channels.moveDownTitle')}
             aria-label={t('channels.moveDownAria')}
             onClick={() => void handleReorder('down')}
@@ -307,17 +307,17 @@ function MediaChannelTreeItem({
           </button>
           <Link
             to={`/media/channels/${node.id}/settings`}
-            className="document-channels-tree-action"
+            className="channel-tree-item-action"
             title={t('channels.settingsTitle')}
           >
             <Settings size={14} />
           </Link>
-          <button type="button" className="document-channels-tree-action" title={t('channels.moveTitle')} onClick={() => setMoving(true)}>
+          <button type="button" className="channel-tree-item-action" title={t('channels.moveTitle')} onClick={() => setMoving(true)}>
             <ArrowRightLeft size={14} />
           </button>
           <button
             type="button"
-            className="document-channels-tree-action"
+            className="channel-tree-item-action"
             title={t('channels.mergeIntoTitle')}
             onClick={() => setMerging(true)}
             disabled={mergeTargetOptions.length === 0}
@@ -326,7 +326,7 @@ function MediaChannelTreeItem({
           </button>
           <button
             type="button"
-            className="document-channels-tree-action document-channels-tree-action-delete"
+            className="channel-tree-item-action channel-tree-item-action--danger"
             title={t('channels.deleteTitle')}
             onClick={() => setDeleteConfirming(true)}
           >
@@ -335,7 +335,7 @@ function MediaChannelTreeItem({
         </span>
       </span>
       {deleteConfirming && (
-        <div className="document-channels-confirm-bar">
+        <div className="channel-tree-confirm-bar">
           <span>{t('channels.deleteConfirm', { name: node.name })}</span>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => void handleDeleteConfirm()} disabled={deleteLoading}>
             {deleteLoading ? t('channels.deleting') : t('channels.delete')}
@@ -346,11 +346,11 @@ function MediaChannelTreeItem({
         </div>
       )}
       {merging && (
-        <div className="document-channels-merge-bar">
+        <div className="channel-tree-merge-bar">
           <select
             value={mergeTargetId}
             onChange={(e) => setMergeTargetId(e.target.value)}
-            className="document-channels-move-select"
+            className="channel-tree-move-select"
             aria-label={t('channels.targetChannelAria')}
           >
             <option value="">{t('channels.mergeTargetPlaceholder')}</option>
@@ -360,7 +360,7 @@ function MediaChannelTreeItem({
               </option>
             ))}
           </select>
-          <label className="document-channels-merge-check">
+          <label className="channel-tree-merge-check">
             <input
               type="checkbox"
               checked={mergeIncludeDescendants}
@@ -377,8 +377,8 @@ function MediaChannelTreeItem({
         </div>
       )}
       {moving && (
-        <div className="document-channels-move-bar">
-          <select value={moveParentId} onChange={(e) => setMoveParentId(e.target.value)} className="document-channels-move-select">
+        <div className="channel-tree-move-bar">
+          <select value={moveParentId} onChange={(e) => setMoveParentId(e.target.value)} className="channel-tree-move-select">
             {moveOptions.map((p) => (
               <option key={p.id || 'root'} value={p.id}>
                 {'—'.repeat(p.depth)} {p.name}
@@ -394,7 +394,7 @@ function MediaChannelTreeItem({
         </div>
       )}
       {node.children?.length ? (
-        <ul className="document-channels-tree">
+        <ul className="channel-tree-items">
           {node.children.map((ch, index) => (
             <MediaChannelTreeItem
               key={ch.id}

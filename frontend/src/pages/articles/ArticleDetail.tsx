@@ -53,7 +53,7 @@ import {
 } from '../../data/articlesApi';
 import { findChannel } from '../../data/channelUtils';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
-import '../documents/DocumentDetail.scss';
+import '../../styles/document-detail.scss';
 import './ArticleDetail.scss';
 
 function resolveMarkdownSrc(articleId: string, src: string | undefined): string | undefined {

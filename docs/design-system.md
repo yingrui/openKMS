@@ -100,10 +100,11 @@ From `frontend/`:
 
 ```bash
 npm run check:app-layout   # gutter guardrails
+npm run check:styles       # no page→page SCSS imports; useIsMobile; token breakpoints
 npm run build
 ```
 
-Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `ChannelSectionLayout*`, or `MainLayout.tsx`.
+Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `ChannelSectionLayout*`, or `MainLayout.tsx`. Run **`check:styles`** when adding shared SCSS under `src/styles/` or changing how pages import stylesheets.
 
 ## Shared layout (`frontend/src/styles/`)
 
@@ -111,7 +112,14 @@ Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `C
 |------|------|
 | **`account-page.scss`** | Cross-route **account / personal settings** chrome (Profile, Settings, Git credentials). Import via **`@use '../styles/account-page'`** in page SCSS, or **`import '…/account-page.scss'`** in a colocated component. |
 | **`app-page.scss`** | Global **`.page-header`**, **`.page-subtitle`**, **`.app-page-shell`**, **`.app-page-section*`** — loaded from **`index.scss`**. Use **`var(--app-page-padding-*)`** for in-app gutters. |
-| **`channel-page.scss`** | Shared chrome for **channel browse pages** (Documents / Articles / Media). Import with **`import '../../styles/channel-page.scss'`** in the page TSX. |
+| **`channel-page.scss`** | Shared chrome for **channel browse pages** (Documents / Articles / Media). |
+| **`list-index.scss`** | Section landing pages (stats + quick actions) for Documents / Articles / Media. |
+| **`channel-tree.scss`** | Channel admin tree (create + tree CRUD) for Documents / Articles / Media. |
+| **`settings-page.scss`** | Settings shell (tabs, sections, fields, actions) used across channel / ontology / console / glossary / agent / connector settings. |
+| **`resource-list.scss`** | Card-grid list + create dialog for Knowledge Bases and Wiki spaces. |
+| **`document-detail.scss`** | Detail-page chrome shared by Document / Article / Media detail (class names still `document-detail-*`; rename later). |
+
+Import these from page TSX with **`import '../../styles/<name>.scss'`**. **Do not** import another page's colocated SCSS — enforced by **`npm run check:styles`**.
 
 **Structure:** `.account-page` → `.account-page-header` + `.account-stack` → one or more `.account-card` sections.
 
@@ -152,7 +160,7 @@ Documents, Articles and Media browse pages share one stylesheet; page SCSS keeps
 6. **Motion** — Use **`var(--duration-fast)`** / **`var(--ease-standard)`** (or **`@include motion-tokens`** plus an explicit **`transition-property`**); global stylesheet respects **`prefers-reduced-motion`**.
 7. **TSX** — Prefer **`className`** + **`_utilities.scss`** / colocated SCSS for colors and spacing. Keep **`style={{…}}`** only for **data-driven geometry** (percent widths, tree indent from depth, crop box coordinates, CSS variables like `--home-knowledge-map-depth`).
 8. **Settings page width** — **`width: 100%`**, **`max-width: ds.$km-layout-max`**, left-aligned (no **`margin: 0 auto`**). Reuse **`account-page.scss`** for personal account surfaces; channel/project/wiki settings may keep colocated `*Settings.scss` but should use the same width and spacing tokens.
-9. **Reuse before inventing** — Prefer **`account-page.scss`**, **`app-page.scss`** (`.page-header`, `.app-page-pane`), **`.btn*`** / **`_utilities.scss`**, and existing settings layouts over one-off hex, magic `px`, or inline **`style={{}}`** for static chrome.
+9. **Reuse before inventing** — Prefer **`account-page.scss`**, **`app-page.scss`**, **`channel-page.scss`**, **`list-index.scss`**, **`channel-tree.scss`**, **`settings-page.scss`**, **`resource-list.scss`**, **`.btn*`** / **`_utilities.scss`**, and existing settings layouts over one-off hex, magic `px`, or importing another page's SCSS.
 10. **Tokens** — Add project-wide semantics in **`_css-variables.scss`** / **`_tokens.scss`**; do not copy token values into feature SCSS.
 11. **App page gutters** — Use **`--app-page-padding-*`** only via **`.app-content`** or **`.app-page-pane`**. Do **not** add root `padding` on page wrappers. Full-bleed routes need **`app-layout-exception:`** comment + row in **`docs/design-system.md` § App shell layout**. Run **`npm run check:app-layout`** from `frontend/` when editing shell layout files.
 

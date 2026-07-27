@@ -5,7 +5,7 @@ import { FileText, Folder } from 'lucide-react';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getFirstLeafChannelId } from '../../data/channelUtils';
 import { fetchArticleStats } from '../../data/articlesApi';
-import '../documents/DocumentsIndex.scss';
+import '../../styles/list-index.scss';
 
 export function ArticlesIndex() {
   const { t } = useTranslation('documents');
@@ -32,7 +32,7 @@ export function ArticlesIndex() {
 
   if (loading) {
     return (
-      <div className="documents-index">
+      <div className="list-index">
         <div className="page-header">
           <p className="page-subtitle">{t('common.loading')}</p>
         </div>
@@ -42,7 +42,7 @@ export function ArticlesIndex() {
 
   if (error) {
     return (
-      <div className="documents-index">
+      <div className="list-index">
         <div className="page-header">
           <p className="page-subtitle page-subtitle--error">{error}</p>
         </div>
@@ -51,7 +51,7 @@ export function ArticlesIndex() {
   }
 
   return (
-    <div className="documents-index">
+    <div className="list-index">
       <div className="page-header">
         <h1>{t('articlesIndex.title')}</h1>
         <p className="page-subtitle">
@@ -59,41 +59,41 @@ export function ArticlesIndex() {
         </p>
       </div>
 
-      <section className="documents-index-stats">
-        <Link to="/articles/channels" className="documents-index-stat documents-index-stat-channels">
-          <div className="documents-index-stat-icon">
+      <section className="list-index-stats">
+        <Link to="/articles/channels" className="list-index-stat list-index-stat--channels">
+          <div className="list-index-stat-icon">
             <Folder size={24} strokeWidth={1.75} />
           </div>
-          <div className="documents-index-stat-content">
-            <span className="documents-index-stat-value">{channelCount}</span>
-            <span className="documents-index-stat-label">{t('articlesIndex.statChannels')}</span>
+          <div className="list-index-stat-content">
+            <span className="list-index-stat-value">{channelCount}</span>
+            <span className="list-index-stat-label">{t('articlesIndex.statChannels')}</span>
           </div>
         </Link>
         <Link
           to={firstLeafId ? `/articles/channels/${firstLeafId}` : '/articles/channels'}
-          className="documents-index-stat documents-index-stat-docs"
+          className="list-index-stat list-index-stat--items"
         >
-          <div className="documents-index-stat-icon">
+          <div className="list-index-stat-icon">
             <FileText size={24} strokeWidth={1.75} />
           </div>
-          <div className="documents-index-stat-content">
-            <span className="documents-index-stat-value">{articleCount ?? '–'}</span>
-            <span className="documents-index-stat-label">{t('articlesIndex.statArticles')}</span>
+          <div className="list-index-stat-content">
+            <span className="list-index-stat-value">{articleCount ?? '–'}</span>
+            <span className="list-index-stat-label">{t('articlesIndex.statArticles')}</span>
           </div>
         </Link>
       </section>
 
-      <div className="documents-index-grid">
-        <section className="documents-index-card">
+      <div className="list-index-grid">
+        <section className="list-index-card">
           <h2>{t('articlesIndex.quickActions')}</h2>
-          <div className="documents-index-quick-actions">
-            <Link to="/articles/channels" className="documents-index-quick-action">
+          <div className="list-index-quick-actions">
+            <Link to="/articles/channels" className="list-index-quick-action">
               <Folder size={20} />
               <span>{t('articlesIndex.manageChannels')}</span>
             </Link>
             <Link
               to={firstLeafId ? `/articles/channels/${firstLeafId}` : '/articles/channels'}
-              className="documents-index-quick-action"
+              className="list-index-quick-action"
             >
               <FileText size={20} />
               <span>{t('articlesIndex.browseArticles')}</span>

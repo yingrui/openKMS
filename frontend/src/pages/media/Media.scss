@@ -336,16 +336,6 @@ textarea.document-detail-metadata-input {
   padding: 0;
 }
 
-.document-channels-tree-item a {
-  color: var(--color-text);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.document-channels-tree-item a:hover {
-  color: var(--color-accent);
-}
-
 .media-empty-wrap.channel-page-empty {
   flex-direction: column;
   gap: var(--space-3);

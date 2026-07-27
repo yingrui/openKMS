@@ -1,5 +1,8 @@
-@use '../../styles/design-system/mixins' as *;
-@use '../../styles/design-system/tokens' as ds;
+// Shared by Document / Article / Media detail pages.
+// Class names still say document-detail-*; rename in a follow-up.
+
+@use 'design-system/mixins' as *;
+@use 'design-system/tokens' as ds;
 
 .document-detail {
   width: 100%;

@@ -1,0 +1,261 @@
+// Shared card-list chrome for Knowledge Bases and Wiki spaces.
+
+.resource-list {
+  width: 100%;
+}
+
+.resource-list .page-header {
+  margin-bottom: var(--space-8);
+}
+
+.resource-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.resource-list-header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.resource-list-header .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--padding-compact-y) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  transition: background 0.15s, color 0.15s;
+}
+
+.resource-list-header .btn-primary {
+  background: var(--color-accent);
+  color: white;
+  border: none;
+}
+
+.resource-list-header .btn-primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.resource-list-loading {
+  color: var(--color-text-secondary);
+  padding: 40px 0;
+}
+
+.resource-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.resource-list-empty svg {
+  margin-bottom: var(--space-2);
+  opacity: 0.5;
+}
+
+/* Fixed-ish column width so cards do not balloon when the nav rail is collapsed (wider main column). */
+.resource-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 320px));
+  gap: var(--space-5);
+  justify-content: start;
+}
+
+.resource-list-card {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-6);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  color: var(--color-text);
+}
+
+.resource-list-card:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.resource-list-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.resource-list-card-actions {
+  display: flex;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.resource-list-card:hover .resource-list-card-actions {
+  opacity: 1;
+}
+
+.resource-list-card-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gap-compact);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.resource-list-card-actions button:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.resource-list-card-actions button[aria-label="Delete"]:hover {
+  color: var(--color-error);
+}
+
+.resource-list-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  border-radius: var(--radius-md);
+}
+
+.resource-list-card h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.resource-list-desc {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-4);
+  flex: 1;
+}
+
+.resource-list-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Dialog – matches documents-upload-modal */
+.resource-list-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: var(--space-6);
+}
+
+.resource-list-dialog {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 480px;
+  width: 100%;
+  padding: var(--space-6);
+}
+
+.resource-list-dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.resource-list-dialog-header h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.resource-list-dialog-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s, background 0.15s;
+}
+
+.resource-list-dialog-close:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+}
+
+.resource-list-dialog-body {
+  padding: var(--space-4) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.resource-list-dialog-body label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-compact);
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.resource-list-dialog-body input,
+.resource-list-dialog-body textarea,
+.resource-list-dialog-body select {
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--text-base);
+}
+
+.resource-list-dialog-body input:focus,
+.resource-list-dialog-body textarea:focus,
+.resource-list-dialog-body select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.resource-list-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}

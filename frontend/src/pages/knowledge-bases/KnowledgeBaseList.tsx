@@ -17,6 +17,7 @@ import {
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
 import { Pagination, ResourceViewToggle } from '../../styles/design-system';
+import '../../styles/resource-list.scss';
 import './KnowledgeBaseList.scss';
 
 const VIEW_STORAGE_KEY = 'knowledge-bases-list-view';
@@ -138,13 +139,13 @@ export function KnowledgeBaseList() {
   };
 
   return (
-    <div className="kb-list">
-      <div className="page-header kb-header">
+    <div className="resource-list">
+      <div className="page-header resource-list-header">
         <div>
           <h1>{t('title')}</h1>
           <p className="page-subtitle">{t('subtitle')}</p>
         </div>
-        <div className="kb-header-actions">
+        <div className="resource-list-header-actions">
           {!loading ? (
             <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
           ) : null}
@@ -163,10 +164,10 @@ export function KnowledgeBaseList() {
         </div>
       </div>
 
-      {loading && <p className="kb-loading">{ts('shared.loading')}</p>}
+      {loading && <p className="resource-list-loading">{ts('shared.loading')}</p>}
 
       {!loading && total === 0 && (
-        <div className="kb-empty">
+        <div className="resource-list-empty">
           <Database size={48} strokeWidth={1} />
           <p>{t('empty')}</p>
         </div>
@@ -182,14 +183,14 @@ export function KnowledgeBaseList() {
       ) : null}
 
       {!loading && total > 0 && isCardView ? (
-        <div className="kb-grid">
+        <div className="resource-list-grid">
           {kbs.map((kb) => (
-            <Link key={kb.id} to={`/knowledge-bases/${kb.id}`} className="kb-card">
-              <div className="kb-card-top">
-                <div className="kb-icon">
+            <Link key={kb.id} to={`/knowledge-bases/${kb.id}`} className="resource-list-card">
+              <div className="resource-list-card-top">
+                <div className="resource-list-icon">
                   <Database size={28} strokeWidth={1.5} />
                 </div>
-                <div className="kb-card-actions">
+                <div className="resource-list-card-actions">
                   <button type="button" title={ts('shared.edit')} aria-label={ts('shared.edit')} onClick={(e) => openEdit(kb, e)}>
                     <Pencil size={15} />
                   </button>
@@ -199,8 +200,8 @@ export function KnowledgeBaseList() {
                 </div>
               </div>
               <h3>{kb.name}</h3>
-              <p className="kb-desc">{kb.description || ts('shared.noDescription')}</p>
-              <div className="kb-meta">
+              <p className="resource-list-desc">{kb.description || ts('shared.noDescription')}</p>
+              <div className="resource-list-meta">
                 <span>{t('metaDocs', { count: kb.document_count })}</span>
                 <span>{t('metaWikiSpaces', { count: kb.wiki_space_count ?? 0 })}</span>
                 <span>{t('metaFaqs', { count: kb.faq_count })}</span>
@@ -280,15 +281,15 @@ export function KnowledgeBaseList() {
       ) : null}
 
       {(showCreate || editKb) && (
-        <div className="kb-dialog-overlay" onClick={closeDialog}>
-          <div className="kb-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-dialog-header">
+        <div className="resource-list-dialog-overlay" onClick={closeDialog}>
+          <div className="resource-list-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="resource-list-dialog-header">
               <h2>{editKb ? t('dialogEdit') : t('dialogNew')}</h2>
-              <button type="button" className="kb-dialog-close" aria-label={ts('shared.close')} onClick={closeDialog}>
+              <button type="button" className="resource-list-dialog-close" aria-label={ts('shared.close')} onClick={closeDialog}>
                 <X size={20} />
               </button>
             </div>
-            <div className="kb-dialog-body">
+            <div className="resource-list-dialog-body">
               <label>
                 <span>{ts('shared.name')}</span>
                 <input
@@ -309,7 +310,7 @@ export function KnowledgeBaseList() {
                 />
               </label>
             </div>
-            <div className="kb-dialog-footer">
+            <div className="resource-list-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeDialog}>
                 {ts('shared.cancel')}
               </button>

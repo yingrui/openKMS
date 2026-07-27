@@ -14,7 +14,7 @@ import { ConnectorTushareProbe } from './ConnectorTushareProbe';
 import { ConnectorSyncDialog } from './ConnectorSyncDialog';
 import { useConnectorDetailForm } from './useConnectorDetailForm';
 import type { ConnectorSyncDateRange } from './connectorSyncUtils';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
 
 export function ConnectorDetailPage() {
@@ -155,12 +155,12 @@ export function ConnectorDetailPage() {
       >
         {isTabbedDetail ? (
           <>
-            <div className="document-channel-settings-tabs" role="tablist" aria-label={t('connectors.detailTabsAria')}>
+            <div className="settings-page-tabs" role="tablist" aria-label={t('connectors.detailTabsAria')}>
               <button
                 type="button"
                 role="tab"
                 aria-selected={activeTab === 'general'}
-                className={`document-channel-settings-tab${activeTab === 'general' ? ' active' : ''}`}
+                className={`settings-page-tab${activeTab === 'general' ? ' active' : ''}`}
                 onClick={() => setActiveTab('general')}
               >
                 <Settings size={18} />
@@ -171,7 +171,7 @@ export function ConnectorDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={activeTab === 'datasets'}
-                  className={`document-channel-settings-tab${activeTab === 'datasets' ? ' active' : ''}`}
+                  className={`settings-page-tab${activeTab === 'datasets' ? ' active' : ''}`}
                   onClick={() => setActiveTab('datasets')}
                 >
                   <Database size={18} />
@@ -183,7 +183,7 @@ export function ConnectorDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={activeTab === 'cron'}
-                  className={`document-channel-settings-tab${activeTab === 'cron' ? ' active' : ''}`}
+                  className={`settings-page-tab${activeTab === 'cron' ? ' active' : ''}`}
                   onClick={() => setActiveTab('cron')}
                 >
                   <Clock size={18} />
@@ -195,7 +195,7 @@ export function ConnectorDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={activeTab === 'probe'}
-                  className={`document-channel-settings-tab${activeTab === 'probe' ? ' active' : ''}`}
+                  className={`settings-page-tab${activeTab === 'probe' ? ' active' : ''}`}
                   onClick={() => setActiveTab('probe')}
                 >
                   <FlaskConical size={18} />
@@ -207,7 +207,7 @@ export function ConnectorDetailPage() {
                   type="button"
                   role="tab"
                   aria-selected={activeTab === 'playground'}
-                  className={`document-channel-settings-tab${activeTab === 'playground' ? ' active' : ''}`}
+                  className={`settings-page-tab${activeTab === 'playground' ? ' active' : ''}`}
                   onClick={() => setActiveTab('playground')}
                 >
                   <FlaskConical size={18} />
@@ -216,7 +216,7 @@ export function ConnectorDetailPage() {
               ) : null}
             </div>
             <div
-              className={`document-channel-settings-form${
+              className={`settings-page-form${
                 activeTab === 'playground' || activeTab === 'probe'
                   ? ' connector-detail-tab-panel--playground'
                   : ''

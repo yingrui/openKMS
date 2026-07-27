@@ -1,0 +1,182 @@
+// Shared settings-page chrome (tabs, form sections, fields, actions).
+// Area-specific rules stay in the page SCSS (e.g. schema editor, review tab).
+
+@use 'design-system/tokens' as ds;
+
+.settings-page {
+  width: 100%;
+  max-width: ds.$km-layout-max;
+}
+
+.settings-page .page-header {
+  margin-bottom: var(--space-6);
+}
+
+.settings-page .page-header h1 {
+  margin: 0 0 var(--space-2);
+}
+
+.settings-page .page-subtitle {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.settings-page-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-5);
+  transition: color 0.15s;
+}
+
+.settings-page-back:hover {
+  color: var(--color-accent);
+}
+
+.settings-page-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: 0;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-1) var(--space-3) 0 var(--space-3);
+  flex-shrink: 0;
+}
+
+.settings-page-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.settings-page-tab:hover {
+  color: var(--color-text);
+}
+
+.settings-page-tab.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.settings-page-form {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  padding: var(--space-6);
+}
+
+.settings-page-section {
+  margin-bottom: var(--space-6);
+}
+
+.settings-page-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.settings-page-section h2 {
+  font-size: var(--text-base);
+  font-weight: 600;
+  margin: 0 0 var(--space-4) 0;
+  color: var(--color-text);
+}
+
+.settings-page-field {
+  margin-bottom: var(--space-4);
+}
+
+.settings-page-field:last-child {
+  margin-bottom: 0;
+}
+
+.settings-page-field label {
+  display: block;
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--gap-compact);
+}
+
+.settings-page-field label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-2) + var(--space-1) / 2);
+  cursor: pointer;
+}
+
+.settings-page-field input[type="text"],
+.settings-page-field input[type="number"],
+.settings-page-field textarea,
+.settings-page-field select {
+  padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
+  font-size: var(--text-base);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  box-sizing: border-box;
+}
+
+.settings-page-field input[type="text"],
+.settings-page-field textarea {
+  width: 100%;
+}
+
+.settings-page-field input[type="number"],
+.settings-page-field select {
+  max-width: 200px;
+}
+
+.settings-page-field textarea {
+  min-height: calc(var(--space-12) + var(--space-1) * 3);
+  resize: vertical;
+}
+
+.settings-page-field input[type="text"]:focus,
+.settings-page-field input[type="number"]:focus,
+.settings-page-field textarea:focus,
+.settings-page-field select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.settings-page-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.settings-page-saved {
+  font-size: var(--text-md);
+  color: var(--color-success);
+}
+
+.settings-page-error {
+  color: var(--color-error);
+  font-size: var(--text-md);
+  margin-top: var(--space-2);
+}
+
+.settings-page-hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}

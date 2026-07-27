@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "check:app-layout": "bash scripts/check-app-page-gutters.sh",
     "check:app-modules": "bash scripts/check-app-modules.sh",
+    "check:styles": "bash scripts/check-shared-styles.sh",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "lint": "eslint .",

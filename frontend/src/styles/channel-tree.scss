@@ -1,12 +1,15 @@
-@use '../../styles/design-system/mixins' as *;
-@use '../../styles/design-system/tokens' as ds;
+// Shared channel-tree admin chrome for Documents / Articles / Media.
+// Page-specific rules stay out of here.
 
-.document-channels {
+@use 'design-system/mixins' as *;
+@use 'design-system/tokens' as ds;
+
+.channel-tree {
   width: 100%;
   max-width: ds.$km-layout-max;
 }
 
-.document-channels-back {
+.channel-tree-back {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
@@ -16,11 +19,11 @@
   transition: color 0.15s;
 }
 
-.document-channels-back:hover {
+.channel-tree-back:hover {
   color: var(--color-accent);
 }
 
-.document-channels-error {
+.channel-tree-error {
   padding: var(--space-3) var(--space-4);
   background: var(--color-error);
   color: white;
@@ -28,7 +31,7 @@
   margin-bottom: var(--space-6);
 }
 
-.document-channels-layout {
+.channel-tree-layout {
   display: grid;
   grid-template-columns: 320px 1fr;
   gap: var(--space-8);
@@ -36,13 +39,13 @@
 }
 
 @include max-width(ds.$bp-sm-min) {
-  .document-channels-layout {
+  .channel-tree-layout {
     grid-template-columns: 1fr;
   }
 }
 
-.document-channels-create,
-.document-channels-list {
+.channel-tree-create,
+.channel-tree-list {
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -50,8 +53,8 @@
   min-width: 0;
 }
 
-.document-channels-create h2,
-.document-channels-list h2 {
+.channel-tree-create h2,
+.channel-tree-list h2 {
   display: flex;
   align-items: center;
   gap: calc(var(--space-2) + var(--space-1) / 2);
@@ -61,14 +64,14 @@
   color: var(--color-text);
 }
 
-.document-channels-form {
+.channel-tree-form {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
 }
 
-.document-channels-field label {
+.channel-tree-field label {
   display: block;
   font-size: var(--text-md);
   font-weight: 500;
@@ -76,9 +79,9 @@
   margin-bottom: var(--gap-compact);
 }
 
-.document-channels-field input,
-.document-channels-field textarea,
-.document-channels-field select {
+.channel-tree-field input,
+.channel-tree-field textarea,
+.channel-tree-field select {
   width: 100%;
   max-width: 100%;
   padding: var(--padding-compact-y) calc(var(--space-3) + var(--space-1) / 2);
@@ -90,35 +93,35 @@
   box-sizing: border-box;
 }
 
-.document-channels-field textarea {
+.channel-tree-field textarea {
   min-height: 56px;
   resize: vertical;
 }
 
-.document-channels-field input:focus,
-.document-channels-field textarea:focus,
-.document-channels-field select:focus {
+.channel-tree-field input:focus,
+.channel-tree-field textarea:focus,
+.channel-tree-field select:focus {
   outline: none;
   border-color: var(--color-accent);
 }
 
-.document-channels-loading {
+.channel-tree-loading {
   color: var(--color-text-muted);
   font-size: var(--text-base);
 }
 
-.document-channels-empty {
+.channel-tree-empty {
   text-align: center;
   padding: 32px 16px;
   color: var(--color-text-muted);
 }
 
-.document-channels-empty svg {
+.channel-tree-empty svg {
   opacity: 0.5;
   margin-bottom: var(--space-3);
 }
 
-.document-channels-empty-hint {
+.channel-tree-empty-hint {
   font-size: var(--text-md);
   margin-top: var(--space-2);
   max-width: 280px;
@@ -126,13 +129,13 @@
   margin-right: auto;
 }
 
-.document-channels-tree {
+.channel-tree-items {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.document-channels-tree-item {
+.channel-tree-item {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -140,25 +143,35 @@
   font-size: var(--text-base);
 }
 
-.document-channels-tree-item svg {
+.channel-tree-item svg {
   color: var(--color-accent);
   flex-shrink: 0;
 }
 
-.document-channels-tree-id {
+.channel-tree-item a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.channel-tree-item a:hover {
+  color: var(--color-accent);
+}
+
+.channel-tree-item-id {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   margin-left: 8px;
 }
 
-.document-channels-tree-actions {
+.channel-tree-item-actions {
   display: flex;
   align-items: center;
   gap: var(--space-1);
   margin-left: auto;
 }
 
-.document-channels-tree-action {
+.channel-tree-item-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -171,21 +184,25 @@
   transition: color 0.15s, background 0.15s;
 }
 
-.document-channels-tree-action:hover {
+.channel-tree-item-action:hover {
   color: var(--color-accent);
   background: var(--color-bg-muted);
 }
 
-.document-channels-tree-action:disabled {
+.channel-tree-item-action:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.document-channels-tree-action[href] {
+.channel-tree-item-action[href] {
   text-decoration: none;
 }
 
-.document-channels-move-bar {
+.channel-tree-item-action--danger:hover {
+  color: var(--color-error);
+}
+
+.channel-tree-move-bar {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -193,11 +210,7 @@
   margin-left: 24px;
 }
 
-.document-channels-tree-action-delete:hover {
-  color: var(--color-error);
-}
-
-.document-channels-confirm-bar {
+.channel-tree-confirm-bar {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -207,11 +220,11 @@
   color: var(--color-text-secondary);
 }
 
-.document-channels-confirm-bar span {
+.channel-tree-confirm-bar span {
   flex: 1;
 }
 
-.document-channels-merge-bar {
+.channel-tree-merge-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -220,7 +233,7 @@
   margin-left: 24px;
 }
 
-.document-channels-merge-check {
+.channel-tree-merge-check {
   display: inline-flex;
   align-items: center;
   gap: var(--gap-compact);
@@ -228,11 +241,11 @@
   cursor: pointer;
 }
 
-.document-channels-merge-check input {
+.channel-tree-merge-check input {
   margin: 0;
 }
 
-.document-channels-move-select {
+.channel-tree-move-select {
   flex: 1;
   min-width: 0;
   max-width: 240px;

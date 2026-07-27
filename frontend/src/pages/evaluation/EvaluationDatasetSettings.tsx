@@ -13,7 +13,7 @@ import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/k
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import './EvaluationDatasetDetail.scss';
 import './EvaluationDatasetSettings.scss';
 
@@ -135,7 +135,7 @@ export function EvaluationDatasetSettings() {
 
   if (loading) {
     return (
-      <div className="eval-dataset-settings document-channel-settings">
+      <div className="eval-dataset-settings settings-page">
         <p className="page-subtitle">{t('evaluationSettings.loading')}</p>
       </div>
     );
@@ -143,8 +143,8 @@ export function EvaluationDatasetSettings() {
 
   if (!dataset) {
     return (
-      <div className="eval-dataset-settings document-channel-settings">
-        <Link to="/evaluations" className="document-channel-settings-back">
+      <div className="eval-dataset-settings settings-page">
+        <Link to="/evaluations" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('evaluationDetail.back')}</span>
         </Link>
@@ -171,12 +171,12 @@ export function EvaluationDatasetSettings() {
         <p className="eval-detail-desc">{t('evaluationSettings.configureSubtitle', { name: dataset.name })}</p>
       </div>
 
-      <div className="document-channel-settings-tabs eval-dataset-settings-tabs">
+      <div className="settings-page-tabs eval-dataset-settings-tabs">
         {settingsTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -186,7 +186,7 @@ export function EvaluationDatasetSettings() {
       </div>
 
       {activeTab === 'sharing' && evaluationId ? (
-        <div className="document-channel-settings-form eval-dataset-settings-panel">
+        <div className="settings-page-form eval-dataset-settings-panel">
           <ResourceSharePanel
             resourceType={RESOURCE_TYPES.evaluation}
             resourceId={evaluationId}
@@ -197,11 +197,11 @@ export function EvaluationDatasetSettings() {
 
       {activeTab === 'general' ? (
       <>
-      <div className="document-channel-settings-form eval-dataset-settings-panel">
-        <section className="document-channel-settings-section">
+      <div className="settings-page-form eval-dataset-settings-panel">
+        <section className="settings-page-section">
           <h2>{t('evaluationSettings.general')}</h2>
-          <p className="document-channel-settings-hint">{t('evaluationSettings.generalHint')}</p>
-          <div className="document-channel-settings-field">
+          <p className="settings-page-hint">{t('evaluationSettings.generalHint')}</p>
+          <div className="settings-page-field">
             <label htmlFor="eval-settings-name">{t('shared.name')}</label>
             <input
               id="eval-settings-name"
@@ -211,7 +211,7 @@ export function EvaluationDatasetSettings() {
               placeholder={t('evaluation.namePlaceholder')}
             />
           </div>
-          <div className="document-channel-settings-field">
+          <div className="settings-page-field">
             <label htmlFor="eval-settings-description">{t('shared.description')}</label>
             <textarea
               id="eval-settings-description"
@@ -223,10 +223,10 @@ export function EvaluationDatasetSettings() {
           </div>
         </section>
 
-        <section className="document-channel-settings-section">
+        <section className="settings-page-section">
           <h2>{t('evaluationSettings.knowledgeBase')}</h2>
-          <p className="document-channel-settings-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
-          <div className="document-channel-settings-field">
+          <p className="settings-page-hint">{t('evaluationSettings.knowledgeBaseHint')}</p>
+          <div className="settings-page-field">
             <label htmlFor="eval-settings-kb">{t('evaluationSettings.knowledgeBaseLabel')}</label>
             <select
               id="eval-settings-kb"
@@ -253,15 +253,15 @@ export function EvaluationDatasetSettings() {
               {t('evaluationSettings.openKnowledgeBase')}
             </Link>
           ) : null}
-          <p className="document-channel-settings-hint eval-dataset-settings-kb-note">
+          <p className="settings-page-hint eval-dataset-settings-kb-note">
             {t('evaluationSettings.knowledgeBaseNote')}
           </p>
         </section>
 
-        <section className="document-channel-settings-section">
+        <section className="settings-page-section">
           <h2>{t('evaluationSettings.wikiSpace')}</h2>
-          <p className="document-channel-settings-hint">{t('evaluationSettings.wikiSpaceHint')}</p>
-          <div className="document-channel-settings-field">
+          <p className="settings-page-hint">{t('evaluationSettings.wikiSpaceHint')}</p>
+          <div className="settings-page-field">
             <label htmlFor="eval-settings-wiki">{t('evaluationSettings.wikiSpaceLabel')}</label>
             <select
               id="eval-settings-wiki"
@@ -276,7 +276,7 @@ export function EvaluationDatasetSettings() {
               ))}
             </select>
           </div>
-          <p className="document-channel-settings-hint">{t('evaluationSettings.wikiSemanticIndexNote')}</p>
+          <p className="settings-page-hint">{t('evaluationSettings.wikiSemanticIndexNote')}</p>
           {wikiSpaceIdField.trim() ? (
             <Link
               to={`/wikis/${wikiSpaceIdField.trim()}/settings`}
@@ -287,16 +287,16 @@ export function EvaluationDatasetSettings() {
           ) : null}
         </section>
 
-        <div className="document-channel-settings-actions">
+        <div className="settings-page-actions">
           <button type="button" className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
             {saving ? t('evaluation.saving') : t('shared.save')}
           </button>
         </div>
       </div>
 
-      <section className="eval-dataset-settings-danger document-channel-settings-form">
+      <section className="eval-dataset-settings-danger settings-page-form">
         <h2>{t('evaluationSettings.dangerZone')}</h2>
-        <p className="document-channel-settings-hint">{t('evaluationSettings.dangerHint')}</p>
+        <p className="settings-page-hint">{t('evaluationSettings.dangerHint')}</p>
         <button
           type="button"
           className="btn eval-dataset-settings-delete"

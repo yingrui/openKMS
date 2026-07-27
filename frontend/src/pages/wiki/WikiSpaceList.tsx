@@ -18,7 +18,7 @@ import {
   updateWikiSpace,
   type WikiSpaceResponse,
 } from '../../data/wikiSpacesApi';
-import '../knowledge-bases/KnowledgeBaseList.scss';
+import '../../styles/resource-list.scss';
 
 const VIEW_STORAGE_KEY = 'wiki-spaces-list-view';
 
@@ -140,13 +140,13 @@ export function WikiSpaceList() {
   };
 
   return (
-    <div className="kb-list">
-      <div className="page-header kb-header">
+    <div className="resource-list">
+      <div className="page-header resource-list-header">
         <div>
           <h1>{t('wiki.title')}</h1>
           <p className="page-subtitle">{t('wiki.subtitle')}</p>
         </div>
-        <div className="kb-header-actions">
+        <div className="resource-list-header-actions">
           {!loading ? (
             <ResourceViewToggle modes={['card', 'list']} value={viewMode} onChange={switchView} />
           ) : null}
@@ -167,10 +167,10 @@ export function WikiSpaceList() {
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-      {loading && <p className="kb-loading">{t('shared.loading')}</p>}
+      {loading && <p className="resource-list-loading">{t('shared.loading')}</p>}
 
       {!loading && total === 0 && (
-        <div className="kb-empty">
+        <div className="resource-list-empty">
           <BookOpen size={48} strokeWidth={1} />
           <p>{t('wiki.empty')}</p>
         </div>
@@ -186,14 +186,14 @@ export function WikiSpaceList() {
       ) : null}
 
       {!loading && total > 0 && isCardView ? (
-        <div className="kb-grid">
+        <div className="resource-list-grid">
           {spaces.map((sp) => (
-            <Link key={sp.id} to={`/wikis/${sp.id}/pages/graph`} className="kb-card">
-              <div className="kb-card-top">
-                <div className="kb-icon">
+            <Link key={sp.id} to={`/wikis/${sp.id}/pages/graph`} className="resource-list-card">
+              <div className="resource-list-card-top">
+                <div className="resource-list-icon">
                   <BookOpen size={28} strokeWidth={1.5} />
                 </div>
-                <div className="kb-card-actions">
+                <div className="resource-list-card-actions">
                   <button
                     type="button"
                     title={t('shared.edit')}
@@ -213,8 +213,8 @@ export function WikiSpaceList() {
                 </div>
               </div>
               <h3>{sp.name}</h3>
-              <p className="kb-desc">{sp.description || t('shared.noDescription')}</p>
-              <div className="kb-meta">
+              <p className="resource-list-desc">{sp.description || t('shared.noDescription')}</p>
+              <div className="resource-list-meta">
                 <span>{t('wiki.pageCount', { count: sp.page_count })}</span>
               </div>
             </Link>
@@ -284,15 +284,15 @@ export function WikiSpaceList() {
       ) : null}
 
       {(showCreate || editSp) && (
-        <div className="kb-dialog-overlay" role="presentation" onClick={closeDialog}>
-          <div className="kb-dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-dialog-header">
+        <div className="resource-list-dialog-overlay" role="presentation" onClick={closeDialog}>
+          <div className="resource-list-dialog" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="resource-list-dialog-header">
               <h2>{editSp ? t('wiki.dialogEdit') : t('wiki.dialogNew')}</h2>
-              <button type="button" className="kb-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
+              <button type="button" className="resource-list-dialog-close" aria-label={t('shared.close')} onClick={closeDialog}>
                 <X size={20} />
               </button>
             </div>
-            <div className="kb-dialog-body">
+            <div className="resource-list-dialog-body">
               <label>
                 <span>{t('shared.name')}</span>
                 <input
@@ -313,7 +313,7 @@ export function WikiSpaceList() {
                 />
               </label>
             </div>
-            <div className="kb-dialog-footer">
+            <div className="resource-list-dialog-footer">
               <button type="button" className="btn btn-secondary" onClick={closeDialog}>
                 {t('shared.cancel')}
               </button>

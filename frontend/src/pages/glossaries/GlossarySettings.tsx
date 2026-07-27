@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { fetchGlossary, updateGlossary, type GlossaryResponse } from '../../data/glossariesApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import '../documents/DocumentChannelSettings.scss';
+import '../../styles/settings-page.scss';
 import './GlossarySettings.scss';
 
 type TabId = 'general' | 'sharing';
@@ -92,7 +92,7 @@ export function GlossarySettings() {
 
   if (loading) {
     return (
-      <div className="glossary-settings document-channel-settings">
+      <div className="glossary-settings settings-page">
         <p className="page-subtitle">{t('glossary.settings.loading')}</p>
       </div>
     );
@@ -100,8 +100,8 @@ export function GlossarySettings() {
 
   if (!glossary) {
     return (
-      <div className="glossary-settings document-channel-settings">
-        <Link to="/glossaries" className="document-channel-settings-back">
+      <div className="glossary-settings settings-page">
+        <Link to="/glossaries" className="settings-page-back">
           <ArrowLeft size={18} />
           <span>{t('glossary.settings.backToGlossaries')}</span>
         </Link>
@@ -113,8 +113,8 @@ export function GlossarySettings() {
   }
 
   return (
-    <div className="glossary-settings document-channel-settings">
-      <Link to={`/glossaries/${glossaryId}`} className="document-channel-settings-back">
+    <div className="glossary-settings settings-page">
+      <Link to={`/glossaries/${glossaryId}`} className="settings-page-back">
         <ArrowLeft size={18} />
         <span>{t('glossary.settings.backToGlossary')}</span>
       </Link>
@@ -123,12 +123,12 @@ export function GlossarySettings() {
         <p className="page-subtitle">{glossary.name}</p>
       </div>
 
-      <div className="document-channel-settings-tabs">
+      <div className="settings-page-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`document-channel-settings-tab ${activeTab === tab.id ? 'active' : ''}`}
+            className={`settings-page-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
             <tab.icon size={16} />
@@ -138,7 +138,7 @@ export function GlossarySettings() {
       </div>
 
       {activeTab === 'sharing' ? (
-        <div className="document-channel-settings-form glossary-settings-panel">
+        <div className="settings-page-form glossary-settings-panel">
           <ResourceSharePanel
             resourceType={RESOURCE_TYPES.glossary}
             resourceId={glossaryId}
@@ -148,11 +148,11 @@ export function GlossarySettings() {
       ) : null}
 
       {activeTab === 'general' ? (
-        <div className="document-channel-settings-form glossary-settings-panel">
-          <section className="document-channel-settings-section">
+        <div className="settings-page-form glossary-settings-panel">
+          <section className="settings-page-section">
             <h2>{t('glossary.settings.generalHeading')}</h2>
-            <p className="document-channel-settings-hint">{t('glossary.settings.generalHint')}</p>
-            <div className="document-channel-settings-field">
+            <p className="settings-page-hint">{t('glossary.settings.generalHint')}</p>
+            <div className="settings-page-field">
               <label htmlFor="glossary-settings-name">{t('shared.name')}</label>
               <input
                 id="glossary-settings-name"
@@ -162,7 +162,7 @@ export function GlossarySettings() {
                 placeholder={t('glossary.placeholderName')}
               />
             </div>
-            <div className="document-channel-settings-field">
+            <div className="settings-page-field">
               <label htmlFor="glossary-settings-description">{t('shared.description')}</label>
               <textarea
                 id="glossary-settings-description"
@@ -173,7 +173,7 @@ export function GlossarySettings() {
               />
             </div>
           </section>
-          <div className="document-channel-settings-actions">
+          <div className="settings-page-actions">
             <button
               type="button"
               className="btn btn-primary"
