@@ -55,6 +55,8 @@ Context: ontology drawer state lives in `MobileShellContext` (`MainLayout`); its
 
 Reading surfaces (≤768): channel/KB tables use `overflow-x: auto`; list toolbars and wiki/article headers wrap; document split drops tall `min-height` when stacked; KB FAQ/chunk dialogs use `width: min(…, 100vw - 2rem)`; KB Q&A session rail stacks at `$bp-md-min`.
 
+List footers (`.ds-pagination`, `_pagination.scss`): stack into range + page size on one line and a full-width `prev / status / next` row with 40px tap targets. Inside a channel list the footer drops its surface (`.channel-table-wrap .ds-pagination`) because the wrap is transparent on phones.
+
 Documents / Articles / Media **section index** on ≤768: channel tree is the main pane (`channel-section-layout--mobile-landing`); stats/quick-actions index stays desktop-only. Inside a channel on mobile, use **All channels** back link (`.channel-browse-back`) — no header drawer for the channel tree.
 
 ### Decision tree

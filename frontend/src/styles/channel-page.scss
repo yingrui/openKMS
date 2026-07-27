@@ -589,6 +589,13 @@
     border: none;
     border-radius: 0;
     overflow: visible;
+
+    /* The wrap has no card surface here, so the footer must not look like one. */
+    .ds-pagination {
+      padding: var(--space-3) 0 0;
+      background: transparent;
+      border-top: none;
+    }
   }
 
   .channel-table thead {
