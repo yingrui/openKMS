@@ -838,8 +838,10 @@
   opacity: 0.9;
 }
 
-.document-detail-panel-header span {
+/* Title label in simple headers (Pages / Workbook). Not tab button labels. */
+.document-detail-panel-header > span {
   flex: 1;
+  min-width: 0;
 }
 
 .document-detail-panel-tabs {
@@ -1585,17 +1587,46 @@
     padding: var(--space-3);
   }
 
+  /* Split is already single-column ≤900px — extend only orphaned the toolbar. */
+  .document-detail-extend-btn {
+    display: none;
+  }
+
   .document-detail-panel-header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: var(--space-2);
     min-height: 0;
     height: auto;
-    padding: var(--space-3);
+    padding: var(--space-2) var(--space-3);
   }
 
-  .document-detail-panel-header span {
+  .document-detail-panel-tabs {
     flex: 1 1 auto;
     min-width: 0;
+    gap: var(--space-2);
+  }
+
+  .document-detail-panel-tab {
+    padding: var(--gap-compact) var(--space-2);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .document-detail-panel-header > span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Icon-only Print / Edit — frees width so tab labels (e.g. 页面索引) stay on one line. */
+  .document-detail-edit-toggle {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .document-detail-edit-toggle span {
+    display: none;
   }
 }
 

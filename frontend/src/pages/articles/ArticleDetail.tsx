@@ -1194,6 +1194,7 @@ export function ArticleDetail() {
                       className="document-detail-edit-toggle"
                       onClick={() => setMarkdownEditMode(true)}
                       title="Edit markdown"
+                      aria-label="Edit markdown"
                       aria-pressed={false}
                     >
                       <Edit3 size={14} />

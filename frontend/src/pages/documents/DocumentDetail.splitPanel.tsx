@@ -353,6 +353,7 @@ export function DocumentDetailSplitPanel({
                   onClick={onSaveMarkdown}
                   disabled={saving}
                   title={t('detail.titleSaveMarkdown')}
+                  aria-label={t('detail.titleSaveMarkdown')}
                 >
                   {saving ? (
                     <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
@@ -367,6 +368,7 @@ export function DocumentDetailSplitPanel({
                   onClick={onCancelMarkdownEdit}
                   disabled={saving}
                   title={t('detail.titleCancelEdit')}
+                  aria-label={t('detail.titleCancelEdit')}
                 >
                   <XIcon size={14} />
                   <span>{t('common.cancel')}</span>
@@ -391,6 +393,7 @@ export function DocumentDetailSplitPanel({
                   className="document-detail-edit-toggle"
                   onClick={onEnterMarkdownEdit}
                   title={t('detail.titleEditMarkdown')}
+                  aria-label={t('detail.titleEditMarkdown')}
                   aria-pressed={false}
                 >
                   <Edit3 size={14} />
