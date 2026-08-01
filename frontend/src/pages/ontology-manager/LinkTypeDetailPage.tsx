@@ -14,7 +14,15 @@ import {
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
-import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
+import {
+  EntityViewField,
+  EntityViewHeader,
+  EntityViewLoading,
+  EntityViewPanel,
+  EntityViewShell,
+  EntityViewStat,
+  EntityViewStats,
+} from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
 type LinkTypeDetailContext = {
@@ -233,6 +241,7 @@ export function LinkTypeDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/link-types"
         backLabel={t('linkTypes.backToList')}
+        kind={t('linkTypes.kind')}
         title={linkType.name}
         meta={linkType.cardinality}
         navItems={[
@@ -277,128 +286,126 @@ export function LinkTypeOverviewTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('linkTypes.overview')}</h1>
-          <p className="page-subtitle">{linkType.description || t('linkTypes.noDescription')}</p>
-        </div>
-        <div className="entity-view__actions">
+      <EntityViewHeader
+        title={t('linkTypes.overview')}
+        subtitle={linkType.description || t('linkTypes.noDescription')}
+        actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
+        }
+      />
+      <EntityViewStats>
+        <EntityViewStat
+          label={t('linkTypes.source')}
+          value={
+            sourceOt ? (
+              <Link to={`/ontology-manager/object-types/${sourceOt.id}`}>{sourceOt.name}</Link>
+            ) : (
+              sourceId
+            )
+          }
+        />
+        <EntityViewStat
+          label={t('linkTypes.target')}
+          value={
+            targetOt ? (
+              <Link to={`/ontology-manager/object-types/${targetOt.id}`}>{targetOt.name}</Link>
+            ) : (
+              targetId
+            )
+          }
+        />
+        <EntityViewStat label={t('linkTypes.cardinality')} value={linkType.cardinality} />
+        <EntityViewStat label={t('linkTypes.instances')} value={linkType.link_count} />
+      </EntityViewStats>
+      <EntityViewPanel title={t('linkTypes.general')} description={t('linkTypes.generalHint')}>
+        <div className="entity-view__form">
+          <EntityViewField label={t('linkTypes.name')}>
+            <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
+          </EntityViewField>
+          <EntityViewField label={t('linkTypes.description')}>
+            <textarea
+              className="console-form-control"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('linkTypes.source')}>
+            <select
+              className="console-form-control"
+              value={sourceId}
+              onChange={(e) => setSourceId(e.target.value)}
+            >
+              {objectTypes.map((ot) => (
+                <option key={ot.id} value={ot.id}>
+                  {ot.name}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+          <EntityViewField label={t('linkTypes.target')}>
+            <select
+              className="console-form-control"
+              value={targetId}
+              onChange={(e) => setTargetId(e.target.value)}
+            >
+              {objectTypes.map((ot) => (
+                <option key={ot.id} value={ot.id}>
+                  {ot.name}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+          <EntityViewField label={t('linkTypes.cardinality')}>
+            <select
+              className="console-form-control"
+              value={cardinality}
+              onChange={(e) => setCardinality(e.target.value)}
+            >
+              {CARDINALITY_OPTIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+          {(cardinality === 'many-to-one' || cardinality === 'one-to-many') && (
+            <>
+              <EntityViewField label={t('linkTypes.sourceKeyProperty')}>
+                <select
+                  className="console-form-control"
+                  value={sourceKeyProperty}
+                  onChange={(e) => setSourceKeyProperty(e.target.value)}
+                >
+                  <option value="">{t('objectTypes.none')}</option>
+                  {sourceProps.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </EntityViewField>
+              <EntityViewField label={t('linkTypes.targetKeyProperty')}>
+                <select
+                  className="console-form-control"
+                  value={targetKeyProperty}
+                  onChange={(e) => setTargetKeyProperty(e.target.value)}
+                >
+                  <option value="">{t('objectTypes.none')}</option>
+                  {targetProps.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </EntityViewField>
+            </>
+          )}
         </div>
-      </header>
-      <dl className="entity-view__dl">
-        <dt>{t('linkTypes.source')}</dt>
-        <dd>
-          {sourceOt ? (
-            <Link to={`/ontology-manager/object-types/${sourceOt.id}`}>{sourceOt.name}</Link>
-          ) : (
-            sourceId
-          )}
-        </dd>
-        <dt>{t('linkTypes.target')}</dt>
-        <dd>
-          {targetOt ? (
-            <Link to={`/ontology-manager/object-types/${targetOt.id}`}>{targetOt.name}</Link>
-          ) : (
-            targetId
-          )}
-        </dd>
-        <dt>{t('linkTypes.instances')}</dt>
-        <dd>{linkType.link_count}</dd>
-      </dl>
-      <div className="entity-view__form">
-        <label className="console-form-field">
-          <span>{t('linkTypes.name')}</span>
-          <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="console-form-field">
-          <span>{t('linkTypes.description')}</span>
-          <input
-            className="console-form-control"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </label>
-        <label className="console-form-field">
-          <span>{t('linkTypes.source')}</span>
-          <select
-            className="console-form-control"
-            value={sourceId}
-            onChange={(e) => setSourceId(e.target.value)}
-          >
-            {objectTypes.map((ot) => (
-              <option key={ot.id} value={ot.id}>
-                {ot.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="console-form-field">
-          <span>{t('linkTypes.target')}</span>
-          <select
-            className="console-form-control"
-            value={targetId}
-            onChange={(e) => setTargetId(e.target.value)}
-          >
-            {objectTypes.map((ot) => (
-              <option key={ot.id} value={ot.id}>
-                {ot.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="console-form-field">
-          <span>{t('linkTypes.cardinality')}</span>
-          <select
-            className="console-form-control"
-            value={cardinality}
-            onChange={(e) => setCardinality(e.target.value)}
-          >
-            {CARDINALITY_OPTIONS.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        {(cardinality === 'many-to-one' || cardinality === 'one-to-many') && (
-          <>
-            <label className="console-form-field">
-              <span>{t('linkTypes.sourceKeyProperty')}</span>
-              <select
-                className="console-form-control"
-                value={sourceKeyProperty}
-                onChange={(e) => setSourceKeyProperty(e.target.value)}
-              >
-                <option value="">{t('objectTypes.none')}</option>
-                {sourceProps.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="console-form-field">
-              <span>{t('linkTypes.targetKeyProperty')}</span>
-              <select
-                className="console-form-control"
-                value={targetKeyProperty}
-                onChange={(e) => setTargetKeyProperty(e.target.value)}
-              >
-                <option value="">{t('objectTypes.none')}</option>
-                {targetProps.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </>
-        )}
-      </div>
+      </EntityViewPanel>
     </>
   );
 }
@@ -421,78 +428,73 @@ export function LinkTypeDatasourcesTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('linkTypes.datasources')}</h1>
-          <p className="page-subtitle">{t('linkTypes.datasourcesHint')}</p>
-        </div>
-        <div className="entity-view__actions">
+      <EntityViewHeader
+        title={t('linkTypes.datasources')}
+        subtitle={t('linkTypes.datasourcesHint')}
+        actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
-        </div>
-      </header>
-      <div className="entity-view__form">
-        <label className="console-form-field">
-          <span>{t('linkTypes.junctionDataset')}</span>
-          <select
-            className="console-form-control"
-            value={datasetId}
-            onChange={(e) => setDatasetId(e.target.value)}
-            disabled={cardinality !== 'many-to-many'}
+        }
+      />
+      <EntityViewPanel>
+        <div className="entity-view__form">
+          <EntityViewField
+            label={t('linkTypes.junctionDataset')}
+            hint={cardinality !== 'many-to-many' ? t('linkTypes.datasetOnlyM2M') : undefined}
           >
-            <option value="">{t('objectTypes.none')}</option>
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.display_name || `${d.schema_name}.${d.table_name}`}
-              </option>
-            ))}
-          </select>
-          {cardinality !== 'many-to-many' ? (
-            <span className="console-modal-hint console-modal-hint--block">
-              {t('linkTypes.datasetOnlyM2M')}
-            </span>
+            <select
+              className="console-form-control"
+              value={datasetId}
+              onChange={(e) => setDatasetId(e.target.value)}
+              disabled={cardinality !== 'many-to-many'}
+            >
+              <option value="">{t('objectTypes.none')}</option>
+              {datasets.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+          {cardinality === 'many-to-many' && datasetId ? (
+            <>
+              <EntityViewField label={t('linkTypes.sourceDatasetColumn')}>
+                <select
+                  className="console-form-control"
+                  value={sourceDatasetColumn}
+                  onChange={(e) => setSourceDatasetColumn(e.target.value)}
+                >
+                  <option value="">{t('objectTypes.none')}</option>
+                  {datasetColumns.map((c) => (
+                    <option key={c.column_name} value={c.column_name}>
+                      {c.column_name}
+                    </option>
+                  ))}
+                </select>
+              </EntityViewField>
+              <EntityViewField label={t('linkTypes.targetDatasetColumn')}>
+                <select
+                  className="console-form-control"
+                  value={targetDatasetColumn}
+                  onChange={(e) => setTargetDatasetColumn(e.target.value)}
+                >
+                  <option value="">{t('objectTypes.none')}</option>
+                  {datasetColumns.map((c) => (
+                    <option key={c.column_name} value={c.column_name}>
+                      {c.column_name}
+                    </option>
+                  ))}
+                </select>
+              </EntityViewField>
+              <p className="entity-view__field-hint">
+                <Link to={`/ontology-manager/datasets/${datasetId}`}>{t('objectTypes.openDataset')}</Link>
+              </p>
+            </>
           ) : null}
-        </label>
-        {cardinality === 'many-to-many' && datasetId ? (
-          <>
-            <label className="console-form-field">
-              <span>{t('linkTypes.sourceDatasetColumn')}</span>
-              <select
-                className="console-form-control"
-                value={sourceDatasetColumn}
-                onChange={(e) => setSourceDatasetColumn(e.target.value)}
-              >
-                <option value="">{t('objectTypes.none')}</option>
-                {datasetColumns.map((c) => (
-                  <option key={c.column_name} value={c.column_name}>
-                    {c.column_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="console-form-field">
-              <span>{t('linkTypes.targetDatasetColumn')}</span>
-              <select
-                className="console-form-control"
-                value={targetDatasetColumn}
-                onChange={(e) => setTargetDatasetColumn(e.target.value)}
-              >
-                <option value="">{t('objectTypes.none')}</option>
-                {datasetColumns.map((c) => (
-                  <option key={c.column_name} value={c.column_name}>
-                    {c.column_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="console-modal-hint">
-              <Link to={`/ontology-manager/datasets/${datasetId}`}>{t('objectTypes.openDataset')}</Link>
-            </p>
-          </>
-        ) : null}
-      </div>
+        </div>
+      </EntityViewPanel>
     </>
   );
 }
@@ -503,19 +505,16 @@ export function LinkTypeSharingTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('linkTypes.sharing')}</h1>
-          <p className="page-subtitle">{t('linkTypes.sharingHint')}</p>
-        </div>
-      </header>
-      {linkTypeId ? (
-        <ResourceSharePanel
-          resourceType={RESOURCE_TYPES.linkType}
-          resourceId={linkTypeId}
-          title={t('linkTypes.sharing')}
-        />
-      ) : null}
+      <EntityViewHeader title={t('linkTypes.sharing')} subtitle={t('linkTypes.sharingHint')} />
+      <EntityViewPanel>
+        {linkTypeId ? (
+          <ResourceSharePanel
+            resourceType={RESOURCE_TYPES.linkType}
+            resourceId={linkTypeId}
+            title={t('linkTypes.sharing')}
+          />
+        ) : null}
+      </EntityViewPanel>
     </>
   );
 }

@@ -11,7 +11,14 @@ import {
   type OntologyFunctionExecutionResponse,
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
-import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
+import {
+  EntityViewHeader,
+  EntityViewLoading,
+  EntityViewPanel,
+  EntityViewShell,
+  EntityViewStat,
+  EntityViewStats,
+} from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
 type FunctionDetailContext = {
@@ -105,6 +112,7 @@ export function FunctionDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/functions"
         backLabel={t('functions.backToList')}
+        kind={t('functions.kind')}
         title={fn.display_name}
         meta={fn.api_name}
         navItems={[
@@ -124,35 +132,34 @@ export function FunctionOverviewTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('functions.overview')}</h1>
-          <p className="page-subtitle">{fn.description || t('functions.noDescription')}</p>
-        </div>
-        <div className="entity-view__actions">
-          <Link to={`/function-editor/${fn.id}`} className="btn btn-secondary">
-            <ExternalLink size={16} aria-hidden />
-            {t('functions.openInEditor')}
-          </Link>
-          <button type="button" className="btn btn-primary" onClick={() => void onPublish()} disabled={publishing}>
-            <Upload size={16} aria-hidden />
-            {publishing ? t('shared.saving') : t('functions.publish')}
+      <EntityViewHeader
+        title={t('functions.overview')}
+        subtitle={fn.description || t('functions.noDescription')}
+        actions={
+          <>
+            <Link to={`/function-editor/${fn.id}`} className="btn btn-secondary">
+              <ExternalLink size={16} aria-hidden />
+              {t('functions.openInEditor')}
+            </Link>
+            <button type="button" className="btn btn-primary" onClick={() => void onPublish()} disabled={publishing}>
+              <Upload size={16} aria-hidden />
+              {publishing ? t('shared.saving') : t('functions.publish')}
+            </button>
+          </>
+        }
+      />
+      <EntityViewStats>
+        <EntityViewStat label={t('functions.publishedVersion')} value={fn.published_version ?? '—'} />
+        <EntityViewStat label={t('functions.latestVersion')} value={fn.latest_version ?? '—'} />
+        <EntityViewStat label={t('functions.developmentStatus')} value={fn.development_status} />
+      </EntityViewStats>
+      {fn.published_version_id ? (
+        <EntityViewPanel title={t('functions.versions')}>
+          <button type="button" className="btn btn-secondary" onClick={() => void onTestPublished()}>
+            {t('functions.testPublished')}
           </button>
-        </div>
-      </header>
-      <dl className="entity-view__dl">
-        <dt>{t('functions.publishedVersion')}</dt>
-        <dd>{fn.published_version ?? '—'}</dd>
-        <dt>{t('functions.latestVersion')}</dt>
-        <dd>{fn.latest_version ?? '—'}</dd>
-        <dt>{t('functions.developmentStatus')}</dt>
-        <dd>{fn.development_status}</dd>
-      </dl>
-      {fn.published_version_id && (
-        <button type="button" className="btn btn-secondary" onClick={() => void onTestPublished()}>
-          {t('functions.testPublished')}
-        </button>
-      )}
+        </EntityViewPanel>
+      ) : null}
     </>
   );
 }
@@ -162,45 +169,47 @@ export function FunctionObservabilityTab() {
   const { executions } = useFunctionDetail();
 
   return (
-    <section className="entity-view__section" style={{ marginTop: 0 }}>
-      <header className="page-header">
-        <div>
-          <h1>{t('functions.observability')}</h1>
-          <p className="page-subtitle">{t('functions.recentExecutions')}</p>
-        </div>
-      </header>
-      <div className="ds-table-wrap">
-        <table className="console-table">
-          <thead>
-            <tr>
-              <th>{t('functions.execStatus')}</th>
-              <th>{t('functions.execDuration')}</th>
-              <th>{t('functions.execTime')}</th>
-              <th>{t('functions.execError')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {executions.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="console-table-empty">
-                  {t('functions.noExecutions')}
-                </td>
-              </tr>
-            ) : (
-              executions.map((ex) => (
-                <tr key={ex.id}>
-                  <td>{ex.status}</td>
-                  <td className="console-table-muted">
-                    {ex.duration_ms != null ? `${ex.duration_ms}ms` : '—'}
-                  </td>
-                  <td className="console-table-muted">{new Date(ex.created_at).toLocaleString()}</td>
-                  <td className="console-table-muted">{ex.error_message || '—'}</td>
+    <>
+      <EntityViewHeader
+        title={t('functions.observability')}
+        subtitle={t('functions.recentExecutions')}
+      />
+      <EntityViewPanel>
+        <div className="entity-view__embedded-table">
+          <div className="ds-table-wrap ds-table-wrap--flush">
+            <table className="console-table">
+              <thead>
+                <tr>
+                  <th>{t('functions.execStatus')}</th>
+                  <th>{t('functions.execDuration')}</th>
+                  <th>{t('functions.execTime')}</th>
+                  <th>{t('functions.execError')}</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+              </thead>
+              <tbody>
+                {executions.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="console-table-empty">
+                      {t('functions.noExecutions')}
+                    </td>
+                  </tr>
+                ) : (
+                  executions.map((ex) => (
+                    <tr key={ex.id}>
+                      <td>{ex.status}</td>
+                      <td className="console-table-muted">
+                        {ex.duration_ms != null ? `${ex.duration_ms}ms` : '—'}
+                      </td>
+                      <td className="console-table-muted">{new Date(ex.created_at).toLocaleString()}</td>
+                      <td className="console-table-muted">{ex.error_message || '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </EntityViewPanel>
+    </>
   );
 }

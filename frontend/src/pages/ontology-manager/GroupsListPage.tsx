@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Plus, Loader2 } from 'lucide-react';
+import { FolderKanban, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '../../styles/design-system';
 import { createOntologyGroup, fetchOntologyGroups, type OntologyGroupResponse } from '../../data/ontologyFunctionsApi';
 import '../ontology/ontology-admin.scss';
 
@@ -52,13 +53,24 @@ export function GroupsListPage() {
       </header>
 
       <div className="ontology-admin-content">
-        <div className="ds-table-wrap">
-          {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-              <p>{t('shared.loading')}</p>
-            </div>
-          ) : (
+        {loading ? (
+          <div className="console-loading">
+            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+            <p>{t('shared.loading')}</p>
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={<FolderKanban size={32} aria-hidden />}
+            title={t('groups.emptyList')}
+            action={
+              <button type="button" className="btn btn-primary" onClick={() => void onCreate()}>
+                <Plus size={16} aria-hidden />
+                {t('groups.create')}
+              </button>
+            }
+          />
+        ) : (
+          <div className="ds-table-wrap">
             <table className="console-table">
               <thead>
                 <tr>
@@ -67,31 +79,20 @@ export function GroupsListPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={2} className="console-table-empty">
-                      {t('groups.emptyList')}{' '}
-                      <button type="button" className="btn btn-link" onClick={() => void onCreate()}>
-                        {t('groups.create')}
-                      </button>
+                {items.map((g) => (
+                  <tr key={g.id}>
+                    <td>
+                      <Link to={`/ontology-manager/groups/${g.id}`} className="ontology-manager-list__api-link">
+                        {g.display_name}
+                      </Link>
                     </td>
+                    <td className="console-table-muted">{g.object_type_ids.length}</td>
                   </tr>
-                ) : (
-                  items.map((g) => (
-                    <tr key={g.id}>
-                      <td>
-                        <Link to={`/ontology-manager/groups/${g.id}`} className="ontology-manager-list__api-link">
-                          {g.display_name}
-                        </Link>
-                      </td>
-                      <td className="console-table-muted">{g.object_type_ids.length}</td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

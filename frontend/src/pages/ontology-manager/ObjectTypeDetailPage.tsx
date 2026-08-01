@@ -37,7 +37,16 @@ import {
   toPropertyDefs,
   type FormProperty,
 } from './objectTypeFormParts';
-import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
+import {
+  EntityViewCheck,
+  EntityViewField,
+  EntityViewHeader,
+  EntityViewLoading,
+  EntityViewPanel,
+  EntityViewShell,
+  EntityViewStat,
+  EntityViewStats,
+} from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
 type ObjectTypeDetailContext = {
@@ -327,6 +336,7 @@ export function ObjectTypeDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/object-types"
         backLabel={t('objectTypes.backToList')}
+        kind={t('objectTypes.kind')}
         title={objectType.name}
         meta={t('objectTypes.instanceCount', { count: objectType.instance_count })}
         navItems={[
@@ -369,99 +379,105 @@ export function ObjectTypeOverviewTab() {
     if (!neo4jId && neo4jDataSources[0]) setNeo4jId(neo4jDataSources[0].id);
   }, [neo4jId, neo4jDataSources]);
 
+  const relatedLinksValue =
+    relatedLinks.length === 0
+      ? '—'
+      : relatedLinks.map((lt, i) => (
+          <span key={lt.id}>
+            {i > 0 ? ', ' : ''}
+            <Link to={`/ontology-manager/link-types/${lt.id}`}>{lt.name}</Link>
+          </span>
+        ));
+  const relatedActionsValue =
+    relatedActions.length === 0
+      ? '—'
+      : relatedActions.map((a, i) => (
+          <span key={a.id}>
+            {i > 0 ? ', ' : ''}
+            <Link to={`/ontology-manager/actions/${a.id}`}>{a.display_name}</Link>
+          </span>
+        ));
+
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('objectTypes.overview')}</h1>
-          <p className="page-subtitle">{objectType.description || t('objectTypes.noDescription')}</p>
-        </div>
-        <div className="entity-view__actions">
-          <Link to={`/object-explorer/objects/${objectType.id}`} className="btn btn-secondary">
-            <ExternalLink size={16} aria-hidden />
-            {t('objectTypes.openInExplorer')}
-          </Link>
-          <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
-            <Save size={16} aria-hidden />
-            {saving ? t('shared.saving') : t('shared.save')}
-          </button>
-        </div>
-      </header>
-      <dl className="entity-view__dl">
-        <dt>{t('objectTypes.dataset')}</dt>
-        <dd>{objectType.dataset_name || '—'}</dd>
-        <dt>{t('objectTypes.properties')}</dt>
-        <dd>{(objectType.properties || []).length}</dd>
-        <dt>{t('objectTypes.instances')}</dt>
-        <dd>{objectType.instance_count}</dd>
-        <dt>{t('objectTypes.relatedLinkTypes')}</dt>
-        <dd>
-          {relatedLinks.length === 0
-            ? '—'
-            : relatedLinks.map((lt, i) => (
-                <span key={lt.id}>
-                  {i > 0 ? ', ' : ''}
-                  <Link to={`/ontology-manager/link-types/${lt.id}`}>{lt.name}</Link>
-                </span>
-              ))}
-        </dd>
-        <dt>{t('objectTypes.relatedActions')}</dt>
-        <dd>
-          {relatedActions.length === 0
-            ? '—'
-            : relatedActions.map((a, i) => (
-                <span key={a.id}>
-                  {i > 0 ? ', ' : ''}
-                  <Link to={`/ontology-manager/actions/${a.id}`}>{a.display_name}</Link>
-                </span>
-              ))}
-        </dd>
-      </dl>
-      <div className="entity-view__form">
-        <label className="console-form-field">
-          <span>{t('objectTypes.name')}</span>
-          <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="console-form-field">
-          <span>{t('objectTypes.description')}</span>
-          <input
-            className="console-form-control"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </label>
-        <label className="console-form-field console-modal-checkbox-row">
-          <input
-            type="checkbox"
+      <EntityViewHeader
+        title={t('objectTypes.overview')}
+        subtitle={objectType.description || t('objectTypes.noDescription')}
+        actions={
+          <>
+            <Link to={`/object-explorer/objects/${objectType.id}`} className="btn btn-secondary">
+              <ExternalLink size={16} aria-hidden />
+              {t('objectTypes.openInExplorer')}
+            </Link>
+            <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
+              <Save size={16} aria-hidden />
+              {saving ? t('shared.saving') : t('shared.save')}
+            </button>
+          </>
+        }
+      />
+      <EntityViewStats>
+        <EntityViewStat label={t('objectTypes.dataset')} value={objectType.dataset_name || '—'} />
+        <EntityViewStat label={t('objectTypes.properties')} value={(objectType.properties || []).length} />
+        <EntityViewStat label={t('objectTypes.instances')} value={objectType.instance_count} />
+        <EntityViewStat label={t('objectTypes.relatedLinkTypes')} value={relatedLinksValue} />
+        <EntityViewStat label={t('objectTypes.relatedActions')} value={relatedActionsValue} />
+      </EntityViewStats>
+      <EntityViewPanel title={t('objectTypes.general')} description={t('objectTypes.generalHint')}>
+        <div className="entity-view__form">
+          <EntityViewField label={t('objectTypes.name')}>
+            <input className="console-form-control" value={name} onChange={(e) => setName(e.target.value)} />
+          </EntityViewField>
+          <EntityViewField label={t('objectTypes.description')}>
+            <textarea
+              className="console-form-control"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </EntityViewField>
+          <EntityViewCheck
             checked={isMasterData}
-            onChange={(e) => setIsMasterData(e.target.checked)}
+            onChange={setIsMasterData}
+            title={t('objectTypes.masterData')}
+            hint={t('objectTypes.masterDataHint')}
           />
-          <span>{t('objectTypes.masterData')}</span>
-        </label>
-        <label className="console-form-field">
-          <span>{t('objectTypes.displayProperty')}</span>
-          <select
-            className="console-form-control"
-            value={displayProperty}
-            onChange={(e) => setDisplayProperty(e.target.value)}
-          >
-            <option value="">{t('objectTypes.none')}</option>
-            {properties
-              .filter((p) => p.name.trim() && p.enabled !== false)
-              .map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-          </select>
-        </label>
-      </div>
+          <EntityViewField label={t('objectTypes.displayProperty')}>
+            <select
+              className="console-form-control"
+              value={displayProperty}
+              onChange={(e) => setDisplayProperty(e.target.value)}
+            >
+              <option value="">{t('objectTypes.none')}</option>
+              {properties
+                .filter((p) => p.name.trim() && p.enabled !== false)
+                .map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </EntityViewField>
+        </div>
+      </EntityViewPanel>
       {(objectType.dataset_id || objectType.instance_count > 0) && neo4jDataSources.length > 0 ? (
-        <section className="entity-view__section">
-          <h3>{t('objectTypes.indexHeading')}</h3>
+        <EntityViewPanel
+          title={t('objectTypes.indexHeading')}
+          description={t('objectTypes.indexHint')}
+          footer={
+            <button
+              type="button"
+              className="btn btn-secondary"
+              disabled={!neo4jId || indexing}
+              onClick={() => void onIndex(neo4jId)}
+            >
+              <Database size={16} aria-hidden />
+              {indexing ? t('objectTypes.indexing') : t('objectTypes.index')}
+            </button>
+          }
+        >
           <div className="entity-view__form">
-            <label className="console-form-field">
-              <span>{t('objectTypes.neo4jSource')}</span>
+            <EntityViewField label={t('objectTypes.neo4jSource')}>
               <select
                 className="console-form-control"
                 value={neo4jId}
@@ -474,18 +490,9 @@ export function ObjectTypeOverviewTab() {
                   </option>
                 ))}
               </select>
-            </label>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              disabled={!neo4jId || indexing}
-              onClick={() => void onIndex(neo4jId)}
-            >
-              <Database size={16} aria-hidden />
-              {indexing ? t('objectTypes.indexing') : t('objectTypes.index')}
-            </button>
+            </EntityViewField>
           </div>
-        </section>
+        </EntityViewPanel>
       ) : null}
     </>
   );
@@ -506,53 +513,53 @@ export function ObjectTypePropertiesTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('objectTypes.properties')}</h1>
-          <p className="page-subtitle">{t('objectTypes.propertiesTabHint')}</p>
-        </div>
-        <div className="entity-view__actions">
+      <EntityViewHeader
+        title={t('objectTypes.properties')}
+        subtitle={t('objectTypes.propertiesTabHint')}
+        actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
-        </div>
-      </header>
-      <PropertiesEditor
-        properties={properties}
-        fromDataset={!!datasetId}
-        nameTypeReadOnly={!!datasetId}
-        keyProperty={keyProperty}
-        loadingMetadata={loadingMetadata}
-        onAdd={
-          datasetId
-            ? undefined
-            : () =>
-                setProperties((prev) => [
-                  ...prev,
-                  { name: '', type: 'string', required: false, enabled: true },
-                ])
         }
-        onChange={(idx, p) =>
-          setProperties((prev) => {
-            const next = [...prev];
-            next[idx] = p;
-            return next;
-          })
-        }
-        onRemove={(idx) => setProperties((prev) => prev.filter((_, i) => i !== idx))}
-        onToggleEnabled={
-          datasetId
-            ? (idx, enabled) =>
-                setProperties((prev) => {
-                  const next = [...prev];
-                  next[idx] = { ...next[idx], enabled };
-                  return next;
-                })
-            : undefined
-        }
-        onKeyPropertyChange={setKeyProperty}
       />
+      <EntityViewPanel>
+        <PropertiesEditor
+          properties={properties}
+          fromDataset={!!datasetId}
+          nameTypeReadOnly={!!datasetId}
+          keyProperty={keyProperty}
+          loadingMetadata={loadingMetadata}
+          onAdd={
+            datasetId
+              ? undefined
+              : () =>
+                  setProperties((prev) => [
+                    ...prev,
+                    { name: '', type: 'string', required: false, enabled: true },
+                  ])
+          }
+          onChange={(idx, p) =>
+            setProperties((prev) => {
+              const next = [...prev];
+              next[idx] = p;
+              return next;
+            })
+          }
+          onRemove={(idx) => setProperties((prev) => prev.filter((_, i) => i !== idx))}
+          onToggleEnabled={
+            datasetId
+              ? (idx, enabled) =>
+                  setProperties((prev) => {
+                    const next = [...prev];
+                    next[idx] = { ...next[idx], enabled };
+                    return next;
+                  })
+              : undefined
+          }
+          onKeyPropertyChange={setKeyProperty}
+        />
+      </EntityViewPanel>
     </>
   );
 }
@@ -563,41 +570,40 @@ export function ObjectTypeDatasourcesTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('objectTypes.datasources')}</h1>
-          <p className="page-subtitle">{t('objectTypes.datasourcesHint')}</p>
-        </div>
-        <div className="entity-view__actions">
+      <EntityViewHeader
+        title={t('objectTypes.datasources')}
+        subtitle={t('objectTypes.datasourcesHint')}
+        actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
+        }
+      />
+      <EntityViewPanel>
+        <div className="entity-view__form">
+          <EntityViewField label={t('objectTypes.dataset')}>
+            <select
+              className="console-form-control"
+              value={datasetId}
+              onChange={(e) => setDatasetId(e.target.value)}
+            >
+              <option value="">{t('objectTypes.none')}</option>
+              {datasets.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.display_name || `${d.schema_name}.${d.table_name}`}
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+          {datasetId ? (
+            <p className="entity-view__field-hint">
+              <Link to={`/ontology-manager/datasets/${datasetId}`}>{t('objectTypes.openDataset')}</Link>
+              {objectType.dataset_name ? ` — ${objectType.dataset_name}` : null}
+            </p>
+          ) : null}
         </div>
-      </header>
-      <div className="entity-view__form">
-        <label className="console-form-field">
-          <span>{t('objectTypes.dataset')}</span>
-          <select
-            className="console-form-control"
-            value={datasetId}
-            onChange={(e) => setDatasetId(e.target.value)}
-          >
-            <option value="">{t('objectTypes.none')}</option>
-            {datasets.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.display_name || `${d.schema_name}.${d.table_name}`}
-              </option>
-            ))}
-          </select>
-        </label>
-        {datasetId ? (
-          <p className="console-modal-hint">
-            <Link to={`/ontology-manager/datasets/${datasetId}`}>{t('objectTypes.openDataset')}</Link>
-            {objectType.dataset_name ? ` — ${objectType.dataset_name}` : null}
-          </p>
-        ) : null}
-      </div>
+      </EntityViewPanel>
     </>
   );
 }
@@ -608,19 +614,16 @@ export function ObjectTypeSharingTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('objectTypes.sharing')}</h1>
-          <p className="page-subtitle">{t('objectTypes.sharingHint')}</p>
-        </div>
-      </header>
-      {typeId ? (
-        <ResourceSharePanel
-          resourceType={RESOURCE_TYPES.objectType}
-          resourceId={typeId}
-          title={t('objectTypes.sharing')}
-        />
-      ) : null}
+      <EntityViewHeader title={t('objectTypes.sharing')} subtitle={t('objectTypes.sharingHint')} />
+      <EntityViewPanel>
+        {typeId ? (
+          <ResourceSharePanel
+            resourceType={RESOURCE_TYPES.objectType}
+            resourceId={typeId}
+            title={t('objectTypes.sharing')}
+          />
+        ) : null}
+      </EntityViewPanel>
     </>
   );
 }

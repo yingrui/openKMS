@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Database, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Database, Users, Link2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { EmptyState } from '../../styles/design-system';
 import {
   fetchLinkTypes,
   fetchObjectTypes,
@@ -259,35 +260,44 @@ export function LinkTypesPage() {
       </div>
 
       <div className="ontology-admin-content">
-        <div className="ds-table-wrap">
-          {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" />
-              <p>Loading…</p>
-            </div>
-          ) : (
+        {loading ? (
+          <div className="console-loading">
+            <Loader2 size={32} className="console-loading-spinner" />
+            <p>{t('shared.loading')}</p>
+          </div>
+        ) : linkTypes.length === 0 ? (
+          <EmptyState
+            icon={<Link2 size={32} aria-hidden />}
+            title={t('linkTypes.emptyList')}
+            action={
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
+                disabled={objectTypes.length < 2}
+              >
+                <Plus size={16} aria-hidden />
+                {t('linkTypes.create')}
+              </button>
+            }
+          />
+        ) : (
+          <div className="ds-table-wrap">
             <table className="console-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Source → Target</th>
-                <th>FK</th>
-                <th>Cardinality</th>
-                <th>Dataset (M:M)</th>
-                <th>Links</th>
-                <th className="console-table-actions">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {linkTypes.length === 0 ? (
+              <thead>
                 <tr>
-                  <td colSpan={8} className="console-table-empty">
-                    {t('linkTypes.emptyList')}
-                  </td>
+                  <th>{t('linkTypes.name')}</th>
+                  <th>{t('linkTypes.description')}</th>
+                  <th>{t('linkTypes.relationship')}</th>
+                  <th>FK</th>
+                  <th>{t('linkTypes.cardinality')}</th>
+                  <th>{t('linkTypes.junctionDataset')}</th>
+                  <th>{t('linkTypes.instances')}</th>
+                  <th className="console-table-actions">{t('shared.actions')}</th>
                 </tr>
-              ) : (
-                linkTypes.map((row) => (
+              </thead>
+              <tbody>
+                {linkTypes.map((row) => (
                   <tr key={row.id}>
                     <td>
                       <Link
@@ -353,12 +363,11 @@ export function LinkTypesPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {showForm && (

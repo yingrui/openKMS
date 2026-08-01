@@ -13,7 +13,15 @@ import {
   type OntologyActionTypeResponse,
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
-import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
+import {
+  EntityViewField,
+  EntityViewHeader,
+  EntityViewLoading,
+  EntityViewPanel,
+  EntityViewShell,
+  EntityViewStat,
+  EntityViewStats,
+} from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
 
 type ActionDetailContext = {
@@ -160,6 +168,7 @@ export function ActionDetailPage() {
       <EntityViewShell
         backTo="/ontology-manager/actions"
         backLabel={t('actions.backToList')}
+        kind={t('actions.kind')}
         title={action.display_name}
         meta={action.api_name}
         navItems={[
@@ -191,51 +200,46 @@ export function ActionOverviewTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('actions.overview')}</h1>
-          <p className="page-subtitle">{action.description || t('actions.noDescription')}</p>
-        </div>
-        <div className="entity-view__actions">
+      <EntityViewHeader
+        title={t('actions.overview')}
+        subtitle={action.description || t('actions.noDescription')}
+        actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
+        }
+      />
+      <EntityViewStats>
+        <EntityViewStat label={t('actions.apiName')} value={action.api_name} />
+        <EntityViewStat label={t('actions.objectType')} value={objectTypeName} />
+        <EntityViewStat label={t('actions.ruleType')} value={action.rule_type} />
+      </EntityViewStats>
+      <EntityViewPanel title={t('actions.general')} description={t('actions.generalHint')}>
+        <div className="entity-view__form">
+          <EntityViewField label={t('actions.displayName')}>
+            <input
+              className="console-form-control"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('actions.description')}>
+            <textarea
+              className="console-form-control"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+            />
+          </EntityViewField>
+          <EntityViewField label={t('actions.status')}>
+            <select className="console-form-control" value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="active">{t('actions.statusActive')}</option>
+              <option value="inactive">{t('actions.statusInactive')}</option>
+            </select>
+          </EntityViewField>
         </div>
-      </header>
-      <dl className="entity-view__dl">
-        <dt>{t('actions.apiName')}</dt>
-        <dd className="ontology-manager-list__api-link">{action.api_name}</dd>
-        <dt>{t('actions.objectType')}</dt>
-        <dd>{objectTypeName}</dd>
-        <dt>{t('actions.ruleType')}</dt>
-        <dd>{action.rule_type}</dd>
-      </dl>
-      <div className="entity-view__form">
-        <label className="console-form-field">
-          <span>{t('actions.displayName')}</span>
-          <input
-            className="console-form-control"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-          />
-        </label>
-        <label className="console-form-field">
-          <span>{t('actions.description')}</span>
-          <input
-            className="console-form-control"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </label>
-        <label className="console-form-field">
-          <span>{t('actions.status')}</span>
-          <select className="console-form-control" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="active">{t('actions.statusActive')}</option>
-            <option value="inactive">{t('actions.statusInactive')}</option>
-          </select>
-        </label>
-      </div>
+      </EntityViewPanel>
     </>
   );
 }
@@ -253,42 +257,40 @@ export function ActionRulesTab() {
 
   return (
     <>
-      <header className="page-header">
-        <div>
-          <h1>{t('actions.rules')}</h1>
-          <p className="page-subtitle">{t('actions.rulesSubtitle')}</p>
-        </div>
-        <div className="entity-view__actions">
+      <EntityViewHeader
+        title={t('actions.rules')}
+        subtitle={t('actions.rulesSubtitle')}
+        actions={
           <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
             <Save size={16} aria-hidden />
             {saving ? t('shared.saving') : t('shared.save')}
           </button>
-        </div>
-      </header>
-      <dl className="entity-view__dl">
-        <dt>{t('actions.ruleType')}</dt>
-        <dd>{action.rule_type}</dd>
-      </dl>
-      <div className="entity-view__form">
-        <label className="console-form-field">
-          <span>{t('actions.function')}</span>
-          <select
-            className="console-form-control"
-            value={functionId}
-            onChange={(e) => setFunctionId(e.target.value)}
+        }
+      />
+      <EntityViewStats>
+        <EntityViewStat label={t('actions.ruleType')} value={action.rule_type} />
+      </EntityViewStats>
+      <EntityViewPanel>
+        <div className="entity-view__form">
+          <EntityViewField
+            label={t('actions.function')}
+            hint={publishedFunctions.length === 0 ? t('actions.publishFirstHint') : undefined}
           >
-            <option value="">{t('actions.noFunction')}</option>
-            {publishedFunctions.map((fn) => (
-              <option key={fn.id} value={fn.id}>
-                {fn.api_name} (v{fn.published_version})
-              </option>
-            ))}
-          </select>
-        </label>
-        {publishedFunctions.length === 0 ? (
-          <p className="console-modal-hint">{t('actions.publishFirstHint')}</p>
-        ) : null}
-      </div>
+            <select
+              className="console-form-control"
+              value={functionId}
+              onChange={(e) => setFunctionId(e.target.value)}
+            >
+              <option value="">{t('actions.noFunction')}</option>
+              {publishedFunctions.map((fn) => (
+                <option key={fn.id} value={fn.id}>
+                  {fn.api_name} (v{fn.published_version})
+                </option>
+              ))}
+            </select>
+          </EntityViewField>
+        </div>
+      </EntityViewPanel>
     </>
   );
 }
@@ -298,43 +300,42 @@ export function ActionLogTab() {
   const { logs } = useActionDetail();
 
   return (
-    <section className="entity-view__section" style={{ marginTop: 0 }}>
-      <header className="page-header">
-        <div>
-          <h1>{t('actions.log')}</h1>
-          <p className="page-subtitle">{t('actions.recentLogs')}</p>
-        </div>
-      </header>
-      <div className="ds-table-wrap">
-        <table className="console-table">
-          <thead>
-            <tr>
-              <th>{t('actions.logObject')}</th>
-              <th>{t('functions.execStatus')}</th>
-              <th>{t('functions.execTime')}</th>
-              <th>{t('actions.logError')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="console-table-empty">
-                  {t('actions.noLogs')}
-                </td>
-              </tr>
-            ) : (
-              logs.map((log) => (
-                <tr key={log.id}>
-                  <td className="console-table-muted">{log.object_id ?? '—'}</td>
-                  <td>{log.status}</td>
-                  <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
-                  <td className="console-table-muted">{log.error_message ?? '—'}</td>
+    <>
+      <EntityViewHeader title={t('actions.log')} subtitle={t('actions.recentLogs')} />
+      <EntityViewPanel>
+        <div className="entity-view__embedded-table">
+          <div className="ds-table-wrap ds-table-wrap--flush">
+            <table className="console-table">
+              <thead>
+                <tr>
+                  <th>{t('actions.logObject')}</th>
+                  <th>{t('functions.execStatus')}</th>
+                  <th>{t('functions.execTime')}</th>
+                  <th>{t('actions.logError')}</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+              </thead>
+              <tbody>
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="console-table-empty">
+                      {t('actions.noLogs')}
+                    </td>
+                  </tr>
+                ) : (
+                  logs.map((log) => (
+                    <tr key={log.id}>
+                      <td className="console-table-muted">{log.object_id ?? '—'}</td>
+                      <td>{log.status}</td>
+                      <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
+                      <td className="console-table-muted">{log.error_message ?? '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </EntityViewPanel>
+    </>
   );
 }

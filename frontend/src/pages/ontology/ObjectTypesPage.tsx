@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Loader2, Database, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Loader2, Database, Users, Box } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { EmptyState } from '../../styles/design-system';
 import {
   fetchObjectTypes,
   createObjectType,
@@ -227,35 +228,39 @@ export function ObjectTypesPage() {
       </div>
 
       <div className="ontology-admin-content">
-        <div className="ds-table-wrap">
-          {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" />
-              <p>Loading…</p>
-            </div>
-          ) : (
+        {loading ? (
+          <div className="console-loading">
+            <Loader2 size={32} className="console-loading-spinner" />
+            <p>{t('shared.loading')}</p>
+          </div>
+        ) : types.length === 0 ? (
+          <EmptyState
+            icon={<Box size={32} aria-hidden />}
+            title={t('objectTypes.emptyList')}
+            action={
+              <button type="button" className="btn btn-primary" onClick={openCreate}>
+                <Plus size={16} aria-hidden />
+                {t('objectTypes.create')}
+              </button>
+            }
+          />
+        ) : (
+          <div className="ds-table-wrap">
             <table className="console-table">
-            <thead>
-              <tr>
-                <th>{t('objectTypes.name')}</th>
-                <th>{t('objectTypes.description')}</th>
-                <th>{t('objectTypes.dataset')}</th>
-                <th>{t('objectTypes.masterData')}</th>
-                <th>{t('objectTypes.displayProperty')}</th>
-                <th>{t('objectTypes.properties')}</th>
-                <th>{t('objectTypes.instances')}</th>
-                <th className="console-table-actions">{t('shared.actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {types.length === 0 ? (
+              <thead>
                 <tr>
-                  <td colSpan={8} className="console-table-empty">
-                    {t('objectTypes.emptyList')}
-                  </td>
+                  <th>{t('objectTypes.name')}</th>
+                  <th>{t('objectTypes.description')}</th>
+                  <th>{t('objectTypes.dataset')}</th>
+                  <th>{t('objectTypes.masterData')}</th>
+                  <th>{t('objectTypes.displayProperty')}</th>
+                  <th>{t('objectTypes.properties')}</th>
+                  <th>{t('objectTypes.instances')}</th>
+                  <th className="console-table-actions">{t('shared.actions')}</th>
                 </tr>
-              ) : (
-                types.map((row) => (
+              </thead>
+              <tbody>
+                {types.map((row) => (
                   <tr key={row.id}>
                     <td>
                       <Link
@@ -315,12 +320,11 @@ export function ObjectTypesPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {showForm && (

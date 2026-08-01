@@ -16,6 +16,13 @@
     opacity: 0.55;
     pointer-events: none;
   }
+
+  /** Drop chrome when nested inside an outer card (e.g. account-card). */
+  &--flush {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 // Alias kept for resource-list pages that already use the design-system name.

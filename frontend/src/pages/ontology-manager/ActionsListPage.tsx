@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, X, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '../../styles/design-system';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
   createOntologyActionType,
@@ -146,13 +147,25 @@ export function ActionsListPage() {
       </header>
 
       <div className="ontology-admin-content">
-        <div className="ds-table-wrap">
-          {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-              <p>{t('shared.loading')}</p>
-            </div>
-          ) : (
+        {loading ? (
+          <div className="console-loading">
+            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+            <p>{t('shared.loading')}</p>
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={<Zap size={32} aria-hidden />}
+            title={t('actions.emptyList')}
+            description={t('actions.createHint')}
+            action={
+              <button type="button" className="btn btn-primary" onClick={openCreate}>
+                <Plus size={16} aria-hidden />
+                {t('actions.create')}
+              </button>
+            }
+          />
+        ) : (
+          <div className="ds-table-wrap">
             <table className="console-table">
               <thead>
                 <tr>
@@ -165,54 +178,43 @@ export function ActionsListPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="console-table-empty">
-                      {t('actions.emptyList')}{' '}
-                      <button type="button" className="btn btn-link" onClick={openCreate}>
-                        {t('actions.create')}
-                      </button>
+                {items.map((action) => (
+                  <tr key={action.id}>
+                    <td>
+                      <Link to={`/ontology-manager/actions/${action.id}`} className="ontology-manager-list__api-link">
+                        {action.api_name}
+                      </Link>
+                    </td>
+                    <td>{action.display_name}</td>
+                    <td className="console-table-muted">
+                      {objectTypeNameById.get(action.object_type_id) ?? action.object_type_id}
+                    </td>
+                    <td className="console-table-muted">
+                      {action.function_id
+                        ? functionNameById.get(action.function_id) ?? action.function_id
+                        : '—'}
+                    </td>
+                    <td>
+                      <span className={statusBadgeClass(action.status)}>{action.status}</span>
+                    </td>
+                    <td className="console-table-actions">
+                      <div className="console-table-btns">
+                        <button
+                          type="button"
+                          onClick={() => void onDelete(action)}
+                          aria-label={t('shared.delete')}
+                          title={t('shared.delete')}
+                        >
+                          <Trash2 size={16} aria-hidden />
+                        </button>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  items.map((action) => (
-                    <tr key={action.id}>
-                      <td>
-                        <Link to={`/ontology-manager/actions/${action.id}`} className="ontology-manager-list__api-link">
-                          {action.api_name}
-                        </Link>
-                      </td>
-                      <td>{action.display_name}</td>
-                      <td className="console-table-muted">
-                        {objectTypeNameById.get(action.object_type_id) ?? action.object_type_id}
-                      </td>
-                      <td className="console-table-muted">
-                        {action.function_id
-                          ? functionNameById.get(action.function_id) ?? action.function_id
-                          : '—'}
-                      </td>
-                      <td>
-                        <span className={statusBadgeClass(action.status)}>{action.status}</span>
-                      </td>
-                      <td className="console-table-actions">
-                        <div className="console-table-btns">
-                          <button
-                            type="button"
-                            onClick={() => void onDelete(action)}
-                            aria-label={t('shared.delete')}
-                            title={t('shared.delete')}
-                          >
-                            <Trash2 size={16} aria-hidden />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {showCreate && (

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ExternalLink, Loader2, Plus } from 'lucide-react';
+import { Code2, ExternalLink, Loader2, Plus } from 'lucide-react';
+import { EmptyState } from '../../styles/design-system';
 import { useOntologyFunctionsList } from '../function-editor/useOntologyFunctionsList';
 import '../ontology/ontology-admin.scss';
 
@@ -30,13 +31,24 @@ export function FunctionsListPage() {
       </header>
 
       <div className="ontology-admin-content">
-        <div className="ds-table-wrap">
-          {loading ? (
-            <div className="console-loading">
-              <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-              <p>{t('shared.loading')}</p>
-            </div>
-          ) : (
+        {loading ? (
+          <div className="console-loading">
+            <Loader2 size={32} className="console-loading-spinner" aria-hidden />
+            <p>{t('shared.loading')}</p>
+          </div>
+        ) : items.length === 0 ? (
+          <EmptyState
+            icon={<Code2 size={32} aria-hidden />}
+            title={t('functions.emptyList')}
+            action={
+              <Link to="/function-editor/new" className="btn btn-primary">
+                <Plus size={16} aria-hidden />
+                {t('functions.createInEditor')}
+              </Link>
+            }
+          />
+        ) : (
+          <div className="ds-table-wrap">
             <table className="console-table">
               <thead>
                 <tr>
@@ -49,46 +61,37 @@ export function FunctionsListPage() {
                 </tr>
               </thead>
               <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="console-table-empty">
-                      {t('functions.emptyList')}{' '}
-                      <Link to="/function-editor/new">{t('functions.createInEditor')}</Link>
+                {items.map((fn) => (
+                  <tr key={fn.id}>
+                    <td>
+                      <Link to={`/ontology-manager/functions/${fn.id}`} className="ontology-manager-list__api-link">
+                        {fn.api_name}
+                      </Link>
+                    </td>
+                    <td>{fn.display_name}</td>
+                    <td className="console-table-muted">{fn.published_version ?? '—'}</td>
+                    <td className="console-table-muted">{fn.latest_version ?? '—'}</td>
+                    <td>
+                      <span className={statusBadgeClass(fn.status)}>{fn.status}</span>
+                    </td>
+                    <td className="console-table-actions">
+                      <div className="console-table-btns">
+                        <Link
+                          to={`/function-editor/${fn.id}`}
+                          className="console-table-icon-link"
+                          title={t('functions.openInEditor')}
+                          aria-label={t('functions.openInEditor')}
+                        >
+                          <ExternalLink size={16} aria-hidden />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  items.map((fn) => (
-                    <tr key={fn.id}>
-                      <td>
-                        <Link to={`/ontology-manager/functions/${fn.id}`} className="ontology-manager-list__api-link">
-                          {fn.api_name}
-                        </Link>
-                      </td>
-                      <td>{fn.display_name}</td>
-                      <td className="console-table-muted">{fn.published_version ?? '—'}</td>
-                      <td className="console-table-muted">{fn.latest_version ?? '—'}</td>
-                      <td>
-                        <span className={statusBadgeClass(fn.status)}>{fn.status}</span>
-                      </td>
-                      <td className="console-table-actions">
-                        <div className="console-table-btns">
-                          <Link
-                            to={`/function-editor/${fn.id}`}
-                            className="console-table-icon-link"
-                            title={t('functions.openInEditor')}
-                            aria-label={t('functions.openInEditor')}
-                          >
-                            <ExternalLink size={16} aria-hidden />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
