@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, Database, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   fetchLinkTypes,
@@ -40,6 +41,8 @@ function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTyp
 }
 
 export function LinkTypesPage() {
+  const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
@@ -108,19 +111,8 @@ export function LinkTypesPage() {
     setShowForm(true);
   };
 
-  const openEdit = (t: LinkTypeResponse) => {
-    setEditType(t);
-    setFormName(t.name);
-    setFormDescription(t.description || '');
-    setFormSourceId(t.source_object_type_id);
-    setFormTargetId(t.target_object_type_id);
-    setFormCardinality(t.cardinality || 'one-to-many');
-    setFormDatasetId(t.dataset_id || '');
-    setFormSourceKeyProperty(t.source_key_property || '');
-    setFormTargetKeyProperty(t.target_key_property || '');
-    setFormSourceDatasetColumn(t.source_dataset_column || '');
-    setFormTargetDatasetColumn(t.target_dataset_column || '');
-    setShowForm(true);
+  const openEdit = (row: LinkTypeResponse) => {
+    navigate(`/ontology-manager/link-types/${row.id}`);
   };
 
   useEffect(() => {
@@ -261,7 +253,7 @@ export function LinkTypesPage() {
             title={objectTypes.length < 2 ? 'Create at least 2 object types first' : ''}
           >
             <Plus size={18} />
-            <span>New Link Type</span>
+            <span>{t('linkTypes.create')}</span>
           </button>
         </div>
       </div>
@@ -291,33 +283,40 @@ export function LinkTypesPage() {
               {linkTypes.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="console-table-empty">
-                    No link types yet. Create at least 2 object types, then create a link type.
+                    {t('linkTypes.emptyList')}
                   </td>
                 </tr>
               ) : (
-                linkTypes.map((t) => (
-                  <tr key={t.id}>
-                    <td><strong>{t.name}</strong></td>
-                    <td>{t.description || '—'}</td>
+                linkTypes.map((row) => (
+                  <tr key={row.id}>
                     <td>
-                      {t.source_object_type_name || t.source_object_type_id} →{' '}
-                      {t.target_object_type_name || t.target_object_type_id}
+                      <Link
+                        to={`/ontology-manager/link-types/${row.id}`}
+                        className="ontology-manager-list__api-link"
+                      >
+                        <strong>{row.name}</strong>
+                      </Link>
+                    </td>
+                    <td>{row.description || '—'}</td>
+                    <td>
+                      {row.source_object_type_name || row.source_object_type_id} →{' '}
+                      {row.target_object_type_name || row.target_object_type_id}
                     </td>
                     <td>
-                      {[t.source_key_property, t.source_dataset_column, t.target_dataset_column, t.target_key_property]
+                      {[row.source_key_property, row.source_dataset_column, row.target_dataset_column, row.target_key_property]
                         .filter(Boolean)
                         .length > 0
-                        ? [t.source_key_property, t.source_dataset_column, t.target_dataset_column, t.target_key_property]
+                        ? [row.source_key_property, row.source_dataset_column, row.target_dataset_column, row.target_key_property]
                             .filter(Boolean)
                             .join(' — ')
                         : '—'}
                     </td>
-                    <td>{t.cardinality || 'one-to-many'}</td>
-                    <td>{t.cardinality === 'many-to-many' ? (t.dataset_name || '—') : '—'}</td>
-                    <td>{t.link_count}</td>
+                    <td>{row.cardinality || 'one-to-many'}</td>
+                    <td>{row.cardinality === 'many-to-many' ? (row.dataset_name || '—') : '—'}</td>
+                    <td>{row.link_count}</td>
                     <td className="console-table-actions">
                       <div className="console-table-btns">
-                        {(linkTypeUsesDatasetIndexing(t, objectTypes) || t.link_count > 0) &&
+                        {(linkTypeUsesDatasetIndexing(row, objectTypes) || row.link_count > 0) &&
                         neo4jDataSources.length > 0 ? (
                           <button
                             type="button"
@@ -326,12 +325,12 @@ export function LinkTypesPage() {
                               indexing || indexingLinkId !== null || showIndexOneDialog || showIndexDialog
                             }
                             onClick={() => {
-                              setIndexOneLink(t);
+                              setIndexOneLink(row);
                               setIndexNeo4jId(neo4jDataSources[0]?.id || '');
                               setShowIndexOneDialog(true);
                             }}
                           >
-                            {indexingLinkId === t.id ? (
+                            {indexingLinkId === row.id ? (
                               <Loader2 size={16} className="console-loading-spinner" />
                             ) : (
                               <Database size={16} />
@@ -339,16 +338,16 @@ export function LinkTypesPage() {
                           </button>
                         ) : null}
                         <Link
-                          to={`/ontology-manager/link-types/${t.id}/settings?tab=sharing`}
-                          title="Sharing"
+                          to={`/ontology-manager/link-types/${row.id}/sharing`}
+                          title={t('linkTypes.sharing')}
                           className="console-table-icon-link"
                         >
                           <Users size={16} />
                         </Link>
-                        <button type="button" title="Edit" onClick={() => openEdit(t)}>
+                        <button type="button" title={t('linkTypes.overview')} onClick={() => openEdit(row)}>
                           <Pencil size={16} />
                         </button>
-                        <button type="button" title="Delete" onClick={() => handleDelete(t.id)}>
+                        <button type="button" title={t('shared.delete')} onClick={() => handleDelete(row.id)}>
                           <Trash2 size={16} />
                         </button>
                       </div>

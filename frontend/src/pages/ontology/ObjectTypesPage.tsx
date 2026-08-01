@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, Database, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
   createObjectType,
-  updateObjectType,
   deleteObjectType,
   indexObjectTypesToNeo4j,
   indexObjectTypeToNeo4j,
   type ObjectTypeResponse,
-  type PropertyDef,
 } from '../../data/ontologyApi';
 import {
   fetchDatasets,
@@ -20,108 +19,21 @@ import {
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import {
+  mapPgTypeToPropType,
+  PropertiesEditor,
+  toPropertyDefs,
+  type FormProperty,
+} from '../ontology-manager/objectTypeFormParts';
 import './ontology-admin.scss';
 
-const PROPERTY_TYPES = ['string', 'number', 'boolean'];
-
-/** Map PostgreSQL data_type to our property type */
-function mapPgTypeToPropType(dataType: string): string {
-  const t = dataType.toLowerCase();
-  if (
-    t.includes('int') ||
-    t.includes('numeric') ||
-    t.includes('decimal') ||
-    t.includes('real') ||
-    t.includes('double') ||
-    t.includes('float')
-  ) {
-    return 'number';
-  }
-  if (t.includes('bool')) return 'boolean';
-  return 'string';
-}
-
-type FormProperty = PropertyDef & { enabled?: boolean };
-
-function PropertyRow({
-  prop,
-  fromDataset,
-  nameTypeReadOnly,
-  isPrimaryKey,
-  onPrimaryKeyChange,
-  onChange,
-  onRemove,
-  onToggleEnabled,
-}: {
-  prop: FormProperty;
-  fromDataset: boolean;
-  nameTypeReadOnly: boolean;
-  isPrimaryKey?: boolean;
-  onPrimaryKeyChange?: () => void;
-  onChange: (p: FormProperty) => void;
-  onRemove: () => void;
-  onToggleEnabled?: (enabled: boolean) => void;
-}) {
-  return (
-    <div className="console-obj-property-row">
-      {fromDataset && onToggleEnabled && (
-        <label className="console-obj-property-enabled" title="Include this property">
-          <input
-            type="checkbox"
-            checked={prop.enabled !== false}
-            onChange={(e) => onToggleEnabled(e.target.checked)}
-          />
-        </label>
-      )}
-      {onPrimaryKeyChange ? (
-        <label className="console-obj-property-primary" title="Primary key">
-          <input
-            type="radio"
-            name="primary-key"
-            checked={isPrimaryKey}
-            onChange={onPrimaryKeyChange}
-          />
-        </label>
-      ) : null}
-      <input
-        type="text"
-        placeholder="Property name"
-        value={prop.name}
-        onChange={(e) => onChange({ ...prop, name: e.target.value })}
-        readOnly={fromDataset || nameTypeReadOnly}
-      />
-      <select
-        value={prop.type}
-        onChange={(e) => onChange({ ...prop, type: e.target.value })}
-        disabled={nameTypeReadOnly}
-      >
-        {PROPERTY_TYPES.map((t) => (
-          <option key={t} value={t}>{t}</option>
-        ))}
-      </select>
-      <label className="console-obj-property-required">
-        <input
-          type="checkbox"
-          checked={prop.required}
-          onChange={(e) => onChange({ ...prop, required: e.target.checked })}
-        />
-        Required
-      </label>
-      {!fromDataset && (
-        <button type="button" onClick={onRemove} aria-label="Remove property">
-          <X size={14} />
-        </button>
-      )}
-    </div>
-  );
-}
-
 export function ObjectTypesPage() {
+  const { t } = useTranslation('ontology');
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const [types, setTypes] = useState<ObjectTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editType, setEditType] = useState<ObjectTypeResponse | null>(null);
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formDatasetId, setFormDatasetId] = useState('');
@@ -203,7 +115,6 @@ export function ObjectTypesPage() {
   }, [formDatasetId]);
 
   const openCreate = () => {
-    setEditType(null);
     setFormName('');
     setFormDescription('');
     setFormDatasetId('');
@@ -214,100 +125,24 @@ export function ObjectTypesPage() {
     setShowForm(true);
   };
 
-  const openEdit = (t: ObjectTypeResponse) => {
-    setEditType(t);
-    setFormName(t.name);
-    setFormDescription(t.description || '');
-    setFormKeyProperty(t.key_property || '');
-    setFormIsMasterData(t.is_master_data ?? false);
-    setFormDisplayProperty(t.display_property || '');
-    const dsId = t.dataset_id || '';
-    if (dsId) {
-      savedPropNamesRef.current = new Set(
-        (t.properties || [])
-          .filter((p) => typeof p === 'object' && 'name' in p && (p as { name: string }).name)
-          .map((p) => (p as { name: string }).name)
-      );
-    }
-    setFormDatasetId(dsId);
-    if (!dsId) {
-      const props = (t.properties || []).map((p) => {
-        const base =
-          typeof p === 'object' && 'name' in p
-            ? { name: p.name, type: p.type || 'string', required: !!p.required }
-            : { name: '', type: 'string', required: false };
-        return { ...base, enabled: true };
-      });
-      setFormProperties(props);
-      if (!t.key_property && props.length > 0 && props[0].name) {
-        setFormKeyProperty(props[0].name);
-      }
-    }
-    setShowForm(true);
-  };
-
-  const addProperty = () => {
-    setFormProperties((prev) => [...prev, { name: '', type: 'string', required: false, enabled: true }]);
-  };
-
-  const updateProperty = (idx: number, p: FormProperty) => {
-    setFormProperties((prev) => {
-      const next = [...prev];
-      next[idx] = p;
-      return next;
-    });
-  };
-
-  const togglePropertyEnabled = (idx: number, enabled: boolean) => {
-    setFormProperties((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], enabled };
-      return next;
-    });
-  };
-
-  const removeProperty = (idx: number) => {
-    setFormProperties((prev) => prev.filter((_, i) => i !== idx));
-  };
-
   const handleSubmit = async () => {
     if (!formName.trim()) return;
-    const props = formProperties
-      .filter((p) => p.name.trim() && p.enabled !== false)
-      .map((p) => {
-        const { enabled, ...rest } = p;
-        void enabled;
-        return rest as PropertyDef;
-      });
     setSubmitting(true);
     try {
-      if (editType) {
-        await updateObjectType(editType.id, {
-          name: formName.trim(),
-          description: formDescription.trim() || undefined,
-          dataset_id: formDatasetId || undefined,
-          properties: props,
-          key_property: formKeyProperty || undefined,
-          is_master_data: formIsMasterData,
-          display_property: formDisplayProperty || undefined,
-        });
-        toast.success('Object type updated');
-      } else {
-        await createObjectType({
-          name: formName.trim(),
-          description: formDescription.trim() || undefined,
-          dataset_id: formDatasetId || undefined,
-          properties: props,
-          key_property: formKeyProperty || undefined,
-          is_master_data: formIsMasterData,
-          display_property: formDisplayProperty || undefined,
-        });
-        toast.success('Object type created');
-      }
+      await createObjectType({
+        name: formName.trim(),
+        description: formDescription.trim() || undefined,
+        dataset_id: formDatasetId || undefined,
+        properties: toPropertyDefs(formProperties),
+        key_property: formKeyProperty || undefined,
+        is_master_data: formIsMasterData,
+        display_property: formDisplayProperty || undefined,
+      });
+      toast.success(t('objectTypes.created'));
       setShowForm(false);
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Operation failed');
+      toast.error(e instanceof Error ? e.message : t('objectTypes.saveFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -345,19 +180,19 @@ export function ObjectTypesPage() {
   const handleDelete = async (id: string) => {
     if (
       !(await confirm({
-        title: 'Delete object type',
-        message: 'Delete this object type? All instances will be deleted.',
-        confirmLabel: 'Delete',
+        title: t('objectTypes.deleteTitle'),
+        message: t('objectTypes.deleteConfirm'),
+        confirmLabel: t('shared.delete'),
         danger: true,
       }))
     )
       return;
     try {
       await deleteObjectType(id);
-      toast.success('Object type deleted');
+      toast.success(t('objectTypes.deleted'));
       await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
+      toast.error(e instanceof Error ? e.message : t('objectTypes.saveFailed'));
     }
   };
 
@@ -365,17 +200,15 @@ export function ObjectTypesPage() {
     <div className="ontology-admin">
       <div className="page-header">
         <div>
-          <h1>Object Types</h1>
-          <p className="page-subtitle">
-            Define schema for entity types (e.g. Disease, InsuranceProduct). Admin only.
-          </p>
+          <h1>{t('objectTypes.title')}</h1>
+          <p className="page-subtitle">{t('objectTypes.subtitle')}</p>
         </div>
         <div className="page-header-actions">
           {neo4jDataSources.length > 0 && (
             <button
               type="button"
               className="btn btn-secondary"
-              title="Index dataset to knowledge graph"
+              title={t('objectTypes.indexHeading')}
               disabled={indexing || indexingTypeId !== null || showIndexOneDialog || showIndexDialog}
               onClick={() => {
                 setIndexNeo4jId(neo4jDataSources[0]?.id || '');
@@ -383,12 +216,12 @@ export function ObjectTypesPage() {
               }}
             >
               <Database size={18} />
-              <span>Index Objects</span>
+              <span>{t('objectTypes.index')}</span>
             </button>
           )}
           <button type="button" className="btn btn-primary" onClick={openCreate}>
             <Plus size={18} />
-            <span>New Object Type</span>
+            <span>{t('objectTypes.create')}</span>
           </button>
         </div>
       </div>
@@ -404,47 +237,54 @@ export function ObjectTypesPage() {
             <table className="console-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Dataset</th>
-                <th>Master Data</th>
-                <th>Display</th>
-                <th>Properties</th>
-                <th>Instances</th>
-                <th className="console-table-actions">Actions</th>
+                <th>{t('objectTypes.name')}</th>
+                <th>{t('objectTypes.description')}</th>
+                <th>{t('objectTypes.dataset')}</th>
+                <th>{t('objectTypes.masterData')}</th>
+                <th>{t('objectTypes.displayProperty')}</th>
+                <th>{t('objectTypes.properties')}</th>
+                <th>{t('objectTypes.instances')}</th>
+                <th className="console-table-actions">{t('shared.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {types.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="console-table-empty">
-                    No object types yet. Create one to get started.
+                    {t('objectTypes.emptyList')}
                   </td>
                 </tr>
               ) : (
-                types.map((t) => (
-                  <tr key={t.id}>
-                    <td><strong>{t.name}</strong></td>
-                    <td>{t.description || '—'}</td>
-                    <td>{t.dataset_name || '—'}</td>
-                    <td>{t.is_master_data ? 'Yes' : '—'}</td>
-                    <td>{t.display_property || '—'}</td>
-                    <td>{(t.properties || []).length}</td>
-                    <td>{t.instance_count}</td>
+                types.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <Link
+                        to={`/ontology-manager/object-types/${row.id}`}
+                        className="ontology-manager-list__api-link"
+                      >
+                        <strong>{row.name}</strong>
+                      </Link>
+                    </td>
+                    <td>{row.description || '—'}</td>
+                    <td>{row.dataset_name || '—'}</td>
+                    <td>{row.is_master_data ? 'Yes' : '—'}</td>
+                    <td>{row.display_property || '—'}</td>
+                    <td>{(row.properties || []).length}</td>
+                    <td>{row.instance_count}</td>
                     <td className="console-table-actions">
                       <div className="console-table-btns">
-                        {(t.dataset_id || t.instance_count > 0) && neo4jDataSources.length > 0 ? (
+                        {(row.dataset_id || row.instance_count > 0) && neo4jDataSources.length > 0 ? (
                           <button
                             type="button"
-                            title="Index objects to knowledge graph"
+                            title={t('objectTypes.indexHeading')}
                             disabled={indexing || indexingTypeId !== null || showIndexOneDialog || showIndexDialog}
                             onClick={() => {
-                              setIndexOneType(t);
+                              setIndexOneType(row);
                               setIndexNeo4jId(neo4jDataSources[0]?.id || '');
                               setShowIndexOneDialog(true);
                             }}
                           >
-                            {indexingTypeId === t.id ? (
+                            {indexingTypeId === row.id ? (
                               <Loader2 size={16} className="console-loading-spinner" />
                             ) : (
                               <Database size={16} />
@@ -452,16 +292,24 @@ export function ObjectTypesPage() {
                           </button>
                         ) : null}
                         <Link
-                          to={`/ontology-manager/object-types/${t.id}/settings?tab=sharing`}
-                          title="Sharing"
+                          to={`/ontology-manager/object-types/${row.id}/sharing`}
+                          title={t('objectTypes.sharing')}
                           className="console-table-icon-link"
                         >
                           <Users size={16} />
                         </Link>
-                        <button type="button" title="Edit" onClick={() => openEdit(t)}>
+                        <button
+                          type="button"
+                          title={t('objectTypes.properties')}
+                          onClick={() => navigate(`/ontology-manager/object-types/${row.id}/properties`)}
+                        >
                           <Pencil size={16} />
                         </button>
-                        <button type="button" title="Delete" onClick={() => handleDelete(t.id)}>
+                        <button
+                          type="button"
+                          title={t('shared.delete')}
+                          onClick={() => handleDelete(row.id)}
+                        >
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -479,7 +327,7 @@ export function ObjectTypesPage() {
         <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
           <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
             <div className="console-modal-header">
-              <h2>{editType ? 'Edit Object Type' : 'New Object Type'}</h2>
+              <h2>{t('objectTypes.create')}</h2>
               <button
                 type="button"
                 onClick={() => !submitting && setShowForm(false)}
@@ -491,7 +339,7 @@ export function ObjectTypesPage() {
             </div>
             <div className="console-modal-body">
               <label>
-                Name
+                {t('objectTypes.name')}
                 <input
                   type="text"
                   value={formName}
@@ -500,12 +348,11 @@ export function ObjectTypesPage() {
                 />
               </label>
               <label>
-                Description
+                {t('objectTypes.description')}
                 <input
                   type="text"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Optional"
                 />
               </label>
               <label>
@@ -514,18 +361,15 @@ export function ObjectTypesPage() {
                   checked={formIsMasterData}
                   onChange={(e) => setFormIsMasterData(e.target.checked)}
                 />
-                <span>Master Data</span>
-                <span className="console-modal-hint console-modal-hint--block">
-                  Only master data object types can be used for document labels in channel settings.
-                </span>
+                <span>{t('objectTypes.masterData')}</span>
               </label>
               <label>
-                <span>Display property (optional)</span>
+                <span>{t('objectTypes.displayProperty')}</span>
                 <select
                   value={formDisplayProperty}
                   onChange={(e) => setFormDisplayProperty(e.target.value)}
                 >
-                  <option value="">None</option>
+                  <option value="">{t('objectTypes.none')}</option>
                   {formProperties
                     .filter((p) => p.name.trim() && p.enabled !== false)
                     .map((p) => (
@@ -534,17 +378,14 @@ export function ObjectTypesPage() {
                       </option>
                     ))}
                 </select>
-                <span className="console-modal-hint console-modal-hint--block">
-                  Property used to display object instances in document label pickers.
-                </span>
               </label>
               <label>
-                <span>Dataset (optional)</span>
+                <span>{t('objectTypes.dataset')}</span>
                 <select
                   value={formDatasetId}
                   onChange={(e) => setFormDatasetId(e.target.value)}
                 >
-                  <option value="">None</option>
+                  <option value="">{t('objectTypes.none')}</option>
                   {datasets.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.display_name || `${d.schema_name}.${d.table_name}`}
@@ -552,50 +393,41 @@ export function ObjectTypesPage() {
                   ))}
                 </select>
                 <span className="console-modal-hint console-modal-hint--block">
-                  Select a dataset to auto-fill properties from columns. Check/uncheck to include or exclude.
+                  {t('objectTypes.datasourcesHint')}
                 </span>
               </label>
-              <div className="console-modal-section">
-                <div className="console-modal-section-header">
-                  <span>Properties</span>
-                  {!formDatasetId && (
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={addProperty}>
-                      <Plus size={14} />
-                      Add
-                    </button>
-                  )}
-                </div>
-                {loadingMetadata ? (
-                  <p className="console-modal-hint">Loading columns…</p>
-                ) : formProperties.length === 0 ? (
-                  <p className="console-modal-hint">
-                    {formDatasetId ? 'No columns in this dataset.' : 'Select a dataset to load columns, or add properties manually.'}
-                  </p>
-                ) : (
-                  <div className="console-obj-properties-list">
-                    <div className="console-obj-property-header">
-                      {formDatasetId ? <span className="console-obj-prop-col-enable" /> : null}
-                      <span className="console-obj-prop-col-pk" title="Primary key">PK</span>
-                      <span className="console-obj-prop-col-name">Name</span>
-                      <span className="console-obj-prop-col-type">Type</span>
-                      <span className="console-obj-prop-col-required">Required</span>
-                    </div>
-                    {formProperties.map((p, i) => (
-                      <PropertyRow
-                        key={formDatasetId ? p.name : i}
-                        prop={p}
-                        fromDataset={!!formDatasetId}
-                        nameTypeReadOnly={!!editType}
-                        isPrimaryKey={formKeyProperty === p.name}
-                        onPrimaryKeyChange={() => setFormKeyProperty(p.name)}
-                        onChange={(np) => updateProperty(i, np)}
-                        onRemove={() => removeProperty(i)}
-                        onToggleEnabled={formDatasetId ? (enabled) => togglePropertyEnabled(i, enabled) : undefined}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PropertiesEditor
+                properties={formProperties}
+                fromDataset={!!formDatasetId}
+                nameTypeReadOnly={false}
+                keyProperty={formKeyProperty}
+                loadingMetadata={loadingMetadata}
+                onAdd={() =>
+                  setFormProperties((prev) => [
+                    ...prev,
+                    { name: '', type: 'string', required: false, enabled: true },
+                  ])
+                }
+                onChange={(idx, p) =>
+                  setFormProperties((prev) => {
+                    const next = [...prev];
+                    next[idx] = p;
+                    return next;
+                  })
+                }
+                onRemove={(idx) => setFormProperties((prev) => prev.filter((_, i) => i !== idx))}
+                onToggleEnabled={
+                  formDatasetId
+                    ? (idx, enabled) =>
+                        setFormProperties((prev) => {
+                          const next = [...prev];
+                          next[idx] = { ...next[idx], enabled };
+                          return next;
+                        })
+                    : undefined
+                }
+                onKeyPropertyChange={setFormKeyProperty}
+              />
             </div>
             <div className="console-modal-actions">
               <button
@@ -604,7 +436,7 @@ export function ObjectTypesPage() {
                 onClick={() => !submitting && setShowForm(false)}
                 disabled={submitting}
               >
-                Cancel
+                {t('shared.cancel')}
               </button>
               <button
                 type="button"
@@ -612,7 +444,7 @@ export function ObjectTypesPage() {
                 onClick={handleSubmit}
                 disabled={!formName.trim() || submitting}
               >
-                {submitting ? 'Saving…' : editType ? 'Update' : 'Create'}
+                {submitting ? t('shared.saving') : t('objectTypes.create')}
               </button>
             </div>
           </div>

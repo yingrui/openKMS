@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Save, Trash2 } from 'lucide-react';
+import { Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
@@ -11,8 +11,8 @@ import {
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
-import './entity-view.scss';
 
 export function GroupDetailPage() {
   const { t } = useTranslation('ontology');
@@ -96,84 +96,72 @@ export function GroupDetailPage() {
   };
 
   if (loading || !group) {
-    return (
-      <div className="console-loading">
-        <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-        <p>{t('shared.loading')}</p>
-      </div>
-    );
+    return <EntityViewLoading label={t('shared.loading')} />;
   }
 
   return (
-    <div className="entity-view">
-      <aside className="entity-view__sidebar">
-        <button type="button" className="entity-view__back" onClick={() => navigate('/ontology-manager/groups')}>
-          <ArrowLeft size={16} aria-hidden />
-          {t('groups.backToList')}
-        </button>
-        <h2 className="entity-view__title">{group.display_name}</h2>
-        <p className="entity-view__meta">{t('groups.objectTypes')}: {group.object_type_ids.length}</p>
-      </aside>
-      <div className="entity-view__main">
-        <header className="page-header">
-          <div>
-            <h1>{group.display_name}</h1>
-            <p className="page-subtitle">{t('groups.detailSubtitle')}</p>
-          </div>
-          <div className="entity-view__actions">
-            <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
-              <Trash2 size={16} aria-hidden />
-              {t('shared.delete')}
-            </button>
-            <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
-              <Save size={16} aria-hidden />
-              {saving ? t('shared.saving') : t('shared.save')}
-            </button>
-          </div>
-        </header>
-        <div className="entity-view__form">
-          <label className="console-form-field">
-            <span>{t('groups.displayName')}</span>
-            <input
-              className="console-form-control"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-          </label>
-          <label className="console-form-field">
-            <span>{t('groups.description')}</span>
-            <input
-              className="console-form-control"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
-          <div className="console-form-field">
-            <span>{t('groups.assignObjectTypes')}</span>
-            {objectTypes.length === 0 ? (
-              <p className="console-modal-hint">
-                {t('groups.noObjectTypes')}{' '}
-                <Link to="/ontology-manager/object-types">{t('groups.createObjectTypes')}</Link>
-              </p>
-            ) : (
-              <ul className="entity-view__checkbox-list">
-                {objectTypes.map((ot) => (
-                  <li key={ot.id}>
-                    <label className="console-modal-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={selectedTypeIds.has(ot.id)}
-                        onChange={() => toggleType(ot.id)}
-                      />
-                      <span>{ot.name}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+    <EntityViewShell
+      backTo="/ontology-manager/groups"
+      backLabel={t('groups.backToList')}
+      title={group.display_name}
+      meta={`${t('groups.objectTypes')}: ${group.object_type_ids.length}`}
+      sectionTitle={t('groups.overview')}
+      sectionSubtitle={t('groups.detailSubtitle')}
+      toolbar={
+        <>
+          <button type="button" className="btn btn-secondary" onClick={() => void onDelete()}>
+            <Trash2 size={16} aria-hidden />
+            {t('shared.delete')}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
+            <Save size={16} aria-hidden />
+            {saving ? t('shared.saving') : t('shared.save')}
+          </button>
+        </>
+      }
+    >
+      <div className="entity-view__form">
+        <label className="console-form-field">
+          <span>{t('groups.displayName')}</span>
+          <input
+            className="console-form-control"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
+        </label>
+        <label className="console-form-field">
+          <span>{t('groups.description')}</span>
+          <input
+            className="console-form-control"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <div className="console-form-field">
+          <span>{t('groups.assignObjectTypes')}</span>
+          {objectTypes.length === 0 ? (
+            <p className="console-modal-hint">
+              {t('groups.noObjectTypes')}{' '}
+              <Link to="/ontology-manager/object-types">{t('groups.createObjectTypes')}</Link>
+            </p>
+          ) : (
+            <ul className="entity-view__checkbox-list">
+              {objectTypes.map((ot) => (
+                <li key={ot.id}>
+                  <label className="console-modal-checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={selectedTypeIds.has(ot.id)}
+                      onChange={() => toggleType(ot.id)}
+                    />
+                    <span>{ot.name}</span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
-    </div>
+    </EntityViewShell>
   );
 }

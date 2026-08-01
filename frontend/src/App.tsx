@@ -35,8 +35,6 @@ import { ConsoleStorage } from './pages/console/ConsoleStorage';
 import { ConsoleHealth } from './pages/console/ConsoleHealth';
 import { ObjectTypesPage } from './pages/ontology/ObjectTypesPage';
 import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
-import { ObjectTypeSettings } from './pages/ontology/ObjectTypeSettings';
-import { LinkTypeSettings } from './pages/ontology/LinkTypeSettings';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConnectorDetailPage } from './pages/connectors/ConnectorDetailPage';
@@ -115,6 +113,12 @@ const FunctionsListPage = lazy(() =>
 const FunctionDetailPage = lazy(() =>
   import('./pages/ontology-manager/FunctionDetailPage').then((m) => ({ default: m.FunctionDetailPage })),
 );
+const FunctionOverviewTab = lazy(() =>
+  import('./pages/ontology-manager/FunctionDetailPage').then((m) => ({ default: m.FunctionOverviewTab })),
+);
+const FunctionObservabilityTab = lazy(() =>
+  import('./pages/ontology-manager/FunctionDetailPage').then((m) => ({ default: m.FunctionObservabilityTab })),
+);
 const GroupsListPage = lazy(() =>
   import('./pages/ontology-manager/GroupsListPage').then((m) => ({ default: m.GroupsListPage })),
 );
@@ -124,8 +128,50 @@ const ActionsListPage = lazy(() =>
 const ActionDetailPage = lazy(() =>
   import('./pages/ontology-manager/ActionDetailPage').then((m) => ({ default: m.ActionDetailPage })),
 );
+const ActionOverviewTab = lazy(() =>
+  import('./pages/ontology-manager/ActionDetailPage').then((m) => ({ default: m.ActionOverviewTab })),
+);
+const ActionRulesTab = lazy(() =>
+  import('./pages/ontology-manager/ActionDetailPage').then((m) => ({ default: m.ActionRulesTab })),
+);
+const ActionLogTab = lazy(() =>
+  import('./pages/ontology-manager/ActionDetailPage').then((m) => ({ default: m.ActionLogTab })),
+);
 const GroupDetailPage = lazy(() =>
   import('./pages/ontology-manager/GroupDetailPage').then((m) => ({ default: m.GroupDetailPage })),
+);
+const ObjectTypeManagerDetailPage = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeDetailPage })),
+);
+const ObjectTypeOverviewTab = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeOverviewTab })),
+);
+const ObjectTypePropertiesTab = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypePropertiesTab })),
+);
+const ObjectTypeDatasourcesTab = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeDatasourcesTab })),
+);
+const ObjectTypeSharingTab = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeSharingTab })),
+);
+const ObjectTypeSettingsRedirect = lazy(() =>
+  import('./pages/ontology-manager/ObjectTypeDetailPage').then((m) => ({ default: m.ObjectTypeSettingsRedirect })),
+);
+const LinkTypeManagerDetailPage = lazy(() =>
+  import('./pages/ontology-manager/LinkTypeDetailPage').then((m) => ({ default: m.LinkTypeDetailPage })),
+);
+const LinkTypeOverviewTab = lazy(() =>
+  import('./pages/ontology-manager/LinkTypeDetailPage').then((m) => ({ default: m.LinkTypeOverviewTab })),
+);
+const LinkTypeDatasourcesTab = lazy(() =>
+  import('./pages/ontology-manager/LinkTypeDetailPage').then((m) => ({ default: m.LinkTypeDatasourcesTab })),
+);
+const LinkTypeSharingTab = lazy(() =>
+  import('./pages/ontology-manager/LinkTypeDetailPage').then((m) => ({ default: m.LinkTypeSharingTab })),
+);
+const LinkTypeSettingsRedirect = lazy(() =>
+  import('./pages/ontology-manager/LinkTypeDetailPage').then((m) => ({ default: m.LinkTypeSettingsRedirect })),
 );
 const FunctionEditorListPage = lazy(() =>
   import('./pages/function-editor/FunctionEditorListPage').then((m) => ({ default: m.FunctionEditorListPage })),
@@ -280,15 +326,34 @@ function App() {
             <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
             <Route path="datasets/:id/settings" element={<DatasetSettings />} />
             <Route path="object-types" element={<ObjectTypesPage />} />
-            <Route path="object-types/:typeId/settings" element={<ObjectTypeSettings />} />
+            <Route path="object-types/:typeId/settings" element={<ObjectTypeSettingsRedirect />} />
+            <Route path="object-types/:typeId" element={<ObjectTypeManagerDetailPage />}>
+              <Route index element={<ObjectTypeOverviewTab />} />
+              <Route path="properties" element={<ObjectTypePropertiesTab />} />
+              <Route path="datasources" element={<ObjectTypeDatasourcesTab />} />
+              <Route path="sharing" element={<ObjectTypeSharingTab />} />
+            </Route>
             <Route path="link-types" element={<LinkTypesPage />} />
-            <Route path="link-types/:linkTypeId/settings" element={<LinkTypeSettings />} />
+            <Route path="link-types/:linkTypeId/settings" element={<LinkTypeSettingsRedirect />} />
+            <Route path="link-types/:linkTypeId" element={<LinkTypeManagerDetailPage />}>
+              <Route index element={<LinkTypeOverviewTab />} />
+              <Route path="datasources" element={<LinkTypeDatasourcesTab />} />
+              <Route path="sharing" element={<LinkTypeSharingTab />} />
+            </Route>
             <Route path="functions" element={<FunctionsListPage />} />
-            <Route path="functions/:functionId" element={<FunctionDetailPage />} />
+            <Route path="functions/:functionId" element={<FunctionDetailPage />}>
+              <Route index element={<FunctionOverviewTab />} />
+              <Route path="observability" element={<FunctionObservabilityTab />} />
+            </Route>
             <Route path="groups" element={<GroupsListPage />} />
             <Route path="groups/:groupId" element={<GroupDetailPage />} />
             <Route path="actions" element={<ActionsListPage />} />
-            <Route path="actions/:actionId" element={<ActionDetailPage />} />
+            <Route path="actions/:actionId" element={<ActionDetailPage />}>
+              <Route index element={<ActionOverviewTab />} />
+              <Route path="rules" element={<ActionRulesTab />} />
+              <Route path="log" element={<ActionLogTab />} />
+              <Route path="logs" element={<Navigate to="../log" relative="path" replace />} />
+            </Route>
           </Route>
           <Route path="object-explorer" element={<Outlet />}>
             <Route index element={<Navigate to="/object-explorer/explore" replace />} />

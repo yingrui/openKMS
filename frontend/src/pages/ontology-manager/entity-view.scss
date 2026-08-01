@@ -58,6 +58,7 @@
 }
 
 .entity-view__nav-item {
+  display: block;
   font-size: var(--text-sm);
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
@@ -67,6 +68,8 @@
   text-align: left;
   cursor: pointer;
   width: 100%;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
 .entity-view__nav-item:hover {

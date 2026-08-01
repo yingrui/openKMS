@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Outlet, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
@@ -13,16 +13,37 @@ import {
   type OntologyActionTypeResponse,
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
+import { EntityViewLoading, EntityViewShell } from './EntityViewShell';
 import '../ontology/ontology-admin.scss';
-import './entity-view.scss';
 
-type Tab = 'overview' | 'logs';
+type ActionDetailContext = {
+  action: OntologyActionTypeResponse;
+  logs: OntologyActionLogResponse[];
+  objectTypeName: string;
+  publishedFunctions: OntologyFunctionResponse[];
+  displayName: string;
+  setDisplayName: (v: string) => void;
+  description: string;
+  setDescription: (v: string) => void;
+  status: string;
+  setStatus: (v: string) => void;
+  functionId: string;
+  setFunctionId: (v: string) => void;
+  saving: boolean;
+  onSave: () => Promise<void>;
+};
+
+const ActionDetailCtx = createContext<ActionDetailContext | null>(null);
+
+function useActionDetail(): ActionDetailContext {
+  const ctx = useContext(ActionDetailCtx);
+  if (!ctx) throw new Error('useActionDetail requires ActionDetailPage');
+  return ctx;
+}
 
 export function ActionDetailPage() {
   const { t } = useTranslation('ontology');
   const { actionId = '' } = useParams();
-  const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('overview');
   const [action, setAction] = useState<OntologyActionTypeResponse | null>(null);
   const [logs, setLogs] = useState<OntologyActionLogResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
@@ -73,7 +94,7 @@ export function ActionDetailPage() {
     void load();
   }, [load]);
 
-  const onSave = async () => {
+  const onSave = useCallback(async () => {
     if (!actionId) return;
     const selectedFn = publishedFunctions.find((fn) => fn.id === functionId);
     setSaving(true);
@@ -92,139 +113,228 @@ export function ActionDetailPage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [actionId, publishedFunctions, functionId, displayName, description, status, t]);
 
-  if (loading || !action) {
-    return (
-      <div className="console-loading">
-        <Loader2 size={32} className="console-loading-spinner" aria-hidden />
-        <p>{t('shared.loading')}</p>
-      </div>
-    );
+  const value = useMemo(
+    () =>
+      action
+        ? {
+            action,
+            logs,
+            objectTypeName,
+            publishedFunctions,
+            displayName,
+            setDisplayName,
+            description,
+            setDescription,
+            status,
+            setStatus,
+            functionId,
+            setFunctionId,
+            saving,
+            onSave,
+          }
+        : null,
+    [
+      action,
+      logs,
+      objectTypeName,
+      publishedFunctions,
+      displayName,
+      description,
+      status,
+      functionId,
+      saving,
+      onSave,
+    ],
+  );
+
+  if (loading || !action || !value) {
+    return <EntityViewLoading label={t('shared.loading')} />;
   }
 
+  const base = `/ontology-manager/actions/${actionId}`;
+
   return (
-    <div className="entity-view">
-      <aside className="entity-view__sidebar">
-        <button type="button" className="entity-view__back" onClick={() => navigate('/ontology-manager/actions')}>
-          <ArrowLeft size={16} aria-hidden />
-          {t('actions.backToList')}
-        </button>
-        <h2 className="entity-view__title">{action.display_name}</h2>
-        <p className="entity-view__meta">{action.api_name}</p>
-        <nav className="entity-view__nav">
-          <button
-            type="button"
-            className={`entity-view__nav-item${tab === 'overview' ? ' entity-view__nav-item--active' : ''}`}
-            onClick={() => setTab('overview')}
-          >
-            {t('actions.overview')}
+    <ActionDetailCtx.Provider value={value}>
+      <EntityViewShell
+        backTo="/ontology-manager/actions"
+        backLabel={t('actions.backToList')}
+        title={action.display_name}
+        meta={action.api_name}
+        navItems={[
+          { to: base, label: t('actions.overview'), end: true },
+          { to: `${base}/rules`, label: t('actions.rules') },
+          { to: `${base}/log`, label: t('actions.log') },
+        ]}
+      >
+        <Outlet />
+      </EntityViewShell>
+    </ActionDetailCtx.Provider>
+  );
+}
+
+export function ActionOverviewTab() {
+  const { t } = useTranslation('ontology');
+  const {
+    action,
+    objectTypeName,
+    displayName,
+    setDisplayName,
+    description,
+    setDescription,
+    status,
+    setStatus,
+    saving,
+    onSave,
+  } = useActionDetail();
+
+  return (
+    <>
+      <header className="page-header">
+        <div>
+          <h1>{t('actions.overview')}</h1>
+          <p className="page-subtitle">{action.description || t('actions.noDescription')}</p>
+        </div>
+        <div className="entity-view__actions">
+          <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
+            <Save size={16} aria-hidden />
+            {saving ? t('shared.saving') : t('shared.save')}
           </button>
-          <button
-            type="button"
-            className={`entity-view__nav-item${tab === 'logs' ? ' entity-view__nav-item--active' : ''}`}
-            onClick={() => setTab('logs')}
-          >
-            {t('actions.logs')}
-          </button>
-        </nav>
-      </aside>
-      <div className="entity-view__main">
-        {tab === 'overview' ? (
-          <>
-            <header className="page-header">
-              <div>
-                <h1>{action.display_name}</h1>
-                <p className="page-subtitle">{action.description || t('actions.noDescription')}</p>
-              </div>
-              <div className="entity-view__actions">
-                <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
-                  <Save size={16} aria-hidden />
-                  {saving ? t('shared.saving') : t('shared.save')}
-                </button>
-              </div>
-            </header>
-            <dl className="entity-view__dl">
-              <dt>{t('actions.apiName')}</dt>
-              <dd className="ontology-manager-list__api-link">{action.api_name}</dd>
-              <dt>{t('actions.objectType')}</dt>
-              <dd>{objectTypeName}</dd>
-              <dt>{t('actions.ruleType')}</dt>
-              <dd>{action.rule_type}</dd>
-            </dl>
-            <div className="entity-view__form">
-              <label className="console-form-field">
-                <span>{t('actions.displayName')}</span>
-                <input
-                  className="console-form-control"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                />
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.description')}</span>
-                <input
-                  className="console-form-control"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.function')}</span>
-                <select className="console-form-control" value={functionId} onChange={(e) => setFunctionId(e.target.value)}>
-                  <option value="">{t('actions.noFunction')}</option>
-                  {publishedFunctions.map((fn) => (
-                    <option key={fn.id} value={fn.id}>
-                      {fn.api_name} (v{fn.published_version})
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.status')}</span>
-                <select className="console-form-control" value={status} onChange={(e) => setStatus(e.target.value)}>
-                  <option value="active">{t('actions.statusActive')}</option>
-                  <option value="inactive">{t('actions.statusInactive')}</option>
-                </select>
-              </label>
-            </div>
-          </>
-        ) : (
-          <section className="entity-view__section">
-            <h3>{t('actions.recentLogs')}</h3>
-            <div className="ds-table-wrap">
-              <table className="console-table">
-                <thead>
-                  <tr>
-                    <th>{t('actions.logObject')}</th>
-                    <th>{t('functions.execStatus')}</th>
-                    <th>{t('functions.execTime')}</th>
-                    <th>{t('actions.logError')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="console-table-empty">
-                        {t('actions.noLogs')}
-                      </td>
-                    </tr>
-                  ) : (
-                    logs.map((log) => (
-                      <tr key={log.id}>
-                        <td className="console-table-muted">{log.object_id ?? '—'}</td>
-                        <td>{log.status}</td>
-                        <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
-                        <td className="console-table-muted">{log.error_message ?? '—'}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+        </div>
+      </header>
+      <dl className="entity-view__dl">
+        <dt>{t('actions.apiName')}</dt>
+        <dd className="ontology-manager-list__api-link">{action.api_name}</dd>
+        <dt>{t('actions.objectType')}</dt>
+        <dd>{objectTypeName}</dd>
+        <dt>{t('actions.ruleType')}</dt>
+        <dd>{action.rule_type}</dd>
+      </dl>
+      <div className="entity-view__form">
+        <label className="console-form-field">
+          <span>{t('actions.displayName')}</span>
+          <input
+            className="console-form-control"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
+        </label>
+        <label className="console-form-field">
+          <span>{t('actions.description')}</span>
+          <input
+            className="console-form-control"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <label className="console-form-field">
+          <span>{t('actions.status')}</span>
+          <select className="console-form-control" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="active">{t('actions.statusActive')}</option>
+            <option value="inactive">{t('actions.statusInactive')}</option>
+          </select>
+        </label>
       </div>
-    </div>
+    </>
+  );
+}
+
+export function ActionRulesTab() {
+  const { t } = useTranslation('ontology');
+  const {
+    action,
+    publishedFunctions,
+    functionId,
+    setFunctionId,
+    saving,
+    onSave,
+  } = useActionDetail();
+
+  return (
+    <>
+      <header className="page-header">
+        <div>
+          <h1>{t('actions.rules')}</h1>
+          <p className="page-subtitle">{t('actions.rulesSubtitle')}</p>
+        </div>
+        <div className="entity-view__actions">
+          <button type="button" className="btn btn-primary" onClick={() => void onSave()} disabled={saving}>
+            <Save size={16} aria-hidden />
+            {saving ? t('shared.saving') : t('shared.save')}
+          </button>
+        </div>
+      </header>
+      <dl className="entity-view__dl">
+        <dt>{t('actions.ruleType')}</dt>
+        <dd>{action.rule_type}</dd>
+      </dl>
+      <div className="entity-view__form">
+        <label className="console-form-field">
+          <span>{t('actions.function')}</span>
+          <select
+            className="console-form-control"
+            value={functionId}
+            onChange={(e) => setFunctionId(e.target.value)}
+          >
+            <option value="">{t('actions.noFunction')}</option>
+            {publishedFunctions.map((fn) => (
+              <option key={fn.id} value={fn.id}>
+                {fn.api_name} (v{fn.published_version})
+              </option>
+            ))}
+          </select>
+        </label>
+        {publishedFunctions.length === 0 ? (
+          <p className="console-modal-hint">{t('actions.publishFirstHint')}</p>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+export function ActionLogTab() {
+  const { t } = useTranslation('ontology');
+  const { logs } = useActionDetail();
+
+  return (
+    <section className="entity-view__section" style={{ marginTop: 0 }}>
+      <header className="page-header">
+        <div>
+          <h1>{t('actions.log')}</h1>
+          <p className="page-subtitle">{t('actions.recentLogs')}</p>
+        </div>
+      </header>
+      <div className="ds-table-wrap">
+        <table className="console-table">
+          <thead>
+            <tr>
+              <th>{t('actions.logObject')}</th>
+              <th>{t('functions.execStatus')}</th>
+              <th>{t('functions.execTime')}</th>
+              <th>{t('actions.logError')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="console-table-empty">
+                  {t('actions.noLogs')}
+                </td>
+              </tr>
+            ) : (
+              logs.map((log) => (
+                <tr key={log.id}>
+                  <td className="console-table-muted">{log.object_id ?? '—'}</td>
+                  <td>{log.status}</td>
+                  <td className="console-table-muted">{new Date(log.created_at).toLocaleString()}</td>
+                  <td className="console-table-muted">{log.error_message ?? '—'}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

@@ -10,15 +10,17 @@ Object types and link types model an entity-relationship layer that can be backe
 
 Legacy `/ontology`, `/objects`, `/links` redirect to the new prefixes. See [Ontology Functions](ontology-functions.md).
 
+**Manager detail chrome:** Object types, link types, functions, and actions share the left-nav **entity-view** shell (`EntityViewShell` + `entity-view.scss`). Function detail tabs: Overview · Observability. Action detail tabs: Overview · Rules · Log.
+
 The **Objects & links** sidebar group is shown when route patterns allow; a **Neo4j** data source still drives graph counts and Object Explorer behavior where applicable.
 
 ## Objects and links
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); managed under Ontology → Object types (`/ontology/object-types`); **Sharing** action opens `/ontology/object-types/{id}/settings?tab=sharing`; table Actions: index-to-graph when Neo4j exists and the type has a linked dataset or at least one stored instance; indexing uses dataset rows, or `object_instances` when there is no dataset; header **Index Objects** indexes all such types; Edit dialog: wider, property name/type read-only when editing, primary key radio selector; Master Data flag (only master data types usable for document labels); display_property for label picker display |
-| Object instances | ✅ | Instances of object types with property values; CRUD at `/objects/:typeId` (admin write + parent type write ACL) |
-| Link types | ✅ | Schema for relationships between two object types; managed under Ontology → Link types (`/ontology/link-types`); **Sharing** action opens `/ontology/link-types/{id}/settings?tab=sharing`; table Actions: index when Neo4j exists and the type has a junction/source-dataset setup or at least one saved link; per-row dialog differs for table-driven vs saved links; header **Index Links** runs bulk for all such types |
+| Object types | ✅ | Schema for entity types (name, description, properties JSONB, optional dataset_id, key_property, is_master_data, display_property); Manager list at `/ontology-manager/object-types`; **detail** uses shared **entity-view** shell (`/ontology-manager/object-types/:typeId`) with Overview · Properties · Datasources · Sharing; create stays list modal; list name links to detail; legacy `/…/settings` redirects to Sharing/Overview; table Actions: index-to-graph when Neo4j exists and the type has a linked dataset or at least one stored instance; Master Data flag (only master data types usable for document labels); display_property for label picker display |
+| Object instances | ✅ | Instances of object types with property values; CRUD at `/object-explorer/objects/:typeId` (admin write + parent type write ACL) |
+| Link types | ✅ | Schema for relationships between two object types; Manager list at `/ontology-manager/link-types`; **detail** entity-view (`/ontology-manager/link-types/:linkTypeId`) with Overview · Datasources · Sharing; create stays list modal; legacy settings URLs redirect; table Actions: index when Neo4j exists and the type has a junction/source-dataset setup or at least one saved link; header **Index Links** runs bulk for all such types |
 | Link instances | ✅ | Instances of link types (source → target); CRUD at `/links/:typeId` (admin write + parent link type write ACL) |
 | Objects list | ✅ | User-facing list at `/objects`; instances and instance_count from Neo4j when Neo4j data source exists |
 | Links list | ✅ | User-facing list at `/links`; instances and link_count from Neo4j when Neo4j data source exists |

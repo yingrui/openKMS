@@ -103,6 +103,7 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 | `.app-content--compact .wiki-page-editor-outer` | Wiki editor edge-to-edge |
 | `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header |
 | `.app-content--object-explorer` | Flex fill, token padding |
+| `.app-page-pane:has(> .entity-view)` | Ontology Manager entity detail fills the pane; scroll inside `.entity-view__main` only |
 
 New exceptions: one-line SCSS comment + row here.
 
