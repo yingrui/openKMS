@@ -16,3 +16,4 @@ export { Dialog, type DialogProps, type DialogSize } from './Dialog';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { Metric, MetricGrid, type MetricProps } from './Metric';
 export { CheckRow, type CheckRowProps } from './CheckRow';
+export { FormField, type FormFieldProps } from './FormField';

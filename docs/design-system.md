@@ -21,10 +21,11 @@ SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/style
 | **`_panel-toolbar.scss`** / **`PanelToolbar.tsx`** | Detail panel header: leading / tabs / actions. |
 | **`_metric.scss`** / **`Metric.tsx`** | Compact metric grid for entity detail headers. |
 | **`_check-row.scss`** / **`CheckRow.tsx`** | Checkbox + title + hint row. |
+| **`_field.scss`** / **`FormField.tsx`** | Labeled text field stack (`.ds-field`) + shared control look (`.ds-control`). |
 | **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
 | **`knowledge-map/`** | Map-only compile-time sizes. |
 
-Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptyState`, `PanelToolbar`, `Metric` / `MetricGrid`, `CheckRow`, `Pagination`, …).
+Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptyState`, `PanelToolbar`, `Metric` / `MetricGrid`, `CheckRow`, `FormField`, `Pagination`, …).
 
 ## Shared UI primitives
 
@@ -39,6 +40,7 @@ Use these instead of per-page copies. **`npm run check:styles`** blocks regressi
 | **`PanelToolbar`** | Detail split panels and section headers with leading + actions (Document/Article detail, KB sections, eval subsections, knowledge-map tree). |
 | **`<Metric>` / `<MetricGrid>`** (`.ds-metric*`) | Compact label/value metrics on entity detail headers. Prefer over **`list-index-stat`** when there is no icon and several metrics share a row. |
 | **`<CheckRow>`** (`.ds-check-row`) | Checkbox with title + optional hint in settings / entity forms. |
+| **`<FormField>`** (`.ds-field` / `.ds-control`) | Label + text input / select / textarea in dialogs and forms. Prefer over bare `<input>` or page-local **`console-form-control`** / **`account-input`** for new UI. |
 | **`.ds-compact-label`** | Hide button/link text ≤768px; keep **`aria-label`**. |
 | **`--tap-min` (40px)** | Minimum hit area for icon buttons on phone (via **`.ds-tap-target`** or component rules). |
 

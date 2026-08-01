@@ -14,7 +14,7 @@ import {
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { Dialog } from '../../styles/design-system';
+import { Dialog, FormField } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function ConsoleDatasets() {
@@ -306,8 +306,7 @@ export function ConsoleDatasets() {
           </>
         }
       >
-        <label>
-          <span>{t('datasets.fieldDataSource')}</span>
+        <FormField label={t('datasets.fieldDataSource')}>
           <select
             value={formDataSourceId}
             onChange={(e) => handleDataSourceChange(e.target.value)}
@@ -315,14 +314,16 @@ export function ConsoleDatasets() {
           >
             <option value="">{t('datasets.selectDataSource')}</option>
             {pgDataSources.map((ds) => (
-              <option key={ds.id} value={ds.id}>{ds.name} ({ds.kind})</option>
+              <option key={ds.id} value={ds.id}>
+                {ds.name} ({ds.kind})
+              </option>
             ))}
           </select>
-        </label>
-        <label>
-          <span>{t('datasets.fieldTableFromSource')}</span>
+        </FormField>
+        <FormField label={t('datasets.fieldTableFromSource')} htmlFor="console-dataset-table">
           <div className="openkms-table-picker-row">
             <select
+              id="console-dataset-table"
               value={tables.length ? `${formSchema}.${formTable}` : ''}
               onChange={(e) => {
                 const v = e.target.value;
@@ -353,16 +354,15 @@ export function ConsoleDatasets() {
               </button>
             )}
           </div>
-        </label>
-        <label>
-          <span>{t('datasets.fieldDisplayName')}</span>
+        </FormField>
+        <FormField label={t('datasets.fieldDisplayName')}>
           <input
             type="text"
             value={formDisplayName}
             onChange={(e) => setFormDisplayName(e.target.value)}
             placeholder={t('datasets.displayNamePlaceholder')}
           />
-        </label>
+        </FormField>
       </Dialog>
     </div>
   );

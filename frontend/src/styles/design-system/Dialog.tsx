@@ -64,7 +64,12 @@ export function Dialog({
   const requestClose = useCallback(() => {
     if (!closeDisabled) onClose();
   }, [closeDisabled, onClose]);
+  const requestCloseRef = useRef(requestClose);
+  requestCloseRef.current = requestClose;
 
+  // Only run when `open` flips — not when onClose/closeDisabled identity changes
+  // (parent re-renders on every keystroke would otherwise steal focus back to the
+  // first focusable, usually the header close button).
   useEffect(() => {
     if (!open) return;
     previouslyFocused.current = document.activeElement as HTMLElement | null;
@@ -72,13 +77,18 @@ export function Dialog({
     document.body.style.overflow = 'hidden';
 
     const panel = panelRef.current;
-    const focusables = panel?.querySelectorAll<HTMLElement>(FOCUSABLE);
-    (focusables?.[0] ?? panel)?.focus();
+    const preferred =
+      panel?.querySelector<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]):not([type="button"]):not([type="submit"]),textarea:not([disabled]),select:not([disabled])',
+      ) ??
+      panel?.querySelectorAll<HTMLElement>(FOCUSABLE)[0] ??
+      panel;
+    preferred?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        requestClose();
+        requestCloseRef.current();
         return;
       }
       if (e.key !== 'Tab' || !panel) return;
@@ -107,7 +117,7 @@ export function Dialog({
       document.body.style.overflow = prevOverflow;
       previouslyFocused.current?.focus?.();
     };
-  }, [open, requestClose]);
+  }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
 

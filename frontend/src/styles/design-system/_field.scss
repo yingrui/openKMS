@@ -1,0 +1,75 @@
+// Labeled form field + text controls. Prefer <FormField> + .ds-control over
+// page-local console-form-* / account-input copies for new UI.
+
+.ds-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ds-field__label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-secondary);
+}
+
+.ds-field__hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.ds-control,
+.ds-field input:not([type='checkbox']):not([type='radio']):not([type='file']),
+.ds-field textarea,
+.ds-field select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--text-base);
+  line-height: var(--text-base--line);
+  padding: var(--padding-compact-y) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  color: var(--color-text);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+
+  &::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+}
+
+.ds-field select,
+select.ds-control {
+  cursor: pointer;
+}
+
+.ds-field textarea,
+textarea.ds-control {
+  min-height: calc(var(--space-12) + var(--space-1) * 3);
+  resize: vertical;
+}
+
+.ds-dialog__body > form,
+.ds-dialog__body > .ds-field-stack,
+.ds-dialog__body:has(> .ds-field) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
