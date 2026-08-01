@@ -11,6 +11,7 @@ import {
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { CheckList, CheckListItem } from '../../styles/design-system';
 import {
   EntityViewField,
   EntityViewLoading,
@@ -150,20 +151,17 @@ export function GroupDetailPage() {
                 <Link to="/ontology-manager/object-types">{t('groups.createObjectTypes')}</Link>
               </p>
             ) : (
-              <ul className="entity-view__checkbox-list">
+              <CheckList>
                 {objectTypes.map((ot) => (
-                  <li key={ot.id}>
-                    <label className="console-modal-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={selectedTypeIds.has(ot.id)}
-                        onChange={() => toggleType(ot.id)}
-                      />
-                      <span>{ot.name}</span>
-                    </label>
-                  </li>
+                  <CheckListItem
+                    key={ot.id}
+                    checked={selectedTypeIds.has(ot.id)}
+                    onChange={() => toggleType(ot.id)}
+                  >
+                    {ot.name}
+                  </CheckListItem>
                 ))}
-              </ul>
+              </CheckList>
             )}
           </EntityViewField>
         </div>

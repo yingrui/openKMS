@@ -12,7 +12,12 @@ export type CheckRowProps = {
 export function CheckRow({ checked, onChange, title, hint, className }: CheckRowProps) {
   return (
     <label className={['ds-check-row', className].filter(Boolean).join(' ')}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        className="ds-checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       <span className="ds-check-row__body">
         <span className="ds-check-row__title">{title}</span>
         {hint != null && hint !== '' ? <span className="ds-check-row__hint">{hint}</span> : null}

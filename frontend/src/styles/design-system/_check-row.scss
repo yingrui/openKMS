@@ -12,10 +12,8 @@
   cursor: pointer;
 }
 
-.ds-check-row input[type='checkbox'] {
-  width: auto;
+.ds-check-row .ds-checkbox {
   margin-top: 2px;
-  flex-shrink: 0;
 }
 
 .ds-check-row__body {

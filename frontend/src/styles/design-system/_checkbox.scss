@@ -1,0 +1,87 @@
+// Shared checkbox control. Opt-in via .ds-checkbox (do not style all inputs globally).
+
+.ds-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  margin: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-elevated);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 0.75rem 0.75rem;
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+
+  &:hover:not(:disabled) {
+    border-color: var(--color-accent);
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+
+  &:checked {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    // White checkmark
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5l2.8 2.8 6.2-6.6' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  &:checked:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+    border-color: var(--color-accent-hover);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+// Dense multi-select list (group membership, filters, etc.)
+.ds-check-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ds-check-list > li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.ds-check-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line);
+  color: var(--color-text);
+
+  &:hover {
+    background: var(--color-bg-muted);
+  }
+}
+
+.ds-check-list__label {
+  min-width: 0;
+  word-break: break-word;
+}
