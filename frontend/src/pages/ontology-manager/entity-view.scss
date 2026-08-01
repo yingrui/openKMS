@@ -1,12 +1,23 @@
+// app-layout-exception: entity detail fills ontology pane; scroll inside __main only
+.app-page-pane:has(> .entity-view) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .entity-view {
   display: flex;
+  flex: 1;
   gap: var(--space-6);
   min-height: 0;
+  width: 100%;
+  align-self: stretch;
 }
 
 .entity-view__sidebar {
   width: var(--ontology-app-rail-width, 200px);
   flex-shrink: 0;
+  align-self: stretch;
   border-right: 1px solid var(--color-border);
   padding-right: var(--space-4);
 }
@@ -72,6 +83,8 @@
 .entity-view__main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .entity-view__actions {
