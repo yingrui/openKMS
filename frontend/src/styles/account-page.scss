@@ -171,13 +171,13 @@
 }
 
 .account-form-grid--2col {
-  @include min-width(ds.$bp-tight-max) {
+  @include min-width(ds.$bp-phone-max) {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 .account-form-grid .account-field--full {
-  @include min-width(ds.$bp-tight-max) {
+  @include min-width(ds.$bp-phone-max) {
     grid-column: 1 / -1;
   }
 }
@@ -412,7 +412,7 @@
   }
 }
 
-@include min-width(ds.$bp-tight-max) {
+@include min-width(ds.$bp-phone-max) {
   .account-list-item {
     grid-template-columns: 1fr auto auto;
     align-items: center;

@@ -14,6 +14,7 @@ import { ConnectorTushareProbe } from './ConnectorTushareProbe';
 import { ConnectorSyncDialog } from './ConnectorSyncDialog';
 import { useConnectorDetailForm } from './useConnectorDetailForm';
 import type { ConnectorSyncDateRange } from './connectorSyncUtils';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/settings-page.scss';
 import '../ontology/ontology-admin.scss';
 
@@ -21,6 +22,7 @@ export function ConnectorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation('console');
+  const confirm = useConfirm();
   const { hasPermission } = useAuth();
   const canWrite = hasPermission(PERM_CONNECTORS_WRITE);
   const canProvisionDatasets = canWrite && hasPermission(PERM_CONSOLE_DATASETS);
@@ -66,7 +68,15 @@ export function ConnectorDetailPage() {
 
   const handleDelete = async () => {
     if (!canWrite || !id) return;
-    if (!window.confirm(t('connectors.deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('connectors.deleteTitle'),
+        message: t('connectors.deleteConfirm'),
+        confirmLabel: t('connectors.deleteTitle'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteConnector(id);
       toast.success(t('connectors.toastDeleted'));

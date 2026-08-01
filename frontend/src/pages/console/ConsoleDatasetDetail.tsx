@@ -168,7 +168,7 @@ export function ConsoleDatasetDetail() {
               </div>
             ) : (
               <>
-                <div className="console-dataset-detail-table-wrap">
+                <div className="ds-table-wrap">
                   <table className="console-table">
                     <thead>
                       <tr>
@@ -274,7 +274,7 @@ export function ConsoleDatasetDetail() {
                 <p>{t('datasetDetail.loadingMetadata')}</p>
               </div>
             ) : (
-              <div className="console-dataset-detail-table-wrap">
+              <div className="ds-table-wrap">
                 <table className="console-table">
                   <thead>
                     <tr>

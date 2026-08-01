@@ -52,7 +52,7 @@ export function GroupsListPage() {
       </header>
 
       <div className="ontology-admin-content">
-        <div className="ontology-admin-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" aria-hidden />

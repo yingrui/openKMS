@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export type AclGrant = {
   grantee_type: 'user' | 'group' | 'authenticated';
@@ -25,28 +24,13 @@ export type OwnerCandidate = {
   label: string;
 };
 
-async function parseError(res: Response): Promise<string> {
-  let msg = res.statusText;
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') msg = j.detail;
-  } catch {
-    /* ignore */
-  }
-  return msg;
-}
-
 export async function fetchResourceAcl(
   resourceType: string,
   resourceId: string
 ): Promise<ResourceAclOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
-    { headers, credentials: 'include' }
+  return request<ResourceAclOut>(
+    `/api/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function putResourceAcl(
@@ -54,31 +38,23 @@ export async function putResourceAcl(
   resourceId: string,
   grants: { grantee_type: string; grantee_id?: string | null; permissions: string }[]
 ): Promise<ResourceAclOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
+  return request<ResourceAclOut>(
+    `/api/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
     {
       method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ grants }),
     }
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function fetchResourceAclOwnerCandidates(
   resourceType: string,
   resourceId: string
 ): Promise<OwnerCandidate[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/owner-candidates`,
-    { headers, credentials: 'include' }
+  return request<OwnerCandidate[]>(
+    `/api/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/owner-candidates`
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export const RESOURCE_TYPES = {

@@ -21,6 +21,7 @@ import {
   richMarkdownRemarkPlugins,
   richMarkdownRehypePlugins,
 } from '../../components/markdown/richMarkdown';
+import { PanelToolbar } from '../../styles/design-system';
 import type { DocumentResponse, PageIndexNode } from '../../data/documentsApi';
 import { PageIndexTree } from './DocumentDetail.pageIndex';
 import type {
@@ -143,25 +144,31 @@ export function DocumentDetailSplitPanel({
       data-extended-markdown={extendedPanel === 'markdown'}
     >
       <section className="document-detail-panel document-detail-images">
-        <h2 className="document-detail-panel-header">
-          {isSpreadsheetLayout ? <Table size={16} /> : isMindmapLayout ? <ListTree size={16} /> : <ImageIcon size={16} />}
-          <span>
-            {isSpreadsheetLayout
-              ? t('detail.panelWorkbook')
-              : isMindmapLayout
-                ? t('detail.panelMindmap')
-                : t('detail.panelPages')}
-          </span>
-          <button
-            type="button"
-            className="document-detail-extend-btn"
-            onClick={onToggleImagesPanel}
-            title={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.extendView')}
-            aria-label={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.ariaExtendPages')}
-          >
-            {extendedPanel === 'images' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
-        </h2>
+        <PanelToolbar
+          leading={
+            <>
+              {isSpreadsheetLayout ? <Table size={16} /> : isMindmapLayout ? <ListTree size={16} /> : <ImageIcon size={16} />}
+              <span>
+                {isSpreadsheetLayout
+                  ? t('detail.panelWorkbook')
+                  : isMindmapLayout
+                    ? t('detail.panelMindmap')
+                    : t('detail.panelPages')}
+              </span>
+            </>
+          }
+          actions={
+            <button
+              type="button"
+              className="document-detail-extend-btn ds-panel-toolbar__extend"
+              onClick={onToggleImagesPanel}
+              title={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.extendView')}
+              aria-label={extendedPanel === 'images' ? t('detail.restoreSplit') : t('detail.ariaExtendPages')}
+            >
+              {extendedPanel === 'images' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+          }
+        />
         <div className="document-detail-images-body">
           {isSpreadsheetLayout ? (
             <div className="document-detail-spreadsheet">
@@ -321,113 +328,119 @@ export function DocumentDetailSplitPanel({
         </div>
       </section>
       <section className="document-detail-panel document-detail-markdown">
-        <h2 className="document-detail-panel-header">
-          <div className="document-detail-panel-tabs">
-            <button
-              type="button"
-              className={`document-detail-panel-tab ${rightPanelView === 'markdown' ? 'document-detail-panel-tab--active' : ''}`}
-              onClick={() => onRightPanelView('markdown')}
-              aria-pressed={rightPanelView === 'markdown'}
-            >
-              <FileText size={14} />
-              <span>{t('detail.tabMarkdown')}</span>
-            </button>
-            {!isStructuredNonVlmLayout ? (
+        <PanelToolbar
+          tabs={
+            <>
               <button
                 type="button"
-                className={`document-detail-panel-tab ${rightPanelView === 'pageIndex' ? 'document-detail-panel-tab--active' : ''}`}
-                onClick={() => onRightPanelView('pageIndex')}
-                aria-pressed={rightPanelView === 'pageIndex'}
+                className={`document-detail-panel-tab ${rightPanelView === 'markdown' ? 'document-detail-panel-tab--active' : ''}`}
+                onClick={() => onRightPanelView('markdown')}
+                aria-pressed={rightPanelView === 'markdown'}
               >
-                <ListTree size={14} />
-                <span>{t('detail.tabPageIndex')}</span>
+                <FileText size={14} />
+                <span>{t('detail.tabMarkdown')}</span>
               </button>
-            ) : null}
-          </div>
-          {rightPanelView === 'markdown' && !docConfig && (
-            markdownEditMode ? (
-              <>
+              {!isStructuredNonVlmLayout ? (
                 <button
                   type="button"
-                  className="document-detail-edit-toggle document-detail-save-btn"
-                  onClick={onSaveMarkdown}
-                  disabled={saving}
-                  title={t('detail.titleSaveMarkdown')}
-                  aria-label={t('detail.titleSaveMarkdown')}
+                  className={`document-detail-panel-tab ${rightPanelView === 'pageIndex' ? 'document-detail-panel-tab--active' : ''}`}
+                  onClick={() => onRightPanelView('pageIndex')}
+                  aria-pressed={rightPanelView === 'pageIndex'}
                 >
-                  {saving ? (
-                    <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
-                  ) : (
-                    <Save size={14} aria-hidden />
-                  )}
-                  <span>{saving ? t('detail.savingInfo') : t('detail.saveInfo')}</span>
+                  <ListTree size={14} />
+                  <span>{t('detail.tabPageIndex')}</span>
                 </button>
-                <button
-                  type="button"
-                  className="document-detail-edit-toggle"
-                  onClick={onCancelMarkdownEdit}
-                  disabled={saving}
-                  title={t('detail.titleCancelEdit')}
-                  aria-label={t('detail.titleCancelEdit')}
-                >
-                  <XIcon size={14} />
-                  <span>{t('common.cancel')}</span>
-                </button>
-              </>
-            ) : (
-              <>
-                {showPrintButton && (
-                  <button
-                    type="button"
-                    className="document-detail-edit-toggle"
-                    onClick={() => window.print()}
-                    title={t('detail.titlePrintMarkdown')}
-                    aria-label={t('detail.titlePrintMarkdown')}
-                  >
-                    <Printer size={14} />
-                    <span>{t('detail.printMarkdown')}</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="document-detail-edit-toggle"
-                  onClick={onEnterMarkdownEdit}
-                  title={t('detail.titleEditMarkdown')}
-                  aria-label={t('detail.titleEditMarkdown')}
-                  aria-pressed={false}
-                >
-                  <Edit3 size={14} />
-                  <span>{t('common.edit')}</span>
-                </button>
-              </>
-            )
-          )}
-          {rightPanelView === 'pageIndex' && !docConfig && (
-            <button
-              type="button"
-              className="document-detail-edit-toggle"
-              onClick={onRebuildPageIndex}
-              disabled={pageIndexRebuilding}
-              title={t('detail.titleRebuildPageIndex')}
-              aria-label={t('detail.ariaRebuildPageIndex')}
-            >
-              {pageIndexRebuilding ? (
-                <Loader2 size={14} className="doc-detail-spinner" />
-              ) : (
-                <RefreshCw size={14} />
+              ) : null}
+            </>
+          }
+          actions={
+            <>
+              {rightPanelView === 'markdown' && !docConfig && (
+                markdownEditMode ? (
+                  <>
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle document-detail-save-btn"
+                      onClick={onSaveMarkdown}
+                      disabled={saving}
+                      title={t('detail.titleSaveMarkdown')}
+                      aria-label={t('detail.titleSaveMarkdown')}
+                    >
+                      {saving ? (
+                        <Loader2 size={14} className="doc-detail-spinner" aria-hidden />
+                      ) : (
+                        <Save size={14} aria-hidden />
+                      )}
+                      <span className="ds-compact-label">{saving ? t('detail.savingInfo') : t('detail.saveInfo')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={onCancelMarkdownEdit}
+                      disabled={saving}
+                      title={t('detail.titleCancelEdit')}
+                      aria-label={t('detail.titleCancelEdit')}
+                    >
+                      <XIcon size={14} />
+                      <span className="ds-compact-label">{t('common.cancel')}</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {showPrintButton && (
+                      <button
+                        type="button"
+                        className="document-detail-edit-toggle"
+                        onClick={() => window.print()}
+                        title={t('detail.titlePrintMarkdown')}
+                        aria-label={t('detail.titlePrintMarkdown')}
+                      >
+                        <Printer size={14} />
+                        <span className="ds-compact-label">{t('detail.printMarkdown')}</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="document-detail-edit-toggle"
+                      onClick={onEnterMarkdownEdit}
+                      title={t('detail.titleEditMarkdown')}
+                      aria-label={t('detail.titleEditMarkdown')}
+                      aria-pressed={false}
+                    >
+                      <Edit3 size={14} />
+                      <span className="ds-compact-label">{t('common.edit')}</span>
+                    </button>
+                  </>
+                )
               )}
-            </button>
-          )}
-          <button
-            type="button"
-            className="document-detail-extend-btn"
-            onClick={onToggleMarkdownExtend}
-            title={extendedPanel === 'markdown' ? t('detail.restoreSplit') : t('detail.extendView')}
-            aria-label={extendedPanel === 'markdown' ? t('detail.restoreSplit') : t('detail.ariaExtendMarkdown')}
-          >
-            {extendedPanel === 'markdown' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-          </button>
-        </h2>
+              {rightPanelView === 'pageIndex' && !docConfig && (
+                <button
+                  type="button"
+                  className="document-detail-edit-toggle"
+                  onClick={onRebuildPageIndex}
+                  disabled={pageIndexRebuilding}
+                  title={t('detail.titleRebuildPageIndex')}
+                  aria-label={t('detail.ariaRebuildPageIndex')}
+                >
+                  {pageIndexRebuilding ? (
+                    <Loader2 size={14} className="doc-detail-spinner" />
+                  ) : (
+                    <RefreshCw size={14} />
+                  )}
+                </button>
+              )}
+              <button
+                type="button"
+                className="document-detail-extend-btn ds-panel-toolbar__extend"
+                onClick={onToggleMarkdownExtend}
+                title={extendedPanel === 'markdown' ? t('detail.restoreSplit') : t('detail.extendView')}
+                aria-label={extendedPanel === 'markdown' ? t('detail.restoreSplit') : t('detail.ariaExtendMarkdown')}
+              >
+                {extendedPanel === 'markdown' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              </button>
+            </>
+          }
+        />
         <div className="document-detail-markdown-body">
           {rightPanelView === 'pageIndex' ? (
             <PageIndexTree

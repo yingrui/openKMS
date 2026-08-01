@@ -16,6 +16,7 @@ import {
 } from '../../data/ontologyApi';
 import { fetchDatasets, fetchDatasetMetadata, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './ontology-admin.scss';
 
 /** True when indexing reads from a junction or source-side dataset (not only saved links). */
@@ -39,6 +40,7 @@ function linkTypeUsesDatasetIndexing(t: LinkTypeResponse, objectTypes: ObjectTyp
 }
 
 export function LinkTypesPage() {
+  const confirm = useConfirm();
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -208,7 +210,15 @@ export function LinkTypesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this link type? All link instances will be deleted.')) return;
+    if (
+      !(await confirm({
+        title: 'Delete link type',
+        message: 'Delete this link type? All link instances will be deleted.',
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteLinkType(id);
       toast.success('Link type deleted');
@@ -257,7 +267,7 @@ export function LinkTypesPage() {
       </div>
 
       <div className="ontology-admin-content">
-        <div className="ontology-admin-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" />

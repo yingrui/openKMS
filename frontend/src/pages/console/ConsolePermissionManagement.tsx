@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import {
   FileText,
@@ -11,32 +10,13 @@ import {
   Shield,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM_ALL, PERM_CONSOLE_PERMISSIONS } from '../../config/permissions';
-import {
-  createSecurityPermission,
-  createSecurityRole,
-  deleteSecurityPermission,
-  deleteSecurityRole,
-  fetchPermissionReference,
-  fetchSecurityPermissionKeys,
-  fetchSecurityPermissionsPage,
-  fetchSecurityRolesPage,
-  patchSecurityPermission,
-  putRolePermissions,
-  type OperationKeyHintRef,
-  type PermissionReferenceResponse,
-  type SecurityPermissionRowOut,
-  type SecurityRoleOut,
-} from '../../data/securityAdminApi';
 import '../ontology/ontology-admin.scss';
 import { Pagination } from '../../styles/design-system';
+import { useConsolePermissionManagement } from './useConsolePermissionManagement';
+import { ConsolePermissionManagementModals } from './ConsolePermissionManagement.modals';
 import './ConsolePermissionManagement.scss';
-
-const PERMS_PAGE_SIZE_DEFAULT = 25;
-
-const ONBOARDING_DISMISSED_KEY = 'openkms_permissions_onboarding_dismissed';
 
 function inferPermissionCategory(key: string): string {
   if (key === PERM_ALL) return 'admin';
@@ -54,512 +34,7 @@ function formatCategoryLabel(id: string): string {
 
 export function ConsolePermissionManagement() {
   const { hasPermission } = useAuth();
-  const [catalog, setCatalog] = useState<SecurityPermissionRowOut[]>([]);
-  const [catalogKeys, setCatalogKeys] = useState<string[]>([]);
-  const [permTotal, setPermTotal] = useState(0);
-  const [permPage, setPermPage] = useState(0);
-  const [permPageSize, setPermPageSize] = useState(PERMS_PAGE_SIZE_DEFAULT);
-  const [operationKeyHints, setOperationKeyHints] = useState<OperationKeyHintRef[]>([]);
-  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
-    try {
-      return localStorage.getItem(ONBOARDING_DISMISSED_KEY) === '1';
-    } catch {
-      return false;
-    }
-  });
-  const [bulkAddingHints, setBulkAddingHints] = useState(false);
-  const [addingHintKey, setAddingHintKey] = useState<string | null>(null);
-  const [roles, setRoles] = useState<SecurityRoleOut[]>([]);
-  const [managed, setManaged] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
-  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addName, setAddName] = useState('');
-  const [addDescription, setAddDescription] = useState('');
-  const [addSubmitting, setAddSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [detailEntry, setDetailEntry] = useState<SecurityPermissionRowOut | null>(null);
-  const [showEditPermModal, setShowEditPermModal] = useState(false);
-  const [editPermLabel, setEditPermLabel] = useState('');
-  const [editPermDesc, setEditPermDesc] = useState('');
-  const [editPermFe, setEditPermFe] = useState('');
-  const [editPermBe, setEditPermBe] = useState('');
-  const [editPermSubmitting, setEditPermSubmitting] = useState(false);
-  const [editingPermissionId, setEditingPermissionId] = useState<string | null>(null);
-  const [showRefModal, setShowRefModal] = useState(false);
-  const [refLoading, setRefLoading] = useState(false);
-  const [refData, setRefData] = useState<PermissionReferenceResponse | null>(null);
-  const [refTab, setRefTab] = useState<'frontend' | 'api' | 'keys'>('frontend');
-  const [refSearch, setRefSearch] = useState('');
-  const [showAddPermModal, setShowAddPermModal] = useState(false);
-  const [permKey, setPermKey] = useState('');
-  const [permLabel, setPermLabel] = useState('');
-  const [permDesc, setPermDesc] = useState('');
-  const [permFe, setPermFe] = useState('');
-  const [permBe, setPermBe] = useState('');
-  const [permSubmitting, setPermSubmitting] = useState(false);
-  const [permSearch, setPermSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  /** Keys assigned to the selected role in the UI; only persisted when the user clicks Save. */
-  const [roleDraftKeys, setRoleDraftKeys] = useState<string[]>([]);
-
-  const loadMeta = useCallback(async () => {
-    try {
-      const [rolesPage, ref, keys] = await Promise.all([
-        fetchSecurityRolesPage(),
-        fetchPermissionReference(),
-        fetchSecurityPermissionKeys(),
-      ]);
-      setRoles(rolesPage.roles);
-      setManaged(rolesPage.managed_in_console);
-      setOperationKeyHints(Array.isArray(ref.operation_key_hints) ? ref.operation_key_hints : []);
-      setCatalogKeys(keys);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load');
-    }
-  }, []);
-
-  const loadCatalog = useCallback(async () => {
-    setLoading(true);
-    try {
-      const page = await fetchSecurityPermissionsPage({
-        limit: permPageSize,
-        offset: permPage * permPageSize,
-        search: permSearch.trim() || undefined,
-        category: activeCategory ?? undefined,
-      });
-      setCatalog(page.items);
-      setPermTotal(page.total);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeCategory, permPage, permPageSize, permSearch]);
-
-  const reloadAll = useCallback(async () => {
-    await loadMeta();
-    await loadCatalog();
-  }, [loadMeta, loadCatalog]);
-
-  useEffect(() => {
-    void loadMeta();
-  }, [loadMeta]);
-
-  useEffect(() => {
-    void loadCatalog();
-  }, [loadCatalog]);
-
-  useEffect(() => {
-    setPermPage(0);
-  }, [permSearch, activeCategory]);
-
-  const selectedRole = useMemo(
-    () => roles.find((r) => r.id === selectedRoleId) ?? null,
-    [roles, selectedRoleId]
-  );
-
-  const catalogEditable = selectedRoleId === null;
-
-  const isDraftDirty = useMemo(() => {
-    if (!selectedRole) return false;
-    const a = [...selectedRole.permission_keys].sort().join('\0');
-    const b = [...roleDraftKeys].sort().join('\0');
-    return a !== b;
-  }, [selectedRole, roleDraftKeys]);
-
-  const canLeaveRoleSelection = useCallback(() => {
-    if (!selectedRoleId || !selectedRole) return true;
-    const a = [...selectedRole.permission_keys].sort().join('\0');
-    const b = [...roleDraftKeys].sort().join('\0');
-    if (a === b) return true;
-    return window.confirm('Discard unsaved permission changes for this role?');
-  }, [selectedRoleId, selectedRole, roleDraftKeys]);
-
-  const trySetSelectedRoleId = useCallback(
-    (nextId: string | null) => {
-      if (nextId === selectedRoleId) return;
-      if (!canLeaveRoleSelection()) return;
-      setSelectedRoleId(nextId);
-      if (nextId) {
-        const r = roles.find((x) => x.id === nextId);
-        setRoleDraftKeys(r ? [...r.permission_keys] : []);
-      } else {
-        setRoleDraftKeys([]);
-      }
-    },
-    [selectedRoleId, canLeaveRoleSelection, roles]
-  );
-
-  useEffect(() => {
-    if (!roles.length) {
-      setSelectedRoleId(null);
-      setRoleDraftKeys([]);
-      return;
-    }
-    if (selectedRoleId && !roles.some((r) => r.id === selectedRoleId)) {
-      setSelectedRoleId(null);
-      setRoleDraftKeys([]);
-    }
-  }, [roles, selectedRoleId]);
-
-  const linesToPatterns = (s: string) =>
-    s
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
-
-  const openReference = useCallback(async () => {
-    setShowRefModal(true);
-    setRefSearch('');
-    setRefTab('frontend');
-    setRefLoading(true);
-    try {
-      const data = await fetchPermissionReference();
-      setRefData(data);
-      if (data.operation_key_hints?.length) {
-        setOperationKeyHints(data.operation_key_hints);
-      }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load reference');
-    } finally {
-      setRefLoading(false);
-    }
-  }, []);
-
-  const dismissOnboarding = useCallback(() => {
-    try {
-      localStorage.setItem(ONBOARDING_DISMISSED_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-    setOnboardingDismissed(true);
-  }, []);
-
-  const missingOperationKeyHints = useMemo(() => {
-    const keys = new Set(catalogKeys);
-    return operationKeyHints.filter((h) => !keys.has(h.key));
-  }, [catalogKeys, operationKeyHints]);
-
-  const hintCategoryByKey = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const h of operationKeyHints) {
-      m.set(h.key, h.category);
-    }
-    return m;
-  }, [operationKeyHints]);
-
-  const permissionCategories = useMemo(() => {
-    const s = new Set<string>();
-    for (const h of operationKeyHints) {
-      s.add(h.category);
-    }
-    return Array.from(s).sort((a, b) => a.localeCompare(b));
-  }, [operationKeyHints]);
-
-  const addSuggestedPermission = useCallback(
-    async (h: OperationKeyHintRef) => {
-      setAddingHintKey(h.key);
-      try {
-        await createSecurityPermission({
-          key: h.key,
-          label: h.label,
-          description: h.description,
-          frontend_route_patterns: [],
-          backend_api_patterns: [],
-        });
-        toast.success(`Added ${h.key}`);
-      await reloadAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to add');
-    } finally {
-      setAddingHintKey(null);
-    }
-  },
-    [reloadAll]
-  );
-
-  const addAllMissingSuggestedKeys = useCallback(async () => {
-    if (missingOperationKeyHints.length === 0) return;
-    setBulkAddingHints(true);
-    try {
-      for (const h of missingOperationKeyHints) {
-        await createSecurityPermission({
-          key: h.key,
-          label: h.label,
-          description: h.description,
-          frontend_route_patterns: [],
-          backend_api_patterns: [],
-        });
-      }
-      toast.success(`Added ${missingOperationKeyHints.length} permissions`);
-      await reloadAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Bulk add failed');
-    } finally {
-      setBulkAddingHints(false);
-    }
-  }, [missingOperationKeyHints, reloadAll]);
-
-  const openEditPermission = useCallback((row: SecurityPermissionRowOut) => {
-    if (row.key === PERM_ALL) {
-      toast.error('The built-in “all” permission cannot be modified.');
-      return;
-    }
-    setEditingPermissionId(row.id);
-    setEditPermLabel(row.label);
-    setEditPermDesc(row.description ?? '');
-    setEditPermFe(row.frontend_route_patterns.join('\n'));
-    setEditPermBe(row.backend_api_patterns.join('\n'));
-    setShowEditPermModal(true);
-    setDetailEntry(null);
-  }, []);
-
-  const submitEditPermission = async () => {
-    if (!editingPermissionId) return;
-    if (catalog.some((c) => c.id === editingPermissionId && c.key === PERM_ALL)) {
-      toast.error('The built-in “all” permission cannot be modified.');
-      return;
-    }
-    const label = editPermLabel.trim();
-    if (!label) {
-      toast.error('Label is required');
-      return;
-    }
-    setEditPermSubmitting(true);
-    try {
-      await patchSecurityPermission(editingPermissionId, {
-        label,
-        description: editPermDesc.trim() || null,
-        frontend_route_patterns: linesToPatterns(editPermFe),
-        backend_api_patterns: linesToPatterns(editPermBe),
-      });
-      toast.success('Permission updated');
-      setShowEditPermModal(false);
-      setEditingPermissionId(null);
-      await reloadAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Update failed');
-    } finally {
-      setEditPermSubmitting(false);
-    }
-  };
-
-  const confirmDeletePermission = async (row: SecurityPermissionRowOut) => {
-    if (row.key === PERM_ALL) return;
-    if (
-      !window.confirm(
-        `Delete permission "${row.key}"? Roles must not reference it; any assignment will block deletion.`
-      )
-    ) {
-      return;
-    }
-    try {
-      await deleteSecurityPermission(row.id);
-      setDetailEntry(null);
-      toast.success('Permission deleted');
-      await reloadAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
-    }
-  };
-
-  const copyText = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Copied');
-    } catch {
-      toast.error('Copy failed');
-    }
-  };
-
-  const submitAddPermission = async () => {
-    const key = permKey.trim();
-    const label = permLabel.trim();
-    if (!key || !label) {
-      toast.error('Permission key and label are required');
-      return;
-    }
-    setPermSubmitting(true);
-    try {
-      await createSecurityPermission({
-        key,
-        label,
-        description: permDesc.trim() || null,
-        frontend_route_patterns: linesToPatterns(permFe),
-        backend_api_patterns: linesToPatterns(permBe),
-      });
-      toast.success('Permission created');
-      setShowAddPermModal(false);
-      setPermKey('');
-      setPermLabel('');
-      setPermDesc('');
-      setPermFe('');
-      setPermBe('');
-      await reloadAll();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
-    } finally {
-      setPermSubmitting(false);
-    }
-  };
-
-  const filteredFrontendRef = useMemo(() => {
-    if (!refData) return [];
-    const q = refSearch.trim().toLowerCase();
-    if (!q) return refData.frontend_features;
-    return refData.frontend_features.filter(
-      (r) =>
-        r.path_pattern.toLowerCase().includes(q) ||
-        r.label.toLowerCase().includes(q) ||
-        r.section.toLowerCase().includes(q) ||
-        (r.note && r.note.toLowerCase().includes(q))
-    );
-  }, [refData, refSearch]);
-
-  const filteredApiRef = useMemo(() => {
-    if (!refData) return [];
-    const q = refSearch.trim().toLowerCase();
-    if (!q) return refData.api_operations;
-    return refData.api_operations.filter(
-      (r) =>
-        r.path.toLowerCase().includes(q) ||
-        r.method.toLowerCase().includes(q) ||
-        r.summary.toLowerCase().includes(q) ||
-        r.tags.some((t) => t.toLowerCase().includes(q))
-    );
-  }, [refData, refSearch]);
-
-  const filteredOperationKeyHints = useMemo(() => {
-    const list = refData?.operation_key_hints ?? operationKeyHints;
-    const q = refSearch.trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(
-      (h) =>
-        h.key.toLowerCase().includes(q) ||
-        h.label.toLowerCase().includes(q) ||
-        h.description.toLowerCase().includes(q) ||
-        h.category.toLowerCase().includes(q)
-    );
-  }, [refData, refSearch, operationKeyHints]);
-
-  const toggleDraftPerm = useCallback((key: string) => {
-    setRoleDraftKeys((prev) => {
-      const set = new Set(prev);
-      if (set.has(key)) set.delete(key);
-      else set.add(key);
-      return [...set];
-    });
-  }, []);
-
-  const toggleAllVisibleInDraft = useCallback(() => {
-    if (!selectedRole || catalog.length === 0) return;
-    const visibleKeys = catalog.map((r) => r.key);
-    setRoleDraftKeys((prev) => {
-      const set = new Set(prev);
-      const allAssigned = visibleKeys.every((k) => set.has(k));
-      if (allAssigned) {
-        visibleKeys.forEach((k) => set.delete(k));
-      } else {
-        visibleKeys.forEach((k) => set.add(k));
-      }
-      return [...set];
-    });
-  }, [selectedRole, catalog]);
-
-  const resetRoleDraft = useCallback(() => {
-    if (!selectedRole) return;
-    setRoleDraftKeys([...selectedRole.permission_keys]);
-  }, [selectedRole]);
-
-  const saveRoleDraft = useCallback(async () => {
-    if (!selectedRole || !managed) return;
-    setSavingRoleId(selectedRole.id);
-    try {
-      const updated = await putRolePermissions(selectedRole.id, roleDraftKeys);
-      setRoles((prev) => prev.map((r) => (r.id === selectedRole.id ? updated : r)));
-      setRoleDraftKeys([...updated.permission_keys]);
-      toast.success('Role permissions saved');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Save failed');
-    } finally {
-      setSavingRoleId(null);
-    }
-  }, [selectedRole, managed, roleDraftKeys]);
-
-  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
-
-  const visibleAssignState = useMemo(() => {
-    if (!selectedRole || catalog.length === 0) {
-      return { checked: false, indeterminate: false };
-    }
-    const keys = catalog.map((r) => r.key);
-    const n = keys.filter((k) => roleDraftKeys.includes(k)).length;
-    return {
-      checked: n === keys.length && keys.length > 0,
-      indeterminate: n > 0 && n < keys.length,
-    };
-  }, [selectedRole, catalog, roleDraftKeys]);
-
-  useEffect(() => {
-    const el = selectAllCheckboxRef.current;
-    if (el) {
-      el.indeterminate = visibleAssignState.indeterminate;
-    }
-  }, [visibleAssignState]);
-
-  const submitAddRole = async () => {
-    const name = addName.trim();
-    if (!name) {
-      toast.error('Role name is required');
-      return;
-    }
-    if (!canLeaveRoleSelection()) return;
-    setAddSubmitting(true);
-    try {
-      const created = await createSecurityRole({
-        name,
-        description: addDescription.trim() || null,
-      });
-      setRoles((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      setSelectedRoleId(created.id);
-      setRoleDraftKeys([...created.permission_keys]);
-      setShowAddModal(false);
-      setAddName('');
-      setAddDescription('');
-      toast.success('Role created');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Create failed');
-    } finally {
-      setAddSubmitting(false);
-    }
-  };
-
-  const confirmDeleteRole = async (role: SecurityRoleOut) => {
-    if (role.is_system_role) return;
-    if (
-      !window.confirm(
-        `Delete role "${role.name}"? This removes its permissions. Users linked only to this role may lose access.`
-      )
-    ) {
-      return;
-    }
-    setDeletingId(role.id);
-    try {
-      await deleteSecurityRole(role.id);
-      setRoles((prev) => prev.filter((r) => r.id !== role.id));
-      if (selectedRoleId === role.id) {
-        setSelectedRoleId(null);
-        setRoleDraftKeys([]);
-      }
-      toast.success('Role deleted');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed');
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const v = useConsolePermissionManagement();
 
   if (!hasPermission(PERM_CONSOLE_PERMISSIONS)) {
     return <Navigate to="/console" replace />;
@@ -577,17 +52,17 @@ export function ConsolePermissionManagement() {
           </p>
         </div>
       </div>
-      {!managed ? (
+      {!v.managed ? (
         <div className="console-perm-notice" role="status">
           Role permissions are not available for this auth mode.
         </div>
       ) : (
         <>
-          {!onboardingDismissed ? (
+          {!v.onboardingDismissed ? (
             <section className="console-perm-onboarding" aria-label="Getting started">
               <div className="console-perm-onboarding-head">
                 <h2 className="console-perm-onboarding-title">Getting started</h2>
-                <button type="button" className="console-perm-onboarding-dismiss" onClick={dismissOnboarding}>
+                <button type="button" className="console-perm-onboarding-dismiss" onClick={v.dismissOnboarding}>
                   Dismiss
                 </button>
               </div>
@@ -610,40 +85,40 @@ export function ConsolePermissionManagement() {
                   exactly.
                 </li>
               </ol>
-              {missingOperationKeyHints.length > 0 ? (
+              {v.missingOperationKeyHints.length > 0 ? (
                 <div className="console-perm-onboarding-missing">
                   <p className="console-perm-onboarding-missing-intro">
-                    <strong>{missingOperationKeyHints.length}</strong> built-in operation key
-                    {missingOperationKeyHints.length === 1 ? '' : 's'} not in the catalog yet.
+                    <strong>{v.missingOperationKeyHints.length}</strong> built-in operation key
+                    {v.missingOperationKeyHints.length === 1 ? '' : 's'} not in the catalog yet.
                   </p>
                   <div className="console-perm-onboarding-actions">
                     <button
                       type="button"
                       className="console-perm-onboarding-bulk"
-                      disabled={bulkAddingHints}
-                      onClick={() => void addAllMissingSuggestedKeys()}
+                      disabled={v.bulkAddingHints}
+                      onClick={() => void v.addAllMissingSuggestedKeys()}
                     >
-                      {bulkAddingHints ? 'Adding…' : `Add all ${missingOperationKeyHints.length} suggested keys`}
+                      {v.bulkAddingHints ? 'Adding…' : `Add all ${v.missingOperationKeyHints.length} suggested keys`}
                     </button>
                   </div>
                   <ul className="console-perm-onboarding-hint-list">
-                    {missingOperationKeyHints.map((h) => (
+                    {v.missingOperationKeyHints.map((h) => (
                       <li key={h.key}>
                         <code>{h.key}</code>
                         <span className="console-perm-onboarding-hint-label">{h.label}</span>
                         <button
                           type="button"
                           className="console-perm-onboarding-add-one"
-                          disabled={addingHintKey === h.key || bulkAddingHints}
-                          onClick={() => void addSuggestedPermission(h)}
+                          disabled={v.addingHintKey === h.key || v.bulkAddingHints}
+                          onClick={() => void v.addSuggestedPermission(h)}
                         >
-                          {addingHintKey === h.key ? '…' : 'Add'}
+                          {v.addingHintKey === h.key ? '…' : 'Add'}
                         </button>
                       </li>
                     ))}
                   </ul>
                 </div>
-              ) : operationKeyHints.length > 0 ? (
+              ) : v.operationKeyHints.length > 0 ? (
                 <p className="console-perm-muted console-perm-onboarding-done">
                   All suggested operation keys are already in the catalog.
                 </p>
@@ -655,7 +130,7 @@ export function ConsolePermissionManagement() {
             <div className="console-perm-categories" aria-label="Security roles">
               <div className="console-perm-categories-header">
                 <h3>Roles</h3>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(true)}>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => v.setShowAddModal(true)}>
                   <Plus size={14} />
                   Add
                 </button>
@@ -663,19 +138,19 @@ export function ConsolePermissionManagement() {
               <div className="console-perm-category-list-scroll">
                 <ul className="console-perm-category-list">
                   <li
-                    className={`console-perm-category-item ${selectedRoleId === null ? 'active' : ''}`}
-                    onClick={() => trySetSelectedRoleId(null)}
+                    className={`console-perm-category-item ${v.selectedRoleId === null ? 'active' : ''}`}
+                    onClick={() => void v.trySetSelectedRoleId(null)}
                   >
                     <LayoutGrid size={16} />
                     <span>All</span>
                   </li>
-                  {roles.map((r) => (
+                  {v.roles.map((r) => (
                     <li
                       key={r.id}
                       className={`console-perm-category-item console-perm-role-sidebar-item ${
-                        selectedRoleId === r.id ? 'active' : ''
+                        v.selectedRoleId === r.id ? 'active' : ''
                       }`}
-                      onClick={() => trySetSelectedRoleId(r.id)}
+                      onClick={() => void v.trySetSelectedRoleId(r.id)}
                     >
                       <Shield size={16} />
                       <span className="console-perm-role-sidebar-name">{r.name}</span>
@@ -685,8 +160,8 @@ export function ConsolePermissionManagement() {
                           <button
                             type="button"
                             title="Delete role"
-                            disabled={deletingId === r.id}
-                            onClick={() => void confirmDeleteRole(r)}
+                            disabled={v.deletingId === r.id}
+                            onClick={() => void v.confirmDeleteRole(r)}
                             aria-label={`Delete role ${r.name}`}
                           >
                             <Trash2 size={12} />
@@ -697,7 +172,7 @@ export function ConsolePermissionManagement() {
                   ))}
                 </ul>
               </div>
-              {roles.length === 0 ? (
+              {v.roles.length === 0 ? (
                 <p className="console-perm-roles-sidebar-hint console-perm-muted">No roles yet. Use Add to create one.</p>
               ) : null}
             </div>
@@ -711,46 +186,46 @@ export function ConsolePermissionManagement() {
                       type="search"
                       aria-label="Search permissions"
                       placeholder="Search permissions..."
-                      value={permSearch}
-                      onChange={(e) => setPermSearch(e.target.value)}
+                      value={v.permSearch}
+                      onChange={(e) => v.setPermSearch(e.target.value)}
                     />
                   </div>
                   <div className="console-perm-category-filters">
                     <button
                       type="button"
-                      className={`console-perm-filter-btn ${activeCategory === null ? 'active' : ''}`}
-                      onClick={() => setActiveCategory(null)}
+                      className={`console-perm-filter-btn ${v.activeCategory === null ? 'active' : ''}`}
+                      onClick={() => v.setActiveCategory(null)}
                     >
                       All
                     </button>
-                    {permissionCategories.map((cat) => (
+                    {v.permissionCategories.map((cat) => (
                       <button
                         key={cat}
                         type="button"
-                        className={`console-perm-filter-btn ${activeCategory === cat ? 'active' : ''}`}
-                        onClick={() => setActiveCategory(cat)}
+                        className={`console-perm-filter-btn ${v.activeCategory === cat ? 'active' : ''}`}
+                        onClick={() => v.setActiveCategory(cat)}
                       >
                         {formatCategoryLabel(cat)}
                       </button>
                     ))}
                   </div>
                   <div className="console-perm-toolbar-actions">
-                    <button type="button" className="btn btn-secondary" onClick={() => void openReference()}>
+                    <button type="button" className="btn btn-secondary" onClick={() => void v.openReference()}>
                       Route &amp; API reference
                     </button>
-                    <button type="button" className="btn btn-primary console-perm-toolbar-add" onClick={() => setShowAddPermModal(true)}>
+                    <button type="button" className="btn btn-primary console-perm-toolbar-add" onClick={() => v.setShowAddPermModal(true)}>
                       <Plus size={18} />
                       <span>Add permission</span>
                     </button>
                   </div>
                 </div>
-                {selectedRole ? (
+                {v.selectedRole ? (
                   <p className="console-perm-assign-hint">
-                    Editing assignments for <strong>{selectedRole.name}</strong>
-                    {selectedRole.description ? (
+                    Editing assignments for <strong>{v.selectedRole.name}</strong>
+                    {v.selectedRole.description ? (
                       <>
                         {' '}
-                        <span className="console-perm-muted">— {selectedRole.description}</span>
+                        <span className="console-perm-muted">— {v.selectedRole.description}</span>
                       </>
                     ) : null}
                     . Changes are saved when you click <strong>Save role permissions</strong>.
@@ -761,9 +236,9 @@ export function ConsolePermissionManagement() {
                     assign keys—use Save when done.
                   </p>
                 )}
-                {selectedRole ? (
+                {v.selectedRole ? (
                   <div className="console-perm-draft-bar">
-                    {isDraftDirty ? (
+                    {v.isDraftDirty ? (
                       <span className="console-perm-draft-bar-status">Unsaved changes</span>
                     ) : (
                       <span className="console-perm-draft-bar-status console-perm-draft-bar-status--saved">
@@ -774,31 +249,31 @@ export function ConsolePermissionManagement() {
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
-                        disabled={!isDraftDirty || savingRoleId === selectedRole.id}
-                        onClick={resetRoleDraft}
+                        disabled={!v.isDraftDirty || v.savingRoleId === v.selectedRole.id}
+                        onClick={v.resetRoleDraft}
                       >
                         Reset
                       </button>
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"
-                        disabled={!isDraftDirty || savingRoleId === selectedRole.id}
-                        onClick={() => void saveRoleDraft()}
+                        disabled={!v.isDraftDirty || v.savingRoleId === v.selectedRole.id}
+                        onClick={() => void v.saveRoleDraft()}
                       >
-                        {savingRoleId === selectedRole.id ? 'Saving…' : 'Save role permissions'}
+                        {v.savingRoleId === v.selectedRole.id ? 'Saving…' : 'Save role permissions'}
                       </button>
                     </div>
                   </div>
                 ) : null}
               </div>
 
-              <div className="console-perm-table-wrap">
-                {loading ? (
+              <div className="ds-table-wrap">
+                {v.loading ? (
                   <div className="console-perm-loading">
                     <Loader2 size={32} className="console-perm-loading-spinner" />
                     <p>Loading permissions…</p>
                   </div>
-                ) : permTotal === 0 && !permSearch.trim() && !activeCategory ? (
+                ) : v.permTotal === 0 && !v.permSearch.trim() && !v.activeCategory ? (
                   <p className="console-perm-table-empty">No permission rows yet. Click &quot;Add permission&quot; to create catalog entries.</p>
                 ) : (
                   <table className="console-perm-table">
@@ -811,15 +286,15 @@ export function ConsolePermissionManagement() {
                           <label className="console-perm-select-all-label">
                             <span className="sr-only">Select or clear all visible permissions for this role</span>
                             <input
-                              ref={selectAllCheckboxRef}
+                              ref={v.selectAllCheckboxRef}
                               type="checkbox"
                               disabled={
-                                !selectedRole ||
-                                (selectedRole ? savingRoleId === selectedRole.id : false) ||
-                                catalog.length === 0
+                                !v.selectedRole ||
+                                (v.selectedRole ? v.savingRoleId === v.selectedRole.id : false) ||
+                                v.catalog.length === 0
                               }
-                              checked={visibleAssignState.checked}
-                              onChange={() => toggleAllVisibleInDraft()}
+                              checked={v.visibleAssignState.checked}
+                              onChange={() => v.toggleAllVisibleInDraft()}
                             />
                           </label>
                         </th>
@@ -830,18 +305,18 @@ export function ConsolePermissionManagement() {
                       </tr>
                     </thead>
                     <tbody>
-                      {catalog.length === 0 ? (
+                      {v.catalog.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="console-perm-table-empty-cell">
                             No permissions match your search or filter.
                           </td>
                         </tr>
                       ) : (
-                        catalog.map((row) => {
-                          const cat = hintCategoryByKey.get(row.key) ?? inferPermissionCategory(row.key);
-                          const canAssign = !!selectedRole;
-                          const on = selectedRole ? roleDraftKeys.includes(row.key) : false;
-                          const busy = selectedRole ? savingRoleId === selectedRole.id : false;
+                        v.catalog.map((row) => {
+                          const cat = v.hintCategoryByKey.get(row.key) ?? inferPermissionCategory(row.key);
+                          const canAssign = !!v.selectedRole;
+                          const on = v.selectedRole ? v.roleDraftKeys.includes(row.key) : false;
+                          const busy = v.selectedRole ? v.savingRoleId === v.selectedRole.id : false;
                           const nFe = row.frontend_route_patterns.length;
                           const nBe = row.backend_api_patterns.length;
                           const patternParts: string[] = [];
@@ -856,10 +331,10 @@ export function ConsolePermissionManagement() {
                                     className="console-perm-row-checkbox"
                                     checked={on}
                                     disabled={busy}
-                                    onChange={() => toggleDraftPerm(row.key)}
+                                    onChange={() => v.toggleDraftPerm(row.key)}
                                     aria-label={
-                                      selectedRole
-                                        ? `${on ? 'Remove' : 'Assign'} ${row.key} for role ${selectedRole.name}`
+                                      v.selectedRole
+                                        ? `${on ? 'Remove' : 'Assign'} ${row.key} for role ${v.selectedRole.name}`
                                         : `Assign ${row.key}`
                                     }
                                   />
@@ -885,26 +360,26 @@ export function ConsolePermissionManagement() {
                                   <button
                                     type="button"
                                     title="Details"
-                                    onClick={() => setDetailEntry(row)}
+                                    onClick={() => v.setDetailEntry(row)}
                                     aria-label={`Details for ${row.key}`}
                                   >
                                     <FileText size={15} />
                                   </button>
-                                  {catalogEditable && row.key !== PERM_ALL ? (
+                                  {v.catalogEditable && row.key !== PERM_ALL ? (
                                     <button
                                       type="button"
                                       title="Edit"
-                                      onClick={() => openEditPermission(row)}
+                                      onClick={() => v.openEditPermission(row)}
                                       aria-label={`Edit ${row.key}`}
                                     >
                                       <Pencil size={15} />
                                     </button>
                                   ) : null}
-                                  {catalogEditable && row.key !== PERM_ALL ? (
+                                  {v.catalogEditable && row.key !== PERM_ALL ? (
                                     <button
                                       type="button"
                                       title="Delete"
-                                      onClick={() => void confirmDeletePermission(row)}
+                                      onClick={() => void v.confirmDeletePermission(row)}
                                       aria-label={`Delete ${row.key}`}
                                     >
                                       <Trash2 size={15} />
@@ -920,14 +395,14 @@ export function ConsolePermissionManagement() {
                   </table>
                 )}
                 <Pagination
-                  total={permTotal}
-                  page={permPage}
-                  pageSize={permPageSize}
-                  loading={loading}
-                  onPageChange={setPermPage}
+                  total={v.permTotal}
+                  page={v.permPage}
+                  pageSize={v.permPageSize}
+                  loading={v.loading}
+                  onPageChange={v.setPermPage}
                   onPageSizeChange={(size) => {
-                    setPermPageSize(size);
-                    setPermPage(0);
+                    v.setPermPageSize(size);
+                    v.setPermPage(0);
                   }}
                 />
               </div>
@@ -936,462 +411,65 @@ export function ConsolePermissionManagement() {
         </>
       )}
 
-      {detailEntry ? (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) => e.target === e.currentTarget && setDetailEntry(null)}
-        >
-          <div
-            className="console-modal console-perm-detail-modal"
-            role="dialog"
-            aria-labelledby="perm-detail-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="console-modal-header">
-              <h2 id="perm-detail-title">{detailEntry.label}</h2>
-              <button type="button" onClick={() => setDetailEntry(null)} aria-label="Close">
-                ×
-              </button>
-            </div>
-            <div className="console-modal-body console-perm-detail-body">
-              <p className="console-perm-detail-key">
-                <code>{detailEntry.key}</code>
-              </p>
-              {detailEntry.key === PERM_ALL ? (
-                <p className="console-perm-detail-system-note">This built-in permission cannot be edited or deleted.</p>
-              ) : !catalogEditable ? (
-                <p className="console-perm-detail-system-note">
-                  Select <strong>All</strong> under Roles to edit or delete catalog entries.
-                </p>
-              ) : null}
-              {detailEntry.description ? (
-                <p className="console-perm-detail-desc-text">{detailEntry.description}</p>
-              ) : (
-                <p className="console-perm-muted">No description.</p>
-              )}
-              <section className="console-perm-detail-section">
-                <h3 className="console-perm-detail-section-title">Frontend route patterns</h3>
-                {detailEntry.frontend_route_patterns.length ? (
-                  <ul className="console-perm-pattern-list">
-                    {detailEntry.frontend_route_patterns.map((p, i) => (
-                      <li key={`fe-${detailEntry.key}-${i}`}>
-                        <code>{p}</code>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="console-perm-muted">None listed (see description).</p>
-                )}
-              </section>
-              <section className="console-perm-detail-section">
-                <h3 className="console-perm-detail-section-title">Backend API path patterns</h3>
-                {detailEntry.backend_api_patterns.length ? (
-                  <ul className="console-perm-pattern-list">
-                    {detailEntry.backend_api_patterns.map((p, i) => (
-                      <li key={`be-${detailEntry.key}-${i}`}>
-                        <code>{p}</code>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="console-perm-muted">None listed (see description).</p>
-                )}
-              </section>
-            </div>
-            <div className="console-modal-actions">
-              {catalogEditable && detailEntry.key !== PERM_ALL ? (
-                <>
-                  <button type="button" onClick={() => openEditPermission(detailEntry)}>
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="console-perm-delete-catalog-btn"
-                    onClick={() => void confirmDeletePermission(detailEntry)}
-                  >
-                    Delete
-                  </button>
-                </>
-              ) : null}
-              <button type="button" onClick={() => setDetailEntry(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showEditPermModal && editingPermissionId ? (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) => e.target === e.currentTarget && !editPermSubmitting && setShowEditPermModal(false)}
-        >
-          <div className="console-modal console-modal--wide" role="dialog" aria-labelledby="edit-perm-title" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2 id="edit-perm-title">Edit permission</h2>
-              <button
-                type="button"
-                disabled={editPermSubmitting}
-                onClick={() => {
-                  setShowEditPermModal(false);
-                  setEditingPermissionId(null);
-                }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-perm-edit-key">
-                Key <code>{catalog.find((c) => c.id === editingPermissionId)?.key ?? ''}</code> (read-only)
-              </p>
-              <label>
-                <span>Label</span>
-                <input
-                  type="text"
-                  value={editPermLabel}
-                  onChange={(e) => setEditPermLabel(e.target.value)}
-                  maxLength={512}
-                  autoFocus
-                />
-              </label>
-              <label>
-                <span>Description (optional)</span>
-                <textarea
-                  value={editPermDesc}
-                  onChange={(e) => setEditPermDesc(e.target.value)}
-                  rows={2}
-                  className="console-perm-modal-textarea"
-                />
-              </label>
-              <label>
-                <span>Frontend route patterns (one per line)</span>
-                <textarea
-                  value={editPermFe}
-                  onChange={(e) => setEditPermFe(e.target.value)}
-                  rows={4}
-                  className="console-perm-modal-textarea"
-                />
-              </label>
-              <label>
-                <span>Backend API patterns (one per line)</span>
-                <textarea
-                  value={editPermBe}
-                  onChange={(e) => setEditPermBe(e.target.value)}
-                  rows={4}
-                  className="console-perm-modal-textarea"
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                disabled={editPermSubmitting}
-                onClick={() => {
-                  setShowEditPermModal(false);
-                  setEditingPermissionId(null);
-                }}
-              >
-                Cancel
-              </button>
-              <button type="button" disabled={editPermSubmitting} onClick={() => void submitEditPermission()}>
-                {editPermSubmitting ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showRefModal ? (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) => e.target === e.currentTarget && !refLoading && setShowRefModal(false)}
-        >
-          <div
-            className="console-modal console-modal--wide console-perm-ref-modal"
-            role="dialog"
-            aria-labelledby="perm-ref-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="console-modal-header">
-              <h2 id="perm-ref-title">Route &amp; API reference</h2>
-              <button
-                type="button"
-                disabled={refLoading}
-                onClick={() => setShowRefModal(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="console-modal-body console-perm-ref-body">
-              {refLoading ? (
-                <p className="console-perm-muted">Loading…</p>
-              ) : refData ? (
-                <>
-                  <p className="console-perm-ref-hint">{refData.hint}</p>
-                  <div className="console-perm-ref-tabs" role="tablist">
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={refTab === 'frontend'}
-                      className={refTab === 'frontend' ? 'console-perm-ref-tab console-perm-ref-tab--active' : 'console-perm-ref-tab'}
-                      onClick={() => setRefTab('frontend')}
-                    >
-                      Frontend features ({refData.frontend_features.length})
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={refTab === 'api'}
-                      className={refTab === 'api' ? 'console-perm-ref-tab console-perm-ref-tab--active' : 'console-perm-ref-tab'}
-                      onClick={() => setRefTab('api')}
-                    >
-                      API operations ({refData.api_operations.length})
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={refTab === 'keys'}
-                      className={refTab === 'keys' ? 'console-perm-ref-tab console-perm-ref-tab--active' : 'console-perm-ref-tab'}
-                      onClick={() => setRefTab('keys')}
-                    >
-                      Operation keys ({(refData.operation_key_hints ?? operationKeyHints).length})
-                    </button>
-                  </div>
-                  <label className="console-perm-ref-search">
-                    <span className="sr-only">Filter</span>
-                    <input
-                      type="search"
-                      value={refSearch}
-                      onChange={(e) => setRefSearch(e.target.value)}
-                      placeholder="Filter by path, label, tag…"
-                    />
-                  </label>
-                  <div className="console-perm-ref-scroll" role="tabpanel">
-                    {refTab === 'keys' ? (
-                      <ul className="console-perm-ref-list">
-                        {filteredOperationKeyHints.map((h) => (
-                          <li key={h.key}>
-                            <button
-                              type="button"
-                              className="console-perm-ref-row"
-                              onClick={() => void copyText(h.key)}
-                              title="Click to copy key"
-                            >
-                              <span className="console-perm-ref-path">
-                                <code>{h.key}</code>
-                              </span>
-                              <span className="console-perm-ref-meta">
-                                <span className="console-perm-ref-label">{h.label}</span>
-                                <span className="console-perm-ref-section">{h.category}</span>
-                                <span className="console-perm-ref-note">{h.description}</span>
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : refTab === 'frontend' ? (
-                      <ul className="console-perm-ref-list">
-                        {filteredFrontendRef.map((r) => (
-                          <li key={`${r.section}-${r.path_pattern}-${r.label}`}>
-                            <button
-                              type="button"
-                              className="console-perm-ref-row"
-                              onClick={() => void copyText(r.path_pattern)}
-                              title="Click to copy path pattern"
-                            >
-                              <span className="console-perm-ref-path">
-                                <code>{r.path_pattern}</code>
-                              </span>
-                              <span className="console-perm-ref-meta">
-                                <span className="console-perm-ref-label">{r.label}</span>
-                                <span className="console-perm-ref-section">{r.section}</span>
-                                {r.note ? <span className="console-perm-ref-note">{r.note}</span> : null}
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <ul className="console-perm-ref-list">
-                        {filteredApiRef.map((r, i) => (
-                          <li key={`${r.method}-${r.path}-${i}`}>
-                            <button
-                              type="button"
-                              className="console-perm-ref-row"
-                              onClick={() => void copyText(`${r.method} ${r.path}`)}
-                              title="Click to copy method + path"
-                            >
-                              <span className="console-perm-ref-path">
-                                <code>
-                                  {r.method} {r.path}
-                                </code>
-                              </span>
-                              <span className="console-perm-ref-meta">
-                                {r.summary ? <span className="console-perm-ref-label">{r.summary}</span> : null}
-                                {r.tags.length ? (
-                                  <span className="console-perm-ref-tags">{r.tags.join(' · ')}</span>
-                                ) : null}
-                              </span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <p className="console-perm-muted">No data.</p>
-              )}
-            </div>
-            <div className="console-modal-actions">
-              <button type="button" onClick={() => setShowRefModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showAddPermModal ? (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) => e.target === e.currentTarget && !permSubmitting && setShowAddPermModal(false)}
-        >
-          <div className="console-modal console-modal--wide" role="dialog" aria-labelledby="add-perm-title" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2 id="add-perm-title">Add permission</h2>
-              <button
-                type="button"
-                disabled={permSubmitting}
-                onClick={() => setShowAddPermModal(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <label>
-                <span>Key</span>
-                <input
-                  type="text"
-                  value={permKey}
-                  onChange={(e) => setPermKey(e.target.value)}
-                  maxLength={128}
-                  autoFocus
-                  placeholder="e.g. console:users"
-                />
-              </label>
-              <label>
-                <span>Label</span>
-                <input
-                  type="text"
-                  value={permLabel}
-                  onChange={(e) => setPermLabel(e.target.value)}
-                  maxLength={512}
-                  placeholder="Short display name"
-                />
-              </label>
-              <label>
-                <span>Description (optional)</span>
-                <textarea
-                  value={permDesc}
-                  onChange={(e) => setPermDesc(e.target.value)}
-                  rows={2}
-                  className="console-perm-modal-textarea"
-                  placeholder="What this permission covers"
-                />
-              </label>
-              <label>
-                <span>Frontend route patterns (one per line)</span>
-                <textarea
-                  value={permFe}
-                  onChange={(e) => setPermFe(e.target.value)}
-                  rows={4}
-                  className="console-perm-modal-textarea"
-                  placeholder={'/console/users\n/console/*'}
-                />
-              </label>
-              <label>
-                <span>Backend API patterns (one per line)</span>
-                <textarea
-                  value={permBe}
-                  onChange={(e) => setPermBe(e.target.value)}
-                  rows={4}
-                  className="console-perm-modal-textarea"
-                  placeholder={'/api/admin/users\n/api/admin/users/*'}
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button type="button" disabled={permSubmitting} onClick={() => setShowAddPermModal(false)}>
-                Cancel
-              </button>
-              <button type="button" disabled={permSubmitting} onClick={() => void submitAddPermission()}>
-                {permSubmitting ? 'Saving…' : 'Create permission'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {showAddModal ? (
-        <div
-          className="console-modal-overlay"
-          role="presentation"
-          onClick={(e) => e.target === e.currentTarget && !addSubmitting && setShowAddModal(false)}
-        >
-          <div className="console-modal" role="dialog" aria-labelledby="add-role-title" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2 id="add-role-title">Add role</h2>
-              <button
-                type="button"
-                disabled={addSubmitting}
-                onClick={() => setShowAddModal(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <label>
-                <span>Name</span>
-                <input
-                  type="text"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  maxLength={128}
-                  autoFocus
-                  placeholder="e.g. content-editor"
-                />
-              </label>
-              <label>
-                <span>Description (optional)</span>
-                <textarea
-                  value={addDescription}
-                  onChange={(e) => setAddDescription(e.target.value)}
-                  rows={2}
-                  placeholder="Short note for administrators"
-                  className="console-perm-modal-textarea"
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button type="button" disabled={addSubmitting} onClick={() => setShowAddModal(false)}>
-                Cancel
-              </button>
-              <button type="button" disabled={addSubmitting} onClick={() => void submitAddRole()}>
-                {addSubmitting ? 'Creating…' : 'Create role'}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConsolePermissionManagementModals
+        catalog={v.catalog}
+        catalogEditable={v.catalogEditable}
+        detailEntry={v.detailEntry}
+        onCloseDetail={() => v.setDetailEntry(null)}
+        onEditPermission={v.openEditPermission}
+        onDeletePermission={(row) => void v.confirmDeletePermission(row)}
+        showEditPermModal={v.showEditPermModal}
+        editingPermissionId={v.editingPermissionId}
+        editPermLabel={v.editPermLabel}
+        editPermDesc={v.editPermDesc}
+        editPermFe={v.editPermFe}
+        editPermBe={v.editPermBe}
+        editPermSubmitting={v.editPermSubmitting}
+        onEditPermLabelChange={v.setEditPermLabel}
+        onEditPermDescChange={v.setEditPermDesc}
+        onEditPermFeChange={v.setEditPermFe}
+        onEditPermBeChange={v.setEditPermBe}
+        onCloseEditPerm={() => {
+          v.setShowEditPermModal(false);
+          v.setEditingPermissionId(null);
+        }}
+        onSubmitEditPerm={() => void v.submitEditPermission()}
+        showRefModal={v.showRefModal}
+        refLoading={v.refLoading}
+        refData={v.refData}
+        refTab={v.refTab}
+        refSearch={v.refSearch}
+        operationKeyHints={v.operationKeyHints}
+        filteredFrontendRef={v.filteredFrontendRef}
+        filteredApiRef={v.filteredApiRef}
+        filteredOperationKeyHints={v.filteredOperationKeyHints}
+        onRefTabChange={v.setRefTab}
+        onRefSearchChange={v.setRefSearch}
+        onCloseRef={() => v.setShowRefModal(false)}
+        onCopyText={(text) => void v.copyText(text)}
+        showAddPermModal={v.showAddPermModal}
+        permKey={v.permKey}
+        permLabel={v.permLabel}
+        permDesc={v.permDesc}
+        permFe={v.permFe}
+        permBe={v.permBe}
+        permSubmitting={v.permSubmitting}
+        onPermKeyChange={v.setPermKey}
+        onPermLabelChange={v.setPermLabel}
+        onPermDescChange={v.setPermDesc}
+        onPermFeChange={v.setPermFe}
+        onPermBeChange={v.setPermBe}
+        onCloseAddPerm={() => v.setShowAddPermModal(false)}
+        onSubmitAddPerm={() => void v.submitAddPermission()}
+        showAddModal={v.showAddModal}
+        addName={v.addName}
+        addDescription={v.addDescription}
+        addSubmitting={v.addSubmitting}
+        onAddNameChange={v.setAddName}
+        onAddDescriptionChange={v.setAddDescription}
+        onCloseAddRole={() => v.setShowAddModal(false)}
+        onSubmitAddRole={() => void v.submitAddRole()}
+      />
     </div>
   );
 }

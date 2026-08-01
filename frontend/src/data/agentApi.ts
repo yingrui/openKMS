@@ -1,17 +1,5 @@
 /** Embedded agent API (LangGraph, `/api/agent`). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
-
-async function parseError(res: Response): Promise<string> {
-  let msg = res.statusText;
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') msg = j.detail;
-  } catch {
-    /* ignore */
-  }
-  return msg;
-}
+import { request, requestRaw } from './apiClient';
 
 export interface AgentConversationResponse {
   id: string;
@@ -80,41 +68,26 @@ export async function listAgentConversationsForWiki(
   wikiSpaceId: string,
   options?: { limit?: number }
 ): Promise<AgentConversationResponse[]> {
-  const headers = await getAuthHeaders();
-  const p = new URLSearchParams();
-  p.set('wiki_space_id', wikiSpaceId);
-  p.set('surface', 'wiki_space');
-  if (options?.limit) p.set('limit', String(options.limit));
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/agent/conversations?${p.toString()}`,
-    { headers, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<AgentConversationResponse[]>('/api/agent/conversations', {
+    query: { wiki_space_id: wikiSpaceId, surface: 'wiki_space', limit: options?.limit },
+  });
 }
 
 export async function deleteAgentConversation(conversationId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(conversationId)}`,
-    { method: 'DELETE', headers, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/agent/conversations/${encodeURIComponent(conversationId)}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function createAgentConversation(params: {
   surface: 'wiki_space';
   context: { wiki_space_id: string };
 }): Promise<AgentConversationResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/agent/conversations`, {
+  return request<AgentConversationResponse>('/api/agent/conversations', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ surface: params.surface, context: params.context }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export interface AgentMessageListResponse {
@@ -128,17 +101,10 @@ export async function listAgentMessagesPage(
   conversationId: string,
   options?: { limit?: number; offset?: number }
 ): Promise<AgentMessageListResponse> {
-  const headers = await getAuthHeaders();
-  const p = new URLSearchParams();
-  if (options?.limit != null) p.set('limit', String(options.limit));
-  if (options?.offset != null) p.set('offset', String(options.offset));
-  const q = p.toString();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(conversationId)}/messages${q ? `?${q}` : ''}`,
-    { headers, credentials: 'include' }
+  return request<AgentMessageListResponse>(
+    `/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`,
+    { query: { limit: options?.limit, offset: options?.offset } },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json() as Promise<AgentMessageListResponse>;
 }
 
 /** Loads all pages (bounded server max per page) for long threads. */
@@ -165,30 +131,21 @@ export async function truncateAgentMessagesFromMessage(
   conversationId: string,
   messageId: string
 ): Promise<{ deleted: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(
-      conversationId
-    )}/messages/from/${encodeURIComponent(messageId)}`,
-    { method: 'DELETE', headers, credentials: 'include' }
+  return request<{ deleted: number }>(
+    `/api/agent/conversations/${encodeURIComponent(conversationId)}/messages/from/${encodeURIComponent(messageId)}`,
+    { method: 'DELETE' },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json() as Promise<{ deleted: number }>;
 }
 
 export async function postAgentMessage(conversationId: string, content: string): Promise<AgentMessagePostResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`,
+  return request<AgentMessagePostResponse>(
+    `/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`,
     {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, stream: false }),
-    }
+    },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 /** NDJSON events from `POST .../messages` with `{ stream: true }`. */
@@ -223,13 +180,11 @@ export async function postAgentMessageStream(
   onEvent: (e: AgentMessageStreamEvent) => void,
   options?: { signal?: AbortSignal; session_id?: string | null }
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`,
+  const res = await requestRaw(
+    `/api/agent/conversations/${encodeURIComponent(conversationId)}/messages`,
     {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content,
         stream: true,
@@ -238,7 +193,6 @@ export async function postAgentMessageStream(
       signal: options?.signal,
     }
   );
-  if (!res.ok) throw new Error(await parseError(res));
   if (!res.body) throw new Error('No response body');
   const reader = res.body.getReader();
   const dec = new TextDecoder();

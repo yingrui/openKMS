@@ -44,13 +44,6 @@
   outline: none;
 }
 
-.console-users-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
 .console-users-table {
   width: 100%;
   border-collapse: collapse;
@@ -147,25 +140,10 @@
   font-size: var(--text-sm);
 }
 
-.console-users-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-  padding: var(--space-6);
-}
-
 .console-users-modal {
-  width: 100%;
-  max-width: 420px;
+  /* shell from _dialog.scss; keep form padding */
   padding: var(--space-6);
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
 }
 
 .console-users-modal h2 {

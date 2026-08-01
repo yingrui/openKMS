@@ -156,13 +156,13 @@
 }
 
 .wiki-pages-tree-match-badge--string {
-  background: color-mix(in srgb, #2563eb 22%, transparent);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--color-info-fg) 22%, transparent);
+  color: var(--color-info-fg);
 }
 
 .wiki-pages-tree-match-badge--semantic {
-  background: color-mix(in srgb, #7c3aed 22%, transparent);
-  color: #6d28d9;
+  background: color-mix(in srgb, var(--color-ontology-source) 22%, transparent);
+  color: var(--color-ontology-source);
 }
 
 .wiki-pages-tree-link:hover {

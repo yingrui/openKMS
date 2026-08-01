@@ -101,10 +101,11 @@ Ontology SPA sources live under `frontend/src/pages/ontology/`. Console admin sc
 | **`App.tsx`** | Route table, provider nesting (see diagram), `ErrorBoundary`, lazy-loaded pages |
 | **`pages/`** | One screen per route, grouped by domain (`documents/`, `articles/`, `wiki/`, `ontology/`, `console/`, …). Match the diagram above — do not mirror every filename here |
 | **`components/`** | UI shared across routes (layout shell, markdown, graphs, errors). Keep page-only UI next to its page |
-| **`data/`** | HTTP clients per API area; always go through **`authAwareFetch`** in `apiClient.ts` |
-| **`contexts/`** | Cross-route React state (auth, toggles, channel lists) |
+| **`data/`** | HTTP clients per API area — use **`request()`** / **`requestRaw()`** in `apiClient.ts` (wraps **`authAwareFetch`**) |
+| **`hooks/`** | Shared React logic (`useIsMobile`, `useListFetch`, `useDebouncedValue`, …) |
+| **`contexts/`** | Cross-route React state (auth, toggles, channel lists, **`ConfirmProvider`**, ontology mobile rail) |
 | **`config/`** | API base URL and `PERM_*` mirrors for UI gating |
-| **`styles/`** | Global design system — details in [design-system.md](design-system.md) |
+| **`styles/`** | Global design system — [design-system.md](design-system.md) |
 | **`i18n/`** | Locales and namespaces (see below) |
 | **`graph/`** | Shared graph types/builders when 2D and 3D (or wiki + home) reuse the same model |
 
@@ -121,23 +122,30 @@ frontend/src/
 │   ├── markdown/, wiki/, agents/, knowledge-bases/, jobs/, ui/
 │   └── KnowledgeMapForceGraph*.tsx, ErrorBoundary, …
 ├── data/                       # *Api.ts per backend domain (+ apiClient.ts)
-├── contexts/                   # Auth, FeatureToggles, DocumentChannels, ArticleChannels
+├── hooks/                      # useIsMobile, useListFetch, useDebouncedValue, …
+├── contexts/                   # Auth, FeatureToggles, channels, ConfirmProvider, …
 ├── config/                     # API URL, PERM_* mirrors
 ├── styles/
-│   ├── design-system/          # tokens, mixins, globals — see design-system.md
+│   ├── design-system/          # tokens, mixins, Dialog/EmptyState — see design-system.md
 │   └── account-page.scss
 ├── i18n/locales/{en,zh-CN}/    # namespaces per surface
 ├── graph/                      # shared Knowledge Map graph model
 └── utils/                      # permissionPatterns, helpers
 ```
 
+### Data layer & hooks
+
+- **API calls** — Domain modules in **`data/*Api.ts`** call **`request<T>(path, { query, …init })`**, which merges auth headers, locale, `credentials: 'include'`, serializes query params (skips `undefined` / `''`), throws readable errors, and returns `undefined` on **204**. Use **`requestRaw`** / **`requestText`** when headers or non-JSON bodies are needed. Low-level **`authAwareFetch`** stays inside `apiClient.ts` (401 silent retry, session expiry). **Exception:** pre-login pages (`Login`, `Signup`, `OidcCallback`) use bare `fetch`.
+- **List pages** — **`useDebouncedValue(value, ms)`** for search input; **`useListFetch({ fetcher, filters, pageSize })`** for offset/limit lists (resets page when filters change). Used by document/article/media channels and glossary detail; prefer over hand-rolled pagination state.
+- **Shell providers** — **`ConfirmProvider`** (`contexts/ConfirmContext.tsx`, mounted in **`MainLayout`**) powers **`useConfirm()`** for i18n-friendly confirms. **`OntologyMobileRailContext`** is ontology-rail-only (not channel rails).
+
 ### Conventions
 
-- **New feature screen** — add `pages/<domain>/Feature.tsx` + colocated `Feature.scss`; register a lazy route in `App.tsx`; add or extend a module under `data/` for HTTP calls.
-- **Styles** — `@use` design-system tokens/mixins in SCSS; use `var(--space-*)` and `var(--text-*)` for rhythm; settings pages cap width with `ds.$km-layout-max`; Profile / personal Settings reuse `account-page.scss` (`account-*` classes).
-- **Navigation & access** — sidebar uses `canAccessPath` and feature toggles; backend permissions remain authoritative.
-- **Naming** — `*List` / `*Detail` / `*Settings` for browse → drill-down → configure flows; documents and articles follow the same channel pattern (index → channel tree → channel view → settings).
-- **Where to look** — route → `App.tsx`; API shape → `data/*Api.ts`; shell chrome → `components/Layout/`; tokens and spacing rules → [design-system.md](design-system.md).
+- **New feature screen** — `pages/<domain>/Feature.tsx` + colocated `Feature.scss`; lazy route in `App.tsx`; HTTP in `data/` via **`request()`**; list UIs via **`useListFetch`** when paginated.
+- **Styles & layout** — [design-system.md](design-system.md); run **`check:styles`** / **`check:app-layout`** when touching shared styles or shell layout.
+- **Navigation & access** — `canAccessPath` + feature toggles; backend permissions are authoritative.
+- **Naming** — `*List` / `*Detail` / `*Settings`; documents and articles share the channel pattern (index → tree → channel → settings).
+- **Where to look** — route → `App.tsx`; API → `data/*Api.ts`; shell → `components/Layout/`; tokens → [design-system.md](design-system.md).
 
 ### Internationalization (SPA)
 

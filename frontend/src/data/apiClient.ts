@@ -1,5 +1,6 @@
 /** Central API client. Injects auth token from provider (set by AuthProvider). */
 
+import { config } from '../config';
 import { getStoredLocale } from '../i18n/config';
 
 let tokenProvider: (() => Promise<string | undefined>) | null = null;
@@ -175,4 +176,110 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
     headers.Authorization = `Bearer ${token}`;
   }
   return headers;
+}
+
+export type QueryParams = Record<string, string | number | boolean | null | undefined>;
+
+/** Builds a `?a=b&c=d` query string, skipping `undefined`/`null`/`''` values. Returns `''` when nothing remains. */
+export function buildQuery(params?: QueryParams): string {
+  if (!params) return '';
+  const usp = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    usp.set(key, String(value));
+  }
+  const qs = usp.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function resolveUrl(path: string, query?: QueryParams): string {
+  const base = path.startsWith('/') ? `${config.apiUrl}${path}` : path;
+  return `${base}${buildQuery(query)}`;
+}
+
+/** Extracts a human-readable message from a FastAPI-style `{ detail: string | { message } | [...] }` error body. */
+function extractErrorMessage(bodyText: string, fallback: string): string {
+  const parsed = parseJsonDetail(bodyText);
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const detail = (parsed as { detail?: unknown }).detail;
+    if (typeof detail === 'string' && detail) return detail;
+    if (detail && typeof detail === 'object' && !Array.isArray(detail)) {
+      const message = (detail as { message?: unknown }).message;
+      const errors = (detail as { errors?: unknown }).errors;
+      if (typeof message === 'string' && Array.isArray(errors)) return `${message}: ${errors.join('; ')}`;
+      if (typeof message === 'string' && message) return message;
+    }
+    if (Array.isArray(detail) && detail.length > 0) {
+      const first = detail[0] as { msg?: unknown };
+      if (first && typeof first.msg === 'string') return first.msg;
+    }
+  }
+  return bodyText.trim() || fallback;
+}
+
+/** Error thrown by `request()`/`requestText()`/`requestBlob()`/`requestRaw()` for non-OK responses. */
+export type RequestError = Error & { status: number };
+
+async function throwForResponse(res: Response): Promise<never> {
+  const bodyText = await res.text().catch(() => '');
+  const err = new Error(extractErrorMessage(bodyText, `Request failed: ${res.status}`)) as RequestError;
+  err.status = res.status;
+  throw err;
+}
+
+async function fetchWithAuth(path: string, init?: RequestInit & { query?: QueryParams }): Promise<Response> {
+  const { query, headers, ...rest } = init ?? {};
+  const url = resolveUrl(path, query);
+  const authHeaders = await getAuthHeaders();
+  const mergedHeaders = new Headers(headers);
+  for (const [key, value] of Object.entries(authHeaders)) {
+    if (value && !mergedHeaders.has(key)) mergedHeaders.set(key, value);
+  }
+  return authAwareFetch(url, {
+    credentials: 'include',
+    ...rest,
+    headers: mergedHeaders,
+  });
+}
+
+/**
+ * Central JSON request helper: resolves `path` against `config.apiUrl` (when it starts with `/`), attaches auth
+ * headers, and throws a human-readable `Error` for non-OK responses. Returns `undefined` for `204 No Content`.
+ */
+export async function request<T>(path: string, init?: RequestInit & { query?: QueryParams }): Promise<T> {
+  const res = await fetchWithAuth(path, init);
+  if (!res.ok) {
+    await throwForResponse(res);
+  }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  return res.json() as Promise<T>;
+}
+
+/** Like `request()`, but returns the raw `Response` for callers that need headers (e.g. `content-disposition`). */
+export async function requestRaw(path: string, init?: RequestInit & { query?: QueryParams }): Promise<Response> {
+  const res = await fetchWithAuth(path, init);
+  if (!res.ok) {
+    await throwForResponse(res);
+  }
+  return res;
+}
+
+/** Like `request()`, but resolves the raw response body as text (e.g. plain-text exports). */
+export async function requestText(path: string, init?: RequestInit & { query?: QueryParams }): Promise<string> {
+  const res = await fetchWithAuth(path, init);
+  if (!res.ok) {
+    await throwForResponse(res);
+  }
+  return res.text();
+}
+
+/** Like `request()`, but resolves the raw response body as a `Blob` (e.g. file downloads). */
+export async function requestBlob(path: string, init?: RequestInit & { query?: QueryParams }): Promise<Blob> {
+  const res = await fetchWithAuth(path, init);
+  if (!res.ok) {
+    await throwForResponse(res);
+  }
+  return res.blob();
 }

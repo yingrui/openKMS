@@ -134,6 +134,7 @@ export function ConsoleHealth() {
         <>
           <section className="console-health-section" aria-labelledby="console-health-core-heading">
             <h2 id="console-health-core-heading">{t('health.coreHeading')}</h2>
+            <div className="ds-table-wrap">
             <table className="console-health-table">
               <thead>
                 <tr>
@@ -149,6 +150,7 @@ export function ConsoleHealth() {
                 ))}
               </tbody>
             </table>
+            </div>
           </section>
 
           <section className="console-health-section" aria-labelledby="console-health-processes-heading">
@@ -162,6 +164,7 @@ export function ConsoleHealth() {
                     count: (data.process_instances ?? []).filter((p) => p.role === 'worker' && p.status === 'ok').length,
                   })}
                 </p>
+                <div className="ds-table-wrap">
                 <table className="console-health-table">
                   <thead>
                     <tr>
@@ -178,6 +181,7 @@ export function ConsoleHealth() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </>
             )}
           </section>
@@ -187,6 +191,7 @@ export function ConsoleHealth() {
             {data.data_sources.length === 0 ? (
               <p className="console-health-empty-ds">{t('health.dataSourcesEmpty')}</p>
             ) : (
+              <div className="ds-table-wrap">
               <table className="console-health-table">
                 <thead>
                   <tr>
@@ -219,6 +224,7 @@ export function ConsoleHealth() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
             <p className="console-health-hint">
               {t('health.dataSourcesHint')}{' '}

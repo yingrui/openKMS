@@ -18,17 +18,14 @@
 }
 
 .article-status-published {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--status-doc-completed-bg);
+  color: var(--status-doc-completed-fg);
 }
 
 .article-status-draft {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--status-doc-pending-bg);
+  color: var(--status-doc-pending-fg);
 }
-
-[data-theme="dark"] .article-status-published { background: #14532d; color: #86efac; }
-[data-theme="dark"] .article-status-draft { background: #422006; color: #fcd34d; }
 
 /* New-article modal body */
 .articles-new-modal-fields {

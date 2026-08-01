@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Trash2, X, RefreshCw, Search, Loader2, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, RefreshCw, Search, Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchDatasets,
@@ -13,10 +13,13 @@ import {
   type TableInfo,
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { Dialog } from '../../styles/design-system';
 import '../ontology/ontology-admin.scss';
 
 export function ConsoleDatasets() {
   const { t } = useTranslation('console');
+  const confirm = useConfirm();
   const [items, setItems] = useState<DatasetResponse[]>([]);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +149,15 @@ export function ConsoleDatasets() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t('datasets.deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('datasets.deleteTitle'),
+        message: t('datasets.deleteConfirm'),
+        confirmLabel: t('datasets.deleteTitle'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteDataset(id);
       toast.success(t('datasets.toastDeleted'));
@@ -204,7 +215,7 @@ export function ConsoleDatasets() {
         )}
       </div>
 
-      <div className="ontology-admin-table-wrap">
+      <div className="ds-table-wrap">
         {loading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" />
@@ -267,100 +278,92 @@ export function ConsoleDatasets() {
       </div>
       </div>
 
-      {showForm && (
-        <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
-          <div className="console-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{editItem ? t('datasets.modalEditTitle') : t('datasets.modalNewTitle')}</h2>
+      <Dialog
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        closeDisabled={submitting}
+        title={editItem ? t('datasets.modalEditTitle') : t('datasets.modalNewTitle')}
+        closeAriaLabel={t('datasets.closeAria')}
+        size="sm"
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => !submitting && setShowForm(false)}
+              disabled={submitting}
+            >
+              {t('datasets.cancel')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSubmit}
+              disabled={!formDataSourceId || !formSchema.trim() || !formTable.trim() || submitting}
+            >
+              {submitting ? t('datasets.saving') : editItem ? t('datasets.update') : t('datasets.create')}
+            </button>
+          </>
+        }
+      >
+        <label>
+          <span>{t('datasets.fieldDataSource')}</span>
+          <select
+            value={formDataSourceId}
+            onChange={(e) => handleDataSourceChange(e.target.value)}
+            disabled={!!editItem}
+          >
+            <option value="">{t('datasets.selectDataSource')}</option>
+            {pgDataSources.map((ds) => (
+              <option key={ds.id} value={ds.id}>{ds.name} ({ds.kind})</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span>{t('datasets.fieldTableFromSource')}</span>
+          <div className="openkms-table-picker-row">
+            <select
+              value={tables.length ? `${formSchema}.${formTable}` : ''}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) {
+                  const [s, tbl] = v.split('.');
+                  setFormSchema(s);
+                  setFormTable(tbl);
+                }
+              }}
+              disabled={!formDataSourceId || loadingTables || tables.length === 0}
+              className="openkms-flex-1"
+            >
+              <option value="">{loadingTables ? t('datasets.loadingTables') : t('datasets.selectTable')}</option>
+              {tables.map((tbl) => (
+                <option key={`${tbl.schema_name}.${tbl.table_name}`} value={`${tbl.schema_name}.${tbl.table_name}`}>
+                  {tbl.schema_name}.{tbl.table_name}
+                </option>
+              ))}
+            </select>
+            {formDataSourceId && !editItem && (
               <button
                 type="button"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-                aria-label={t('datasets.closeAria')}
+                className="btn btn-secondary btn-sm"
+                onClick={() => loadTables(formDataSourceId)}
+                disabled={loadingTables}
               >
-                <X size={20} />
+                <RefreshCw size={14} />
               </button>
-            </div>
-            <div className="console-modal-body">
-              <label>
-                <span>{t('datasets.fieldDataSource')}</span>
-                <select
-                  value={formDataSourceId}
-                  onChange={(e) => handleDataSourceChange(e.target.value)}
-                  disabled={!!editItem}
-                >
-                  <option value="">{t('datasets.selectDataSource')}</option>
-                  {pgDataSources.map((ds) => (
-                    <option key={ds.id} value={ds.id}>{ds.name} ({ds.kind})</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{t('datasets.fieldTableFromSource')}</span>
-                <div className="openkms-table-picker-row">
-                  <select
-                    value={tables.length ? `${formSchema}.${formTable}` : ''}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      if (v) {
-                        const [s, t] = v.split('.');
-                        setFormSchema(s);
-                        setFormTable(t);
-                      }
-                    }}
-                    disabled={!formDataSourceId || loadingTables || tables.length === 0}
-                    className="openkms-flex-1"
-                  >
-                    <option value="">{loadingTables ? t('datasets.loadingTables') : t('datasets.selectTable')}</option>
-                    {tables.map((t) => (
-                      <option key={`${t.schema_name}.${t.table_name}`} value={`${t.schema_name}.${t.table_name}`}>
-                        {t.schema_name}.{t.table_name}
-                      </option>
-                    ))}
-                  </select>
-                  {formDataSourceId && !editItem && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => loadTables(formDataSourceId)}
-                      disabled={loadingTables}
-                    >
-                      <RefreshCw size={14} />
-                    </button>
-                  )}
-                </div>
-              </label>
-              <label>
-                <span>{t('datasets.fieldDisplayName')}</span>
-                <input
-                  type="text"
-                  value={formDisplayName}
-                  onChange={(e) => setFormDisplayName(e.target.value)}
-                  placeholder={t('datasets.displayNamePlaceholder')}
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-              >
-                {t('datasets.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSubmit}
-                disabled={!formDataSourceId || !formSchema.trim() || !formTable.trim() || submitting}
-              >
-                {submitting ? t('datasets.saving') : editItem ? t('datasets.update') : t('datasets.create')}
-              </button>
-            </div>
+            )}
           </div>
-        </div>
-      )}
+        </label>
+        <label>
+          <span>{t('datasets.fieldDisplayName')}</span>
+          <input
+            type="text"
+            value={formDisplayName}
+            onChange={(e) => setFormDisplayName(e.target.value)}
+            placeholder={t('datasets.displayNamePlaceholder')}
+          />
+        </label>
+      </Dialog>
     </div>
   );
 }

@@ -341,10 +341,6 @@
     max-width: none;
   }
 
-  .header-brand-name {
-    display: none;
-  }
-
   .header-search {
     min-width: 0;
     padding: 0 var(--space-2);
@@ -362,15 +358,19 @@
     display: none;
   }
 
-  .header-login-label {
-    display: none;
-  }
-
   .header-login-btn {
     padding: 8px;
   }
 
   .header-actions {
     flex-shrink: 0;
+  }
+
+  .header-rail-toggle,
+  .header-theme-btn,
+  .header-user-btn,
+  .header-login-btn {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
   }
 }

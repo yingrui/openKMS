@@ -1,6 +1,5 @@
 /** API client for feature toggles (backend-persisted). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 /** Keys operators may flip in Console → Feature toggles (not derived fields). */
 export type FeatureToggleKey = 'evaluations' | 'connectors' | 'agents' | 'media';
@@ -14,29 +13,13 @@ export interface FeatureToggles {
 }
 
 export async function fetchToggles(): Promise<FeatureToggles> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/feature-toggles`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to load feature toggles');
-  }
-  return res.json();
+  return request<FeatureToggles>('/api/feature-toggles');
 }
 
 export async function updateToggles(toggles: Partial<Record<FeatureToggleKey, boolean>>): Promise<FeatureToggles> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/feature-toggles`, {
+  return request<FeatureToggles>('/api/feature-toggles', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(toggles),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update feature toggles');
-  }
-  return res.json();
 }

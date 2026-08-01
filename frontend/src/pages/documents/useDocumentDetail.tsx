@@ -37,7 +37,8 @@ import {
 import { fetchObjectType, fetchObjectInstances } from '../../data/ontologyApi';
 import { createJob } from '../../data/jobsApi';
 import { useEnsureDocumentChannels } from '../../contexts/DocumentChannelsContext';
-import { isMobileViewport } from '../../hooks/useIsMobile';
+import { useDetailInfoVisible } from '../../hooks/useIsMobile';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { findChannel, normalizeExtractionSchemaToFields, type LabelConfigItem, isProcessBlockedByMissingPipeline } from '../../data/channelUtils';
 import type { PageBlock, ParsingResult } from './DocumentDetail.types';
 import {
@@ -49,6 +50,7 @@ import {
 
 export function useDocumentDetail(id: string | undefined) {
   const { t } = useTranslation('documents');
+  const confirm = useConfirm();
   const { channels } = useEnsureDocumentChannels();
 
   const [markdown, setMarkdown] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function useDocumentDetail(id: string | undefined) {
   const [hoveredBlockKey, setHoveredBlockKey] = useState<string | null>(null);
   const [selectedBlock, setSelectedBlock] = useState<PageBlock | null>(null);
   const [pageDimensions, setPageDimensions] = useState<Record<number, { w: number; h: number }>>({});
-  const [infoVisible, setInfoVisible] = useState(() => !isMobileViewport());
+  const [infoVisible, setInfoVisible] = useDetailInfoVisible();
   const [document, setDocument] = useState<DocumentResponse | null>(null);
   const [processing, setProcessing] = useState(false);
   const [forceFullReparse, setForceFullReparse] = useState(false);
@@ -507,7 +509,15 @@ export function useDocumentDetail(id: string | undefined) {
 
   const handleRestoreMarkdown = useCallback(async () => {
     if (!id) return;
-    if (!window.confirm(t('detail.confirmRestoreMarkdown'))) return;
+    if (
+      !(await confirm({
+        title: t('common.restore'),
+        message: t('detail.confirmRestoreMarkdown'),
+        confirmLabel: t('common.restore'),
+        danger: true,
+      }))
+    )
+      return;
     setRestoring(true);
     try {
       const updated = await restoreDocumentMarkdown(id);
@@ -521,7 +531,7 @@ export function useDocumentDetail(id: string | undefined) {
     } finally {
       setRestoring(false);
     }
-  }, [id, t]);
+  }, [id, t, confirm]);
 
   const handleRebuildPageIndex = useCallback(async () => {
     if (!id) return;

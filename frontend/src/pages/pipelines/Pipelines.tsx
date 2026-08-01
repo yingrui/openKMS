@@ -12,10 +12,12 @@ import {
   type PipelineResponse,
 } from '../../data/pipelinesApi';
 import { fetchAllModels, type ApiModelResponse } from '../../data/modelsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './Pipelines.scss';
 
 export function Pipelines() {
   const { t } = useTranslation('workspace');
+  const confirm = useConfirm();
   const dash = t('shared.dash');
   const [pipelines, setPipelines] = useState<PipelineResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,7 +135,15 @@ export function Pipelines() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t('pipelines.deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('pipelines.deleteConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deletePipeline(id);
       toast.success(t('pipelines.deletedToast'));
@@ -189,7 +199,7 @@ export function Pipelines() {
           </div>
         </div>
         {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-        <div className="pipelines-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="pipelines-loading">
               <Loader2 size={32} className="pipelines-loading-spinner" />

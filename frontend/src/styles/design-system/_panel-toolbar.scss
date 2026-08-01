@@ -1,0 +1,75 @@
+// Shared detail/list panel chrome: leading | tabs | trailing actions.
+
+@use './mixins' as *;
+@use './tokens' as ds;
+
+.ds-panel-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 600;
+  padding: calc(var(--space-3) + var(--space-1) / 2) calc(var(--space-4) + var(--space-1) / 2);
+  margin: 0;
+  min-height: 48px;
+  box-sizing: border-box;
+  background: var(--color-bg-muted);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.ds-panel-toolbar__leading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.ds-panel-toolbar__leading > svg:first-of-type {
+  flex-shrink: 0;
+  color: var(--color-accent);
+  opacity: 0.9;
+}
+
+.ds-panel-toolbar__leading > span {
+  min-width: 0;
+  @include text-truncate;
+}
+
+.ds-panel-toolbar__tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.ds-panel-toolbar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+@include max-width(ds.$bp-md-min) {
+  .ds-panel-toolbar {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+    min-height: 0;
+    height: auto;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .ds-panel-toolbar__tabs {
+    gap: var(--space-2);
+  }
+}
+
+/* Hide split-extend once the layout is already single-column. */
+@include max-width(ds.$km-layout-max) {
+  .ds-panel-toolbar__extend {
+    display: none;
+  }
+}

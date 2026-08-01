@@ -1,0 +1,171 @@
+// Shared modal dialog. Prefer <Dialog> from design-system over per-page overlays.
+
+.ds-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--overlay-backdrop);
+}
+
+.ds-dialog {
+  --dialog-w: 560px;
+
+  display: flex;
+  flex-direction: column;
+  width: min(var(--dialog-w), calc(100vw - 2rem));
+  max-height: 90dvh;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  outline: none;
+}
+
+.ds-dialog--sm {
+  --dialog-w: 440px;
+}
+
+.ds-dialog--lg {
+  --dialog-w: 720px;
+}
+
+.ds-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ds-dialog__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.ds-dialog__close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+
+  &:hover:not(:disabled) {
+    color: var(--color-text);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.ds-dialog__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+.ds-dialog__footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-border);
+}
+
+.ds-confirm-message {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.btn.btn-danger {
+  background: var(--color-error);
+  color: #fff;
+  border-color: var(--color-error);
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.92);
+  }
+}
+
+// Legacy class aliases — same chrome as .ds-dialog-* so unmigrated pages
+// pick up backdrop token + viewport-safe sizing. Prefer migrating to <Dialog>.
+.console-modal-overlay,
+.channel-page-modal-overlay,
+.jobs-modal-overlay,
+.pipelines-modal-overlay,
+.models-modal-overlay,
+.glossary-dialog-overlay,
+.knowledge-map-dialog-overlay,
+.agents-dialog-overlay,
+.sreview-modal-overlay,
+.object-type-dialog-overlay,
+.link-type-dialog-overlay,
+.resource-list-dialog-overlay,
+.kb-doc-picker-overlay,
+.eval-dialog-overlay,
+.document-detail-pageindex-dialog-overlay,
+.console-users-modal-overlay,
+.console-access-groups-modal-overlay,
+.console-users-modal-backdrop,
+.console-access-groups-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--overlay-backdrop);
+}
+
+.console-modal,
+.channel-page-modal,
+.jobs-modal,
+.pipelines-modal,
+.models-modal,
+.glossary-dialog,
+.knowledge-map-dialog,
+.agents-dialog,
+.sreview-modal,
+.object-type-dialog,
+.link-type-dialog,
+.resource-list-dialog,
+.eval-dialog,
+.console-users-modal,
+.console-access-groups-modal {
+  --dialog-w: 560px;
+
+  display: flex;
+  flex-direction: column;
+  width: min(var(--dialog-w), calc(100vw - 2rem));
+  max-height: 90dvh;
+  overflow-y: auto;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.console-modal.console-modal--wide,
+.console-modal--wide {
+  --dialog-w: 680px;
+}

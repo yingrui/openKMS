@@ -1,0 +1,73 @@
+.ds-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-12) + var(--space-1) * 3) var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.ds-empty-state--page {
+  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
+}
+
+.ds-empty-state__icon {
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+  line-height: 0;
+
+  .ds-empty-state--page & {
+    margin-bottom: var(--space-5);
+  }
+}
+
+.ds-empty-state__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold, 600);
+  color: var(--color-text);
+}
+
+.ds-empty-state__description {
+  margin: 0;
+  font-size: var(--text-md);
+  max-width: 28rem;
+}
+
+.ds-empty-state__action {
+  margin-top: var(--space-5);
+}
+
+// Aliases for existing call sites — prefer <EmptyState> going forward.
+.channel-page-empty,
+.resource-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-12) + var(--space-1) * 3) var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.channel-page-empty svg,
+.resource-list-empty svg {
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.channel-page-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.channel-page-empty-state svg {
+  margin-bottom: var(--space-5);
+  opacity: 0.5;
+}

@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 import type { OwnerCandidate, ResourceAclOut } from './resourceAclApi';
 
 export type PermissionCatalogEntry = {
@@ -24,17 +23,6 @@ export type SecurityRolesPageResponse = {
   idp_notice: string | null;
   roles: SecurityRoleOut[];
 };
-
-async function parseError(res: Response): Promise<string> {
-  let msg = res.statusText;
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') msg = j.detail;
-  } catch {
-    /* ignore */
-  }
-  return msg;
-}
 
 export type FrontendFeatureRef = {
   path_pattern: string;
@@ -65,13 +53,7 @@ export type PermissionReferenceResponse = {
 };
 
 export async function fetchPermissionReference(): Promise<PermissionReferenceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/permission-reference`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<PermissionReferenceResponse>('/api/admin/permission-reference');
 }
 
 export type SecurityPermissionRowOut = {
@@ -92,11 +74,9 @@ export async function createSecurityPermission(body: {
   frontend_route_patterns?: string[];
   backend_api_patterns?: string[];
 }): Promise<SecurityPermissionRowOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions`, {
+  return request<SecurityPermissionRowOut>('/api/admin/security-permissions', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       key: body.key,
       label: body.label,
@@ -105,8 +85,6 @@ export async function createSecurityPermission(body: {
       backend_api_patterns: body.backend_api_patterns ?? [],
     }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export type SecurityPermissionsPageOut = {
@@ -125,29 +103,19 @@ export type ListPageParams = {
 export async function fetchSecurityPermissionsPage(
   params: ListPageParams & { category?: string | null } = {}
 ): Promise<SecurityPermissionsPageOut> {
-  const headers = await getAuthHeaders();
-  const qs = new URLSearchParams();
-  if (params.limit != null) qs.set('limit', String(params.limit));
-  if (params.offset != null) qs.set('offset', String(params.offset));
-  if (params.search?.trim()) qs.set('search', params.search.trim());
-  if (params.category) qs.set('category', params.category);
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/security-permissions?${qs.toString()}`,
-    { headers: { ...headers }, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<SecurityPermissionsPageOut>('/api/admin/security-permissions', {
+    query: {
+      limit: params.limit,
+      offset: params.offset,
+      search: params.search?.trim(),
+      category: params.category,
+    },
+  });
 }
 
 /** All catalog keys (for onboarding / hint diff). */
 export async function fetchSecurityPermissionKeys(): Promise<string[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions/keys`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<string[]>('/api/admin/security-permissions/keys');
 }
 
 /** @deprecated Prefer fetchSecurityPermissionsPage */
@@ -175,82 +143,46 @@ export async function patchSecurityPermission(
     sort_order?: number;
   }
 ): Promise<SecurityPermissionRowOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions/${permissionId}`, {
+  return request<SecurityPermissionRowOut>(`/api/admin/security-permissions/${permissionId}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteSecurityPermission(permissionId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-permissions/${permissionId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/admin/security-permissions/${permissionId}`, { method: 'DELETE' });
 }
 
 export async function fetchPermissionCatalog(): Promise<PermissionCatalogEntry[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/auth/permission-catalog`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<PermissionCatalogEntry[]>('/api/auth/permission-catalog');
 }
 
 export async function fetchSecurityRolesPage(): Promise<SecurityRolesPageResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<SecurityRolesPageResponse>('/api/admin/security-roles');
 }
 
 export async function createSecurityRole(body: {
   name: string;
   description?: string | null;
 }): Promise<SecurityRoleOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles`, {
+  return request<SecurityRoleOut>('/api/admin/security-roles', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteSecurityRole(roleId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles/${roleId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/admin/security-roles/${roleId}`, { method: 'DELETE' });
 }
 
 export async function putRolePermissions(roleId: string, permissionKeys: string[]): Promise<SecurityRoleOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/security-roles/${roleId}/permissions`, {
+  return request<SecurityRoleOut>(`/api/admin/security-roles/${roleId}/permissions`, {
     method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ permission_keys: permissionKeys }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export type AccessGroupOut = {
@@ -262,13 +194,7 @@ export type AccessGroupOut = {
 };
 
 export async function fetchAccessGroup(groupId: string): Promise<AccessGroupOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<AccessGroupOut>(`/api/admin/groups/${groupId}`);
 }
 
 export type AccessGroupsPageOut = {
@@ -281,17 +207,9 @@ export type AccessGroupsPageOut = {
 export async function fetchAccessGroupsPage(
   params: ListPageParams = {}
 ): Promise<AccessGroupsPageOut> {
-  const headers = await getAuthHeaders();
-  const qs = new URLSearchParams();
-  if (params.limit != null) qs.set('limit', String(params.limit));
-  if (params.offset != null) qs.set('offset', String(params.offset));
-  if (params.search?.trim()) qs.set('search', params.search.trim());
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups?${qs.toString()}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<AccessGroupsPageOut>('/api/admin/groups', {
+    query: { limit: params.limit, offset: params.offset, search: params.search?.trim() },
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 /** All groups (sidebar, share panel). Paginates at API max page size (200). */
@@ -313,40 +231,26 @@ export async function createAccessGroup(body: {
   name: string;
   description?: string | null;
 }): Promise<AccessGroupOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups`, {
+  return request<AccessGroupOut>('/api/admin/groups', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function patchAccessGroup(
   id: string,
   body: { name?: string; description?: string | null }
 ): Promise<AccessGroupOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${id}`, {
+  return request<AccessGroupOut>(`/api/admin/groups/${id}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteAccessGroup(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/admin/groups/${id}`, { method: 'DELETE' });
 }
 
 export type LocalUserBrief = { id: string; email: string; username: string };
@@ -361,13 +265,7 @@ export type GroupMembersPageOut = {
 };
 
 export async function fetchGroupMemberSubjects(groupId: string): Promise<string[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/groups/${groupId}/member-subjects`,
-    { headers: { ...headers }, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  const data = (await res.json()) as { subjects: string[] };
+  const data = await request<{ subjects: string[] }>(`/api/admin/groups/${groupId}/member-subjects`);
   return data.subjects;
 }
 
@@ -375,28 +273,17 @@ export async function fetchGroupMembersPage(
   groupId: string,
   params: ListPageParams = {}
 ): Promise<GroupMembersPageOut> {
-  const headers = await getAuthHeaders();
-  const qs = new URLSearchParams();
-  if (params.limit != null) qs.set('limit', String(params.limit));
-  if (params.offset != null) qs.set('offset', String(params.offset));
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/groups/${groupId}/members?${qs.toString()}`,
-    { headers: { ...headers }, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<GroupMembersPageOut>(`/api/admin/groups/${groupId}/members`, {
+    query: { limit: params.limit, offset: params.offset },
+  });
 }
 
 export async function putGroupMembers(groupId: string, subjects: string[]) {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/members`, {
+  return request<{ members: MemberBrief[] }>(`/api/admin/groups/${groupId}/members`, {
     method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ subjects }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json() as Promise<{ members: MemberBrief[] }>;
 }
 
 export type GroupScopesOut = {
@@ -411,13 +298,7 @@ export type GroupScopesOut = {
 };
 
 export async function fetchGroupScopes(groupId: string): Promise<GroupScopesOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/scopes`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<GroupScopesOut>(`/api/admin/groups/${groupId}/scopes`);
 }
 
 export type GroupSharedResourceOut = {
@@ -440,16 +321,9 @@ export async function fetchGroupSharedResourcesPage(
   groupId: string,
   params: ListPageParams = {}
 ): Promise<GroupSharedResourcesPageOut> {
-  const headers = await getAuthHeaders();
-  const qs = new URLSearchParams();
-  if (params.limit != null) qs.set('limit', String(params.limit));
-  if (params.offset != null) qs.set('offset', String(params.offset));
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/groups/${groupId}/shared-resources?${qs.toString()}`,
-    { headers: { ...headers }, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<GroupSharedResourcesPageOut>(`/api/admin/groups/${groupId}/shared-resources`, {
+    query: { limit: params.limit, offset: params.offset },
+  });
 }
 
 export type ResourceAclIssueCode =
@@ -520,13 +394,7 @@ export type ResourceAclIssuesPageOut = ResourceAclIssuesSummaryOut & {
 };
 
 export async function fetchResourceAclIssuesSummary(): Promise<ResourceAclIssuesSummaryOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/resource-acl/issues`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<ResourceAclIssuesSummaryOut>('/api/admin/resource-acl/issues');
 }
 
 export async function fetchResourceAclIssuesPage(
@@ -534,31 +402,18 @@ export async function fetchResourceAclIssuesPage(
   limit: number,
   offset: number
 ): Promise<ResourceAclIssuesPageOut> {
-  const headers = await getAuthHeaders();
-  const params = new URLSearchParams({
-    issue,
-    limit: String(limit),
-    offset: String(offset),
+  return request<ResourceAclIssuesPageOut>('/api/admin/resource-acl/issues', {
+    query: { issue, limit, offset },
   });
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/resource-acl/issues?${params.toString()}`,
-    { headers: { ...headers }, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function fetchAdminResourceAcl(
   resourceType: string,
   resourceId: string
 ): Promise<ResourceAclOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
-    { headers, credentials: 'include' }
+  return request<ResourceAclOut>(
+    `/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function putAdminResourceAcl(
@@ -566,41 +421,29 @@ export async function putAdminResourceAcl(
   resourceId: string,
   grants: { grantee_type: string; grantee_id?: string | null; permissions: string }[]
 ): Promise<ResourceAclOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
+  return request<ResourceAclOut>(
+    `/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}`,
     {
       method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ grants }),
     }
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function fetchAdminResourceAclOwnerCandidates(
   resourceType: string,
   resourceId: string
 ): Promise<OwnerCandidate[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/owner-candidates`,
-    { headers, credentials: 'include' }
+  return request<OwnerCandidate[]>(
+    `/api/admin/resource-acl/${encodeURIComponent(resourceType)}/${encodeURIComponent(resourceId)}/owner-candidates`
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function putGroupScopes(groupId: string, body: Partial<GroupScopesOut>) {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/groups/${groupId}/scopes`, {
+  return request<GroupScopesOut>(`/api/admin/groups/${groupId}/scopes`, {
     method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json() as Promise<GroupScopesOut>;
 }

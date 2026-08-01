@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
-/** Keep in sync with `$bp-md-min` in `styles/design-system/_tokens.scss`. */
+/** Keep in sync with `$bp-md-min` in `styles/design-system/_tokens.scss` (enforced by check:styles). */
 export const MOBILE_BREAKPOINT_PX = 768;
 
 const MOBILE_MQ = `(max-width: ${MOBILE_BREAKPOINT_PX}px)`;
@@ -22,7 +22,15 @@ export function useIsMobile(): boolean {
   return isMobile;
 }
 
-/** One-shot check for initial UI state (e.g. collapsed panels). Prefer `useIsMobile` for reactive layout. */
+/** One-shot check for initial UI state. Prefer `useIsMobile` for reactive layout. */
 export function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia(MOBILE_MQ).matches;
+}
+
+/**
+ * Detail info panel visibility: expanded on desktop, collapsed on phone at first paint.
+ * Does not follow resize — user toggle wins after mount.
+ */
+export function useDetailInfoVisible(): [boolean, Dispatch<SetStateAction<boolean>>] {
+  return useState(() => !isMobileViewport());
 }

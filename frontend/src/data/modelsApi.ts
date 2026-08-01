@@ -1,6 +1,5 @@
 /** API for model / API provider registry (backend). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface ApiKindOption {
   id: string;
@@ -56,25 +55,21 @@ export interface ApiModelUpdate {
 }
 
 export async function fetchApiKinds(): Promise<ApiKindOption[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/api-kinds`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.api_kinds || [];
+  try {
+    const data = await request<{ api_kinds?: ApiKindOption[] }>('/api/models/api-kinds');
+    return data.api_kinds || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchModelCapabilities(): Promise<CapabilityOption[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/capabilities`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.capabilities || [];
+  try {
+    const data = await request<{ capabilities?: CapabilityOption[] }>('/api/models/capabilities');
+    return data.capabilities || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchModels(params?: {
@@ -85,21 +80,16 @@ export async function fetchModels(params?: {
   limit?: number;
   offset?: number;
 }): Promise<ApiModelListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.api_kind) query.set('api_kind', params.api_kind);
-  if (params?.capability) query.set('capability', params.capability);
-  if (params?.provider_id) query.set('provider_id', params.provider_id);
-  if (params?.search) query.set('search', params.search);
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/models${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ApiModelListResponse>('/api/models', {
+    query: {
+      api_kind: params?.api_kind,
+      capability: params?.capability,
+      provider_id: params?.provider_id,
+      search: params?.search,
+      limit: params?.limit,
+      offset: params?.offset,
+    },
   });
-  if (!res.ok) throw new Error(`Failed to fetch models: ${res.status}`);
-  return res.json();
 }
 
 /** Full list for dropdowns. Paginates at API max page size (200). */
@@ -123,56 +113,27 @@ export async function fetchAllModels(params?: {
 }
 
 export async function fetchModelById(id: string): Promise<ApiModelResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch model: ${res.status}`);
-  return res.json();
+  return request<ApiModelResponse>(`/api/models/${id}`);
 }
 
 export async function createModel(data: ApiModelCreate): Promise<ApiModelResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models`, {
+  return request<ApiModelResponse>('/api/models', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create model');
-  }
-  return res.json();
 }
 
 export async function updateModel(id: string, data: ApiModelUpdate): Promise<ApiModelResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}`, {
+  return request<ApiModelResponse>(`/api/models/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update model');
-  }
-  return res.json();
 }
 
 export async function deleteModel(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete model');
-  }
+  return request<void>(`/api/models/${id}`, { method: 'DELETE' });
 }
 
 export interface ModelTestRequest {
@@ -192,16 +153,9 @@ export interface ModelTestResponse {
 }
 
 export async function testModel(id: string, data: ModelTestRequest): Promise<ModelTestResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/models/${id}/test`, {
+  return request<ModelTestResponse>(`/api/models/${id}/test`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to test model');
-  }
-  return res.json();
 }

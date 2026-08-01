@@ -192,7 +192,7 @@ export function ActionDetailPage() {
         ) : (
           <section className="entity-view__section">
             <h3>{t('actions.recentLogs')}</h3>
-            <div className="ontology-admin-table-wrap">
+            <div className="ds-table-wrap">
               <table className="console-table">
                 <thead>
                   <tr>

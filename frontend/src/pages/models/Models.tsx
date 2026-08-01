@@ -22,6 +22,7 @@ import {
   deleteProvider,
   type ApiProviderResponse,
 } from '../../data/providersApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { Pagination } from '../../styles/design-system';
 import './Models.scss';
 
@@ -32,6 +33,7 @@ type ModalMode = 'provider' | 'model' | null;
 export function Models() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [providers, setProviders] = useState<ApiProviderResponse[]>([]);
   const [models, setModels] = useState<ApiModelResponse[]>([]);
   const [modelsTotal, setModelsTotal] = useState(0);
@@ -233,7 +235,15 @@ export function Models() {
   };
 
   const handleDeleteProvider = async (id: string) => {
-    if (!window.confirm(t('models.providerDeleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('models.deleteProvider'),
+        message: t('models.providerDeleteConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteProvider(id);
       toast.success(t('models.providerDeleted'));
@@ -246,7 +256,15 @@ export function Models() {
   };
 
   const handleDeleteModel = async (id: string) => {
-    if (!window.confirm(t('models.modelDeleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('models.modelDeleteConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteModel(id);
       toast.success(t('models.modelDeleted'));
@@ -368,7 +386,7 @@ export function Models() {
               </button>
             </div>
           </div>
-          <div className="models-table-wrap">
+          <div className="ds-table-wrap">
             {loading ? (
               <div className="models-loading">
                 <Loader2 size={32} className="models-loading-spinner" />

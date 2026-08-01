@@ -23,9 +23,10 @@ if grep -A5 'ontology-section-layout__main' src/App.scss 2>/dev/null | grep -q '
   fail "App.scss must not set padding on ontology-section-layout__main (use .app-page-pane)"
 fi
 
-# Mobile must not re-stack gutters on channel-rail + compact (document/article/media detail).
-if ! grep -A2 'app-content--with-channel-rail.app-content--compact' src/App.scss | grep -q 'padding: 0'; then
-  fail "App.scss mobile block must keep padding: 0 for .app-content--with-channel-rail.app-content--compact"
+# Mobile must not re-stack gutters on rail + compact (document/article/media detail).
+# Compact padding applies only when NOT a rail layout.
+if ! grep -A8 'app-content--compact:not' src/App.scss | grep -q 'app-content--with-channel-rail'; then
+  fail "App.scss mobile compact padding must exclude .app-content--with-channel-rail (pane owns gutter)"
 fi
 
 # Detail page roots must not add a second horizontal gutter on top of .app-page-pane.

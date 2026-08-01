@@ -19,6 +19,7 @@ import {
   type ColumnMetadata,
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './ontology-admin.scss';
 
 const PROPERTY_TYPES = ['string', 'number', 'boolean'];
@@ -116,6 +117,7 @@ function PropertyRow({
 }
 
 export function ObjectTypesPage() {
+  const confirm = useConfirm();
   const [types, setTypes] = useState<ObjectTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -341,7 +343,15 @@ export function ObjectTypesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this object type? All instances will be deleted.')) return;
+    if (
+      !(await confirm({
+        title: 'Delete object type',
+        message: 'Delete this object type? All instances will be deleted.',
+        confirmLabel: 'Delete',
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteObjectType(id);
       toast.success('Object type deleted');
@@ -384,7 +394,7 @@ export function ObjectTypesPage() {
       </div>
 
       <div className="ontology-admin-content">
-        <div className="ontology-admin-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" />

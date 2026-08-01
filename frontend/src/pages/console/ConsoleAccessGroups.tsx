@@ -22,6 +22,7 @@ import {
   type MemberBrief,
 } from '../../data/securityAdminApi';
 import { Pagination } from '../../styles/design-system';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './ConsoleAccessGroups.scss';
 
 const MEMBERS_PAGE_SIZE_DEFAULT = 25;
@@ -33,6 +34,7 @@ export function ConsoleAccessGroups() {
   const { groupId: routeGroupId } = useParams<{ groupId?: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation('console');
+  const confirm = useConfirm();
   const { hasPermission, authMode } = useAuth();
   const membershipLocal = authMode === 'local';
 
@@ -302,7 +304,15 @@ export function ConsoleAccessGroups() {
 
   const onDeleteGroup = async () => {
     if (!selectedGroup) return;
-    if (!window.confirm(t('accessGroups.deleteConfirm', { name: selectedGroup.name }))) return;
+    if (
+      !(await confirm({
+        title: t('accessGroups.delete'),
+        message: t('accessGroups.deleteConfirm', { name: selectedGroup.name }),
+        confirmLabel: t('accessGroups.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteAccessGroup(selectedGroup.id);
       toast.success(t('accessGroups.toastDeleted'));
@@ -534,7 +544,7 @@ export function ConsoleAccessGroups() {
                     </div>
                   )}
 
-                  <div className="console-access-groups-table-wrap">
+                  <div className="ds-table-wrap">
                     {membersTotal === 0 ? (
                       <p className="console-access-groups-table-empty">{t('accessGroups.noMembers')}</p>
                     ) : (
@@ -594,7 +604,7 @@ export function ConsoleAccessGroups() {
                   <p className="console-access-groups-panel-hint" style={{ marginBottom: '12px' }}>
                     {t('accessGroups.sharingHint')}
                   </p>
-                  <div className="console-access-groups-table-wrap">
+                  <div className="ds-table-wrap">
                     {sharedTotal === 0 ? (
                       <p className="console-access-groups-table-empty">
                         {t('accessGroups.noSharedResources')}

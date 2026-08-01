@@ -48,6 +48,11 @@
     max-width: none;
     flex-shrink: 0;
   }
+
+  .object-explorer-style-panel-toggle-btn {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }
 
 .object-explorer-sidebar-title {
@@ -551,10 +556,6 @@
   text-align: center;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
-}
-
-.object-explorer-table-wrap {
-  overflow-x: auto;
 }
 
 .object-explorer-list-pagination {

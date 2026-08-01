@@ -18,6 +18,7 @@ import {
 import { projectWorkspacePath } from '../../data/projectsApi';
 import { fetchSystemSettings } from '../../data/systemApi';
 import { timezoneSelectOptions } from '../../utils/commonTimezones';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface Props {
   projectId: string;
@@ -37,6 +38,7 @@ const defaultForm = {
 export function ProjectSchedulesTab({ projectId }: Props) {
   const { t } = useTranslation('agents');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [items, setItems] = useState<ProjectAgentSchedule[]>([]);
   const [conversations, setConversations] = useState<{ id: string; title: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,7 +122,15 @@ export function ProjectSchedulesTab({ projectId }: Props) {
   };
 
   const onDelete = async (row: ProjectAgentSchedule) => {
-    if (!window.confirm(t('settings.schedules.deleteConfirm', { name: row.display_name }))) return;
+    if (
+      !(await confirm({
+        title: t('settings.schedules.delete'),
+        message: t('settings.schedules.deleteConfirm', { name: row.display_name }),
+        confirmLabel: t('settings.schedules.delete'),
+        danger: true,
+      }))
+    )
+      return;
     setBusyId(row.id);
     try {
       await deleteProjectSchedule(projectId, row.id);
@@ -175,7 +185,7 @@ export function ProjectSchedulesTab({ projectId }: Props) {
       ) : null}
 
       {items.length > 0 ? (
-        <div className="project-settings-skills-table-wrap">
+        <div className="ds-table-wrap">
           <table className="project-settings-skills-table">
             <thead>
               <tr>

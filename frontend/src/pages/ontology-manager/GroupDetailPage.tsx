@@ -10,6 +10,7 @@ import {
   updateOntologyGroup,
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../ontology/ontology-admin.scss';
 import './entity-view.scss';
 
@@ -17,6 +18,7 @@ export function GroupDetailPage() {
   const { t } = useTranslation('ontology');
   const { groupId = '' } = useParams();
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [group, setGroup] = useState<OntologyGroupResponse | null>(null);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,16 @@ export function GroupDetailPage() {
   };
 
   const onDelete = async () => {
-    if (!groupId || !window.confirm(t('groups.deleteConfirm', { name: displayName }))) return;
+    if (!groupId) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('groups.deleteConfirm', { name: displayName }),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteOntologyGroup(groupId);
       toast.success(t('groups.deleted'));

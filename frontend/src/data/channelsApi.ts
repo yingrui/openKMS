@@ -1,6 +1,5 @@
 /** API for document channels (backend). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface ExtractionSchemaField {
   key: string;
@@ -31,13 +30,7 @@ export interface ChannelNode {
 }
 
 export async function fetchChannelById(channelId: string): Promise<ChannelNode> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch channel: ${res.status}`);
-  return res.json();
+  return request<ChannelNode>(`/api/document-channels/${channelId}`);
 }
 
 export interface ChannelTreeListResponse {
@@ -51,27 +44,9 @@ export async function fetchDocumentChannels(params?: {
   limit?: number;
   offset?: number;
 }): Promise<ChannelTreeListResponse> {
-  try {
-    const query = new URLSearchParams();
-    if (params?.limit != null) query.set('limit', String(params.limit));
-    if (params?.offset != null) query.set('offset', String(params.offset));
-    const qs = query.toString();
-    const headers = await getAuthHeaders();
-    const res = await authAwareFetch(
-      `${config.apiUrl}/api/document-channels${qs ? `?${qs}` : ''}`,
-      {
-        headers: { ...headers },
-        credentials: 'include',
-      },
-    );
-    if (!res.ok) throw new Error(`Failed to fetch channels (${res.status})`);
-    return res.json();
-  } catch (e) {
-    if (e instanceof TypeError && (e as Error).message === 'Failed to fetch') {
-      throw new Error(`Cannot connect to backend at ${config.apiUrl}. Is it running?`);
-    }
-    throw e;
-  }
+  return request<ChannelTreeListResponse>('/api/document-channels', {
+    query: { limit: params?.limit, offset: params?.offset },
+  });
 }
 
 /** Load every root channel tree (paginates until all roots are fetched). */
@@ -89,34 +64,16 @@ export async function fetchAllDocumentChannels(): Promise<ChannelNode[]> {
   return merged;
 }
 
-function handleNetworkError(e: unknown): never {
-  if (e instanceof TypeError && e.message === 'Failed to fetch') {
-    throw new Error(`Cannot connect to backend at ${config.apiUrl}. Is it running?`);
-  }
-  throw e;
-}
-
 export async function createDocumentChannel(params: {
   name: string;
   description?: string | null;
   parent_id?: string | null;
 }): Promise<ChannelNode> {
-  try {
-    const authHeaders = await getAuthHeaders();
-    const res = await authAwareFetch(`${config.apiUrl}/api/document-channels`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
-      body: JSON.stringify(params),
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Failed to create channel');
-    }
-    return res.json();
-  } catch (e) {
-    handleNetworkError(e);
-  }
+  return request<ChannelNode>('/api/document-channels', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
 }
 
 export async function updateChannel(
@@ -134,22 +91,11 @@ export async function updateChannel(
     sort_order?: number;
   },
 ): Promise<ChannelNode> {
-  try {
-    const authHeaders = await getAuthHeaders();
-    const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...authHeaders },
-      body: JSON.stringify(params),
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Failed to update channel');
-    }
-    return res.json();
-  } catch (e) {
-    handleNetworkError(e);
-  }
+  return request<ChannelNode>(`/api/document-channels/${channelId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
 }
 
 export async function mergeChannels(params: {
@@ -157,46 +103,25 @@ export async function mergeChannels(params: {
   target_channel_id: string;
   include_descendants?: boolean;
 }): Promise<void> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/merge`, {
+  return request<void>('/api/document-channels/merge', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       source_channel_id: params.source_channel_id,
       target_channel_id: params.target_channel_id,
       include_descendants: params.include_descendants ?? true,
     }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to merge channels');
-  }
 }
 
 export async function deleteChannel(channelId: string): Promise<void> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}`, {
-    method: 'DELETE',
-    headers: authHeaders,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete channel');
-  }
+  return request<void>(`/api/document-channels/${channelId}`, { method: 'DELETE' });
 }
 
 export async function reorderChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/document-channels/${channelId}/reorder`, {
+  return request<void>(`/api/document-channels/${channelId}/reorder`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ direction }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to reorder channel');
-  }
 }

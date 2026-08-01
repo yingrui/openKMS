@@ -1,6 +1,6 @@
 /** Articles API. */
 import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request, type RequestError } from './apiClient';
 
 /** Same relation types as documents: supersedes, amends, implements, see_also. */
 export const ARTICLE_RELATION_TYPES = ['supersedes', 'amends', 'implements', 'see_also'] as const;
@@ -53,13 +53,7 @@ export interface ArticleAttachmentOut {
 }
 
 export async function fetchArticleStats(): Promise<{ total: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/stats`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch article stats (${res.status})`);
-  return res.json();
+  return request<{ total: number }>('/api/articles/stats');
 }
 
 export async function fetchArticles(params: {
@@ -68,37 +62,18 @@ export async function fetchArticles(params: {
   offset?: number;
   limit?: number;
 }): Promise<ArticleListResponse> {
-  const headers = await getAuthHeaders();
-  const sp = new URLSearchParams();
-  if (params.channel_id) sp.set('channel_id', params.channel_id);
-  if (params.search) sp.set('search', params.search);
-  if (params.offset != null) sp.set('offset', String(params.offset));
-  if (params.limit != null) sp.set('limit', String(params.limit));
-  const q = sp.toString();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles${q ? `?${q}` : ''}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ArticleListResponse>('/api/articles', {
+    query: {
+      channel_id: params.channel_id,
+      search: params.search,
+      offset: params.offset,
+      limit: params.limit,
+    },
   });
-  if (!res.ok) throw new Error(`Failed to fetch articles (${res.status})`);
-  return res.json();
 }
 
 export async function fetchArticle(id: string): Promise<ArticleOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch article (${res.status})`);
-  return res.json();
-}
-
-function parseApiError(body: unknown, fallback: string): string {
-  if (typeof body === 'object' && body !== null && 'detail' in body) {
-    const d = (body as { detail?: unknown }).detail;
-    if (typeof d === 'string') return d;
-  }
-  return fallback;
+  return request<ArticleOut>(`/api/articles/${id}`);
 }
 
 export async function createArticle(body: {
@@ -107,18 +82,11 @@ export async function createArticle(body: {
   markdown?: string | null;
   origin_article_id?: string | null;
 }): Promise<ArticleOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles`, {
+  return request<ArticleOut>('/api/articles', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to create article (${res.status})`));
-  }
-  return res.json();
 }
 
 export async function patchArticle(
@@ -129,100 +97,46 @@ export async function patchArticle(
     origin_article_id?: string | null;
   },
 ): Promise<ArticleOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}`, {
+  return request<ArticleOut>(`/api/articles/${articleId}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to update article (${res.status})`));
-  }
-  return res.json();
 }
 
 export async function putArticleMarkdown(articleId: string, markdown: string | null): Promise<ArticleOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/markdown`, {
+  return request<ArticleOut>(`/api/articles/${articleId}/markdown`, {
     method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ markdown }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to save content (${res.status})`));
-  }
-  return res.json();
 }
 
 export async function fetchArticleRelationships(articleId: string): Promise<ArticleRelationshipsResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/relationships`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch article relationships (${res.status})`);
-  return res.json();
+  return request<ArticleRelationshipsResponse>(`/api/articles/${articleId}/relationships`);
 }
 
 export async function createArticleRelationship(
   articleId: string,
   body: { target_article_id: string; relation_type: string; note?: string | null },
 ): Promise<ArticleRelationshipEdge> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/relationships`, {
+  return request<ArticleRelationshipEdge>(`/api/articles/${articleId}/relationships`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to create relationship (${res.status})`));
-  }
-  return res.json();
 }
 
 export async function deleteArticleRelationship(articleId: string, relationshipId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/articles/${articleId}/relationships/${relationshipId}`,
-    {
-      method: 'DELETE',
-      headers: { ...headers },
-      credentials: 'include',
-    },
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to delete relationship (${res.status})`));
-  }
+  return request<void>(`/api/articles/${articleId}/relationships/${relationshipId}`, { method: 'DELETE' });
 }
 
 export async function deleteArticle(articleId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to delete article (${res.status})`));
-  }
+  return request<void>(`/api/articles/${articleId}`, { method: 'DELETE' });
 }
 
 export async function fetchArticleAttachments(articleId: string): Promise<ArticleAttachmentOut[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/attachments`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch attachments (${res.status})`);
-  return res.json();
+  return request<ArticleAttachmentOut[]>(`/api/articles/${articleId}/attachments`);
 }
 
 export async function uploadArticleAttachment(
@@ -230,37 +144,17 @@ export async function uploadArticleAttachment(
   file: File | Blob,
   filename?: string,
 ): Promise<ArticleAttachmentOut> {
-  const headers = await getAuthHeaders();
   const fd = new FormData();
   const name = filename || (file instanceof File ? file.name : 'attachment');
   fd.append('file', file, name);
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/attachments`, {
+  return request<ArticleAttachmentOut>(`/api/articles/${articleId}/attachments`, {
     method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
     body: fd,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to upload attachment (${res.status})`));
-  }
-  return res.json();
 }
 
 export async function deleteArticleAttachment(articleId: string, attachmentId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/articles/${articleId}/attachments/${attachmentId}`,
-    {
-      method: 'DELETE',
-      headers: { ...headers },
-      credentials: 'include',
-    },
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to delete attachment (${res.status})`));
-  }
+  return request<void>(`/api/articles/${articleId}/attachments/${attachmentId}`, { method: 'DELETE' });
 }
 
 export interface ArticleImageUploadOut {
@@ -275,21 +169,13 @@ export async function uploadArticleImage(
   file: File | Blob,
   filename?: string,
 ): Promise<ArticleImageUploadOut> {
-  const headers = await getAuthHeaders();
   const fd = new FormData();
   const name = filename || (file instanceof File ? file.name : 'image.png');
   fd.append('file', file, name);
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/images`, {
+  return request<ArticleImageUploadOut>(`/api/articles/${articleId}/images`, {
     method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
     body: fd,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to upload image (${res.status})`));
-  }
-  return res.json();
 }
 
 export function articleFileUrl(articleId: string, relativePath: string): string {
@@ -326,30 +212,18 @@ export async function runArticleReview(
   articleId: string,
   body?: { model_id?: string; prompt?: string },
 ): Promise<ArticleReviewOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/review`, {
+  return request<ArticleReviewOut>(`/api/articles/${articleId}/review`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body ?? {}),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Review failed (${res.status})`));
-  }
-  return res.json();
 }
 
 export async function fetchLatestArticleReview(articleId: string): Promise<ArticleReviewOut | null> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/articles/${articleId}/reviews/latest`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseApiError(err, `Failed to load review (${res.status})`));
+  try {
+    return await request<ArticleReviewOut>(`/api/articles/${articleId}/reviews/latest`);
+  } catch (e) {
+    if ((e as RequestError).status === 404) return null;
+    throw e;
   }
-  return res.json();
 }

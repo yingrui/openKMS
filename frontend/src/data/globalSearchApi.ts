@@ -1,5 +1,4 @@
-import { authAwareFetch } from './apiClient';
-import { config } from '../config';
+import { request } from './apiClient';
 
 export type GlobalSearchHit = {
   id: string;
@@ -38,27 +37,15 @@ export type GlobalSearchParams = {
 };
 
 export async function fetchGlobalSearch(params: GlobalSearchParams): Promise<GlobalSearchResponse> {
-  const sp = new URLSearchParams();
-  if (params.q?.trim()) sp.set('q', params.q.trim());
-  sp.set('types', params.types);
-  if (params.document_channel_id) sp.set('document_channel_id', params.document_channel_id);
-  if (params.article_channel_id) sp.set('article_channel_id', params.article_channel_id);
-  if (params.updated_after) sp.set('updated_after', params.updated_after);
-  if (params.updated_before) sp.set('updated_before', params.updated_before);
-  if (params.limit != null) sp.set('limit', String(params.limit));
-  const qs = sp.toString();
-  const url = `${config.apiUrl}/api/search${qs ? `?${qs}` : ''}`;
-  const res = await authAwareFetch(url);
-  if (!res.ok) {
-    const t = await res.text();
-    let detail = t;
-    try {
-      const j = JSON.parse(t) as { detail?: unknown };
-      if (typeof j.detail === 'string') detail = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(detail || `Search failed (${res.status})`);
-  }
-  return res.json() as Promise<GlobalSearchResponse>;
+  return request<GlobalSearchResponse>('/api/search', {
+    query: {
+      q: params.q?.trim() || undefined,
+      types: params.types,
+      document_channel_id: params.document_channel_id,
+      article_channel_id: params.article_channel_id,
+      updated_after: params.updated_after,
+      updated_before: params.updated_before,
+      limit: params.limit,
+    },
+  });
 }

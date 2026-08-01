@@ -1,6 +1,6 @@
 /** API for documents (backend). */
 import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request, requestRaw } from './apiClient';
 
 export interface DocumentResponse {
   id: string;
@@ -101,16 +101,7 @@ export function isAcceptedFile(file: File): boolean {
 }
 
 export async function fetchDocumentStats(): Promise<{ total: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/stats`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Failed to fetch document stats: ${res.status}`);
-  }
-  return res.json();
+  return request<{ total: number }>('/api/documents/stats');
 }
 
 export async function fetchDocuments(params?: {
@@ -121,63 +112,39 @@ export async function fetchDocuments(params?: {
   offset?: number;
   limit?: number;
 }): Promise<DocumentListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.channel_id) query.set('channel_id', params.channel_id);
-  if (params?.search) query.set('search', params.search);
-  if (params?.status) query.set('status', params.status);
-  if (params?.applicable != null) query.set('applicable', params.applicable ? 'true' : 'false');
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<DocumentListResponse>('/api/documents', {
+    query: {
+      channel_id: params?.channel_id,
+      search: params?.search,
+      status: params?.status,
+      applicable: params?.applicable != null ? (params.applicable ? 'true' : 'false') : undefined,
+      offset: params?.offset,
+      limit: params?.limit,
+    },
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Failed to fetch documents: ${res.status}`);
-  }
-  return res.json();
 }
 
 export async function fetchDocumentsByChannel(
   channelId: string,
   params?: { search?: string; status?: string; applicable?: boolean; offset?: number; limit?: number },
 ): Promise<DocumentListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams({ channel_id: channelId });
-  if (params?.search) query.set('search', params.search);
-  if (params?.status) query.set('status', params.status);
-  if (params?.applicable != null) query.set('applicable', params.applicable ? 'true' : 'false');
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents?${query.toString()}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<DocumentListResponse>('/api/documents', {
+    query: {
+      channel_id: channelId,
+      search: params?.search,
+      status: params?.status,
+      applicable: params?.applicable != null ? (params.applicable ? 'true' : 'false') : undefined,
+      offset: params?.offset,
+      limit: params?.limit,
+    },
   });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Failed to fetch documents: ${res.status}`);
-  }
-  return res.json();
 }
 
 export async function fetchDocumentById(
   documentId: string,
   signal?: AbortSignal
 ): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}`, {
-    headers: { ...headers },
-    signal,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Failed to fetch document: ${res.status}`);
-  }
-  return res.json();
+  return request<DocumentResponse>(`/api/documents/${documentId}`, { signal });
 }
 
 /** Base URL for document files via backend proxy (no trailing slash). */
@@ -193,13 +160,7 @@ export function getDocumentFileUrl(documentId: string, filePath: string): string
 
 /** Presigned object URL from the authenticated files API (redirect target as JSON). */
 async function resolveDocumentFileUrl(apiUrl: string): Promise<string> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${apiUrl}?url_only=1`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Download failed (${res.status})`);
-  const data = (await res.json()) as { url?: string };
+  const data = await request<{ url?: string }>(`${apiUrl}?url_only=1`);
   if (!data.url) throw new Error('Download failed (missing file URL)');
   return data.url;
 }
@@ -243,17 +204,7 @@ export async function fetchParsingResult(
   markdown: string;
   page_count: number;
 }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/parsing`, {
-    headers: { ...headers },
-    signal,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Failed to fetch parsing result: ${res.status}`);
-  }
-  return res.json();
+  return request(`/api/documents/${documentId}/parsing`, { signal });
 }
 
 export async function uploadDocument(
@@ -267,20 +218,7 @@ export async function uploadDocument(
   const formData = new FormData();
   formData.append('file', file);
   formData.append('channel_id', channelId);
-
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/upload`, {
-    method: 'POST',
-    headers: { ...headers },
-    body: formData,
-    credentials: 'include',
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Upload failed');
-  }
-  return res.json();
+  return request<DocumentResponse>('/api/documents/upload', { method: 'POST', body: formData });
 }
 
 export async function uploadDocumentChunked(
@@ -303,17 +241,10 @@ export async function uploadDocumentChunked(
     formData.append('channel_id', channelId);
     formData.append('filename', file.name);
 
-    const headers = await getAuthHeaders();
-    const res = await authAwareFetch(
-      `${config.apiUrl}/api/documents/upload-chunk`,
-      { method: 'POST', headers: { ...headers }, body: formData, credentials: 'include' }
-    );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(typeof err.detail === 'string' ? err.detail : 'Upload failed');
-    }
-
-    const data = await res.json();
+    const data = await request<DocumentResponse>('/api/documents/upload-chunk', {
+      method: 'POST',
+      body: formData,
+    });
     if (data.id !== 'pending') {
       lastResponse = data;
     }
@@ -325,30 +256,11 @@ export async function uploadDocumentChunked(
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Delete failed');
-  }
+  return request<void>(`/api/documents/${documentId}`, { method: 'DELETE' });
 }
 
 export async function resetDocumentStatus(documentId: string): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/reset-status`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Reset failed');
-  }
-  return res.json();
+  return request<DocumentResponse>(`/api/documents/${documentId}/reset-status`, { method: 'POST' });
 }
 
 export interface ExtractMetadataResponse {
@@ -357,17 +269,7 @@ export interface ExtractMetadataResponse {
 }
 
 export async function extractDocumentMetadata(documentId: string): Promise<ExtractMetadataResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/extract-metadata`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Extraction failed');
-  }
-  return res.json();
+  return request<ExtractMetadataResponse>(`/api/documents/${documentId}/extract-metadata`, { method: 'POST' });
 }
 
 export async function patchDocumentLifecycle(
@@ -379,145 +281,82 @@ export async function patchDocumentLifecycle(
     lifecycle_status?: string | null;
   }
 ): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/lifecycle`, {
+  return request<DocumentResponse>(`/api/documents/${documentId}/lifecycle`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
-  }
-  return res.json();
 }
 
 export async function fetchDocumentRelationships(
   documentId: string
 ): Promise<DocumentRelationshipsResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `Failed to load relationships: ${res.status}`);
-  }
-  return res.json();
+  return request<DocumentRelationshipsResponse>(`/api/documents/${documentId}/relationships`);
 }
 
 export async function createDocumentRelationship(
   documentId: string,
   body: { target_document_id: string; relation_type: string; note?: string | null }
 ): Promise<DocumentRelationshipEdge> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/relationships`, {
+  return request<DocumentRelationshipEdge>(`/api/documents/${documentId}/relationships`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       target_document_id: body.target_document_id,
       relation_type: body.relation_type,
       note: body.note ?? null,
     }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to create relationship');
-  }
-  return res.json();
 }
 
 export async function deleteDocumentRelationship(
   documentId: string,
   relationshipId: string
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/documents/${documentId}/relationships/${encodeURIComponent(relationshipId)}`,
-    {
-      method: 'DELETE',
-      headers: { ...headers },
-      credentials: 'include',
-    }
+  return request<void>(
+    `/api/documents/${documentId}/relationships/${encodeURIComponent(relationshipId)}`,
+    { method: 'DELETE' },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Delete failed');
-  }
 }
 
 export async function updateDocument(
   documentId: string,
   params: { name?: string; channel_id?: string }
 ): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
   const body: Record<string, unknown> = {};
   if (params.name !== undefined) body.name = params.name;
   if (params.channel_id !== undefined) body.channel_id = params.channel_id;
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}`, {
+  return request<DocumentResponse>(`/api/documents/${documentId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
-  }
-  return res.json();
 }
 
 export async function updateDocumentMetadata(
   documentId: string,
   metadata: Record<string, unknown>
 ): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/metadata`, {
+  return request<DocumentResponse>(`/api/documents/${documentId}/metadata`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ metadata }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
-  }
-  return res.json();
 }
 
 export async function updateDocumentMarkdown(
   documentId: string,
   markdown: string
 ): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/markdown`, {
+  return request<DocumentResponse>(`/api/documents/${documentId}/markdown`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ markdown }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Update failed');
-  }
-  return res.json();
 }
 
 export async function restoreDocumentMarkdown(documentId: string): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/restore-markdown`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Restore failed');
-  }
-  return res.json();
+  return request<DocumentResponse>(`/api/documents/${documentId}/restore-markdown`, { method: 'POST' });
 }
 
 export interface PageIndexNode {
@@ -538,32 +377,12 @@ export async function fetchPageIndex(
   documentId: string,
   signal?: AbortSignal
 ): Promise<PageIndexResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/page-index`, {
-    headers: { ...headers },
-    signal,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to fetch page index');
-  }
-  return res.json();
+  return request<PageIndexResponse>(`/api/documents/${documentId}/page-index`, { signal });
 }
 
 /** Rebuild page index from current markdown (md_to_tree) and persist to S3. */
 export async function rebuildPageIndex(documentId: string): Promise<PageIndexResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/rebuild-page-index`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to rebuild page index');
-  }
-  return res.json();
+  return request<PageIndexResponse>(`/api/documents/${documentId}/rebuild-page-index`, { method: 'POST' });
 }
 
 export interface DocumentVersionListItem {
@@ -586,44 +405,21 @@ export async function createDocumentVersion(
   documentId: string,
   body: { tag?: string | null; note?: string | null }
 ): Promise<DocumentVersionDetail> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
+  return request<DocumentVersionDetail>(`/api/documents/${documentId}/versions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tag: body.tag ?? null, note: body.note ?? null }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to create version');
-  }
-  return res.json();
 }
 
 export async function listDocumentVersions(documentId: string): Promise<{ items: DocumentVersionListItem[] }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/versions`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to list versions');
-  }
-  return res.json();
+  return request<{ items: DocumentVersionListItem[] }>(`/api/documents/${documentId}/versions`);
 }
 
 export async function getDocumentVersion(documentId: string, versionId: string): Promise<DocumentVersionDetail> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to load version');
-  }
-  return res.json();
+  return request<DocumentVersionDetail>(
+    `/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}`,
+  );
 }
 
 export async function restoreDocumentVersion(
@@ -631,37 +427,22 @@ export async function restoreDocumentVersion(
   versionId: string,
   body: { save_current_as_version?: boolean; tag?: string | null; note?: string | null }
 ): Promise<DocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}/restore`,
+  return request<DocumentResponse>(
+    `/api/documents/${documentId}/versions/${encodeURIComponent(versionId)}/restore`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         save_current_as_version: body.save_current_as_version ?? false,
         tag: body.tag ?? null,
         note: body.note ?? null,
       }),
-      credentials: 'include',
-    }
+    },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to restore version');
-  }
-  return res.json();
 }
 
 export async function exportDocumentParsing(documentId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/documents/${documentId}/export`,
-    { headers, credentials: 'include' }
-  );
-  if (!res.ok) {
-    const msg = await res.text().catch(() => 'Export failed');
-    throw new Error(msg || `Export failed (${res.status})`);
-  }
+  const res = await requestRaw(`/api/documents/${documentId}/export`);
   const blob = await res.blob();
   const disposition = res.headers.get('content-disposition') || '';
   const match = disposition.match(/filename="?([^"]+)"?/);
@@ -675,16 +456,7 @@ export async function importDocumentParsing(
 ): Promise<DocumentResponse> {
   const formData = new FormData();
   formData.append('archive', file);
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/documents/${documentId}/import`,
-    { method: 'POST', headers: { ...headers }, body: formData, credentials: 'include' }
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Import failed');
-  }
-  return res.json();
+  return request<DocumentResponse>(`/api/documents/${documentId}/import`, { method: 'POST', body: formData });
 }
 
 const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -707,17 +479,10 @@ export async function importDocumentParsingChunked(
     formData.append('chunk_index', String(i));
     formData.append('total_chunks', String(totalChunks));
 
-    const headers = await getAuthHeaders();
-    const res = await authAwareFetch(
-      `${config.apiUrl}/api/documents/${documentId}/import-chunk`,
-      { method: 'POST', headers: { ...headers }, body: formData, credentials: 'include' }
-    );
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(typeof err.detail === 'string' ? err.detail : 'Import failed');
-    }
-
-    const data = await res.json();
+    const data = await request<DocumentResponse>(`/api/documents/${documentId}/import-chunk`, {
+      method: 'POST',
+      body: formData,
+    });
     lastResponse = data;
     onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
   }

@@ -12,6 +12,7 @@ import {
 import { patchAuthUiLocale, changePassword } from '../data/authApi';
 import { useAuth } from '../contexts/AuthContext';
 import { GitCredentialsSection } from '../components/agents/GitCredentialsSection';
+import { useConfirm } from '../contexts/ConfirmContext';
 import i18n from '../i18n/config';
 import './UserSettings.scss';
 
@@ -19,6 +20,7 @@ export function UserSettings() {
   const { t } = useTranslation('settings');
   const { t: tLayout } = useTranslation('layout');
   const { isAuthenticated, refreshUser, authMode } = useAuth();
+  const confirm = useConfirm();
   const [keys, setKeys] = useState<ApiKeyListItem[]>([]);
   const [keysLoading, setKeysLoading] = useState(true);
   const [keysError, setKeysError] = useState<string | null>(null);
@@ -96,7 +98,15 @@ export function UserSettings() {
   const showKeysListSection = keysLoading || keys.length > 0;
 
   const handleRevoke = async (id: string) => {
-    if (!window.confirm(t('confirmRevoke'))) return;
+    if (
+      !(await confirm({
+        title: t('revoke'),
+        message: t('confirmRevoke'),
+        confirmLabel: t('revoke'),
+        danger: true,
+      }))
+    )
+      return;
     setRevokingId(id);
     setKeysError(null);
     try {

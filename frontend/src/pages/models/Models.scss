@@ -273,17 +273,6 @@
   outline: none;
 }
 
-.models-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-
-  .ds-pagination {
-    border-radius: 0;
-  }
-}
-
 .models-loading {
   display: flex;
   flex-direction: column;
@@ -438,21 +427,11 @@
 }
 
 /* Modal */
-.models-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-backdrop);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-dropdown);
-}
-
 .models-modal {
   background: var(--color-bg-elevated);
   border-radius: var(--radius-lg);
   width: 100%;
-  max-width: ds.$bp-tight-max;
+  max-width: ds.$bp-phone-max;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-elevated);

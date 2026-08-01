@@ -7,7 +7,8 @@ import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
-import { MobileShellProvider, useMobileShell } from '../../contexts/MobileShellContext';
+import { OntologyMobileRailProvider, useOntologyMobileRail } from '../../contexts/OntologyMobileRailContext';
+import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
 import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
 import { FunctionEditorNavRail } from '../ontology/FunctionEditorNavRail';
@@ -34,7 +35,7 @@ function OntologySection({
   children: ReactNode;
 }) {
   const { t } = useTranslation('layout');
-  const { ontologyRailOpen, setOntologyRailAvailable, closeRails } = useMobileShell();
+  const { ontologyRailOpen, setOntologyRailAvailable, closeRails } = useOntologyMobileRail();
 
   useEffect(() => {
     setOntologyRailAvailable(true);
@@ -184,8 +185,10 @@ function MainLayoutInner() {
 
 export function MainLayout() {
   return (
-    <MobileShellProvider>
-      <MainLayoutInner />
-    </MobileShellProvider>
+    <OntologyMobileRailProvider>
+      <ConfirmProvider>
+        <MainLayoutInner />
+      </ConfirmProvider>
+    </OntologyMobileRailProvider>
   );
 }

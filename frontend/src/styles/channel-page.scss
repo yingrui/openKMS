@@ -2,11 +2,13 @@
 // Page-specific rules stay in the page SCSS; anything used by more than one
 // channel area belongs here.
 //
-// Mobile (<= $bp-md-min): `.channel-table` rows collapse into cards showing
-// only the checkbox and the primary cell; row actions move onto the meta line.
+// Mobile (<= $bp-md-min): see _channel-toolbar-compact.scss + _channel-table-as-cards.scss.
+// Row actions always live in .channel-item-actions (no useIsMobile placement fork).
 
 @use 'design-system/mixins' as *;
 @use 'design-system/tokens' as ds;
+@use 'channel-toolbar-compact';
+@use 'channel-table-as-cards';
 
 .channel-page {
   width: 100%;
@@ -212,18 +214,7 @@
 }
 
 /* --- Table shell --- */
-
-.channel-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow-x: auto;
-  overflow-y: hidden;
-
-  .ds-pagination {
-    border-radius: 0;
-  }
-}
+/* Base card+scroll: .ds-table-wrap. Keep .channel-table-wrap class for mobile card layout. */
 
 .channel-table {
   width: 100%;
@@ -278,13 +269,14 @@
   accent-color: var(--color-accent);
 }
 
-/* --- Primary cell: icon + title (+ meta and row actions on mobile) --- */
+/* --- Primary cell: icon + title (+ meta and row actions) --- */
 
 .channel-item {
   display: flex;
   align-items: center;
   gap: calc(var(--space-2) + var(--space-1) / 2);
   min-width: 0;
+  width: 100%;
 }
 
 .channel-item > svg {
@@ -293,64 +285,49 @@
 }
 
 .channel-item-text {
+  flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .channel-item-title {
-  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+  @include text-truncate;
 }
 
+/* Desktop: actions sit in the primary cell; meta text stays in table columns. */
 .channel-item-meta-row {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .channel-item-meta {
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
-  line-height: 1.35;
+  display: none;
+}
+
+.channel-item-actions {
+  display: flex;
+  flex-shrink: 0;
 }
 
 /* --- Empty / loading / error --- */
+/* Base chrome: .ds-empty-state (+ aliases in _empty-state.scss). */
 
-.channel-page-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: calc(var(--space-12) + var(--space-1) * 3) var(--space-6);
-  color: var(--color-text-muted);
-}
-
+.ds-table-wrap .channel-page-empty,
 .channel-table-wrap .channel-page-empty {
   min-height: calc(var(--space-16) * 3.75);
-}
-
-.channel-page-empty svg {
-  margin-bottom: var(--space-4);
-  opacity: 0.5;
 }
 
 .channel-page-empty-hint {
   font-size: var(--text-md);
   margin-top: var(--space-1);
-}
-
-.channel-page-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: calc(var(--space-16) + var(--space-4)) var(--space-6);
-  text-align: center;
-  color: var(--color-text-muted);
-}
-
-.channel-page-empty-state svg {
-  margin-bottom: var(--space-5);
-  opacity: 0.5;
 }
 
 .channel-page-empty-state h2 {
@@ -401,17 +378,6 @@
 }
 
 /* --- Modal --- */
-
-.channel-page-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-  padding: var(--space-6);
-}
 
 .channel-page-modal {
   background: var(--color-bg);
@@ -518,183 +484,4 @@
   height: 16px;
   cursor: pointer;
   accent-color: var(--color-accent);
-}
-
-/* --- Mobile: rows become cards --- */
-
-@include max-width(ds.$bp-md-min) {
-  .channel-browse-back {
-    display: inline-flex;
-    margin-bottom: var(--space-2);
-  }
-
-  .channel-page .page-header.channel-page-header {
-    margin-bottom: var(--space-3);
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .channel-page-header > div:first-child {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .channel-page-header .page-subtitle {
-    display: none;
-  }
-
-  .channel-page-header-title h1 {
-    margin-bottom: 0;
-    font-size: var(--text-xl);
-    @include text-truncate;
-  }
-
-  .channel-page-header-actions {
-    flex-shrink: 0;
-    width: auto;
-    gap: var(--space-1);
-  }
-
-  .channel-page-header-actions .btn {
-    flex: 0 0 auto;
-    min-height: 40px;
-    min-width: 40px;
-    padding: var(--space-2);
-    justify-content: center;
-  }
-
-  .channel-page-header-actions .btn span {
-    display: none;
-  }
-
-  .channel-page-toolbar {
-    gap: var(--space-2);
-    margin-bottom: var(--space-2);
-  }
-
-  .channel-page-toolbar > select {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .channel-page-search {
-    flex: 1 1 100%;
-    max-width: none;
-  }
-
-  .channel-table-wrap {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    overflow: visible;
-
-    /* The wrap has no card surface here, so the footer must not look like one. */
-    .ds-pagination {
-      padding: var(--space-3) 0 0;
-      background: transparent;
-      border-top: none;
-    }
-  }
-
-  .channel-table thead {
-    display: none;
-  }
-
-  .channel-table,
-  .channel-table tbody {
-    display: block;
-    width: 100%;
-  }
-
-  .channel-table tbody tr {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: var(--space-2);
-    align-items: start;
-    padding: var(--space-2) var(--space-3);
-    margin-bottom: var(--space-1);
-    background: var(--color-bg-elevated);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .channel-table tbody tr:last-child {
-    margin-bottom: 0;
-  }
-
-  .channel-table tbody tr:hover {
-    background: var(--color-bg-elevated);
-  }
-
-  .channel-table-row--selected {
-    border-color: var(--color-accent);
-    background: var(--color-accent-subtle);
-  }
-
-  /* A card shows the checkbox and the primary cell; other columns drop out. */
-  .channel-table tbody td {
-    display: none;
-    padding: 0;
-    border: none;
-  }
-
-  .channel-table tbody td.channel-table-select-col {
-    display: block;
-    width: auto;
-    padding: 3px 0 0 0 !important;
-  }
-
-  .channel-table tbody td.channel-table-cell--primary {
-    display: block;
-    min-width: 0;
-  }
-
-  /* Meta already shows type; leading icon just eats title width. */
-  .channel-item > svg {
-    display: none;
-  }
-
-  .channel-item {
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .channel-item-text {
-    flex: 1;
-    min-width: 0;
-    gap: 1px;
-  }
-
-  .channel-item-title {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    overflow: hidden;
-    font-weight: 500;
-    line-height: 1.3;
-  }
-
-  .channel-item-meta-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-
-  .channel-item-meta {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .channel-item-actions {
-    display: flex;
-    flex-shrink: 0;
-    margin-right: calc(var(--space-1) * -1);
-  }
-
-  .channel-item-actions .ds-table-row-action {
-    padding: var(--space-1);
-  }
 }

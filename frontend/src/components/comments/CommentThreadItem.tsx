@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Loader2 } from 'lucide-react';
 import { CommentRankStars } from './CommentRankStars';
 import type { ContentCommentOut } from './useContentComments';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 function avatarLabel(name: string | null | undefined, fallback: string): string {
   const src = (name || fallback || '?').trim();
@@ -26,6 +27,7 @@ type ItemProps = {
 
 function CommentRow({ comment, isReply = false, currentSub, onReply, onPatch, onDelete }: ItemProps) {
   const { t } = useTranslation('comments');
+  const confirm = useConfirm();
   const [replyOpen, setReplyOpen] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
   const [editOpen, setEditOpen] = useState(false);
@@ -64,7 +66,15 @@ function CommentRow({ comment, isReply = false, currentSub, onReply, onPatch, on
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(t('deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('delete'),
+        message: t('deleteConfirm'),
+        confirmLabel: t('delete'),
+        danger: true,
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await onDelete(comment.id);

@@ -13,6 +13,7 @@ import { fetchAllKnowledgeBases, type KnowledgeBaseResponse } from '../../data/k
 import { fetchAllWikiSpaces, type WikiSpaceResponse } from '../../data/wikiSpacesApi';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/settings-page.scss';
 import './EvaluationDatasetDetail.scss';
 import './EvaluationDatasetSettings.scss';
@@ -22,6 +23,7 @@ type SettingsTabId = 'general' | 'sharing';
 export function EvaluationDatasetSettings() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const { id: evaluationId = '' } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
@@ -118,7 +120,15 @@ export function EvaluationDatasetSettings() {
 
   const handleDelete = async () => {
     if (!dataset) return;
-    if (!window.confirm(t('evaluation.deleteConfirm', { name: dataset.name }))) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('evaluation.deleteConfirm', { name: dataset.name }),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     setDeleting(true);
     try {
       await deleteEvaluation(dataset.id);

@@ -375,7 +375,7 @@
   align-items: start;
 }
 
-@include max-width(ds.$bp-lg-max) {
+@include max-width(ds.$km-layout-max) {
   .document-detail-info-stats-grid {
     grid-template-columns: 1fr;
   }
@@ -960,17 +960,6 @@
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 
-.document-detail-pageindex-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-  padding: var(--space-6);
-}
-
 .document-detail-pageindex-dialog {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -1201,7 +1190,7 @@
   flex-wrap: nowrap;
 }
 
-@include max-width(ds.$bp-comfort-max) {
+@include max-width(ds.$bp-phone-max) {
   .document-detail-versions-table thead {
     display: none;
   }
@@ -1587,46 +1576,18 @@
     padding: var(--space-3);
   }
 
-  /* Split is already single-column ≤900px — extend only orphaned the toolbar. */
-  .document-detail-extend-btn {
-    display: none;
-  }
-
-  .document-detail-panel-header {
-    flex-wrap: nowrap;
-    gap: var(--space-2);
-    min-height: 0;
-    height: auto;
-    padding: var(--space-2) var(--space-3);
-  }
-
-  .document-detail-panel-tabs {
-    flex: 1 1 auto;
-    min-width: 0;
-    gap: var(--space-2);
-  }
-
   .document-detail-panel-tab {
     padding: var(--gap-compact) var(--space-2);
     white-space: nowrap;
     flex-shrink: 0;
   }
 
-  .document-detail-panel-header > span {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  /* Icon-only Print / Edit — frees width so tab labels (e.g. 页面索引) stay on one line. */
+  /* Icon-only trailing actions via .ds-compact-label; keep tap targets square. */
   .document-detail-edit-toggle {
     width: 2rem;
     height: 2rem;
     padding: 0;
     justify-content: center;
-  }
-
-  .document-detail-edit-toggle span {
-    display: none;
   }
 }
 
@@ -2071,7 +2032,7 @@
   background: color-mix(in srgb, var(--color-bg) 70%, transparent);
 }
 
-@include max-width(ds.$bp-comfort-max) {
+@include max-width(ds.$bp-phone-max) {
   .document-detail-lineage-field-grid {
     grid-template-columns: 1fr;
   }

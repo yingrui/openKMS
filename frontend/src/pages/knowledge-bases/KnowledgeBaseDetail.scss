@@ -157,10 +157,6 @@
   margin-bottom: var(--space-4);
 }
 
-.kb-section-header h2 {
-  margin: 0;
-}
-
 .kb-section-header-btns {
   display: flex;
   gap: var(--space-2);
@@ -314,13 +310,6 @@
 }
 
 /* Tables – match documents-table */
-.kb-table-wrap {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
 .kb-table {
   width: 100%;
   border-collapse: collapse;
@@ -1085,6 +1074,11 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
     border-right: none;
     border-bottom: 1px solid var(--color-border);
   }
+
+  .kb-qa-composer-send {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }
 
 /* QA Chat (message bubbles & sources — shared) */
@@ -1641,7 +1635,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   flex-shrink: 0;
 }
 
-@include max-width(ds.$bp-tight-max) {
+@include max-width(ds.$bp-phone-max) {
   .kb-settings-header-save {
     width: 100%;
   }
@@ -1695,7 +1689,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
   align-items: start;
 }
 
-@include min-width(ds.$bp-split-min) {
+@include min-width(ds.$km-layout-max) {
   .kb-settings-layout {
     grid-template-columns: minmax(280px, 0.4fr) minmax(0, 1fr);
     gap: 28px 36px;
@@ -1781,17 +1775,6 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 /* Document Picker Modal – matches documents-upload-modal */
-.kb-doc-picker-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-backdrop);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-  padding: var(--space-6);
-}
-
 .kb-doc-picker {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
@@ -1805,7 +1788,7 @@ body.openkms-kb-qa-fullpage .kb-qa-shell {
 }
 
 .kb-doc-picker--narrow {
-  max-width: ds.$bp-tight-max;
+  max-width: ds.$bp-phone-max;
 }
 
 .kb-doc-picker-split {

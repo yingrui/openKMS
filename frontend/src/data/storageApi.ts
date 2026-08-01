@@ -1,6 +1,5 @@
 /** Console object storage API (metadata + move only). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface StorageBucketInfo {
   bucket: string;
@@ -43,13 +42,7 @@ export interface StorageMoveResponse {
 }
 
 export async function fetchStorageInfo(): Promise<StorageBucketInfo> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/console/storage`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error('Failed to load storage info');
-  return res.json();
+  return request<StorageBucketInfo>('/api/console/storage');
 }
 
 export async function fetchStorageObjects(params: {
@@ -57,21 +50,13 @@ export async function fetchStorageObjects(params: {
   continuation_token?: string | null;
   max_keys?: number;
 }): Promise<StorageListResponse> {
-  const query = new URLSearchParams();
-  if (params.prefix) query.set('prefix', params.prefix);
-  if (params.continuation_token) query.set('continuation_token', params.continuation_token);
-  if (params.max_keys != null) query.set('max_keys', String(params.max_keys));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/console/storage/objects${qs ? `?${qs}` : ''}`,
-    { headers, credentials: 'include' },
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to list storage objects');
-  }
-  return res.json();
+  return request<StorageListResponse>('/api/console/storage/objects', {
+    query: {
+      prefix: params.prefix,
+      continuation_token: params.continuation_token,
+      max_keys: params.max_keys,
+    },
+  });
 }
 
 export interface StorageCreateFolderRequest {
@@ -86,31 +71,17 @@ export interface StorageCreateFolderResponse {
 export async function createStorageFolder(
   body: StorageCreateFolderRequest,
 ): Promise<StorageCreateFolderResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/console/storage/folders`, {
+  return request<StorageCreateFolderResponse>('/api/console/storage/folders', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create folder');
-  }
-  return res.json();
 }
 
 export async function moveStorageObjects(body: StorageMoveRequest): Promise<StorageMoveResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/console/storage/move`, {
+  return request<StorageMoveResponse>('/api/console/storage/move', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Move failed');
-  }
-  return res.json();
 }

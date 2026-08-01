@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   BookOpen,
-  ChevronLeft,
   ChevronRight,
   HelpCircle,
   Search as SearchIcon,
@@ -15,9 +14,6 @@ import {
   Sparkles,
   MessageSquare,
   Pencil,
-  X,
-  FileText,
-  Check,
   Loader2,
   Filter,
   ChevronDown,
@@ -35,7 +31,13 @@ import { AgentAssistantStreamBody } from '../../components/agents/AgentAssistant
 import { KbQaSessionSidebar } from '../../components/knowledge-bases/KbQaSessionSidebar';
 import { AgentMessageBody } from '../../components/agents/AgentMessageBody';
 import { KbRetrievalProvenancePanel } from './KnowledgeBaseDetail.searchUtils';
-import { DocPickerChannelTree } from './KnowledgeBaseDetail.docPickerTree';
+import {
+  KbChunkDialog,
+  KbDocPickerDialog,
+  KbFaqDialog,
+  KbGenerateFaqDialog,
+  KbWikiSpacePickerDialog,
+} from './KnowledgeBaseDetail.dialogs';
 import {
   kbQaChipTitle,
   kbQaExpandedDetailPreviewMaxLen,
@@ -49,6 +51,7 @@ import {
 import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
+import { PanelToolbar } from '../../styles/design-system';
 import './KnowledgeBaseDetail.scss';
 
 export function KnowledgeBaseDetail() {
@@ -57,115 +60,25 @@ export function KnowledgeBaseDetail() {
   if (vm.loading) return <div className="kb-detail"><p>{vm.t('detail.loading')}</p></div>;
   if (!vm.kb) return <div className="kb-detail"><p>{vm.t('detail.notFound')}</p></div>;
 
-  const faqDialogTitle = vm.editFaq
-    ? vm.t('detail.faqDialogEdit')
-    : vm.faqDialogSource === 'from_qa'
-      ? vm.t('detail.faqDialogSaveFromQa')
-      : vm.t('detail.faqDialogAdd');
-
-  const faqDialog = vm.showFaqDialog ? (
-    <div
-      className="kb-doc-picker-overlay"
-      onClick={() => { if (!vm.faqPolishing) vm.closeFaqDialog(); }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="faq-dialog-title"
-    >
-      <div className="kb-doc-picker kb-faq-dialog" onClick={(e) => e.stopPropagation()}>
-        <div className="kb-doc-picker-header">
-          <h2 id="faq-dialog-title">{faqDialogTitle}</h2>
-          <button
-            type="button"
-            className="kb-doc-picker-close"
-            onClick={vm.closeFaqDialog}
-            disabled={vm.faqPolishing}
-            aria-label={vm.t('detail.closeAria')}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="kb-faq-dialog-form">
-          {vm.faqDialogSource === 'from_qa' ? (
-            <p className="kb-faq-dialog-hint">{vm.t('detail.faqDialogSaveFromQaHint')}</p>
-          ) : null}
-          <label>
-            <span>{vm.t('detail.question')}</span>
-            <input
-              type="text"
-              placeholder={vm.t('detail.placeholderQuestion')}
-              value={vm.faqQuestion}
-              onChange={(e) => vm.setFaqQuestion(e.target.value)}
-              disabled={vm.faqPolishing}
-              autoFocus
-            />
-          </label>
-          <label>
-            <div className="kb-faq-answer-header">
-              <span>{vm.t('detail.answer')}</span>
-              <button
-                type="button"
-                className="kb-faq-polish-btn"
-                onClick={() => void vm.handlePolishFaqAnswer()}
-                disabled={vm.faqPolishing || !vm.faqQuestion.trim() || !vm.faqAnswer.trim()}
-                aria-label={vm.t('detail.faqPolishAnswerAria')}
-              >
-                {vm.faqPolishing ? (
-                  <Loader2 size={14} className="kb-faq-polish-btn__spin" aria-hidden />
-                ) : (
-                  <Sparkles size={14} aria-hidden />
-                )}
-                <span>{vm.faqPolishing ? vm.t('detail.faqPolishing') : vm.t('detail.faqPolishAnswer')}</span>
-              </button>
-            </div>
-            <textarea
-              placeholder={vm.t('detail.placeholderAnswer')}
-              value={vm.faqAnswer}
-              onChange={(e) => vm.setFaqAnswer(e.target.value)}
-              disabled={vm.faqPolishing}
-              rows={8}
-            />
-          </label>
-
-          {vm.kb.metadata_keys && vm.kb.metadata_keys.length > 0 && (
-            <div className="kb-kv-editor">
-              <span className="kb-kv-editor-label">{vm.t('detail.metadata')}</span>
-              <small className="kb-kv-editor-hint">
-                {Object.values(vm.faqMetadataIsArray).some(Boolean) ? vm.t('detail.kvHintArray') : vm.t('detail.kvHintSingle')}
-              </small>
-              {vm.kb.metadata_keys.map((key) => (
-                <div key={key} className="kb-kv-row kb-kv-row-config">
-                  <span className="kb-kv-key-label">{key}{vm.faqMetadataIsArray[key] ? vm.t('detail.arraySuffix') : ''}</span>
-                  <input
-                    type="text"
-                    placeholder={vm.faqMetadataIsArray[key] ? vm.t('detail.placeholderValueArray', { key }) : vm.t('detail.placeholderValueSingle', { key })}
-                    value={vm.faqDocMetadataValues[key] ?? ''}
-                    onChange={(e) => vm.setFaqDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="kb-doc-picker-footer">
-            <div />
-            <div className="kb-doc-picker-actions">
-              <button type="button" className="btn btn-secondary" onClick={vm.closeFaqDialog} disabled={vm.faqPolishing}>
-                {vm.t('detail.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={vm.handleSaveFaq}
-                disabled={vm.faqPolishing || !vm.faqQuestion.trim() || !vm.faqAnswer.trim()}
-              >
-                {vm.editFaq ? vm.t('detail.update') : vm.t('detail.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
+  const faqDialog = (
+    <KbFaqDialog
+      show={vm.showFaqDialog}
+      editFaq={vm.editFaq}
+      faqDialogSource={vm.faqDialogSource}
+      faqPolishing={vm.faqPolishing}
+      onClose={vm.closeFaqDialog}
+      faqQuestion={vm.faqQuestion}
+      onFaqQuestionChange={vm.setFaqQuestion}
+      faqAnswer={vm.faqAnswer}
+      onFaqAnswerChange={vm.setFaqAnswer}
+      onPolishFaqAnswer={() => void vm.handlePolishFaqAnswer()}
+      metadataKeys={vm.kb.metadata_keys}
+      faqMetadataIsArray={vm.faqMetadataIsArray}
+      faqDocMetadataValues={vm.faqDocMetadataValues}
+      onFaqDocMetadataValuesChange={vm.setFaqDocMetadataValues}
+      onSaveFaq={vm.handleSaveFaq}
+    />
+  );
 
   if (vm.qaFullPage && vm.kb.agent_url) {
     return (
@@ -531,18 +444,21 @@ export function KnowledgeBaseDetail() {
         {/* ===== DOCUMENTS TAB ===== */}
         {vm.activeTab === 'documents' && (
           <section className="kb-section">
-            <div className="kb-section-header">
-              <h2>{vm.t('detail.documentsTitle', { count: vm.docTotal })}</h2>
-              <button type="button" className="btn btn-primary btn-sm" onClick={vm.openDocPicker}>
-                <Plus size={16} />
-                <span>{vm.t('detail.addDocument')}</span>
-              </button>
-            </div>
+            <PanelToolbar
+              className="kb-section-header"
+              leading={<span>{vm.t('detail.documentsTitle', { count: vm.docTotal })}</span>}
+              actions={
+                <button type="button" className="btn btn-primary btn-sm" onClick={vm.openDocPicker}>
+                  <Plus size={16} />
+                  <span>{vm.t('detail.addDocument')}</span>
+                </button>
+              }
+            />
             {vm.docTotal === 0 ? (
               <p className="kb-empty-text">{vm.t('detail.emptyDocuments')}</p>
             ) : (
               <>
-              <div className="kb-table-wrap">
+              <div className="ds-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
@@ -657,18 +573,21 @@ export function KnowledgeBaseDetail() {
         {/* ===== WIKI SPACES TAB ===== */}
         {vm.activeTab === 'wiki_spaces' && (
           <section className="kb-section">
-            <div className="kb-section-header">
-              <h2>{vm.t('detail.wikiSpacesTitle')}</h2>
-              <button type="button" className="btn btn-primary btn-sm" onClick={() => void vm.openWikiSpacePicker()}>
-                <Plus size={16} />
-                <span>{vm.t('detail.addWikiSpace')}</span>
-              </button>
-            </div>
+            <PanelToolbar
+              className="kb-section-header"
+              leading={<span>{vm.t('detail.wikiSpacesTitle')}</span>}
+              actions={
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => void vm.openWikiSpacePicker()}>
+                  <Plus size={16} />
+                  <span>{vm.t('detail.addWikiSpace')}</span>
+                </button>
+              }
+            />
             <p className="kb-section-desc kb-wiki-index-hint">{vm.t('detail.wikiIndexHint')}</p>
             {vm.kbWikiSpaces.length === 0 ? (
               <p className="kb-empty-text">{vm.t('detail.emptyWikiSpaces')}</p>
             ) : (
-              <div className="kb-table-wrap">
+              <div className="ds-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
@@ -726,35 +645,38 @@ export function KnowledgeBaseDetail() {
         {/* ===== FAQS TAB ===== */}
         {vm.activeTab === 'faqs' && (
           <section className="kb-section">
-            <div className="kb-section-header">
-              <h2>{vm.t('detail.faqsTitle', { count: vm.faqTotal })}</h2>
-              <div className="kb-section-header-btns">
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void vm.openGenerateModal()}>
-                  <Sparkles size={16} />
-                  <span>{vm.t('detail.generateFaq')}</span>
-                </button>
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => {
-                  vm.setEditFaq(null);
-                  vm.setFaqDialogSource('manual');
-                  vm.setFaqQuestion('');
-                  vm.setFaqAnswer('');
-                  vm.setFaqLabelsValues(vm.objToConfigValues({}, vm.kb?.metadata_keys ?? undefined));
-                  vm.setFaqDocMetadataValues(vm.objToConfigValues({}, vm.kb?.metadata_keys ?? undefined));
-                  vm.setFaqLabelAllowMultiple({});
-                  vm.setFaqMetadataIsArray({});
-                  vm.setShowFaqDialog(true);
-                }}>
-                  <Plus size={16} />
-                  <span>{vm.t('detail.addFaq')}</span>
-                </button>
-              </div>
-            </div>
+            <PanelToolbar
+              className="kb-section-header"
+              leading={<span>{vm.t('detail.faqsTitle', { count: vm.faqTotal })}</span>}
+              actions={
+                <div className="kb-section-header-btns">
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => void vm.openGenerateModal()}>
+                    <Sparkles size={16} />
+                    <span>{vm.t('detail.generateFaq')}</span>
+                  </button>
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => {
+                    vm.setEditFaq(null);
+                    vm.setFaqDialogSource('manual');
+                    vm.setFaqQuestion('');
+                    vm.setFaqAnswer('');
+                    vm.setFaqLabelsValues(vm.objToConfigValues({}, vm.kb?.metadata_keys ?? undefined));
+                    vm.setFaqDocMetadataValues(vm.objToConfigValues({}, vm.kb?.metadata_keys ?? undefined));
+                    vm.setFaqLabelAllowMultiple({});
+                    vm.setFaqMetadataIsArray({});
+                    vm.setShowFaqDialog(true);
+                  }}>
+                    <Plus size={16} />
+                    <span>{vm.t('detail.addFaq')}</span>
+                  </button>
+                </div>
+              }
+            />
 
             {vm.faqTotal === 0 ? (
               <p className="kb-empty-text">{vm.t('detail.emptyFaqs')}</p>
             ) : (
               <>
-              <div className="kb-table-wrap">
+              <div className="ds-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
@@ -904,14 +826,15 @@ export function KnowledgeBaseDetail() {
         {/* ===== CHUNKS TAB ===== */}
         {vm.activeTab === 'chunks' && (
           <section className="kb-section">
-            <div className="kb-section-header">
-              <h2>{vm.t('detail.chunksTitle', { count: vm.chunkTotal })}</h2>
-            </div>
+            <PanelToolbar
+              className="kb-section-header"
+              leading={<span>{vm.t('detail.chunksTitle', { count: vm.chunkTotal })}</span>}
+            />
             {vm.chunkTotal === 0 ? (
               <p className="kb-empty-text">{vm.t('detail.emptyChunks')}</p>
             ) : (
               <>
-              <div className="kb-table-wrap">
+              <div className="ds-table-wrap">
                 <table className="kb-table">
                   <thead>
                     <tr>
@@ -1393,548 +1316,79 @@ export function KnowledgeBaseDetail() {
         )}
       </div>
 
-      {vm.showGenerateModal && (
-        <div
-          className="kb-doc-picker-overlay"
-          onClick={vm.closeGenerateModal}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="gen-faq-title"
-        >
-          <div className="kb-doc-picker" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-doc-picker-header">
-              <h2 id="gen-faq-title">{vm.genStep === 'config' ? vm.t('detail.genModalTitleConfig') : vm.t('detail.genModalTitleReview')}</h2>
-              <button
-                type="button"
-                className="kb-doc-picker-close"
-                onClick={vm.closeGenerateModal}
-                disabled={vm.generating || vm.genSaving}
-                aria-label={vm.t('detail.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <p className="kb-doc-picker-hint">
-              {vm.genStep === 'config'
-                ? vm.generating && vm.genProgress
-                  ? vm.t('detail.genHintProgress', {
-                      current: vm.genProgress.current,
-                      total: vm.genProgress.total,
-                      name: vm.genProgress.documentName,
-                    })
-                  : vm.t('detail.genHintConfig')
-                : vm.t('detail.genHintReview')}
-            </p>
-            {vm.generating && vm.genProgress && vm.genProgress.total > 1 && (
-              <div className="kb-gen-progress-bar">
-                <div
-                  className="kb-gen-progress-fill"
-                  style={{ width: `${(vm.genProgress.current / vm.genProgress.total) * 100}%` }}
-                />
-              </div>
-            )}
+      <KbGenerateFaqDialog
+        show={vm.showGenerateModal}
+        genStep={vm.genStep}
+        onClose={vm.closeGenerateModal}
+        generating={vm.generating}
+        genSaving={vm.genSaving}
+        genProgress={vm.genProgress}
+        genModelId={vm.genModelId}
+        onGenModelIdChange={vm.setGenModelId}
+        llmModels={vm.llmModels}
+        genPrompt={vm.genPrompt}
+        onGenPromptChange={vm.setGenPrompt}
+        genDocs={vm.genDocs}
+        genSelectedDocs={vm.genSelectedDocs}
+        onGenSelectedDocsChange={vm.setGenSelectedDocs}
+        onToggleGenDoc={vm.toggleGenDoc}
+        genPreviewFaqs={vm.genPreviewFaqs}
+        onRemoveGenPreviewFaq={vm.removeGenPreviewFaq}
+        onGenerateFaqs={() => void vm.handleGenerateFaqs()}
+        onGenBackToConfig={vm.handleGenBackToConfig}
+        onSaveGeneratedFaqs={() => void vm.handleSaveGeneratedFaqs()}
+      />
 
-            {vm.genStep === 'config' ? (
-              <>
-                <div className="kb-gen-model-select">
-                  <label>
-                    <span>{vm.t('detail.llmModel')}</span>
-                    <select value={vm.genModelId} onChange={(e) => vm.setGenModelId(e.target.value)}>
-                      <option value="">{vm.t('detail.selectModel')}</option>
-                      {vm.llmModels.map((m) => (
-                        <option key={m.id} value={m.id}>{m.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>{vm.t('detail.prompt')}</span>
-                    <textarea
-                      placeholder={vm.t('detail.promptPlaceholder')}
-                      value={vm.genPrompt}
-                      onChange={(e) => vm.setGenPrompt(e.target.value)}
-                      rows={4}
-                    />
-                  </label>
-                </div>
+      <KbDocPickerDialog
+        show={vm.showDocPicker}
+        onClose={vm.closeDocPicker}
+        pickerAdding={vm.pickerAdding}
+        channels={vm.channels}
+        pickerSelectedChannel={vm.pickerSelectedChannel}
+        pickerChannelExpanded={vm.pickerChannelExpanded}
+        onPickerChannelSelect={vm.handlePickerChannelSelect}
+        onPickerChannelToggle={vm.handlePickerChannelToggle}
+        pickerSearch={vm.pickerSearch}
+        onPickerSearch={vm.handlePickerSearch}
+        pickerLoading={vm.pickerLoading}
+        pickerResults={vm.pickerResults}
+        alreadyAddedIds={vm.alreadyAddedIds}
+        pickerSelected={vm.pickerSelected}
+        onTogglePickerDoc={vm.togglePickerDoc}
+        pickerTotal={vm.pickerTotal}
+        pickerPage={vm.pickerPage}
+        pickerPageSize={vm.pickerPageSize}
+        onPickerPageChange={vm.setPickerPage}
+        pickerCanPrev={vm.pickerCanPrev}
+        pickerCanNext={vm.pickerCanNext}
+        pickerTotalPages={vm.pickerTotalPages}
+        onAddSelectedDocuments={() => void vm.handleAddSelectedDocuments()}
+      />
 
-                <div className="kb-gen-doc-header">
-                  <span className="kb-gen-doc-label">{vm.t('detail.documents')}</span>
-                  <button
-                    type="button"
-                    className="kb-gen-toggle-all"
-                    onClick={() => {
-                      if (vm.genSelectedDocs.size === vm.genDocs.length) vm.setGenSelectedDocs(new Set());
-                      else vm.setGenSelectedDocs(new Set(vm.genDocs.map((d) => d.document_id)));
-                    }}
-                  >
-                    {vm.genSelectedDocs.size === vm.genDocs.length ? vm.t('detail.deselectAll') : vm.t('detail.selectAll')}
-                  </button>
-                </div>
+      <KbWikiSpacePickerDialog
+        show={vm.showWikiSpacePicker}
+        onClose={vm.closeWikiSpacePicker}
+        wikiSpacePickerLoading={vm.wikiSpacePickerLoading}
+        wikiSpacePickerItems={vm.wikiSpacePickerItems}
+        kbWikiSpaces={vm.kbWikiSpaces}
+        wikiSpaceBusyId={vm.wikiSpaceBusyId}
+        onAddWikiSpaceToKb={(id) => void vm.handleAddWikiSpaceToKb(id)}
+      />
 
-                <div className="kb-doc-picker-list">
-                  {vm.genDocs.length === 0 ? (
-                    <div className="kb-doc-picker-empty">
-                      <p>{vm.t('detail.genNoDocs')}</p>
-                    </div>
-                  ) : (
-                    vm.genDocs.map((doc) => {
-                      const selected = vm.genSelectedDocs.has(doc.document_id);
-                      return (
-                        <div
-                          key={doc.document_id}
-                          className={`kb-doc-picker-item${selected ? ' selected' : ''}`}
-                          onClick={() => vm.toggleGenDoc(doc.document_id)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && vm.toggleGenDoc(doc.document_id)}
-                        >
-                          <div className="kb-doc-picker-item-check">
-                            {selected ? (
-                              <Check size={16} />
-                            ) : (
-                              <div className="kb-doc-picker-item-checkbox" />
-                            )}
-                          </div>
-                          <FileText size={18} className="kb-doc-picker-item-icon" />
-                          <div className="kb-doc-picker-item-info">
-                            <span className="kb-doc-picker-item-name">{doc.document_name || doc.document_id}</span>
-                            <span className="kb-doc-picker-item-meta">
-                              {doc.document_file_type} · {doc.document_status || 'completed'}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="kb-gen-review-list">
-                {vm.genPreviewFaqs.length === 0 ? (
-                  <div className="kb-doc-picker-empty">
-                    <p>{vm.t('detail.genNoPreview')}</p>
-                  </div>
-                ) : (
-                  vm.genPreviewFaqs.map((faq, idx) => (
-                    <div key={idx} className="kb-gen-review-item">
-                      <div className="kb-gen-review-content">
-                        <span className="kb-gen-review-source">{faq.document_name || faq.document_id}</span>
-                        <p className="kb-gen-review-q">{faq.question}</p>
-                        <p className="kb-gen-review-a">{faq.answer}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="kb-gen-review-remove"
-                        onClick={() => vm.removeGenPreviewFaq(idx)}
-                        aria-label={vm.t('detail.genRemoveFaqAria')}
-                        title={vm.t('detail.remove')}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            <div className="kb-doc-picker-footer">
-              <span className="kb-doc-picker-count">
-                {vm.genStep === 'config'
-                  ? (vm.genSelectedDocs.size > 0
-                      ? vm.t('detail.genFooterSelectedDocs', { count: vm.genSelectedDocs.size })
-                      : vm.t('detail.genFooterNoDocs'))
-                  : vm.t('detail.genFooterSaveCount', { count: vm.genPreviewFaqs.length })}
-              </span>
-              <div className="kb-doc-picker-actions">
-                {vm.genStep === 'config' ? (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={vm.closeGenerateModal}
-                      disabled={vm.generating}
-                    >
-                      {vm.t('detail.cancel')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={vm.handleGenerateFaqs}
-                      disabled={!vm.genModelId || vm.genSelectedDocs.size === 0 || vm.generating}
-                    >
-                      {vm.generating ? (
-                        <>
-                          <Loader2 size={18} className="kb-doc-picker-spinner" />
-                          <span>{vm.t('detail.generating')}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={18} />
-                          <span>{vm.t('detail.generate')}</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={vm.handleGenBackToConfig}
-                      disabled={vm.genSaving}
-                    >
-                      {vm.t('detail.genModalBack')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={vm.handleSaveGeneratedFaqs}
-                      disabled={vm.genPreviewFaqs.length === 0 || vm.genSaving}
-                    >
-                      {vm.genSaving ? (
-                        <>
-                          <Loader2 size={18} className="kb-doc-picker-spinner" />
-                          <span>{vm.t('detail.saving')}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check size={18} />
-                          <span>{vm.t('detail.saveFaqs', { count: vm.genPreviewFaqs.length })}</span>
-                        </>
-                      )}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {vm.showDocPicker && (
-        <div
-          className="kb-doc-picker-overlay"
-          onClick={vm.closeDocPicker}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="doc-picker-title"
-        >
-          <div className="kb-doc-picker kb-doc-picker-split" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-doc-picker-header">
-              <h2 id="doc-picker-title">{vm.t('detail.docPickerTitle')}</h2>
-              <button
-                type="button"
-                className="kb-doc-picker-close"
-                onClick={vm.closeDocPicker}
-                disabled={vm.pickerAdding}
-                aria-label={vm.t('detail.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="kb-doc-picker-body">
-              <aside className="kb-doc-picker-sidebar">
-                <span className="kb-doc-picker-sidebar-label">{vm.t('detail.channels')}</span>
-                <ul className="kb-doc-picker-channel-tree">
-                  {vm.channels.length === 0 ? (
-                    <li className="kb-doc-picker-channel-empty">{vm.t('detail.noChannels')}</li>
-                  ) : (
-                    <>
-                      {vm.channels.map((ch) => (
-                        <DocPickerChannelTree
-                          key={ch.id}
-                          node={ch}
-                          selectedId={vm.pickerSelectedChannel}
-                          expanded={vm.pickerChannelExpanded}
-                          onSelect={vm.handlePickerChannelSelect}
-                          onToggle={vm.handlePickerChannelToggle}
-                          depth={0}
-                        />
-                      ))}
-                    </>
-                  )}
-                </ul>
-              </aside>
-              <div className="kb-doc-picker-main">
-                <div className="kb-doc-picker-search">
-                  <SearchIcon size={18} />
-                  <input
-                    type="search"
-                    placeholder={vm.t('detail.searchDocsPlaceholder')}
-                    value={vm.pickerSearch}
-                    onChange={(e) => vm.handlePickerSearch(e.target.value)}
-                    disabled={!vm.pickerSelectedChannel}
-                    autoFocus
-                  />
-                </div>
-                <div className="kb-doc-picker-list">
-                  {!vm.pickerSelectedChannel ? (
-                    <div className="kb-doc-picker-empty">
-                      <p>{vm.t('detail.selectChannelFirst')}</p>
-                    </div>
-                  ) : vm.pickerLoading ? (
-                    <div className="kb-doc-picker-vm.loading">
-                      <Loader2 size={24} className="kb-doc-picker-spinner" />
-                      <span>{vm.t('detail.loadingDocs')}</span>
-                    </div>
-                  ) : vm.pickerResults.length === 0 ? (
-                    <div className="kb-doc-picker-empty">
-                      <p>{vm.t('detail.noDocsFound')}</p>
-                    </div>
-                  ) : (
-                    vm.pickerResults.map((doc) => {
-                      const added = vm.alreadyAddedIds.has(doc.id);
-                      const selected = vm.pickerSelected.has(doc.id);
-                      return (
-                        <div
-                          key={doc.id}
-                          className={`kb-doc-picker-item${selected ? ' selected' : ''}${added ? ' already-added' : ''}`}
-                          onClick={() => !added && vm.togglePickerDoc(doc.id)}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => e.key === 'Enter' && !added && vm.togglePickerDoc(doc.id)}
-                        >
-                          <div className="kb-doc-picker-item-check">
-                            {added ? (
-                              <Check size={16} />
-                            ) : selected ? (
-                              <Check size={16} />
-                            ) : (
-                              <div className="kb-doc-picker-item-checkbox" />
-                            )}
-                          </div>
-                          <FileText size={18} className="kb-doc-picker-item-icon" />
-                          <div className="kb-doc-picker-item-info">
-                            <span className="kb-doc-picker-item-name">{doc.name}</span>
-                            <span className="kb-doc-picker-item-meta">
-                              {doc.file_type} · {doc.status || 'completed'}
-                            </span>
-                          </div>
-                          {added && <span className="kb-doc-picker-item-badge">{vm.t('detail.addedBadge')}</span>}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-                {vm.pickerSelectedChannel && vm.pickerTotal > 0 && (
-                  <div className="kb-doc-picker-pagination">
-                    <span className="kb-doc-picker-pagination-info">
-                      {vm.t('detail.pickerPageRange', {
-                        start: vm.pickerPage * vm.pickerPageSize + 1,
-                        end: Math.min((vm.pickerPage + 1) * vm.pickerPageSize, vm.pickerTotal),
-                        total: vm.pickerTotal,
-                      })}
-                    </span>
-                    <div className="kb-doc-picker-pagination-btns">
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => vm.setPickerPage((p) => Math.max(0, p - 1))}
-                        disabled={!vm.pickerCanPrev}
-                        aria-label={vm.t('detail.pickerAriaPrevPage')}
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => vm.setPickerPage((p) => Math.min(vm.pickerTotalPages - 1, p + 1))}
-                        disabled={!vm.pickerCanNext}
-                        aria-label={vm.t('detail.pickerAriaNextPage')}
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="kb-doc-picker-footer">
-              <span className="kb-doc-picker-count">
-                {vm.pickerSelected.size > 0
-                  ? vm.t('detail.pickerSelected', { count: vm.pickerSelected.size })
-                  : vm.t('detail.pickerNoneSelected')}
-              </span>
-              <div className="kb-doc-picker-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={vm.closeDocPicker}
-                  disabled={vm.pickerAdding}
-                >
-                  {vm.t('detail.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={vm.handleAddSelectedDocuments}
-                  disabled={vm.pickerSelected.size === 0 || vm.pickerAdding}
-                >
-                  {vm.pickerAdding ? (
-                    <>
-                      <Loader2 size={18} className="kb-doc-picker-spinner" />
-                      <span>{vm.t('detail.adding')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={18} />
-                      <span>
-                        {vm.pickerSelected.size > 0
-                          ? vm.t('detail.addButtonWithCount', { count: vm.pickerSelected.size })
-                          : vm.t('detail.addButton')}
-                      </span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {vm.showWikiSpacePicker && (
-        <div
-          className="kb-doc-picker-overlay"
-          onClick={vm.closeWikiSpacePicker}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="wiki-picker-title"
-        >
-          <div className="kb-doc-picker kb-doc-picker--narrow" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-doc-picker-header">
-              <h2 id="wiki-picker-title">{vm.t('detail.wikiPickerTitle')}</h2>
-              <button
-                type="button"
-                className="kb-doc-picker-close"
-                onClick={vm.closeWikiSpacePicker}
-                disabled={Boolean(vm.wikiSpaceBusyId)}
-                aria-label={vm.t('detail.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="kb-doc-picker-body">
-              {vm.wikiSpacePickerLoading ? (
-                <p className="kb-empty-text">{vm.t('detail.loading')}</p>
-              ) : (
-                <>
-                  <ul className="kb-wiki-picker-list">
-                    {vm.wikiSpacePickerItems
-                      .filter((w) => !vm.kbWikiSpaces.some((k) => k.wiki_space_id === w.id))
-                      .map((w) => (
-                        <li key={w.id} className="kb-wiki-picker-row">
-                          <span className="kb-wiki-picker-name">{w.name}</span>
-                          <button
-                            type="button"
-                            className="btn btn-primary btn-sm"
-                            disabled={vm.wikiSpaceBusyId !== null}
-                            onClick={() => void vm.handleAddWikiSpaceToKb(w.id)}
-                          >
-                            {vm.wikiSpaceBusyId === w.id ? (
-                              <Loader2 size={16} className="kb-doc-picker-spinner" />
-                            ) : (
-                              <Plus size={16} />
-                            )}
-                            <span>{vm.t('detail.linkWikiSpace')}</span>
-                          </button>
-                        </li>
-                      ))}
-                  </ul>
-                  {vm.wikiSpacePickerItems.filter((w) => !vm.kbWikiSpaces.some((k) => k.wiki_space_id === w.id)).length === 0 && (
-                    <p className="kb-empty-text">{vm.t('detail.wikiPickerEmpty')}</p>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {vm.showChunkDialog && vm.editChunk && (
-        <div
-          className="kb-doc-picker-overlay"
-          onClick={vm.closeChunkDialog}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="chunk-dialog-title"
-        >
-          <div className="kb-doc-picker kb-faq-dialog kb-chunk-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="kb-doc-picker-header">
-              <h2 id="chunk-dialog-title">{vm.t('detail.chunkDialogTitle')}</h2>
-              <button
-                type="button"
-                className="kb-doc-picker-close"
-                onClick={vm.closeChunkDialog}
-                disabled={vm.chunkSaving}
-                aria-label={vm.t('detail.closeAria')}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="kb-faq-dialog-form">
-              <label>
-                <span>{vm.t('detail.chunkSource')}</span>
-                <input
-                  type="text"
-                  value={vm.editChunk.document_name || vm.editChunk.document_id || vm.editChunk.wiki_page_id || ''}
-                  readOnly
-                  disabled
-                  className="kb-chunk-dialog-readonly"
-                />
-              </label>
-              <label>
-                <span>{vm.t('detail.chunkContent')}</span>
-                <textarea
-                  value={vm.chunkContent}
-                  onChange={(e) => vm.setChunkContent(e.target.value)}
-                  rows={8}
-                  readOnly={vm.chunkDialogReadOnly}
-                />
-              </label>
-
-              {vm.kb?.metadata_keys && vm.kb.metadata_keys.length > 0 && (
-                <div className="kb-kv-editor">
-                  <span className="kb-kv-editor-label">{vm.t('detail.metadata')}</span>
-                  <small className="kb-kv-editor-hint">
-                    {Object.values(vm.chunkMetadataIsArray).some(Boolean) ? vm.t('detail.kvHintArray') : vm.t('detail.kvHintSingle')}
-                  </small>
-                  {vm.kb.metadata_keys.map((key) => (
-                    <div key={key} className="kb-kv-row kb-kv-row-config">
-                      <span className="kb-kv-key-label">{key}{vm.chunkMetadataIsArray[key] ? vm.t('detail.arraySuffix') : ''}</span>
-                      <input
-                        type="text"
-                        placeholder={vm.chunkMetadataIsArray[key] ? vm.t('detail.placeholderValueArray', { key }) : vm.t('detail.placeholderValueSingle', { key })}
-                        value={vm.chunkDocMetadataValues[key] ?? ''}
-                        onChange={(e) => vm.setChunkDocMetadataValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                        disabled={vm.chunkDialogReadOnly}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="kb-doc-picker-footer">
-                <div />
-                <div className="kb-doc-picker-actions">
-                  {vm.chunkDialogReadOnly ? (
-                    <button type="button" className="btn btn-primary" onClick={vm.closeChunkDialog}>
-                      {vm.t('detail.chunkDialogClose')}
-                    </button>
-                  ) : (
-                    <>
-                      <button type="button" className="btn btn-secondary" onClick={vm.closeChunkDialog} disabled={vm.chunkSaving}>
-                        {vm.t('detail.cancel')}
-                      </button>
-                      <button type="button" className="btn btn-primary" onClick={vm.handleSaveChunk} disabled={vm.chunkSaving || !vm.chunkContent.trim()}>
-                        {vm.chunkSaving ? vm.t('detail.saving') : vm.t('detail.update')}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <KbChunkDialog
+        show={vm.showChunkDialog}
+        editChunk={vm.editChunk}
+        onClose={vm.closeChunkDialog}
+        chunkSaving={vm.chunkSaving}
+        chunkContent={vm.chunkContent}
+        onChunkContentChange={vm.setChunkContent}
+        chunkDialogReadOnly={vm.chunkDialogReadOnly}
+        metadataKeys={vm.kb?.metadata_keys}
+        chunkMetadataIsArray={vm.chunkMetadataIsArray}
+        chunkDocMetadataValues={vm.chunkDocMetadataValues}
+        onChunkDocMetadataValuesChange={vm.setChunkDocMetadataValues}
+        onSaveChunk={() => void vm.handleSaveChunk()}
+      />
 
       {faqDialog}
     </div>

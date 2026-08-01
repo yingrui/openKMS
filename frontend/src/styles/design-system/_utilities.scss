@@ -1,5 +1,8 @@
 // Cross-route utilities: prefer tokens over inline TSX styles.
 
+@use './mixins' as *;
+@use './tokens' as ds;
+
 .page-subtitle--error {
   color: var(--color-error);
 }
@@ -60,6 +63,21 @@
 
 .openkms-hidden {
   display: none !important;
+}
+
+/* Hide label text at the mobile breakpoint; keep the icon. Pair with aria-label on the control. */
+.ds-compact-label {
+  @include max-width(ds.$bp-md-min) {
+    display: none;
+  }
+}
+
+/* Ensure icon-only controls stay comfortably tappable on touch screens. */
+.ds-tap-target {
+  @include max-width(ds.$bp-md-min) {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }
 
 /* Error surfaces */

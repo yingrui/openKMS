@@ -12,6 +12,7 @@ import {
   type OntologyActionTypeResponse,
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../ontology/ontology-admin.scss';
 
 function statusBadgeClass(status: string): string {
@@ -24,6 +25,7 @@ function statusBadgeClass(status: string): string {
 
 export function ActionsListPage() {
   const { t } = useTranslation('ontology');
+  const confirm = useConfirm();
   const [items, setItems] = useState<OntologyActionTypeResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
@@ -112,7 +114,15 @@ export function ActionsListPage() {
   };
 
   const onDelete = async (action: OntologyActionTypeResponse) => {
-    if (!window.confirm(t('actions.deleteConfirm', { name: action.display_name }))) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('actions.deleteConfirm', { name: action.display_name }),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteOntologyActionType(action.id);
       toast.success(t('actions.deleted'));
@@ -136,7 +146,7 @@ export function ActionsListPage() {
       </header>
 
       <div className="ontology-admin-content">
-        <div className="ontology-admin-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" aria-hidden />

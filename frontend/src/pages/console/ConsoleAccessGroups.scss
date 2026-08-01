@@ -309,17 +309,6 @@
   background: var(--color-bg-muted);
 }
 
-.console-access-groups-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-
-  .ds-pagination {
-    border-radius: 0;
-  }
-}
-
 .console-access-groups-table {
   width: 100%;
   border-collapse: collapse;
@@ -365,23 +354,9 @@
   font-size: var(--text-base);
 }
 
-.console-access-groups-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
 .console-access-groups-modal {
-  width: 100%;
-  max-width: 440px;
+  /* shell sizing from _dialog.scss alias; keep padding for this form layout */
   padding: 1.5rem;
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
 }
 
@@ -424,7 +399,7 @@
   font-size: var(--text-md);
 }
 
-@media (max-width: 900px) {
+@include max-width(ds.$km-layout-max) {
   .console-access-groups-main {
     flex-direction: column;
   }

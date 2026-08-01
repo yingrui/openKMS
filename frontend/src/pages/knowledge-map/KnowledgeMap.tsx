@@ -32,6 +32,8 @@ import {
   type ResourceLink,
 } from '../../data/knowledgeMapApi';
 import { fetchAllWikiSpaces } from '../../data/wikiSpacesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { PanelToolbar } from '../../styles/design-system';
 import './KnowledgeMap.scss';
 import { KnowledgeMapHtmlCopilot } from './KnowledgeMapHtmlCopilot';
 import { KnowledgeMapForceGraph } from '../../components/KnowledgeMapForceGraph';
@@ -409,6 +411,7 @@ function KnowledgeMapTreeItem({
 export function KnowledgeMap() {
   const { t } = useTranslation('knowledgeMap');
   const { hasPermission } = useAuth();
+  const confirm = useConfirm();
   const { channels } = useEnsureDocumentChannels();
   const [searchParams, setSearchParams] = useSearchParams();
   const nodeFromUrl = searchParams.get('node');
@@ -625,7 +628,15 @@ export function KnowledgeMap() {
   };
 
   const onDeleteLink = async (resourceType: string, resourceId: string) => {
-    if (!window.confirm(t('confirmRemoveReferTo'))) return;
+    if (
+      !(await confirm({
+        title: t('delete'),
+        message: t('confirmRemoveReferTo'),
+        confirmLabel: t('delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteResourceLink(resourceType, resourceId);
       toast.success(t('toastReferToRemoved'));
@@ -742,18 +753,23 @@ export function KnowledgeMap() {
           {mapUiTab === 'edit' ? (
           <div className="knowledge-map-master-detail">
             <section className="knowledge-map-tree-panel" aria-label={t('treeAriaLabel')}>
-              <div className="knowledge-map-tree-panel-header">
-                <h2>
-                  <FolderTree size={20} />
-                  {t('treeHeading')}
-                </h2>
-                {canWrite && (
-                  <button type="button" className="btn btn-primary knowledge-map-new-node-btn" onClick={openNewTermModal}>
-                    <Plus size={18} />
-                    <span>{t('newNode')}</span>
-                  </button>
-                )}
-              </div>
+              <PanelToolbar
+                className="knowledge-map-tree-panel-header"
+                leading={
+                  <>
+                    <FolderTree size={20} />
+                    <span>{t('treeHeading')}</span>
+                  </>
+                }
+                actions={
+                  canWrite ? (
+                    <button type="button" className="btn btn-primary knowledge-map-new-node-btn" onClick={openNewTermModal}>
+                      <Plus size={18} />
+                      <span>{t('newNode')}</span>
+                    </button>
+                  ) : undefined
+                }
+              />
               {!tree.length ? (
                 <div className="knowledge-map-empty">
                   <FolderTree size={40} />
@@ -884,7 +900,7 @@ export function KnowledgeMap() {
                     {!linksForSelected.length ? (
                       <p className="knowledge-map-muted">{t('noReferTosYet')}</p>
                     ) : (
-                      <div className="knowledge-map-table-wrap">
+                      <div className="ds-table-wrap">
                         <table className="knowledge-map-table">
                           <thead>
                             <tr>

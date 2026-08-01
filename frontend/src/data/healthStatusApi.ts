@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export type HealthStatusKind = 'ok' | 'error' | 'skipped' | 'degraded';
 
@@ -40,13 +39,5 @@ export interface HealthStatusResponse {
 }
 
 export async function fetchHealthStatus(): Promise<HealthStatusResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/health-status`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch health status: ${res.status}`);
-  }
-  return res.json();
+  return request<HealthStatusResponse>('/api/admin/health-status');
 }

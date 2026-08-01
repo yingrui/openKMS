@@ -286,7 +286,7 @@ export function ConsoleStorage() {
       ) : rows.length === 0 ? (
         <p className="console-storage-empty">{t('storage.empty')}</p>
       ) : (
-        <div className="console-storage-table-wrap">
+        <div className="ds-table-wrap">
           <table className="console-storage-table">
             <thead>
               <tr>

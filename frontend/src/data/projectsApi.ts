@@ -1,25 +1,8 @@
 /** Agent workspace projects API (`/api/projects`). */
 import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request, requestRaw } from './apiClient';
 import type { AgentConversationResponse, AgentMessageItem } from './agentApi';
 import { readNdjsonStream } from './ndjsonStream';
-
-async function parseError(res: Response): Promise<string> {
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') return j.detail;
-    if (j.detail && typeof j.detail === 'object' && typeof j.detail.message === 'string') {
-      return j.detail.message;
-    }
-    if (Array.isArray(j.detail) && j.detail.length > 0) {
-      const first = j.detail[0];
-      if (typeof first === 'object' && first && typeof first.msg === 'string') return first.msg;
-    }
-  } catch {
-    /* ignore */
-  }
-  return res.statusText;
-}
 
 function handleNetworkError(e: unknown): never {
   if (e instanceof TypeError && e.message === 'Failed to fetch') {
@@ -109,17 +92,9 @@ export async function listProjects(params?: {
   limit?: number;
   offset?: number;
 }): Promise<ProjectListResponse> {
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects${qs ? `?${qs}` : ''}`, {
-    headers,
-    credentials: 'include',
+  return request<ProjectListResponse>('/api/projects', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function listAllProjects(): Promise<ProjectResponse[]> {
@@ -141,22 +116,15 @@ export async function createProject(body: {
   description?: string;
   slug?: string;
 }): Promise<ProjectResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects`, {
+  return request<ProjectResponse>('/api/projects', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function getProject(id: string): Promise<ProjectResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${id}`, { headers, credentials: 'include' });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<ProjectResponse>(`/api/projects/${id}`);
 }
 
 export async function updateProject(
@@ -168,39 +136,27 @@ export async function updateProject(
     settings?: Record<string, unknown>;
   },
 ): Promise<ProjectResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${id}`, {
+  return request<ProjectResponse>(`/api/projects/${id}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function listProjectFiles(projectId: string, path = ''): Promise<{ path: string; entries: ProjectFileEntry[] }> {
-  const headers = await getAuthHeaders();
-  const q = path ? `?path=${encodeURIComponent(path)}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/files${q}`, {
-    headers,
-    credentials: 'include',
+  return request<{ path: string; entries: ProjectFileEntry[] }>(`/api/projects/${projectId}/files`, {
+    query: { path: path || undefined },
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function getProjectFileContent(
   projectId: string,
   path: string,
 ): Promise<{ path: string; content: string | null; is_binary: boolean; size: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/files/content?path=${encodeURIComponent(path)}`,
-    { headers, credentials: 'include' },
+  return request<{ path: string; content: string | null; is_binary: boolean; size: number }>(
+    `/api/projects/${projectId}/files/content`,
+    { query: { path } },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 function joinProjectPath(dir: string, filePath: string): string {
@@ -224,17 +180,9 @@ export async function uploadProjectFileAtPath(
   file: File,
   relativePath: string,
 ): Promise<{ path: string }> {
-  const headers = await getAuthHeaders();
   const fd = new FormData();
   fd.append('file', file, relativePath.replace(/\\/g, '/'));
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/files/upload`, {
-    method: 'POST',
-    headers,
-    credentials: 'include',
-    body: fd,
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<{ path: string }>(`/api/projects/${projectId}/files/upload`, { method: 'POST', body: fd });
 }
 
 export async function uploadProjectFile(projectId: string, file: File, path = ''): Promise<{ path: string }> {
@@ -263,49 +211,30 @@ export async function uploadProjectFiles(
 }
 
 export async function deleteProjectFile(projectId: string, path: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/files`, {
+  return request<void>(`/api/projects/${projectId}/files`, {
     method: 'DELETE',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ path }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
 }
 
 export async function listProjectConversations(projectId: string): Promise<AgentConversationResponse[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/conversations`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<AgentConversationResponse[]>(`/api/projects/${projectId}/conversations`);
 }
 
 export async function createProjectConversation(
   projectId: string,
   title?: string,
 ): Promise<AgentConversationResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/conversations`, {
+  return request<AgentConversationResponse>(`/api/projects/${projectId}/conversations`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ title: title ?? null }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteProjectConversation(projectId: string, convId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/conversations/${convId}`, {
-    method: 'DELETE',
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/projects/${projectId}/conversations/${convId}`, { method: 'DELETE' });
 }
 
 export async function updateProjectConversation(
@@ -313,32 +242,21 @@ export async function updateProjectConversation(
   convId: string,
   body: { title: string },
 ): Promise<AgentConversationResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/conversations/${convId}`, {
+  return request<AgentConversationResponse>(`/api/projects/${projectId}/conversations/${convId}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function suggestProjectConversationTitle(
   projectId: string,
   convId: string,
 ): Promise<AgentConversationResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/suggest-title`,
-    {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-    },
+  return request<AgentConversationResponse>(
+    `/api/projects/${projectId}/conversations/${convId}/suggest-title`,
+    { method: 'POST' },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 /** Remove this message and all later messages; user can resend from the input. */
@@ -347,15 +265,10 @@ export async function truncateProjectMessagesFromMessage(
   convId: string,
   messageId: string,
 ): Promise<{ deleted: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${encodeURIComponent(
-      convId,
-    )}/messages/from/${encodeURIComponent(messageId)}`,
-    { method: 'DELETE', headers, credentials: 'include' },
+  return request<{ deleted: number }>(
+    `/api/projects/${projectId}/conversations/${encodeURIComponent(convId)}/messages/from/${encodeURIComponent(messageId)}`,
+    { method: 'DELETE' },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json() as Promise<{ deleted: number }>;
 }
 
 export async function listProjectMessages(
@@ -363,18 +276,16 @@ export async function listProjectMessages(
   convId: string,
   opts?: { limit?: number; offset?: number },
 ): Promise<{ items: AgentMessageItem[]; total: number }> {
-  const params = new URLSearchParams();
-  params.set('limit', String(opts?.limit ?? 50));
-  if (opts?.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
-  const qs = params.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages?${qs}`,
-    { headers, credentials: 'include' },
+  const data = await request<{ items: AgentMessageItem[]; total: number }>(
+    `/api/projects/${projectId}/conversations/${convId}/messages`,
+    {
+      query: {
+        limit: opts?.limit ?? 50,
+        offset: opts?.offset && opts.offset > 0 ? opts.offset : undefined,
+      },
+    },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  const data = await res.json();
-  return { items: data.items as AgentMessageItem[], total: data.total as number };
+  return { items: data.items, total: data.total };
 }
 
 export type ProjectStreamEvent =
@@ -399,22 +310,16 @@ export async function postProjectMessageStream(
   onEvent?: (ev: ProjectStreamEvent) => void,
 ): Promise<AgentMessageItem | null> {
   try {
-    const headers = await getAuthHeaders();
-    const res = await authAwareFetch(
-      `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages`,
-      {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          content,
-          stream: true,
-          mode: opts?.mode ?? 'agent',
-          session_id: opts?.sessionId ?? null,
-        }),
-      },
-    );
-    if (!res.ok) throw new Error(await parseError(res));
+    const res = await requestRaw(`/api/projects/${projectId}/conversations/${convId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content,
+        stream: true,
+        mode: opts?.mode ?? 'agent',
+        session_id: opts?.sessionId ?? null,
+      }),
+    });
     if (!res.body) throw new Error('No response body');
     let assistant: AgentMessageItem | null = null;
     await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
@@ -435,17 +340,11 @@ export async function resumeProjectInterrupt(
   onEvent?: (ev: ProjectStreamEvent) => void,
 ): Promise<AgentMessageItem | null> {
   try {
-    const headers = await getAuthHeaders();
-    const res = await authAwareFetch(
-      `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/messages/resume`,
-      {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(body),
-      },
-    );
-    if (!res.ok) throw new Error(await parseError(res));
+    const res = await requestRaw(`/api/projects/${projectId}/conversations/${convId}/messages/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
     if (!res.body) throw new Error('No response body');
     let assistant: AgentMessageItem | null = null;
     await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
@@ -460,79 +359,42 @@ export async function resumeProjectInterrupt(
 }
 
 export async function gitInit(projectId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/git/init`, {
-    method: 'POST',
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/projects/${projectId}/git/init`, { method: 'POST' });
 }
 
 export async function gitStatus(projectId: string): Promise<{ entries: GitStatusEntry[]; branch: string | null }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/git/status`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<{ entries: GitStatusEntry[]; branch: string | null }>(`/api/projects/${projectId}/git/status`);
 }
 
 export async function gitLog(projectId: string): Promise<{ entries: GitLogEntry[] }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/git/log`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<{ entries: GitLogEntry[] }>(`/api/projects/${projectId}/git/log`);
 }
 
 export async function gitCommit(projectId: string, message: string, paths?: string[]): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/git/commit`, {
+  return request<void>(`/api/projects/${projectId}/git/commit`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message, paths: paths ?? null }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
 }
 
 export async function getProjectSettings(projectId: string): Promise<Record<string, unknown>> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/settings`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<Record<string, unknown>>(`/api/projects/${projectId}/settings`);
 }
 
 export async function patchProjectSettings(
   projectId: string,
   patch: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/settings`, {
+  return request<Record<string, unknown>>(`/api/projects/${projectId}/settings`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(patch),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function listGitCredentials(): Promise<UserGitCredential[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/user/git-credentials`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<UserGitCredential[]>('/api/user/git-credentials');
 }
 
 export async function createGitCredential(body: {
@@ -542,45 +404,29 @@ export async function createGitCredential(body: {
   token: string;
   scopes_hint?: string;
 }): Promise<UserGitCredential> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/user/git-credentials`, {
+  return request<UserGitCredential>('/api/user/git-credentials', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteGitCredential(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/user/git-credentials/${id}`, {
-    method: 'DELETE',
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/user/git-credentials/${id}`, { method: 'DELETE' });
 }
 
 export async function gitPull(projectId: string, credentialId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/git/pull`, {
+  return request<void>(`/api/projects/${projectId}/git/pull`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url: '', credential_id: credentialId }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
 }
 
 export async function gitPush(projectId: string, credentialId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/git/push`, {
+  return request<void>(`/api/projects/${projectId}/git/push`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ url: '', credential_id: credentialId }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
 }

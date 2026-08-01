@@ -176,7 +176,7 @@ export function LinkTypeDetail() {
         </p>
       </div>
 
-      <div className="link-type-table-wrapper">
+      <div className="ds-table-wrap">
         <table className="link-type-table">
           <thead>
             <tr>

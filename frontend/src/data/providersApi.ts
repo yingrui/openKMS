@@ -1,6 +1,5 @@
 /** API for service providers (OpenAI, Anthropic, etc.). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface ApiProviderResponse {
   id: string;
@@ -32,64 +31,29 @@ export interface ApiProviderUpdate {
 }
 
 export async function fetchProviders(): Promise<ApiProviderListResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/providers`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch providers: ${res.status}`);
-  return res.json();
+  return request<ApiProviderListResponse>('/api/providers');
 }
 
 export async function fetchProviderById(id: string): Promise<ApiProviderResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/providers/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch provider: ${res.status}`);
-  return res.json();
+  return request<ApiProviderResponse>(`/api/providers/${id}`);
 }
 
 export async function createProvider(data: ApiProviderCreate): Promise<ApiProviderResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/providers`, {
+  return request<ApiProviderResponse>('/api/providers', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create provider');
-  }
-  return res.json();
 }
 
 export async function updateProvider(id: string, data: ApiProviderUpdate): Promise<ApiProviderResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/providers/${id}`, {
+  return request<ApiProviderResponse>(`/api/providers/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update provider');
-  }
-  return res.json();
 }
 
 export async function deleteProvider(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/providers/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete provider');
-  }
+  return request<void>(`/api/providers/${id}`, { method: 'DELETE' });
 }

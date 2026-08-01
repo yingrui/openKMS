@@ -221,10 +221,7 @@ button.wiki-workspace-toolbar-icon-link {
   background: var(--color-bg-muted);
 }
 
-@include min-width(ds.$bp-lg-min) {
-}
-
-@include max-width(ds.$bp-lg-max) {
+@include max-width(ds.$km-layout-max) {
   .wiki-workspace-layout--split .wiki-page-editor-shell {
     padding-right: 0;
   }

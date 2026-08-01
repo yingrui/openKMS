@@ -209,6 +209,11 @@
   .media-detail {
     grid-template-columns: 1fr;
   }
+
+  .media-card__select {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }
 
 .media-detail__viewer-panel {

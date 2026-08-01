@@ -86,13 +86,6 @@
   background: var(--color-bg-elevated);
 }
 
-.ontology-admin-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
 .console-table {
   width: 100%;
   border-collapse: collapse;
@@ -221,34 +214,6 @@
 
 @keyframes console-spin {
   to { transform: rotate(360deg); }
-}
-
-.console-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-}
-
-.console-modal {
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  max-width: 480px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.console-modal.console-modal--wide {
-  max-width: 640px;
-}
-
-.ontology-admin .console-modal.console-modal--wide {
-  max-width: 680px;
 }
 
 .console-modal-header {
@@ -1020,7 +985,7 @@ select.console-form-control {
   grid-template-columns: minmax(280px, 1fr) minmax(280px, 1fr);
   height: clamp(360px, calc(100dvh - 260px), 640px);
 
-  @media (max-width: 900px) {
+  @include max-width(ds.$km-layout-max) {
     grid-template-columns: 1fr;
     height: auto;
     max-height: none;
@@ -1041,7 +1006,7 @@ select.console-form-control {
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
 
-  @media (max-width: 900px) {
+  @include max-width(ds.$km-layout-max) {
     border-right: none;
     border-bottom: 1px solid var(--color-border);
     max-height: 50vh;
@@ -1187,7 +1152,7 @@ select.console-form-control {
 }
 
 .connector-playground-tool-label {
-  @media (max-width: 1050px) {
+  @include max-width(ds.$bp-wide-max) {
     display: none;
   }
 }

@@ -16,6 +16,7 @@ import {
   type JobResponse,
 } from '../../data/jobsApi';
 import { fetchAllPipelines, type PipelineResponse } from '../../data/pipelinesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { Pagination } from '../../styles/design-system';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
 import './Jobs.scss';
@@ -35,6 +36,7 @@ function formatDate(iso: string | undefined | null, dash: string): string {
 export function JobRuns() {
   const { t } = useTranslation('workspace');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const dash = t('shared.dash');
   const [jobs, setJobs] = useState<JobResponse[]>([]);
   const [jobsTotal, setJobsTotal] = useState(0);
@@ -100,7 +102,15 @@ export function JobRuns() {
   };
 
   const handleMarkFailed = async (jobId: number) => {
-    if (!window.confirm(t('jobs.markFailedConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('jobs.markFailed'),
+        message: t('jobs.markFailedConfirm'),
+        confirmLabel: t('jobs.markFailed'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await markJobFailed(jobId);
       toast.success(t('jobs.markFailedToast'));
@@ -111,7 +121,15 @@ export function JobRuns() {
   };
 
   const handleDelete = async (jobId: number) => {
-    if (!window.confirm(t('jobs.deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('jobs.deleteConfirm'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteJob(jobId);
       toast.success(t('jobs.deletedToast'));
@@ -188,7 +206,7 @@ export function JobRuns() {
           </select>
         </div>
         {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-        <div className="jobs-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="jobs-loading">
               <Loader2 size={32} className="jobs-loading-spinner" />

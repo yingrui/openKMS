@@ -17,6 +17,7 @@ import { projectWorkspacePath } from '../../data/projectsApi';
 import { fetchPipelineById, type PipelineResponse } from '../../data/pipelinesApi';
 import { fetchModelById, type ApiModelResponse } from '../../data/modelsApi';
 import { JobsAreaNav } from '../../components/jobs/JobsAreaNav';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './JobDetail.scss';
 
 function formatDateTime(iso: string | undefined | null, dash: string): string {
@@ -44,6 +45,7 @@ function formatDuration(startIso?: string | null, endIso?: string | null, dash =
 
 export function JobDetail() {
   const { t } = useTranslation('workspace');
+  const confirm = useConfirm();
   const dash = t('shared.dash');
   const { jobId } = useParams<{ jobId: string }>();
   const [job, setJob] = useState<JobResponse | null>(null);
@@ -109,7 +111,15 @@ export function JobDetail() {
 
   const handleMarkFailed = async () => {
     if (!job) return;
-    if (!window.confirm(t('jobs.markFailedConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('jobs.markFailed'),
+        message: t('jobs.markFailedConfirm'),
+        confirmLabel: t('jobs.markFailed'),
+        danger: true,
+      }))
+    )
+      return;
     setMarkingFailed(true);
     try {
       await markJobFailed(job.id);

@@ -12,12 +12,14 @@ import {
   neo4jDeleteAll,
   type DataSourceResponse,
 } from '../../data/dataSourcesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../ontology/ontology-admin.scss';
 
 const KINDS = ['postgresql', 'neo4j'] as const;
 
 export function ConsoleDataSources() {
   const { t } = useTranslation('console');
+  const confirm = useConfirm();
   const [items, setItems] = useState<DataSourceResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -117,7 +119,15 @@ export function ConsoleDataSources() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t('dataSources.deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('dataSources.deleteTitle'),
+        message: t('dataSources.deleteConfirm'),
+        confirmLabel: t('dataSources.deleteTitle'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteDataSource(id);
       toast.success(t('dataSources.toastDeleted'));
@@ -178,7 +188,7 @@ export function ConsoleDataSources() {
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       <div className="ontology-admin-content">
-        <div className="ontology-admin-table-wrap">
+        <div className="ds-table-wrap">
           {loading ? (
             <div className="console-loading">
               <Loader2 size={32} className="console-loading-spinner" />

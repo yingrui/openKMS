@@ -650,7 +650,7 @@ export function ObjectExplorer() {
                 </div>
                 {resultView === 'list' ? (
                   <>
-                    <div className="object-explorer-table-wrap">
+                    <div className="ds-table-wrap">
                       <table className="object-explorer-table">
                         <thead>
                           <tr>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Image, Video, Upload, Trash2, Settings, Sparkles, Loader2, Search, X, Folder, ArrowLeft } from 'lucide-react';
@@ -18,6 +18,9 @@ import {
   type MediaAssetOut,
   type MediaKind,
 } from '../../data/mediaApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useListFetch } from '../../hooks/useListFetch';
 import '../../styles/channel-page.scss';
 import './Media.scss';
 
@@ -41,50 +44,46 @@ export function MediaChannel() {
   const { t } = useTranslation('media');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
+  const confirm = useConfirm();
   const { channels, loading: chLoading } = useEnsureMediaChannels();
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
 
-  const [items, setItems] = useState<MediaAssetOut[]>([]);
-  const [listLoading, setListLoading] = useState(true);
   const [kindFilter, setKindFilter] = useState<'all' | MediaKind>('all');
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const listFilters = useMemo(
+    () => ({ channelId, channelReady: channelIds.has(channelId), kindFilter, search: debouncedSearch }),
+    [channelId, channelIds, kindFilter, debouncedSearch],
+  );
 
-  const load = useCallback(async () => {
-    if (!channelId || !channelIds.has(channelId)) {
-      setItems([]);
-      setListLoading(false);
-      return;
-    }
-    setListLoading(true);
-    try {
+  const {
+    items,
+    loading: listLoading,
+    error: listFetchError,
+    reload: load,
+  } = useListFetch({
+    fetcher: async ({ channelId, channelReady, kindFilter, search }) => {
+      if (!channelId || !channelReady) return { items: [], total: 0 };
       const res = await fetchMediaAssets({
         channel_id: channelId,
         media_kind: kindFilter === 'all' ? undefined : kindFilter,
-        search: debouncedSearch || undefined,
+        search: search || undefined,
         limit: 200,
       });
-      setItems(res.items);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('channel.loadFailed'));
-      setItems([]);
-    } finally {
-      setListLoading(false);
-    }
-  }, [debouncedSearch, channelId, channelIds, kindFilter, t]);
+      return { items: res.items, total: res.items.length };
+    },
+    filters: listFilters,
+    pageSize: 200,
+  });
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (listFetchError) toast.error(listFetchError.message || t('channel.loadFailed'));
+  }, [listFetchError, t]);
 
   useEffect(() => {
     setSelected(new Set());
@@ -104,7 +103,15 @@ export function MediaChannel() {
 
   const onBulkDelete = async () => {
     if (selected.size === 0) return;
-    if (!window.confirm(t('channel.deleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('channel.bulkDelete'),
+        message: t('channel.deleteConfirm'),
+        confirmLabel: t('channel.bulkDelete'),
+        danger: true,
+      }))
+    )
+      return;
     for (const id of selected) {
       try {
         await deleteMediaAsset(id);
@@ -176,15 +183,15 @@ export function MediaChannel() {
         <div className="channel-page-header-actions">
           <Link to={`/media/channels/${channelId}/settings`} className="btn btn-secondary">
             <Settings size={18} />
-            <span>{t('channel.settings')}</span>
+            <span className="ds-compact-label">{t('channel.settings')}</span>
           </Link>
           <Link to={`/media/channels/${channelId}/generate`} className="btn btn-secondary">
             <Sparkles size={18} />
-            <span>{t('channel.generateWithAI')}</span>
+            <span className="ds-compact-label">{t('channel.generateWithAI')}</span>
           </Link>
           <button type="button" className="btn btn-primary" onClick={() => fileRef.current?.click()}>
             <Upload size={18} />
-            <span>{t('channel.upload')}</span>
+            <span className="ds-compact-label">{t('channel.upload')}</span>
           </button>
           <input
             ref={fileRef}

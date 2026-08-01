@@ -1,6 +1,5 @@
 /** API for glossary management (backend). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 // --- Types ---
 
@@ -56,17 +55,9 @@ export async function fetchGlossaries(params?: {
   limit?: number;
   offset?: number;
 }): Promise<GlossaryListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<GlossaryListResponse>('/api/glossaries', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(`Failed to fetch glossaries: ${res.status}`);
-  return res.json();
 }
 
 /** Full list for dropdowns. Paginates at API max page size (200). */
@@ -85,62 +76,33 @@ export async function fetchAllGlossaries(): Promise<GlossaryResponse[]> {
 }
 
 export async function fetchGlossary(glossaryId: string): Promise<GlossaryResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch glossary: ${res.status}`);
-  return res.json();
+  return request<GlossaryResponse>(`/api/glossaries/${glossaryId}`);
 }
 
 export async function createGlossary(data: {
   name: string;
   description?: string;
 }): Promise<GlossaryResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries`, {
+  return request<GlossaryResponse>('/api/glossaries', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create glossary');
-  }
-  return res.json();
 }
 
 export async function updateGlossary(
   glossaryId: string,
   data: { name?: string; description?: string }
 ): Promise<GlossaryResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
+  return request<GlossaryResponse>(`/api/glossaries/${glossaryId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update glossary');
-  }
-  return res.json();
 }
 
 export async function deleteGlossary(glossaryId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete glossary');
-  }
+  return request<void>(`/api/glossaries/${glossaryId}`, { method: 'DELETE' });
 }
 
 // --- Glossary Terms ---
@@ -149,16 +111,9 @@ export async function fetchGlossaryTerms(
   glossaryId: string,
   params?: { search?: string }
 ): Promise<GlossaryTermListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.search) query.set('search', params.search);
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<GlossaryTermListResponse>(`/api/glossaries/${glossaryId}/terms`, {
+    query: { search: params?.search },
   });
-  if (!res.ok) throw new Error(`Failed to fetch terms: ${res.status}`);
-  return res.json();
 }
 
 export interface GlossaryTermSuggestResponse {
@@ -173,18 +128,11 @@ export async function suggestGlossaryTerm(
   glossaryId: string,
   data: { primary_en?: string; primary_cn?: string }
 ): Promise<GlossaryTermSuggestResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/suggest`, {
+  return request<GlossaryTermSuggestResponse>(`/api/glossaries/${glossaryId}/terms/suggest`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to get AI suggestion');
-  }
-  return res.json();
 }
 
 export async function createGlossaryTerm(
@@ -197,10 +145,9 @@ export async function createGlossaryTerm(
     synonyms_cn?: string[];
   }
 ): Promise<GlossaryTermResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms`, {
+  return request<GlossaryTermResponse>(`/api/glossaries/${glossaryId}/terms`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       primary_en: data.primary_en || null,
       primary_cn: data.primary_cn || null,
@@ -208,13 +155,7 @@ export async function createGlossaryTerm(
       synonyms_en: data.synonyms_en || [],
       synonyms_cn: data.synonyms_cn || [],
     }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create term');
-  }
-  return res.json();
 }
 
 export async function updateGlossaryTerm(
@@ -228,46 +169,24 @@ export async function updateGlossaryTerm(
     synonyms_cn?: string[];
   }
 ): Promise<GlossaryTermResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/${termId}`, {
+  return request<GlossaryTermResponse>(`/api/glossaries/${glossaryId}/terms/${termId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update term');
-  }
-  return res.json();
 }
 
 export async function deleteGlossaryTerm(
   glossaryId: string,
   termId: string
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/terms/${termId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete term');
-  }
+  return request<void>(`/api/glossaries/${glossaryId}/terms/${termId}`, { method: 'DELETE' });
 }
 
 // --- Export ---
 
 export async function exportGlossary(glossaryId: string): Promise<GlossaryExportPayload> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/export`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to export glossary: ${res.status}`);
-  return res.json();
+  return request<GlossaryExportPayload>(`/api/glossaries/${glossaryId}/export`);
 }
 
 // --- Import ---
@@ -276,16 +195,9 @@ export async function importGlossary(
   glossaryId: string,
   payload: { terms: GlossaryExportPayload['terms']; mode: 'append' | 'replace' }
 ): Promise<GlossaryTermListResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/glossaries/${glossaryId}/import`, {
+  return request<GlossaryTermListResponse>(`/api/glossaries/${glossaryId}/import`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to import glossary');
-  }
-  return res.json();
 }

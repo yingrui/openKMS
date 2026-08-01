@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,6 +27,8 @@ import {
   type GlossaryResponse,
   type GlossaryTermResponse,
 } from '../../data/glossariesApi';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useListFetch } from '../../hooks/useListFetch';
 import './GlossaryDetail.scss';
 
 function TagInput({
@@ -83,10 +85,9 @@ export function GlossaryDetail() {
   const { t } = useTranslation('explore');
   const { id: glossaryId } = useParams<{ id: string }>();
   const [glossary, setGlossary] = useState<GlossaryResponse | null>(null);
-  const [terms, setTerms] = useState<GlossaryTermResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [termsLoading, setTermsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const [showTermForm, setShowTermForm] = useState(false);
   const [editTerm, setEditTerm] = useState<GlossaryTermResponse | null>(null);
@@ -115,41 +116,28 @@ export function GlossaryDetail() {
     }
   }, [glossaryId, t]);
 
-  const loadTerms = useCallback(
-    async (searchQuery?: string) => {
-      if (!glossaryId) return;
-      setTermsLoading(true);
-      try {
-        const data = await fetchGlossaryTerms(glossaryId, {
-          search: (searchQuery ?? search).trim() || undefined,
-        });
-        setTerms(data.items);
-      } catch {
-        /* noop */
-      } finally {
-        setTermsLoading(false);
-      }
-    },
-    [glossaryId, search]
+  const termsFilters = useMemo(
+    () => ({ glossaryId, search: debouncedSearch }),
+    [glossaryId, debouncedSearch],
   );
+
+  const {
+    items: terms,
+    loading: termsLoading,
+    reload: loadTerms,
+  } = useListFetch({
+    fetcher: async ({ glossaryId, search }) => {
+      if (!glossaryId) return { items: [], total: 0 };
+      const data = await fetchGlossaryTerms(glossaryId, { search: search.trim() || undefined });
+      return { items: data.items, total: data.total };
+    },
+    filters: termsFilters,
+    pageSize: 1000,
+  });
 
   useEffect(() => {
     loadGlossary();
   }, [loadGlossary]);
-
-  // Load terms: immediately when glossary opens or switches, debounced (300ms) when search changes
-  const prevGlossaryIdRef = useRef<string | null>(null);
-  const prevSearchRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!glossaryId) return;
-    const glossaryChanged = prevGlossaryIdRef.current !== glossaryId;
-    prevGlossaryIdRef.current = glossaryId;
-    const isSearchChange = prevSearchRef.current !== null && !glossaryChanged;
-    prevSearchRef.current = search;
-    const delay = isSearchChange ? 300 : 0;
-    const t = setTimeout(() => loadTerms(search), delay);
-    return () => clearTimeout(t);
-  }, [glossaryId, search, loadTerms]);
 
   const openAddTerm = () => {
     setEditTerm(null);
@@ -368,7 +356,7 @@ export function GlossaryDetail() {
         />
       </div>
 
-      <div className="glossary-terms-table-wrapper">
+      <div className="ds-table-wrap">
         <table className="glossary-terms-table">
                 <thead>
                   <tr>

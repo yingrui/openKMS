@@ -1,6 +1,5 @@
 /** API for media channels. */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 import type { ChannelNode, ExtractionSchemaField } from './channelUtils';
 
 export interface MediaChannelNodeRaw {
@@ -38,17 +37,9 @@ export async function fetchMediaChannelsPage(params?: {
   limit?: number;
   offset?: number;
 }): Promise<MediaChannelTreeListResponse> {
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels${qs ? `?${qs}` : ''}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<MediaChannelTreeListResponse>('/api/media-channels', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(`Failed to fetch media channels (${res.status})`);
-  return res.json();
 }
 
 export async function fetchAllMediaChannels(): Promise<ChannelNode[]> {
@@ -70,18 +61,11 @@ export async function createMediaChannel(body: {
   description?: string | null;
   parent_id?: string | null;
 }): Promise<ChannelNode> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels`, {
+  const raw = await request<MediaChannelNodeRaw>('/api/media-channels', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create channel');
-  }
-  const raw: MediaChannelNodeRaw = await res.json();
   return toChannelNode(raw);
 }
 
@@ -96,32 +80,16 @@ export async function updateMediaChannel(
     default_video_model_id: string | null;
   }>,
 ): Promise<ChannelNode> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels/${channelId}`, {
+  const raw = await request<MediaChannelNodeRaw>(`/api/media-channels/${channelId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update channel');
-  }
-  const raw: MediaChannelNodeRaw = await res.json();
   return toChannelNode(raw);
 }
 
 export async function deleteMediaChannel(channelId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels/${channelId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete channel');
-  }
+  return request<void>(`/api/media-channels/${channelId}`, { method: 'DELETE' });
 }
 
 export async function mergeMediaChannels(params: {
@@ -129,33 +97,21 @@ export async function mergeMediaChannels(params: {
   target_channel_id: string;
   include_descendants?: boolean;
 }): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels/merge`, {
+  return request<void>('/api/media-channels/merge', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       source_channel_id: params.source_channel_id,
       target_channel_id: params.target_channel_id,
       include_descendants: params.include_descendants ?? true,
     }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to merge collections');
-  }
 }
 
 export async function reorderMediaChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media-channels/${channelId}/reorder`, {
+  return request<void>(`/api/media-channels/${channelId}/reorder`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ direction }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to reorder channel');
-  }
 }

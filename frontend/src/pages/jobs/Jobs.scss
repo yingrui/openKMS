@@ -61,13 +61,6 @@
   color: var(--color-text);
 }
 
-.jobs-table-wrap {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
 .jobs-table {
   width: 100%;
   border-collapse: collapse;
@@ -269,16 +262,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.jobs-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-backdrop);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-dropdown);
 }
 
 .jobs-modal {

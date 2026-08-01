@@ -1,0 +1,64 @@
+// Channel browse: compact header + toolbar at ≤ $bp-md-min.
+// Loaded from channel-page.scss.
+
+@use 'design-system/mixins' as *;
+@use 'design-system/tokens' as ds;
+
+@include max-width(ds.$bp-md-min) {
+  .channel-browse-back {
+    display: inline-flex;
+    margin-bottom: var(--space-2);
+  }
+
+  .channel-page .page-header.channel-page-header {
+    margin-bottom: var(--space-3);
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .channel-page-header > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .channel-page-header .page-subtitle {
+    display: none;
+  }
+
+  .channel-page-header-title h1 {
+    margin-bottom: 0;
+    font-size: var(--text-xl);
+    @include text-truncate;
+  }
+
+  .channel-page-header-actions {
+    flex-shrink: 0;
+    width: auto;
+    gap: var(--space-1);
+  }
+
+  .channel-page-header-actions .btn {
+    flex: 0 0 auto;
+    min-height: 40px;
+    min-width: 40px;
+    padding: var(--space-2);
+    justify-content: center;
+  }
+
+  .channel-page-toolbar {
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+  }
+
+  .channel-page-toolbar > select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .channel-page-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+}

@@ -1,25 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FileText, Plus, Search, Folder, Settings, X, FolderInput, Trash2, Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   TableRowActionButton,
-  TableRowActionCell,
   TableRowActions,
-  tableRowActionCellClass,
   Pagination,
 } from '../../styles/design-system';
 import { useEnsureArticleChannels } from '../../contexts/ArticleChannelsContext';
 import { flattenChannels, getDocumentChannelDescription, getDocumentChannelName } from '../../data/channelUtils';
-import {
-  createArticle,
-  deleteArticle,
-  fetchArticles,
-  patchArticle,
-  type ArticleOut,
-} from '../../data/articlesApi';
-import { useIsMobile } from '../../hooks/useIsMobile';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { useListFetch } from '../../hooks/useListFetch';
+import { createArticle, deleteArticle, fetchArticles, patchArticle } from '../../data/articlesApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/channel-page.scss';
 import './Articles.scss';
 
@@ -37,20 +31,15 @@ export function ArticleChannel() {
   const { t } = useTranslation('articles');
   const navigate = useNavigate();
   const { channelId = '' } = useParams<{ channelId: string }>();
+  const confirm = useConfirm();
   const { channels, loading, error, refetch: refetchChannels } = useEnsureArticleChannels();
-  const isMobile = useIsMobile();
 
   const channelIds = useMemo(() => new Set(flattenChannels(channels).map((c) => c.id)), [channels]);
   const channelName = getDocumentChannelName(channels, channelId);
   const channelDescription = getDocumentChannelDescription(channels, channelId);
 
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [items, setItems] = useState<ArticleOut[]>([]);
-  const [total, setTotal] = useState(0);
-  const [listPage, setListPage] = useState(0);
-  const [listPageSize, setListPageSize] = useState(ARTICLES_PAGE_SIZE_DEFAULT);
-  const [listLoading, setListLoading] = useState(true);
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [newArticleOpen, setNewArticleOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newSourceRef, setNewSourceRef] = useState('');
@@ -67,53 +56,46 @@ export function ArticleChannel() {
     () => flatChannels.filter((c) => c.id !== channelId),
     [flatChannels, channelId],
   );
+  const listFilters = useMemo(
+    () => ({ channelId, channelReady: channelIds.has(channelId), search: debouncedSearch }),
+    [channelId, channelIds, debouncedSearch],
+  );
+
+  const {
+    items,
+    total,
+    page: listPage,
+    setPage: setListPage,
+    pageSize: listPageSize,
+    setPageSize: setListPageSize,
+    loading: listLoading,
+    error: listFetchError,
+    reload: load,
+  } = useListFetch({
+    fetcher: async ({ offset, limit, channelId, channelReady, search }) => {
+      if (!channelId || !channelReady) return { items: [], total: 0 };
+      const res = await fetchArticles({ channel_id: channelId, search: search || undefined, offset, limit });
+      return { items: res.items, total: res.total };
+    },
+    filters: listFilters,
+    pageSize: ARTICLES_PAGE_SIZE_DEFAULT,
+  });
+
+  useEffect(() => {
+    if (listFetchError) toast.error(listFetchError.message || t('channel.loadFailed'));
+  }, [listFetchError, t]);
+
   const selectedCount = selectedArticleIds.size;
   const allVisibleSelected = items.length > 0 && items.every((a) => selectedArticleIds.has(a.id));
   const someVisibleSelected = items.some((a) => selectedArticleIds.has(a.id));
   const bulkActionsDisabled = bulkBusy !== null || moveLoading;
 
   useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
-    return () => window.clearTimeout(t);
-  }, [search]);
-
-  const load = useCallback(async () => {
-    if (!channelId || !channelIds.has(channelId)) {
-      setItems([]);
-      setTotal(0);
-      setListLoading(false);
-      return;
-    }
-    setListLoading(true);
-    try {
-      const res = await fetchArticles({
-        channel_id: channelId,
-        search: debouncedSearch || undefined,
-        offset: listPage * listPageSize,
-        limit: listPageSize,
-      });
-      setItems(res.items);
-      setTotal(res.total);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('channel.loadFailed'));
-      setItems([]);
-      setTotal(0);
-    } finally {
-      setListLoading(false);
-    }
-  }, [channelId, debouncedSearch, channelIds, listPage, listPageSize, t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
     const maxPage = Math.max(0, Math.ceil(total / listPageSize) - 1);
     if (listPage > maxPage) setListPage(maxPage);
-  }, [total, listPageSize, listPage]);
+  }, [total, listPageSize, listPage, setListPage]);
 
   useEffect(() => {
-    setListPage(0);
     setSelectedArticleIds(new Set());
   }, [channelId, debouncedSearch]);
 
@@ -204,7 +186,15 @@ export function ArticleChannel() {
       ids.length === 1
         ? t('channel.deleteConfirm', { name: label })
         : t('channel.deleteBulkConfirm', { count: ids.length });
-    if (!window.confirm(msg)) return;
+    if (
+      !(await confirm({
+        title: t('channel.delete'),
+        message: msg,
+        confirmLabel: t('channel.delete'),
+        danger: true,
+      }))
+    )
+      return;
 
     setBulkBusy('delete');
     let ok = 0;
@@ -346,11 +336,11 @@ export function ArticleChannel() {
         <div className="channel-page-header-actions">
           <Link to={`/articles/channels/${channelId}/settings`} className="btn btn-secondary">
             <Settings size={18} />
-            <span>{t('channel.channelSettings')}</span>
+            <span className="ds-compact-label">{t('channel.channelSettings')}</span>
           </Link>
           <button type="button" className="btn btn-primary" onClick={openNewArticleModal}>
             <Plus size={18} />
-            <span>{t('channel.newArticle')}</span>
+            <span className="ds-compact-label">{t('channel.newArticle')}</span>
           </button>
         </div>
       </div>
@@ -410,7 +400,7 @@ export function ArticleChannel() {
             </div>
           </div>
         )}
-        <div className="channel-table-wrap">
+        <div className="ds-table-wrap channel-table-wrap">
           {listLoading ? (
             <p className="channel-page-empty-hint">{t('channel.loading')}</p>
           ) : items.length > 0 ? (
@@ -435,12 +425,11 @@ export function ArticleChannel() {
                   <th>{t('channel.colLifecycle')}</th>
                   <th>{t('channel.colApplicable')}</th>
                   <th>{t('channel.colUpdated')}</th>
-                  <th className={tableRowActionCellClass}>{t('channel.colActions')}</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((article) => {
-                  /** Mobile puts these on the meta line; desktop keeps its own action column. */
+                  /** Always in primary meta-row; desktop/mobile placement is CSS-only. */
                   const rowActions = (
                     <TableRowActions>
                       <TableRowActionButton
@@ -488,14 +477,12 @@ export function ArticleChannel() {
                                 {' · '}
                                 {formatUpdated(article.updated_at)}
                               </span>
-                              {isMobile ? (
-                                <div
-                                  className="channel-item-actions"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {rowActions}
-                                </div>
-                              ) : null}
+                              <div
+                                className="channel-item-actions"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {rowActions}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -535,7 +522,6 @@ export function ArticleChannel() {
                         {article.is_current_for_rag ? t('channel.yes') : t('channel.no')}
                       </td>
                       <td>{formatUpdated(article.updated_at)}</td>
-                      {isMobile ? null : <TableRowActionCell>{rowActions}</TableRowActionCell>}
                     </tr>
                   );
                 })}

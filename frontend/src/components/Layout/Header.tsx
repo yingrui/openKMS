@@ -4,7 +4,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, PanelLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
-import { useMobileShell } from '../../contexts/MobileShellContext';
+import { useOntologyMobileRail } from '../../contexts/OntologyMobileRailContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
@@ -18,7 +18,7 @@ export function Header() {
   const consoleShell = isConsoleShellPath(location.pathname);
   const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
   const { systemName } = useSystemPublic();
-  const { ontologyRailAvailable, ontologyRailOpen, toggleOntologyRail } = useMobileShell();
+  const { ontologyRailAvailable, ontologyRailOpen, toggleOntologyRail } = useOntologyMobileRail();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -82,7 +82,7 @@ export function Header() {
         )}
         <Link to="/" className="header-brand" title={brandName}>
           <img src={logo} alt="" className="header-brand-icon" />
-          <span className="header-brand-name">{brandName}</span>
+          <span className="header-brand-name ds-compact-label">{brandName}</span>
         </Link>
         <div className="header-search">
           <Search size={18} className="header-search-icon" />
@@ -143,7 +143,7 @@ export function Header() {
               aria-label={t('logIn')}
             >
               <LogIn size={20} strokeWidth={1.75} />
-              <span className="header-login-label">{t('logIn')}</span>
+              <span className="header-login-label ds-compact-label">{t('logIn')}</span>
             </button>
           ) : (
             <>

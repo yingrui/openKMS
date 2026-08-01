@@ -241,7 +241,7 @@ export function ObjectTypeDetail() {
         />
       </div>
 
-      <div className="object-type-table-wrapper">
+      <div className="ds-table-wrap">
         <table className="object-type-table">
           <thead>
             <tr>

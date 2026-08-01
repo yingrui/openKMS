@@ -16,7 +16,7 @@ import {
   useStoredViewMode,
   type CardListViewMode,
 } from '../../hooks/useStoredViewMode';
-import { Pagination, ResourceViewToggle } from '../../styles/design-system';
+import { Pagination, ResourceViewToggle, EmptyState } from '../../styles/design-system';
 import '../../styles/resource-list.scss';
 import './KnowledgeBaseList.scss';
 
@@ -167,10 +167,7 @@ export function KnowledgeBaseList() {
       {loading && <p className="resource-list-loading">{ts('shared.loading')}</p>}
 
       {!loading && total === 0 && (
-        <div className="resource-list-empty">
-          <Database size={48} strokeWidth={1} />
-          <p>{t('empty')}</p>
-        </div>
+        <EmptyState icon={<Database size={48} strokeWidth={1} />} description={t('empty')} />
       )}
 
       {!loading && total > 0 && isCardView && total > kbs.length ? (

@@ -1,3 +1,10 @@
+/**
+ * Ontology suite mobile rail drawer (Manager / Explorer / Function Editor list).
+ *
+ * Not a general “mobile shell”: Documents / Articles / Media intentionally have
+ * no channel drawer on phones (landing tree + All-channels back link instead).
+ * Do not extend this context for channel rails.
+ */
 import {
   createContext,
   useCallback,
@@ -9,7 +16,7 @@ import {
 } from 'react';
 import { useLocation } from 'react-router-dom';
 
-type MobileShellContextValue = {
+type OntologyMobileRailContextValue = {
   ontologyRailAvailable: boolean;
   ontologyRailOpen: boolean;
   setOntologyRailAvailable: (available: boolean) => void;
@@ -18,9 +25,9 @@ type MobileShellContextValue = {
   closeRails: () => void;
 };
 
-const MobileShellContext = createContext<MobileShellContextValue | null>(null);
+const OntologyMobileRailContext = createContext<OntologyMobileRailContextValue | null>(null);
 
-export function MobileShellProvider({ children }: { children: ReactNode }) {
+export function OntologyMobileRailProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [ontologyRailAvailable, setOntologyRailAvailable] = useState(false);
   const [ontologyRailOpen, setOntologyRailOpen] = useState(false);
@@ -58,13 +65,15 @@ export function MobileShellProvider({ children }: { children: ReactNode }) {
     [ontologyRailAvailable, ontologyRailOpen, toggleOntologyRail, closeRails],
   );
 
-  return <MobileShellContext.Provider value={value}>{children}</MobileShellContext.Provider>;
+  return (
+    <OntologyMobileRailContext.Provider value={value}>{children}</OntologyMobileRailContext.Provider>
+  );
 }
 
-export function useMobileShell(): MobileShellContextValue {
-  const ctx = useContext(MobileShellContext);
+export function useOntologyMobileRail(): OntologyMobileRailContextValue {
+  const ctx = useContext(OntologyMobileRailContext);
   if (!ctx) {
-    throw new Error('useMobileShell must be used within MobileShellProvider');
+    throw new Error('useOntologyMobileRail must be used within OntologyMobileRailProvider');
   }
   return ctx;
 }

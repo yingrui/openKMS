@@ -452,7 +452,7 @@ body.openkms-kb-qa-fullpage .content-comments-rail {
   top: 0;
 }
 
-@include max-width(900px) {
+@include max-width(ds.$km-layout-max) {
   .content-comments-shell--comments-open .content-comments-shell__main {
     padding-right: var(--comments-utility-w, #{$utility-w});
   }
@@ -461,7 +461,7 @@ body.openkms-kb-qa-fullpage .content-comments-rail {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.28);
+    background: var(--overlay-backdrop);
     z-index: 33;
   }
 

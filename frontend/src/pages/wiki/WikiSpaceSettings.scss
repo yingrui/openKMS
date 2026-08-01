@@ -691,7 +691,7 @@
   align-items: start;
 }
 
-@include max-width(ds.$bp-comfort-max) {
+@include max-width(ds.$bp-phone-max) {
   .wiki-space-settings-semantic-row {
     grid-template-columns: 1fr;
   }

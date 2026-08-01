@@ -1,184 +1,194 @@
 # Frontend design system
 
-SCSS tokens, shared layouts, and styling conventions for the SPA (`frontend/src/styles/`). Code lives in the repo; this page is the reference.
+SCSS tokens, shared layouts, and UI conventions for the SPA (`frontend/src/styles/` + design-system React components). Code is the source of truth; this page is the map.
 
 ## Entry
 
-- **`frontend/src/index.scss`** — loads **`design-system/_css-variables`** (all `var(--*)` tokens) then **`design-system/_global`** (reset, links, `.btn*`, motion reduction) then **`design-system/_utilities`** (shared modifiers: page subtitle errors, table empty rows, error banner/boundary, flex helpers — avoids TSX `style={{}}` for static chrome).
+**`frontend/src/index.scss`** loads, in order: **`design-system/_css-variables`** (`var(--*)` tokens) → **`design-system/_global`** (reset, links, `.btn*`) → **`design-system/_utilities`** (shared modifiers — prefer over TSX `style={{}}` for static chrome).
 
-## `frontend/src/styles/design-system/`
+## Design system modules
 
 | File | Role |
 |------|------|
-| **`_css-variables.scss`** | **Source of truth for theming:** palette, semantic surfaces (error/warning/success/info), document status pill tokens, typography scale (**DM Sans** + **Source Serif 4** self-hosted via `@fontsource/*` in **`frontend/src/fonts.ts`**; Chinese uses system **PingFang SC** / **Microsoft YaHei**), **spacing** (`--space-*`, **`--gap-compact`** / **`--padding-compact-*`** for half-step rhythm), radius, shadows (**incl. `--shadow-elevated`**, modal scrim **`--overlay-backdrop`**), **z-index** layers, **motion**, focus ring vars, **`--color-surface` / `--color-bg-subtle` / `--color-muted` / `--color-fg`** aliases, **`--color-ontology-*`** (KB ontology source chrome), **`@media print`** vars (**`--print-paper-bg`** / **`--print-ink`** / border + muted surfaces). `:root` + **`[data-theme='dark']`** overrides. |
-| **`_tokens.scss`** | **Compile-time** mirrors: breakpoints (`$bp-*`), **`$grid-min-*`**, **`$playground-messages-*`**, **`$bp-dialog-sm`**, spacing (`$space-*` for `calc` / Sass), z-index (`$z-*`), `$km-layout-max`. Use with `@use '…/tokens' as ds`. |
-| **`_mixins.scss`** | **`max-width` / `min-width`**, **`focus-ring-accent`**, **`text-truncate`**, **`motion-tokens`** (duration + easing; set `transition-property` yourself). `@use '…/mixins' as *` for bare `@include`. |
-| **`_global.scss`** | Global reset, `body` / links, buttons (uses spacing + type + motion tokens). |
-| **`_utilities.scss`** | Cross-route helpers (`.page-subtitle--error`, `.table-empty`, `.error-banner`, `.openkms-error-boundary*`, flex/spacing modifiers). Loaded once from `index.scss`. |
-| **`_index.scss`** | Optional barrel: `@forward` tokens + mixins — `@use '../styles/design-system' as *` from a feature file (path depth varies). |
-| **`knowledge-map/`** | Map-only compile-time sizes; `@use '…/knowledge-map/tokens' as km`. |
+| **`_css-variables.scss`** | Theming: palette, semantic surfaces, status pills, typography (**DM Sans** + **Source Serif 4** via `@fontsource/*` in **`fonts.ts`**; Chinese: **PingFang SC** / **Microsoft YaHei**), spacing, radius, shadows, **`--overlay-backdrop`**, z-index, motion, focus rings, print vars. `:root` + **`[data-theme='dark']`**. |
+| **`_tokens.scss`** | Compile-time mirrors: breakpoints (see below), grid mins, dialog widths, spacing (`$space-*`), z-index. `@use '…/tokens' as ds`. |
+| **`_mixins.scss`** | **`max-width` / `min-width`**, **`focus-ring-accent`**, **`text-truncate`**, **`motion-tokens`**. |
+| **`_global.scss`** | Reset, `body`, links, buttons. |
+| **`_utilities.scss`** | Cross-route helpers + **`.ds-compact-label`**, **`.ds-tap-target`**. |
+| **`_table-wrap.scss`** | **`.ds-table-wrap`** — scrollable table card (`overflow-x: auto`). |
+| **`_dialog.scss`** / **`Dialog.tsx`** | Modal shell: Escape / overlay dismiss, focus trap, scroll lock, `min(--dialog-w, 100vw - 2rem)`, `max-height: 90dvh`. |
+| **`_empty-state.scss`** / **`EmptyState.tsx`** | Zero-results panel (`icon` / `title` / `description` / `action`). |
+| **`_panel-toolbar.scss`** / **`PanelToolbar.tsx`** | Detail panel header: leading / tabs / actions. |
+| **`_index.scss`** | Optional Sass barrel (`@forward` tokens + mixins). |
+| **`knowledge-map/`** | Map-only compile-time sizes. |
+
+Export surface for TSX: **`styles/design-system/index.ts`** (`Dialog`, `EmptyState`, `PanelToolbar`, `Pagination`, …).
+
+## Shared UI primitives
+
+Use these instead of per-page copies. **`npm run check:styles`** blocks regressions (see § Style guardrails).
+
+| Primitive | When to use |
+|-----------|-------------|
+| **`.ds-table-wrap`** | Any bordered table/list card that may overflow horizontally on phone. |
+| **`<Dialog>`** | New modals. Legacy overlay class names may remain as CSS aliases during migration. |
+| **`useConfirm()`** | Destructive or blocking confirms — not `window.confirm`. Provider: **`ConfirmProvider`** in **`MainLayout`**. |
+| **`<EmptyState>`** | Standalone zero-results blocks. **`.channel-page-empty*`** remains the channel-list alias. |
+| **`PanelToolbar`** | Detail split panels and section headers with leading + actions (Document/Article detail, KB sections, eval subsections, knowledge-map tree). |
+| **`.ds-compact-label`** | Hide button/link text ≤768px; keep **`aria-label`**. |
+| **`--tap-min` (40px)** | Minimum hit area for icon buttons on phone (via **`.ds-tap-target`** or component rules). |
+
+**Confirm example:**
+
+```tsx
+const confirm = useConfirm();
+if (!(await confirm({ title: t('deleteTitle'), message: t('deleteBody'), danger: true }))) return;
+```
+
+**Breakpoint in JS:** **`useIsMobile()`** (`hooks/useIsMobile.ts`) mirrors **`$bp-md-min`** — do not call `matchMedia` elsewhere. Detail info panel default: **`useDetailInfoVisible()`** from the same module.
+
+## Breakpoints
+
+Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$…)`**, not raw `px`:
+
+| Token | px | Typical use |
+|-------|-----|-------------|
+| `$bp-phone-max` | 520 | Very narrow field grids |
+| `$bp-xs-max` | 640 | Extra-small layouts |
+| `$bp-sm-min` | 720 | Small two-column min |
+| `$bp-md-min` | 768 | **Phone shell** — must match `MOBILE_BREAKPOINT_PX` in `useIsMobile.ts` |
+| `$km-layout-max` | 900 | Settings width cap; narrow column; comments overlay |
+| `$bp-wide-max` | 1050 | Wide two-column stacks (ontology playground) |
 
 ## Spacing rhythm
 
-4px grid — always **`var(--space-*)`** in rules (see **`_css-variables.scss`**). Common choices:
-
-| Use | Token |
-|------|--------|
-| Label ↔ control | `--space-2` (8px) |
-| Form grid row/column gap | `--space-3` (12px) |
-| Card stack / create block bottom margin | `--space-5` (20px) |
-| Last form row → primary actions | `--space-6` (24px) |
-| Page header → content | `--space-6` (+ `--space-1` in account pages) |
-| **App page gutters** | **`--app-page-padding-x` / `--app-page-padding-y`** (default `--space-6`) — `.app-content`, `.app-page-pane`, channel/ontology main columns |
-| **Ontology NavRail** | **`--ontology-app-rail-width`** (default `200px`) — Manager / Explorer / Function Editor second column |
-| Settings / account page max width | **`ds.$km-layout-max`** (900px) — same cap as document channel, project, and evaluation settings pages |
-
-Half-step helpers: **`--gap-compact`**, **`--padding-compact-y`**, **`--padding-compact-x`** (chips, compact inputs).
+4px grid — **`var(--space-*)`** in rules. Common: label↔control **`--space-2`**, form gap **`--space-3`**, card stack **`--space-5`**, actions **`--space-6`**, page header→content **`--space-6`**. App gutters: **`--app-page-padding-x/y`** on **`.app-content`** or **`.app-page-pane`** only. Half-step: **`--gap-compact`**, **`--padding-compact-*`**.
 
 ## App shell layout
 
-**Goal:** one gutter source per scroll column — no stacked `padding` on shell + page root.
+**Goal:** one gutter source per scroll column — no stacked padding on shell + page root.
 
-### Mobile shell (≤ `$bp-md-min` / 768px)
+### Mobile shell (≤ `$bp-md-min`)
 
-Phase 1 phone chrome — desktop (≥769px) unchanged:
+| Element | Behavior |
+|---------|----------|
+| App / Console sidebar | Hidden; `--sidebar-width: 0` |
+| App Launcher | Full-width under header + **`--overlay-backdrop`** |
+| Channel apps (Docs / Articles / Media) | No drawer — section index shows channel tree; **All channels** back link in channel view |
+| Ontology second rail | Overlay drawer; Header toggle; **`OntologyMobileRailContext`** — not for channel rails |
+| Header | Logo only; hide ⌘K and Console link; compact login |
+| Tables / dialogs | **`.ds-table-wrap`** or `<Dialog>` sizing; channel rows → cards via **`_channel-table-as-cards.scss`** |
+| Comments | Push panel → overlay at ≤900 → bottom sheet at ≤768 (`ContentCommentsRail.scss`) |
+| Channel row actions | Single **`<TableRowActions>`** in **`.channel-item-actions`** — CSS places desktop vs mobile |
 
-| Element | Mobile behavior |
-|---------|-----------------|
-| App Rail / Console sidebar | Hidden from flow; `--sidebar-width: 0` via `.app-layout--sidebar-collapsed` / `--console` |
-| App Launcher | Full-width panel under header + backdrop (`--overlay-backdrop`, `z-modal`) |
-| Channel rail (Documents / Articles / Media) | No drawer — section index becomes the channel tree; channel pages show the **All channels** back link |
-| Ontology rail (Manager / Explorer / Function Editor list) | Overlay drawer; Header **PanelLeft** toggle; backdrop + Escape + route change close |
-| Header | Logo only (hide brand name); hide `⌘K`; hide Console link (keep Exit Console); login icon-only |
+### Gutter decision tree
 
-Context: ontology drawer state lives in `MobileShellContext` (`MainLayout`); its toggle uses `.header-rail-toggle` (visible only ≤768px). Components that need the breakpoint in JS use **`useIsMobile()`** (`src/hooks/useIsMobile.ts`) — the single TS mirror of `$bp-md-min`; do not re-write `matchMedia('(max-width: 768px)')`.
+| Route shape | Gutter provider | Page rules |
+|-------------|-----------------|------------|
+| Default list / settings / console | **`.app-content`** | **`.page-header`** + **`.page-subtitle`**; no root padding |
+| Channel or ontology rail layout | **`.app-page-pane`** on `*__main` | Channel/ontology SCSS must not pad `__main` |
+| Home | **`.app-content`** | Optional **`.app-page-shell`** (max-width only) |
+| Full-bleed | Exception row below | SCSS comment **`app-layout-exception:`** |
 
-Reading surfaces (≤768): channel/KB tables use `overflow-x: auto`; list toolbars and wiki/article headers wrap; document split drops tall `min-height` when stacked; KB FAQ/chunk dialogs use `width: min(…, 100vw - 2rem)`; KB Q&A session rail stacks at `$bp-md-min`.
+**Shell classes** (`app-page.scss`): **`.app-page-pane`**, **`.app-page-shell`**, **`.app-page-section*`**, **`.page-header`**, **`.page-subtitle`**.
 
-List footers (`.ds-pagination`, `_pagination.scss`): stack into range + page size on one line and a full-width `prev / status / next` row with 40px tap targets. Inside a channel list the footer drops its surface (`.channel-table-wrap .ds-pagination`) because the wrap is transparent on phones.
-
-**Comments** (`ContentCommentsRail.scss`): desktop keeps a fixed right utility rail + push panel. At ≤900px the open panel overlays with a backdrop (no layout push). At ≤768px the right chrome is gone — utility buttons become a floating chip, and the open panel is a bottom sheet (~85vh) with a drag handle affordance.
-
-Documents / Articles / Media **section index** on ≤768: channel tree is the main pane (`channel-section-layout--mobile-landing`); stats/quick-actions index stays desktop-only. Inside a channel on mobile, use **All channels** back link (`.channel-browse-back`) — no header drawer for the channel tree.
-
-### Decision tree
-
-| Route shape | Who provides horizontal/vertical gutter | Page TSX / SCSS |
-|-------------|----------------------------------------|-----------------|
-| Default (list, settings, console page in main column) | **`.app-content`** in `App.scss` via `--app-page-padding-*` | Use **`.page-header`** + **`.page-subtitle`**; **do not** add root `padding` on the page wrapper |
-| Documents / Articles / Media (channel rail) | **`.app-page-pane`** on `channel-section-layout__main` | Same; channel SCSS must **not** set `padding` on `__main` |
-| Ontology app (second nav rail) | **`.app-page-pane`** on `ontology-section-layout__main` | Same |
-| Platform Home | **`.app-content`** only | Optional **`.app-page-shell`** for max-width; **no extra page padding** |
-| Full-bleed / immersive | **Exception** — see below | Comment **`app-layout-exception:`** + update this table |
-
-### Primitives (`app-page.scss`, loaded from `index.scss`)
-
-| Class | Role |
-|-------|------|
-| **`.app-page-pane`** | Scroll column inside channel / ontology layout; applies `--app-page-padding-*` |
-| **`.app-page-shell`** | `max-width: $km-layout-max` only — not padding |
-| **`.app-page-section*`** | Home-style sections (title, desc, spacing) |
-| **`.page-header` / `.page-subtitle`** | Global page title block — **do not** re-declare `h1` font-size in feature SCSS unless truly different |
-
-### Registered exceptions (`App.scss` / feature SCSS)
-
-Mark with comment `app-layout-exception: <reason>` when bypassing shell gutters:
+### Layout exceptions
 
 | Pattern | Reason |
 |---------|--------|
-| `.app-content--search` | Wider horizontal gutters for search results |
-| `.app-content--with-channel-rail` / `--with-ontology-rail` / `--with-ontology-manager-rail` / `--with-object-explorer-rail` / `--with-function-editor-rail` → `padding: 0` | Rail layouts; gutter on `.app-page-pane` only. On ≤768, re-assert `padding: 0` for `--with-channel-rail.app-content--compact` so detail pages do not stack shell + pane gutters (lists already omit `--compact`) |
-| `.app-content--function-editor-workspace` | Function Editor IDE — full-height workspace; negative margin in feature SCSS |
-| `.app-content--compact:has(.kb-detail--qa-fullpage)` → `padding: 0` | KB Q&A full-page chat |
-| `.app-content--compact .wiki-page-editor-outer` negative margin | Wiki editor edge-to-edge |
-| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; zero shell padding |
-| `.app-content--object-explorer` | Uses token padding but flex fill — not a second page root |
+| `.app-content--search` | Wider search gutters |
+| `.app-content--with-*-rail` → `padding: 0` | Gutter on pane only; `:not(rail…)` avoids double padding on ≤768 detail |
+| `.app-content--function-editor-workspace` | Full-height IDE |
+| `.app-content--compact:has(.kb-detail--qa-fullpage)` | KB Q&A full page |
+| `.app-content--compact .wiki-page-editor-outer` | Wiki editor edge-to-edge |
+| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header |
+| `.app-content--object-explorer` | Flex fill, token padding |
 
-New exceptions require a row here and a one-line SCSS comment.
+New exceptions: one-line SCSS comment + row here.
 
-### Verification
+### Large page files
 
-From `frontend/`:
+Reference: **`DocumentDetail`** — thin route entry + splits by concern:
 
-```bash
-npm run check:app-layout   # gutter guardrails
-npm run check:styles       # no page→page SCSS imports; useIsMobile; token breakpoints
-npm run build
-```
+| Suffix | Role |
+|--------|------|
+| `X.tsx` | Route entry — layout wiring |
+| `useX.ts(x)` | Fetch, mutations, derived state |
+| `X.splitPanel.tsx` / `X.infoPanel.tsx` | Layout regions |
+| `X.modals.tsx` / `X.dialogs.tsx` | Dialogs |
+| `X.types.ts` / `X.utils.ts` | Types, pure helpers |
 
-Agents: run **`check:app-layout`** when touching `App.scss`, `app-page.scss`, `ChannelSectionLayout*`, or `MainLayout.tsx`. Run **`check:styles`** when adding shared SCSS under `src/styles/` or changing how pages import stylesheets.
+Soft limit **700 lines** per page `.tsx` / hook (enforced by **`check:styles`** allowlist — shrink the allowlist, do not grow it).
 
-## Shared layout (`frontend/src/styles/`)
+## Shared layout SCSS (`frontend/src/styles/`)
 
 | File | Role |
 |------|------|
-| **`account-page.scss`** | Cross-route **account / personal settings** chrome (Profile, Settings, Git credentials). Import via **`@use '../styles/account-page'`** in page SCSS, or **`import '…/account-page.scss'`** in a colocated component. |
-| **`app-page.scss`** | Global **`.page-header`**, **`.page-subtitle`**, **`.app-page-shell`**, **`.app-page-section*`** — loaded from **`index.scss`**. Use **`var(--app-page-padding-*)`** for in-app gutters. |
-| **`channel-page.scss`** | Shared chrome for **channel browse pages** (Documents / Articles / Media). |
-| **`list-index.scss`** | Section landing pages (stats + quick actions) for Documents / Articles / Media. |
-| **`channel-tree.scss`** | Channel admin tree (create + tree CRUD) for Documents / Articles / Media. |
-| **`settings-page.scss`** | Settings shell (tabs, sections, fields, actions) used across channel / ontology / console / glossary / agent / connector settings. |
-| **`resource-list.scss`** | Card-grid list + create dialog for Knowledge Bases and Wiki spaces. |
-| **`document-detail.scss`** | Detail-page chrome shared by Document / Article / Media detail (class names still `document-detail-*`; rename later). |
+| **`account-page.scss`** | Profile, Settings, Git credentials |
+| **`app-page.scss`** | Page header, shell sections (loaded from `index.scss`) |
+| **`channel-page.scss`** | Docs / Articles / Media browse; imports **`_channel-toolbar-compact.scss`**, **`_channel-table-as-cards.scss`** |
+| **`list-index.scss`** | Section landing (stats + quick actions) |
+| **`channel-tree.scss`** | Channel admin tree |
+| **`settings-page.scss`** | Settings shell (tabs, fields, actions) |
+| **`resource-list.scss`** | KB and Wiki card-grid lists |
+| **`document-detail.scss`** | Shared Document / Article / Media detail chrome |
 
-Import these from page TSX with **`import '../../styles/<name>.scss'`**. **Do not** import another page's colocated SCSS — enforced by **`npm run check:styles`**.
+Import from page TSX: **`import '../../styles/<name>.scss'`**. Never import another page's colocated SCSS.
 
-**Structure:** `.account-page` → `.account-page-header` + `.account-stack` → one or more `.account-card` sections.
+### Account pages
 
-**Card:** `.account-card-head` (`.account-card-icon` + title/desc) then content. Forms sit on the **white card surface** — no inner gray box or dashed wrapper (matches Wiki / channel / project settings).
+**`.account-page`** → header + **`.account-stack`** → **`.account-card`** (head + content on white surface, no inner gray box). Forms: **`.account-field`**, **`.account-form-grid`**, **`.account-form-actions`** (`margin-top: var(--space-6)`). Lists: **`.account-list-item`**. **`.account-empty`** for list-only empty states.
 
-**Forms:** `.account-field` + `.account-input` / `.account-select`; multi-field blocks use `.account-form-grid` (optional `.account-form-grid--2col`); single-line create uses `.account-create-row` inside `.account-create-panel`. Primary actions in `.account-form-actions` (**`margin-top: var(--space-6)`**, no divider line).
+### Channel pages
 
-**Saved items:** `.account-section` (top border) below the create block; `.account-section-toolbar` + `.account-list` / `.account-list-item` (white row on card). Use `.account-empty` only for list-area empty states (not when a create form already sits above); empty is text-only, no gray dashed box.
-
-**Actions:** `.account-btn`, `.account-btn--primary`, `--secondary`, `--danger` inside account cards; **`margin-top: var(--space-6)`** before primary row (no top border). Channel/project/console settings **`*-settings-actions`** follow the same spacing. Elsewhere (e.g. Wiki settings) global **`.btn*`** from **`_global.scss`** is still fine.
-
-**Pills:** `.account-pill` / `.account-pill--accent` for role/status chips (Profile).
-
-**Compile-time caps** (`_tokens.scss`): **`$km-layout-max`** (900px page width), **`$account-form-max-width`**, **`$account-input-min-flex`**, **`$z-settings-modal-overlay`** / **`$z-settings-import-overlay`** (wiki import stack).
-
-### Channel pages (`channel-page.scss`)
-
-Documents, Articles and Media browse pages share one stylesheet; page SCSS keeps only what is unique to that area (upload dropzone, status pills, source cell).
-
-| Class family | Role |
-|--------------|------|
-| **`.channel-page`** + **`.channel-page-header*`** / **`-main`** / **`-toolbar*`** / **`-search`** | Page root, title block, filter bar |
-| **`.channel-page-bulk-*`** | Selection bar above the list |
-| **`.channel-page-empty*`** / **`-loading`** / **`-error`** / **`-spinner`** | List states |
-| **`.channel-page-modal*`** / **`-move-*`** | Upload, move and Media generate dialogs (header + hint + footer actions; fields sit in `.channel-page-move-form`) |
-| **`.channel-table*`** | Table shell: `-wrap`, `-row` / `-row--selected`, `-select-col`, `-cell--primary` |
-| **`.channel-item*`** | Primary cell content: leading icon + `-text` / `-title` / `-meta-row` / `-meta` / `-actions` |
-
-**Responsive rule:** at ≤ `$bp-md-min` a `.channel-table` row becomes a card that shows **only** the checkbox and `.channel-table-cell--primary`; every other `<td>` is hidden generically, so new columns need no mobile rule. Row meta and row actions live in `.channel-item-meta-row`, which is desktop-hidden. Pages render row actions **once** — `useIsMobile()` decides between the meta line and the desktop action column.
+**`.channel-page*`** (header, toolbar, bulk bar), **`.channel-table*`** (wrap uses **`.ds-table-wrap`** or transparent mobile wrap), **`.channel-item*`** (primary cell + **`.channel-item-actions`**). At ≤768, generic rule hides non-primary `<td>`; card styles live in the channel partials above.
 
 ## Conventions
 
-1. **Colors & surfaces** — Prefer **`var(--color-*)`**, **`var(--status-doc-*)`**, **`var(--color-*-bg)`** / **fg** / **border** so dark mode stays correct. Avoid new raw hex in feature SCSS unless print/PDF or a one-off chart.
-2. **Spacing** — Prefer **`var(--space-*)`** for padding/gap/margin; use **`$space-*`** only inside `calc()` or Sass math.
-3. **Type** — Prefer **`var(--text-*)`** + **`var(--text-*--line)`** for new UI; existing `rem` literals can migrate gradually.
-4. **Breakpoints** — Use **`@include max-width(ds.$bp-md-min)`** (etc.) from **`_mixins.scss`** + **`_tokens.scss`**, not raw `@media` with magic pixels.
-5. **Stacking** — Prefer **`z-index: var(--z-dropdown)`** (etc.) for overlays so layers stay consistent.
-6. **Motion** — Use **`var(--duration-fast)`** / **`var(--ease-standard)`** (or **`@include motion-tokens`** plus an explicit **`transition-property`**); global stylesheet respects **`prefers-reduced-motion`**.
-7. **TSX** — Prefer **`className`** + **`_utilities.scss`** / colocated SCSS for colors and spacing. Keep **`style={{…}}`** only for **data-driven geometry** (percent widths, tree indent from depth, crop box coordinates, CSS variables like `--home-knowledge-map-depth`).
-8. **Settings page width** — **`width: 100%`**, **`max-width: ds.$km-layout-max`**, left-aligned (no **`margin: 0 auto`**). Reuse **`account-page.scss`** for personal account surfaces; channel/project/wiki settings may keep colocated `*Settings.scss` but should use the same width and spacing tokens.
-9. **Reuse before inventing** — Prefer **`account-page.scss`**, **`app-page.scss`**, **`channel-page.scss`**, **`list-index.scss`**, **`channel-tree.scss`**, **`settings-page.scss`**, **`resource-list.scss`**, **`.btn*`** / **`_utilities.scss`**, and existing settings layouts over one-off hex, magic `px`, or importing another page's SCSS.
-10. **Tokens** — Add project-wide semantics in **`_css-variables.scss`** / **`_tokens.scss`**; do not copy token values into feature SCSS.
-11. **App page gutters** — Use **`--app-page-padding-*`** only via **`.app-content`** or **`.app-page-pane`**. Do **not** add root `padding` on page wrappers. Full-bleed routes need **`app-layout-exception:`** comment + row in **`docs/design-system.md` § App shell layout**. Run **`npm run check:app-layout`** from `frontend/` when editing shell layout files.
+1. **Colors** — **`var(--color-*)`**, **`var(--status-doc-*)`**; no new raw hex in feature SCSS (charts/print excepted).
+2. **Spacing & type** — **`var(--space-*)`**, **`var(--text-*)`**; **`$space-*`** only in Sass `calc`.
+3. **Breakpoints & z-index** — tokens + mixins; **`var(--z-*)`** for overlays.
+4. **TSX styling** — `className` + SCSS; `style={{}}` only for data-driven geometry.
+5. **Settings width** — `max-width: ds.$km-layout-max`, left-aligned.
+6. **Reuse** — shared SCSS + design-system components before one-off patterns.
+7. **Gutters & exceptions** — § App shell layout; run **`check:app-layout`** when touching shell files.
+
+## Style guardrails
+
+From **`frontend/`**:
+
+```bash
+npm run check:app-layout   # single gutter source (.app-content / .app-page-pane)
+npm run check:styles       # table below
+npm run build
+```
+
+**`check-shared-styles.sh`** (`npm run check:styles`) — allowlists are **known debt, not permission**:
+
+| # | Blocks | Use instead |
+|---|--------|-------------|
+| 1 | Page importing another page's SCSS | Move rules to **`src/styles/`** |
+| 2 | `matchMedia` outside `useIsMobile.ts` | **`useIsMobile()`** |
+| 3 | Raw `px` in `@media` / `@include max-width(Npx)` | **`ds.$bp-*`** tokens |
+| 4 | `MOBILE_BREAKPOINT_PX` ≠ `$bp-md-min` | Keep TS and Sass in sync |
+| 5 | Multiple **`<TableRowActions>`** per channel row | One instance in **`.channel-item-actions`** |
+| 6 | New `*-table-wrap` class | **`.ds-table-wrap`** |
+| 7 | New `*-modal-overlay` / `*-dialog-overlay` | **`<Dialog>`** |
+| 8 | `window.confirm(` | **`useConfirm()`** |
+| 9 | Raw `rgba(0,0,0,…)` modal backdrop | **`var(--overlay-backdrop)`** |
+| 10 | New page `.tsx` > 700 lines | Split like **`DocumentDetail`** |
+
+Run **`check:app-layout`** when editing **`App.scss`**, **`app-page.scss`**, **`ChannelSectionLayout*`**, **`MainLayout.tsx`**.
 
 ## New feature stylesheet
-
-Colocate **`Feature.scss`** next to the component, then:
 
 ```scss
 @use '../../styles/design-system/mixins' as *;
 @use '../../styles/design-system/tokens' as ds;
 ```
 
-(Adjust `../` depth from `src/components/…` vs `src/pages/…`.)
-
-Vite compiles SCSS with the **`sass`** package (`devDependency` in `frontend/package.json`).
+(Adjust `../` depth for `components/` vs `pages/`.)
 
 ## Updating this doc
 
-When you add a reusable pattern under **`frontend/src/styles/`**, rename a shared class family, or change token meaning, update **`docs/design-system.md`**. If the **`design-system/`** directory layout changes, also refresh the frontend section in **[architecture.md](architecture.md)**.
+When shared SCSS, tokens, guard rules, or cross-route React primitives change, update this file. If **`design-system/`** layout changes, also refresh the frontend section in **[architecture.md](architecture.md)**.

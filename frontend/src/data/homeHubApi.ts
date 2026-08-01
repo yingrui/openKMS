@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { authAwareFetch, getAuthHeaders } from './apiClient';
+import { request } from './apiClient';
 
 export type HomeSiteSummary = {
   document_count: number;
@@ -13,16 +12,7 @@ export type HomeHubResponse = {
 };
 
 export async function fetchHomeHub(): Promise<HomeHubResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/home/hub`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || `Home hub failed (${res.status})`);
-  }
-  return res.json() as Promise<HomeHubResponse>;
+  return request<HomeHubResponse>('/api/home/hub');
 }
 
 export function siteHasContent(summary: HomeSiteSummary | null | undefined): boolean {

@@ -8,12 +8,8 @@ $bp-sm-min: 720px;
 $bp-md-min: 768px;
 
 // Narrow / wide layout pairs (legacy literals consolidated here)
-$bp-phone-max: 480px;
-$bp-tight-max: 520px;
-$bp-comfort-max: 560px;
-$bp-lg-max: 960px;
-$bp-lg-min: 961px; // paired with $bp-lg-max (desktop-first)
-$bp-split-min: 880px; // e.g. KB settings two-column grid
+$bp-phone-max: 520px;
+$bp-wide-max: 1050px; // ontology admin playground / wide two-column stacks
 
 // Knowledge Map: master/detail + HTML copilot grid (also used for ~900px content caps elsewhere)
 $km-layout-max: 900px;

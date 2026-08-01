@@ -1,6 +1,5 @@
 /** API for external data connectors (inputs, dataset outputs, settings, encrypted secrets). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface ConnectorKindInputFieldOut {
   key: string;
@@ -136,38 +135,15 @@ export interface ConnectorListResponse {
 }
 
 export async function fetchConnectorKinds(category?: string): Promise<ConnectorKindOut[]> {
-  const headers = await getAuthHeaders();
-  const qs = category ? `?category=${encodeURIComponent(category)}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/kinds${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch connector kinds: ${res.status}`);
-  return res.json();
+  return request<ConnectorKindOut[]>('/api/connectors/kinds', { query: { category } });
 }
 
 export async function fetchConnectors(category?: string): Promise<ConnectorListResponse> {
-  const headers = await getAuthHeaders();
-  const qs = category ? `?category=${encodeURIComponent(category)}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch connectors: ${res.status}`);
-  return res.json();
+  return request<ConnectorListResponse>('/api/connectors', { query: { category } });
 }
 
 export async function fetchConnector(id: string): Promise<ConnectorResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || `Failed to fetch connector: ${res.status}`);
-  }
-  return res.json();
+  return request<ConnectorResponse>(`/api/connectors/${id}`);
 }
 
 export async function createConnector(body: {
@@ -179,18 +155,11 @@ export async function createConnector(body: {
   secrets?: Record<string, string> | null;
   enabled?: boolean;
 }): Promise<ConnectorResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors`, {
+  return request<ConnectorResponse>('/api/connectors', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to create connector');
-  }
-  return res.json();
 }
 
 export async function updateConnector(
@@ -204,106 +173,56 @@ export async function updateConnector(
     enabled?: boolean;
   }
 ): Promise<ConnectorResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}`, {
+  return request<ConnectorResponse>(`/api/connectors/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to update connector');
-  }
-  return res.json();
 }
 
 export async function deleteConnector(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to delete connector');
-  }
+  return request<void>(`/api/connectors/${id}`, { method: 'DELETE' });
 }
 
 export async function provisionConnectorDataset(
   body: ConnectorProvisionDatasetBody
 ): Promise<ConnectorProvisionDatasetResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/provision-dataset`, {
+  return request<ConnectorProvisionDatasetResponse>('/api/connectors/provision-dataset', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to provision dataset');
-  }
-  return res.json();
 }
 
 export async function triggerConnectorSync(
   connectorId: string,
   body: ConnectorSyncTriggerBody
 ): Promise<{ job_id: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${connectorId}/sync`, {
+  return request<{ job_id: number }>(`/api/connectors/${connectorId}/sync`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to start sync');
-  }
-  return res.json();
 }
 
 export async function searchConnector(
   id: string,
   body: { query: string; params?: Record<string, unknown> }
 ): Promise<ConnectorSearchResult> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}/search`, {
+  return request<ConnectorSearchResult>(`/api/connectors/${id}/search`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const message = (err as { detail?: string }).detail || 'Search failed';
-    const error = new Error(message) as Error & { status?: number };
-    error.status = res.status;
-    throw error;
-  }
-  return res.json();
 }
 
 export async function probeConnector(
   id: string,
   body: ConnectorProbeBody
 ): Promise<ConnectorProbeResult> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/connectors/${id}/probe`, {
+  return request<ConnectorProbeResult>(`/api/connectors/${id}/probe`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const message = (err as { detail?: string }).detail || 'Probe failed';
-    const error = new Error(message) as Error & { status?: number };
-    error.status = res.status;
-    throw error;
-  }
-  return res.json();
 }

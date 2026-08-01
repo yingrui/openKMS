@@ -1,17 +1,7 @@
 /** Session review and lessons API (`/api/projects`). */
 import { config } from '../config';
-import { authAwareFetch, getAuthHeaders } from './apiClient';
+import { authAwareFetch, getAuthHeaders, request, requestRaw } from './apiClient';
 import { readNdjsonStream } from './ndjsonStream';
-
-async function parseError(res: Response): Promise<string> {
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') return j.detail;
-  } catch {
-    /* ignore */
-  }
-  return res.statusText;
-}
 
 export interface LessonEvent {
   type: 'error' | 'lesson' | 'pattern' | 'skill_candidate';
@@ -36,41 +26,26 @@ export async function reviewSession(
   projectId: string,
   convId: string,
 ): Promise<LessonEvent[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/conversations/${convId}/review`,
-    { method: 'POST', headers, credentials: 'include' },
+  const data = await request<{ events?: LessonEvent[] }>(
+    `/api/projects/${projectId}/conversations/${convId}/review`,
+    { method: 'POST' },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  const data = await res.json();
-  return (data.events ?? []) as LessonEvent[];
+  return data.events ?? [];
 }
 
 export async function getLessons(projectId: string): Promise<LessonEventWithState[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/lessons`,
-    { headers, credentials: 'include' },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return (await res.json()) as LessonEventWithState[];
+  return request<LessonEventWithState[]>(`/api/projects/${projectId}/lessons`);
 }
 
 export async function putLessons(
   projectId: string,
   lessons: LessonEventWithState[],
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/lessons`,
-    {
-      method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(lessons),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/projects/${projectId}/lessons`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(lessons),
+  });
 }
 
 export interface ArtifactFile {
@@ -139,36 +114,23 @@ export async function saveArtifact(
   path: string,
   content: string,
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/files/content`,
-    {
-      method: 'PUT',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ path, content }),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/projects/${projectId}/files/content`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, content }),
+  });
 }
 
 export async function chatImprovements(
   projectId: string,
   message: string,
 ): Promise<string> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/improvements/chat`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ message }),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  const data = await res.json();
-  return data.response as string;
+  const data = await request<{ response: string }>(`/api/projects/${projectId}/improvements/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
+  return data.response;
 }
 
 export type ImprovementStreamEvent =
@@ -184,20 +146,11 @@ export async function chatImprovementsStream(
   message: string,
   onEvent: (ev: ImprovementStreamEvent) => void,
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/improvements/chat`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ message }),
-    },
-  );
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(errText || res.statusText);
-  }
+  const res = await requestRaw(`/api/projects/${projectId}/improvements/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  });
   if (!res.body) throw new Error('No response body');
   await readNdjsonStream<ImprovementStreamEvent>(res.body, onEvent);
 }
@@ -207,38 +160,27 @@ export async function mergeLessons(
   lessons: LessonEventWithState[],
   sessionId: string,
 ): Promise<LessonEventWithState[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/lessons/merge`,
+  const data = await request<{ events?: LessonEventWithState[] }>(
+    `/api/projects/${projectId}/lessons/merge`,
     {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lessons, session_id: sessionId }),
     },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  const data = await res.json();
-  return (data.events ?? []) as LessonEventWithState[];
+  return data.events ?? [];
 }
 
 export async function generateSkill(
   projectId: string,
   event: LessonEvent,
 ): Promise<string> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/skills/generate`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ event }),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  const data = await res.json();
-  return data.content as string;
+  const data = await request<{ content: string }>(`/api/projects/${projectId}/skills/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ event }),
+  });
+  return data.content;
 }
 
 let _idCounter = 0;

@@ -22,6 +22,7 @@ import {
   extractArtifactRaw,
   extractStreamingHtmlFenceInner,
 } from './knowledgeMapHtmlArtifact';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './KnowledgeMapHtmlCopilot.scss';
 
 type KnowledgeMapHtmlCopilotProps = {
@@ -46,6 +47,7 @@ export function KnowledgeMapHtmlCopilot({
   onRefreshStatus,
 }: KnowledgeMapHtmlCopilotProps) {
   const { t } = useTranslation('knowledgeMap');
+  const confirm = useConfirm();
   const [lines, setLines] = useState<ChatLine[]>([]);
   const [conversations, setConversations] = useState<MapHtmlDesignerConversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -373,7 +375,15 @@ export function KnowledgeMapHtmlCopilot({
 
   const handleDeleteSavedOverview = async () => {
     if (!canWrite) return;
-    if (!window.confirm(t('mapHtmlDesignerDeleteConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('mapHtmlDesignerDeleteSaved'),
+        message: t('mapHtmlDesignerDeleteConfirm'),
+        confirmLabel: t('mapHtmlDesignerDeleteSaved'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteKnowledgeMapHtml();
       toast.success(t('mapHtmlDesignerDeleted'));
@@ -390,7 +400,15 @@ export function KnowledgeMapHtmlCopilot({
 
   const handleDeleteConversation = async () => {
     if (!canWrite || !activeConversationId || convBootstrapBusy) return;
-    if (!window.confirm(t('mapHtmlDesignerDeleteChatConfirm'))) return;
+    if (
+      !(await confirm({
+        title: t('mapHtmlDesignerDeleteChat'),
+        message: t('mapHtmlDesignerDeleteChatConfirm'),
+        confirmLabel: t('mapHtmlDesignerDeleteChat'),
+        danger: true,
+      }))
+    )
+      return;
     streamAbortRef.current?.abort();
     setConvBootstrapBusy(true);
     try {

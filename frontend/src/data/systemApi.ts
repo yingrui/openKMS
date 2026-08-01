@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { authAwareFetch, getAuthHeaders } from './apiClient';
+import { request } from './apiClient';
 
 /** Shown in the sidebar and public API when `system_settings.system_name` is empty or whitespace. */
 export const DEFAULT_SYSTEM_DISPLAY_NAME = 'openKMS';
@@ -26,38 +25,17 @@ export type SystemSettingsUpdate = {
 };
 
 export async function fetchSystemPublic(): Promise<SystemPublicResponse> {
-  const res = await authAwareFetch(`${config.apiUrl}/api/public/system`);
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || `Failed to load public system info (${res.status})`);
-  }
-  return res.json() as Promise<SystemPublicResponse>;
+  return request<SystemPublicResponse>('/api/public/system');
 }
 
 export async function fetchSystemSettings(): Promise<SystemSettingsResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/system/settings`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || `Failed to load system settings (${res.status})`);
-  }
-  return res.json() as Promise<SystemSettingsResponse>;
+  return request<SystemSettingsResponse>('/api/system/settings');
 }
 
 export async function updateSystemSettings(body: SystemSettingsUpdate): Promise<SystemSettingsResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/system/settings`, {
+  return request<SystemSettingsResponse>('/api/system/settings', {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || `Failed to save system settings (${res.status})`);
-  }
-  return res.json() as Promise<SystemSettingsResponse>;
 }

@@ -12,12 +12,14 @@ import {
   uploadAgentSkillZip,
   type AgentSkill,
 } from '../../data/agentSkillsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './ProjectList.scss';
 import './AgentSkillsPage.scss';
 
 export function AgentSkillsPage() {
   const { t } = useTranslation('agents');
   const { t: ts } = useTranslation('explore');
+  const confirm = useConfirm();
   const [skills, setSkills] = useState<AgentSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -61,7 +63,15 @@ export function AgentSkillsPage() {
   const handleDeleteSkill = async (skill: AgentSkill, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!window.confirm(t('skills.deleteSkillConfirm', { name: skill.display_name, skillId: skill.id }))) return;
+    if (
+      !(await confirm({
+        title: t('skills.deleteSkill'),
+        message: t('skills.deleteSkillConfirm', { name: skill.display_name, skillId: skill.id }),
+        confirmLabel: t('skills.deleteSkill'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteAgentSkill(skill.id);
       toast.success(t('skills.deleteSkillSuccess'));

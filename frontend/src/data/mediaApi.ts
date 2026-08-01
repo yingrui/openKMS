@@ -1,6 +1,5 @@
 /** API for media assets. */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export type MediaKind = 'image' | 'video';
 
@@ -40,30 +39,19 @@ export async function fetchMediaAssets(params?: {
   offset?: number;
   limit?: number;
 }): Promise<MediaListResponse> {
-  const query = new URLSearchParams();
-  if (params?.channel_id) query.set('channel_id', params.channel_id);
-  if (params?.media_kind) query.set('media_kind', params.media_kind);
-  if (params?.search) query.set('search', params.search);
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media${qs ? `?${qs}` : ''}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<MediaListResponse>('/api/media', {
+    query: {
+      channel_id: params?.channel_id,
+      media_kind: params?.media_kind,
+      search: params?.search,
+      offset: params?.offset,
+      limit: params?.limit,
+    },
   });
-  if (!res.ok) throw new Error(`Failed to fetch media (${res.status})`);
-  return res.json();
 }
 
 export async function fetchMediaAsset(id: string): Promise<MediaAssetOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch media asset (${res.status})`);
-  return res.json();
+  return request<MediaAssetOut>(`/api/media/${id}`);
 }
 
 export async function updateMediaAsset(
@@ -77,31 +65,15 @@ export async function updateMediaAsset(
     channel_id: string;
   }>,
 ): Promise<MediaAssetOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media/${id}`, {
+  return request<MediaAssetOut>(`/api/media/${id}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update media');
-  }
-  return res.json();
 }
 
 export async function deleteMediaAsset(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete media');
-  }
+  return request<void>(`/api/media/${id}`, { method: 'DELETE' });
 }
 
 export async function uploadMediaAsset(
@@ -114,18 +86,7 @@ export async function uploadMediaAsset(
   form.append('file', file);
   if (opts?.title) form.append('title', opts.title);
   if (opts?.description) form.append('description', opts.description);
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media/upload`, {
-    method: 'POST',
-    headers: { ...headers },
-    body: form,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Upload failed');
-  }
-  return res.json();
+  return request<MediaAssetOut>('/api/media/upload', { method: 'POST', body: form });
 }
 
 export async function generateMediaAsset(body: {
@@ -141,18 +102,11 @@ export async function generateMediaAsset(body: {
   with_audio?: boolean;
   image_url?: string;
 }): Promise<{ job_id: number; provider_task_id: string }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media/generate`, {
+  return request<{ job_id: number; provider_task_id: string }>('/api/media/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Generation failed');
-  }
-  return res.json();
 }
 
 export function mediaFileApiPath(assetId: string, relative: 'original' | 'thumb' | 'poster', ext = 'webp'): string {
@@ -162,14 +116,11 @@ export function mediaFileApiPath(assetId: string, relative: 'original' | 'thumb'
 }
 
 export async function resolveMediaFileUrl(assetId: string, filePath: string): Promise<string> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/media/${assetId}/files/${encodeURIComponent(filePath)}?url_only=true`,
-    { headers: { ...headers }, credentials: 'include' },
+  const data = await request<{ url: string }>(
+    `/api/media/${assetId}/files/${encodeURIComponent(filePath)}`,
+    { query: { url_only: true } },
   );
-  if (!res.ok) throw new Error('Failed to resolve media URL');
-  const data = await res.json();
-  return data.url as string;
+  return data.url;
 }
 
 export async function uploadTempMedia(
@@ -179,18 +130,7 @@ export async function uploadTempMedia(
   const form = new FormData();
   form.append('channel_id', channelId);
   form.append('file', file);
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/media/upload-temp`, {
-    method: 'POST',
-    headers: { ...headers },
-    body: form,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Temp upload failed');
-  }
-  return res.json();
+  return request<{ url: string; key: string }>('/api/media/upload-temp', { method: 'POST', body: form });
 }
 
 export const ACCEPTED_MEDIA = 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/quicktime';

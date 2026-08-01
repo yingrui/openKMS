@@ -36,27 +36,15 @@
 }
 
 .ac-review-status--ready {
-  background: rgba(22, 163, 74, 0.1);
-  color: #15803d;
-  border: 1px solid rgba(22, 163, 74, 0.2);
+  background: var(--color-success-bg);
+  color: var(--color-success-fg);
+  border: 1px solid var(--color-success-border);
 }
 
 .ac-review-status--warn {
-  background: rgba(234, 88, 12, 0.08);
-  color: #c2410c;
-  border: 1px solid rgba(234, 88, 12, 0.18);
-}
-
-[data-theme='dark'] .ac-review-status--ready {
-  background: rgba(74, 222, 128, 0.1);
-  color: #86efac;
-  border-color: rgba(74, 222, 128, 0.2);
-}
-
-[data-theme='dark'] .ac-review-status--warn {
-  background: rgba(251, 146, 60, 0.1);
-  color: #fdba74;
-  border-color: rgba(251, 146, 60, 0.2);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-fg);
+  border: 1px solid var(--color-warning-border);
 }
 
 .ac-review-card {
@@ -194,12 +182,6 @@
 .ac-review-builtin-desc {
   color: var(--color-text-secondary);
   line-height: 1.45;
-}
-
-.ac-review-criteria-table-wrap {
-  overflow-x: auto;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
 }
 
 .ac-review-criteria-table {

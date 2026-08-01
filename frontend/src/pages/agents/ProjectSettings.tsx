@@ -30,6 +30,7 @@ import { ProjectSchedulesTab } from '../../components/agents/ProjectSchedulesTab
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './ProjectSettings.scss';
 
 type TabId = 'general' | 'agent' | 'skills' | 'schedules' | 'sharing';
@@ -39,6 +40,7 @@ export function ProjectSettings() {
   const { t } = useTranslation('agents');
   const { t: ts } = useTranslation('explore');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>('general');
@@ -134,7 +136,15 @@ export function ProjectSettings() {
   };
 
   const onUninstallSkill = async (skill: AgentSkill) => {
-    if (!window.confirm(t('settings.skills.uninstallConfirm', { skill: skill.display_name }))) return;
+    if (
+      !(await confirm({
+        title: t('settings.skills.uninstall'),
+        message: t('settings.skills.uninstallConfirm', { skill: skill.display_name }),
+        confirmLabel: t('settings.skills.uninstall'),
+        danger: true,
+      }))
+    )
+      return;
     setSkillActionLoading(skill.id);
     try {
       await uninstallProjectSkill(projectId, skill.id);
@@ -317,7 +327,7 @@ export function ProjectSettings() {
                 <Link to="/agents/skills">{t('settings.skills.uploadSkills')}</Link>
               </p>
             ) : (
-              <div className="project-settings-skills-table-wrap">
+              <div className="ds-table-wrap">
                 <table className="project-settings-skills-table">
                   <thead>
                     <tr>

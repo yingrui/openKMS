@@ -90,6 +90,7 @@ function IssueTable({
   }
 
   return (
+    <div className="ds-table-wrap">
     <table className="console-dso-table">
       <thead>
         <tr>
@@ -143,6 +144,7 @@ function IssueTable({
         })}
       </tbody>
     </table>
+    </div>
   );
 }
 

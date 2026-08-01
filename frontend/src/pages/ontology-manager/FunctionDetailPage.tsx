@@ -149,7 +149,7 @@ export function FunctionDetailPage() {
                 <p className="page-subtitle">{t('functions.recentExecutions')}</p>
               </div>
             </header>
-            <div className="ontology-admin-table-wrap">
+            <div className="ds-table-wrap">
               <table className="console-table">
                 <thead>
                   <tr>

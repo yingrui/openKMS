@@ -1,6 +1,5 @@
 /** API for ontology (object types, link types, instances). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 // --- Object Type ---
 
@@ -31,31 +30,21 @@ export interface ObjectTypeListResponse {
 }
 
 export async function fetchObjectTypes(params?: { countFromNeo4j?: boolean; isMasterData?: boolean }): Promise<ObjectTypeListResponse> {
-  const headers = await getAuthHeaders();
-  const searchParams = new URLSearchParams();
-  if (params?.countFromNeo4j) searchParams.set('count_from_neo4j', 'true');
-  if (params?.isMasterData !== undefined) searchParams.set('is_master_data', String(params.isMasterData));
-  const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ObjectTypeListResponse>('/api/object-types', {
+    query: {
+      count_from_neo4j: params?.countFromNeo4j ? true : undefined,
+      is_master_data: params?.isMasterData,
+    },
   });
-  if (!res.ok) throw new Error(`Failed to fetch object types: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchObjectType(
   objectTypeId: string,
   params?: { countFromNeo4j?: boolean }
 ): Promise<ObjectTypeResponse> {
-  const headers = await getAuthHeaders();
-  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ObjectTypeResponse>(`/api/object-types/${objectTypeId}`, {
+    query: { count_from_neo4j: params?.countFromNeo4j ? true : undefined },
   });
-  if (!res.ok) throw new Error(`Failed to fetch object type: ${res.status}`);
-  return res.json();
 }
 
 export async function createObjectType(data: {
@@ -67,90 +56,55 @@ export async function createObjectType(data: {
   display_property?: string;
   properties?: PropertyDef[];
 }): Promise<ObjectTypeResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types`, {
+  return request<ObjectTypeResponse>('/api/object-types', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create object type');
-  }
-  return res.json();
 }
 
 export async function updateObjectType(
   objectTypeId: string,
   data: { name?: string; description?: string; dataset_id?: string; key_property?: string; is_master_data?: boolean; display_property?: string; properties?: PropertyDef[] }
 ): Promise<ObjectTypeResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
+  return request<ObjectTypeResponse>(`/api/object-types/${objectTypeId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update object type');
-  }
-  return res.json();
 }
 
 export async function indexObjectTypesToNeo4j(neo4jDataSourceId: string): Promise<{
   object_types_indexed: number;
   nodes_created: number;
 }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/index-to-neo4j`, {
+  return request<{ object_types_indexed: number; nodes_created: number }>('/api/object-types/index-to-neo4j', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to index to Neo4j');
-  }
-  return res.json();
 }
 
 export async function indexObjectTypeToNeo4j(
   objectTypeId: string,
   neo4jDataSourceId: string
 ): Promise<{ object_types_indexed: number; nodes_created: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/object-types/${encodeURIComponent(objectTypeId)}/index-to-neo4j`,
+  return request<{ object_types_indexed: number; nodes_created: number }>(
+    `/api/object-types/${encodeURIComponent(objectTypeId)}/index-to-neo4j`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
-      credentials: 'include',
     }
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to index to Neo4j');
-  }
-  return res.json();
 }
 
 export async function generateCypherFromQuestion(question: string): Promise<{ cypher: string; explanation: string }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/ontology/text-to-cypher`, {
+  return request<{ cypher: string; explanation: string }>('/api/ontology/text-to-cypher', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to generate Cypher');
-  }
-  return res.json();
 }
 
 export async function summarizeAnswer(payload: {
@@ -159,85 +113,48 @@ export async function summarizeAnswer(payload: {
   columns: string[];
   rows: Record<string, unknown>[];
 }): Promise<{ answer: string }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/ontology/answer`, {
+  return request<{ answer: string }>('/api/ontology/answer', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to summarise answer');
-  }
-  return res.json();
 }
 
 export async function executeCypherQuery(cypher: string): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/ontology/explore`, {
+  return request<{ columns: string[]; rows: Record<string, unknown>[] }>('/api/ontology/explore', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cypher }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to execute query');
-  }
-  return res.json();
 }
 
 export async function indexLinkTypesToNeo4j(neo4jDataSourceId: string): Promise<{
   link_types_indexed: number;
   relationships_created: number;
 }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/index-to-neo4j`, {
+  return request<{ link_types_indexed: number; relationships_created: number }>('/api/link-types/index-to-neo4j', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to index links to Neo4j');
-  }
-  return res.json();
 }
 
 export async function indexLinkTypeToNeo4j(
   linkTypeId: string,
   neo4jDataSourceId: string
 ): Promise<{ link_types_indexed: number; relationships_created: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/link-types/${encodeURIComponent(linkTypeId)}/index-to-neo4j`,
+  return request<{ link_types_indexed: number; relationships_created: number }>(
+    `/api/link-types/${encodeURIComponent(linkTypeId)}/index-to-neo4j`,
     {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ neo4j_data_source_id: neo4jDataSourceId }),
-      credentials: 'include',
     }
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to index links to Neo4j');
-  }
-  return res.json();
 }
 
 export async function deleteObjectType(objectTypeId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete object type');
-  }
+  return request<void>(`/api/object-types/${objectTypeId}`, { method: 'DELETE' });
 }
 
 // --- Object Instance ---
@@ -259,32 +176,20 @@ export async function fetchObjectInstances(
   objectTypeId: string,
   params?: { search?: string }
 ): Promise<ObjectInstanceListResponse> {
-  const headers = await getAuthHeaders();
-  const qs = params?.search ? `?search=${encodeURIComponent(params.search)}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ObjectInstanceListResponse>(`/api/object-types/${objectTypeId}/objects`, {
+    query: { search: params?.search },
   });
-  if (!res.ok) throw new Error(`Failed to fetch objects: ${res.status}`);
-  return res.json();
 }
 
 export async function createObjectInstance(
   objectTypeId: string,
   data: Record<string, unknown>
 ): Promise<ObjectInstanceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/object-types/${objectTypeId}/objects`, {
+  return request<ObjectInstanceResponse>(`/api/object-types/${objectTypeId}/objects`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create object');
-  }
-  return res.json();
 }
 
 export async function updateObjectInstance(
@@ -292,40 +197,18 @@ export async function updateObjectInstance(
   objectId: string,
   data: Record<string, unknown>
 ): Promise<ObjectInstanceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/object-types/${objectTypeId}/objects/${objectId}`,
-    {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ data }),
-      credentials: 'include',
-    }
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update object');
-  }
-  return res.json();
+  return request<ObjectInstanceResponse>(`/api/object-types/${objectTypeId}/objects/${objectId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data }),
+  });
 }
 
 export async function deleteObjectInstance(
   objectTypeId: string,
   objectId: string
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/object-types/${objectTypeId}/objects/${objectId}`,
-    {
-      method: 'DELETE',
-      headers: { ...headers },
-      credentials: 'include',
-    }
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete object');
-  }
+  return request<void>(`/api/object-types/${objectTypeId}/objects/${objectId}`, { method: 'DELETE' });
 }
 
 // --- Link Type ---
@@ -360,28 +243,18 @@ export interface LinkTypeListResponse {
 }
 
 export async function fetchLinkTypes(params?: { countFromNeo4j?: boolean }): Promise<LinkTypeListResponse> {
-  const headers = await getAuthHeaders();
-  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<LinkTypeListResponse>('/api/link-types', {
+    query: { count_from_neo4j: params?.countFromNeo4j ? true : undefined },
   });
-  if (!res.ok) throw new Error(`Failed to fetch link types: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchLinkType(
   linkTypeId: string,
   params?: { countFromNeo4j?: boolean }
 ): Promise<LinkTypeResponse> {
-  const headers = await getAuthHeaders();
-  const qs = params?.countFromNeo4j ? '?count_from_neo4j=true' : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<LinkTypeResponse>(`/api/link-types/${linkTypeId}`, {
+    query: { count_from_neo4j: params?.countFromNeo4j ? true : undefined },
   });
-  if (!res.ok) throw new Error(`Failed to fetch link type: ${res.status}`);
-  return res.json();
 }
 
 export async function createLinkType(data: {
@@ -396,18 +269,11 @@ export async function createLinkType(data: {
   source_dataset_column?: string;
   target_dataset_column?: string;
 }): Promise<LinkTypeResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types`, {
+  return request<LinkTypeResponse>('/api/link-types', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create link type');
-  }
-  return res.json();
 }
 
 export async function updateLinkType(
@@ -425,31 +291,15 @@ export async function updateLinkType(
     target_dataset_column?: string;
   }
 ): Promise<LinkTypeResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
+  return request<LinkTypeResponse>(`/api/link-types/${linkTypeId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update link type');
-  }
-  return res.json();
 }
 
 export async function deleteLinkType(linkTypeId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete link type');
-  }
+  return request<void>(`/api/link-types/${linkTypeId}`, { method: 'DELETE' });
 }
 
 // --- Link Instance ---
@@ -473,45 +323,20 @@ export interface LinkInstanceListResponse {
 }
 
 export async function fetchLinkInstances(linkTypeId: string): Promise<LinkInstanceListResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch links: ${res.status}`);
-  return res.json();
+  return request<LinkInstanceListResponse>(`/api/link-types/${linkTypeId}/links`);
 }
 
 export async function createLinkInstance(
   linkTypeId: string,
   data: { source_object_id: string; target_object_id: string }
 ): Promise<LinkInstanceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/link-types/${linkTypeId}/links`, {
+  return request<LinkInstanceResponse>(`/api/link-types/${linkTypeId}/links`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create link');
-  }
-  return res.json();
 }
 
 export async function deleteLinkInstance(linkTypeId: string, linkId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/link-types/${linkTypeId}/links/${linkId}`,
-    {
-      method: 'DELETE',
-      headers: { ...headers },
-      credentials: 'include',
-    }
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete link');
-  }
+  return request<void>(`/api/link-types/${linkTypeId}/links/${linkId}`, { method: 'DELETE' });
 }

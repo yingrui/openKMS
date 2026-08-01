@@ -11,6 +11,7 @@ import {
   updateMediaAsset,
   type MediaAssetOut,
 } from '../../data/mediaApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/document-detail.scss';
 import '../../styles/channel-page.scss';
 import './Media.scss';
@@ -182,6 +183,7 @@ function MediaDetailFormPanel({
 export function MediaDetail() {
   const { t } = useTranslation('media');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const { id = '' } = useParams<{ id: string }>();
   const [asset, setAsset] = useState<MediaAssetOut | null>(null);
   const [siblings, setSiblings] = useState<MediaAssetOut[]>([]);
@@ -249,7 +251,16 @@ export function MediaDetail() {
   };
 
   const onDelete = async () => {
-    if (!asset || !window.confirm(t('detail.deleteConfirm'))) return;
+    if (!asset) return;
+    if (
+      !(await confirm({
+        title: t('detail.delete'),
+        message: t('detail.deleteConfirm'),
+        confirmLabel: t('detail.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteMediaAsset(asset.id);
       navigate(`/media/channels/${asset.channel_id}`);

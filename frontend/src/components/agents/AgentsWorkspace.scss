@@ -784,12 +784,12 @@ $agents-pane-header-height: 49px;
 }
 
 .agents-hl-heading {
-  color: #7c3aed;
+  color: var(--color-ontology-source);
   font-weight: 600;
 }
 
 .agents-hl-hash {
-  color: #7c3aed;
+  color: var(--color-ontology-source);
   opacity: 0.75;
 }
 
@@ -799,7 +799,7 @@ $agents-pane-header-height: 49px;
 }
 
 .agents-hl-code {
-  color: #0d9488;
+  color: var(--color-accent);
 }
 
 .agents-hl-list {
@@ -1117,5 +1117,19 @@ $agents-pane-header-height: 49px;
     flex: 1 1 auto !important;
     min-width: 0;
     max-height: 50%;
+  }
+}
+
+/* Keep icon-only controls comfortably tappable on touch screens. */
+@include max-width(ds.$bp-md-min) {
+  .agents-sessions-settings,
+  .agents-session-more,
+  .agents-composer-send,
+  .agents-file-viewer-close,
+  .agents-files-back-btn,
+  .agents-files-icon-btn,
+  .agents-file-delete {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
   }
 }

@@ -24,6 +24,7 @@ import {
   type GitStatusEntry,
   type ProjectFileEntry,
 } from '../../data/projectsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './AgentsWorkspace.scss';
 
 const TREE_MIN_PX = 160;
@@ -99,6 +100,7 @@ export function AgentFilesPanel({
   onGitChange,
 }: Props) {
   const { t } = useTranslation('agents');
+  const confirm = useConfirm();
   const [cwd, setCwd] = useState('');
   const [entries, setEntries] = useState<ProjectFileEntry[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -282,7 +284,8 @@ export function AgentFilesPanel({
     const msg = entry.is_dir
       ? t('files.deleteFolderConfirm', { name: entry.name })
       : t('files.deleteFileConfirm', { name: entry.name });
-    if (!window.confirm(msg)) return;
+    const title = entry.is_dir ? t('files.deleteFolder') : t('files.deleteFile');
+    if (!(await confirm({ title, message: msg, danger: true }))) return;
 
     setDeletingPath(entry.path);
     try {

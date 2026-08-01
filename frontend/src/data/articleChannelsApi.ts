@@ -1,6 +1,5 @@
 /** API for article channels (backend). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 import type { ChannelNode } from './channelUtils';
 
 /** Raw API node (subset of ChannelNode). */
@@ -53,20 +52,9 @@ export async function fetchArticleChannelsPage(params?: {
   limit?: number;
   offset?: number;
 }): Promise<ArticleChannelTreeListResponse> {
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/article-channels${qs ? `?${qs}` : ''}`,
-    {
-      headers: { ...headers },
-      credentials: 'include',
-    },
-  );
-  if (!res.ok) throw new Error(`Failed to fetch article channels (${res.status})`);
-  return res.json();
+  return request<ArticleChannelTreeListResponse>('/api/article-channels', {
+    query: { limit: params?.limit, offset: params?.offset },
+  });
 }
 
 export async function fetchAllArticleChannels(): Promise<ChannelNode[]> {
@@ -83,31 +71,16 @@ export async function fetchAllArticleChannels(): Promise<ChannelNode[]> {
   return merged;
 }
 
-function parseErrorDetail(body: unknown, fallback: string): string {
-  if (typeof body === 'object' && body !== null && 'detail' in body) {
-    const d = (body as { detail?: unknown }).detail;
-    if (typeof d === 'string') return d;
-  }
-  return fallback;
-}
-
 export async function createArticleChannel(params: {
   name: string;
   description?: string | null;
   parent_id?: string | null;
 }): Promise<ChannelNode> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/article-channels`, {
+  const raw = await request<ArticleChannelNodeRaw>('/api/article-channels', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(err, 'Failed to create channel'));
-  }
-  const raw = (await res.json()) as ArticleChannelNodeRaw;
   return toChannelNode(raw);
 }
 
@@ -123,32 +96,16 @@ export async function updateArticleChannel(
     review_criteria?: { id: string; label: string; description?: string }[] | null;
   },
 ): Promise<ChannelNode> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/article-channels/${channelId}`, {
+  const raw = await request<ArticleChannelNodeRaw>(`/api/article-channels/${channelId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(err, 'Failed to update channel'));
-  }
-  const raw = (await res.json()) as ArticleChannelNodeRaw;
   return toChannelNode(raw);
 }
 
 export async function deleteArticleChannel(channelId: string): Promise<void> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/article-channels/${channelId}`, {
-    method: 'DELETE',
-    headers: authHeaders,
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(err, 'Failed to delete channel'));
-  }
+  return request<void>(`/api/article-channels/${channelId}`, { method: 'DELETE' });
 }
 
 export async function mergeArticleChannels(params: {
@@ -156,33 +113,21 @@ export async function mergeArticleChannels(params: {
   target_channel_id: string;
   include_descendants?: boolean;
 }): Promise<void> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/article-channels/merge`, {
+  return request<void>('/api/article-channels/merge', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       source_channel_id: params.source_channel_id,
       target_channel_id: params.target_channel_id,
       include_descendants: params.include_descendants ?? true,
     }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(err, 'Failed to merge channels'));
-  }
 }
 
 export async function reorderArticleChannel(channelId: string, direction: 'up' | 'down'): Promise<void> {
-  const authHeaders = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/article-channels/${channelId}/reorder`, {
+  return request<void>(`/api/article-channels/${channelId}/reorder`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ direction }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(parseErrorDetail(err, 'Failed to reorder channel'));
-  }
 }

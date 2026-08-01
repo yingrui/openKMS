@@ -13,9 +13,11 @@ import {
   saveFunctionVersion,
   validateFunctionSource,
 } from '../../data/ontologyFunctionsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export function useFunctionEditorWorkspace() {
   const { t } = useTranslation('ontology');
+  const confirm = useConfirm();
   const { functionId } = useParams<{ functionId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -130,7 +132,16 @@ export function useFunctionEditorWorkspace() {
 
   const onDelete = async () => {
     const id = resolvedId;
-    if (!id || !window.confirm(t('shared.delete'))) return;
+    if (!id) return;
+    if (
+      !(await confirm({
+        title: t('shared.delete'),
+        message: t('shared.delete'),
+        confirmLabel: t('shared.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteOntologyFunction(id);
       toast.success(t('editor.deleted'));

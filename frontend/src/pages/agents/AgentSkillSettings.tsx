@@ -13,6 +13,7 @@ import {
   uploadAgentSkillZip,
   type AgentSkill,
 } from '../../data/agentSkillsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/settings-page.scss';
 import './AgentSkillSettings.scss';
 
@@ -22,6 +23,7 @@ export function AgentSkillSettings() {
   const { t } = useTranslation('agents');
   const { t: ts } = useTranslation('explore');
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const { skillId = '' } = useParams<{ skillId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
@@ -155,7 +157,16 @@ export function AgentSkillSettings() {
   };
 
   const onDeleteVersion = async (ver: string) => {
-    if (!skillId || !window.confirm(t('skills.deleteVersionConfirm', { skillId, version: ver }))) return;
+    if (!skillId) return;
+    if (
+      !(await confirm({
+        title: t('skills.deleteVersion'),
+        message: t('skills.deleteVersionConfirm', { skillId, version: ver }),
+        confirmLabel: t('skills.deleteVersion'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteAgentSkillVersion(skillId, ver);
       toast.success(t('skills.deleteSuccess'));
@@ -167,7 +178,15 @@ export function AgentSkillSettings() {
 
   const handleDeleteSkill = async () => {
     if (!skillId || !skill) return;
-    if (!window.confirm(t('skills.deleteSkillConfirm', { name: skill.display_name, skillId }))) return;
+    if (
+      !(await confirm({
+        title: t('skills.deleteSkill'),
+        message: t('skills.deleteSkillConfirm', { name: skill.display_name, skillId }),
+        confirmLabel: t('skills.deleteSkill'),
+        danger: true,
+      }))
+    )
+      return;
     setDeleting(true);
     try {
       await deleteAgentSkill(skillId);

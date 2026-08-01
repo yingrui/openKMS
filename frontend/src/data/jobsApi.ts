@@ -1,6 +1,5 @@
 /** API for processing job runs (backend `/api/jobs`). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface JobEvent {
   type: string;
@@ -84,86 +83,39 @@ export async function fetchJobs(params?: {
   limit?: number;
   offset?: number;
 }): Promise<JobListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.document_id) query.set('document_id', params.document_id);
-  if (params?.knowledge_base_id) query.set('knowledge_base_id', params.knowledge_base_id);
-  if (params?.connector_id) query.set('connector_id', params.connector_id);
-  if (params?.status) query.set('status', params.status);
-  if (params?.search?.trim()) query.set('search', params.search.trim());
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/jobs${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<JobListResponse>('/api/jobs', {
+    query: {
+      document_id: params?.document_id,
+      knowledge_base_id: params?.knowledge_base_id,
+      connector_id: params?.connector_id,
+      status: params?.status,
+      search: params?.search?.trim(),
+      limit: params?.limit,
+      offset: params?.offset,
+    },
   });
-  if (!res.ok) throw new Error(`Failed to fetch job runs: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchJobById(jobId: number): Promise<JobResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch job: ${res.status}`);
-  return res.json();
+  return request<JobResponse>(`/api/jobs/${jobId}`);
 }
 
 export async function createJob(data: JobCreate): Promise<JobResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/jobs`, {
+  return request<JobResponse>('/api/jobs', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create job');
-  }
-  return res.json();
 }
 
 export async function markJobFailed(jobId: number): Promise<JobResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}/mark-failed`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to mark job failed');
-  }
-  return res.json();
+  return request<JobResponse>(`/api/jobs/${jobId}/mark-failed`, { method: 'POST' });
 }
 
 export async function retryJob(jobId: number): Promise<JobResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}/retry`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to retry job');
-  }
-  return res.json();
+  return request<JobResponse>(`/api/jobs/${jobId}/retry`, { method: 'POST' });
 }
 
 export async function deleteJob(jobId: number): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/jobs/${jobId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete job');
-  }
+  return request<void>(`/api/jobs/${jobId}`, { method: 'DELETE' });
 }

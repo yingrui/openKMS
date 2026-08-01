@@ -1,0 +1,32 @@
+// Shared scrollable table card. Prefer this over per-page *-table-wrap rules.
+// overflow-x: auto so narrow viewports can scroll instead of clipping columns.
+
+.ds-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+
+  .ds-pagination {
+    border-radius: 0;
+  }
+
+  &--loading {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+// Alias kept for resource-list pages that already use the design-system name.
+.ds-resource-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-elevated);
+
+  .ds-pagination {
+    border-radius: 0;
+  }
+}

@@ -1,6 +1,5 @@
 /** API for data sources. */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface DataSourceResponse {
   id: string;
@@ -27,17 +26,9 @@ export async function fetchDataSources(params?: {
   limit?: number;
   offset?: number;
 }): Promise<DataSourceListResponse> {
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources${qs ? `?${qs}` : ''}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<DataSourceListResponse>('/api/data-sources', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(`Failed to fetch data sources: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchAllDataSources(): Promise<DataSourceResponse[]> {
@@ -55,13 +46,7 @@ export async function fetchAllDataSources(): Promise<DataSourceResponse[]> {
 }
 
 export async function fetchDataSource(id: string): Promise<DataSourceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch data source: ${res.status}`);
-  return res.json();
+  return request<DataSourceResponse>(`/api/data-sources/${id}`);
 }
 
 export async function createDataSource(data: {
@@ -74,18 +59,11 @@ export async function createDataSource(data: {
   password?: string;
   options?: Record<string, unknown>;
 }): Promise<DataSourceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources`, {
+  return request<DataSourceResponse>('/api/data-sources', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to create data source');
-  }
-  return res.json();
 }
 
 export async function updateDataSource(
@@ -101,53 +79,21 @@ export async function updateDataSource(
     options?: Record<string, unknown>;
   }
 ): Promise<DataSourceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}`, {
+  return request<DataSourceResponse>(`/api/data-sources/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to update data source');
-  }
-  return res.json();
 }
 
 export async function deleteDataSource(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error((err as { detail?: string }).detail || 'Failed to delete data source');
-  }
+  return request<void>(`/api/data-sources/${id}`, { method: 'DELETE' });
 }
 
 export async function testDataSourceConnection(id: string): Promise<{ ok: boolean; message: string }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}/test`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { detail?: string }).detail || 'Test failed');
-  return data as { ok: boolean; message: string };
+  return request<{ ok: boolean; message: string }>(`/api/data-sources/${id}/test`, { method: 'POST' });
 }
 
 export async function neo4jDeleteAll(id: string): Promise<{ ok: boolean; message: string }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/data-sources/${id}/neo4j-delete-all`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { detail?: string }).detail || 'Delete all failed');
-  return data as { ok: boolean; message: string };
+  return request<{ ok: boolean; message: string }>(`/api/data-sources/${id}/neo4j-delete-all`, { method: 'POST' });
 }

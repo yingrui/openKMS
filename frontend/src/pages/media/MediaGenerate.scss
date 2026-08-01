@@ -45,7 +45,7 @@
   align-items: start;
 }
 
-@include max-width(960px) {
+@include max-width(ds.$km-layout-max) {
   .media-generate-body {
     grid-template-columns: 1fr;
   }

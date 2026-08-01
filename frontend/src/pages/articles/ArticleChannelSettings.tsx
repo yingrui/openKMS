@@ -454,7 +454,7 @@ export function ArticleChannelSettings() {
                   <p className="settings-page-hint">{t('channelSettings.reviewCriteriaEmpty')}</p>
                 </div>
               ) : (
-                <div className="ac-review-criteria-table-wrap">
+                <div className="ds-table-wrap">
                   <table className="ac-review-criteria-table">
                     <thead>
                       <tr>

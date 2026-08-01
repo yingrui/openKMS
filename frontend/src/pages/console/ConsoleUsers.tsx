@@ -10,10 +10,12 @@ import {
   type AdminUsersPage,
   type LocalUserRow,
 } from '../../data/adminUsersApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import './ConsoleUsers.scss';
 
 export function ConsoleUsers() {
   const { t } = useTranslation('console');
+  const confirm = useConfirm();
   const [page, setPage] = useState<AdminUsersPage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +70,15 @@ export function ConsoleUsers() {
   };
 
   const onDelete = async (u: LocalUserRow) => {
-    if (!window.confirm(t('users.deleteConfirm', { username: u.username }))) return;
+    if (
+      !(await confirm({
+        title: t('users.delete'),
+        message: t('users.deleteConfirm', { username: u.username }),
+        confirmLabel: t('users.delete'),
+        danger: true,
+      }))
+    )
+      return;
     try {
       await deleteLocalUser(u.id);
       toast.success(t('users.toastDeleted'));
@@ -145,7 +155,7 @@ export function ConsoleUsers() {
               />
             </div>
           </div>
-          <div className="console-users-table-wrap">
+          <div className="ds-table-wrap">
             <table className="console-users-table">
               <thead>
                 <tr>

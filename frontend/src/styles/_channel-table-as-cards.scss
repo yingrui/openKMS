@@ -1,0 +1,127 @@
+// Channel browse: table rows → cards at ≤ $bp-md-min.
+// Loaded from channel-page.scss. Row actions live in .channel-item-actions (CSS-only).
+
+@use 'design-system/mixins' as *;
+@use 'design-system/tokens' as ds;
+
+@include max-width(ds.$bp-md-min) {
+  .channel-table-wrap {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+
+    /* The wrap has no card surface here, so the footer must not look like one. */
+    .ds-pagination {
+      padding: var(--space-3) 0 0;
+      background: transparent;
+      border-top: none;
+    }
+  }
+
+  .channel-table thead {
+    display: none;
+  }
+
+  .channel-table,
+  .channel-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .channel-table tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--space-2);
+    align-items: start;
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-1);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .channel-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .channel-table tbody tr:hover {
+    background: var(--color-bg-elevated);
+  }
+
+  .channel-table-row--selected {
+    border-color: var(--color-accent);
+    background: var(--color-accent-subtle);
+  }
+
+  /* A card shows the checkbox and the primary cell; other columns drop out. */
+  .channel-table tbody td {
+    display: none;
+    padding: 0;
+    border: none;
+  }
+
+  .channel-table tbody td.channel-table-select-col {
+    display: block;
+    width: auto;
+    padding: 3px 0 0 0 !important;
+  }
+
+  .channel-table tbody td.channel-table-cell--primary {
+    display: block;
+    min-width: 0;
+  }
+
+  /* Meta already shows type; leading icon just eats title width. */
+  .channel-item > svg {
+    display: none;
+  }
+
+  .channel-item {
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .channel-item-text {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1px;
+  }
+
+  .channel-item-title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: normal;
+    text-overflow: unset;
+  }
+
+  .channel-item-meta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .channel-item-meta {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    line-height: 1.35;
+  }
+
+  .channel-item-actions {
+    display: flex;
+    flex-shrink: 0;
+    margin-right: calc(var(--space-1) * -1);
+  }
+
+  .channel-item-actions .ds-table-row-action {
+    padding: var(--space-1);
+  }
+}

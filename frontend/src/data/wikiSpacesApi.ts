@@ -1,17 +1,6 @@
 /** Wiki spaces and pages API. */
 import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
-
-async function parseError(res: Response): Promise<string> {
-  let msg = res.statusText;
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') msg = j.detail;
-  } catch {
-    /* ignore */
-  }
-  return msg;
-}
+import { getAuthHeaders, request } from './apiClient';
 
 export interface WikiSpaceResponse {
   id: string;
@@ -105,17 +94,9 @@ export async function fetchWikiSpaces(params?: {
   limit?: number;
   offset?: number;
 }): Promise<WikiSpaceListResponse> {
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces${qs ? `?${qs}` : ''}`, {
-    headers,
-    credentials: 'include',
+  return request<WikiSpaceListResponse>('/api/wiki-spaces', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function fetchAllWikiSpaces(): Promise<WikiSpaceResponse[]> {
@@ -133,15 +114,11 @@ export async function fetchAllWikiSpaces(): Promise<WikiSpaceResponse[]> {
 }
 
 export async function createWikiSpace(data: { name: string; description?: string }): Promise<WikiSpaceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces`, {
+  return request<WikiSpaceResponse>('/api/wiki-spaces', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function updateWikiSpace(
@@ -154,32 +131,19 @@ export async function updateWikiSpace(
     semantic_embedding_model_id?: string | null;
   }
 ): Promise<WikiSpaceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
+  return request<WikiSpaceResponse>(`/api/wiki-spaces/${spaceId}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteWikiSpace(spaceId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/wiki-spaces/${spaceId}`, { method: 'DELETE' });
 }
 
 export async function fetchWikiSpace(spaceId: string): Promise<WikiSpaceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}`, { headers, credentials: 'include' });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiSpaceResponse>(`/api/wiki-spaces/${spaceId}`);
 }
 
 export interface WikiSemanticIndexResponse {
@@ -202,18 +166,11 @@ export interface WikiSemanticMatchIdsResponse {
 
 /** Offline: embed all pages in the space (default embedding ApiModel). */
 export async function postWikiSpaceSemanticIndex(spaceId: string): Promise<WikiSemanticIndexResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/wiki-spaces/${encodeURIComponent(spaceId)}/semantic-index`,
-    {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: '{}',
-    }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiSemanticIndexResponse>(`/api/wiki-spaces/${encodeURIComponent(spaceId)}/semantic-index`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
 }
 
 export interface WikiSpaceDocumentLinkResponse {
@@ -233,47 +190,28 @@ export interface WikiSpaceDocumentListResponse {
 }
 
 export async function fetchWikiSpaceLinkedDocuments(spaceId: string): Promise<WikiSpaceDocumentListResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/documents`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiSpaceDocumentListResponse>(`/api/wiki-spaces/${spaceId}/documents`);
 }
 
 export async function linkDocumentToWikiSpace(
   spaceId: string,
   documentId: string
 ): Promise<WikiSpaceDocumentLinkResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/documents`, {
+  return request<WikiSpaceDocumentLinkResponse>(`/api/wiki-spaces/${spaceId}/documents`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ document_id: documentId }),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function unlinkDocumentFromWikiSpace(spaceId: string, documentId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/wiki-spaces/${spaceId}/documents/${encodeURIComponent(documentId)}`,
-    { method: 'DELETE', headers: { ...headers }, credentials: 'include' }
-  );
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/wiki-spaces/${spaceId}/documents/${encodeURIComponent(documentId)}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function fetchWikiSpaceGraph(spaceId: string): Promise<WikiLinkGraphResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/graph`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiLinkGraphResponse>(`/api/wiki-spaces/${spaceId}/graph`);
 }
 
 export async function fetchWikiPages(
@@ -281,18 +219,13 @@ export async function fetchWikiPages(
   pathPrefix?: string,
   opts?: { limit?: number; offset?: number }
 ): Promise<WikiPageListResponse> {
-  const headers = await getAuthHeaders();
-  const params = new URLSearchParams();
-  if (pathPrefix) params.set('path_prefix', pathPrefix);
-  if (opts?.limit != null) params.set('limit', String(opts.limit));
-  if (opts?.offset != null && opts.offset > 0) params.set('offset', String(opts.offset));
-  const q = params.toString();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages${q ? `?${q}` : ''}`, {
-    headers,
-    credentials: 'include',
+  return request<WikiPageListResponse>(`/api/wiki-spaces/${spaceId}/pages`, {
+    query: {
+      path_prefix: pathPrefix,
+      limit: opts?.limit,
+      offset: opts?.offset && opts.offset > 0 ? opts.offset : undefined,
+    },
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 const WIKI_PAGES_FETCH_SIZE = 500;
@@ -321,42 +254,28 @@ export async function fetchWikiSemanticPageMatches(
   q: string,
   opts?: { top_k?: number; text_match_limit?: number; signal?: AbortSignal }
 ): Promise<WikiSemanticMatchIdsResponse> {
-  const headers = await getAuthHeaders();
-  const params = new URLSearchParams();
-  params.set('q', q);
-  if (opts?.top_k != null) params.set('top_k', String(opts.top_k));
-  if (opts?.text_match_limit != null) params.set('text_match_limit', String(opts.text_match_limit));
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/wiki-spaces/${encodeURIComponent(spaceId)}/pages/semantic-matches?${params.toString()}`,
-    { headers, credentials: 'include', signal: opts?.signal }
+  return request<WikiSemanticMatchIdsResponse>(
+    `/api/wiki-spaces/${encodeURIComponent(spaceId)}/pages/semantic-matches`,
+    {
+      query: { q, top_k: opts?.top_k, text_match_limit: opts?.text_match_limit },
+      signal: opts?.signal,
+    },
   );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function fetchWikiPage(spaceId: string, pageId: string): Promise<WikiPageResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiPageResponse>(`/api/wiki-spaces/${spaceId}/pages/${pageId}`);
 }
 
 export async function createWikiPage(
   spaceId: string,
   data: { path: string; title: string; body?: string; metadata?: Record<string, unknown> | null }
 ): Promise<WikiPageResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages`, {
+  return request<WikiPageResponse>(`/api/wiki-spaces/${spaceId}/pages`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function updateWikiPage(
@@ -364,25 +283,15 @@ export async function updateWikiPage(
   pageId: string,
   data: { title?: string; body?: string; metadata?: Record<string, unknown> | null }
 ): Promise<WikiPageResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
+  return request<WikiPageResponse>(`/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function deleteWikiPage(spaceId: string, pageId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/${pageId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/wiki-spaces/${spaceId}/pages/${pageId}`, { method: 'DELETE' });
 }
 
 /** PUT upsert by logical path (e.g. guides/onboarding). */
@@ -391,26 +300,19 @@ export async function upsertWikiPageByPath(
   path: string,
   data: { title: string; body?: string; metadata?: Record<string, unknown> | null }
 ): Promise<WikiPageResponse> {
-  const headers = await getAuthHeaders();
   const enc = path
     .split('/')
     .map((s) => encodeURIComponent(s))
     .join('/');
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/pages/by-path/${enc}`, {
+  return request<WikiPageResponse>(`/api/wiki-spaces/${spaceId}/pages/by-path/${enc}`, {
     method: 'PUT',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function fetchWikiFiles(spaceId: string): Promise<WikiFileListResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files`, { headers, credentials: 'include' });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiFileListResponse>(`/api/wiki-spaces/${spaceId}/files`);
 }
 
 export function wikiFileContentUrl(spaceId: string, fileId: string): string {
@@ -422,28 +324,14 @@ export async function uploadWikiFile(
   file: File,
   wikiPageId?: string | null
 ): Promise<WikiFileResponse> {
-  const headers = await getAuthHeaders();
   const fd = new FormData();
   fd.append('file', file);
   if (wikiPageId) fd.append('wiki_page_id', wikiPageId);
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-    body: fd,
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<WikiFileResponse>(`/api/wiki-spaces/${spaceId}/files`, { method: 'POST', body: fd });
 }
 
 export async function deleteWikiFile(spaceId: string, fileId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/files/${fileId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/wiki-spaces/${spaceId}/files/${fileId}`, { method: 'DELETE' });
 }
 
 export interface WikiVaultImportResponse {
@@ -588,15 +476,14 @@ export async function importWikiVaultMarkdownFile(
   vaultPath: string,
   body: string
 ): Promise<{ wiki_path: string; warnings: string[] }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/import/vault/markdown-file`, {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ vault_path: vaultPath, body }),
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<{ wiki_path: string; warnings: string[] }>(
+    `/api/wiki-spaces/${spaceId}/import/vault/markdown-file`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: vaultPath, body }),
+    },
+  );
 }
 
 type VaultWorkEntry = { file: File; path: string };
@@ -702,15 +589,10 @@ export async function importWikiVaultFolder(
 
 /** Import from a single zip (same layout as folder upload). */
 export async function importWikiVaultZip(spaceId: string, zipFile: File): Promise<WikiVaultImportResponse> {
-  const headers = await getAuthHeaders();
   const fd = new FormData();
   fd.append('archive', zipFile);
-  const res = await authAwareFetch(`${config.apiUrl}/api/wiki-spaces/${spaceId}/import/vault`, {
+  return request<WikiVaultImportResponse>(`/api/wiki-spaces/${spaceId}/import/vault`, {
     method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
     body: fd,
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }

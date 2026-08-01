@@ -277,32 +277,11 @@
   margin-bottom: var(--space-5);
 }
 
-.knowledge-map-tree-panel-header h2 {
-  display: flex;
-  align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
-  font-size: var(--text-base);
-  font-weight: 600;
-  margin: 0;
-  color: var(--color-text);
-}
-
 .knowledge-map-new-node-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
-}
-
-.knowledge-map-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-  padding: var(--space-6);
 }
 
 .knowledge-map-dialog {
@@ -728,10 +707,6 @@
   color: var(--color-text);
   font-size: 0.9rem;
   min-width: 160px;
-}
-
-.knowledge-map-table-wrap {
-  overflow-x: auto;
 }
 
 .knowledge-map-table {

@@ -101,8 +101,9 @@ flowchart TB
 | **`App.tsx`** | 路由表、Provider 嵌套（见上图）、`ErrorBoundary`、懒加载页面 |
 | **`pages/`** | 每个路由一个页面，按领域分子目录（`documents/`、`articles/`、`wiki/`、`ontology/`、`console/` 等）。与上图对应即可，不必在此罗列每个文件名 |
 | **`components/`** | 跨路由复用的 UI（布局壳、markdown、图、错误边界）。仅单页使用的组件放在对应 `pages/` 旁 |
-| **`data/`** | 按 API 领域划分的 HTTP 客户端；统一经 `apiClient.ts` 的 **`authAwareFetch`** |
-| **`contexts/`** | 跨页 React 状态（认证、功能开关、通道列表） |
+| **`data/`** | 按 API 领域划分的 HTTP 客户端；域模块用 **`request()`** / **`requestRaw()`**（`apiClient.ts` 内封装 **`authAwareFetch`**） |
+| **`hooks/`** | 跨页 React 逻辑（`useIsMobile`、`useListFetch`、`useDebouncedValue` 等） |
+| **`contexts/`** | 跨页 React 状态（认证、功能开关、通道列表、**`ConfirmProvider`**、本体论移动端侧栏） |
 | **`config/`** | API 根路径与供 UI 门控用的 `PERM_*` 镜像 |
 | **`styles/`** | 全局设计系统 — 细则见 [design-system.md](design-system.md) |
 | **`i18n/`** | 语言包与 namespace（见下文） |
@@ -121,23 +122,30 @@ frontend/src/
 │   ├── markdown/, wiki/, agents/, knowledge-bases/, jobs/, ui/
 │   └── KnowledgeMapForceGraph*.tsx, ErrorBoundary, …
 ├── data/                       # 按后端领域划分的 *Api.ts（+ apiClient.ts）
-├── contexts/                   # Auth、FeatureToggles、DocumentChannels、ArticleChannels
+├── hooks/                      # useIsMobile、useListFetch、useDebouncedValue 等
+├── contexts/                   # Auth、FeatureToggles、通道、ConfirmProvider 等
 ├── config/                     # API 地址、PERM_* 镜像
 ├── styles/
-│   ├── design-system/          # token、mixin、全局 — 见 design-system.md
+│   ├── design-system/          # token、Dialog/EmptyState — 见 design-system.md
 │   └── account-page.scss
 ├── i18n/locales/{en,zh-CN}/    # 按界面划分的 namespace
 ├── graph/                      # 知识地图共用图模型
 └── utils/                      # permissionPatterns 等工具
 ```
 
+### 数据层与 hooks
+
+- **API 调用** — **`data/*Api.ts`** 使用 **`request<T>(path, { query, …init })`**：合并 auth/locale、`credentials: 'include'`、query 序列化、统一错误、**204** 返回 `undefined`。需 header 或非 JSON 时用 **`requestRaw`** / **`requestText`**。**`authAwareFetch`** 仅在 `apiClient.ts` 内（401 静默重试、session 过期）。**例外：** 登录前页面（`Login`、`Signup`、`OidcCallback`）用裸 `fetch`。
+- **列表页** — 搜索防抖：**`useDebouncedValue`**；分页列表：**`useListFetch`**（筛选变化自动重置页码）。文档/文章/媒体通道与 glossary 详情已接入。
+- **Shell Provider** — **`ConfirmProvider`**（`MainLayout`）提供 **`useConfirm()`**；**`OntologyMobileRailContext`** 仅用于本体论侧栏，不用于通道。
+
 ### 约定
 
-- **新功能页** — 在 `pages/<领域>/` 增加 `Feature.tsx` 与同目录 `Feature.scss`；在 `App.tsx` 注册懒加载路由；在 `data/` 新增或扩展 HTTP 模块。
-- **样式** — SCSS 中 `@use` 设计系统 token/mixin；间距与字号用 `var(--space-*)`、`var(--text-*)`；设置页宽度用 `ds.$km-layout-max`；Profile / 个人设置复用 `account-page.scss`（`account-*` 类）。
-- **导航与权限** — 侧栏用 `canAccessPath` 与功能开关；以后端权限为准。
-- **命名** — `*List` / `*Detail` / `*Settings` 表示浏览 → 详情 → 配置；文档与文章采用相同的通道模式（索引 → 通道树 → 通道内列表 → 设置）。
-- **去哪查** — 路由看 `App.tsx`；API 看 `data/*Api.ts`；外壳看 `components/Layout/`；token 与间距看 [design-system.md](design-system.md)。
+- **新功能页** — `pages/<领域>/Feature.tsx` + `Feature.scss`；`App.tsx` 懒加载路由；`data/` 经 **`request()`** 发请求；分页列表优先 **`useListFetch`**。
+- **样式与布局** — [design-system.md](design-system.md)；改共享样式或 shell 时跑 **`check:styles`** / **`check:app-layout`**。
+- **导航与权限** — `canAccessPath` + 功能开关；以后端权限为准。
+- **命名** — `*List` / `*Detail` / `*Settings`；文档与文章共用通道模式。
+- **去哪查** — 路由 `App.tsx`；API `data/*Api.ts`；外壳 `components/Layout/`；token [design-system.md](design-system.md)。
 
 ### 国际化（SPA）
 

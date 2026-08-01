@@ -487,11 +487,6 @@ body.openkms-agents-fullpage .agents-workspace {
     padding: var(--app-page-padding-y) var(--app-page-padding-x);
   }
 
-  /* Belt-and-suspenders: rail + compact must stay padding: 0 (matches list pages). */
-  .app-content--with-channel-rail.app-content--compact {
-    padding: 0;
-  }
-
   .app-content--compact:has(.kb-detail--qa-fullpage) {
     padding: 0;
   }

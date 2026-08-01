@@ -51,12 +51,8 @@
 }
 
 .list-index-stat--items .list-index-stat-icon {
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-[data-theme='dark'] .list-index-stat--items .list-index-stat-icon {
-  background: #1e3a5f;
+  background: var(--color-info-bg);
+  color: var(--color-info-fg);
 }
 
 .list-index-stat-value {

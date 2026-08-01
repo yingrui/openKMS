@@ -1,6 +1,5 @@
 /** API for knowledge base management (backend). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request, requestRaw } from './apiClient';
 import { sortAgentMessagesByCreatedAt, type AgentConversationResponse, type AgentMessageItem } from './agentApi';
 import type { JobResponse } from './jobsApi';
 
@@ -199,18 +198,12 @@ export async function askQuestionStream(
   onEvent: (e: KbAskStreamEvent) => void,
   options?: { signal?: AbortSignal }
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/ask/stream`, {
+  const res = await requestRaw(`/api/knowledge-bases/${kbId}/ask/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
     signal: options?.signal,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to start answer stream');
-  }
   if (!res.body) throw new Error('No response body');
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -336,48 +329,31 @@ export async function listKbAgentConversations(
   kbId: string,
   options?: { limit?: number }
 ): Promise<AgentConversationResponse[]> {
-  const headers = await getAuthHeaders();
-  const p = new URLSearchParams();
-  if (options?.limit) p.set('limit', String(options.limit));
-  const q = p.toString();
-  const url = `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations${
-    q ? `?${q}` : ''
-  }`;
-  const res = await authAwareFetch(url, { headers, credentials: 'include' });
-  if (!res.ok) throw new Error(`Failed to list conversations: ${res.status}`);
-  return res.json();
+  return request<AgentConversationResponse[]>(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations`,
+    { query: { limit: options?.limit } },
+  );
 }
 
 export async function createKbAgentConversation(
   kbId: string,
   body?: { title?: string | null }
 ): Promise<AgentConversationResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations`,
+  return request<AgentConversationResponse>(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations`,
     {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body ?? {}),
-    }
+    },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to create conversation');
-  }
-  return res.json();
 }
 
 export async function deleteKbAgentConversation(kbId: string, conversationId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
-      conversationId
-    )}`,
-    { method: 'DELETE', headers, credentials: 'include' }
+  return request<void>(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(conversationId)}`,
+    { method: 'DELETE' },
   );
-  if (!res.ok) throw new Error(`Failed to delete conversation: ${res.status}`);
 }
 
 export async function patchKbAgentConversation(
@@ -385,23 +361,14 @@ export async function patchKbAgentConversation(
   conversationId: string,
   body: { title: string }
 ): Promise<AgentConversationResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
-      conversationId
-    )}`,
+  return request<AgentConversationResponse>(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(conversationId)}`,
     {
       method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
-    }
+    },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to update conversation');
-  }
-  return res.json();
 }
 
 export interface AgentMessageListResponse {
@@ -416,19 +383,12 @@ export async function listKbAgentMessagesPage(
   conversationId: string,
   options?: { limit?: number; offset?: number }
 ): Promise<AgentMessageListResponse> {
-  const headers = await getAuthHeaders();
-  const p = new URLSearchParams();
-  if (options?.limit != null) p.set('limit', String(options.limit));
-  if (options?.offset != null) p.set('offset', String(options.offset));
-  const q = p.toString();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+  return request<AgentMessageListResponse>(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
       conversationId
-    )}/messages${q ? `?${q}` : ''}`,
-    { headers, credentials: 'include' }
+    )}/messages`,
+    { query: { limit: options?.limit, offset: options?.offset } },
   );
-  if (!res.ok) throw new Error(`Failed to load messages: ${res.status}`);
-  return res.json() as Promise<AgentMessageListResponse>;
 }
 
 export async function listAllKbAgentMessages(kbId: string, conversationId: string): Promise<AgentMessageItem[]> {
@@ -456,15 +416,13 @@ export async function postKbAgentMessageStream(
   onEvent: (e: KbQaPersistedStreamEvent) => void,
   options?: { session_id?: string | null; signal?: AbortSignal }
 ): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
+  const res = await requestRaw(
+    `/api/knowledge-bases/${encodeURIComponent(kbId)}/agent-conversations/${encodeURIComponent(
       conversationId
     )}/messages`,
     {
       method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         content,
         stream: true,
@@ -473,10 +431,6 @@ export async function postKbAgentMessageStream(
       signal: options?.signal,
     }
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(typeof err.detail === 'string' ? err.detail : 'Failed to start answer stream');
-  }
   if (!res.body) throw new Error('No response body');
   const reader = res.body.getReader();
   const dec = new TextDecoder();
@@ -507,17 +461,9 @@ export async function fetchKnowledgeBases(params?: {
   limit?: number;
   offset?: number;
 }): Promise<KnowledgeBaseListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<KnowledgeBaseListResponse>('/api/knowledge-bases', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(`Failed to fetch knowledge bases: ${res.status}`);
-  return res.json();
 }
 
 /** Full list for dropdowns. Paginates at API max page size (200). */
@@ -536,31 +482,18 @@ export async function fetchAllKnowledgeBases(): Promise<KnowledgeBaseResponse[]>
 }
 
 export async function fetchKnowledgeBase(kbId: string): Promise<KnowledgeBaseResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch knowledge base: ${res.status}`);
-  return res.json();
+  return request<KnowledgeBaseResponse>(`/api/knowledge-bases/${kbId}`);
 }
 
 export async function createKnowledgeBase(data: {
   name: string;
   description?: string;
 }): Promise<KnowledgeBaseResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases`, {
+  return request<KnowledgeBaseResponse>('/api/knowledge-bases', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create knowledge base');
-  }
-  return res.json();
 }
 
 export async function updateKnowledgeBase(
@@ -576,31 +509,15 @@ export async function updateKnowledgeBase(
     metadata_keys?: string[] | null;
   }
 ): Promise<KnowledgeBaseResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
+  return request<KnowledgeBaseResponse>(`/api/knowledge-bases/${kbId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update knowledge base');
-  }
-  return res.json();
 }
 
 export async function deleteKnowledgeBase(kbId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete knowledge base');
-  }
+  return request<void>(`/api/knowledge-bases/${kbId}`, { method: 'DELETE' });
 }
 
 // --- KB Documents ---
@@ -609,17 +526,9 @@ export async function fetchKBDocuments(
   kbId: string,
   params?: { offset?: number; limit?: number }
 ): Promise<KBDocumentListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<KBDocumentListResponse>(`/api/knowledge-bases/${kbId}/documents`, {
+    query: { offset: params?.offset, limit: params?.limit },
   });
-  if (!res.ok) throw new Error(`Failed to fetch KB documents: ${res.status}`);
-  return res.json();
 }
 
 /** Fetch every document linked to a KB (paginates until complete). */
@@ -637,74 +546,36 @@ export async function fetchAllKBDocuments(kbId: string): Promise<KBDocumentRespo
 }
 
 export async function addKBDocument(kbId: string, documentId: string): Promise<KBDocumentResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents`, {
+  return request<KBDocumentResponse>(`/api/knowledge-bases/${kbId}/documents`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ document_id: documentId }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to add document');
-  }
-  return res.json();
 }
 
 export async function removeKBDocument(kbId: string, documentId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/documents/${documentId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to remove document');
-  }
+  return request<void>(`/api/knowledge-bases/${kbId}/documents/${documentId}`, { method: 'DELETE' });
 }
 
 // --- KB wiki spaces ---
 
 export async function fetchKBWikiSpaces(kbId: string): Promise<KBWikiSpaceResponse[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch linked wiki spaces: ${res.status}`);
-  return res.json();
+  return request<KBWikiSpaceResponse[]>(`/api/knowledge-bases/${kbId}/wiki-spaces`);
 }
 
 export async function addKBWikiSpace(kbId: string, wikiSpaceId: string): Promise<KBWikiSpaceResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces`, {
+  return request<KBWikiSpaceResponse>(`/api/knowledge-bases/${kbId}/wiki-spaces`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ wiki_space_id: wikiSpaceId }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to link wiki space');
-  }
-  return res.json();
 }
 
 export async function removeKBWikiSpace(kbId: string, wikiSpaceId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}`,
-    {
-      method: 'DELETE',
-      headers: { ...headers },
-      credentials: 'include',
-    }
+  return request<void>(
+    `/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}`,
+    { method: 'DELETE' },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to remove wiki space');
-  }
 }
 
 // --- FAQs ---
@@ -713,35 +584,20 @@ export async function fetchFAQs(
   kbId: string,
   params?: { offset?: number; limit?: number }
 ): Promise<FAQListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<FAQListResponse>(`/api/knowledge-bases/${kbId}/faqs`, {
+    query: { offset: params?.offset, limit: params?.limit },
   });
-  if (!res.ok) throw new Error(`Failed to fetch FAQs: ${res.status}`);
-  return res.json();
 }
 
 export async function polishFAQAnswer(
   kbId: string,
   data: { question: string; answer: string }
 ): Promise<{ answer: string }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/polish`, {
+  return request<{ answer: string }>(`/api/knowledge-bases/${kbId}/faqs/polish`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to polish FAQ answer');
-  }
-  return res.json();
 }
 
 export async function createFAQ(
@@ -753,18 +609,11 @@ export async function createFAQ(
     doc_metadata?: Record<string, unknown> | null;
   }
 ): Promise<FAQResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs`, {
+  return request<FAQResponse>(`/api/knowledge-bases/${kbId}/faqs`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create FAQ');
-  }
-  return res.json();
 }
 
 export async function updateFAQ(
@@ -776,31 +625,15 @@ export async function updateFAQ(
     doc_metadata?: Record<string, unknown> | null;
   }
 ): Promise<FAQResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
+  return request<FAQResponse>(`/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update FAQ');
-  }
-  return res.json();
 }
 
 export async function deleteFAQ(kbId: string, faqId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/${faqId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete FAQ');
-  }
+  return request<void>(`/api/knowledge-bases/${kbId}/faqs/${faqId}`, { method: 'DELETE' });
 }
 
 /** Generate FAQ pairs (preview only; use saveFAQs to persist). */
@@ -808,18 +641,11 @@ export async function generateFAQs(
   kbId: string,
   data: { document_ids: string[]; model_id: string; prompt?: string }
 ): Promise<FAQGenerateResult[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/generate`, {
+  return request<FAQGenerateResult[]>(`/api/knowledge-bases/${kbId}/faqs/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to generate FAQs');
-  }
-  return res.json();
 }
 
 /** Save selected FAQ pairs to the knowledge base. */
@@ -833,18 +659,11 @@ export async function saveFAQs(
     doc_metadata?: Record<string, unknown> | null;
   }[]
 ): Promise<FAQResponse[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/faqs/batch`, {
+  return request<FAQResponse[]>(`/api/knowledge-bases/${kbId}/faqs/batch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ items }),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to save FAQs');
-  }
-  return res.json();
 }
 
 // --- Chunks ---
@@ -853,31 +672,13 @@ export async function fetchChunks(
   kbId: string,
   params?: { offset?: number; limit?: number }
 ): Promise<ChunkListResponse> {
-  const headers = await getAuthHeaders();
-  const query = new URLSearchParams();
-  if (params?.offset) query.set('offset', String(params.offset));
-  if (params?.limit) query.set('limit', String(params.limit));
-  const qs = query.toString() ? `?${query.toString()}` : '';
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks${qs}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ChunkListResponse>(`/api/knowledge-bases/${kbId}/chunks`, {
+    query: { offset: params?.offset, limit: params?.limit },
   });
-  if (!res.ok) throw new Error(`Failed to fetch chunks: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchChunkById(kbId: string, chunkId: string): Promise<ChunkResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
-    method: 'GET',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to load chunk');
-  }
-  return res.json();
+  return request<ChunkResponse>(`/api/knowledge-bases/${kbId}/chunks/${chunkId}`);
 }
 
 export async function updateChunk(
@@ -885,31 +686,15 @@ export async function updateChunk(
   chunkId: string,
   data: { content?: string; doc_metadata?: Record<string, unknown> | null }
 ): Promise<ChunkResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
+  return request<ChunkResponse>(`/api/knowledge-bases/${kbId}/chunks/${chunkId}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update chunk');
-  }
-  return res.json();
 }
 
 export async function deleteAllChunks(kbId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/chunks`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete chunks');
-  }
+  return request<void>(`/api/knowledge-bases/${kbId}/chunks`, { method: 'DELETE' });
 }
 
 // --- Search ---
@@ -926,18 +711,11 @@ export async function searchKnowledgeBase(
     force_dense?: boolean;
   }
 ): Promise<SearchResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/search`, {
+  return request<SearchResponse>(`/api/knowledge-bases/${kbId}/search`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Search failed');
-  }
-  return res.json();
 }
 
 // --- Ask (QA) ---
@@ -950,40 +728,16 @@ export async function askQuestion(
     session_id?: string | null;
   }
 ): Promise<AskResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/ask`, {
+  return request<AskResponse>(`/api/knowledge-bases/${kbId}/ask`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to get answer');
-  }
-  return res.json();
 }
 
 /** Queue worker `run_kb_index` (openkms-cli kb-index). Same job row shape as `POST /api/jobs`. */
 export async function enqueueKnowledgeBaseIndexJob(kbId: string): Promise<JobResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/knowledge-bases/${kbId}/index-job`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const detail = err.detail;
-    const msg =
-      typeof detail === 'string'
-        ? detail
-        : detail && typeof detail === 'object' && 'message' in detail
-          ? String((detail as { message?: string }).message)
-          : 'Failed to queue indexing job';
-    throw new Error(msg);
-  }
-  return res.json();
+  return request<JobResponse>(`/api/knowledge-bases/${kbId}/index-job`, { method: 'POST' });
 }
 
 /** Re-index wiki pages from one linked wiki space (one page per chunk when possible). */
@@ -991,25 +745,8 @@ export async function enqueueKnowledgeBaseWikiSpaceIndexJob(
   kbId: string,
   wikiSpaceId: string
 ): Promise<JobResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}/index-job`,
-    {
-      method: 'POST',
-      headers: { ...headers },
-      credentials: 'include',
-    }
+  return request<JobResponse>(
+    `/api/knowledge-bases/${kbId}/wiki-spaces/${encodeURIComponent(wikiSpaceId)}/index-job`,
+    { method: 'POST' },
   );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const detail = err.detail;
-    const msg =
-      typeof detail === 'string'
-        ? detail
-        : detail && typeof detail === 'object' && 'message' in detail
-          ? String((detail as { message?: string }).message)
-          : 'Failed to queue wiki space indexing job';
-    throw new Error(msg);
-  }
-  return res.json();
 }

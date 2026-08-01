@@ -7,6 +7,7 @@ import {
   resumeProjectInterrupt,
   truncateProjectMessagesFromMessage,
 } from '../../data/projectsApi';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface Params {
   projectId: string;
@@ -41,6 +42,7 @@ export function useProjectAgentStream({
   const [hitlBusy, setHitlBusy] = useState(false);
   const [reverting, setReverting] = useState(false);
   const [prefillInput, setPrefillInput] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const applyStreamEvent = useCallback(
     (ev: Parameters<typeof applyProjectStreamEvent>[0], asstStreamId: string, userTempId?: string) => {
@@ -128,30 +130,36 @@ export function useProjectAgentStream({
   };
 
   const onRevertUserMessage = useCallback(
-    (userLine: ChatMessage) => {
+    async (userLine: ChatMessage) => {
       if (!convId || loading || reverting || streamingRef.current) return;
       if (!userLine.id) return;
-      if (!window.confirm(t('chat.confirmRevert'))) return;
+      if (
+        !(await confirm({
+          title: 'Revert message',
+          message: t('chat.confirmRevert'),
+          confirmLabel: 'Revert',
+          danger: true,
+        }))
+      )
+        return;
       const saved = userLine.content;
       setReverting(true);
       setInterrupt(null);
       setTodos([]);
       setTodoRevision(0);
-      void (async () => {
-        try {
-          await truncateProjectMessagesFromMessage(projectId, convId, userLine.id!);
-          setPrefillInput(saved);
-          await loadMessages(convId);
-          void loadConversations();
-          toast.success(t('chat.revertOk'));
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : t('chat.revertFailed'));
-        } finally {
-          setReverting(false);
-        }
-      })();
+      try {
+        await truncateProjectMessagesFromMessage(projectId, convId, userLine.id!);
+        setPrefillInput(saved);
+        await loadMessages(convId);
+        void loadConversations();
+        toast.success(t('chat.revertOk'));
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : t('chat.revertFailed'));
+      } finally {
+        setReverting(false);
+      }
     },
-    [convId, loadMessages, loadConversations, loading, projectId, reverting, streamingRef, t],
+    [convId, confirm, loadMessages, loadConversations, loading, projectId, reverting, streamingRef, t],
   );
 
   return {

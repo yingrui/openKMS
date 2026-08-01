@@ -1,6 +1,5 @@
 /** API for pipeline configurations (backend). */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface PipelineResponse {
   id: string;
@@ -42,31 +41,21 @@ export interface PipelineUpdate {
 }
 
 export async function fetchTemplateVariables(): Promise<Record<string, string>> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/template-variables`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) return {};
-  const data = await res.json();
-  return data.variables || {};
+  try {
+    const data = await request<{ variables?: Record<string, string> }>('/api/pipelines/template-variables');
+    return data.variables || {};
+  } catch {
+    return {};
+  }
 }
 
 export async function fetchPipelines(params?: {
   limit?: number;
   offset?: number;
 }): Promise<PipelineListResponse> {
-  const query = new URLSearchParams();
-  if (params?.limit != null) query.set('limit', String(params.limit));
-  if (params?.offset != null) query.set('offset', String(params.offset));
-  const qs = query.toString();
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines${qs ? `?${qs}` : ''}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<PipelineListResponse>('/api/pipelines', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) throw new Error(`Failed to fetch pipelines: ${res.status}`);
-  return res.json();
 }
 
 export async function fetchAllPipelines(): Promise<PipelineResponse[]> {
@@ -84,54 +73,25 @@ export async function fetchAllPipelines(): Promise<PipelineResponse[]> {
 }
 
 export async function fetchPipelineById(id: string): Promise<PipelineResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/${id}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(`Failed to fetch pipeline: ${res.status}`);
-  return res.json();
+  return request<PipelineResponse>(`/api/pipelines/${id}`);
 }
 
 export async function createPipeline(data: PipelineCreate): Promise<PipelineResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines`, {
+  return request<PipelineResponse>('/api/pipelines', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to create pipeline');
-  }
-  return res.json();
 }
 
 export async function updatePipeline(id: string, data: PipelineUpdate): Promise<PipelineResponse> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/${id}`, {
+  return request<PipelineResponse>(`/api/pipelines/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...headers },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-    credentials: 'include',
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to update pipeline');
-  }
-  return res.json();
 }
 
 export async function deletePipeline(id: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/pipelines/${id}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || 'Failed to delete pipeline');
-  }
+  return request<void>(`/api/pipelines/${id}`, { method: 'DELETE' });
 }

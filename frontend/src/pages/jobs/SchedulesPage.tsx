@@ -112,7 +112,7 @@ export function SchedulesPage() {
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-      <div className="jobs-table-wrap">
+      <div className="ds-table-wrap">
         {loading ? (
           <div className="jobs-loading">
             <Loader2 size={32} className="jobs-loading-spinner" />

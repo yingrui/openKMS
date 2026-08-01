@@ -34,6 +34,7 @@ import {
   type EvaluationRunListItem,
   type EvaluationCompareResponse,
 } from '../../data/evaluationsApi';
+import { PanelToolbar } from '../../styles/design-system';
 
 const EVAL_TYPE_SEARCH = 'search_retrieval';
 const EVAL_TYPE_QA = 'qa_answer';
@@ -387,7 +388,7 @@ export function EvaluationDatasetDetail() {
         <p className="eval-import-csv-hint">{t('evaluationDetail.importCsvHint')}</p>
       </div>
 
-      <div className={`eval-items-table-wrapper${itemsLoading ? ' eval-items-table-wrapper--loading' : ''}`}>
+      <div className={`ds-table-wrap${itemsLoading ? ' ds-table-wrap--loading' : ''}`}>
         <table className="eval-items-table">
           <thead>
             <tr>
@@ -501,52 +502,55 @@ export function EvaluationDatasetDetail() {
       })()}
 
       <section className="eval-detail-subsection">
-        <div className="eval-detail-subsection-header">
-          <h2>{t('evaluationDetail.runHistory')}</h2>
-          <div className="eval-run-controls">
-            <label className="eval-run-type">
-              <span>{t('evaluationDetail.typeLabel')}</span>
-              <select
-                value={evaluationType}
-                onChange={(e) => setEvaluationType(e.target.value)}
-                disabled={running}
-                className="eval-detail-type-select"
+        <PanelToolbar
+          className="eval-detail-subsection-header"
+          leading={<span className="eval-detail-subsection-title">{t('evaluationDetail.runHistory')}</span>}
+          actions={
+            <div className="eval-run-controls">
+              <label className="eval-run-type">
+                <span>{t('evaluationDetail.typeLabel')}</span>
+                <select
+                  value={evaluationType}
+                  onChange={(e) => setEvaluationType(e.target.value)}
+                  disabled={running}
+                  className="eval-detail-type-select"
+                >
+                  <option value={EVAL_TYPE_SEARCH}>{t('evaluationDetail.evalTypeSearch')}</option>
+                  <option value={EVAL_TYPE_QA}>{t('evaluationDetail.evalTypeQa')}</option>
+                  <option value={EVAL_TYPE_WIKI_COVERAGE} disabled={!dataset.wiki_space_id}>
+                    {t('evaluationDetail.evalTypeWikiCoverage')}
+                  </option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleRunEvaluation}
+                disabled={running || itemsTotal === 0}
+                title={itemsTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
               >
-                <option value={EVAL_TYPE_SEARCH}>{t('evaluationDetail.evalTypeSearch')}</option>
-                <option value={EVAL_TYPE_QA}>{t('evaluationDetail.evalTypeQa')}</option>
-                <option value={EVAL_TYPE_WIKI_COVERAGE} disabled={!dataset.wiki_space_id}>
-                  {t('evaluationDetail.evalTypeWikiCoverage')}
-                </option>
-              </select>
-            </label>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleRunEvaluation}
-              disabled={running || itemsTotal === 0}
-              title={itemsTotal === 0 ? t('evaluationDetail.runNeedsItems') : undefined}
-            >
-              {running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
-              <span>{running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => loadRuns()}
-              disabled={runsLoading}
-            >
-              {runsLoading ? <Loader2 size={18} className="animate-spin" /> : null}
-              <span>{t('shared.refresh')}</span>
-            </button>
-          </div>
-        </div>
+                {running ? <Loader2 size={18} className="animate-spin" /> : <Play size={18} />}
+                <span>{running ? t('evaluationDetail.running') : t('evaluationDetail.runEvaluation')}</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => loadRuns()}
+                disabled={runsLoading}
+              >
+                {runsLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+                <span>{t('shared.refresh')}</span>
+              </button>
+            </div>
+          }
+        />
         {itemsTotal === 0 && (
           <p className="eval-run-hint">{t('evaluationDetail.runNeedsItems')}</p>
         )}
         {runs.length === 0 ? (
           <p className="eval-empty-text">{t('evaluationDetail.emptyRuns')}</p>
         ) : (
-          <div className="eval-items-table-wrapper">
+          <div className="ds-table-wrap">
             <table className="eval-items-table eval-runs-table">
               <thead>
                 <tr>
@@ -649,7 +653,7 @@ export function EvaluationDatasetDetail() {
           </button>
         </div>
         {compareData && compareData.rows.length > 0 && (
-          <div className="eval-items-table-wrapper eval-compare-table-wrap">
+          <div className="ds-table-wrap eval-compare-table-wrap">
             <table className="eval-items-table">
               <thead>
                 <tr>

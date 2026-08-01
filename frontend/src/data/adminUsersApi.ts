@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export interface AdminUserRow {
   id: string;
@@ -23,56 +22,19 @@ export interface AdminUsersPage {
 }
 
 export async function fetchAdminUsersPage(): Promise<AdminUsersPage> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || res.statusText);
-  }
-  return res.json();
+  return request<AdminUsersPage>('/api/admin/users');
 }
 
 export async function patchLocalUser(userId: string, is_admin: boolean): Promise<LocalUserRow> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users/${userId}`, {
+  return request<LocalUserRow>(`/api/admin/users/${userId}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_admin }),
   });
-  if (!res.ok) {
-    let msg = res.statusText;
-    try {
-      const j = await res.json();
-      if (typeof j.detail === 'string') msg = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
-  return res.json();
 }
 
 export async function deleteLocalUser(userId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users/${userId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    let msg = res.statusText;
-    try {
-      const j = await res.json();
-      if (typeof j.detail === 'string') msg = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
+  return request<void>(`/api/admin/users/${userId}`, { method: 'DELETE' });
 }
 
 export async function createLocalUser(body: {
@@ -81,22 +43,9 @@ export async function createLocalUser(body: {
   password: string;
   is_admin: boolean;
 }): Promise<LocalUserRow> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/admin/users`, {
+  return request<LocalUserRow>('/api/admin/users', {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    let msg = res.statusText;
-    try {
-      const j = await res.json();
-      if (typeof j.detail === 'string') msg = j.detail;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
-  }
-  return res.json();
 }

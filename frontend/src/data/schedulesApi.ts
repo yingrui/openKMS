@@ -1,5 +1,4 @@
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export type ScheduleMode = 'stateless' | 'stateful';
 export type OnRunCompleted = 'keep' | 'delete';
@@ -65,88 +64,43 @@ export interface ProjectAgentSchedulePatch {
   on_run_completed?: OnRunCompleted;
 }
 
-async function parseError(res: Response): Promise<string> {
-  try {
-    const j = await res.json();
-    if (typeof j.detail === 'string') return j.detail;
-  } catch {
-    /* ignore */
-  }
-  return res.statusText;
-}
-
 export async function fetchSchedules(params?: {
   limit?: number;
   offset?: number;
 }): Promise<ScheduleListResponse> {
-  const headers = await getAuthHeaders();
-  const q = new URLSearchParams();
-  if (params?.limit != null) q.set('limit', String(params.limit));
-  if (params?.offset != null) q.set('offset', String(params.offset));
-  const qs = q.toString();
-  const res = await authAwareFetch(`${config.apiUrl}/api/schedules${qs ? `?${qs}` : ''}`, {
-    headers: { ...headers },
-    credentials: 'include',
+  return request<ScheduleListResponse>('/api/schedules', {
+    query: { limit: params?.limit, offset: params?.offset },
   });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch schedules: ${res.status}`);
-  }
-  return res.json();
 }
 
 export async function patchSchedule(
   id: string,
   body: { enabled?: boolean; cron?: string | null; timezone?: string; prompt?: string },
 ): Promise<Schedule> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/schedules/${id}`, {
+  return request<Schedule>(`/api/schedules/${id}`, {
     method: 'PATCH',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(await parseError(res));
-  }
-  return res.json();
 }
 
 export async function runScheduleNow(id: string): Promise<{ job_id: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/schedules/${id}/run-now`, {
-    method: 'POST',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) {
-    throw new Error(await parseError(res));
-  }
-  return res.json();
+  return request<{ job_id: number }>(`/api/schedules/${id}/run-now`, { method: 'POST' });
 }
 
 export async function listProjectSchedules(projectId: string): Promise<ProjectAgentSchedule[]> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/schedules`, {
-    headers,
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<ProjectAgentSchedule[]>(`/api/projects/${projectId}/schedules`);
 }
 
 export async function createProjectSchedule(
   projectId: string,
   body: ProjectAgentScheduleCreate,
 ): Promise<ProjectAgentSchedule> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/projects/${projectId}/schedules`, {
+  return request<ProjectAgentSchedule>(`/api/projects/${projectId}/schedules`, {
     method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
 }
 
 export async function patchProjectSchedule(
@@ -154,48 +108,24 @@ export async function patchProjectSchedule(
   scheduleId: string,
   body: ProjectAgentSchedulePatch,
 ): Promise<ProjectAgentSchedule> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/schedules/${scheduleId}`,
-    {
-      method: 'PATCH',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<ProjectAgentSchedule>(`/api/projects/${projectId}/schedules/${scheduleId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function deleteProjectSchedule(projectId: string, scheduleId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/schedules/${scheduleId}`,
-    {
-      method: 'DELETE',
-      headers,
-      credentials: 'include',
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
+  return request<void>(`/api/projects/${projectId}/schedules/${scheduleId}`, { method: 'DELETE' });
 }
 
 export async function runProjectScheduleNow(
   projectId: string,
   scheduleId: string,
 ): Promise<{ job_id: number }> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(
-    `${config.apiUrl}/api/projects/${projectId}/schedules/${scheduleId}/run-now`,
-    {
-      method: 'POST',
-      headers,
-      credentials: 'include',
-    },
-  );
-  if (!res.ok) throw new Error(await parseError(res));
-  return res.json();
+  return request<{ job_id: number }>(`/api/projects/${projectId}/schedules/${scheduleId}/run-now`, {
+    method: 'POST',
+  });
 }
 
 export function scheduleKindLabel(kind: string, t: (key: string) => string): string {

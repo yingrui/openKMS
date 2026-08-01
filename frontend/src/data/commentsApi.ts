@@ -1,6 +1,5 @@
 /** Content comments API. */
-import { config } from '../config';
-import { getAuthHeaders, authAwareFetch } from './apiClient';
+import { request } from './apiClient';
 
 export type CommentResourceType =
   | 'article'
@@ -35,19 +34,14 @@ export async function fetchComments(
   resourceId: string,
   opts?: { limit?: number; offset?: number },
 ): Promise<ContentCommentListResponse> {
-  const headers = await getAuthHeaders();
-  const params = new URLSearchParams({
-    resource_type: resourceType,
-    resource_id: resourceId,
+  return request<ContentCommentListResponse>('/api/comments', {
+    query: {
+      resource_type: resourceType,
+      resource_id: resourceId,
+      limit: opts?.limit,
+      offset: opts?.offset,
+    },
   });
-  if (opts?.limit != null) params.set('limit', String(opts.limit));
-  if (opts?.offset != null) params.set('offset', String(opts.offset));
-  const res = await authAwareFetch(`${config.apiUrl}/api/comments?${params}`, {
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function createComment(input: {
@@ -56,53 +50,35 @@ export async function createComment(input: {
   body: string;
   rank: number;
 }): Promise<ContentCommentOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/comments`, {
+  return request<ContentCommentOut>('/api/comments', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function createCommentReply(
   commentId: string,
   body: string,
 ): Promise<ContentCommentOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/comments/${commentId}/replies`, {
+  return request<ContentCommentOut>(`/api/comments/${commentId}/replies`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ body }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function updateComment(
   commentId: string,
   body: { body?: string; rank?: number },
 ): Promise<ContentCommentOut> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/comments/${commentId}`, {
+  return request<ContentCommentOut>(`/api/comments/${commentId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 
 export async function deleteComment(commentId: string): Promise<void> {
-  const headers = await getAuthHeaders();
-  const res = await authAwareFetch(`${config.apiUrl}/api/comments/${commentId}`, {
-    method: 'DELETE',
-    headers: { ...headers },
-    credentials: 'include',
-  });
-  if (!res.ok) throw new Error(await res.text());
+  return request<void>(`/api/comments/${commentId}`, { method: 'DELETE' });
 }
