@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { Box, Link2, ArrowRight } from 'lucide-react';
+import { Box, Code2, Link2, ArrowRight, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchObjectTypes,
@@ -9,6 +9,12 @@ import {
   type ObjectTypeResponse,
   type LinkTypeResponse,
 } from '../../data/ontologyApi';
+import {
+  fetchOntologyActionTypes,
+  fetchOntologyFunctions,
+  type OntologyActionTypeResponse,
+  type OntologyFunctionResponse,
+} from '../../data/ontologyFunctionsApi';
 import {
   CARD_PREVIEW_LIMIT,
   LIST_PAGE_SIZE_DEFAULT,
@@ -43,8 +49,23 @@ export function OntologyList() {
   const { t: tc } = useTranslation('common');
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
   const [linkTypes, setLinkTypes] = useState<LinkTypeResponse[]>([]);
+  const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
+  const [actionTypes, setActionTypes] = useState<OntologyActionTypeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewModeState] = useState<CardListGraphViewMode>(readOntologyView);
+
+  const [objPage, setObjPage] = useState(0);
+  const [linkPage, setLinkPage] = useState(0);
+  const [fnPage, setFnPage] = useState(0);
+  const [actionPage, setActionPage] = useState(0);
+  const [listPageSize, setListPageSize] = useState(LIST_PAGE_SIZE_DEFAULT);
+
+  const resetListPages = () => {
+    setObjPage(0);
+    setLinkPage(0);
+    setFnPage(0);
+    setActionPage(0);
+  };
 
   const switchView = (mode: CardListGraphViewMode) => {
     setViewModeState(mode);
@@ -53,22 +74,27 @@ export function OntologyList() {
     } catch {
       /* ignore */
     }
-    setObjPage(0);
-    setLinkPage(0);
+    resetListPages();
   };
 
-  const [objPage, setObjPage] = useState(0);
-  const [linkPage, setLinkPage] = useState(0);
-  const [listPageSize, setListPageSize] = useState(LIST_PAGE_SIZE_DEFAULT);
+  const objectTypeNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ot of objectTypes) map.set(ot.id, ot.name);
+    return map;
+  }, [objectTypes]);
 
   const load = async () => {
     try {
-      const [objRes, linkRes] = await Promise.all([
+      const [objRes, linkRes, fnRes, actions] = await Promise.all([
         fetchObjectTypes({ countFromNeo4j: true }),
         fetchLinkTypes({ countFromNeo4j: true }),
+        fetchOntologyFunctions(),
+        fetchOntologyActionTypes(),
       ]);
       setObjectTypes(objRes.items);
       setLinkTypes(linkRes.items);
+      setFunctions(fnRes.items);
+      setActionTypes(actions);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : t('ontology.loadFailed'));
     } finally {
@@ -92,6 +118,14 @@ export function OntologyList() {
     () => (isCardView ? linkTypes.slice(0, CARD_PREVIEW_LIMIT) : linkTypes),
     [linkTypes, isCardView],
   );
+  const cardFunctions = useMemo(
+    () => (isCardView ? functions.slice(0, CARD_PREVIEW_LIMIT) : functions),
+    [functions, isCardView],
+  );
+  const cardActionTypes = useMemo(
+    () => (isCardView ? actionTypes.slice(0, CARD_PREVIEW_LIMIT) : actionTypes),
+    [actionTypes, isCardView],
+  );
 
   const listObjectTypes = useMemo(
     () => (isListView ? paginateSlice(objectTypes, objPage, listPageSize) : objectTypes),
@@ -101,6 +135,19 @@ export function OntologyList() {
     () => (isListView ? paginateSlice(linkTypes, linkPage, listPageSize) : linkTypes),
     [linkTypes, isListView, linkPage, listPageSize],
   );
+  const listFunctions = useMemo(
+    () => (isListView ? paginateSlice(functions, fnPage, listPageSize) : functions),
+    [functions, isListView, fnPage, listPageSize],
+  );
+  const listActionTypes = useMemo(
+    () => (isListView ? paginateSlice(actionTypes, actionPage, listPageSize) : actionTypes),
+    [actionTypes, isListView, actionPage, listPageSize],
+  );
+
+  const onListPageSizeChange = (size: number) => {
+    setListPageSize(size);
+    resetListPages();
+  };
 
   const renderObjectCards = (items: ObjectTypeResponse[]) => (
     <div className="ontology-grid">
@@ -142,6 +189,58 @@ export function OntologyList() {
               {lt.target_object_type_name || t('ontology.endpointTarget')}
             </span>
             <span>{t('ontology.linkCount', { count: lt.link_count })}</span>
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+
+  const renderFunctionCards = (items: OntologyFunctionResponse[]) => (
+    <div className="ontology-grid">
+      {items.map((fn) => (
+        <Link key={fn.id} to={`/ontology-manager/functions/${fn.id}`} className="ontology-card">
+          <div className="ontology-card-top">
+            <div className="ontology-icon ontology-icon-function">
+              <Code2 size={24} strokeWidth={1.5} />
+            </div>
+          </div>
+          <h3>{fn.display_name}</h3>
+          <p className="ontology-desc">{fn.description || t('shared.noDescription')}</p>
+          <div className="ontology-meta">
+            <span>{fn.api_name}</span>
+            <span>{fn.status}</span>
+            {fn.published_version != null ? (
+              <span>{t('ontology.publishedVersion', { version: fn.published_version })}</span>
+            ) : (
+              <span>{t('ontology.notPublished')}</span>
+            )}
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+
+  const renderActionCards = (items: OntologyActionTypeResponse[]) => (
+    <div className="ontology-grid">
+      {items.map((action) => (
+        <Link
+          key={action.id}
+          to={`/ontology-manager/action-types/${action.id}`}
+          className="ontology-card"
+        >
+          <div className="ontology-card-top">
+            <div className="ontology-icon ontology-icon-action">
+              <Zap size={24} strokeWidth={1.5} />
+            </div>
+          </div>
+          <h3>{action.display_name}</h3>
+          <p className="ontology-desc">{action.description || t('shared.noDescription')}</p>
+          <div className="ontology-meta">
+            <span>{action.api_name}</span>
+            <span>
+              {objectTypeNameById.get(action.object_type_id) ?? t('ontology.unknownObjectType')}
+            </span>
+            <span>{action.status}</span>
           </div>
         </Link>
       ))}
@@ -201,6 +300,76 @@ export function OntologyList() {
                 {lt.target_object_type_name || t('ontology.endpointTarget')}
               </td>
               <td>{lt.link_count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderFunctionTable = (items: OntologyFunctionResponse[]) => (
+    <div className="ds-resource-table-wrap">
+      <table className="ds-resource-table">
+        <thead>
+          <tr>
+            <th>{t('shared.name')}</th>
+            <th>{t('ontology.listColIdentifier')}</th>
+            <th>{t('ontology.listColStatus')}</th>
+            <th>{t('ontology.listColPublished')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((fn) => (
+            <tr key={fn.id}>
+              <td>
+                <Link
+                  to={`/ontology-manager/functions/${fn.id}`}
+                  className="ds-resource-table__link"
+                >
+                  {fn.display_name}
+                </Link>
+              </td>
+              <td>{fn.api_name}</td>
+              <td>{fn.status}</td>
+              <td>
+                {fn.published_version != null
+                  ? t('ontology.publishedVersion', { version: fn.published_version })
+                  : t('ontology.notPublished')}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderActionTable = (items: OntologyActionTypeResponse[]) => (
+    <div className="ds-resource-table-wrap">
+      <table className="ds-resource-table">
+        <thead>
+          <tr>
+            <th>{t('shared.name')}</th>
+            <th>{t('ontology.listColIdentifier')}</th>
+            <th>{t('ontology.listColObjectType')}</th>
+            <th>{t('ontology.listColStatus')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((action) => (
+            <tr key={action.id}>
+              <td>
+                <Link
+                  to={`/ontology-manager/action-types/${action.id}`}
+                  className="ds-resource-table__link"
+                >
+                  {action.display_name}
+                </Link>
+              </td>
+              <td>{action.api_name}</td>
+              <td>
+                {objectTypeNameById.get(action.object_type_id) ?? t('ontology.unknownObjectType')}
+              </td>
+              <td>{action.status}</td>
             </tr>
           ))}
         </tbody>
@@ -271,6 +440,36 @@ export function OntologyList() {
               </>
             )}
           </section>
+
+          <section className="ontology-section">
+            <h2 className="ontology-section-title">{t('ontology.functionsHeading')}</h2>
+            {functions.length === 0 ? (
+              <div className="ontology-empty">
+                <Code2 size={40} strokeWidth={1} />
+                <p>{t('ontology.emptyFunctions')}</p>
+              </div>
+            ) : (
+              <>
+                {cardPreviewHint(cardFunctions.length, functions.length)}
+                {renderFunctionCards(cardFunctions)}
+              </>
+            )}
+          </section>
+
+          <section className="ontology-section">
+            <h2 className="ontology-section-title">{t('ontology.actionTypesHeading')}</h2>
+            {actionTypes.length === 0 ? (
+              <div className="ontology-empty">
+                <Zap size={40} strokeWidth={1} />
+                <p>{t('ontology.emptyActionTypes')}</p>
+              </div>
+            ) : (
+              <>
+                {cardPreviewHint(cardActionTypes.length, actionTypes.length)}
+                {renderActionCards(cardActionTypes)}
+              </>
+            )}
+          </section>
         </>
       ) : null}
 
@@ -291,11 +490,7 @@ export function OntologyList() {
                   page={objPage}
                   pageSize={listPageSize}
                   onPageChange={setObjPage}
-                  onPageSizeChange={(size) => {
-                    setListPageSize(size);
-                    setObjPage(0);
-                    setLinkPage(0);
-                  }}
+                  onPageSizeChange={onListPageSizeChange}
                 />
               </>
             )}
@@ -316,11 +511,49 @@ export function OntologyList() {
                   page={linkPage}
                   pageSize={listPageSize}
                   onPageChange={setLinkPage}
-                  onPageSizeChange={(size) => {
-                    setListPageSize(size);
-                    setObjPage(0);
-                    setLinkPage(0);
-                  }}
+                  onPageSizeChange={onListPageSizeChange}
+                />
+              </>
+            )}
+          </section>
+
+          <section className="ontology-section">
+            <h2 className="ontology-section-title">{t('ontology.functionsHeading')}</h2>
+            {functions.length === 0 ? (
+              <div className="ontology-empty">
+                <Code2 size={40} strokeWidth={1} />
+                <p>{t('ontology.emptyFunctions')}</p>
+              </div>
+            ) : (
+              <>
+                {renderFunctionTable(listFunctions)}
+                <Pagination
+                  total={functions.length}
+                  page={fnPage}
+                  pageSize={listPageSize}
+                  onPageChange={setFnPage}
+                  onPageSizeChange={onListPageSizeChange}
+                />
+              </>
+            )}
+          </section>
+
+          <section className="ontology-section">
+            <h2 className="ontology-section-title">{t('ontology.actionTypesHeading')}</h2>
+            {actionTypes.length === 0 ? (
+              <div className="ontology-empty">
+                <Zap size={40} strokeWidth={1} />
+                <p>{t('ontology.emptyActionTypes')}</p>
+              </div>
+            ) : (
+              <>
+                {renderActionTable(listActionTypes)}
+                <Pagination
+                  total={actionTypes.length}
+                  page={actionPage}
+                  pageSize={listPageSize}
+                  onPageChange={setActionPage}
+                  onPageSizeChange={onListPageSizeChange}
                 />
               </>
             )}
