@@ -2,8 +2,6 @@
 import json
 import re
 import uuid
-from datetime import date, datetime
-from decimal import Decimal
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -22,6 +20,11 @@ from app.services.evaluations.dataset_scope import (
     require_dataset_write,
 )
 from app.services.acl.resource_acl_constants import PERM_READ, RT_DATASET
+from app.services.ontology.property_types import (
+    map_source_type_to_ontology,
+    normalize_postgresql_column_type,
+    serialize_cell_value,
+)
 from app.models.data_source import DataSource
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -253,17 +256,6 @@ async def get_dataset_row_count_where_not_null(
         return 0
 
 
-def _serialize_row_value(obj):
-    """Serialize a row value for JSON compatibility."""
-    if obj is None:
-        return None
-    if isinstance(obj, (date, datetime)):
-        return obj.isoformat()
-    if isinstance(obj, Decimal):
-        return float(obj)
-    return obj
-
-
 async def fetch_dataset_rows(
     db: AsyncSession, dataset_id: str, limit: int = 500, offset: int = 0
 ) -> tuple[list[dict], int]:
@@ -289,7 +281,7 @@ async def fetch_dataset_rows(
             )
             columns = list(rows_result.keys())
             rows = [dict(zip(columns, r)) for r in rows_result.fetchall()]
-            rows = [{k: _serialize_row_value(v) for k, v in r.items()} for r in rows]
+            rows = [{k: serialize_cell_value(v) for k, v in r.items()} for r in rows]
         engine.dispose()
         return rows, int(total)
     except Exception:
@@ -328,7 +320,7 @@ async def get_dataset_rows(
             )
             columns = list(rows_result.keys())
             rows = [dict(zip(columns, r)) for r in rows_result.fetchall()]
-            rows = [{k: _serialize_row_value(v) for k, v in r.items()} for r in rows]
+            rows = [{k: serialize_cell_value(v) for k, v in r.items()} for r in rows]
         engine.dispose()
         return DatasetRowsResponse(rows=rows, total=total, limit=limit, offset=offset)
     except Exception as e:
@@ -356,7 +348,7 @@ async def get_dataset_metadata(
         with engine.connect() as conn:
             result = conn.execute(
                 text("""
-                SELECT column_name, data_type, is_nullable, ordinal_position
+                SELECT column_name, data_type, udt_name, is_nullable, ordinal_position
                 FROM information_schema.columns
                 WHERE table_schema = :schema AND table_name = :table
                 ORDER BY ordinal_position
@@ -365,15 +357,19 @@ async def get_dataset_metadata(
             )
             rows = result.fetchall()
         engine.dispose()
-        return [
-            ColumnMetadata(
-                column_name=r[0],
-                data_type=r[1],
-                is_nullable=r[2] == "YES",
-                ordinal_position=r[3],
+        out: list[ColumnMetadata] = []
+        for r in rows:
+            source_type = normalize_postgresql_column_type(str(r[1]), str(r[2] or ""))
+            out.append(
+                ColumnMetadata(
+                    column_name=r[0],
+                    data_type=source_type,
+                    ontology_type=map_source_type_to_ontology(ds.kind, source_type),
+                    is_nullable=r[3] == "YES",
+                    ordinal_position=r[4],
+                )
             )
-            for r in rows
-        ]
+        return out
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Failed to fetch metadata: {e}") from e
 

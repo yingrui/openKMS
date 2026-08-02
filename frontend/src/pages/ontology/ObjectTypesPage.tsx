@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, Database, Users, Box } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { EmptyState } from '../../styles/design-system';
@@ -19,9 +19,13 @@ import {
   type ColumnMetadata,
 } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
+import {
+  fetchOntologyGroups,
+  type OntologyGroupResponse,
+} from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import {
-  mapPgTypeToPropType,
+  ontologyTypeFromColumn,
   PropertiesEditor,
   toPropertyDefs,
   type FormProperty,
@@ -32,7 +36,10 @@ export function ObjectTypesPage() {
   const { t } = useTranslation('ontology');
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterGroupId = searchParams.get('group') ?? '';
   const [types, setTypes] = useState<ObjectTypeResponse[]>([]);
+  const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formName, setFormName] = useState('');
@@ -55,26 +62,48 @@ export function ObjectTypesPage() {
 
   const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
 
+  const setFilterGroupId = (id: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set('group', id);
+        else next.delete('group');
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const filteredTypes = useMemo(() => {
+    if (!filterGroupId) return types;
+    const group = groups.find((g) => g.id === filterGroupId);
+    if (!group) return types;
+    const ids = new Set(group.object_type_ids);
+    return types.filter((ot) => ids.has(ot.id));
+  }, [types, groups, filterGroupId]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [typesRes, dsRes, dsSourcesRes] = await Promise.all([
+      const [typesRes, dsRes, dsSourcesRes, groupsRes] = await Promise.all([
         fetchObjectTypes(),
         fetchDatasets(),
         fetchAllDataSources(),
+        fetchOntologyGroups(),
       ]);
       setTypes(typesRes.items);
       setDatasets(dsRes.items);
       setDataSources(dsSourcesRes);
+      setGroups(groupsRes);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to load object types');
+      toast.error(e instanceof Error ? e.message : t('objectTypes.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const savedPropNamesRef = useRef<Set<string> | null>(null);
@@ -94,7 +123,7 @@ export function ObjectTypesPage() {
         if (cancelled) return;
         const props: FormProperty[] = cols.map((c) => ({
           name: c.column_name,
-          type: mapPgTypeToPropType(c.data_type),
+          type: ontologyTypeFromColumn(c),
           required: !c.is_nullable,
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
@@ -228,6 +257,26 @@ export function ObjectTypesPage() {
       </div>
 
       <div className="ontology-admin-content">
+        {!loading && types.length > 0 && groups.length > 0 && (
+          <div className="console-datasets-toolbar">
+            <label className="console-datasets-filter">
+              {t('objectTypes.filterByGroup')}
+              <select
+                value={filterGroupId}
+                onChange={(e) => setFilterGroupId(e.target.value)}
+                aria-label={t('objectTypes.filterByGroup')}
+              >
+                <option value="">{t('objectTypes.filterAllGroups')}</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.display_name} ({g.object_type_ids.length})
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
         {loading ? (
           <div className="console-loading">
             <Loader2 size={32} className="console-loading-spinner" />
@@ -241,6 +290,16 @@ export function ObjectTypesPage() {
               <button type="button" className="btn btn-primary" onClick={openCreate}>
                 <Plus size={16} aria-hidden />
                 {t('objectTypes.create')}
+              </button>
+            }
+          />
+        ) : filteredTypes.length === 0 ? (
+          <EmptyState
+            icon={<Box size={32} aria-hidden />}
+            title={t('objectTypes.emptyNoGroupMatch')}
+            action={
+              <button type="button" className="btn btn-secondary" onClick={() => setFilterGroupId('')}>
+                {t('objectTypes.filterAllGroups')}
               </button>
             }
           />
@@ -260,7 +319,7 @@ export function ObjectTypesPage() {
                 </tr>
               </thead>
               <tbody>
-                {types.map((row) => (
+                {filteredTypes.map((row) => (
                   <tr key={row.id}>
                     <td>
                       <Link

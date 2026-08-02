@@ -49,11 +49,12 @@ const MANAGER_NAV: NavItem[] = [
     canPath: '/ontology-manager/functions',
   },
   {
-    to: '/ontology-manager/actions',
-    labelKey: 'ontologyActions',
+    to: '/ontology-manager/action-types',
+    labelKey: 'ontologyActionTypes',
     icon: Zap,
-    match: (p) => p.startsWith('/ontology-manager/actions'),
-    canPath: '/ontology-manager/actions',
+    match: (p) =>
+      p.startsWith('/ontology-manager/action-types') || p.startsWith('/ontology-manager/actions'),
+    canPath: '/ontology-manager/action-types',
   },
   {
     to: '/ontology-manager/datasets',

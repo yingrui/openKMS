@@ -132,7 +132,7 @@ Schema for every persisted table. Grouped by area; see the matching feature page
 ### ObjectType
 
 - `id`, `name`, `description`, `dataset_id`, `key_property`, `is_master_data`, `display_property`, `properties` (JSONB: list of `{name, type, required}`), `created_by` (nullable; creator subject for sharing owner bootstrap), `created_by_name` (nullable), `created_at`, `updated_at`
-- Schema for entity types; property types: string, number, boolean
+- Schema for entity types; property types: `string`, `number`, `boolean`, `date`, `datetime`, `uuid` (canonical set in `property_types.py`; tabular datasources map native column types into this set via `ColumnMetadata.ontology_type`)
 - `is_master_data`: only master data types can be used for document labels in channel settings
 - `display_property`: property used to display object instances in document label pickers
 

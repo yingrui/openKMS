@@ -32,7 +32,7 @@ import { fetchOntologyActionTypes, type OntologyActionTypeResponse } from '../..
 import { ResourceSharePanel } from '../../components/ResourceSharePanel';
 import { RESOURCE_TYPES } from '../../data/resourceAclApi';
 import {
-  mapPgTypeToPropType,
+  ontologyTypeFromColumn,
   PropertiesEditor,
   toPropertyDefs,
   type FormProperty,
@@ -188,7 +188,7 @@ export function ObjectTypeDetailPage() {
         if (cancelled) return;
         const props: FormProperty[] = cols.map((c) => ({
           name: c.column_name,
-          type: mapPgTypeToPropType(c.data_type),
+          type: ontologyTypeFromColumn(c),
           required: !c.is_nullable,
           enabled: enabledNames ? enabledNames.has(c.column_name) : true,
         }));
@@ -394,7 +394,7 @@ export function ObjectTypeOverviewTab() {
       : relatedActions.map((a, i) => (
           <span key={a.id}>
             {i > 0 ? ', ' : ''}
-            <Link to={`/ontology-manager/actions/${a.id}`}>{a.display_name}</Link>
+            <Link to={`/ontology-manager/action-types/${a.id}`}>{a.display_name}</Link>
           </span>
         ));
 

@@ -1,14 +1,18 @@
 """Pydantic schemas for ontology (object types, link types, instances)."""
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
+
+# Keep in sync with app.services.ontology.property_types.ONTOLOGY_PROPERTY_TYPES
+OntologyPropertyType = Literal["string", "number", "boolean", "date", "datetime", "uuid"]
 
 
 # --- Property definition (for object type schema) ---
 
 class PropertyDef(BaseModel):
     name: str
-    type: str = "string"  # string, number, boolean
+    type: OntologyPropertyType = "string"
     required: bool = False
 
 

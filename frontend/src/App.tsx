@@ -232,6 +232,15 @@ function LegacyConsoleDatasetRedirect() {
   return <Navigate to={`/ontology-manager/datasets/${id ?? ''}`} replace />;
 }
 
+function LegacyOntologyActionsRedirect() {
+  const { actionId = '', '*': rest } = useParams();
+  const location = useLocation();
+  const path = rest
+    ? `/ontology-manager/action-types/${actionId}/${rest}`
+    : `/ontology-manager/action-types/${actionId}`;
+  return <Navigate to={`${path}${location.search}${location.hash}`} replace />;
+}
+
 function LegacyOntologyRedirect() {
   const location = useLocation();
   const rest = location.pathname.replace(/^\/ontology/, '') + location.search + location.hash;
@@ -372,13 +381,15 @@ function App() {
             </Route>
             <Route path="groups" element={<GroupsListPage />} />
             <Route path="groups/:groupId" element={<GroupDetailPage />} />
-            <Route path="actions" element={<ActionsListPage />} />
-            <Route path="actions/:actionId" element={<ActionDetailPage />}>
+            <Route path="action-types" element={<ActionsListPage />} />
+            <Route path="action-types/:actionTypeId" element={<ActionDetailPage />}>
               <Route index element={<ActionOverviewTab />} />
               <Route path="rules" element={<ActionRulesTab />} />
               <Route path="log" element={<ActionLogTab />} />
               <Route path="logs" element={<Navigate to="../log" relative="path" replace />} />
             </Route>
+            <Route path="actions" element={<Navigate to="/ontology-manager/action-types" replace />} />
+            <Route path="actions/:actionId/*" element={<LegacyOntologyActionsRedirect />} />
           </Route>
           <Route path="object-explorer" element={<Outlet />}>
             <Route index element={<Navigate to="/object-explorer/explore" replace />} />

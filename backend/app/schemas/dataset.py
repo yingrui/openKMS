@@ -42,9 +42,15 @@ class TableInfo(BaseModel):
 
 
 class ColumnMetadata(BaseModel):
-    """Column metadata from information_schema.columns."""
+    """Column metadata from a tabular datasource.
+
+    ``data_type`` is the source-native type (e.g. PostgreSQL ``uuid``).
+    ``ontology_type`` is the canonical ontology property type produced by the
+    kind-specific adapter — clients should prefer this when building schemas.
+    """
     column_name: str
     data_type: str
+    ontology_type: str = "string"
     is_nullable: bool = False
     ordinal_position: int = 0
 

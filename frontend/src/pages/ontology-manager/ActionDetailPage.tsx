@@ -51,7 +51,8 @@ function useActionDetail(): ActionDetailContext {
 
 export function ActionDetailPage() {
   const { t } = useTranslation('ontology');
-  const { actionId = '' } = useParams();
+  const { actionTypeId = '', actionId: legacyActionId = '' } = useParams();
+  const actionId = actionTypeId || legacyActionId;
   const [action, setAction] = useState<OntologyActionTypeResponse | null>(null);
   const [logs, setLogs] = useState<OntologyActionLogResponse[]>([]);
   const [objectTypes, setObjectTypes] = useState<ObjectTypeResponse[]>([]);
@@ -161,12 +162,12 @@ export function ActionDetailPage() {
     return <EntityViewLoading label={t('shared.loading')} />;
   }
 
-  const base = `/ontology-manager/actions/${actionId}`;
+  const base = `/ontology-manager/action-types/${actionId}`;
 
   return (
     <ActionDetailCtx.Provider value={value}>
       <EntityViewShell
-        backTo="/ontology-manager/actions"
+        backTo="/ontology-manager/action-types"
         backLabel={t('actions.backToList')}
         kind={t('actions.kind')}
         title={action.display_name}

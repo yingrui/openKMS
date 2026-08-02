@@ -365,6 +365,30 @@ export function ObjectTypeDetail() {
                       }}
                       placeholder={p.required ? t('ontology.objectTypeDetail.placeholderRequired') : t('ontology.objectTypeDetail.placeholderOptional')}
                     />
+                  ) : p.type === 'date' ? (
+                    <input
+                      type="date"
+                      value={String(formData[p.name] ?? '')}
+                      onChange={(e) => updateFormField(p.name, e.target.value)}
+                    />
+                  ) : p.type === 'datetime' ? (
+                    <input
+                      type="datetime-local"
+                      value={String(formData[p.name] ?? '').slice(0, 16)}
+                      onChange={(e) => updateFormField(p.name, e.target.value)}
+                    />
+                  ) : p.type === 'uuid' ? (
+                    <input
+                      type="text"
+                      inputMode="text"
+                      spellCheck={false}
+                      autoComplete="off"
+                      pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+                      title="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                      value={String(formData[p.name] ?? '')}
+                      onChange={(e) => updateFormField(p.name, e.target.value)}
+                      placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    />
                   ) : (
                     <input
                       type="text"

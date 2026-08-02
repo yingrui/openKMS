@@ -2,24 +2,19 @@ import { Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { PropertyDef } from '../../data/ontologyApi';
 
-export const PROPERTY_TYPES = ['string', 'number', 'boolean'] as const;
+/** Keep in sync with backend ONTOLOGY_PROPERTY_TYPES. */
+export const PROPERTY_TYPES = ['string', 'number', 'boolean', 'date', 'datetime', 'uuid'] as const;
 
 export type FormProperty = PropertyDef & { enabled?: boolean };
 
-/** Map PostgreSQL data_type to our property type */
-export function mapPgTypeToPropType(dataType: string): string {
-  const t = dataType.toLowerCase();
-  if (
-    t.includes('int') ||
-    t.includes('numeric') ||
-    t.includes('decimal') ||
-    t.includes('real') ||
-    t.includes('double') ||
-    t.includes('float')
-  ) {
-    return 'number';
+/** Prefer ColumnMetadata.ontology_type from the API; fallback for older responses. */
+export function ontologyTypeFromColumn(col: {
+  ontology_type?: string;
+  data_type: string;
+}): string {
+  if (col.ontology_type && (PROPERTY_TYPES as readonly string[]).includes(col.ontology_type)) {
+    return col.ontology_type;
   }
-  if (t.includes('bool')) return 'boolean';
   return 'string';
 }
 

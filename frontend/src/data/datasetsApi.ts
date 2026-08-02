@@ -62,7 +62,10 @@ export async function fetchDataset(id: string): Promise<DatasetResponse> {
 
 export interface ColumnMetadata {
   column_name: string;
+  /** Source-native type (e.g. PostgreSQL ``uuid``). */
   data_type: string;
+  /** Canonical ontology property type from the datasource adapter. Prefer this for schemas. */
+  ontology_type: string;
   is_nullable: boolean;
   ordinal_position: number;
 }

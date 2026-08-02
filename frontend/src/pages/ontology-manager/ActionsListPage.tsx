@@ -181,7 +181,10 @@ export function ActionsListPage() {
                 {items.map((action) => (
                   <tr key={action.id}>
                     <td>
-                      <Link to={`/ontology-manager/actions/${action.id}`} className="ontology-manager-list__api-link">
+                      <Link
+                        to={`/ontology-manager/action-types/${action.id}`}
+                        className="ontology-manager-list__api-link"
+                      >
                         {action.api_name}
                       </Link>
                     </td>
