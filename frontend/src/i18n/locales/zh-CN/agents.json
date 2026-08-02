@@ -126,7 +126,10 @@
     "resizeFilesRail": "调整文件面板宽度",
     "resizeFilesRailHint": "拖动以调整文件面板宽度",
     "resizeFileTree": "调整文件树宽度",
-    "resizeFileTreeHint": "拖动以调整文件树宽度"
+    "resizeFileTreeHint": "拖动以调整文件树宽度",
+    "sessions": "会话",
+    "files": "文件",
+    "closeFiles": "关闭文件"
   },
   "chat": {
     "hero": "让智能体浏览文件、制定计划或检索知识库。",

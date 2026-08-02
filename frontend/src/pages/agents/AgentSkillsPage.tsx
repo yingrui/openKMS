@@ -222,7 +222,7 @@ export function AgentSkillsPage() {
               }}
             >
               <Plus size={18} />
-              <span>{t('skills.upload')}</span>
+              <span className="ds-compact-label">{t('skills.upload')}</span>
             </button>
           </div>
         </div>

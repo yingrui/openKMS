@@ -242,7 +242,9 @@
   border-radius: var(--radius-lg);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   max-width: 480px;
-  width: 100%;
+  width: min(480px, 100vw - 2rem);
+  max-height: 90dvh;
+  overflow-y: auto;
   padding: var(--space-6);
 }
 
@@ -313,4 +315,26 @@
   margin-top: var(--space-6);
   padding-top: var(--space-4);
   border-top: 1px solid var(--color-border);
+}
+
+@include max-width(ds.$bp-md-min) {
+  .agents-toolbar {
+    align-items: flex-start;
+  }
+
+  .agents-toolbar-actions .btn {
+    min-height: var(--tap-min);
+  }
+
+  .agents-dialog-close {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    align-items: center;
+    justify-content: center;
+  }
+
+  .agents-card-actions .btn,
+  .agents-card .btn {
+    min-height: var(--tap-min);
+  }
 }

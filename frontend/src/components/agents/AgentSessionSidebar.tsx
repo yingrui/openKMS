@@ -22,6 +22,10 @@ interface Props {
   onRename?: (sessionId: string, title: string) => void | Promise<void>;
   onAutoRename?: (sessionId: string) => void | Promise<void>;
   onDelete?: (sessionId: string) => void;
+  /** Called after New chat or choosing a session (e.g. close mobile drawer). */
+  onSessionActivate?: () => void;
+  /** Hide the suite back link when a parent chrome already provides it. */
+  hideBackLink?: boolean;
 }
 
 export function AgentSessionSidebar({
@@ -34,6 +38,8 @@ export function AgentSessionSidebar({
   onRename,
   onAutoRename,
   onDelete,
+  onSessionActivate,
+  hideBackLink = false,
 }: Props) {
   const { t } = useTranslation('agents');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -94,10 +100,12 @@ export function AgentSessionSidebar({
   return (
     <aside className="agents-sessions">
       <div className="agents-sessions-head">
-        <Link to="/agents" className="agents-sessions-back">
-          <ArrowLeft size={14} />
-          {t('sessions.back')}
-        </Link>
+        {!hideBackLink ? (
+          <Link to="/agents" className="agents-sessions-back">
+            <ArrowLeft size={14} />
+            {t('sessions.back')}
+          </Link>
+        ) : null}
         <div className="agents-sessions-project-block">
           <div className="agents-sessions-project-line">
             <div className="agents-sessions-project">{projectName}</div>
@@ -112,7 +120,14 @@ export function AgentSessionSidebar({
           </div>
           <div className="agents-sessions-sub">{projectSlug}</div>
         </div>
-        <button type="button" className="agents-sessions-new" onClick={onNewChat}>
+        <button
+          type="button"
+          className="agents-sessions-new"
+          onClick={() => {
+            onNewChat();
+            onSessionActivate?.();
+          }}
+        >
           <Plus size={15} strokeWidth={2} />
           {t('sessions.newChat')}
         </button>
@@ -148,6 +163,7 @@ export function AgentSessionSidebar({
                 to={projectWorkspacePath(projectId, c.id)}
                 className="agents-session-item"
                 title={label(c)}
+                onClick={() => onSessionActivate?.()}
               >
                 {label(c)}
               </Link>

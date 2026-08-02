@@ -36,6 +36,8 @@ interface Props {
   reverting?: boolean;
   hasMoreOlder?: boolean;
   onLoadOlderMessages?: () => Promise<boolean>;
+  /** When true, omit the in-pane session title (parent chrome shows it). */
+  hideSessionHeader?: boolean;
 }
 
 /** Deferred content wrapper: only renders children when scrolled within rootMargin px of viewport. */
@@ -166,6 +168,7 @@ export function AgentChatMain({
   reverting = false,
   hasMoreOlder = false,
   onLoadOlderMessages,
+  hideSessionHeader = false,
 }: Props) {
   const { t } = useTranslation('agents');
   const [input, setInput] = useState('');
@@ -224,7 +227,7 @@ export function AgentChatMain({
 
   return (
     <main className="agents-chat-main">
-      {sessionTitle ? (
+      {!hideSessionHeader && sessionTitle ? (
         <header className="agents-chat-header">
           <h1 title={sessionTitle}>{sessionTitle}</h1>
         </header>

@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft, Trash2 } from 'lucide-react';
+import { Folder, File, FolderUp, Upload, GitBranch, Loader2, RefreshCw, ChevronLeft, Trash2, X } from 'lucide-react';
 import { AgentFileViewer } from './AgentFileViewer';
 import { gitStatusLabel } from './gitStatusLabel';
 import {
@@ -90,6 +90,9 @@ interface Props {
   railWidthPx: number;
   onRailWidthChange?: (width: number) => void;
   onGitChange?: () => void;
+  /** Desktop side rail vs mobile bottom sheet (no fixed flex widths / resize). */
+  variant?: 'rail' | 'sheet';
+  onCloseSheet?: () => void;
 }
 
 export function AgentFilesPanel({
@@ -98,6 +101,8 @@ export function AgentFilesPanel({
   railWidthPx,
   onRailWidthChange,
   onGitChange,
+  variant = 'rail',
+  onCloseSheet,
 }: Props) {
   const { t } = useTranslation('agents');
   const confirm = useConfirm();
@@ -358,18 +363,17 @@ export function AgentFilesPanel({
   const treeWidth = fileOpen
     ? clampTreeWidth(treeWidthPx, railWidthPx, viewerWidthPx)
     : railWidthPx;
-  const railStyle = {
-    flex: `0 0 ${railWidthPx}px`,
-    width: railWidthPx,
-  } as CSSProperties;
-  const treeStyle = {
-    flex: `0 0 ${treeWidth}px`,
-    width: treeWidth,
-  } as CSSProperties;
+  const isSheet = variant === 'sheet';
+  const railStyle = (isSheet
+    ? { flex: '1 1 auto', width: '100%', height: '100%' }
+    : { flex: `0 0 ${railWidthPx}px`, width: railWidthPx }) as CSSProperties;
+  const treeStyle = (isSheet
+    ? { flex: '1 1 auto', width: '100%', minWidth: 0 }
+    : { flex: `0 0 ${treeWidth}px`, width: treeWidth }) as CSSProperties;
 
   return (
     <div
-      className={`agents-files-rail${fileOpen ? ' agents-files-rail--open' : ''}`}
+      className={`agents-files-rail${fileOpen ? ' agents-files-rail--open' : ''}${isSheet ? ' agents-files-rail--sheet' : ''}`}
       style={railStyle}
     >
       {fileOpen ? (
@@ -381,7 +385,7 @@ export function AgentFilesPanel({
           onClose={closeFile}
         />
       ) : null}
-      {fileOpen ? (
+      {fileOpen && !isSheet ? (
         <div
           className="agents-pane-resize-handle agents-pane-resize-handle--inner"
           role="separator"
@@ -522,6 +526,17 @@ export function AgentFilesPanel({
                 {t('files.allFiles')}
               </button>
             )}
+            {onCloseSheet ? (
+              <button
+                type="button"
+                className="agents-files-icon-btn"
+                onClick={onCloseSheet}
+                aria-label={t('workspace.closeFiles')}
+                title={t('workspace.closeFiles')}
+              >
+                <X size={16} />
+              </button>
+            ) : null}
           </div>
         </div>
         <div className="agents-files-tree">

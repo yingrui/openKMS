@@ -21,13 +21,18 @@ import {
 } from '../../data/sessionReviewApi';
 import { getProject, projectWorkspacePath } from '../../data/projectsApi';
 import type { ProjectResponse } from '../../data/projectsApi';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { PanelToolbar } from '../../styles/design-system';
 import '../../components/agents/SessionReview.scss';
 
 const COL_MIN = 280;
 
+type ReviewTab = 'lessons' | 'improve' | 'artifacts';
+
 export function SessionReviewPage() {
   const { projectId = '', sessionId = '' } = useParams<{ projectId: string; sessionId: string }>();
   const { t } = useTranslation('agents');
+  const isMobile = useIsMobile();
   const [project, setProject] = useState<ProjectResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [merging, setMerging] = useState(false);
@@ -41,6 +46,7 @@ export function SessionReviewPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [lessonsCollapsed, setLessonsCollapsed] = useState(false);
   const [refreshingArtifacts, setRefreshingArtifacts] = useState(false);
+  const [mobileTab, setMobileTab] = useState<ReviewTab>('lessons');
 
   useEffect(() => {
     getProject(projectId).then(setProject).catch(() => toast.error('Failed to load project'));
@@ -214,63 +220,139 @@ export function SessionReviewPage() {
   const hasApprovedLessons = lessons.some((l) => l.status === 'approved');
   const allLessons = [...sessionLessons, ...otherLessons];
 
+  const analyzeBtn = (
+    <button
+      type="button"
+      className="sreview-analyze-btn"
+      disabled={analyzing}
+      onClick={handleAnalyze}
+      title={t('sessions.reviewAnalyzeHint')}
+    >
+      {analyzing ? (
+        <span className="sreview-analyze-spinner" />
+      ) : (
+        <Sparkles size={14} />
+      )}
+      <span className="ds-compact-label">
+        {analyzing ? t('sessions.reviewAnalyzing') : t('sessions.reviewAnalyze')}
+      </span>
+    </button>
+  );
+
+  const mergeBtn = (
+    <button
+      type="button"
+      className="sreview-analyze-btn sreview-merge-btn"
+      disabled={merging}
+      onClick={handleMerge}
+      title={t('sessions.mergeHint')}
+    >
+      {merging ? (
+        <span className="sreview-analyze-spinner" />
+      ) : (
+        <GitMerge size={14} />
+      )}
+      <span className="ds-compact-label">
+        {merging ? t('sessions.mergeRunning') : t('sessions.mergeButton')}
+      </span>
+    </button>
+  );
+
+  const showLessons = !isMobile || mobileTab === 'lessons';
+  const showImprove = !isMobile || mobileTab === 'improve';
+  const showArtifacts = !isMobile || mobileTab === 'artifacts';
+
   return (
-    <div className="sreview-page">
-      <header className="sreview-page-header">
-        <Link to={projectWorkspacePath(projectId, sessionId)} className="sreview-page-back">
-          <ArrowLeft size={16} />
-        </Link>
-        <span className="sreview-page-title">
-          {project?.name ?? projectId} · Session Review
-        </span>
-        <button
-          type="button"
-          className="sreview-analyze-btn"
-          disabled={analyzing}
-          onClick={handleAnalyze}
-          title={t('sessions.reviewAnalyzeHint')}
-        >
-          {analyzing ? (
-            <span className="sreview-analyze-spinner" />
-          ) : (
-            <Sparkles size={14} />
-          )}
-          {analyzing ? t('sessions.reviewAnalyzing') : t('sessions.reviewAnalyze')}
-        </button>
-        <button
-          type="button"
-          className="sreview-analyze-btn sreview-merge-btn"
-          disabled={merging}
-          onClick={handleMerge}
-          title={t('sessions.mergeHint')}
-        >
-          {merging ? (
-            <span className="sreview-analyze-spinner" />
-          ) : (
-            <GitMerge size={14} />
-          )}
-          {merging ? t('sessions.mergeRunning') : t('sessions.mergeButton')}
-        </button>
-      </header>
+    <div className={`sreview-page${isMobile ? ' sreview-page--mobile' : ''}`}>
+      {isMobile ? (
+        <PanelToolbar
+          as="div"
+          className="sreview-mobile-toolbar"
+          leading={
+            <>
+              <Link
+                to={projectWorkspacePath(projectId, sessionId)}
+                className="sreview-page-back"
+                aria-label={t('sessions.back')}
+              >
+                <ArrowLeft size={16} />
+              </Link>
+              <span className="sreview-page-title">
+                {project?.name ?? projectId}
+              </span>
+            </>
+          }
+          actions={
+            <>
+              {analyzeBtn}
+              {mergeBtn}
+            </>
+          }
+        />
+      ) : (
+        <header className="sreview-page-header">
+          <Link to={projectWorkspacePath(projectId, sessionId)} className="sreview-page-back">
+            <ArrowLeft size={16} />
+          </Link>
+          <span className="sreview-page-title">
+            {project?.name ?? projectId} · Session Review
+          </span>
+          {analyzeBtn}
+          {mergeBtn}
+        </header>
+      )}
+
+      {isMobile ? (
+        <div className="sreview-mobile-tabs" role="tablist" aria-label={t('sessions.review')}>
+          {(
+            [
+              ['lessons', t('sessions.reviewEvents')],
+              ['improve', t('sessions.improveChat')],
+              ['artifacts', t('sessions.improveArtifacts')],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={mobileTab === id}
+              className={`sreview-mobile-tab${mobileTab === id ? ' is-active' : ''}`}
+              onClick={() => setMobileTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       <div className="sreview-columns">
         {/* ——— Left: Lessons ——— */}
-        <div className={`sreview-col sreview-col--events${lessonsCollapsed ? ' sreview-col--collapsed' : ''}`}
-             style={lessonsCollapsed ? { width: 44, minWidth: 44, maxWidth: 44 } : { minWidth: COL_MIN }}>
+        <div
+          className={`sreview-col sreview-col--events${lessonsCollapsed && !isMobile ? ' sreview-col--collapsed' : ''}${showLessons ? '' : ' sreview-col--hidden'}`}
+          style={
+            isMobile
+              ? undefined
+              : lessonsCollapsed
+                ? { width: 44, minWidth: 44, maxWidth: 44 }
+                : { minWidth: COL_MIN }
+          }
+        >
           <div className="sreview-col-head">
             <FileText size={14} />
-            {!lessonsCollapsed && <span>{t('sessions.reviewEvents')}</span>}
-            {!lessonsCollapsed && <span className="sreview-col-count">{allLessons.length}</span>}
-            <button
-              type="button"
-              className="sreview-col-collapse-btn"
-              onClick={() => setLessonsCollapsed((v) => !v)}
-              title={lessonsCollapsed ? 'Expand lessons' : 'Collapse lessons'}
-            >
-              {lessonsCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
-            </button>
+            {(!lessonsCollapsed || isMobile) && <span>{t('sessions.reviewEvents')}</span>}
+            {(!lessonsCollapsed || isMobile) && <span className="sreview-col-count">{allLessons.length}</span>}
+            {!isMobile ? (
+              <button
+                type="button"
+                className="sreview-col-collapse-btn"
+                onClick={() => setLessonsCollapsed((v) => !v)}
+                title={lessonsCollapsed ? 'Expand lessons' : 'Collapse lessons'}
+              >
+                {lessonsCollapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+              </button>
+            ) : null}
           </div>
-          {!lessonsCollapsed ? (
+          {(!lessonsCollapsed || isMobile) ? (
           <div className="sreview-col-body">
             {allLessons.length === 0 && !analyzing ? (
               <div className="sreview-empty">
@@ -308,7 +390,10 @@ export function SessionReviewPage() {
         </div>
 
         {/* ——— Middle: Chat ——— */}
-        <div className="sreview-col sreview-col--chat" style={{ minWidth: COL_MIN }}>
+        <div
+          className={`sreview-col sreview-col--chat${showImprove ? '' : ' sreview-col--hidden'}`}
+          style={isMobile ? undefined : { minWidth: COL_MIN }}
+        >
           <div className="sreview-col-head">
             <MessageSquare size={14} />
             <span>{t('sessions.improveChat')}</span>
@@ -390,7 +475,10 @@ export function SessionReviewPage() {
         </div>
 
         {/* ——— Right: Artifacts ——— */}
-        <div className="sreview-col sreview-col--artifacts" style={{ minWidth: COL_MIN }}>
+        <div
+          className={`sreview-col sreview-col--artifacts${showArtifacts ? '' : ' sreview-col--hidden'}`}
+          style={isMobile ? undefined : { minWidth: COL_MIN }}
+        >
           <div className="sreview-col-head">
             <Sparkles size={14} />
             <span>{t('sessions.improveArtifacts')}</span>

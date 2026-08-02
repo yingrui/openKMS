@@ -175,7 +175,7 @@ Active UX / quality gaps: [Tech debt](./tech_debt.md).
 - Audit logging (beyond resource ACL admin Issues)
 - Document export/import
 - Plugin/extensibility (connector kinds, agent tools)
-- Mobile/responsive polish (Phase 1: App Shell drawers + compact header ≤768px; Phase 1.1: reading-page tables/toolbars/dialogs wrap & scroll; IDE/Agents touch redesign still open)
+- Mobile/responsive polish (Phase 1: App Shell drawers + compact header ≤768px; Phase 1.1: reading-page tables/toolbars/dialogs wrap & scroll; Agents workspace phone IA: chat-primary + Sessions drawer + Files sheet, Session Review tabs)
 - Domain depth (specimen/event, Darwin Core, interactive keys) — see [knowledge-types](features/knowledge-types.md) entomology workflow **future** column
 
 ## Conventions

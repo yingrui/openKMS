@@ -111,7 +111,7 @@ export function ProjectList() {
           <div className="agents-toolbar-actions">
             <Link to="/settings#agent-git-credentials" className="btn btn-secondary agents-settings-btn">
               <Settings size={18} aria-hidden />
-              <span>{t('list.settings')}</span>
+              <span className="ds-compact-label">{t('list.settings')}</span>
             </Link>
             <button
               type="button"
@@ -123,7 +123,7 @@ export function ProjectList() {
               }}
             >
               <Plus size={18} />
-              <span>{t('list.create')}</span>
+              <span className="ds-compact-label">{t('list.create')}</span>
             </button>
           </div>
         </div>

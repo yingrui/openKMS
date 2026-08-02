@@ -1079,56 +1079,174 @@ $agents-pane-header-height: 49px;
   }
 }
 
-@include max-width(ds.$bp-sm-min) {
-  .agents-pane-resize-handle {
-    display: none;
-  }
-
-  .agents-workspace-body {
-    flex-direction: column;
-  }
-
-  .agents-sessions {
-    width: 100%;
-    max-height: 28vh;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .agents-files-rail {
-    width: 100% !important;
-    flex: 0 0 auto !important;
-    flex-direction: column;
-    border-left: none;
-    border-top: 1px solid var(--color-border);
-    max-height: 40vh;
-  }
-
-  .agents-file-viewer {
-    max-width: none;
-    min-width: 0;
-    max-height: 50%;
-    border-right: none;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .agents-files-panel {
-    width: 100% !important;
-    flex: 1 1 auto !important;
-    min-width: 0;
-    max-height: 50%;
-  }
-}
-
-/* Keep icon-only controls comfortably tappable on touch screens. */
+/* Phone: chat-primary + sessions drawer + files sheet (see ProjectWorkspace + design-system). */
 @include max-width(ds.$bp-md-min) {
+  .agents-workspace--mobile {
+    .agents-workspace-body {
+      position: relative;
+      flex-direction: column;
+    }
+
+    .agents-chat-main {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+  }
+
+  .agents-mobile-toolbar {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-elevated);
+    padding: var(--space-2) var(--space-3);
+    margin: 0;
+  }
+
+  .agents-mobile-back,
+  .agents-mobile-chrome-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    padding: 0 var(--space-2);
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text);
+    text-decoration: none;
+    cursor: pointer;
+    font-size: var(--text-sm);
+
+    &:hover {
+      background: var(--color-bg-muted);
+    }
+
+    &.is-active {
+      background: var(--color-bg-muted);
+      color: var(--color-accent);
+    }
+  }
+
+  .agents-mobile-title {
+    flex: 1;
+    min-width: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Full-width session list (like channel mobile landing) — narrow phones need the whole pane. */
+  .agents-sessions-drawer {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-modal);
+    width: 100%;
+    max-width: none;
+    transform: translateX(-100%);
+    transition: transform var(--duration-fast) var(--ease-standard);
+    pointer-events: none;
+    background: var(--color-bg-elevated);
+
+    &.is-open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .agents-sessions {
+      width: 100%;
+      min-width: 0;
+      height: 100%;
+      border-right: none;
+      background: var(--color-bg);
+    }
+  }
+
+  /* Full-width files panel — same idea as Sessions; bottom sheet wastes vertical space. */
+  .agents-files-sheet {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-modal);
+    width: 100%;
+    height: 100%;
+    transform: translateX(100%);
+    transition: transform var(--duration-fast) var(--ease-standard);
+    pointer-events: none;
+    overflow: hidden;
+    background: var(--color-bg);
+
+    &.is-open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+  }
+
+  .agents-files-rail--sheet {
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-left: none;
+    background: var(--color-bg);
+
+    /* Tree alone fills the panel until a file is opened. */
+    .agents-files-panel {
+      width: 100% !important;
+      flex: 1 1 auto !important;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    /* Open file: full-height viewer (hide tree) — close (X) returns to the list. */
+    &.agents-files-rail--open {
+      .agents-file-viewer {
+        flex: 1 1 auto;
+        max-width: none;
+        min-width: 0;
+        max-height: none;
+        height: 100%;
+        border-right: none;
+        border-bottom: none;
+      }
+
+      .agents-files-panel {
+        display: none;
+      }
+
+      .agents-file-viewer-gutter {
+        width: 2.5rem;
+        padding: 0 6px 0 4px;
+      }
+
+      .agents-file-viewer-text {
+        padding: 0 10px;
+      }
+
+      .agents-file-viewer-body {
+        -webkit-overflow-scrolling: touch;
+      }
+    }
+  }
+
+  /* Always-visible actions (no hover) on phone. */
+  .agents-session-more,
+  .agents-chat-msg-meta,
+  .agents-file-delete {
+    opacity: 1;
+  }
+
   .agents-sessions-settings,
   .agents-session-more,
   .agents-composer-send,
   .agents-file-viewer-close,
   .agents-files-back-btn,
   .agents-files-icon-btn,
-  .agents-file-delete {
+  .agents-file-delete,
+  .agents-chat-msg-meta button,
+  .agents-mobile-back,
+  .agents-mobile-chrome-btn {
     min-width: var(--tap-min);
     min-height: var(--tap-min);
   }
