@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Save, Trash2 } from 'lucide-react';
+import { Save, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
@@ -32,6 +32,7 @@ export function GroupDetailPage() {
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedTypeIds, setSelectedTypeIds] = useState<Set<string>>(new Set());
+  const [typeQuery, setTypeQuery] = useState('');
 
   const load = useCallback(async () => {
     if (!groupId) return;
@@ -54,14 +55,35 @@ export function GroupDetailPage() {
     void load();
   }, [load]);
 
-  const toggleType = (typeId: string) => {
+  const setTypeSelected = (typeId: string, checked: boolean) => {
     setSelectedTypeIds((prev) => {
       const next = new Set(prev);
-      if (next.has(typeId)) next.delete(typeId);
-      else next.add(typeId);
+      if (checked) next.add(typeId);
+      else next.delete(typeId);
       return next;
     });
   };
+
+  const selectedTypes = useMemo(
+    () =>
+      objectTypes
+        .filter((ot) => selectedTypeIds.has(ot.id))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [objectTypes, selectedTypeIds],
+  );
+
+  const filteredTypes = useMemo(() => {
+    const q = typeQuery.trim().toLowerCase();
+    const list = q
+      ? objectTypes.filter((ot) => ot.name.toLowerCase().includes(q))
+      : objectTypes;
+    return [...list].sort((a, b) => {
+      const aSel = selectedTypeIds.has(a.id) ? 0 : 1;
+      const bSel = selectedTypeIds.has(b.id) ? 0 : 1;
+      if (aSel !== bSel) return aSel - bSel;
+      return a.name.localeCompare(b.name);
+    });
+  }, [objectTypes, selectedTypeIds, typeQuery]);
 
   const onSave = async () => {
     if (!groupId) return;
@@ -111,7 +133,7 @@ export function GroupDetailPage() {
       backLabel={t('groups.backToList')}
       kind={t('groups.kind')}
       title={group.display_name}
-      meta={`${t('groups.objectTypes')}: ${group.object_type_ids.length}`}
+      meta={`${t('groups.objectTypes')}: ${selectedTypeIds.size}`}
       sectionTitle={t('groups.overview')}
       sectionSubtitle={t('groups.detailSubtitle')}
       toolbar={
@@ -144,27 +166,71 @@ export function GroupDetailPage() {
               rows={3}
             />
           </EntityViewField>
-          <EntityViewField label={t('groups.assignObjectTypes')} as="div">
-            {objectTypes.length === 0 ? (
-              <p className="entity-view__field-hint">
-                {t('groups.noObjectTypes')}{' '}
-                <Link to="/ontology-manager/object-types">{t('groups.createObjectTypes')}</Link>
-              </p>
+        </div>
+      </EntityViewPanel>
+
+      <EntityViewPanel
+        title={t('groups.assignObjectTypes')}
+        description={t('groups.assignObjectTypesHint', { count: selectedTypeIds.size })}
+      >
+        {objectTypes.length === 0 ? (
+          <p className="entity-view__field-hint">
+            {t('groups.noObjectTypes')}{' '}
+            <Link to="/ontology-manager/object-types">{t('groups.createObjectTypes')}</Link>
+          </p>
+        ) : (
+          <div className="entity-view__assign">
+            {selectedTypes.length > 0 && (
+              <div className="entity-view__assign-selected">
+                <span className="entity-view__assign-selected-label">{t('groups.selectedTypes')}</span>
+                <ul className="entity-view__assign-chips">
+                  {selectedTypes.map((ot) => (
+                    <li key={ot.id}>
+                      <span className="account-pill account-pill--accent entity-view__assign-chip">
+                        <Link to={`/ontology-manager/object-types/${ot.id}`}>{ot.name}</Link>
+                        <button
+                          type="button"
+                          className="entity-view__assign-chip-remove"
+                          onClick={() => setTypeSelected(ot.id, false)}
+                          aria-label={t('groups.removeType', { name: ot.name })}
+                        >
+                          <X size={14} aria-hidden />
+                        </button>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="entity-view__assign-search">
+              <Search size={16} aria-hidden />
+              <input
+                type="search"
+                value={typeQuery}
+                onChange={(e) => setTypeQuery(e.target.value)}
+                placeholder={t('groups.searchObjectTypesPlaceholder')}
+                aria-label={t('groups.searchObjectTypes')}
+              />
+            </div>
+
+            {filteredTypes.length === 0 ? (
+              <p className="entity-view__field-hint">{t('groups.noMatchingTypes')}</p>
             ) : (
-              <CheckList>
-                {objectTypes.map((ot) => (
+              <CheckList className="entity-view__assign-list">
+                {filteredTypes.map((ot) => (
                   <CheckListItem
                     key={ot.id}
                     checked={selectedTypeIds.has(ot.id)}
-                    onChange={() => toggleType(ot.id)}
+                    onChange={(checked) => setTypeSelected(ot.id, checked)}
                   >
                     {ot.name}
                   </CheckListItem>
                 ))}
               </CheckList>
             )}
-          </EntityViewField>
-        </div>
+          </div>
+        )}
       </EntityViewPanel>
     </EntityViewShell>
   );
