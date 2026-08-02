@@ -1,0 +1,84 @@
+.dataset-detail-data {
+  margin: calc(-1 * (var(--space-5) + var(--space-1) / 2)) calc(-1 * var(--space-6))
+    calc(-1 * var(--space-6));
+}
+
+.dataset-detail-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: 0;
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--color-border);
+}
+
+.dataset-detail-pagination__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.dataset-detail-pagination__info label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dataset-detail-pagination__info select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  font-size: var(--text-md);
+  color: var(--color-text);
+}
+
+.dataset-detail-pagination__btns {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dataset-detail-pagination__page {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+  margin: 0 var(--space-1);
+}
+
+.dataset-detail-usage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.dataset-detail-usage__heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.dataset-detail-usage__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.dataset-detail-usage__list a {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.entity-view__readonly {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  padding: var(--padding-compact-y) 0;
+}

@@ -38,7 +38,7 @@ import { LinkTypesPage } from './pages/ontology/LinkTypesPage';
 import { ConsoleDataSources } from './pages/console/ConsoleDataSources';
 import { ConnectorsPage } from './pages/connectors/ConnectorsPage';
 import { ConnectorDetailPage } from './pages/connectors/ConnectorDetailPage';
-import { ConsoleDatasets } from './pages/console/ConsoleDatasets';
+import { DatasetsListPage } from './pages/ontology-manager/DatasetsListPage';
 import { ConsolePermissionManagement } from './pages/console/ConsolePermissionManagement';
 import { ConsoleAccessGroups } from './pages/console/ConsoleAccessGroups';
 import { ConsoleDataSecurityIssues } from './pages/console/ConsoleDataSecurityIssues';
@@ -192,8 +192,27 @@ const ArticleDetail = lazy(() => import('./pages/articles/ArticleDetail').then((
 const ArticleChannelSettings = lazy(() =>
   import('./pages/articles/ArticleChannelSettings').then((m) => ({ default: m.ArticleChannelSettings })),
 );
-const ConsoleDatasetDetail = lazy(() => import('./pages/console/ConsoleDatasetDetail').then((m) => ({ default: m.ConsoleDatasetDetail })));
-const DatasetSettings = lazy(() => import('./pages/console/DatasetSettings').then((m) => ({ default: m.DatasetSettings })));
+const DatasetManagerDetailPage = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetDetailPage })),
+);
+const DatasetOverviewTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetOverviewTab })),
+);
+const DatasetDataTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetDataTab })),
+);
+const DatasetColumnsTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetColumnsTab })),
+);
+const DatasetUsageTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetUsageTab })),
+);
+const DatasetSharingTab = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetSharingTab })),
+);
+const DatasetSettingsRedirect = lazy(() =>
+  import('./pages/ontology-manager/DatasetDetailPage').then((m) => ({ default: m.DatasetSettingsRedirect })),
+);
 const KnowledgeMap = lazy(() => import('./pages/knowledge-map/KnowledgeMap').then((m) => ({ default: m.KnowledgeMap })));
 const ProjectList = lazy(() => import('./pages/agents/ProjectList').then((m) => ({ default: m.ProjectList })));
 const ProjectWorkspace = lazy(() => import('./pages/agents/ProjectWorkspace').then((m) => ({ default: m.ProjectWorkspace })));
@@ -322,9 +341,15 @@ function App() {
           <Route path="models/:modelId" element={<ModelDetail />} />
           <Route path="ontology-manager" element={<Outlet />}>
             <Route index element={<OntologyList />} />
-            <Route path="datasets" element={<ConsoleDatasets />} />
-            <Route path="datasets/:id" element={<ConsoleDatasetDetail />} />
-            <Route path="datasets/:id/settings" element={<DatasetSettings />} />
+            <Route path="datasets" element={<DatasetsListPage />} />
+            <Route path="datasets/:id/settings" element={<DatasetSettingsRedirect />} />
+            <Route path="datasets/:id" element={<DatasetManagerDetailPage />}>
+              <Route index element={<DatasetOverviewTab />} />
+              <Route path="data" element={<DatasetDataTab />} />
+              <Route path="columns" element={<DatasetColumnsTab />} />
+              <Route path="usage" element={<DatasetUsageTab />} />
+              <Route path="sharing" element={<DatasetSharingTab />} />
+            </Route>
             <Route path="object-types" element={<ObjectTypesPage />} />
             <Route path="object-types/:typeId/settings" element={<ObjectTypeSettingsRedirect />} />
             <Route path="object-types/:typeId" element={<ObjectTypeManagerDetailPage />}>

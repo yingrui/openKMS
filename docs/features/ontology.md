@@ -10,7 +10,7 @@ Object types and link types model an entity-relationship layer that can be backe
 
 Legacy `/ontology`, `/objects`, `/links` redirect to the new prefixes. See [Ontology Functions](ontology-functions.md).
 
-**Manager detail chrome:** Object types, link types, functions, and actions share the left-nav **entity-view** shell (`EntityViewShell` + `entity-view.scss`). Function detail tabs: Overview · Observability. Action detail tabs: Overview · Rules · Log.
+**Manager detail chrome:** Object types, link types, datasets, functions, and actions share the left-nav **entity-view** shell (`EntityViewShell` + `entity-view.scss`). Dataset detail tabs: Overview · Data · Columns · Usage · Sharing. Function detail tabs: Overview · Observability. Action detail tabs: Overview · Rules · Log.
 
 The **Objects & links** sidebar group is shown when route patterns allow; a **Neo4j** data source still drives graph counts and Object Explorer behavior where applicable.
 
@@ -40,9 +40,9 @@ PostgreSQL and Neo4j connections live in **Console → Data Sources**; mappings 
 | Credential encryption | ✅ | Username/password encrypted with Fernet before storage; key from OPENKMS_DATASOURCE_ENCRYPTION_KEY or derived from secret_key |
 | Test connection | ✅ | `POST /api/data-sources/{id}/test` validates connectivity |
 | Neo4j delete all | ✅ | `POST /api/data-sources/{id}/neo4j-delete-all` wipes all nodes and relationships; confirmation modal in Console |
-| Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; **Ontology → Datasets** (`/ontology/datasets`); legacy `/console/datasets` redirects |
+| Dataset CRUD | ✅ | Map PostgreSQL tables (schema.table) from a data source; **Ontology Manager → Datasets** (`/ontology-manager/datasets`); legacy `/console/datasets` and `/ontology/datasets` redirect |
 | List tables from source | ✅ | `GET /api/datasets/from-source/{id}` — requires **`console:datasets`** (Manage datasets) |
-| Dataset detail | ✅ | Click dataset name → `/ontology/datasets/:id` with Data tab (rows, pagination) and Metadata tab (column info); **Settings** opens General (display name) and Sharing |
+| Dataset detail | ✅ | Entity-view at `/ontology-manager/datasets/:id` — Overview (display name) · Data (paginated rows) · Columns (metadata) · Usage (OT/LT bindings) · Sharing; legacy `/…/settings` redirects to Overview/Sharing |
 | Dataset rows | ✅ | `GET /api/datasets/{id}/rows?limit=&offset=` fetches paginated rows from table |
 | Dataset metadata | ✅ | `GET /api/datasets/{id}/metadata` returns column name, type, nullable, position from information_schema |
 | Search datasets | ✅ | Client-side search by display name, schema.table, data source on list page |

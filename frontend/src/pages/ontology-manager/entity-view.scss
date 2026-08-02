@@ -107,8 +107,10 @@
   padding: 0 0 var(--space-8) var(--space-6);
 }
 
+/* Fill the ontology pane; keep readability on forms via .entity-view__form max-width. */
 .entity-view__main-inner {
-  max-width: 880px;
+  width: 100%;
+  max-width: none;
 }
 
 .entity-view__main .page-header {

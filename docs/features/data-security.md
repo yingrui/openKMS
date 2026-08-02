@@ -163,7 +163,7 @@ Per-resource sharing applies when ACL rows exist. Set **`OPENKMS_ENFORCE_RESOURC
 
 ### Per-resource sharing (`ResourceSharePanel`)
 
-**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`), evaluation dataset settings (`/evaluations/{id}/settings?tab=sharing`), glossary settings (`/glossaries/{id}/settings?tab=sharing`), ontology dataset settings (`/ontology/datasets/{id}/settings?tab=sharing`), object type / link type settings (`/ontology/object-types|link-types/{id}/settings?tab=sharing`).
+**Routes:** document/article channel settings (Sharing tab), wiki space settings (#sharing), knowledge base settings tab (`?tab=settings`), evaluation dataset settings (`/evaluations/{id}/settings?tab=sharing`), glossary settings (`/glossaries/{id}/settings?tab=sharing`), ontology dataset sharing (`/ontology-manager/datasets/{id}/sharing`), object type / link type sharing (`/ontology-manager/object-types|link-types/{id}/sharing`).
 
 | Row | `grantee_type` | Notes |
 |---|---|---|

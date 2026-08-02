@@ -26,7 +26,7 @@ Each UI or IA choice must answer:
 | Item | Prototype | Rationale | openKMS |
 |------|-----------|-----------|---------|
 | Three apps | Platform sidebar: Manager / Code Repos / Explorer | Semantic vs instance vs logic separation | `ontology-manager`, `object-explorer`, `function-editor` |
-| entity-view | Function detail left nav + tabs | Complex entities need stable detail shell | Manager OT / LT / Function / Action detail (`EntityViewShell`) |
+| entity-view | Function detail left nav + tabs | Complex entities need stable detail shell | Manager OT / LT / Dataset / Function / Action detail (`EntityViewShell`) |
 | Function dual surface | Manager registry + Code Repo IDE | Governance ≠ authoring | Manager + Function Editor; single PG store |
 | IDE bottom preview | `FunctionsHelper` Live Preview | Short feedback loop for authors | `function-editor-bottom-panel` |
 | Group browsing | OE Home by group | Business users start from type collections | Explorer Home P1 |

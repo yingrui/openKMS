@@ -27,11 +27,12 @@ const ONTOLOGY_NAV: NavItem[] = [
     canPath: '/ontology',
   },
   {
-    to: '/ontology/datasets',
+    to: '/ontology-manager/datasets',
     labelKey: 'datasets',
     icon: Table,
-    match: (p) => p.startsWith('/ontology/datasets'),
-    canPath: '/ontology/datasets',
+    match: (p) =>
+      p.startsWith('/ontology-manager/datasets') || p.startsWith('/ontology/datasets'),
+    canPath: '/ontology-manager/datasets',
   },
   {
     to: '/ontology/object-types',
