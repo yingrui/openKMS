@@ -176,7 +176,9 @@ export function GroupDetailPage() {
         {objectTypes.length === 0 ? (
           <p className="entity-view__field-hint">
             {t('groups.noObjectTypes')}{' '}
-            <Link to="/ontology-manager/object-types">{t('groups.createObjectTypes')}</Link>
+            <Link to={`/ontology-manager/object-types?group=${encodeURIComponent(groupId)}`}>
+              {t('groups.createObjectTypes')}
+            </Link>
           </p>
         ) : (
           <div className="entity-view__assign">

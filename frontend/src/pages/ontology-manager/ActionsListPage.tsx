@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Plus, Trash2, X, Zap } from 'lucide-react';
+import { Loader2, Plus, Trash2, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { EmptyState } from '../../styles/design-system';
 import { fetchObjectTypes, type ObjectTypeResponse } from '../../data/ontologyApi';
 import {
-  createOntologyActionType,
   deleteOntologyActionType,
   fetchOntologyActionTypes,
   fetchOntologyFunctions,
@@ -14,6 +13,7 @@ import {
   type OntologyFunctionResponse,
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { ActionTypeCreateWizard } from './ActionTypeCreateWizard';
 import '../ontology/ontology-admin.scss';
 
 function statusBadgeClass(status: string): string {
@@ -32,12 +32,6 @@ export function ActionsListPage() {
   const [functions, setFunctions] = useState<OntologyFunctionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [apiName, setApiName] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [description, setDescription] = useState('');
-  const [objectTypeId, setObjectTypeId] = useState('');
-  const [functionId, setFunctionId] = useState('');
 
   const publishedFunctions = useMemo(
     () => functions.filter((fn) => fn.published_version != null),
@@ -78,42 +72,6 @@ export function ActionsListPage() {
     void load();
   }, [load]);
 
-  const openCreate = () => {
-    setApiName('');
-    setDisplayName('');
-    setDescription('');
-    setObjectTypeId(objectTypes[0]?.id ?? '');
-    setFunctionId('');
-    setShowCreate(true);
-  };
-
-  const onCreate = async () => {
-    if (!apiName.trim() || !displayName.trim() || !objectTypeId) {
-      toast.error(t('actions.formRequired'));
-      return;
-    }
-    const selectedFn = publishedFunctions.find((fn) => fn.id === functionId);
-    setSubmitting(true);
-    try {
-      await createOntologyActionType({
-        api_name: apiName.trim(),
-        display_name: displayName.trim(),
-        description: description.trim() || undefined,
-        object_type_id: objectTypeId,
-        rule_type: 'function',
-        function_id: selectedFn?.id,
-        function_version: selectedFn?.published_version ?? undefined,
-      });
-      toast.success(t('actions.created'));
-      setShowCreate(false);
-      void load();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : t('actions.createFailed'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const onDelete = async (action: OntologyActionTypeResponse) => {
     if (
       !(await confirm({
@@ -140,7 +98,7 @@ export function ActionsListPage() {
           <h1>{t('actions.title')}</h1>
           <p className="page-subtitle">{t('actions.subtitle')}</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={openCreate}>
+        <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
           <Plus size={16} aria-hidden />
           {t('actions.create')}
         </button>
@@ -158,7 +116,7 @@ export function ActionsListPage() {
             title={t('actions.emptyList')}
             description={t('actions.createHint')}
             action={
-              <button type="button" className="btn btn-primary" onClick={openCreate}>
+              <button type="button" className="btn btn-primary" onClick={() => setShowCreate(true)}>
                 <Plus size={16} aria-hidden />
                 {t('actions.create')}
               </button>
@@ -220,103 +178,13 @@ export function ActionsListPage() {
         )}
       </div>
 
-      {showCreate && (
-        <div
-          className="console-modal-overlay"
-          onClick={(e) => e.target === e.currentTarget && !submitting && setShowCreate(false)}
-        >
-          <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{t('actions.create')}</h2>
-              <button type="button" onClick={() => setShowCreate(false)} disabled={submitting} aria-label={t('shared.cancel')}>
-                <X size={18} aria-hidden />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <p className="console-modal-hint">{t('actions.createHint')}</p>
-              <label className="console-form-field">
-                <span>{t('actions.apiName')}</span>
-                <input
-                  type="text"
-                  className="console-form-control"
-                  value={apiName}
-                  onChange={(e) => setApiName(e.target.value)}
-                  placeholder="submitClaim"
-                  autoFocus
-                />
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.displayName')}</span>
-                <input
-                  type="text"
-                  className="console-form-control"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder={t('actions.displayName')}
-                />
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.objectType')}</span>
-                <select
-                  className="console-form-control"
-                  value={objectTypeId}
-                  onChange={(e) => setObjectTypeId(e.target.value)}
-                >
-                  {objectTypes.length === 0 ? (
-                    <option value="">{t('actions.noObjectTypes')}</option>
-                  ) : (
-                    objectTypes.map((ot) => (
-                      <option key={ot.id} value={ot.id}>
-                        {ot.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.function')}</span>
-                <select
-                  className="console-form-control"
-                  value={functionId}
-                  onChange={(e) => setFunctionId(e.target.value)}
-                >
-                  <option value="">{t('actions.noFunction')}</option>
-                  {publishedFunctions.map((fn) => (
-                    <option key={fn.id} value={fn.id}>
-                      {fn.api_name} (v{fn.published_version})
-                    </option>
-                  ))}
-                </select>
-                {publishedFunctions.length === 0 && (
-                  <span className="console-modal-hint">{t('actions.publishFirstHint')}</span>
-                )}
-              </label>
-              <label className="console-form-field">
-                <span>{t('actions.description')}</span>
-                <input
-                  type="text"
-                  className="console-form-control"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                />
-              </label>
-            </div>
-            <div className="console-modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)} disabled={submitting}>
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => void onCreate()}
-                disabled={submitting || !apiName.trim() || !displayName.trim() || !objectTypeId}
-              >
-                {submitting ? t('shared.saving') : t('actions.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ActionTypeCreateWizard
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        objectTypes={objectTypes}
+        publishedFunctions={publishedFunctions}
+        onCreated={() => void load()}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import { CheckRow, Metric, MetricGrid } from '../../styles/design-system';
+import { Metric, MetricGrid } from '../../styles/design-system';
 import '../../styles/account-page.scss';
 import './entity-view.scss';
 
@@ -109,20 +109,6 @@ export function EntityViewField({
       {hint ? <span className="account-hint">{hint}</span> : null}
     </Tag>
   );
-}
-
-export function EntityViewCheck({
-  checked,
-  onChange,
-  title,
-  hint,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  title: string;
-  hint?: ReactNode;
-}) {
-  return <CheckRow checked={checked} onChange={onChange} title={title} hint={hint} />;
 }
 
 export function EntityViewShell({

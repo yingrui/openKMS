@@ -44,6 +44,7 @@ export function PropertyRow({
         <label className="console-obj-property-enabled" title={t('objectTypes.includeProperty')}>
           <input
             type="checkbox"
+            className="ds-checkbox"
             checked={prop.enabled !== false}
             onChange={(e) => onToggleEnabled(e.target.checked)}
           />
@@ -80,6 +81,7 @@ export function PropertyRow({
       <label className="console-obj-property-required">
         <input
           type="checkbox"
+          className="ds-checkbox"
           checked={prop.required}
           onChange={(e) => onChange({ ...prop, required: e.target.checked })}
         />

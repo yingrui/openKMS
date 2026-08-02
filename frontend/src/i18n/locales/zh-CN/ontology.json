@@ -203,10 +203,52 @@
     "emptyNoGroupMatch": "此分组下没有对象类型。",
     "filterByGroup": "分组",
     "filterAllGroups": "全部分组",
+    "group": "分组",
+    "groupNone": "不加入分组",
+    "groupHint": "可选 — 创建时直接加入某个分组。",
+    "assignGroupFailed": "对象类型已创建，但加入分组失败。",
     "created": "对象类型已创建",
     "deleted": "对象类型已删除",
     "deleteConfirm": "删除此对象类型？所有实例也将被删除。",
-    "deleteTitle": "删除对象类型"
+    "deleteTitle": "删除对象类型",
+    "wizard": {
+      "stepsLabel": "创建步骤",
+      "back": "上一步",
+      "next": "下一步",
+      "yes": "是",
+      "no": "否",
+      "steps": {
+        "identity": "基本信息",
+        "schema": "属性结构",
+        "actions": "操作类型",
+        "review": "确认"
+      },
+      "actionsHint": "可选：为该对象类型创建操作类型空壳，稍后可绑定函数。",
+      "actionsToCreate": "将创建的操作类型",
+      "noActions": "无",
+      "propertyCount": "{{count}} 个属性",
+      "actionsPartialFailed": "对象类型已创建，但以下操作类型创建失败：{{names}}",
+      "actionLabel": {
+        "create": "创建",
+        "edit": "编辑",
+        "delete": "删除"
+      },
+      "actionHint": {
+        "create": "用于新建实例的操作类型空壳。",
+        "edit": "用于更新实例的操作类型空壳。",
+        "delete": "用于删除实例的操作类型空壳。"
+      },
+      "actionDisplay": {
+        "create": "创建 {{name}}",
+        "edit": "编辑 {{name}}",
+        "delete": "删除 {{name}}"
+      },
+      "actionDescription": {
+        "create": "创建新的 {{name}} 对象。",
+        "edit": "编辑已有的 {{name}} 对象。",
+        "delete": "删除 {{name}} 对象。"
+      }
+    }
   },
   "linkTypes": {
     "title": "链接类型",
@@ -244,7 +286,7 @@
   "actions": {
     "title": "操作类型",
     "subtitle": "操作类型将已发布函数绑定到对象类型。",
-    "apiName": "API 名称",
+    "apiName": "标识符",
     "displayName": "显示名称",
     "objectType": "对象类型",
     "function": "函数",
@@ -257,11 +299,29 @@
     "deleted": "操作类型已删除",
     "deleteConfirm": "删除操作类型「{{name}}」？",
     "emptyList": "暂无操作类型。",
-    "createHint": "将已发布函数绑定到对象类型，供应用与智能体在实例上调用。",
-    "formRequired": "请填写 API 名称、显示名称并选择对象类型。",
+    "createHint": "选择对象类型与显示名称；可现在绑定已发布函数，也可稍后配置。",
+    "formRequired": "请填写显示名称并选择对象类型。",
     "noObjectTypes": "暂无对象类型 — 请先创建",
     "noFunction": "无（稍后配置）",
     "publishFirstHint": "请先在 Ontology Manager 中发布函数，再在此绑定。",
+    "wizard": {
+      "stepsLabel": "创建步骤",
+      "back": "上一步",
+      "next": "下一步",
+      "steps": {
+        "target": "目标",
+        "define": "定义",
+        "review": "确认"
+      },
+      "targetHint": "选择此操作类型作用的对象类型；可选创建/编辑/删除意图以辅助命名。",
+      "objectTypeRequired": "请先选择对象类型。",
+      "intentLabel": "意图",
+      "intent": {
+        "custom": "自定义",
+        "customHint": "自行命名（例如「更改优先级」）。"
+      },
+      "apiNameHint": "由意图与对象类型自动生成；需要时可修改。"
+    },
     "backToList": "全部操作类型",
     "overview": "概览",
     "logs": "日志",

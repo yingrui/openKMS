@@ -216,10 +216,16 @@
   to { transform: rotate(360deg); }
 }
 
+// Keep header/footer visible; scroll the body when content is tall.
+.ontology-admin .console-modal {
+  overflow: hidden;
+}
+
 .console-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
 }
@@ -242,7 +248,10 @@
 }
 
 .console-modal-body {
-  padding: 20px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
 }
 
 // Shared form controls (console modals + connector detail)
@@ -283,13 +292,13 @@ select.console-form-control {
   cursor: pointer;
 }
 
-// Legacy modal markup (label > span + control)
-.console-modal-body label:not(.console-modal-checkbox-row) {
+// Legacy modal markup (label > span + control). Exclude design-system CheckRow.
+.console-modal-body label:not(.console-modal-checkbox-row):not(.ds-check-row) {
   display: block;
   margin-bottom: var(--space-4);
 }
 
-.console-modal-body label:not(.console-modal-checkbox-row) span:first-child {
+.console-modal-body label:not(.console-modal-checkbox-row):not(.ds-check-row) span:first-child {
   display: block;
   font-size: var(--text-md);
   font-weight: 500;
@@ -315,7 +324,9 @@ select.console-form-control {
 .console-modal-body label.console-modal-checkbox-row {
   display: flex;
   align-items: center;
-  gap: calc(var(--space-2) + var(--space-1) / 2);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  cursor: pointer;
 }
 
 .console-modal-body label.console-modal-checkbox-row span {
@@ -324,8 +335,16 @@ select.console-form-control {
   color: var(--color-text);
 }
 
-.console-modal-body label.console-modal-checkbox-row input[type='checkbox'] {
+// `width: auto` collapses appearance:none checkboxes to a thin bar — size .ds-checkbox explicitly.
+.console-modal-body label.console-modal-checkbox-row input[type='checkbox']:not(.ds-checkbox) {
   width: auto;
+}
+
+.console-modal-body label.console-modal-checkbox-row .ds-checkbox {
+  flex: 0 0 1.125rem;
+  width: 1.125rem;
+  min-width: 1.125rem;
+  height: 1.125rem;
 }
 
 .connector-form-fields label.console-modal-checkbox-row {
@@ -623,9 +642,195 @@ select.console-form-control {
 .console-modal-actions {
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
   gap: var(--space-2);
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--color-border);
+}
+
+// Create object type — dense two-column fields + sticky Dialog footer.
+.object-type-create-dialog {
+  --dialog-w: 720px;
+}
+
+.object-type-create-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.object-type-create-wizard__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.object-type-create-wizard__step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.object-type-create-wizard__step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  font-size: var(--text-xs);
+}
+
+.object-type-create-wizard__step.is-current {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.object-type-create-wizard__step.is-current .object-type-create-wizard__step-num {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.object-type-create-wizard__step.is-done {
+  color: var(--color-text-secondary);
+}
+
+.object-type-create-wizard__step.is-done .object-type-create-wizard__step-num {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.object-type-create-wizard__current {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.object-type-create-wizard__intent {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-inline-size: 0;
+
+  legend {
+    margin: 0 0 var(--space-2);
+    padding: 0;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+}
+
+.object-type-create-wizard__action-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.object-type-create-wizard__action-list > li {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.object-type-create-wizard__review dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.object-type-create-wizard__review dl > div {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.object-type-create-wizard__review dt {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.object-type-create-wizard__review dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.object-type-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.object-type-create-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.object-type-create-form__row--single {
+  grid-template-columns: 1fr;
+}
+
+.object-type-create-form__row--mixed {
+  align-items: end;
+}
+
+.object-type-create-wizard__checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+
+  .ds-checkbox {
+    flex: 0 0 1.125rem;
+    width: 1.125rem;
+    min-width: 1.125rem;
+    height: 1.125rem;
+  }
+}
+
+.object-type-create-form .console-modal-section {
+  margin-top: var(--space-1);
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .object-type-create-form__row {
+    grid-template-columns: 1fr;
+  }
+
+  .object-type-create-form__row--mixed {
+    align-items: stretch;
+  }
 }
 
 .btn-sm {

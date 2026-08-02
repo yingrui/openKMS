@@ -203,10 +203,52 @@
     "emptyNoGroupMatch": "No object types in this group.",
     "filterByGroup": "Group",
     "filterAllGroups": "All groups",
+    "group": "Group",
+    "groupNone": "No group",
+    "groupHint": "Optional — add this type to a group on create.",
+    "assignGroupFailed": "Object type created, but assigning it to the group failed.",
     "created": "Object type created",
     "deleted": "Object type deleted",
     "deleteConfirm": "Delete this object type? All instances will be deleted.",
-    "deleteTitle": "Delete object type"
+    "deleteTitle": "Delete object type",
+    "wizard": {
+      "stepsLabel": "Create steps",
+      "back": "Back",
+      "next": "Next",
+      "yes": "Yes",
+      "no": "No",
+      "steps": {
+        "identity": "Identity",
+        "schema": "Schema",
+        "actions": "Actions",
+        "review": "Review"
+      },
+      "actionsHint": "Optionally create action type stubs for this object type. You can bind Functions later.",
+      "actionsToCreate": "Action types",
+      "noActions": "None",
+      "propertyCount": "{{count}} properties",
+      "actionsPartialFailed": "Object type created, but these action types failed: {{names}}",
+      "actionLabel": {
+        "create": "Create",
+        "edit": "Edit",
+        "delete": "Delete"
+      },
+      "actionHint": {
+        "create": "Stub for creating a new instance.",
+        "edit": "Stub for updating an existing instance.",
+        "delete": "Stub for deleting an instance."
+      },
+      "actionDisplay": {
+        "create": "Create {{name}}",
+        "edit": "Edit {{name}}",
+        "delete": "Delete {{name}}"
+      },
+      "actionDescription": {
+        "create": "Create a new {{name}} object.",
+        "edit": "Edit an existing {{name}} object.",
+        "delete": "Delete a {{name}} object."
+      }
+    }
   },
   "linkTypes": {
     "title": "Link Types",
@@ -244,7 +286,7 @@
   "actions": {
     "title": "Action types",
     "subtitle": "Action types bind published functions to object types.",
-    "apiName": "API name",
+    "apiName": "Identifier",
     "displayName": "Display name",
     "objectType": "Object type",
     "function": "Function",
@@ -257,11 +299,29 @@
     "deleted": "Action type deleted",
     "deleteConfirm": "Delete action type \"{{name}}\"?",
     "emptyList": "No action types yet.",
-    "createHint": "Bind a published function to an object type so apps and agents can invoke it on instances.",
-    "formRequired": "API name, display name, and object type are required.",
+    "createHint": "Choose an object type and display name. You can bind a published function now or later.",
+    "formRequired": "Display name and object type are required.",
     "noObjectTypes": "No object types — create one first",
     "noFunction": "None (configure later)",
     "publishFirstHint": "Publish a function in Ontology Manager before binding it here.",
+    "wizard": {
+      "stepsLabel": "Create steps",
+      "back": "Back",
+      "next": "Next",
+      "steps": {
+        "target": "Target",
+        "define": "Define",
+        "review": "Review"
+      },
+      "targetHint": "Pick the object type this action type applies to, and optionally a create/edit/delete intent for naming.",
+      "objectTypeRequired": "Select an object type to continue.",
+      "intentLabel": "Intent",
+      "intent": {
+        "custom": "Custom",
+        "customHint": "Name the action yourself (for example Change priority)."
+      },
+      "apiNameHint": "Derived from the intent and object type. Edit if you need a different identifier."
+    },
     "backToList": "All action types",
     "kind": "Action type",
     "overview": "Overview",

@@ -38,7 +38,6 @@ import {
   type FormProperty,
 } from './objectTypeFormParts';
 import {
-  EntityViewCheck,
   EntityViewField,
   EntityViewHeader,
   EntityViewLoading,
@@ -436,12 +435,18 @@ export function ObjectTypeOverviewTab() {
               rows={3}
             />
           </EntityViewField>
-          <EntityViewCheck
-            checked={isMasterData}
-            onChange={setIsMasterData}
-            title={t('objectTypes.masterData')}
-            hint={t('objectTypes.masterDataHint')}
-          />
+          <label
+            className="console-modal-checkbox-row entity-view__checkbox-row"
+            title={t('objectTypes.masterDataHint')}
+          >
+            <input
+              type="checkbox"
+              className="ds-checkbox"
+              checked={isMasterData}
+              onChange={(e) => setIsMasterData(e.target.checked)}
+            />
+            <span>{t('objectTypes.masterData')}</span>
+          </label>
           <EntityViewField label={t('objectTypes.displayProperty')}>
             <select
               className="console-form-control"

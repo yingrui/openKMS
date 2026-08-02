@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Loader2, Database, Users, Box } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -6,30 +6,19 @@ import { toast } from 'sonner';
 import { EmptyState } from '../../styles/design-system';
 import {
   fetchObjectTypes,
-  createObjectType,
   deleteObjectType,
   indexObjectTypesToNeo4j,
   indexObjectTypeToNeo4j,
   type ObjectTypeResponse,
 } from '../../data/ontologyApi';
-import {
-  fetchDatasets,
-  fetchDatasetMetadata,
-  type DatasetResponse,
-  type ColumnMetadata,
-} from '../../data/datasetsApi';
+import { fetchDatasets, type DatasetResponse } from '../../data/datasetsApi';
 import { fetchAllDataSources, type DataSourceResponse } from '../../data/dataSourcesApi';
 import {
   fetchOntologyGroups,
   type OntologyGroupResponse,
 } from '../../data/ontologyFunctionsApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import {
-  ontologyTypeFromColumn,
-  PropertiesEditor,
-  toPropertyDefs,
-  type FormProperty,
-} from '../ontology-manager/objectTypeFormParts';
+import { ObjectTypeCreateWizard } from '../ontology-manager/ObjectTypeCreateWizard';
 import './ontology-admin.scss';
 
 export function ObjectTypesPage() {
@@ -41,14 +30,8 @@ export function ObjectTypesPage() {
   const [types, setTypes] = useState<ObjectTypeResponse[]>([]);
   const [groups, setGroups] = useState<OntologyGroupResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [formDatasetId, setFormDatasetId] = useState('');
-  const [formProperties, setFormProperties] = useState<FormProperty[]>([]);
-  const [submitting, setSubmitting] = useState(false);
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
   const [datasets, setDatasets] = useState<DatasetResponse[]>([]);
-  const [loadingMetadata, setLoadingMetadata] = useState(false);
   const [dataSources, setDataSources] = useState<DataSourceResponse[]>([]);
   const [showIndexDialog, setShowIndexDialog] = useState(false);
   const [showIndexOneDialog, setShowIndexOneDialog] = useState(false);
@@ -56,9 +39,6 @@ export function ObjectTypesPage() {
   const [indexNeo4jId, setIndexNeo4jId] = useState('');
   const [indexing, setIndexing] = useState(false);
   const [indexingTypeId, setIndexingTypeId] = useState<string | null>(null);
-  const [formKeyProperty, setFormKeyProperty] = useState('');
-  const [formIsMasterData, setFormIsMasterData] = useState(false);
-  const [formDisplayProperty, setFormDisplayProperty] = useState('');
 
   const neo4jDataSources = dataSources.filter((ds) => ds.kind === 'neo4j');
 
@@ -106,77 +86,7 @@ export function ObjectTypesPage() {
     void load();
   }, [load]);
 
-  const savedPropNamesRef = useRef<Set<string> | null>(null);
-
-  useEffect(() => {
-    if (!formDatasetId) {
-      setFormProperties([]);
-      savedPropNamesRef.current = null;
-      return;
-    }
-    const enabledNames = savedPropNamesRef.current;
-    savedPropNamesRef.current = null;
-    let cancelled = false;
-    setLoadingMetadata(true);
-    fetchDatasetMetadata(formDatasetId)
-      .then((cols: ColumnMetadata[]) => {
-        if (cancelled) return;
-        const props: FormProperty[] = cols.map((c) => ({
-          name: c.column_name,
-          type: ontologyTypeFromColumn(c),
-          required: !c.is_nullable,
-          enabled: enabledNames ? enabledNames.has(c.column_name) : true,
-        }));
-        setFormProperties(props);
-        setFormKeyProperty((prev) => (prev ? prev : cols[0]?.column_name || ''));
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          toast.error(e instanceof Error ? e.message : 'Failed to load dataset columns');
-          setFormProperties([]);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingMetadata(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [formDatasetId]);
-
-  const openCreate = () => {
-    setFormName('');
-    setFormDescription('');
-    setFormDatasetId('');
-    setFormProperties([]);
-    setFormKeyProperty('');
-    setFormIsMasterData(false);
-    setFormDisplayProperty('');
-    setShowForm(true);
-  };
-
-  const handleSubmit = async () => {
-    if (!formName.trim()) return;
-    setSubmitting(true);
-    try {
-      await createObjectType({
-        name: formName.trim(),
-        description: formDescription.trim() || undefined,
-        dataset_id: formDatasetId || undefined,
-        properties: toPropertyDefs(formProperties),
-        key_property: formKeyProperty || undefined,
-        is_master_data: formIsMasterData,
-        display_property: formDisplayProperty || undefined,
-      });
-      toast.success(t('objectTypes.created'));
-      setShowForm(false);
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('objectTypes.saveFailed'));
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const openCreate = () => setShowCreateWizard(true);
 
   const handleIndexConfirm = async () => {
     if (!indexNeo4jId) return;
@@ -386,133 +296,14 @@ export function ObjectTypesPage() {
         )}
       </div>
 
-      {showForm && (
-        <div className="console-modal-overlay" onClick={(e) => e.target === e.currentTarget && !submitting && setShowForm(false)}>
-          <div className="console-modal console-modal--wide" onClick={(e) => e.stopPropagation()}>
-            <div className="console-modal-header">
-              <h2>{t('objectTypes.create')}</h2>
-              <button
-                type="button"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-                aria-label="Close"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="console-modal-body">
-              <label>
-                {t('objectTypes.name')}
-                <input
-                  type="text"
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  placeholder="e.g. Disease"
-                />
-              </label>
-              <label>
-                {t('objectTypes.description')}
-                <input
-                  type="text"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                />
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={formIsMasterData}
-                  onChange={(e) => setFormIsMasterData(e.target.checked)}
-                />
-                <span>{t('objectTypes.masterData')}</span>
-              </label>
-              <label>
-                <span>{t('objectTypes.displayProperty')}</span>
-                <select
-                  value={formDisplayProperty}
-                  onChange={(e) => setFormDisplayProperty(e.target.value)}
-                >
-                  <option value="">{t('objectTypes.none')}</option>
-                  {formProperties
-                    .filter((p) => p.name.trim() && p.enabled !== false)
-                    .map((p) => (
-                      <option key={p.name} value={p.name}>
-                        {p.name}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label>
-                <span>{t('objectTypes.dataset')}</span>
-                <select
-                  value={formDatasetId}
-                  onChange={(e) => setFormDatasetId(e.target.value)}
-                >
-                  <option value="">{t('objectTypes.none')}</option>
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.display_name || `${d.schema_name}.${d.table_name}`}
-                    </option>
-                  ))}
-                </select>
-                <span className="console-modal-hint console-modal-hint--block">
-                  {t('objectTypes.datasourcesHint')}
-                </span>
-              </label>
-              <PropertiesEditor
-                properties={formProperties}
-                fromDataset={!!formDatasetId}
-                nameTypeReadOnly={false}
-                keyProperty={formKeyProperty}
-                loadingMetadata={loadingMetadata}
-                onAdd={() =>
-                  setFormProperties((prev) => [
-                    ...prev,
-                    { name: '', type: 'string', required: false, enabled: true },
-                  ])
-                }
-                onChange={(idx, p) =>
-                  setFormProperties((prev) => {
-                    const next = [...prev];
-                    next[idx] = p;
-                    return next;
-                  })
-                }
-                onRemove={(idx) => setFormProperties((prev) => prev.filter((_, i) => i !== idx))}
-                onToggleEnabled={
-                  formDatasetId
-                    ? (idx, enabled) =>
-                        setFormProperties((prev) => {
-                          const next = [...prev];
-                          next[idx] = { ...next[idx], enabled };
-                          return next;
-                        })
-                    : undefined
-                }
-                onKeyPropertyChange={setFormKeyProperty}
-              />
-            </div>
-            <div className="console-modal-actions">
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => !submitting && setShowForm(false)}
-                disabled={submitting}
-              >
-                {t('shared.cancel')}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSubmit}
-                disabled={!formName.trim() || submitting}
-              >
-                {submitting ? t('shared.saving') : t('objectTypes.create')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ObjectTypeCreateWizard
+        open={showCreateWizard}
+        onClose={() => setShowCreateWizard(false)}
+        groups={groups}
+        datasets={datasets}
+        initialGroupId={filterGroupId}
+        onCreated={() => void load()}
+      />
 
       {showIndexDialog && (
         <div
