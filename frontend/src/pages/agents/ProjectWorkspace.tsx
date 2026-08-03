@@ -46,16 +46,20 @@ export function ProjectWorkspace() {
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const session = useProjectSessionRouting(projectId, sessionId);
+  // Live NDJSON vs durable poll: stream.loading = browser stream; turnInProgress = server last_turn.
   const stream = useProjectAgentStream({
     projectId,
     convId: session.convId,
+    activeConv: session.activeConv,
     planMode,
     messages: session.messages,
     setMessages: session.setMessages,
-    loadConversations: session.loadConversations,
+    refreshConversations: session.refreshConversations,
     loadMessages: session.loadMessages,
     ensureConv: session.ensureConv,
-    streamingRef: session.streamingRef,
+    beginLiveStream: session.beginLiveStream,
+    endLiveStream: session.endLiveStream,
+    turnInProgress: session.turnInProgress,
     t,
   });
 
@@ -170,9 +174,8 @@ export function ProjectWorkspace() {
   }, [projectId]);
 
   const onDeleteConv = (id: string) => {
-    const deletingActive = sessionId === id || session.convId === id;
-    void session.onDeleteConv(id, t('sessions.deleteError')).then((list) => {
-      if (list != null && deletingActive) stream.clearStreamUi();
+    void session.onDeleteConv(id, t('sessions.deleteError')).then((result) => {
+      if (result?.deletedActive) stream.clearStreamUi();
     });
   };
 
@@ -185,7 +188,7 @@ export function ProjectWorkspace() {
     <AgentChatMain
       sessionTitle={session.sessionTitle}
       messages={session.messages}
-      loading={stream.loading}
+      loading={stream.loading || session.turnInProgress}
       planMode={planMode}
       onPlanModeChange={setPlanMode}
       onSend={stream.onSend}
@@ -201,6 +204,7 @@ export function ProjectWorkspace() {
       onRevertUserMessage={session.convId ? stream.onRevertUserMessage : undefined}
       reverting={stream.reverting}
       hasMoreOlder={session.hasMoreOlder}
+      loadingOlder={session.loadingOlder}
       onLoadOlderMessages={
         session.convId
           ? () => session.loadOlderMessages(session.convId!)

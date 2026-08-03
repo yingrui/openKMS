@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { ChatMessage } from '../../components/agents/AgentChatMain';
+import {
+  conversationTurnIsActive,
+  sessionLabel,
+} from '../../components/agents/projectSessionUtils';
 import { assistantHistoryStreamParts } from '../../components/wiki/wikiCopilotStreamParts';
 import type { AgentConversationResponse } from '../../data/agentApi';
 import {
@@ -18,6 +22,7 @@ import {
 
 const TAIL_LIMIT = 10;
 const PAGE_SIZE = 10;
+const TURN_POLL_MS = 2000;
 
 function mapItems(items: { id: string; role: string; content: string; created_at: string; tool_calls?: unknown }[]): ChatMessage[] {
   return items.map((m) => ({
@@ -39,10 +44,19 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const streamingRef = useRef(false);
+  /** Live NDJSON owner: only this conversation's message effect is blocked while streaming. */
+  const liveStreamConvIdRef = useRef<string | null>(null);
   const oldestOffsetRef = useRef(0);
+  const convIdRef = useRef<string | null>(null);
+  const prevConvIdRef = useRef<string | null>(null);
+  convIdRef.current = convId;
 
-  const loadConversations = useCallback(async () => {
+  const conversationIdsKey = useMemo(
+    () => conversations.map((c) => c.id).join('|'),
+    [conversations],
+  );
+
+  const bootstrapConversations = useCallback(async () => {
     setConversationsReady(false);
     const list = await listProjectConversations(projectId);
     setConversations(list);
@@ -50,22 +64,21 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
     return list;
   }, [projectId]);
 
+  /** Silent list refresh — does not flip conversationsReady (avoids routing flicker). */
+  const refreshConversations = useCallback(async () => {
+    const list = await listProjectConversations(projectId);
+    setConversations(list);
+    return list;
+  }, [projectId]);
+
   const loadMessages = useCallback(
     async (id: string) => {
-      const result = await listProjectMessages(projectId, id, { limit: TAIL_LIMIT });
+      const result = await listProjectMessages(projectId, id, { limit: TAIL_LIMIT, tail: true });
       const { items, total } = result;
-      let tailItems = items;
-      if (total > TAIL_LIMIT) {
-        const tailOffset = Math.max(0, total - TAIL_LIMIT);
-        if (tailOffset > 0) {
-          const tail = await listProjectMessages(projectId, id, { limit: TAIL_LIMIT, offset: tailOffset });
-          tailItems = tail.items;
-        }
-      }
-      const tailOffset = Math.max(0, total - tailItems.length);
+      const tailOffset = Math.max(0, total - items.length);
       oldestOffsetRef.current = tailOffset;
       setHasMoreOlder(tailOffset > 0);
-      setMessages(mapItems(tailItems));
+      setMessages(mapItems(items));
     },
     [projectId],
   );
@@ -89,23 +102,16 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
   );
 
   useEffect(() => {
-    loadConversations().catch((e) => toast.error(String(e)));
-  }, [loadConversations]);
+    bootstrapConversations().catch((e) => toast.error(String(e)));
+  }, [bootstrapConversations]);
 
+  // URL ↔ active session. Depend on id-set, not full list (poll updates updated_at).
   useEffect(() => {
     if (!conversationsReady) return;
 
     if (sessionId) {
-      if (conversations.some((c) => c.id === sessionId)) {
-        setConvId(sessionId);
-        setStoredProjectConversationId(projectId, sessionId);
-        return;
-      }
-      const next = conversations[0]?.id ?? null;
-      setConvId(next);
-      setMessages([]);
-      setStoredProjectConversationId(projectId, next);
-      navigate(projectWorkspacePath(projectId, next), { replace: true });
+      setConvId(sessionId);
+      setStoredProjectConversationId(projectId, sessionId);
       return;
     }
 
@@ -118,17 +124,62 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
     const pick =
       stored && conversations.some((c) => c.id === stored) ? stored : conversations[0].id;
     navigate(projectWorkspacePath(projectId, pick), { replace: true });
-  }, [conversationsReady, sessionId, conversations, projectId, navigate]);
+  }, [conversationsReady, sessionId, conversationIdsKey, projectId, navigate, conversations]);
 
   useEffect(() => {
-    if (streamingRef.current) return;
-    if (convId) {
-      loadMessages(convId).catch((e) => {
-        toast.error(e instanceof Error ? e.message : String(e));
+    const prev = prevConvIdRef.current;
+    prevConvIdRef.current = convId;
+
+    if (!convId) {
+      setMessages([]);
+      return;
+    }
+
+    const liveOwner = liveStreamConvIdRef.current;
+    // Same session still receiving live NDJSON — don't clobber in-flight streamParts.
+    if (liveOwner === convId && prev === convId) return;
+
+    loadMessages(convId).catch((e) => {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg);
+      // Deep-linked id missing / deleted → fall back to first session.
+      if (conversations[0]?.id && conversations[0].id !== convId) {
+        navigate(projectWorkspacePath(projectId, conversations[0].id), { replace: true });
+      } else {
         setMessages([]);
-      });
-    } else setMessages([]);
-  }, [convId, loadMessages]);
+      }
+    });
+  }, [convId, loadMessages, conversations, navigate, projectId]);
+
+  const activeConv = conversations.find((c) => c.id === convId);
+  const turnInProgress = conversationTurnIsActive(activeConv);
+
+  // After leave/sleep, reload chat while a durable turn is still running on the visible session.
+  useEffect(() => {
+    if (!convId || !turnInProgress) return;
+    if (liveStreamConvIdRef.current === convId) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const list = await listProjectConversations(projectId);
+        if (cancelled) return;
+        setConversations(list);
+        const stillActive = conversationTurnIsActive(list.find((c) => c.id === convId));
+        if (convIdRef.current === convId) {
+          await loadMessages(convId);
+        }
+        if (stillActive) return;
+      } catch {
+        /* next poll */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), TURN_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [convId, turnInProgress, projectId, loadMessages]);
 
   const onNewChat = async () => {
     const c = await createProjectConversation(projectId);
@@ -160,14 +211,14 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
       await deleteProjectConversation(projectId, id);
       const list = await listProjectConversations(projectId);
       setConversations(list);
-      if (!deletingActive) return list;
+      if (!deletingActive) return { list, deletedActive: false as const };
 
       const next = list[0]?.id ?? null;
       setConvId(next);
       setMessages([]);
       setStoredProjectConversationId(projectId, next);
       navigate(projectWorkspacePath(projectId, next), { replace: true });
-      return list;
+      return { list, deletedActive: true as const };
     } catch (e) {
       toast.error(e instanceof Error ? e.message : errorMsg);
       return null;
@@ -179,23 +230,36 @@ export function useProjectSessionRouting(projectId: string, sessionId?: string) 
     if (active) return active;
     const c = await createProjectConversation(projectId);
     setConversations((prev) => [c, ...prev]);
+    setConvId(c.id);
+    setStoredProjectConversationId(projectId, c.id);
     navigate(projectWorkspacePath(projectId, c.id));
     return c.id;
   };
 
-  const activeConv = conversations.find((c) => c.id === convId);
-  const sessionTitle = activeConv
-    ? activeConv.title?.trim() || new Date(activeConv.updated_at).toLocaleDateString()
-    : null;
+  const beginLiveStream = useCallback((id: string) => {
+    liveStreamConvIdRef.current = id;
+  }, []);
+
+  const endLiveStream = useCallback((id: string) => {
+    if (liveStreamConvIdRef.current === id) {
+      liveStreamConvIdRef.current = null;
+    }
+  }, []);
+
+  const sessionTitle = activeConv ? sessionLabel(activeConv) : null;
 
   return {
     conversations,
+    activeConv,
     convId,
     messages,
     setMessages,
-    loadConversations,
+    refreshConversations,
     loadMessages,
-    streamingRef,
+    beginLiveStream,
+    endLiveStream,
+    /** True when visible session has a non-stale server-side running turn. */
+    turnInProgress,
     hasMoreOlder,
     loadingOlder,
     loadOlderMessages,

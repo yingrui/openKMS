@@ -183,7 +183,9 @@ $agents-pane-header-height: 49px;
 .agents-session-item {
   flex: 1;
   min-width: 0;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   text-align: left;
   padding: 8px 6px 8px 10px;
   border: none;
@@ -193,14 +195,26 @@ $agents-pane-header-height: 49px;
   font-size: 0.8125rem;
   line-height: 1.35;
   color: var(--color-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-decoration: none;
 
   &:hover {
     color: var(--color-text);
   }
+}
+
+.agents-session-running {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.agents-session-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agents-session-actions {

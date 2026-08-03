@@ -117,6 +117,45 @@
   color: var(--color-accent);
 }
 
+.agents-stream__tools-fold {
+  margin: 0.2rem 0 0.45rem;
+}
+
+.agents-stream__tools-fold-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+}
+
+.agents-stream__tools-fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.agents-stream__tools-fold-summary:hover {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+}
+
+.agents-stream__tools-fold-chevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.agents-stream__tools-fold[open] > .agents-stream__tools-fold-summary .agents-stream__tools-fold-chevron {
+  transform: rotate(90deg);
+}
+
+.agents-stream__tools-fold-body {
+  margin-top: 0.25rem;
+}
+
 .agents-stream__tool-pill-badge {
   flex-shrink: 0;
   font-size: 0.62rem;

@@ -116,3 +116,12 @@ def test_accumulator_collects_tool_input_on_end():
     )
     assert acc.tool_traces == [{"name": "execute", "output": "file.txt", "input": "ls"}]
     assert acc.absorb({"type": "interrupt", "interrupt": {}}) == "interrupt"
+
+
+def test_accumulator_merges_interrupt_action_requests():
+    acc = ProjectStreamAccumulator()
+    assert acc.absorb({"type": "interrupt", "interrupt": {"action_requests": [{"name": "a"}]}}) == "interrupt"
+    assert acc.absorb({"type": "interrupt", "interrupt": {"action_requests": [{"name": "b"}]}}) == "interrupt"
+    assert acc.interrupted is True
+    assert acc.interrupt_payload is not None
+    assert [r["name"] for r in acc.interrupt_payload["action_requests"]] == ["a", "b"]

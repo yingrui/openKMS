@@ -32,9 +32,16 @@ from app.services.agent.conversation_title import suggest_conversation_title
 from app.services.agent.agent_session_api_key import ensure_session_api_key, revoke_session_api_key
 from app.services.agent.agent_skill_install import ensure_skills_materialized
 from app.services.deep_agents.checkpointer import delete_conversation_thread
+from app.services.deep_agents.durable_stream import (
+    ClientBridge,
+    conversation_turn_is_active,
+    mark_streaming_turn_running,
+    open_durable_project_stream,
+    prepare_streaming_turn,
+    run_project_turn_background,
+)
 from app.services.deep_agents.observability import AgentTurnContext
 from app.services.deep_agents.runner import iter_project_stream_parts, new_id, resume_project_interrupt, run_project_turn
-from app.services.deep_agents.stream_accumulator import ProjectStreamAccumulator
 from app.services.permissions.permission_catalog import PERM_PROJECTS_READ, PERM_PROJECTS_WRITE
 from app.services.project_fs import read_lessons_json, write_lessons_json
 from app.services.agent.session_review import merge_lessons, review_session
@@ -45,49 +52,6 @@ router = APIRouter()
 
 def _ndjson_line(obj: dict) -> bytes:
     return (json.dumps(obj, ensure_ascii=False, default=str) + "\n").encode()
-
-
-async def _persist_stream_error(
-    db: AsyncSession,
-    conversation: AgentConversation,
-    turn: AgentTurnContext,
-    err: str,
-    *,
-    assistant_id: str | None = None,
-    tool_count: int = 0,
-    exc: BaseException | None = None,
-) -> AgentMessage:
-    """Persist failed turn as assistant message and record last_turn metadata."""
-    asst = AgentMessage(
-        id=assistant_id or new_id(),
-        conversation_id=conversation.id,
-        role="assistant",
-        content=err,
-    )
-    db.add(asst)
-    _bump_conversation_timestamp(conversation)
-    if turn._finished:
-        turn.apply_last_turn(conversation, status="failed", error=err, tool_count=tool_count)
-    else:
-        turn.log_failed(
-            err,
-            exc=exc,
-            conversation=conversation,
-            tool_count=tool_count,
-        )
-    await db.flush()
-    await db.refresh(asst)
-    return asst
-
-
-def _error_ndjson_line(err: str, asst: AgentMessage) -> bytes:
-    return _ndjson_line(
-        {
-            "type": "error",
-            "detail": err,
-            "message": _msg_to_out(asst).model_dump(mode="json"),
-        }
-    )
 
 
 def _conv_to_out(c: AgentConversation) -> AgentConversationResponse:
@@ -278,7 +242,13 @@ async def delete_conversation(
 ):
     sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
+    if conversation_turn_is_active(c):
+        raise HTTPException(
+            status_code=409,
+            detail="A turn is already running for this session. Wait for it to finish before deleting.",
+        )
     await revoke_session_api_key(db, c)
+    await delete_conversation_thread(db, conversation_id)
     await db.execute(delete(AgentMessage).where(AgentMessage.conversation_id == conversation_id))
     await db.execute(delete(AgentConversation).where(AgentConversation.id == conversation_id))
     await db.flush()
@@ -295,6 +265,10 @@ async def list_messages(
     request: Request,
     limit: int = Query(default=200, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    tail: bool = Query(
+        default=False,
+        description="If true, return the last `limit` messages (ignores offset).",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     sub = get_jwt_sub(request)
@@ -304,18 +278,21 @@ async def list_messages(
             select(func.count()).select_from(AgentMessage).where(AgentMessage.conversation_id == conversation_id)
         )
     ).scalar_one()
+    effective_offset = offset
+    if tail:
+        effective_offset = max(0, int(total) - limit)
     r = await db.execute(
         select(AgentMessage)
         .where(AgentMessage.conversation_id == conversation_id)
         .order_by(AgentMessage.created_at.asc(), AgentMessage.id.asc())
-        .offset(offset)
+        .offset(effective_offset)
         .limit(limit)
     )
     return AgentMessageListResponse(
         items=[_msg_to_out(m) for m in r.scalars().all()],
         total=total,
         limit=limit,
-        offset=offset,
+        offset=effective_offset,
     )
 
 
@@ -528,8 +505,13 @@ async def delete_conversation_messages_from(
     Remove this message and all messages after it in chronological order.
     Clears LangGraph checkpoint state so the next turn matches truncated history.
     """
-    sub = get_jwt_sub(request)
+  sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
+    if conversation_turn_is_active(c):
+        raise HTTPException(
+            status_code=409,
+            detail="A turn is already running for this session. Wait for it to finish before reverting.",
+        )
     r = await db.execute(
         select(AgentMessage.id)
         .where(AgentMessage.conversation_id == conversation_id)
@@ -582,76 +564,56 @@ async def post_message(
     await ensure_skills_materialized(db, project)
 
     if body.stream:
-
-        async def stream() -> AsyncIterator[bytes]:
-            turn = AgentTurnContext.start(
-                project_id=project_id,
-                conversation_id=c.id,
-                plan_mode=plan_mode,
-                streaming=True,
+        if conversation_turn_is_active(c):
+            raise HTTPException(
+                status_code=409,
+                detail="A turn is already running for this session. Wait for it to finish or reopen the session.",
             )
-            acc = ProjectStreamAccumulator()
-            try:
-                yield _ndjson_line({"type": "user", "message": _msg_to_out(user_msg).model_dump(mode="json")})
-                assistant_id = new_id()
+        turn = AgentTurnContext.start(
+            project_id=project_id,
+            conversation_id=c.id,
+            plan_mode=plan_mode,
+            streaming=True,
+        )
+        assistant_id = new_id()
+        await prepare_streaming_turn(db, c, turn, assistant_id=assistant_id)
+        user_payload = _msg_to_out(user_msg).model_dump(mode="json")
+        project_name = project.name
+        project_slug = project.slug
+        project_description = project.description
+        project_settings = dict(project.settings or {})
+        session_id = body.session_id
+        conversation_id = c.id
+
+        async def background_runner(bridge: ClientBridge) -> None:
+            async def parts_factory(session: AsyncSession, conversation: AgentConversation):
                 async for part in iter_project_stream_parts(
-                    db,
-                    c,
+                    session,
+                    conversation,
                     jwt_payload,
                     bearer,
                     project_id,
-                    project.name,
-                    project.slug,
-                    project.description,
-                    project.settings or {},
+                    project_name,
+                    project_slug,
+                    project_description,
+                    project_settings,
                     plan_mode=plan_mode,
-                    session_id=body.session_id,
+                    session_id=session_id,
                     turn=turn,
                 ):
-                    if acc.absorb(part) == "fatal":
-                        err = str(part.get("message") or "Error") if isinstance(part, dict) else "Error"
-                        asst = await _persist_stream_error(
-                            db,
-                            c,
-                            turn,
-                            err,
-                            assistant_id=assistant_id,
-                            tool_count=len(acc.tool_traces),
-                        )
-                        yield _error_ndjson_line(err, asst)
-                        return
-                    yield _ndjson_line(part)
-                content = acc.assistant_text
-                tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: acc.tool_traces} if acc.tool_traces else None
-                asst = AgentMessage(
-                    id=assistant_id,
-                    conversation_id=c.id,
-                    role="assistant",
-                    content=content,
-                    tool_calls=tool_payload,
-                )
-                db.add(asst)
-                await db.flush()
-                turn.log_done(
-                    tool_count=len(acc.tool_traces),
-                    assistant_chars=len(content or ""),
-                    conversation=c,
-                )
-                yield _ndjson_line(
-                    {
-                        "type": "done",
-                        "assistant": _msg_to_out(asst).model_dump(mode="json"),
-                    }
-                )
-            except Exception as e:
-                err = str(e)
-                asst = await _persist_stream_error(
-                    db, c, turn, err, exc=e, tool_count=len(acc.tool_traces)
-                )
-                yield _error_ndjson_line(err, asst)
+                    yield part
+
+            await run_project_turn_background(
+                bridge=bridge,
+                conversation_id=conversation_id,
+                assistant_id=assistant_id,
+                turn=turn,
+                parts_factory=parts_factory,
+                user_message_payload=user_payload,
+            )
 
         return StreamingResponse(
-            stream(),
+            open_durable_project_stream(background_runner),
             media_type="application/x-ndjson",
             headers={
                 "Cache-Control": "no-cache",
@@ -703,97 +665,76 @@ async def resume_message(
     bearer = await ensure_session_api_key(db, c, jwt_payload)
     await ensure_skills_materialized(db, project)
 
-    async def stream() -> AsyncIterator[bytes]:
-        turn = AgentTurnContext.start(
-            project_id=project_id,
-            conversation_id=c.id,
-            streaming=True,
-            resume=True,
+    if conversation_turn_is_active(c):
+        raise HTTPException(
+            status_code=409,
+            detail="A turn is already running for this session. Wait for it to finish or reopen the session.",
         )
-        acc = ProjectStreamAccumulator()
-        try:
-            await db.refresh(c, attribute_names=["messages"])
-            rows = sorted(c.messages, key=lambda m: (m.created_at, m.id))
-            last_asst = next((m for m in reversed(rows) if m.role == "assistant"), None)
-            existing_traces: list[dict[str, str]] = []
-            if last_asst and isinstance(last_asst.tool_calls, dict):
-                raw = last_asst.tool_calls.get(WIKI_TOOL_TRANSCRIPTS_KEY)
-                if isinstance(raw, list):
-                    existing_traces = [t for t in raw if isinstance(t, dict)]
 
+    await db.refresh(c, attribute_names=["messages"])
+    rows = sorted(c.messages, key=lambda m: (m.created_at, m.id))
+    last_asst = next((m for m in reversed(rows) if m.role == "assistant"), None)
+    existing_traces: list[dict[str, str]] = []
+    content_prefix = ""
+    if last_asst is not None:
+        content_prefix = last_asst.content or ""
+        if isinstance(last_asst.tool_calls, dict):
+            raw = last_asst.tool_calls.get(WIKI_TOOL_TRANSCRIPTS_KEY)
+            if isinstance(raw, list):
+                existing_traces = [t for t in raw if isinstance(t, dict)]
+
+    turn = AgentTurnContext.start(
+        project_id=project_id,
+        conversation_id=c.id,
+        streaming=True,
+        resume=True,
+    )
+    assistant_id = last_asst.id if last_asst is not None else new_id()
+    if last_asst is None:
+        await prepare_streaming_turn(db, c, turn, assistant_id=assistant_id)
+    else:
+        await mark_streaming_turn_running(db, c, turn, assistant_id=assistant_id)
+
+    project_name = project.name
+    project_slug = project.slug
+    project_description = project.description
+    project_settings = dict(project.settings or {})
+    conversation_id = c.id
+    decision = body.decision
+    edited_args = body.edited_args
+    resume_message_text = body.message
+
+    async def background_runner(bridge: ClientBridge) -> None:
+        async def parts_factory(session: AsyncSession, conversation: AgentConversation):
             async for part in resume_project_interrupt(
-                db,
-                c,
+                session,
+                conversation,
                 project_id,
-                project.name,
-                project.slug,
-                project.description,
-                project.settings or {},
+                project_name,
+                project_slug,
+                project_description,
+                project_settings,
                 jwt_payload,
                 bearer,
-                decision=body.decision,
-                edited_args=body.edited_args,
-                message=body.message,
+                decision=decision,
+                edited_args=edited_args,
+                message=resume_message_text,
                 turn=turn,
             ):
-                status = acc.absorb(part)
-                if status == "fatal":
-                    err = str(part.get("message") or "Error") if isinstance(part, dict) else "Error"
-                    asst = await _persist_stream_error(
-                        db,
-                        c,
-                        turn,
-                        err,
-                        tool_count=len(existing_traces) + len(acc.tool_traces),
-                    )
-                    yield _error_ndjson_line(err, asst)
-                    return
-                yield _ndjson_line(part)
+                yield part
 
-            if acc.interrupted:
-                turn.log_done(
-                    tool_count=len(acc.tool_traces),
-                    assistant_chars=len(acc.assistant_text),
-                    conversation=c,
-                )
-                return
-
-            resume_text = acc.assistant_text
-            merged_traces = existing_traces + acc.tool_traces if acc.tool_traces else existing_traces
-            tool_payload = {WIKI_TOOL_TRANSCRIPTS_KEY: merged_traces} if merged_traces else None
-
-            if last_asst is not None:
-                last_asst.content = (last_asst.content or "") + resume_text
-                if tool_payload is not None:
-                    last_asst.tool_calls = tool_payload
-                await db.flush()
-                asst = last_asst
-            else:
-                asst = AgentMessage(
-                    id=new_id(),
-                    conversation_id=c.id,
-                    role="assistant",
-                    content=resume_text,
-                    tool_calls=tool_payload,
-                )
-                db.add(asst)
-                await db.flush()
-            _bump_conversation_timestamp(c)
-            turn.log_done(
-                tool_count=len(merged_traces),
-                assistant_chars=len(resume_text or ""),
-                conversation=c,
-            )
-            yield _ndjson_line({"type": "done", "assistant": _msg_to_out(asst).model_dump(mode="json")})
-        except Exception as e:
-            err = str(e)
-            asst = await _persist_stream_error(
-                db, c, turn, err, exc=e, tool_count=len(acc.tool_traces)
-            )
-            yield _error_ndjson_line(err, asst)
+        await run_project_turn_background(
+            bridge=bridge,
+            conversation_id=conversation_id,
+            assistant_id=assistant_id,
+            turn=turn,
+            parts_factory=parts_factory,
+            existing_traces=existing_traces,
+            content_prefix=content_prefix,
+        )
 
     return StreamingResponse(
-        stream(),
+        open_durable_project_stream(background_runner),
         media_type="application/x-ndjson",
         headers={
             "Cache-Control": "no-cache",

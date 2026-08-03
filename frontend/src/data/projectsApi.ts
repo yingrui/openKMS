@@ -274,7 +274,7 @@ export async function truncateProjectMessagesFromMessage(
 export async function listProjectMessages(
   projectId: string,
   convId: string,
-  opts?: { limit?: number; offset?: number },
+  opts?: { limit?: number; offset?: number; tail?: boolean },
 ): Promise<{ items: AgentMessageItem[]; total: number }> {
   const data = await request<{ items: AgentMessageItem[]; total: number }>(
     `/api/projects/${projectId}/conversations/${convId}/messages`,
@@ -282,6 +282,7 @@ export async function listProjectMessages(
       query: {
         limit: opts?.limit ?? 50,
         offset: opts?.offset && opts.offset > 0 ? opts.offset : undefined,
+        tail: opts?.tail ? true : undefined,
       },
     },
   );

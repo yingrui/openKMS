@@ -97,6 +97,7 @@
     "autoRenameError": "Could not generate a title",
     "delete": "Delete",
     "deleteError": "Could not delete session",
+    "running": "Turn in progress",
     "review": "Review",
     "reviewEvents": "Lessons",
     "reviewNoEvents": "No notable events found in this session.",
@@ -154,7 +155,8 @@
   },
   "stream": {
     "replyAria": "Agent reply",
-    "subagentLabel": "Subagent"
+    "subagentLabel": "Subagent",
+    "toolsFold": "{{count}} tool calls"
   },
   "files": {
     "title": "Project files",

@@ -1,5 +1,5 @@
-import { memo } from 'react';
-import { Bot } from 'lucide-react';
+import { memo, useMemo, type ReactNode } from 'react';
+import { Bot, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { ToolPillHead } from './ToolPillHead';
 import { AgentMessageBody } from './AgentMessageBody';
@@ -13,9 +13,60 @@ import {
 import type { AssistantStreamPart } from '../wiki/wikiCopilotStreamParts';
 import './AgentMessage.scss';
 
+const MIN_TOOLS_TO_FOLD = 2;
+
 interface Props {
   streamParts?: AssistantStreamPart[];
   fallbackText?: string;
+  /** When true, fold consecutive tool/subagent rows (completed turns). */
+  collapseTools?: boolean;
+}
+
+type VisiblePart =
+  | { kind: 'text'; part: Extract<AssistantStreamPart, { type: 'text' }>; key: string }
+  | { kind: 'tool'; part: Extract<AssistantStreamPart, { type: 'tool' }>; key: string }
+  | { kind: 'subagent'; part: Extract<AssistantStreamPart, { type: 'subagent' }>; key: string };
+
+type Segment =
+  | { type: 'text'; item: Extract<VisiblePart, { kind: 'text' }> }
+  | { type: 'tools'; items: Extract<VisiblePart, { kind: 'tool' | 'subagent' }>[] };
+
+function visibleParts(streamParts: AssistantStreamPart[]): VisiblePart[] {
+  const out: VisiblePart[] = [];
+  streamParts.forEach((part, i) => {
+    if (part.type === 'text') {
+      out.push({ kind: 'text', part, key: `t-${i}` });
+      return;
+    }
+    if (part.type === 'subagent') {
+      out.push({ kind: 'subagent', part, key: part.step.id });
+      return;
+    }
+    if (shouldHideToolRow(part.step.name)) return;
+    out.push({
+      kind: 'tool',
+      part,
+      key: part.step.runId ? `tool-${part.step.runId}-${i}` : `tool-${i}`,
+    });
+  });
+  return out;
+}
+
+function segmentVisibleParts(parts: VisiblePart[]): Segment[] {
+  const segments: Segment[] = [];
+  for (const item of parts) {
+    if (item.kind === 'text') {
+      segments.push({ type: 'text', item });
+      continue;
+    }
+    const last = segments[segments.length - 1];
+    if (last?.type === 'tools') {
+      last.items.push(item);
+    } else {
+      segments.push({ type: 'tools', items: [item] });
+    }
+  }
+  return segments;
 }
 
 function ToolIoBlock({
@@ -96,29 +147,54 @@ function SubagentRow({ part }: { part: Extract<AssistantStreamPart, { type: 'sub
   );
 }
 
-export const AgentAssistantStreamBody = memo(function AgentAssistantStreamBody({ streamParts, fallbackText = '' }: Props) {
-  const { t } = useTranslation('agents');
+function renderToolish(item: Extract<VisiblePart, { kind: 'tool' | 'subagent' }>): ReactNode {
+  if (item.kind === 'subagent') {
+    return <SubagentRow key={item.key} part={item.part} />;
+  }
+  return <ToolRow key={item.key} part={item.part} />;
+}
 
-  if (!streamParts?.length) {
+function ToolsFold({ items }: { items: Extract<VisiblePart, { kind: 'tool' | 'subagent' }>[] }) {
+  const { t } = useTranslation('agents');
+  if (items.length < MIN_TOOLS_TO_FOLD) {
+    return <>{items.map(renderToolish)}</>;
+  }
+  return (
+    <details className="agents-stream__tools-fold">
+      <summary className="agents-stream__tools-fold-summary">
+        <ChevronRight size={14} strokeWidth={2} className="agents-stream__tools-fold-chevron" aria-hidden />
+        <span>{t('stream.toolsFold', { count: items.length })}</span>
+      </summary>
+      <div className="agents-stream__tools-fold-body">{items.map(renderToolish)}</div>
+    </details>
+  );
+}
+
+export const AgentAssistantStreamBody = memo(function AgentAssistantStreamBody({
+  streamParts,
+  fallbackText = '',
+  collapseTools = false,
+}: Props) {
+  const { t } = useTranslation('agents');
+  const segments = useMemo(() => {
+    if (!streamParts?.length) return null;
+    return segmentVisibleParts(visibleParts(streamParts));
+  }, [streamParts]);
+
+  if (!segments) {
     return <AgentMessageBody text={fallbackText} variant="assistant" />;
   }
 
   return (
     <div className="agents-stream__assistant" aria-label={t('stream.replyAria')}>
-      {streamParts.map((part, i) => {
-        if (part.type === 'text') {
-          return <AgentMessageBody key={`t-${i}`} text={part.text} variant="assistant" />;
+      {segments.map((seg, i) => {
+        if (seg.type === 'text') {
+          return <AgentMessageBody key={seg.item.key} text={seg.item.part.text} variant="assistant" />;
         }
-        if (part.type === 'subagent') {
-          return <SubagentRow key={part.step.id} part={part} />;
+        if (collapseTools) {
+          return <ToolsFold key={`tools-${i}`} items={seg.items} />;
         }
-        if (shouldHideToolRow(part.step.name)) return null;
-        return (
-          <ToolRow
-            key={part.step.runId ? `tool-${part.step.runId}-${i}` : `tool-${i}`}
-            part={part}
-          />
-        );
+        return <div key={`tools-${i}`}>{seg.items.map(renderToolish)}</div>;
       })}
     </div>
   );

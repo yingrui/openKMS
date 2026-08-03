@@ -35,6 +35,7 @@ interface Props {
   onRevertUserMessage?: (msg: ChatMessage) => void;
   reverting?: boolean;
   hasMoreOlder?: boolean;
+  loadingOlder?: boolean;
   onLoadOlderMessages?: () => Promise<boolean>;
   /** When true, omit the in-pane session title (parent chrome shows it). */
   hideSessionHeader?: boolean;
@@ -73,6 +74,7 @@ interface MessageRowProps {
   onRevertUserMessage?: (msg: ChatMessage) => void;
   reverting: boolean;
   loading: boolean;
+  collapseTools: boolean;
   tRevertTitle: string;
   tRevertAria: string;
 }
@@ -89,6 +91,7 @@ const MessageRow = memo(function MessageRow({
   onRevertUserMessage,
   reverting,
   loading,
+  collapseTools,
   tRevertTitle,
   tRevertAria,
 }: MessageRowProps) {
@@ -127,6 +130,7 @@ const MessageRow = memo(function MessageRow({
         <AgentAssistantStreamBody
           streamParts={message.streamParts}
           fallbackText={message.content}
+          collapseTools={collapseTools}
         />
       </div>
       {time ? (
@@ -167,6 +171,7 @@ export function AgentChatMain({
   onRevertUserMessage,
   reverting = false,
   hasMoreOlder = false,
+  loadingOlder = false,
   onLoadOlderMessages,
   hideSessionHeader = false,
 }: Props) {
@@ -175,7 +180,6 @@ export function AgentChatMain({
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingScrollRestoreRef = useRef(0);
-  const [loadingOlder, setLoadingOlder] = useState(false);
 
   useEffect(() => {
     if (prefillInput == null) return;
@@ -203,10 +207,9 @@ export function AgentChatMain({
     const el = scrollRef.current;
     if (!el || loadingOlder || !hasMoreOlder || !onLoadOlderMessages) return;
     if (el.scrollTop > 80) return;
-    setLoadingOlder(true);
     const prevHeight = el.scrollHeight;
     pendingScrollRestoreRef.current = prevHeight;
-    onLoadOlderMessages().finally(() => setLoadingOlder(false));
+    void onLoadOlderMessages();
   }, [hasMoreOlder, loadingOlder, onLoadOlderMessages]);
 
   const resizeTextarea = () => {
@@ -244,18 +247,23 @@ export function AgentChatMain({
         {messages.length === 0 ? (
           <p className="agents-chat-empty">{t('chat.hero')}</p>
         ) : (
-          messages.map((m) => (
-            <LazyContent key={m.id}>
-              <MessageRow
-                message={m}
-                onRevertUserMessage={onRevertUserMessage}
-                reverting={reverting}
-                loading={loading}
-                tRevertTitle={t('chat.revertTitle')}
-                tRevertAria={t('chat.revertAria')}
-              />
-            </LazyContent>
-          ))
+          messages.map((m, idx) => {
+            const isLiveAssistant =
+              loading && m.role === 'assistant' && idx === messages.length - 1;
+            return (
+              <LazyContent key={m.id}>
+                <MessageRow
+                  message={m}
+                  onRevertUserMessage={onRevertUserMessage}
+                  reverting={reverting}
+                  loading={loading}
+                  collapseTools={!isLiveAssistant}
+                  tRevertTitle={t('chat.revertTitle')}
+                  tRevertAria={t('chat.revertAria')}
+                />
+              </LazyContent>
+            );
+          })
         )}
         {loading ? <div className="agents-chat-typing">{t('chat.thinking')}</div> : null}
       </div>

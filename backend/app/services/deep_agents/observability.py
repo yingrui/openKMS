@@ -117,9 +117,16 @@ class AgentTurnContext:
         status: str,
         error: str | None = None,
         tool_count: int = 0,
+        assistant_message_id: str | None = None,
+        interrupt: dict | None = None,
     ) -> None:
         ctx = dict(conversation.context or {})
-        ctx["last_turn"] = {
+        prev = ctx.get("last_turn") if isinstance(ctx.get("last_turn"), dict) else {}
+        aid = assistant_message_id
+        if aid is None and isinstance(prev, dict):
+            raw = prev.get("assistant_message_id")
+            aid = raw if isinstance(raw, str) else None
+        last_turn: dict = {
             "turn_id": self.turn_id,
             "status": status,
             "error": error,
@@ -129,4 +136,27 @@ class AgentTurnContext:
             "scheduled_run": self.scheduled_run,
             "plan_mode": self.plan_mode,
         }
+        if aid:
+            last_turn["assistant_message_id"] = aid
+        # Persist HITL payload only while waiting; clear on running/completed/failed.
+        if status == "interrupted":
+            payload = interrupt
+            if payload is None and isinstance(prev, dict) and isinstance(prev.get("interrupt"), dict):
+                payload = prev["interrupt"]
+            if payload is not None:
+                last_turn["interrupt"] = payload
+        ctx["last_turn"] = last_turn
         conversation.context = ctx
+
+    def mark_running(
+        self,
+        conversation: AgentConversation,
+        *,
+        assistant_message_id: str,
+    ) -> None:
+        """Persist in-flight status before the agent loop (survives client disconnect)."""
+        self.apply_last_turn(
+            conversation,
+            status="running",
+            assistant_message_id=assistant_message_id,
+        )

@@ -97,6 +97,7 @@
     "autoRenameError": "无法生成标题",
     "delete": "删除",
     "deleteError": "无法删除会话",
+    "running": "正在执行",
     "review": "回顾",
     "reviewEvents": "知识",
     "reviewNoEvents": "未在此会话中发现值得记录的事件。",
@@ -154,7 +155,8 @@
   },
   "stream": {
     "replyAria": "助手回复",
-    "subagentLabel": "子代理"
+    "subagentLabel": "子代理",
+    "toolsFold": "{{count}} 次工具调用"
   },
   "files": {
     "title": "项目文件",

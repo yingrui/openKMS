@@ -3,14 +3,10 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, BookOpen, Loader2, MoreHorizontal, Pencil, Plus, Settings, Sparkles, Trash2 } from 'lucide-react';
 import type { AgentConversationResponse } from '../../data/agentApi';
+import { conversationTurnIsActive, sessionLabel } from './projectSessionUtils';
 import { projectWorkspacePath } from '../../data/projectsApi';
 import { sessionReviewPath } from '../../data/sessionReviewApi';
 import './AgentsWorkspace.scss';
-
-function label(c: AgentConversationResponse): string {
-  if (c.title?.trim()) return c.title.trim();
-  return new Date(c.updated_at).toLocaleDateString();
-}
 
 interface Props {
   projectId: string;
@@ -71,7 +67,7 @@ export function AgentSessionSidebar({
   const startRename = (c: AgentConversationResponse) => {
     setMenuOpenId(null);
     setRenamingId(c.id);
-    setRenameValue(c.title?.trim() || label(c));
+    setRenameValue(c.title?.trim() || sessionLabel(c));
   };
 
   const cancelRename = () => {
@@ -162,10 +158,13 @@ export function AgentSessionSidebar({
               <Link
                 to={projectWorkspacePath(projectId, c.id)}
                 className="agents-session-item"
-                title={label(c)}
+                title={sessionLabel(c)}
                 onClick={() => onSessionActivate?.()}
               >
-                {label(c)}
+                {conversationTurnIsActive(c) ? (
+                  <span className="agents-session-running" title={t('sessions.running')} aria-hidden />
+                ) : null}
+                <span className="agents-session-item-label">{sessionLabel(c)}</span>
               </Link>
             )}
             {showActions && renamingId !== c.id ? (
