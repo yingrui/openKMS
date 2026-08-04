@@ -505,7 +505,7 @@ async def delete_conversation_messages_from(
     Remove this message and all messages after it in chronological order.
     Clears LangGraph checkpoint state so the next turn matches truncated history.
     """
-  sub = get_jwt_sub(request)
+    sub = get_jwt_sub(request)
     c = await _get_conv(db, conversation_id, sub, project_id)
     if conversation_turn_is_active(c):
         raise HTTPException(
