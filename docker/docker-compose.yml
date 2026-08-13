@@ -1,4 +1,5 @@
-# Full stack: Postgres (pgvector), MinIO, backend API, scheduler, worker (+ openkms-cli), qa-agent, frontend (nginx).
+# Full stack: Postgres (pgvector), MinIO, Neo4j, backend API, scheduler, worker (+ openkms-cli),
+# ontology-function-service (ofs :8105), qa-agent, frontend (nginx).
 #
 # From repo root (examples):
 #   docker compose -f docker/docker-compose.yml build
@@ -12,6 +13,7 @@
 #
 # UI (and /api, /internal-api via nginx): http://localhost:8082 — backend is not published on the host.
 # QA agent on host: http://localhost:8103 — set each KB Agent URL to http://qa-agent:8103 (backend resolves this name).
+# Ontology Function Service on host: http://localhost:8105 — backend uses http://ontology-function-service:8105.
 # Neo4j on host (defaults +2 if 7474/7687 busy): Browser http://localhost:7476 — Bolt localhost:7689.
 # Inside Docker / Console data source: host neo4j, port 7687 (container port, not the host map).
 # Document parsing in the worker calls VLM on the host: set OPENKMS_VLM_URL or use defaults below.
@@ -46,6 +48,9 @@ x-backend-env: &backend_env
   OPENKMS_FRONTEND_URL: ${OPENKMS_FRONTEND_URL:-http://localhost:8082}
   OPENKMS_DEBUG: ${OPENKMS_DEBUG:-true}
   OPENKMS_BACKEND_URL: http://backend:8102
+  OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL: ${OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL:-http://ontology-function-service:8105}
+  OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS: ${OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS:-30}
+  OPENKMS_ONTOLOGY_SDK_OUTPUT_DIR: ${OPENKMS_ONTOLOGY_SDK_OUTPUT_DIR:-/data/ontology-sdk}
   OPENKMS_CLI_BASIC_USER: ${OPENKMS_CLI_BASIC_USER:-openkms-cli}
   OPENKMS_CLI_BASIC_PASSWORD: ${OPENKMS_CLI_BASIC_PASSWORD:-change-me}
   OPENKMS_CLI_OIDC_CLIENT_ID: ${OPENKMS_CLI_OIDC_CLIENT_ID:-openkms-cli}
@@ -184,12 +189,15 @@ services:
     volumes:
       - projects_data:/data/projects
       - agent_skills_data:/data/agent-skills
+      - ontology_sdk_data:/data/ontology-sdk
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
       neo4j:
+        condition: service_healthy
+      ontology-function-service:
         condition: service_healthy
 
   scheduler:
@@ -241,6 +249,19 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  ontology-function-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ontology-function-service
+      args:
+        <<: *build_mirror_args
+    environment:
+      OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS: ${OPENKMS_ONTOLOGY_FUNCTION_TIMEOUT_SECONDS:-30}
+    ports:
+      - "8105:8105"
+    volumes:
+      - ontology_sdk_data:/app/openkms_ontology_sdk
+
   qa-agent:
     build:
       context: ..
@@ -276,3 +297,4 @@ volumes:
   neo4j_data: {}
   projects_data: {}
   agent_skills_data: {}
+  ontology_sdk_data: {}

@@ -2,7 +2,7 @@
 
 ## Full stack (`docker-compose.yml`)
 
-Backend, **scheduler** (central cron hub), worker (`openkms-cli` with parse/pipeline/metadata/kb), **qa-agent** (KB Q&A / hybrid retrieve), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
+Backend, **scheduler** (central cron hub), worker (`openkms-cli` with parse/pipeline/metadata/kb), **ontology-function-service** (ofs executor for Ontology Functions), **qa-agent** (KB Q&A / hybrid retrieve), frontend (nginx), Postgres (pgvector), MinIO, **Neo4j** (ontology graph).
 
 Run **one** `scheduler` replica only. Connector cron and other `scheduled_triggers` do not run if scheduler is down (Console health shows scheduler offline). Optional **`OPENKMS_WORKER_NAME`** on the worker service names instances on the health page when scaling workers.
 
@@ -68,6 +68,8 @@ Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_
 
 For KB Q&A in the UI, set each knowledge base **Agent URL** to **`http://qa-agent:8103`** (hostname on the Docker network, not `localhost`). The backend proxies `/ask` and `/ask/stream` to that URL.
 
+**Ontology Function Service (ofs):** **http://localhost:8105** on the host; inside the stack the backend calls **`http://ontology-function-service:8105`**. Publish regenerates **`openkms_ontology_sdk`** into the shared **`ontology_sdk_data`** volume (`OPENKMS_ONTOLOGY_SDK_OUTPUT_DIR=/data/ontology-sdk` on backend; mounted at `/app/openkms_ontology_sdk` in ofs). Live Preview / execute fail if this service is down.
+
 Local auth + metadata extraction: defaults **`OPENKMS_CLI_BASIC_*`** in compose (`openkms-cli` / `change-me`); override in **`docker/.env`** if needed.
 
 ### Neo4j (Console data source)
@@ -110,7 +112,7 @@ docker compose -f docker/docker-compose.yml down
 
 | Build-arg | Default in compose | Used in |
 |-----------|-------------------|---------|
-| `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile.backend-base`, `Dockerfile.worker-base`, `Dockerfile.qa-agent` — Debian apt |
+| `APT_MIRROR` | `mirrors.aliyun.com` | `Dockerfile.backend-base`, `Dockerfile.worker-base`, `Dockerfile.qa-agent`, `Dockerfile.ontology-function-service` — Debian apt |
 | `UV_INDEX_URL` | `https://mirrors.aliyun.com/pypi/simple/` | **Aliyun** PyPI — `uv sync`, worker-base `openkms-cli` install |
 | `UV_EXTRA_INDEX_URL` | `https://pypi.tuna.tsinghua.edu.cn/simple` | Second China mirror for worker-base `openkms-cli` install (set to `https://pypi.org/simple` only if a wheel is missing) |
 | `NPM_REGISTRY` | `https://registry.npmmirror.com` | **npmmirror** (原淘宝 npm 镜像) — `npm ci` / build |
