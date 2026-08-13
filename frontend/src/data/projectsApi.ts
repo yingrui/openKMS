@@ -307,7 +307,7 @@ export async function postProjectMessageStream(
   projectId: string,
   convId: string,
   content: string,
-  opts?: { mode?: 'plan' | 'agent'; sessionId?: string },
+  opts?: { mode?: 'plan' | 'agent'; sessionId?: string; signal?: AbortSignal },
   onEvent?: (ev: ProjectStreamEvent) => void,
 ): Promise<AgentMessageItem | null> {
   try {
@@ -320,14 +320,19 @@ export async function postProjectMessageStream(
         mode: opts?.mode ?? 'agent',
         session_id: opts?.sessionId ?? null,
       }),
+      signal: opts?.signal,
     });
     if (!res.body) throw new Error('No response body');
     let assistant: AgentMessageItem | null = null;
-    await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
-      onEvent?.(ev);
-      if (ev.type === 'done') assistant = ev.assistant;
-      if (ev.type === 'error') assistant = ev.message;
-    });
+    await readNdjsonStream<ProjectStreamEvent>(
+      res.body,
+      (ev) => {
+        onEvent?.(ev);
+        if (ev.type === 'done') assistant = ev.assistant;
+        if (ev.type === 'error') assistant = ev.message;
+      },
+      { signal: opts?.signal },
+    );
     return assistant;
   } catch (e) {
     handleNetworkError(e);
@@ -339,20 +344,26 @@ export async function resumeProjectInterrupt(
   convId: string,
   body: { decision: string; edited_args?: Record<string, unknown>; message?: string },
   onEvent?: (ev: ProjectStreamEvent) => void,
+  opts?: { signal?: AbortSignal },
 ): Promise<AgentMessageItem | null> {
   try {
     const res = await requestRaw(`/api/projects/${projectId}/conversations/${convId}/messages/resume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: opts?.signal,
     });
     if (!res.body) throw new Error('No response body');
     let assistant: AgentMessageItem | null = null;
-    await readNdjsonStream<ProjectStreamEvent>(res.body, (ev) => {
-      onEvent?.(ev);
-      if (ev.type === 'done') assistant = ev.assistant;
-      if (ev.type === 'error') assistant = ev.message;
-    });
+    await readNdjsonStream<ProjectStreamEvent>(
+      res.body,
+      (ev) => {
+        onEvent?.(ev);
+        if (ev.type === 'done') assistant = ev.assistant;
+        if (ev.type === 'error') assistant = ev.message;
+      },
+      { signal: opts?.signal },
+    );
     return assistant;
   } catch (e) {
     handleNetworkError(e);

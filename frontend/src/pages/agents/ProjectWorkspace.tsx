@@ -59,6 +59,7 @@ export function ProjectWorkspace() {
     ensureConv: session.ensureConv,
     beginLiveStream: session.beginLiveStream,
     endLiveStream: session.endLiveStream,
+    markTurnRunning: session.markTurnRunning,
     turnInProgress: session.turnInProgress,
     t,
   });
@@ -188,7 +189,7 @@ export function ProjectWorkspace() {
     <AgentChatMain
       sessionTitle={session.sessionTitle}
       messages={session.messages}
-      loading={stream.loading || session.turnInProgress}
+      loading={stream.liveStreamingVisible || session.turnInProgress}
       planMode={planMode}
       onPlanModeChange={setPlanMode}
       onSend={stream.onSend}

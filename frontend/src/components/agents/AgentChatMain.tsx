@@ -200,6 +200,9 @@ export function AgentChatMain({
       pendingScrollRestoreRef.current = 0;
       return;
     }
+    // User scrolled up into history — don't yank them to the bottom on poll/merge.
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom > 120) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, loading]);
 

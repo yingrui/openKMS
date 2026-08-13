@@ -60,7 +60,7 @@ Groups: `/api/ontology/groups`. Action types: `/api/ontology/action-types` (hono
 
 Start ofs locally: `cd ontology-function-service && ./dev.sh`.
 
-**Docker Compose:** service **`ontology-function-service`** (host **`:8105`**). Backend uses **`OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL=http://ontology-function-service:8105`**. Generated SDK is shared via volume **`ontology_sdk_data`**. See [docker/README.md](../../docker/README.md).
+**Docker Compose:** service **`ontology-function-service`** (host **`:8105`**). Backend uses **`OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL=http://ontology-function-service:8105`**. Generated SDK is shared via volume **`ontology_sdk_data`**. See repo `docker/README.md`.
 
 ## Seed
 

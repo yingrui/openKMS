@@ -285,7 +285,7 @@ Design and enforcement: [Data security](data-security.md).
 
 ### AgentConversation
 
-- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html` \| **`project`**), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "project_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads), `title`, `created_at`, `updated_at`
+- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html` \| **`project`**), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "project_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads; **project** sessions may also store encrypted session API-key material and **`last_turn`** — `{ status, turn_id, started_at, …, interrupt? }` for durable interactive turns), `title`, `created_at`, `updated_at`
 
 ### AgentMessage
 

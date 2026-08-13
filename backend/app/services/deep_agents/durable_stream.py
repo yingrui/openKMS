@@ -207,10 +207,17 @@ class ClientBridge:
     async def close(self) -> None:
         if not self._listening:
             return
-        try:
-            self.queue.put_nowait(_SENTINEL)
-        except asyncio.QueueFull:
-            pass
+        # Sentinel must be delivered even when the queue is full, or the NDJSON
+        # bridge hangs forever after the background turn finishes.
+        for _ in range(2):
+            try:
+                self.queue.put_nowait(_SENTINEL)
+                return
+            except asyncio.QueueFull:
+                try:
+                    self.queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    return
 
 
 async def _iter_ndjson_from_bridge(bridge: ClientBridge) -> AsyncIterator[bytes]:
@@ -339,6 +346,24 @@ async def run_project_turn_background(
                 turn.turn_id,
                 conversation_id,
             )
+            try:
+                conversation = await _load_conversation(session, conversation_id)
+                asst = await _load_assistant(session, assistant_id)
+                await _persist_failed_assistant(
+                    session,
+                    conversation,
+                    turn,
+                    asst,
+                    "cancelled",
+                    acc,
+                    existing_traces=existing_traces,
+                    content_prefix=content_prefix,
+                )
+            except Exception:
+                logger.exception(
+                    "agent_turn_background_cancel_persist_failed turn_id=%s",
+                    turn.turn_id,
+                )
             raise
         except Exception as e:
             logger.exception(
