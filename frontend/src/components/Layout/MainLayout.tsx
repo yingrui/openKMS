@@ -8,6 +8,7 @@ import { Header } from './Header';
 import { useAuth } from '../../contexts/AuthContext';
 import { SidebarLayoutProvider } from '../../contexts/SidebarLayoutContext';
 import { OntologyMobileRailProvider, useOntologyMobileRail } from '../../contexts/OntologyMobileRailContext';
+import { ConsoleMobileNavProvider, useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
 import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ManagerNavRail } from '../ontology/ManagerNavRail';
 import { ExplorerNavRail } from '../ontology/ExplorerNavRail';
@@ -75,8 +76,10 @@ function MainLayoutInner() {
     retryAuth,
     login,
     canAccessPath,
+    canAccessConsole,
     permissionPatternsReady,
   } = useAuth();
+  const { consoleNavOpen, closeConsoleNav } = useConsoleMobileNav();
   const isHome = location.pathname === '/';
   const showAuthRequired = !isLoading && !isAuthenticated && !isHome;
   const showPathDenied =
@@ -107,6 +110,7 @@ function MainLayoutInner() {
   const onMedia = location.pathname === '/media' || location.pathname.startsWith('/media/');
   const showChannelRail = onArticles || onDocuments || onMedia;
   const consoleShell = isConsoleShellPath(location.pathname);
+  const showConsoleMobileNav = consoleShell && canAccessConsole && consoleNavOpen;
 
   let ontologyRailModifier = '';
   if (ontologySubApp === 'ontology-manager') ontologyRailModifier = ' app-content--with-ontology-manager-rail';
@@ -128,6 +132,14 @@ function MainLayoutInner() {
     >
       <Header />
       <div className="app-shell-body">
+        {showConsoleMobileNav ? (
+          <button
+            type="button"
+            className="mobile-rail-backdrop"
+            aria-label={t('closeNavRail')}
+            onClick={closeConsoleNav}
+          />
+        ) : null}
         <Sidebar />
         <main className="app-main">
         {showAuthRequired && (
@@ -186,9 +198,11 @@ function MainLayoutInner() {
 export function MainLayout() {
   return (
     <OntologyMobileRailProvider>
-      <ConfirmProvider>
-        <MainLayoutInner />
-      </ConfirmProvider>
+      <ConsoleMobileNavProvider>
+        <ConfirmProvider>
+          <MainLayoutInner />
+        </ConfirmProvider>
+      </ConsoleMobileNavProvider>
     </OntologyMobileRailProvider>
   );
 }

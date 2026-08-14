@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, PanelLeft } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Search, Sun, Moon, User, UserCircle, Settings, LogOut, LogIn, PanelLeft, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSystemPublic } from '../../contexts/SystemPublicContext';
 import { useOntologyMobileRail } from '../../contexts/OntologyMobileRailContext';
+import { useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { isConsoleShellPath } from '../../config/appModules';
 import logo from '../../assets/logo.svg';
@@ -19,12 +20,14 @@ export function Header() {
   const { isAuthenticated, isLoading, user, canAccessConsole, login, logout } = useAuth();
   const { systemName } = useSystemPublic();
   const { ontologyRailAvailable, ontologyRailOpen, toggleOntologyRail } = useOntologyMobileRail();
+  const { consoleNavOpen, toggleConsoleNav } = useConsoleMobileNav();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [headerQuery, setHeaderQuery] = useState('');
-  const compactSearch = useIsMobile();
+  const isMobile = useIsMobile();
+  const compactSearch = isMobile;
 
   useEffect(() => {
     if (location.pathname === '/search') {
@@ -64,6 +67,7 @@ export function Header() {
 
   const brandName = systemName || 'openKMS';
   const showOntologyToggle = ontologyRailAvailable;
+  const showConsoleNavToggle = consoleShell && canAccessConsole && isMobile;
 
   return (
     <header className="header">
@@ -76,6 +80,18 @@ export function Header() {
             aria-expanded={ontologyRailOpen}
             aria-controls="ontology-nav-rail-drawer"
             aria-label={t('openOntologyRail')}
+          >
+            <PanelLeft size={20} strokeWidth={1.75} />
+          </button>
+        )}
+        {showConsoleNavToggle && (
+          <button
+            type="button"
+            className={`header-rail-toggle${consoleNavOpen ? ' header-rail-toggle--open' : ''}`}
+            onClick={toggleConsoleNav}
+            aria-expanded={consoleNavOpen}
+            aria-controls="console-nav-drawer"
+            aria-label={t('consoleNavigation')}
           >
             <PanelLeft size={20} strokeWidth={1.75} />
           </button>
@@ -105,22 +121,15 @@ export function Header() {
         </div>
       </div>
       <div className="header-actions">
-        {consoleShell
-          ? canAccessConsole && (
-              <Link to="/" className="header-console-link header-console-link--exit">
-                <span>{t('exitConsole')}</span>
-              </Link>
-            )
-          : canAccessConsole && (
-              <NavLink
-                to="/console"
-                className={({ isActive }) =>
-                  `header-console-link ${isActive ? 'header-console-link-active' : ''}`
-                }
-              >
-                <span>{t('console')}</span>
-              </NavLink>
-            )}
+        {consoleShell && canAccessConsole ? (
+          <Link
+            to="/"
+            className="header-console-link header-console-link--exit"
+            aria-label={t('exitConsole')}
+          >
+            <span className="ds-compact-label">{t('exitConsole')}</span>
+          </Link>
+        ) : null}
         {!consoleShell && <AppLauncher />}
         <button
           type="button"
@@ -180,6 +189,16 @@ export function Header() {
                     <Settings size={18} />
                     <span>{t('settings')}</span>
                   </Link>
+                  {canAccessConsole && !consoleShell ? (
+                    <Link
+                      to="/console"
+                      className="header-user-dropdown-item"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <LayoutDashboard size={18} aria-hidden />
+                      <span>{t('console')}</span>
+                    </Link>
+                  ) : null}
                   <div className="header-user-dropdown-divider" />
                   <button
                     type="button"

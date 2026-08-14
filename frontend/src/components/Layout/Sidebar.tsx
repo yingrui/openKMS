@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { moduleTooltip, isConsoleShellPath } from '../../config/appModules';
 import { useVisibleMainSidebarModules, useVisibleConsolePlatformModules } from '../../hooks/useAppModules';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConsoleMobileNav } from '../../contexts/ConsoleMobileNavContext';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import './Sidebar.scss';
 
 export function Sidebar() {
@@ -22,6 +24,8 @@ export function Sidebar() {
   const location = useLocation();
   const consoleShell = isConsoleShellPath(location.pathname);
   const { canAccessConsole, canAccessPath } = useAuth();
+  const { consoleNavOpen } = useConsoleMobileNav();
+  const isMobile = useIsMobile();
   const appModules = useVisibleMainSidebarModules();
   const consolePlatformModules = useVisibleConsolePlatformModules();
 
@@ -39,8 +43,10 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`sidebar ${railCollapsed ? 'sidebar--collapsed' : 'sidebar--console'}`}
+      id={showConsoleNav ? 'console-nav-drawer' : undefined}
+      className={`sidebar ${railCollapsed ? 'sidebar--collapsed' : 'sidebar--console'}${showConsoleNav && consoleNavOpen ? ' is-open' : ''}`}
       aria-label={showConsoleNav ? t('consoleNavigation') : t('mainNavigation')}
+      aria-hidden={showConsoleNav && isMobile ? !consoleNavOpen : undefined}
     >
       <nav
         id="sidebar-primary-nav"

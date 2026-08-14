@@ -18,6 +18,7 @@ import {
   pathnameAllowedByPatterns,
   type PermissionCatalogEntry,
 } from '../utils/permissionPatterns';
+import { PERM_CONSOLE_ACCESS } from '../config/permissions';
 import './AuthContext.scss';
 
 const ADMIN_ROLE = 'admin';
@@ -54,7 +55,7 @@ interface AuthContextValue {
   authModeReady: boolean;
   /** Local mode only: server allows POST /api/auth/register. */
   allowSignup: boolean;
-  /** True if JWT admin or user has `console:access`. */
+  /** True if JWT admin / `all`, or user has `console:access`. */
   canAccessConsole: boolean;
   hasPermission: (permissionKey: string) => boolean;
   /** Union of ``frontend_route_patterns`` for the user's keys; public SPA paths always allowed. */
@@ -131,17 +132,13 @@ function hasAdminRole(user: AuthUser | null): boolean {
 }
 
 function buildPermissionHelpers(user: AuthUser | null) {
-  const isAdmin = hasAdminRole(user);
   const hasPermission = (key: string) => {
     if (!user) return false;
     if (user.roles.includes(ADMIN_ROLE)) return true;
     if (user.permissions.includes('all')) return true;
     return user.permissions.includes(key);
   };
-  const canAccessConsole =
-    isAdmin ||
-    (user?.permissions.includes('all') ?? false) ||
-    (user?.permissions.some((p) => p.startsWith('console:')) ?? false);
+  const canAccessConsole = hasPermission(PERM_CONSOLE_ACCESS);
   return { hasPermission, canAccessConsole };
 }
 

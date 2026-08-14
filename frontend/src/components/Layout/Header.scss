@@ -354,8 +354,11 @@
     display: none;
   }
 
-  .header-console-link:not(.header-console-link--exit) {
-    display: none;
+  .header-console-link--exit {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+    padding: 0 var(--space-2);
+    justify-content: center;
   }
 
   .header-login-btn {

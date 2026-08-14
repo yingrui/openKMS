@@ -16,12 +16,33 @@
 
 @include max-width(ds.$bp-md-min) {
   .sidebar,
-  .sidebar--collapsed,
-  .sidebar--console {
+  .sidebar--collapsed {
     display: none;
     width: 0;
     min-width: 0;
     border: none;
+  }
+
+  /* Console admin nav: overlay drawer (Header PanelLeft toggle). */
+  .sidebar--console {
+    display: flex;
+    position: fixed;
+    top: var(--header-height);
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-modal);
+    width: min(280px, 85vw);
+    min-width: min(280px, 85vw);
+    border-right: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(-100%);
+    transition: transform var(--duration-fast) var(--ease-standard);
+    pointer-events: none;
+
+    &.is-open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
   }
 }
 
