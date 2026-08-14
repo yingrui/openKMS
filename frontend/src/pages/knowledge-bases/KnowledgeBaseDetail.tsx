@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -52,10 +53,26 @@ import { TAB_ICONS, TAB_ORDER } from './KnowledgeBaseDetail.types';
 import { useKnowledgeBaseDetail } from './useKnowledgeBaseDetail';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { PanelToolbar } from '../../styles/design-system';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import './KnowledgeBaseDetail.scss';
 
 export function KnowledgeBaseDetail() {
   const vm = useKnowledgeBaseDetail();
+  const isMobile = useIsMobile();
+  const [qaSessionsOpen, setQaSessionsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMobile) setQaSessionsOpen(false);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || !qaSessionsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setQaSessionsOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isMobile, qaSessionsOpen]);
 
   if (vm.loading) return <div className="kb-detail"><p>{vm.t('detail.loading')}</p></div>;
   if (!vm.kb) return <div className="kb-detail"><p>{vm.t('detail.notFound')}</p></div>;
@@ -80,36 +97,93 @@ export function KnowledgeBaseDetail() {
     />
   );
 
+  const exitQaFullPage = () => {
+    vm.qaTraceSessionRef.current = null;
+    vm.setQaFullPage(false);
+    setQaSessionsOpen(false);
+  };
+
+  const openQaSettings = () => {
+    vm.qaTraceSessionRef.current = null;
+    vm.setQaFullPage(false);
+    setQaSessionsOpen(false);
+    vm.setActiveTab('settings');
+  };
+
   if (vm.qaFullPage && vm.kb.agent_url) {
+    const sidebar = (
+      <KbQaSessionSidebar
+        kbName={vm.kb.name}
+        conversations={vm.kbQaConversations}
+        activeId={vm.kbQaConvId}
+        loading={vm.kbQaConvsLoading}
+        disabled={vm.qaLoading}
+        hideBackLink={isMobile}
+        onSessionActivate={isMobile ? () => setQaSessionsOpen(false) : undefined}
+        onBack={exitQaFullPage}
+        onOpenSettings={openQaSettings}
+        onSelectSession={(id) => void vm.onSelectKbQaConversation(id)}
+        onNewChat={() => void vm.onNewKbQaChat()}
+        onRename={vm.onRenameKbQaChat}
+        onDelete={vm.onDeleteKbQaChat}
+      />
+    );
+
     return (
       <ContentCommentsShell
         resourceType="knowledge_base"
         resourceId={vm.kb.id}
         hideComments
       >
-      <div className="kb-detail kb-detail--qa-fullpage">
+      <div className={`kb-detail kb-detail--qa-fullpage${isMobile ? ' kb-detail--qa-mobile' : ''}`}>
         <div className="kb-qa-shell">
-          <div className="kb-qa-shell-body">
-            <KbQaSessionSidebar
-              kbName={vm.kb.name}
-              conversations={vm.kbQaConversations}
-              activeId={vm.kbQaConvId}
-              loading={vm.kbQaConvsLoading}
-              disabled={vm.qaLoading}
-              onBack={() => {
-                vm.qaTraceSessionRef.current = null;
-                vm.setQaFullPage(false);
-              }}
-              onOpenSettings={() => {
-                vm.qaTraceSessionRef.current = null;
-                vm.setQaFullPage(false);
-                vm.setActiveTab('settings');
-              }}
-              onSelectSession={(id) => void vm.onSelectKbQaConversation(id)}
-              onNewChat={() => void vm.onNewKbQaChat()}
-              onRename={vm.onRenameKbQaChat}
-              onDelete={vm.onDeleteKbQaChat}
+          {isMobile ? (
+            <PanelToolbar
+              as="div"
+              className="kb-qa-mobile-toolbar"
+              leading={
+                <>
+                  <button
+                    type="button"
+                    className="kb-qa-mobile-back"
+                    onClick={exitQaFullPage}
+                    aria-label={vm.t('detail.qaBackAria')}
+                  >
+                    <ArrowLeft size={18} />
+                    <span className="ds-compact-label">{vm.t('detail.qaBackToKb')}</span>
+                  </button>
+                  <span className="kb-qa-mobile-title" title={vm.kb.name}>
+                    {vm.kb.name}
+                  </span>
+                </>
+              }
+              actions={
+                <button
+                  type="button"
+                  className={`kb-qa-mobile-chrome-btn${qaSessionsOpen ? ' is-active' : ''}`}
+                  onClick={() => setQaSessionsOpen((o) => !o)}
+                  aria-expanded={qaSessionsOpen}
+                  aria-controls="kb-qa-sessions-drawer"
+                  aria-label={vm.t('detail.qaChatsAria')}
+                >
+                  <MessageSquare size={18} aria-hidden />
+                  <span className="ds-compact-label">{vm.t('detail.qaChatsLabel')}</span>
+                </button>
+              }
             />
+          ) : null}
+          <div className="kb-qa-shell-body">
+            {isMobile ? (
+              <div
+                id="kb-qa-sessions-drawer"
+                className={`kb-qa-sessions-drawer${qaSessionsOpen ? ' is-open' : ''}`}
+                aria-hidden={!qaSessionsOpen}
+              >
+                {sidebar}
+              </div>
+            ) : (
+              sidebar
+            )}
             <main className="kb-qa-main">
               <div className="kb-qa-main-scroll" ref={vm.kbQaMainScrollRef}>
                 {vm.chatMessages.length === 0 && !vm.qaLoading ? (
@@ -374,9 +448,9 @@ export function KnowledgeBaseDetail() {
   return (
     <ContentCommentsShell resourceType="knowledge_base" resourceId={vm.kb.id}>
     <div className="kb-detail">
-      <Link to="/knowledge-bases" className="kb-detail-back">
+      <Link to="/knowledge-bases" className="kb-detail-back" aria-label={vm.t('detail.backToList')}>
         <ArrowLeft size={18} />
-        <span>{vm.t('detail.backToList')}</span>
+        <span className="ds-compact-label">{vm.t('detail.backToList')}</span>
       </Link>
 
       <header className="kb-detail-header kb-detail-header--split">
@@ -398,13 +472,14 @@ export function KnowledgeBaseDetail() {
               onClick={() => void vm.enqueueIndexJob()}
               disabled={vm.indexJobSubmitting}
               title={vm.t('detail.indexJobHeaderTitle')}
+              aria-label={vm.t('detail.indexJobHeader')}
             >
               {vm.indexJobSubmitting ? (
                 <Loader2 size={18} className="kb-spinner-inline" aria-hidden />
               ) : (
                 <RefreshCw size={18} aria-hidden />
               )}
-              <span>{vm.t('detail.indexJobHeader')}</span>
+              <span className="ds-compact-label">{vm.t('detail.indexJobHeader')}</span>
             </button>
           ) : null}
         {vm.kb.agent_url ? (
@@ -415,9 +490,10 @@ export function KnowledgeBaseDetail() {
               vm.qaTraceSessionRef.current = crypto.randomUUID();
               vm.setQaFullPage(true);
             }}
+            aria-label={vm.t('detail.qaOpenChat')}
           >
-            <MessageSquare size={18} />
-            <span>{vm.t('detail.qaOpenChat')}</span>
+            <MessageSquare size={18} aria-hidden />
+            <span className="ds-compact-label">{vm.t('detail.qaOpenChat')}</span>
           </button>
         ) : null}
         </div>
@@ -426,15 +502,17 @@ export function KnowledgeBaseDetail() {
       <div className="kb-detail-tabs">
         {TAB_ORDER.map((tabId) => {
           const Icon = TAB_ICONS[tabId];
+          const label = vm.t(`detail.tabs.${tabId}`);
           return (
             <button
               key={tabId}
               type="button"
               className={`kb-tab ${vm.activeTab === tabId ? 'active' : ''}`}
               onClick={() => vm.setActiveTab(tabId)}
+              aria-label={label}
             >
-              <Icon size={18} />
-              <span>{vm.t(`detail.tabs.${tabId}`)}</span>
+              <Icon size={18} aria-hidden />
+              <span className="ds-compact-label">{label}</span>
             </button>
           );
         })}
@@ -448,9 +526,14 @@ export function KnowledgeBaseDetail() {
               className="kb-section-header"
               leading={<span>{vm.t('detail.documentsTitle', { count: vm.docTotal })}</span>}
               actions={
-                <button type="button" className="btn btn-primary btn-sm" onClick={vm.openDocPicker}>
-                  <Plus size={16} />
-                  <span>{vm.t('detail.addDocument')}</span>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={vm.openDocPicker}
+                  aria-label={vm.t('detail.addDocument')}
+                >
+                  <Plus size={16} aria-hidden />
+                  <span className="ds-compact-label">{vm.t('detail.addDocument')}</span>
                 </button>
               }
             />
@@ -577,9 +660,14 @@ export function KnowledgeBaseDetail() {
               className="kb-section-header"
               leading={<span>{vm.t('detail.wikiSpacesTitle')}</span>}
               actions={
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => void vm.openWikiSpacePicker()}>
-                  <Plus size={16} />
-                  <span>{vm.t('detail.addWikiSpace')}</span>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => void vm.openWikiSpacePicker()}
+                  aria-label={vm.t('detail.addWikiSpace')}
+                >
+                  <Plus size={16} aria-hidden />
+                  <span className="ds-compact-label">{vm.t('detail.addWikiSpace')}</span>
                 </button>
               }
             />
@@ -650,11 +738,20 @@ export function KnowledgeBaseDetail() {
               leading={<span>{vm.t('detail.faqsTitle', { count: vm.faqTotal })}</span>}
               actions={
                 <div className="kb-section-header-btns">
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => void vm.openGenerateModal()}>
-                    <Sparkles size={16} />
-                    <span>{vm.t('detail.generateFaq')}</span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => void vm.openGenerateModal()}
+                    aria-label={vm.t('detail.generateFaq')}
+                  >
+                    <Sparkles size={16} aria-hidden />
+                    <span className="ds-compact-label">{vm.t('detail.generateFaq')}</span>
                   </button>
-                  <button type="button" className="btn btn-primary btn-sm" onClick={() => {
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    aria-label={vm.t('detail.addFaq')}
+                    onClick={() => {
                     vm.setEditFaq(null);
                     vm.setFaqDialogSource('manual');
                     vm.setFaqQuestion('');
@@ -664,9 +761,10 @@ export function KnowledgeBaseDetail() {
                     vm.setFaqLabelAllowMultiple({});
                     vm.setFaqMetadataIsArray({});
                     vm.setShowFaqDialog(true);
-                  }}>
-                    <Plus size={16} />
-                    <span>{vm.t('detail.addFaq')}</span>
+                  }}
+                  >
+                    <Plus size={16} aria-hidden />
+                    <span className="ds-compact-label">{vm.t('detail.addFaq')}</span>
                   </button>
                 </div>
               }
@@ -983,9 +1081,14 @@ export function KnowledgeBaseDetail() {
                 onChange={(e) => vm.setSearchQuery(e.target.value)}
                 className="kb-search-input"
               />
-              <button type="submit" className="kb-search-submit" disabled={vm.searching}>
-                <Send size={18} />
-                <span>{vm.searching ? vm.t('detail.searching') : vm.t('detail.search')}</span>
+              <button
+                type="submit"
+                className="kb-search-submit"
+                disabled={vm.searching}
+                aria-label={vm.searching ? vm.t('detail.searching') : vm.t('detail.search')}
+              >
+                <Send size={18} aria-hidden />
+                <span className="ds-compact-label">{vm.searching ? vm.t('detail.searching') : vm.t('detail.search')}</span>
               </button>
             </form>
 

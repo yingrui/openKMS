@@ -82,11 +82,11 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 
 | Element | Behavior |
 |---------|----------|
-| App / Console sidebar | Hidden; `--sidebar-width: 0` |
+| Header | Logo only (brand text via **`.ds-compact-label`**); hide ⌘K; **Console** enter lives in the user menu (**admin** role or **`console:access`** only); Exit Console stays in the header while inside the console shell; Console shell adds PanelLeft drawer toggle for admin nav |
+| App / Console sidebar | App rail hidden (`--sidebar-width: 0`); **Console** admin sidebar becomes overlay drawer when open (`ConsoleMobileNavContext`) |
 | App Launcher | Full-width under header + **`--overlay-backdrop`** |
 | Channel apps (Docs / Articles / Media) | No drawer — section index shows channel tree; **All channels** back link in channel view |
 | Ontology second rail | Overlay drawer; Header toggle; **`OntologyMobileRailContext`** — not for channel rails |
-| Header | Logo only; hide ⌘K and Console link; compact login |
 | Tables / dialogs | **`.ds-table-wrap`** or `<Dialog>` sizing; channel rows → cards via **`_channel-table-as-cards.scss`** |
 | Comments | Push panel → overlay at ≤900 → bottom sheet at ≤768 (`ContentCommentsRail.scss`) |
 | Channel row actions | Single **`<TableRowActions>`** in **`.channel-item-actions`** — CSS places desktop vs mobile |
@@ -111,7 +111,7 @@ Six compile-time tokens in **`_tokens.scss`** — use **`@include max-width(ds.$
 | `.app-content--function-editor-workspace` | Full-height IDE |
 | `.app-content--compact:has(.kb-detail--qa-fullpage)` | KB Q&A full page |
 | `.app-content--compact .wiki-page-editor-outer` | Wiki editor edge-to-edge |
-| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; Agents phone IA is chat-primary + full-width Sessions / Files panels (≤ `$bp-md-min`), not a stacked three-pane layout |
+| `body.openkms-kb-qa-fullpage` / `openkms-agents-fullpage` | Hide header; phone IA (≤ `$bp-md-min`) is chat-primary + full-width Sessions / Chats panel (Agents also has Files) — not a stacked rail that eats chat height |
 | `.app-content--object-explorer` | Flex fill, token padding |
 | `.app-page-pane:has(> .entity-view)` | Ontology Manager entity detail fills the pane; scroll inside `.entity-view__main` only |
 

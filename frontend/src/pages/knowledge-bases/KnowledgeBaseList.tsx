@@ -157,9 +157,10 @@ export function KnowledgeBaseList() {
               setFormName('');
               setFormDesc('');
             }}
+            aria-label={t('newKb')}
           >
-            <Plus size={18} />
-            <span>{t('newKb')}</span>
+            <Plus size={18} aria-hidden />
+            <span className="ds-compact-label">{t('newKb')}</span>
           </button>
         </div>
       </div>

@@ -1,3 +1,6 @@
+@use '../../styles/design-system/mixins' as *;
+@use '../../styles/design-system/tokens' as ds;
+
 // Knowledge Base list — RAG-only chips. Shared chrome: styles/resource-list.scss.
 
 .kb-list-rag-pill {
@@ -26,4 +29,10 @@
   color: var(--color-accent);
   border-radius: 6px;
   font-weight: 500;
+}
+
+@include max-width(ds.$bp-md-min) {
+  .kb-list-stats {
+    white-space: normal;
+  }
 }

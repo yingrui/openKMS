@@ -15,6 +15,10 @@ interface Props {
   activeId: string | null;
   loading?: boolean;
   disabled?: boolean;
+  /** Hide “back to KB” when a parent mobile toolbar already provides exit. */
+  hideBackLink?: boolean;
+  /** Called after selecting a session or starting a new chat (close mobile panel). */
+  onSessionActivate?: () => void;
   onBack: () => void;
   onOpenSettings: () => void;
   onSelectSession: (conversationId: string) => void;
@@ -29,6 +33,8 @@ export function KbQaSessionSidebar({
   activeId,
   loading = false,
   disabled = false,
+  hideBackLink = false,
+  onSessionActivate,
   onBack,
   onOpenSettings,
   onSelectSession,
@@ -85,10 +91,12 @@ export function KbQaSessionSidebar({
   return (
     <aside className="kb-qa-sessions" aria-label={t('detail.qaChatsAria')}>
       <div className="kb-qa-sessions-head">
-        <button type="button" className="kb-qa-sessions-back" onClick={onBack}>
-          <ArrowLeft size={14} />
-          {t('detail.qaBackToKb')}
-        </button>
+        {!hideBackLink ? (
+          <button type="button" className="kb-qa-sessions-back" onClick={onBack}>
+            <ArrowLeft size={14} />
+            {t('detail.qaBackToKb')}
+          </button>
+        ) : null}
         <div className="kb-qa-sessions-context-block">
           <div className="kb-qa-sessions-context-line">
             <div className="kb-qa-sessions-context-title">{kbName}</div>
@@ -107,7 +115,10 @@ export function KbQaSessionSidebar({
         <button
           type="button"
           className="kb-qa-sessions-new"
-          onClick={onNewChat}
+          onClick={() => {
+            onNewChat();
+            onSessionActivate?.();
+          }}
           disabled={disabled || loading}
         >
           <Plus size={15} strokeWidth={2} />
@@ -152,7 +163,10 @@ export function KbQaSessionSidebar({
                 <button
                   type="button"
                   className="kb-qa-session-item"
-                  onClick={() => onSelectSession(c.id)}
+                  onClick={() => {
+                    onSelectSession(c.id);
+                    onSessionActivate?.();
+                  }}
                 >
                   {sessionLabel(c)}
                 </button>
