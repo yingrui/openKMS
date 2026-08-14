@@ -84,3 +84,58 @@ def test_check_langfuse_error_on_503(monkeypatch: pytest.MonkeyPatch) -> None:
     assert status == "error"
     assert msg and "503" in msg
     assert ms is not None
+
+
+def test_check_ofs_skipped_without_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.admin import health_status
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ontology_function_service_url", "")
+    status, msg, ms = asyncio.run(health_status._check_ontology_function_service())
+    assert status == "skipped"
+    assert msg and "OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL" in msg
+    assert ms is None
+
+
+def test_check_ofs_ok_with_mock_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.admin import health_status
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ontology_function_service_url", "http://ofs.example:8105")
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_inner = MagicMock()
+    mock_inner.get = AsyncMock(return_value=mock_resp)
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_inner)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.api.admin.health_status.httpx.AsyncClient", MagicMock(return_value=mock_cm)):
+        status, msg, ms = asyncio.run(health_status._check_ontology_function_service())
+    assert status == "ok"
+    assert ms is not None
+    assert msg and "HTTP 200" in msg
+    mock_inner.get.assert_called_once()
+    assert mock_inner.get.call_args.args[0] == "http://ofs.example:8105/health"
+
+
+def test_check_ofs_error_on_connection_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    import httpx
+
+    from app.api.admin import health_status
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "ontology_function_service_url", "http://ofs.example:8105")
+
+    mock_inner = MagicMock()
+    mock_inner.get = AsyncMock(side_effect=httpx.ConnectError("boom"))
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_inner)
+    mock_cm.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("app.api.admin.health_status.httpx.AsyncClient", MagicMock(return_value=mock_cm)):
+        status, msg, ms = asyncio.run(health_status._check_ontology_function_service())
+    assert status == "error"
+    assert msg and "ofs.example" in msg
+    assert ms is not None

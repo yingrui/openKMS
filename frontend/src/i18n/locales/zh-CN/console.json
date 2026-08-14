@@ -64,7 +64,8 @@
       "job_queue": "后台任务",
       "job_workers": "任务 Worker",
       "job_scheduler": "任务 Scheduler",
-      "langfuse": "Langfuse（追踪）"
+      "langfuse": "Langfuse（追踪）",
+      "ontology_function_service": "Ontology Function Service"
     }
   },
   "overview": {
@@ -78,7 +79,7 @@
     "features": {
       "health": {
         "title": "系统健康",
-        "description": "在一处查看 API、数据库、存储、任务队列与数据源连接是否正常。"
+        "description": "在一处查看 API、数据库、存储、任务队列、Ontology Function Service 与数据源连接是否正常。"
       },
       "permissions": {
         "title": "权限与角色",

@@ -64,7 +64,8 @@
       "job_queue": "Background jobs",
       "job_workers": "Job workers",
       "job_scheduler": "Job scheduler",
-      "langfuse": "Langfuse (tracing)"
+      "langfuse": "Langfuse (tracing)",
+      "ontology_function_service": "Ontology Function Service"
     }
   },
   "overview": {
@@ -78,7 +79,7 @@
     "features": {
       "health": {
         "title": "System health",
-        "description": "Verify API, database, storage, job queue, and data source connectivity in one place."
+        "description": "Verify API, database, storage, job queue, Ontology Function Service, and data source connectivity in one place."
       },
       "permissions": {
         "title": "Permissions & roles",

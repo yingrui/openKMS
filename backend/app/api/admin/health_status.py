@@ -147,6 +147,31 @@ async def _check_langfuse() -> tuple[HealthStatusKind, str | None, int | None]:
         return "error", f"Host {host}: {e}. {creds}", ms
 
 
+async def _check_ontology_function_service() -> tuple[HealthStatusKind, str | None, int | None]:
+    """Probe ontology-function-service (ofs) GET /health."""
+    base = (settings.ontology_function_service_url or "").strip().rstrip("/")
+    if not base:
+        return (
+            "skipped",
+            "Not configured. Set OPENKMS_ONTOLOGY_FUNCTION_SERVICE_URL on the server.",
+            None,
+        )
+
+    host = urlparse(base).hostname or base
+    start = time.perf_counter()
+    url = f"{base}/health"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, follow_redirects=True)
+        ms = int((time.perf_counter() - start) * 1000)
+        if r.status_code == 200:
+            return "ok", f"Host {host}: health returned HTTP {r.status_code}.", ms
+        return "error", f"Host {host}: health returned HTTP {r.status_code}.", ms
+    except Exception as e:
+        ms = int((time.perf_counter() - start) * 1000)
+        return "error", f"Host {host}: {e}", ms
+
+
 def _build_process_health() -> tuple[list[ProcessInstanceHealth], list[HealthComponent]]:
     heartbeat_registry.prune_stale()
     entries = heartbeat_registry.list_entries()
@@ -205,7 +230,7 @@ async def get_health_status(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    """Check API, database, storage, job queue, job processes, Langfuse, and optionally data sources."""
+    """Check API, database, storage, job queue, job processes, Langfuse, ofs, and optionally data sources."""
     components: list[HealthComponent] = [
         HealthComponent(id="api", label="API", status="ok", message="Responding"),
     ]
@@ -245,6 +270,17 @@ async def get_health_status(
             status=lf_status,
             message=lf_msg,
             latency_ms=lf_ms,
+        )
+    )
+
+    ofs_status, ofs_msg, ofs_ms = await _check_ontology_function_service()
+    components.append(
+        HealthComponent(
+            id="ontology_function_service",
+            label="Ontology Function Service",
+            status=ofs_status,
+            message=ofs_msg,
+            latency_ms=ofs_ms,
         )
     )
 
