@@ -1,5 +1,5 @@
 # Worker deps on backend base: parse system libs + openkms-cli extras (Paddle wheels, etc.).
-# Rebuild when backend/uv.lock, openkms-cli/pyproject.toml, or openkms-cli/uv.lock changes.
+# Rebuild heavy pip layer only when openkms-cli/uv.lock (or pyproject) changes — not on CLI source edits.
 # Build linux/amd64 (see compose worker platform) so Paddle wheels install on Apple Silicon.
 # Context: repository root.
 
@@ -20,14 +20,27 @@ RUN chmod +x /usr/local/bin/apt-set-mirror.sh \
     mupdf-tools \
     && rm -rf /var/lib/apt/lists/*
 
-COPY openkms-cli/pyproject.toml openkms-cli/uv.lock openkms-cli/README.md /openkms-cli/
-COPY openkms-cli/openkms_cli /openkms-cli/openkms_cli
-COPY openkms-cli/schemas /openkms-cli/schemas
-
 ARG UV_INDEX_URL=
 ARG UV_EXTRA_INDEX_URL=
 ENV UV_INDEX_URL=${UV_INDEX_URL} \
     UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
-RUN cd /openkms-cli \
-    && uv pip install --python /app/.venv/bin/python -e ".[pipeline,metadata,kb,parse,baidu]"
+WORKDIR /openkms-cli
+
+# Lockfiles first: this layer stays cached unless dependencies change.
+COPY openkms-cli/pyproject.toml openkms-cli/uv.lock openkms-cli/README.md ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv export --frozen --no-dev \
+      --extra pipeline --extra metadata --extra kb --extra parse --extra baidu \
+      --no-emit-project \
+      -o /tmp/openkms-cli-reqs.txt \
+    && uv pip install --python /app/.venv/bin/python -r /tmp/openkms-cli-reqs.txt \
+    && rm -f /tmp/openkms-cli-reqs.txt
+
+# Source last: editable link only (--no-deps). App worker image refreshes this cheaply.
+COPY openkms-cli/openkms_cli ./openkms_cli
+COPY openkms-cli/schemas ./schemas
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /app/.venv/bin/python -e . --no-deps
+
+WORKDIR /app

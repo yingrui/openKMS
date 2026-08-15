@@ -24,7 +24,8 @@ COPY backend/pyproject.toml backend/uv.lock ./
 ENV UV_INDEX_URL=${UV_INDEX_URL} \
     UV_EXTRA_INDEX_URL=${UV_EXTRA_INDEX_URL}
 
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH=/app

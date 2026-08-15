@@ -15,9 +15,16 @@ cp .env.example .env   # optional — edit VLM URL, Baidu keys, secrets, mirrors
 ./build-and-run.sh
 ```
 
-**`build-and-run.sh`** is the default rebuild-and-restart path. It (1) builds **`openkms-backend-base`** and **`openkms-worker-base`** (cached unless lockfiles / Dockerfiles changed), (2) rebuilds app images with the current git hash as **`VITE_APP_VERSION`** (bottom-left build stamp in the UI), (3) runs **`docker compose down`**, then (4) **`up -d`**. Run it from **`docker/`** — the script expects **`docker-compose.yml`** in the working directory.
+**`build-and-run.sh`** is the default rebuild-and-restart path (run from **`docker/`**):
 
-Compose loads **`.env`** in this directory automatically for `${…}` substitution in the YAML.
+```bash
+./build-and-run.sh                  # rebuild bases only if deps changed → apps → restart
+./build-and-run.sh --rebuild-bases  # always rebuild bases → apps → restart
+./build-and-run.sh --apps-only      # apps + restart (bases must already exist)
+./build-and-run.sh --help
+```
+
+It sets **`VITE_APP_VERSION`** from the current git short hash (UI build stamp). Compose loads **`.env`** in this directory automatically for `${…}` substitution in the YAML.
 
 Manual compose (skip base rebuild or avoid `down`):
 
@@ -156,18 +163,23 @@ Two bases keep backend/scheduler images lean while caching slow worker parse dep
 | Image | Contents | Rebuild when |
 |-------|----------|--------------|
 | **`openkms-backend-base:local`** | Backend Python deps (`uv sync`) | `backend/uv.lock` changes |
-| **`openkms-worker-base:local`** | Backend base + LibreOffice/OpenCV apt libs + **`openkms-cli[pipeline,metadata,kb,parse,baidu]`** pip install | `backend/uv.lock`, `openkms-cli/pyproject.toml`, or `openkms-cli/uv.lock` changes |
+| **`openkms-worker-base:local`** | Backend base + LibreOffice/OpenCV apt libs + openkms-cli deps from lock + editable CLI | `backend/uv.lock`, `openkms-cli/pyproject.toml`, or `openkms-cli/uv.lock` changes (CLI **source** alone does not bust the heavy pip layer) |
 
-App builds only copy source and run a fast `uv sync`. Worker copies fresh **`openkms-cli`** source over the editable install in the base.
+App builds only copy source and run a fast `uv sync`. Worker copies fresh **`openkms-cli`** source and re-links with **`uv pip install -e --no-deps`** (heavy Paddle wheels stay in the base layer).
 
-**`build-and-run.sh`** builds both bases first; Docker layer cache makes that fast when only app code changed. **`build-base.sh`** builds **`openkms-backend-base`** then **`openkms-worker-base`** (worker extends the backend image — they cannot build in parallel). Rebuild bases explicitly:
+**Layering:** `Dockerfile.worker-base` installs openkms-cli **dependencies from `uv.lock` first**, then copies package source for a cheap editable install. Changing CLI **code** does not re-download Paddle; changing **`openkms-cli/uv.lock`** does. BuildKit **`uv` cache mounts** speed forced rebuilds.
+
+**When to touch bases:**
 
 ```bash
 cd docker
-./build-base.sh                    # both bases
-./build-and-run.sh                 # bases + app + restart
+./build-and-run.sh                 # usual path (auto bases)
+./build-and-run.sh --apps-only     # only app code / frontend changed
+./build-and-run.sh --rebuild-bases # lockfiles or base Dockerfiles changed (or force)
+./build-base.sh                    # bases only (no app rebuild / restart)
 ```
 
+**`build-base.sh`** always rebuilds both bases (worker extends backend — not parallel) and writes **`.base-fingerprint`** for the next auto run.
 Optional tags: **`OPENKMS_BACKEND_BASE_TAG`**, **`OPENKMS_WORKER_BASE_TAG`** in **`docker/.env`** (default **`local`**).
 
 **Docker image pulls** (`FROM python:…`, `FROM node:…`, `ghcr.io/astral-sh/uv`) still use your Docker **registry** mirror in `daemon.json` if Hub/ghcr.io is slow—that is separate from apt/PyPI/npm.
@@ -177,10 +189,11 @@ Optional tags: **`OPENKMS_BACKEND_BASE_TAG`**, **`OPENKMS_WORKER_BASE_TAG`** in 
 | File | Role |
 |------|------|
 | `.env.example` | Compose `${…}` overrides template (copy to `.env`) |
-| `build-and-run.sh` | **Recommended:** build bases + app (with git stamp), restart stack |
+| `build-and-run.sh` | **Recommended:** auto bases (if needed) → app images → restart (`--rebuild-bases` / `--apps-only`) |
+| `compute-base-fingerprint.sh` | Hash of lockfiles + base Dockerfiles (freshness for auto mode) |
 | `Dockerfile.backend-base` | Pre-built `openkms-backend-base` (backend Python deps) |
-| `Dockerfile.worker-base` | Pre-built `openkms-worker-base` (parse apt + openkms-cli pip install) |
-| `build-base.sh` | Rebuild both base images (after lockfile / CLI dep changes) |
+| `Dockerfile.worker-base` | Pre-built `openkms-worker-base` (parse apt + openkms-cli deps) |
+| `build-base.sh` | Always rebuild both base images; writes `.base-fingerprint` |
 | `Dockerfile` | App layers + `backend` / `worker` targets |
 | `Dockerfile.frontend` | Vite build + nginx |
 | `apt-set-mirror.sh` | Rewrites Debian apt sources when `APT_MIRROR` is set |

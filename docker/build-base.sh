@@ -41,3 +41,7 @@ docker buildx build --load \
   --build-arg "OPENKMS_BACKEND_BASE_IMAGE=${BACKEND_AMD64_IMAGE}" \
   $MIRROR_ARGS \
   ..
+
+# Record fingerprint so build-and-run.sh can skip an unnecessary base rebuild next time.
+./compute-base-fingerprint.sh >.base-fingerprint
+echo "Wrote .base-fingerprint (for build-and-run.sh auto mode)"

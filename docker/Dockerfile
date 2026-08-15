@@ -13,7 +13,8 @@ COPY backend/alembic.ini .
 COPY backend/worker.py .
 COPY backend/scheduler.py .
 
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 FROM base AS backend
 
@@ -24,7 +25,7 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
 
 CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8102"]
 
-# Worker: openkms-cli parse/pipeline deps are in openkms-worker-base; copy fresh source here.
+# Worker: openkms-cli parse/pipeline deps are in openkms-worker-base; refresh editable source only.
 FROM ${OPENKMS_WORKER_BASE_IMAGE} AS worker
 
 COPY backend/app ./app
@@ -32,8 +33,9 @@ COPY backend/worker.py .
 
 COPY openkms-cli /openkms-cli
 
-RUN uv sync --frozen --no-dev \
-    && uv pip install --python /app/.venv/bin/python -e "/openkms-cli[pipeline,metadata,kb,parse,baidu]"
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev \
+    && uv pip install --python /app/.venv/bin/python -e "/openkms-cli" --no-deps
 
 WORKDIR /app
 

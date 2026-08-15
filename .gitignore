@@ -40,6 +40,9 @@ _site/
 # MkDocs build output
 /site/
 
+# Docker base image rebuild fingerprint (docker/build-and-run.sh)
+docker/.base-fingerprint
+
 # Third-party
 third-party/llm_wiki
 third-party/KayKit-Furniture-Bits-1.0
