@@ -67,13 +67,14 @@ For OIDC or extra backend-only vars, see **`backend/.env.example`** (you may mer
   - **`openkms`** — app DB (`POSTGRES_DB`; Alembic). User **`postgres`** / **`postgres`**.
   - **`ontology_data_layer`** — Ontology datasets / Connector sync targets. Dedicated role **`ontology_data`** / **`openkms-ontology-data-password`** (override with **`OPENKMS_ONTOLOGY_DATA_*`** in **`docker/.env`**). Created by **`docker/postgres-init/`** on **first** cluster init only.
 
-  On an **existing** volume (init already ran), create once:
+  On an **existing** volume (init already ran), create or **reset password** once:
 
   ```bash
-  docker compose exec -e OPENKMS_ONTOLOGY_DATA_USER -e OPENKMS_ONTOLOGY_DATA_PASSWORD -e OPENKMS_ONTOLOGY_DATA_DB \
-    postgres bash /docker-entrypoint-initdb.d/01-create-ontology-data-layer.sh
+  docker compose up -d --force-recreate postgres
+  docker compose exec postgres bash /docker-entrypoint-initdb.d/01-create-ontology-data-layer.sh
   ```
 
+  The script is idempotent: it creates the role/DB if missing and always sets the role password from **`OPENKMS_ONTOLOGY_DATA_PASSWORD`**.
   Or manually:
 
   ```bash

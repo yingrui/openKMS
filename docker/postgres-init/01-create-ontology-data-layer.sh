@@ -1,6 +1,7 @@
 #!/bin/bash
 # Create ontology_data_layer + dedicated role (not the app superuser).
-# Runs only on first cluster init (empty volume). Existing volumes: see docker/README.md.
+# Idempotent: safe to re-run on existing volumes; always syncs the role password from env.
+# Runs automatically on first cluster init (empty volume). Existing volumes: see docker/README.md.
 set -euo pipefail
 
 USER_NAME="${OPENKMS_ONTOLOGY_DATA_USER:-ontology_data}"
@@ -12,6 +13,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
 	BEGIN
 	  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '${USER_NAME}') THEN
 	    CREATE ROLE ${USER_NAME} LOGIN PASSWORD '${USER_PASS}';
+	  ELSE
+	    ALTER ROLE ${USER_NAME} WITH LOGIN PASSWORD '${USER_PASS}';
 	  END IF;
 	END
 	\$\$;
