@@ -108,8 +108,10 @@ services:
       POSTGRES_DB: openkms
     # Volume name includes major PG so upgrading the image does not reuse an incompatible
     # older cluster (e.g. PG13 data with a PG16 image). Remove stale volumes: docker volume ls | grep postgres
+    # Init scripts run only on first boot (empty volume). Creates ontology_data_layer alongside POSTGRES_DB=openkms.
     volumes:
       - openkms_postgres_pg16:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
