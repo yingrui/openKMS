@@ -63,13 +63,39 @@ For OIDC or extra backend-only vars, see **`backend/.env.example`** (you may mer
 - **Long agent turns (production):** Compose frontend nginx uses **`proxy_read_timeout 300s`** on `/api/`. If the UI sits behind **another** reverse proxy (e.g. host nginx → `:8082`), raise **`proxy_read_timeout`** / **`proxy_send_timeout`** on **both** layers for `/api/` (e.g. **900s**) and set **`proxy_buffering off`** for NDJSON streams. Symptom: browser request pending ~5 minutes then **network error**; host **`error.log`**: `upstream timed out while reading upstream` on `POST …/conversations/…/messages`. See [Agents — Troubleshooting](../features/openkms-agents.md#troubleshooting).
 
 - **Postgres / MinIO:** no host ports; services use `postgres` and `minio` on the Docker network.
-- **Postgres databases:** compose creates **`openkms`** (`POSTGRES_DB`, Alembic / app tables) and, via **`docker/postgres-init/`**, **`ontology_data_layer`** for Ontology datasets and Connector sync targets. Init SQL runs **only on first cluster init** (empty `openkms_postgres_pg16` volume). On an existing volume, create it once:
+- **Postgres databases:**
+  - **`openkms`** — app DB (`POSTGRES_DB`; Alembic). User **`postgres`** / **`postgres`**.
+  - **`ontology_data_layer`** — Ontology datasets / Connector sync targets. Dedicated role **`ontology_data`** / **`openkms-ontology-data-password`** (override with **`OPENKMS_ONTOLOGY_DATA_*`** in **`docker/.env`**). Created by **`docker/postgres-init/`** on **first** cluster init only.
+
+  On an **existing** volume (init already ran), create once:
 
   ```bash
-  docker compose exec postgres psql -U postgres -c 'CREATE DATABASE ontology_data_layer;'
+  docker compose exec -e OPENKMS_ONTOLOGY_DATA_USER -e OPENKMS_ONTOLOGY_DATA_PASSWORD -e OPENKMS_ONTOLOGY_DATA_DB \
+    postgres bash /docker-entrypoint-initdb.d/01-create-ontology-data-layer.sh
   ```
 
-  Then in **Console → Data sources** register a PostgreSQL source: host **`postgres`**, port **`5432`**, database **`ontology_data_layer`**, user/password **`postgres`/`postgres`** (or your overrides). Map tables as Ontology **Datasets**; point Connector **outputs** at those datasets.
+  Or manually:
+
+  ```bash
+  docker compose exec postgres psql -U postgres -c "CREATE ROLE ontology_data LOGIN PASSWORD 'openkms-ontology-data-password';"
+  docker compose exec postgres psql -U postgres -c "CREATE DATABASE ontology_data_layer OWNER ontology_data;"
+  docker compose exec postgres psql -U postgres -d ontology_data_layer -c "GRANT ALL ON SCHEMA public TO ontology_data; ALTER SCHEMA public OWNER TO ontology_data;"
+  ```
+
+### Ontology data layer (Console data source)
+
+After Postgres is up, register in **Console → Data sources**:
+
+| Field | Docker compose value |
+|--------|----------------------|
+| Kind | `postgresql` |
+| Host | `postgres` |
+| Port | `5432` |
+| Database | `ontology_data_layer` |
+| Username | `ontology_data` |
+| Password | `openkms-ontology-data-password` |
+
+Then map tables as Ontology **Datasets**; point Connector **outputs** at those datasets.
 - **Neo4j:** Host maps use **7476** (Browser) and **7689** (Bolt)—Neo4j defaults **7474** / **7687** plus **2** when those ports are already in use on the machine. **Inside the stack** (Console data source, backend) use hostname **`neo4j`** and port **`7687`** (container port, not 7689). Default auth: user **`neo4j`**, password **`openkms-neo4j-dev`**.
 
 Compose **`environment`** sets DB/MinIO URLs, local auth defaults, `OPENKMS_VLM_URL=http://host.docker.internal:8101`, and CLI basic credentials. Frontend build uses **`VITE_AUTH_MODE=local`** (match **`OPENKMS_AUTH_MODE=local`** in compose defaults).

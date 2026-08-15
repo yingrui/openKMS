@@ -106,9 +106,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: openkms
+      # Dedicated role for ontology_data_layer (Console Data Source / Connector targets).
+      OPENKMS_ONTOLOGY_DATA_USER: ${OPENKMS_ONTOLOGY_DATA_USER:-ontology_data}
+      OPENKMS_ONTOLOGY_DATA_PASSWORD: ${OPENKMS_ONTOLOGY_DATA_PASSWORD:-openkms-ontology-data-password}
+      OPENKMS_ONTOLOGY_DATA_DB: ${OPENKMS_ONTOLOGY_DATA_DB:-ontology_data_layer}
     # Volume name includes major PG so upgrading the image does not reuse an incompatible
     # older cluster (e.g. PG13 data with a PG16 image). Remove stale volumes: docker volume ls | grep postgres
-    # Init scripts run only on first boot (empty volume). Creates ontology_data_layer alongside POSTGRES_DB=openkms.
+    # Init scripts run only on first boot (empty volume). Creates ontology_data_layer + role.
     volumes:
       - openkms_postgres_pg16:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d:ro
