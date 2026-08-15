@@ -8,7 +8,7 @@ Object types and link types model an entity-relationship layer that can be backe
 | **Object Explorer** | `/object-explorer/*` | Objects, links, Cypher explore |
 | **Function Editor** | `/function-editor/*` | Python function CRUD and Live Preview |
 
-Legacy `/ontology`, `/objects`, `/links` redirect to the new prefixes. See [Ontology Functions](ontology-functions.md). Platform vs tenant DIY (and deferred Action write-back): [Manager alignment](../research/ontology_manager_alignment.md).
+Legacy `/ontology`, `/objects`, `/links` redirect to the new prefixes. See [Ontology Functions](ontology-functions.md). Platform vs tenant DIY (and deferred Action write-back): [Manager alignment](../research/ontology_manager_alignment.md). Hands-on: [Tutorial — Tushare market ontology](../tutorials/tushare-market-ontology.md).
 
 **Manager detail chrome:** Object types, link types, datasets, functions, and action types share the left-nav **entity-view** shell (`EntityViewShell` + `entity-view.scss`). Dataset detail tabs: Overview · Data · Columns · Usage · Sharing. Function detail tabs: Overview · Observability. Action type detail tabs: Overview · Rules · Log (`/ontology-manager/action-types/:id`; legacy `/actions` redirects). **Create action type** uses a 3-step wizard (Target → Define → Review): object type + optional Create/Edit/Delete/Custom intent, display name first, optional published Function bind, camelCase identifier derived on Review.
 

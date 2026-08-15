@@ -28,7 +28,7 @@ Each UI or IA choice must answer:
 | **Platform** (Ontology Manager / Logic) | Product engineering | OT/LT CRUD, dataset bind, Neo4j index, Function author→publish→run, Action **type** registry |
 | **Domain ontology** (tenant content) | Operators / domain owners (DIY) | Stock / Watchlist types, `screenStocks` source, Tushare mapping choices, analysis notes |
 
-Domain market-analysis schemas and Functions are **not** openKMS product deliverables. Agents use [openkms-skill](../features/openkms-skill.md) Workflow G; humans use Manager / Function Editor.
+Domain market-analysis schemas and Functions are **not** openKMS product deliverables. Operators follow the [Tushare market ontology tutorial](../tutorials/tushare-market-ontology.md); agents use [openkms-skill](../features/openkms-skill.md) Workflow G.
 
 ---
 

@@ -71,6 +71,8 @@ plugins:
             Home: 首页
             Goals (vision): 目标与愿景
             Quickstart: 快速开始
+            Tutorials: 教程
+            Tushare market ontology (DIY): Tushare 市场分析本体（DIY）
             Architecture: 架构
             Features: 功能
             Index: 索引
@@ -157,6 +159,8 @@ nav:
   - Home: index.md
   - Goals (vision): goals.md
   - Quickstart: quickstart.md
+  - Tutorials:
+      - Tushare market ontology (DIY): tutorials/tushare-market-ontology.md
   - Architecture: architecture.md
   - Features:
       - Index: functionalities.md

@@ -81,7 +81,7 @@ Product direction (not a commitment order). Shipped basics live under **Current 
 3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **knowledge administrators** and **legal/compliance / standards** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
-6. **Ontology logic** — **Shipped:** three Suite Apps; PG function versions; ofs executor; `@function` + `Client`; SDK regen on publish; Action **types** (bind Function, execute, audit). **Deferred:** Action edit-batch **apply** and dataset/Neo4j Action `object_id` ([Manager alignment](research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Domain ontologies (e.g. market analysis) are tenant DIY, not product seeds. See [Ontology Functions](features/ontology-functions.md) · [Ontology SDK](features/ontology-sdk.md).
+6. **Ontology logic** — **Shipped:** three Suite Apps; PG function versions; ofs executor; `@function` + `Client`; SDK regen on publish; Action **types** (bind Function, execute, audit). **Deferred:** Action edit-batch **apply** and dataset/Neo4j Action `object_id` ([Manager alignment](research/ontology_manager_alignment.md#product-decision-action-write-back-b1)). Domain ontologies (e.g. market analysis) are tenant DIY, not product seeds. See [Ontology Functions](features/ontology-functions.md) · [Ontology SDK](features/ontology-sdk.md) · [Tutorial](tutorials/tushare-market-ontology.md).
 
 ## Backlog {#backlog}
 
@@ -164,7 +164,7 @@ Today: [Documents](features/documents.md) lifecycle + relationships; `is_current
 |------|--------|
 | Action edit-batch apply + dataset/Neo4j `object_id` | **Deferred** product decision — reopen only if operators need Explorer write Actions on dataset-backed objects. See [Manager alignment](research/ontology_manager_alignment.md#capability-audit-shipped-vs-diy-blockers). |
 | Discover / Explorer Home by group / global draft chrome | P1–P2 UX — **decoupled** from domain DIY and from Action-write work |
-| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY via Manager / [openkms-skill](features/openkms-skill.md) Workflow G |
+| Domain ontologies (Stock, screens, watchlists, …) | **Not backlog** — tenant DIY: [tutorial](tutorials/tushare-market-ontology.md) · [openkms-skill](features/openkms-skill.md) Workflow G |
 
 Shipped: [Ontology](features/ontology.md) · [Ontology Functions](features/ontology-functions.md) · [Manager alignment](research/ontology_manager_alignment.md).
 

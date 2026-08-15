@@ -2,7 +2,7 @@
 
 Author and run **Python Ontology Functions** — Palantir-style logic on top of the object/link schema. Functions are stored in PostgreSQL, edited in **Function Editor**, published in **Ontology Manager**, and executed in a subprocess via **ontology-function-service** (`:8105`).
 
-**Related:** [Ontology](ontology.md) · [Ontology SDK](ontology-sdk.md) · [Research](../research/ontology_functions_and_actions.md) · [Manager alignment (platform vs DIY)](../research/ontology_manager_alignment.md)
+**Related:** [Ontology](ontology.md) · [Ontology SDK](ontology-sdk.md) · [Research](../research/ontology_functions_and_actions.md) · [Manager alignment (platform vs DIY)](../research/ontology_manager_alignment.md) · [Tutorial — Tushare market ontology](../tutorials/tushare-market-ontology.md)
 
 ## Suite Apps
 
