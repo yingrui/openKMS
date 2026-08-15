@@ -338,7 +338,11 @@ def add_subparser(sub) -> None:
         "sync-neo4j",
         help="MERGE all indexable object types into Neo4j (POST /api/object-types/index-to-neo4j): dataset rows or stored instances",
     )
-    sn.add_argument("--neo4j-data-source-id", required=True)
+    sn.add_argument(
+        "--neo4j-data-source-id",
+        required=True,
+        help="Required Neo4j data source id (discover via: data-sources list)",
+    )
     add_write_flags(sn)
     sn.set_defaults(fn=cmd_sync_neo4j)
 
@@ -347,6 +351,10 @@ def add_subparser(sub) -> None:
         help="MERGE one object type into Neo4j (POST /api/object-types/{id}/index-to-neo4j)",
     )
     snt.add_argument("--type-id", required=True)
-    snt.add_argument("--neo4j-data-source-id", required=True)
+    snt.add_argument(
+        "--neo4j-data-source-id",
+        required=True,
+        help="Required Neo4j data source id (discover via: data-sources list)",
+    )
     add_write_flags(snt)
     snt.set_defaults(fn=cmd_sync_neo4j_type)

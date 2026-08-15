@@ -1,28 +1,20 @@
 ---
 name: openkms
 description: >-
-  Operates and queries an openKMS deployment over its HTTP API using a personal API key.
-  Read paths: global search across documents/articles/wiki/KBs; list & fetch markdown for
-  documents and articles; list & get markdown for articles; **article LLM content review** (latest rubric scores + suggestions); list & get wiki pages by path; **wiki page substring/semantic search**; list wiki space stored files (vault .md, assets, uploads) and linked
-  channel documents; KB semantic search and grounded
-  Q&A; list glossaries and terms, export/import term payloads; Knowledge Map tree and resource links; document lineage (relationships)
-  and policy lifecycle fields; article↔article relationship list/create/delete; list evaluations, items, and runs (including wiki content coverage when a wiki space is linked); run Cypher (or natural-language questions) against the ontology graph.
-  Write paths: create channels, upload documents,
-  create articles (incl. from URL), **run article content review**, upsert wiki pages, delete wiki stored files (incl. vault .md), link/unlink
-  wiki↔documents, create KB FAQs and evaluations (update evaluation metadata and items in place), trigger evaluation runs;
-  **re-index one linked wiki space into a KB** (or queue full KB index); glossary and term CRUD, bulk import, AI term suggest; knowledge map nodes and channel/wiki mappings; document
-  lifecycle PATCH and relationship create/delete; article relationship create/delete; ontology object/link CRUD and Neo4j index (bulk or per-type).
-  Use when the user wants an agent — or any external
-  tool — to read content from or push content to openKMS without the web UI. Agents must use
-  the bundled `scripts/cli.py` only (no ad-hoc curl or custom HTTP). Do not modify skill
-  source files; only `config.yml` may be created/updated for credentials when the user asks.
+  Operates an openKMS deployment via personal API key using bundled scripts/cli.py only
+  (no ad-hoc curl/HTTP). Covers search, documents/articles/wiki/KB, glossaries, knowledge-map,
+  evaluations, data-sources/datasets/connectors/jobs, comments, media, ontology objects/links,
+  Cypher/NL ask, functions/action-types/groups. Write paths include sync, index, CRUD, and
+  function publish/execute. For Ontology Function source authoring read
+  references/functions-authoring.md. Use when agents must read or push openKMS content without
+  the web UI. Only config.yml may be edited for credentials when the user asks.
 ---
 
 # openKMS skill
 
 ## Mandatory for agents: use `scripts/cli.py` only
 
-Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [reference.md](reference.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
+Do **not** implement openKMS access with hand-written **`curl`**, ad-hoc **`httpx`/`requests`/`fetch`**, or throwaway scripts that call `/api/…` directly. Do **not** treat [references/REFERENCE.md](references/REFERENCE.md) as something to copy into new code—it documents how each **existing** CLI subcommand maps to HTTP for **operators and code review**, not as a second implementation path.
 
 **Every** read and write against this deployment must go through **`python scripts/cli.py …`**. That preserves Bearer auth, mutation gates (`--yes` / `--dry-run`), multipart uploads, path encoding, and error handling in one place. If a workflow is missing from the CLI, **extend `openkms-skill` in the repository** (or ask the user to)—do not bypass the bundled scripts.
 
@@ -45,7 +37,7 @@ Standalone / OpenCode / Claude installs: see **Dependencies** above and **Before
 
 **Evaluations.** To change an evaluation’s name, description, or wiki link, use **`evaluations update`**. To add, edit, or remove question rows, use **`evaluations items add`**, **`evaluations items update`**, and **`evaluations items delete`**. Do **not** delete an evaluation and **`evaluations create`** a replacement just to “refresh” data—that drops **saved runs** and changes the evaluation id (bad for bookmarks, scripts, and comparisons). Reserve **`evaluations create`** for when the user explicitly wants a **new** evaluation.
 
-**Do not modify this skill’s shipped files.** Never edit, delete, or add files under this skill directory except **`config.yml`** — and **only** to set `api_base_url` and `api_key` when the user explicitly asks you to store them (see **Before you act** §2). Do not touch `SKILL.md`, `README.md`, `reference.md`, `scripts/`, `install.sh`, `requirements.txt`, tests, or any other path here; do not patch or extend the CLI inside the install tree. Changes belong in the **openKMS repository** with a normal human review, not in the agent’s copy of the skill.
+**Do not modify this skill’s shipped files.** Never edit, delete, or add files under this skill directory except **`config.yml`** — and **only** to set `api_base_url` and `api_key` when the user explicitly asks you to store them (see **Before you act** §2). Do not touch `SKILL.md`, `README.md`, `references/`, `assets/`, `scripts/`, `install.sh`, `requirements.txt`, tests, or any other path here; do not patch or extend the CLI inside the install tree. Changes belong in the **openKMS repository** with a normal human review, not in the agent’s copy of the skill.
 
 ## Before you act
 
@@ -92,20 +84,30 @@ Auto mode picks targets based on which dirs exist (`~/.config/opencode/`, `~/.cl
 
 The skill is a thin Python CLI over openKMS's HTTP API. Every command JSON-prints the raw API response (`json.dumps`, indented). You parse it, then drive the next call. There is no client-side magic — pagination, retries, follow-ups are all yours.
 
+### CLI discovery & failure handling (mandatory)
+
+- **Never invent** subcommand names or flags. Before any unfamiliar group, run `python scripts/cli.py <group> --help`, then nested `--help` (e.g. `ontology functions --help`).
+- When a command fails, read **stderr** carefully (argparse missing-arg text or `HTTP <status>` + body). Fix the cause; **do not** blind-retry the same command.
+- `ontology objects|links sync-neo4j` / `sync-neo4j-type` **require** `--neo4j-data-source-id`. Discover it with `data-sources list` (kind `neo4j`) — do not guess the id or omit the flag.
+- After `connectors sync`, `kb index`, `media generate`, etc., poll progress with **`jobs get --id JOB_ID`** (or `jobs list`). Do **not** call `/api/jobs` with raw HTTP.
+- This skill does **not** wrap control-plane APIs (feature toggles, schedules hub, Console admin).
+
 Some practical guidance:
 
 - **Document channels need a pipeline for PDF parse.** Uploading PDFs/images/Office to a channel without a default pipeline leaves documents stuck at `uploaded` — Process is disabled in the UI and `POST /api/jobs` fails. Before creating a channel for parseable files: run `pipelines list` (or `pipelines list --table`) to pick an **active** pipeline id, then `document-channels create --pipeline-id …` or set `default_pipeline_id` in `config.yml`. XLSX/XMind previews do not need a pipeline. To fix an existing channel: `document-channels update --id DC_ID --pipeline-id … --yes`.
 - **Discover before you fetch.** Most agent workflows start with `search` (or `documents list --search …` / `articles list --search …`) to find candidates by name, then a `get` / `markdown` to pull content. Don't fetch a whole channel just to grep — server-side `--search` is keyword-substring against names/titles.
-- **Article content review.** Channels can configure an LLM rubric (`review_model_id`, `review_prompt`, `review_criteria`). After a review exists, **`articles reviews latest --id ART_ID`** returns `result.pass`, `result.overall_score`, per-criterion scores/notes, and **`result.suggestions`** — use these to revise markdown. 404 means no review yet; run **`articles review run --id ART_ID --yes`** (needs channel review model). Review does not edit the article; you apply suggestions yourself.
-- **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is now **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches* with confidence scores. Lexical tokens like product codes (e.g. `WWY`, `MIL`) are heavily weighted via BM25, so `kb search --q "WWY 年化收益"` returns WWY-specific chunks even when the embedding alone wouldn't. First call per KB cold-starts the BM25 index (paginates all chunks/FAQs); subsequent calls are fast. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
-- **KB wiki indexing.** After **`wiki put-page`** (or bulk wiki edits), re-chunk into a linked KB with **`kb wiki-spaces reindex --kb-id KB_ID --space-id SP_ID --yes`** — replaces prior wiki chunks for that space only (one page ≈ one chunk when ≤8000 chars). Use **`kb wiki-spaces list --kb-id KB_ID`** to see linked spaces. Full document + all wiki spaces: **`kb index --id KB_ID --yes`**. Both return a **`JobResponse`** (`id`, `status`, …); poll **`/api/jobs/{id}`** or the Job runs UI for completion.
-- **`ontology ask` is a 3-call chain.** It runs `text-to-cypher` → `explore` → `answer` for you. Use when the question is graph-shaped and you don't want to chain by hand. Use the individual subcommands when you need to inspect or rewrite the Cypher.
-- **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope. Don't try to bypass — surface the error.
-- **Write commands and confirm gating.** Every mutating CLI subcommand uses the same pattern as ontology objects/links: `--dry-run` prints the planned `[METHOD] path + body` (upload uses a JSON summary with `channel_id` and `file` path, not file bytes) and exits 0 without HTTP; `-y` / `--yes` skips the prompt; without either on a TTY you get `Proceed? [y/N]`; **on a non-TTY without `--yes` the command exits 2** — agents must pass `--yes` deliberately.
-- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` go through `/api/ontology/*` and are **read-only** (server regex-blocks `CREATE/MERGE/DELETE/SET/REMOVE/DETACH/DROP/CALL/apoc/dbms`). To enrich the graph, use `ontology objects ...` and `ontology links ...` (Postgres ontology layer) and then **`ontology objects sync-neo4j`** / **`ontology links sync-neo4j`** (all indexable types) or **`sync-neo4j-type`** on one type id to MERGE into Neo4j.
-- **`wiki files` is the whole space file store, not “attachments only”.** `wiki files list` / `wiki files delete` operate on `/api/wiki-spaces/…/files`: vault imports (including mirrored **`.md`** and images/PDFs), uploads, etc. Deleting a row removes that stored object (DB + storage). To change **wiki page body** (the page entity), use **`wiki put-page`** (or the app editor) — do not treat “files” as only sidecar attachments.
-- **Knowledge map (`knowledge-map`).** Mirrors Console **Knowledge Map** under `/api/knowledge-map/*`: term tree, node CRUD, and mapping document/article channels or wiki spaces to nodes. Requires **`knowledge_map:read`** / **`knowledge_map:write`** when the server enforces those permissions (same as the SPA).
-- **Output is verbose.** Each list response can include long arrays. If you're scanning many records, pipe through `jq` to project just the fields you need rather than dumping everything into context.
+- **Article content review.** Channels can configure an LLM rubric (`review_model_id`, `review_prompt`, `review_criteria` via `article-channels update`). After a review exists, **`articles reviews latest --id ART_ID`** returns `result.pass`, `result.overall_score`, per-criterion scores/notes, and **`result.suggestions`** — use these to revise markdown. 404 means no review yet; run **`articles review run --id ART_ID --yes`**. Review does not edit the article; you apply suggestions yourself.
+- **`kb ask` vs `kb search`.** `ask` proxies to the QA agent and returns a grounded *answer* (with citations). `search` is **hybrid** (BM25 + dense + RRF + cross-encoder rerank) and returns *raw chunks + FAQ matches*. Use `ask` when the user wants an answer; use `search` when you need source material to reason over yourself.
+- **KB wiki indexing.** Link with **`kb wiki-spaces link`**, then **`kb wiki-spaces reindex`** or **`kb index`**. Poll **`jobs get`**.
+- **`ontology ask` is a 3-call chain.** Use when the question is graph-shaped. Use individual subcommands when you need to inspect Cypher.
+- **Ontology Functions vs Actions vs Connectors.** Functions = read/compute Python logic (`ontology functions …`). Action types = intentional writes bound to an object type (`ontology action-types …`). Connector **sync** loads external datasets (e.g. Tushare) — not an Action. Prefer not Neo4j-indexing huge daily fact tables; index master data (e.g. Stock) and analysis objects.
+- **Authoring Function source.** Before writing `--source-code-file`, read **[references/functions-authoring.md](references/functions-authoring.md)** (`@function`, `Client` search/fetch/execute_function, `uses=`, allowed imports, CLI validate→publish). Do not invent HTTP inside Function code.
+- **Object type properties** may use `string`, `integer`, `number`, `boolean`, `date`, `datetime`, `uuid` in `--properties-json`.
+- **Permission model is enforced server-side.** API key carries the user's scope. List endpoints filter to readable channels; per-id GET returns 404 (not 403) when out of scope.
+- **Write commands and confirm gating.** Every mutating CLI subcommand: `--dry-run` prints planned call; `-y`/`--yes` skips prompt; **on a non-TTY without `--yes` exit 2**.
+- **Ontology read vs write.** `ontology cypher/text-to-cypher/answer/ask` are **read-only**. Enrich via `ontology objects|links` then **`sync-neo4j*`** with `--neo4j-data-source-id`.
+- **`wiki files` is the whole space file store**, not attachments-only.
+- **Output is verbose.** Pipe through `jq` when scanning many records.
 
 ## Read / query tasks
 
@@ -150,6 +152,17 @@ Some practical guidance:
 | List link types | `python scripts/cli.py ontology links list` |
 | Get one link type | `python scripts/cli.py ontology links get --id LT_ID` |
 | List instances of a link type | `python scripts/cli.py ontology links instances list --type-id LT_ID --limit 50` |
+| List ontology functions | `python scripts/cli.py ontology functions list` |
+| Execute published function by api name | `python scripts/cli.py ontology functions execute-by-api-name --api-name NAME --input-json '{}' --yes` |
+| List action types | `python scripts/cli.py ontology action-types list` |
+| List ontology groups | `python scripts/cli.py ontology groups list` |
+| List data sources | `python scripts/cli.py data-sources list` |
+| List datasets | `python scripts/cli.py datasets list [--data-source-id ID]` |
+| Dataset rows / metadata | `python scripts/cli.py datasets rows --id DS_ID` / `datasets metadata --id DS_ID` |
+| List connector kinds / connectors | `python scripts/cli.py connectors kinds` / `connectors list` |
+| Get job | `python scripts/cli.py jobs get --id JOB_ID` |
+| List comments | `python scripts/cli.py comments list --resource-type document --resource-id ID` |
+| List media | `python scripts/cli.py media list [--channel-id ID]` |
 | Get one evaluation's metadata | `python scripts/cli.py evaluations get --id DS_ID` |
 | List items in an evaluation | `python scripts/cli.py evaluations items list --id DS_ID --limit 50` |
 | List runs for an evaluation | `python scripts/cli.py evaluation-runs list --evaluation-id DS_ID` |
@@ -228,6 +241,14 @@ Same confirmation rules as other writes.
 | Delete link instance | `python scripts/cli.py ontology links instances delete --type-id LT --id LI --yes` |
 | MERGE all indexable link types into Neo4j | `python scripts/cli.py ontology links sync-neo4j --neo4j-data-source-id DS --yes` |
 | MERGE one link type into Neo4j | `python scripts/cli.py ontology links sync-neo4j-type --type-id LT_ID --neo4j-data-source-id DS --yes` |
+| Create / validate / publish function | `ontology functions create … --source-code-file ./fn.py --yes` then `validate` / `publish` |
+| Create / execute action type | `ontology action-types create … --yes` / `execute --id AT --object-id OI --yes` |
+| Provision Tushare slot dataset | `connectors provision-dataset --kind tushare --slot stock_basic --data-source-id PG --yes` |
+| Queue connector sync | `connectors sync --id CONN --yes` then `jobs get --id JOB` |
+| Link wiki space to KB | `kb wiki-spaces link --kb-id KB --space-id SP --yes` |
+| Wiki semantic index | `wiki-spaces semantic-index --id SP --yes` |
+| Put document markdown | `documents put-markdown --id DOC --file ./x.md --yes` |
+| Export document zip | `documents export --id DOC --out ./doc.zip --yes` |
 
 When a link type is `many-to-many` and dataset-backed, the server is the source of truth via the junction table — `ontology links instances create/delete` will return 4xx. Surface that error rather than trying to bypass.
 
@@ -276,8 +297,34 @@ python scripts/cli.py articles review run --id <art_id> --yes
 python scripts/cli.py articles markdown --id <art_id>   # read body, apply suggestions, edit locally
 ```
 
-## Reference
+**G. Tushare datasets → Stock object type → Function (agent playbook).**
+```bash
+python scripts/cli.py data-sources list          # note Neo4j id + ontology PG id
+python scripts/cli.py connectors list            # find Tushare connector; inspect outputs → dataset ids
+python scripts/cli.py connectors sync --id <conn> --yes
+python scripts/cli.py jobs get --id <job_id>     # poll until completed
+python scripts/cli.py datasets metadata --id <stock_basic_dataset_id>
+python scripts/cli.py ontology objects create-type \
+  --name Stock --dataset-id <id> --key-property ts_code --is-master-data \
+  --display-property name --properties-json '[...]' --yes
+# Prefer NOT sync-neo4j on huge daily bar datasets; sync Stock (and analysis OTs) only:
+python scripts/cli.py ontology objects sync-neo4j-type \
+  --type-id <stock_ot> --neo4j-data-source-id <neo4j_ds> --yes
+python scripts/cli.py ontology functions create \
+  --api-name stockProfile --display-name "Stock profile" \
+  --source-code-file ./stock_profile.py --yes
+python scripts/cli.py ontology functions validate --id <fn> --source-code-file ./stock_profile.py --yes
+python scripts/cli.py ontology functions publish --id <fn> --yes
+python scripts/cli.py ontology functions execute-by-api-name \
+  --api-name stockProfile --input-json '{"ts_code":"000001.SZ"}' --yes
+```
+Author `stock_profile.py` per [references/functions-authoring.md](references/functions-authoring.md) (not ad-hoc curl).
 
-- Per-command JSON shapes & curl equivalents: [reference.md](reference.md)
-- Canonical route list: project `docs/features/api-reference.md`
-- Tests: `tests/` — `pytest -v` against an httpx mock transport (see `dev-requirements.txt`)
+## Reference (progressive disclosure)
+
+Per [agentskills.io](https://agentskills.io/specification): keep detailed material one level under `references/` / `scripts/` / `assets/`. Load on demand.
+
+- CLI ↔ HTTP map: [references/REFERENCE.md](references/REFERENCE.md) (operators / code review — **not** a second HTTP path for agents)
+- Ontology Function **source** authoring: [references/functions-authoring.md](references/functions-authoring.md)
+- Executable CLI: `scripts/cli.py`
+- Tests (dev only, not packaged for Agents zip): `tests/` — `pytest -v`

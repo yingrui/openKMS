@@ -90,8 +90,8 @@ plugins:
             Pipelines, jobs & models: 流水线、任务与模型
             Data security: 数据安全
             Console & authentication: 控制台与认证
+            openkms-skill: openkms-skill
             Agents (project workspaces): Agent（项目工作区）
-            OpenCode skill (openkms): OpenCode 技能（openkms）
             API reference: API 参考
             Data models: 数据模型
             Configuration: 配置
@@ -181,7 +181,7 @@ nav:
       - Data security: features/data-security.md
       - Console & authentication: features/console-and-auth.md
       - Agents (project workspaces): features/openkms-agents.md
-      - OpenCode skill (openkms): features/opencode-openkms-skill.md
+      - openkms-skill: features/openkms-skill.md
       - API reference: features/api-reference.md
       - Data models: features/data-models.md
       - Configuration: features/configuration.md

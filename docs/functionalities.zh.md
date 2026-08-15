@@ -23,7 +23,7 @@
 | [连接器](features/connectors.md) | `/connectors` 同步与 search_tool 种类、数据集输出、Tushare 同步任务、计划任务、Agent `web_search` |
 | [Agent（项目工作区）](features/openkms-agents.md) | Deep Agents 对话、文件、本地/远程 git、计划模式、openKMS 研究工具 |
 | [Wiki Copilot 与知识库问答](features/wiki-spaces.md) | 维基空间与知识库内嵌助手 |
-| [OpenCode 技能（openkms）](features/opencode-openkms-skill.md) | 外部 Agent 技能 + CLI（`openkms-skill/`）；不能替代应用内 Agent |
+| [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI（`openkms-skill/`）；可用于应用内 Agents、Claude Code、OpenCode 等；不能替代领域内维护助手 |
 
 ## 横切参考
 

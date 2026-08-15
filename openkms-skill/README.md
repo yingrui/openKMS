@@ -5,7 +5,7 @@ Thin CLI + Python package that lets [OpenCode](https://opencode.ai/docs/skills),
 - **Install:** `./install.sh` (auto-detects OpenCode + Claude Code; copies runtime files only — same set as `package.sh`). Re-running upgrades the tree but **preserves your `config.yml`**.
 - **Package for openKMS Agents:** `./package.sh --version 1.0.0` → `dist/openkms-1.0.0.zip` (upload on **Agents → Skills**).
 - **Configure:** copy `config.yml.example` → `config.yml`, fill in `api_base_url` and `api_key`. Create keys in **openKMS → Settings → API keys** (`okms.{uuid}.{secret}`, shown once).
-- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). [`reference.md`](reference.md) maps each CLI to HTTP for operators and code review, not for agents to bypass the CLI.
+- **Agent-facing instructions:** [`SKILL.md`](SKILL.md) — **all access must use `python scripts/cli.py …` only** (no ad-hoc `curl` or custom HTTP scripts). Layout follows [agentskills.io](https://agentskills.io/specification): [`references/REFERENCE.md`](references/REFERENCE.md) (CLI↔HTTP), [`references/functions-authoring.md`](references/functions-authoring.md) (Function source), `scripts/`, `assets/`.
 
 ## Capabilities at a glance
 
@@ -15,21 +15,29 @@ The skill covers **read + write** for every major resource. Top-level groups:
 |---|---|---|
 | `ping` | identity / API-key smoke test | — |
 | `search` | global cross-resource (documents/articles/wiki/KB) | — |
-| `documents` | `list`, `get`, `markdown`, **`relationships list`**, **`lifecycle patch`** | `upload`, **`relationships create`**, **`relationships delete`** |
-| `articles` | `list`, `get`, `markdown`, **`relationships list`** | `create`, `from-url`, **`relationships create`**, **`relationships delete`** |
-| `wiki` | `list-pages`, `get-page`, **`pages semantic-matches`**, **`files list`** (vault `.md`/assets/uploads, not attachments-only) | `put-page`, **`files delete`** (same file store; can remove stored `.md`) |
-| `wiki-spaces` | `list`, **`documents list`** | `create`, **`documents link`**, **`documents unlink`** |
-| `document-channels` / `article-channels` | `list` (`--tree` for human outline) | `create`, `update` |
-| `pipelines` | `list` (`--table` for id / name / active) | — |
-| `kb` | `list`, `get`, `search`, `ask`, **`wiki-spaces list`**, **`index`** | **`wiki-spaces reindex`**, **`index`** |
-| `kb-faq` | `list` | `create` |
-| `glossaries` | `list`, `get`, `export`, `terms list/get` | `create`, `update`, `delete`, `import`, `terms create/update/delete/suggest` |
-| `knowledge-map` | **`nodes tree`**, **`resource-links list`** | **`nodes create`**, **`nodes patch`**, **`nodes delete`**, **`resource-links put`**, **`resource-links delete`** |
-| `ontology` | `cypher`, `text-to-cypher`, `answer`, `ask` | — *(read-only sandbox)* |
-| `ontology objects` | `list`, `get`, `instances list/get` | `create-type`, `update-type`, `delete-type`, `instances create/update/delete`, `sync-neo4j`, `sync-neo4j-type` |
-| `ontology links` | `list`, `get`, `instances list` | `create-type`, `update-type`, `delete-type`, `instances create/delete`, `sync-neo4j`, `sync-neo4j-type` |
-| `evaluations` | `list`, `get`, `items list` | `create`, `update`, `run`, `items add` / `items update` / `items delete` |
-| `evaluation-runs` | `list`, `get`, `compare` | — |
+| `documents` | `list`, `get`, `markdown`, **`relationships list`**, versions | `upload`, `put-markdown`, `put-metadata`, `export`, versions create/restore, lifecycle, relationships |
+| `articles` | `list`, `get`, `markdown`, reviews, relationships | `create`, `from-url`, review run, relationships |
+| `wiki` | `list-pages`, `get-page`, semantic-matches, files list | `put-page`, files delete |
+| `wiki-spaces` | `list`, `get`, documents list | `create`, `update`, `semantic-index`, documents link/unlink |
+| `document-channels` / `article-channels` | `list` | `create`, `update` (article: review fields) |
+| `pipelines` | `list` | — |
+| `kb` | `list`, `get`, `search`, `ask`, wiki-spaces list | `index`, wiki-spaces link/unlink/reindex |
+| `kb-faq` | `list` | `create`, `polish` |
+| `glossaries` | list/get/export/terms | CRUD, import, suggest |
+| `knowledge-map` | nodes tree, resource-links list | nodes CRUD, resource-links put/delete |
+| `data-sources` | `list`, `get` | `create`, `test` |
+| `datasets` | `list`, `get`, `rows`, `metadata` | `create` |
+| `connectors` | `kinds`, `list`, `get` | create/update, sync, provision-dataset, probe, search |
+| `jobs` | `list`, `get` | `retry` |
+| `comments` | `list` | create/reply/update/delete |
+| `media-channels` / `media` | list/get | create/update/delete, upload, generate, patch |
+| `ontology` | cypher, text-to-cypher, answer, ask | — *(read-only sandbox)* |
+| `ontology objects` | list/get/instances | type/instance CRUD, sync-neo4j* |
+| `ontology links` | list/get/instances | type/instance CRUD, sync-neo4j* |
+| `ontology functions` | list/get/executions | create, save-version, validate, publish, execute* |
+| `ontology action-types` | list/get/logs | create, update, execute |
+| `ontology groups` | list/get | create, update |
+| `evaluations` / `evaluation-runs` | list/get/compare | create/update/run/items |
 
 > **Mutation safety.** Every **write** subcommand (channels, `documents upload`, **`documents lifecycle patch`**, **`documents relationships create|delete`**, `articles create`/`from-url`, **`articles relationships create|delete`**, `wiki put-page`, **`wiki files delete`**, `wiki-spaces documents link|unlink`, **`kb index`**, **`kb wiki-spaces reindex`**, KB FAQ, **`glossaries`** and **`glossaries terms`**, **`knowledge-map`** nodes and resource-links, evaluation `create`/`update`/`run` and **`evaluations items` add/update/delete**, and ontology objects/links) uses the same gate: `--yes`/`-y`, `--dry-run`, interactive `Proceed?`, or **exit 2 on non-TTY without `--yes`** so agents opt in deliberately.
 
@@ -160,20 +168,19 @@ Edit the `Q_*` variables at the top of the script to change the search query, th
 
 ```
 openkms-skill/
+  SKILL.md                 # agent instructions (agentskills.io core)
+  README.md                # developer install / packaging
+  requirements.txt
+  config.yml.example
+  references/
+    REFERENCE.md           # CLI ↔ HTTP map (load on demand)
+    functions-authoring.md # Ontology Function source authoring
   scripts/
-    cli.py              # 42-line dispatcher
-    openkms/
-      client.py         # httpx client + Bearer auth from config.yml
-      config.py         # config.yml loader
-      _io.py            # JSON pretty-print, file helpers
-      commands/         # one module per resource (ping, search, kb, ontology, ...)
-  tests/
-    test_*.py           # pytest + httpx MockTransport (offline)
-    run_cli.sh          # end-to-end smoke against a real openKMS (jq required)
-    smoke.py            # same coverage as run_cli.sh, in Python
-  SKILL.md              # agent instructions (when/how to use)
-  reference.md          # per-command JSON shapes + curl equivalents
-  install.sh            # multi-target installer
+    cli.py                 # dispatcher
+    openkms/               # httpx client + command modules
+  assets/                  # reserved (templates / static resources)
+  tests/                   # pytest (not required in Agents zip)
+  install.sh / package.sh
 ```
 
 See [`SKILL.md`](SKILL.md) for the full command matrix and workflow recipes.

@@ -6,13 +6,19 @@ from argparse import _SubParsersAction
 from . import (
     article_channels,
     articles,
+    comments,
+    connectors,
+    data_sources,
+    datasets,
     document_channels,
     documents,
     evaluation,
     glossaries,
+    jobs,
     kb,
     kb_faq,
     knowledge_map,
+    media,
     ontology,  # also nests `objects` and `links` under itself
     pipelines,
     ping,
@@ -37,5 +43,12 @@ def register(sub: _SubParsersAction) -> None:
     kb_faq.add_subparser(sub)
     glossaries.add_subparser(sub)
     knowledge_map.add_subparser(sub)
+    data_sources.add_subparser(sub)
+    datasets.add_subparser(sub)
+    connectors.add_subparser(sub)
+    jobs.add_subparser(sub)
+    comments.add_subparser(sub)
+    media.add_media_channels_subparser(sub)
+    media.add_media_subparser(sub)
     ontology.add_subparser(sub)  # exposes `ontology cypher/...`, `ontology objects ...`, `ontology links ...`
     evaluation.add_subparser(sub)

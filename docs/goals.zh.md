@@ -149,6 +149,6 @@ Console、连接器、评估等主要服务 **知识管理员** 及 **法务合�
 
 **问题：** 同一问题在多个系统各问一遍，上下文碎片化，幻觉与反复追问增多。
 
-**方向：** 在权限范围内 **快、准、全** 地交付上下文：统一索引、混合检索、元数据过滤、API/工具（个人 API Key、CLI、[OpenCode 技能](features/opencode-openkms-skill.md)）。**优先应用内助手**（维基 Copilot、知识库问答），外部技能作补充。
+**方向：** 在权限范围内 **快、准、全** 地交付上下文：统一索引、混合检索、元数据过滤、API/工具（个人 API Key、CLI、[openkms-skill](features/openkms-skill.md)）。**优先应用内助手**（维基 Copilot、知识库问答），外部技能作补充。
 
 **产品缺口：** [应用内 Agent](development_plan.md#in-product-agents-high) — 分场景助手已有，**尚无统一跨资源全局助手**（用户侧见 [用户体验](development_plan.md#user-experience-high)）。

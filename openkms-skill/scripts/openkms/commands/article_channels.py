@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import sys
 from typing import Any
 
 from .._confirm import add_write_flags, confirm_or_abort
@@ -58,11 +60,24 @@ def _article_update_body(ns: argparse.Namespace) -> dict[str, Any]:
         body["parent_id"] = ns.parent_id
     if ns.sort_order is not None:
         body["sort_order"] = ns.sort_order
+    if getattr(ns, "review_model_id", None) is not None:
+        body["review_model_id"] = ns.review_model_id or None
+    if getattr(ns, "review_prompt", None) is not None:
+        body["review_prompt"] = ns.review_prompt
+    if getattr(ns, "review_criteria_json", None) is not None:
+        try:
+            body["review_criteria"] = json.loads(ns.review_criteria_json)
+        except json.JSONDecodeError as e:
+            print(f"--review-criteria-json: invalid JSON ({e})", file=sys.stderr)
+            sys.exit(2)
     return body
 
 
 def cmd_update(ns: argparse.Namespace) -> None:
     body = _article_update_body(ns)
+    if not body:
+        print("update: nothing to update", file=sys.stderr)
+        sys.exit(2)
     path = f"/api/article-channels/{ns.id}"
     confirm_or_abort(
         "update article channel",
@@ -91,11 +106,17 @@ def add_subparser(sub) -> None:
     c.add_argument("--sort-order", type=int, default=0)
     add_write_flags(c)
     c.set_defaults(fn=cmd_create)
-    u = sp.add_parser("update", help="Update channel (rename, reparent, sort_order)")
+    u = sp.add_parser(
+        "update",
+        help="Update channel (rename, reparent, review model/prompt/criteria)",
+    )
     u.add_argument("--id", required=True)
     u.add_argument("--name", default=None)
     u.add_argument("--description", default=None)
     u.add_argument("--parent-id", default=None)
     u.add_argument("--sort-order", type=int, default=None)
+    u.add_argument("--review-model-id", default=None, help="ApiModel id for content review")
+    u.add_argument("--review-prompt", default=None)
+    u.add_argument("--review-criteria-json", default=None, help="JSON criteria for review rubric")
     add_write_flags(u)
     u.set_defaults(fn=cmd_update)

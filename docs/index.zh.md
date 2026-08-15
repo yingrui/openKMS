@@ -47,7 +47,7 @@ openKMS 把这些视为**同一张网络**，而非割裂的「给人用的 KM�
 | HTTP 或 schema 参考 | [API 参考](features/api-reference.md) · [数据模型](features/data-models.md) |
 | 知识制品类型 | [知识类型](features/knowledge-types.md) |
 | 共享与资源 ACL | [数据安全](features/data-security.md) |
-| 从 OpenCode / 外部 Agent 使用 openKMS | [OpenCode 技能（`openkms-skill`）](features/opencode-openkms-skill.md) |
+| 用 Agent Skill / CLI 访问 openKMS | [openkms-skill](features/openkms-skill.md) |
 | 搭建开发环境 | [开发者环境搭建](developer/setup.md) |
 | 用 Docker 部署 | [运维 · Docker](operations/docker.md) |
 | 审阅安全设计（原则） | [安全](security.md) · [数据安全](features/data-security.md) · [控制台与认证](features/console-and-auth.md) |

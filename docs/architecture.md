@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/knowledge-map, incl. map-html snapshot), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/knowledge-map, incl. overview composition + AG-UI; legacy map-html), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]
@@ -238,11 +238,11 @@ openkms-cli/
 - **KB indexing**: `openkms-cli pipeline run --pipeline-name kb-index --knowledge-base-id <id> [--wiki-space-id <id>] --api-url <url>` – documents use KB **`chunk_config`**; wiki pages use **one page per chunk** (≤ 8000 chars, else markdown-header split). **`--wiki-space-id`** re-indexes one linked space only (deletes its prior wiki chunks first). Writes chunks via internal **`POST …/chunks/batch`**; full runs also refresh FAQ embeddings
 - **Extensible**: Add new Typer subapps in app.py for additional CLI tools
 
-## openkms-skill (OpenCode / external agents)
+## openkms-skill (Agent Skill + CLI)
 
-Optional repo folder **`openkms-skill/`** (not part of the Docker stack) packages a small **Python CLI** plus **`SKILL.md`** for [OpenCode](https://opencode.ai/docs/skills)-style agents. It calls the **same public `/api/...` routes** as the SPA, using a **personal API key** created in the app (**Settings** → **API keys**, `/settings`). Install target: **`~/.config/opencode/skills/openkms/`** via **`openkms-skill/install.sh`** (preserves an existing **`config.yml`** on reinstall).
+Optional repo folder **`openkms-skill/`** (not part of the Docker stack) packages a small **Python CLI** plus **`SKILL.md`** per [agentskills.io](https://agentskills.io/specification). It calls the **same public `/api/...` routes** as the SPA, using a **personal API key** (**Settings → API keys**). Install via **`./install.sh`** (Claude Code / OpenCode) or **`./package.sh`** for **Agents → Skills** upload.
 
-Full how-to, `config.yml`, and command list: **[OpenCode skill (`openkms-skill`)](features/opencode-openkms-skill.md)**. Distinct from **`openkms-cli`** (worker subprocess, env-based auth to internal + public APIs).
+Full how-to: **[openkms-skill](features/openkms-skill.md)**. Distinct from **`openkms-cli`** (worker subprocess, env-based auth to internal + public APIs).
 
 ## QA Agent Service
 

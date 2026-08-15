@@ -30,6 +30,16 @@ def cmd_list(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_polish(ns: argparse.Namespace) -> None:
+    path = f"/api/knowledge-bases/{ns.kb_id}/faqs/polish"
+    body = {"question": ns.question, "answer": ns.answer}
+    confirm_or_abort("polish FAQ draft", "POST", path, body, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
 def add_subparser(sub) -> None:
     p = sub.add_parser("kb-faq", help="Knowledge base FAQs")
     sp = p.add_subparsers(dest="fq_cmd", required=True)
@@ -46,3 +56,10 @@ def add_subparser(sub) -> None:
     ls.add_argument("--limit", type=int, default=0)
     ls.add_argument("--offset", type=int, default=0)
     ls.set_defaults(fn=cmd_list)
+
+    pl = sp.add_parser("polish", help="Polish draft FAQ answer (preview; POST .../faqs/polish)")
+    pl.add_argument("--kb-id", required=True)
+    pl.add_argument("--question", required=True)
+    pl.add_argument("--answer", required=True)
+    add_write_flags(pl)
+    pl.set_defaults(fn=cmd_polish)

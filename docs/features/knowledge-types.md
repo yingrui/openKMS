@@ -68,7 +68,7 @@ Below is a **practical map** for a lab or individual researcher: what they do, w
 | RAG over lab + literature corpus | Embeddings over curated text | **KB chunk**, **KB FAQ** | [Knowledge bases](knowledge-bases.md), [Pipelines, jobs & models](pipelines-and-jobs.md) | Domain-tuned eval sets ([Evaluation](evaluation.md)); better provenance for hybrid retrieval (ongoing) |
 | Lab / project navigation | “Where is everything?” | **Knowledge Map** nodes → link to doc channels, wiki, article channels | [Knowledge map & home](knowledge-map.md) | Map nodes that deep-link into **ontology** subsets (e.g. “this project’s specimens”) |
 | Cross-resource discovery | One search box | Metadata in documents; names in global search | [Global search](global-search.md) | Search ontology instances and trait values; geo search |
-| Automation & scripting | Push/pull content | REST + CLI / skills | [OpenCode skill (openkms)](opencode-openkms-skill.md), [API reference](api-reference.md) | DwC-A / IPT-style publish bundles; notebook export |
+| Automation & scripting | Push/pull content | REST + CLI / skills | [openkms-skill](openkms-skill.md), [API reference](api-reference.md) | DwC-A / IPT-style publish bundles; notebook export |
 
 ### How to read the “future” column
 

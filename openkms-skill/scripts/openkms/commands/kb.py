@@ -65,6 +65,39 @@ def cmd_wiki_spaces_reindex(ns: argparse.Namespace) -> None:
     print_json(r.json())
 
 
+def cmd_wiki_spaces_link(ns: argparse.Namespace) -> None:
+    path = f"/api/knowledge-bases/{ns.kb_id}/wiki-spaces"
+    body = {"wiki_space_id": ns.space_id}
+    confirm_or_abort(
+        "link wiki space to KB",
+        "POST",
+        path,
+        body,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_wiki_spaces_unlink(ns: argparse.Namespace) -> None:
+    path = f"/api/knowledge-bases/{ns.kb_id}/wiki-spaces/{ns.space_id}"
+    confirm_or_abort(
+        "unlink wiki space from KB",
+        "DELETE",
+        path,
+        None,
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.delete(path)
+    r.raise_for_status()
+    print(f"unlinked wiki space {ns.space_id} from KB {ns.kb_id}")
+
+
 def cmd_index(ns: argparse.Namespace) -> None:
     path = f"/api/knowledge-bases/{ns.id}/index-job"
     confirm_or_abort(
@@ -131,3 +164,18 @@ def add_subparser(sub) -> None:
     wsr.add_argument("--space-id", required=True, help="Linked wiki space id")
     add_write_flags(wsr)
     wsr.set_defaults(fn=cmd_wiki_spaces_reindex)
+
+    wslk = wsp.add_parser("link", help="Link a wiki space to KB (POST .../wiki-spaces)")
+    wslk.add_argument("--kb-id", required=True)
+    wslk.add_argument("--space-id", required=True)
+    add_write_flags(wslk)
+    wslk.set_defaults(fn=cmd_wiki_spaces_link)
+
+    wsul = wsp.add_parser(
+        "unlink",
+        help="Unlink wiki space and drop its wiki chunks from the KB",
+    )
+    wsul.add_argument("--kb-id", required=True)
+    wsul.add_argument("--space-id", required=True)
+    add_write_flags(wsul)
+    wsul.set_defaults(fn=cmd_wiki_spaces_unlink)

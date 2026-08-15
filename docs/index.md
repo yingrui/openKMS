@@ -47,7 +47,7 @@ Content lives in **channel trees** (like folder hierarchies). Typical surfaces:
 | HTTP or schema reference | [API reference](features/api-reference.md) · [Data models](features/data-models.md) |
 | Knowledge artifact types | [Knowledge types](features/knowledge-types.md) |
 | Sharing and resource ACL | [Data security](features/data-security.md) |
-| Use openKMS from OpenCode / an external agent | [OpenCode skill (`openkms-skill`)](features/opencode-openkms-skill.md) |
+| Use openKMS from an agent (skill + CLI) | [openkms-skill](features/openkms-skill.md) |
 | Set up a dev environment | [Developer setup](developer/setup.md) |
 | Deploy with Docker | [Operations · Docker](operations/docker.md) |
 | Review security design (principles) | [Security](security.md) · [Data security](features/data-security.md) · [Console & auth](features/console-and-auth.md) |

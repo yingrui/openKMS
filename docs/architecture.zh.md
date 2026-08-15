@@ -228,11 +228,11 @@ openkms-cli/
 - **KB 索引**：`kb-index` 流水线；wiki 可按 space 重索引
 - **扩展**：在 `app.py` 注册新 Typer 子应用
 
-## openkms-skill（OpenCode / 外部 Agent）
+## openkms-skill（Agent Skill + CLI）
 
-可选目录 **`openkms-skill/`**（不在 Docker 栈）打包 Python CLI + **`SKILL.md`**，供 [OpenCode](https://opencode.ai/docs/skills) 类 Agent 调用与 SPA 相同的 **`/api/...`**，使用应用内创建的**个人 API 密钥**（**Settings** → **API keys**，`/settings`）。安装：**`openkms-skill/install.sh`** → **`~/.config/opencode/skills/openkms/`**（重装保留 **`config.yml`**）。
+可选目录 **`openkms-skill/`**（不在 Docker 栈）按 [agentskills.io](https://agentskills.io/specification) 打包 Python CLI + **`SKILL.md`**，调用与 SPA 相同的 **`/api/...`**，使用**个人 API 密钥**（**Settings → API keys**）。安装：`./install.sh`（Claude Code / OpenCode）或 `./package.sh` 上传到 **Agents → Skills**。
 
-完整说明：**[OpenCode 技能（`openkms-skill`）](features/opencode-openkms-skill.md)**。与 **`openkms-cli`**（worker 子进程、internal + public API 环境认证）不同。
+完整说明：**[openkms-skill](features/openkms-skill.md)**。与 **`openkms-cli`**（worker 子进程、internal + public API 环境认证）不同。
 
 ## QA Agent 服务
 

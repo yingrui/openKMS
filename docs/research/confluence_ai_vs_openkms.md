@@ -11,7 +11,7 @@ Comparative research on **Atlassian Confluence** with **Atlassian Intelligence**
 | | **Confluence + AI (Rovo)** | **openKMS** |
 |---|---------------------------|-------------|
 | **Primary identity** | Team wiki and collaboration hub inside the **Atlassian Cloud** stack | **Open**, self-hosted **knowledge management system** (documents, articles, wiki, KB, ontology) |
-| **AI strategy** | **Teamwork Graph** + Rovo (search, chat, agents, studio) embedded where teams already work | **Dedicated RAG** (KB + qa-agent), **Wiki Copilot**, optional external **[openkms-skill](../features/opencode-openkms-skill.md)** |
+| **AI strategy** | **Teamwork Graph** + Rovo (search, chat, agents, studio) embedded where teams already work | **Dedicated RAG** (KB + qa-agent), **Wiki Copilot**, optional external **[openkms-skill](../features/openkms-skill.md)** |
 | **Best when** | You are standardized on Atlassian Cloud and want AI on pages, Jira links, and ~50 SaaS connectors with minimal ops | You need **governed corpora**, **policy lifecycle**, **parse-heavy documents**, and **control of data residency** on your stack |
 | **Deployment** | SaaS (Cloud); Data Center can sync to Cloud for AI via connectors | Docker / host; PostgreSQL, MinIO, optional Neo4j, separate VLM and qa-agent |
 

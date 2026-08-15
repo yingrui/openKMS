@@ -153,7 +153,7 @@ Two **separate** product lanes (do not merge into one “global chat”):
 
 | Lane | Purpose | Examples in openKMS |
 |------|---------|---------------------|
-| **KB Q&A delivery** | Per–knowledge-base **retrieval + answer service** for people, apps, and external agents — **Agent-ready** (permission-aware, sourced) | [`qa-agent`](features/knowledge-bases.md) via `kb.agent_url`; `POST …/search`, `…/ask`, `…/retrieve`; API keys, [openkms-skill](features/opencode-openkms-skill.md). SPA full-page Q&A is an **operator/consumer UI** for that service, not an in-app maintenance copilot. |
+| **KB Q&A delivery** | Per–knowledge-base **retrieval + answer service** for people, apps, and external agents — **Agent-ready** (permission-aware, sourced) | [`qa-agent`](features/knowledge-bases.md) via `kb.agent_url`; `POST …/search`, `…/ask`, `…/retrieve`; API keys, [openkms-skill](features/openkms-skill.md). SPA full-page Q&A is an **operator/consumer UI** for that service, not an in-app maintenance copilot. |
 | **In-app agents** | **Build and maintain** corpus inside openKMS (draft, curate, research workflows) | [Wiki Copilot](features/wiki-spaces.md), knowledge map HTML designer, [Deep Agents project workspaces](features/openkms-agents.md) |
 
 **Direction (delivery):** Unified index, hybrid search, lifecycle-aware corpus, provenance on answers, stable HTTP API for embedders and integrators.

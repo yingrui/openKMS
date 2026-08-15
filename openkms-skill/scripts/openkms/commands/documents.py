@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -85,6 +86,106 @@ def cmd_markdown(ns: argparse.Namespace) -> None:
         print(f"document {ns.id} has no markdown field in response", file=sys.stderr)
         sys.exit(1)
     write_or_print(md, ns.out or None)
+
+
+def cmd_put_markdown(ns: argparse.Namespace) -> None:
+    if ns.file:
+        markdown = Path(ns.file).read_text(encoding="utf-8")
+    elif ns.markdown is not None:
+        markdown = ns.markdown
+    else:
+        print("put-markdown: require --file or --markdown", file=sys.stderr)
+        sys.exit(2)
+    path = f"/api/documents/{ns.id}/markdown"
+    body = {"markdown": markdown}
+    confirm_or_abort(
+        "update document markdown",
+        "PUT",
+        path,
+        {"markdown": f"<{len(markdown)} chars>"},
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.put(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_put_metadata(ns: argparse.Namespace) -> None:
+    try:
+        meta = json.loads(ns.metadata_json)
+    except json.JSONDecodeError as e:
+        print(f"--metadata-json: invalid JSON ({e})", file=sys.stderr)
+        sys.exit(2)
+    path = f"/api/documents/{ns.id}/metadata"
+    confirm_or_abort("update document metadata", "PUT", path, meta, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.put(path, json=meta)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_versions_list(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/documents/{ns.id}/versions")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_versions_get(ns: argparse.Namespace) -> None:
+    with client() as s:
+        r = s.get(f"/api/documents/{ns.id}/versions/{ns.version_id}")
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_versions_create(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.tag:
+        body["tag"] = ns.tag
+    if ns.note:
+        body["note"] = ns.note
+    path = f"/api/documents/{ns.id}/versions"
+    confirm_or_abort("create document version", "POST", path, body or None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_versions_restore(ns: argparse.Namespace) -> None:
+    body: dict[str, Any] = {}
+    if ns.save_current_as_version:
+        body["save_current_as_version"] = True
+    if ns.tag:
+        body["tag"] = ns.tag
+    if ns.note:
+        body["note"] = ns.note
+    path = f"/api/documents/{ns.id}/versions/{ns.version_id}/restore"
+    confirm_or_abort("restore document version", "POST", path, body or None, ns.yes, ns.dry_run)
+    with client() as s:
+        r = s.post(path, json=body)
+    r.raise_for_status()
+    print_json(r.json())
+
+
+def cmd_export(ns: argparse.Namespace) -> None:
+    path = f"/api/documents/{ns.id}/export"
+    confirm_or_abort(
+        "export document parsing zip",
+        "GET",
+        path,
+        {"out": ns.out},
+        ns.yes,
+        ns.dry_run,
+    )
+    with client() as s:
+        r = s.get(path)
+    r.raise_for_status()
+    out = Path(ns.out)
+    out.write_bytes(r.content)
+    print(json.dumps({"id": ns.id, "out": str(out.resolve()), "bytes": len(r.content)}, indent=2))
 
 
 _DOCUMENT_RELATION_TYPES = ("supersedes", "amends", "implements", "see_also")
@@ -208,6 +309,49 @@ def add_subparser(sub) -> None:
     md.add_argument("--id", required=True)
     md.add_argument("--out", default="", help="Output file path; omit to print to stdout")
     md.set_defaults(fn=cmd_markdown)
+
+    pmd = sp.add_parser("put-markdown", help="Replace document markdown (PUT …/markdown)")
+    pmd.add_argument("--id", required=True)
+    pmd.add_argument("--file", default=None, help="Read markdown from file")
+    pmd.add_argument("--markdown", default=None, help="Inline markdown string")
+    add_write_flags(pmd)
+    pmd.set_defaults(fn=cmd_put_markdown)
+
+    pmeta = sp.add_parser("put-metadata", help="Merge document metadata (PUT …/metadata)")
+    pmeta.add_argument("--id", required=True)
+    pmeta.add_argument("--metadata-json", required=True)
+    add_write_flags(pmeta)
+    pmeta.set_defaults(fn=cmd_put_metadata)
+
+    ver = sp.add_parser("versions", help="Document version snapshots")
+    vsp = ver.add_subparsers(dest="doc_ver_cmd", required=True)
+    vls = vsp.add_parser("list", help="List versions")
+    vls.add_argument("--id", required=True)
+    vls.set_defaults(fn=cmd_versions_list)
+    vgt = vsp.add_parser("get", help="Get one version snapshot")
+    vgt.add_argument("--id", required=True)
+    vgt.add_argument("--version-id", required=True)
+    vgt.set_defaults(fn=cmd_versions_get)
+    vcr = vsp.add_parser("create", help="Snapshot current markdown + metadata")
+    vcr.add_argument("--id", required=True)
+    vcr.add_argument("--tag", default="")
+    vcr.add_argument("--note", default="")
+    add_write_flags(vcr)
+    vcr.set_defaults(fn=cmd_versions_create)
+    vrs = vsp.add_parser("restore", help="Restore working copy from a version")
+    vrs.add_argument("--id", required=True)
+    vrs.add_argument("--version-id", required=True)
+    vrs.add_argument("--save-current-as-version", action="store_true")
+    vrs.add_argument("--tag", default="")
+    vrs.add_argument("--note", default="")
+    add_write_flags(vrs)
+    vrs.set_defaults(fn=cmd_versions_restore)
+
+    ex = sp.add_parser("export", help="Download parsing zip to --out")
+    ex.add_argument("--id", required=True)
+    ex.add_argument("--out", required=True, help="Output .zip path")
+    add_write_flags(ex)
+    ex.set_defaults(fn=cmd_export)
 
     rel = sp.add_parser(
         "relationships",

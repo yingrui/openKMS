@@ -1,4 +1,6 @@
-# openkms-skill — API reference
+# openkms-skill — CLI ↔ HTTP reference
+
+Part of [agentskills.io](https://agentskills.io/specification) **`references/`** (load on demand from `SKILL.md`).
 
 Paths below are relative to `api_base_url` from `config.yml`. The **CLI** sends `Authorization: Bearer <api_key>` on every request. **Agents must not reimplement these calls with `curl` or custom HTTP code**—use `python scripts/cli.py …` only; this file is for humans maintaining the skill and for reviews.
 
@@ -72,8 +74,11 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 
 | CLI | Method | Path | Notes |
 |---|---|---|---|
-| `wiki-spaces list` | GET | `/api/wiki-spaces` | Requires `console:wikis_read` (server-enforced). |
-| `wiki-spaces create` | POST | `/api/wiki-spaces` | Requires `console:wikis_write`. |
+| `wiki-spaces list` | GET | `/api/wiki-spaces` | Requires `wikis:read` (server-enforced). |
+| `wiki-spaces get` | GET | `/api/wiki-spaces/{id}` | Includes semantic settings. |
+| `wiki-spaces create` | POST | `/api/wiki-spaces` | Requires `wikis:write`. |
+| `wiki-spaces update` *(write)* | PATCH | `/api/wiki-spaces/{id}` | Partial: name, description, semantic_* fields. |
+| `wiki-spaces semantic-index` *(write)* | POST | `/api/wiki-spaces/{id}/semantic-index` | Embed pages for semantic-matches. |
 | `wiki-spaces documents list` | GET | `/api/wiki-spaces/{space_id}/documents` | Linked channel documents (reference only). |
 | `wiki-spaces documents link` | POST | `/api/wiki-spaces/{space_id}/documents` | Body `{document_id}`. 409 if already linked. Gated. |
 | `wiki-spaces documents unlink` | DELETE | `/api/wiki-spaces/{space_id}/documents/{document_id}` | Removes link only. Gated. |
@@ -94,12 +99,12 @@ Create keys in the openKMS web app: **Settings** (header user menu → **Setting
 | `kb ask` | POST | `/api/knowledge-bases/{id}/ask` | Body `{question}`. Proxies to the QA agent — returns a grounded answer with source citations. Slower than `kb search` (LLM in the loop). |
 | `kb index` *(write)* | POST | `/api/knowledge-bases/{id}/index-job` | Queue full KB reindex (documents + all linked wiki spaces + FAQ embeddings). Returns `JobResponse`; requires `embedding_model_id` on the KB. |
 | `kb wiki-spaces list` | GET | `/api/knowledge-bases/{kb_id}/wiki-spaces` | Wiki spaces linked for KB indexing. |
-| `kb wiki-spaces reindex` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}/index-job` | Re-index pages from one linked wiki space (replaces that space's wiki chunks; one page per chunk when ≤8000 chars). Returns `JobResponse`. |
-| *(HTTP)* | POST | `/api/knowledge-bases/{id}/wiki-spaces` | Body `{wiki_space_id}`. Link a wiki space (no CLI yet). |
-| *(HTTP)* | DELETE | `/api/knowledge-bases/{id}/wiki-spaces/{wiki_space_id}` | Unlink; removes wiki-sourced chunks for that space from this KB. |
-| *(HTTP)* | GET | `/api/knowledge-bases/{id}/wiki-pages-for-index` | Paginated pages with body (used by `kb-index` worker). |
+| `kb wiki-spaces link` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces` | Body `{wiki_space_id}`. |
+| `kb wiki-spaces unlink` *(write)* | DELETE | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}` | Drops wiki chunks for that space. |
+| `kb wiki-spaces reindex` *(write)* | POST | `/api/knowledge-bases/{kb_id}/wiki-spaces/{wiki_space_id}/index-job` | Re-index pages from one linked wiki space. Returns `JobResponse` — poll with `jobs get`. |
 | `kb-faq list` | GET | `/api/knowledge-bases/{id}/faqs` | Paginated. |
 | `kb-faq create` | POST | `/api/knowledge-bases/{id}/faqs` | Body `{question, answer}`. |
+| `kb-faq polish` *(write)* | POST | `/api/knowledge-bases/{id}/faqs/polish` | Preview polish; body `{question, answer}`. |
 
 ### Glossaries
 
@@ -162,6 +167,62 @@ All write subcommands accept `--yes` / `--dry-run`. Without `--yes` on non-TTY s
 | `ontology links sync-neo4j` *(write)* | POST | `/api/link-types/index-to-neo4j` | Body `{neo4j_data_source_id}`. Returns `{link_types_indexed, relationships_created}`. Junction / source-FK datasets or saved link rows. |
 | `ontology links sync-neo4j-type` *(write)* | POST | `/api/link-types/{id}/index-to-neo4j` | Same body. One link type only. |
 
+### Ontology — functions / action-types / groups
+
+**Authoring Function Python source** (templates, Client API, `uses=`, allowed imports): see **[functions-authoring.md](functions-authoring.md)**. This table is CLI ↔ HTTP only.
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `ontology functions list` | GET | `/api/ontology/functions` | |
+| `ontology functions get` | GET | `/api/ontology/functions/{id}` | |
+| `ontology functions create` *(write)* | POST | `/api/ontology/functions` | `api_name`, `display_name`, optional `source_code` / schemas. |
+| `ontology functions save-version` *(write)* | POST | `/api/ontology/functions/{id}/versions` | Body requires `source_code`. |
+| `ontology functions validate` *(write)* | POST | `/api/ontology/functions/{id}/validate` | Body `OntologyFunctionVersionCreate` (source required). |
+| `ontology functions publish` *(write)* | POST | `/api/ontology/functions/{id}/publish` | Optional `?version_id=`. |
+| `ontology functions execute` *(write)* | POST | `/api/ontology/functions/{id}/execute` | Body `{input, version_id?, use_published?}`. |
+| `ontology functions execute-by-api-name` *(write)* | POST | `/api/ontology/functions/by-api-name/{api_name}/execute` | Published only. |
+| `ontology functions executions` | GET | `/api/ontology/functions/{id}/executions` | |
+| `ontology action-types list` | GET | `/api/ontology/action-types` | |
+| `ontology action-types get` | GET | `/api/ontology/action-types/{id}` | |
+| `ontology action-types create` *(write)* | POST | `/api/ontology/action-types` | |
+| `ontology action-types update` *(write)* | PATCH | `/api/ontology/action-types/{id}` | |
+| `ontology action-types execute` *(write)* | POST | `/api/ontology/action-types/{id}/execute` | Body `{object_id?, input}`. |
+| `ontology action-types logs` | GET | `/api/ontology/action-types/{id}/logs` | |
+| `ontology groups list` | GET | `/api/ontology/groups` | |
+| `ontology groups get` | GET | `/api/ontology/groups/{id}` | |
+| `ontology groups create` *(write)* | POST | `/api/ontology/groups` | |
+| `ontology groups update` *(write)* | PATCH | `/api/ontology/groups/{id}` | |
+
+### Data sources / datasets / connectors / jobs
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `data-sources list` | GET | `/api/data-sources` | Use to find Neo4j id for `sync-neo4j`. |
+| `data-sources get` | GET | `/api/data-sources/{id}` | |
+| `data-sources create` *(write)* | POST | `/api/data-sources` | |
+| `data-sources test` *(write)* | POST | `/api/data-sources/{id}/test` | |
+| `datasets list` | GET | `/api/datasets` | Optional `?data_source_id=`. |
+| `datasets get` / `rows` / `metadata` | GET | `/api/datasets/{id}`… | |
+| `datasets create` *(write)* | POST | `/api/datasets` | Register existing table. |
+| `connectors kinds` | GET | `/api/connectors/kinds` | |
+| `connectors list` / `get` | GET | `/api/connectors`… | |
+| `connectors create` / `update` *(write)* | POST/PUT | `/api/connectors`… | Secrets masked in dry-run. |
+| `connectors sync` *(write)* | POST | `/api/connectors/{id}/sync` | Returns `{job_id}` — poll `jobs get`. |
+| `connectors provision-dataset` *(write)* | POST | `/api/connectors/provision-dataset` | |
+| `connectors probe` *(write)* | POST | `/api/connectors/{id}/probe` | Tushare live probe; no dataset writes. |
+| `connectors search` *(write)* | POST | `/api/connectors/{id}/search` | search_tool kinds. |
+| `jobs list` / `get` | GET | `/api/jobs`… | |
+| `jobs retry` *(write)* | POST | `/api/jobs/{id}/retry` | |
+
+### Comments / media
+
+| CLI | Method | Path | Notes |
+|---|---|---|---|
+| `comments list` | GET | `/api/comments` | `resource_type`, `resource_id`. |
+| `comments create` / `reply` / `update` / `delete` *(write)* | POST/PATCH/DELETE | `/api/comments…` | |
+| `media-channels *` | GET/POST/PUT/DELETE | `/api/media-channels…` | |
+| `media list` / `get` / `upload` / `generate` / `patch` / `delete` | … | `/api/media…` | `generate` returns a job — poll `jobs get`. |
+
 ### Knowledge map (`knowledge-map`)
 
 Requires **`knowledge_map:read`** (tree, link list) and **`knowledge_map:write`** (mutations) when the server enforces permissions.
@@ -205,9 +266,9 @@ HTTP <status>
 …and exits 1. Common cases:
 
 - **401** — invalid or revoked API key. Mint a new key in Settings → API keys.
-- **403** — endpoint requires a permission your account doesn't have (e.g. `console:wikis_write`). Server returns `{detail: "..."}`.
+- **403** — endpoint requires a permission your account doesn't have (e.g. `wikis:write`). Server returns `{detail: "..."}`.
 - **404** — resource does not exist *or* is filtered by your data-scope. The skill cannot tell these apart from the response.
 - **422** — pydantic validation error; check argument shapes.
 - **502** — upstream LLM or Neo4j failure (mostly seen on `ontology *` and `kb ask`).
 
-For authoritative tables and extra routes the skill does not yet wrap (admin: providers, models, data sources, jobs), see the repository file `docs/features/api-reference.md`.
+For authoritative tables and extra routes this skill does not wrap (Console admin, feature toggles, schedules hub, Project Agent chat), see the repository file `docs/features/api-reference.md`.

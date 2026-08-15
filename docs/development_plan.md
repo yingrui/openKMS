@@ -49,7 +49,7 @@ Shipped product scope follows the same index as [Functionalities](./functionalit
 | [Connectors](features/connectors.md) | Tushare sync + Zhipu search shipped; more sync kinds and downstream hooks ([backlog](#connectors-high)) |
 | [Wiki Copilot & map designer](features/wiki-spaces.md) | Wiki Copilot, knowledge map HTML Copilot (**in-app**; distinct from qa-agent) |
 | [Agents (project workspaces)](features/openkms-agents.md) | Deep Agents chat per project (files, git, plan mode, openKMS research tools, optional `web_search` via connector) |
-| [OpenCode skill (openkms)](features/opencode-openkms-skill.md) | **External:** agent skill + CLI for third-party tools (`openkms-skill/`); complements delivery APIs and in-app agents |
+| [openkms-skill](features/openkms-skill.md) | Agent Skill + CLI (`openkms-skill/`); hosts include openKMS Agents, Claude Code, OpenCode; complements delivery APIs and in-app assistants |
 | In-app agents (cross-cutting) | **Partial:** wiki/map/project copilots above; **eval assist** API only; **no** unified **maintenance** assistant across wiki/documents/map ([backlog](#in-product-agents-high)) — **excludes** KB Q&A delivery |
 
 ### Cross-cutting reference
@@ -77,7 +77,7 @@ Product direction (not a commitment order). Shipped basics live under **Current 
 | 6. Ontology logic (high) | [Retrieval to decisions](goals.md#goals-decision) | **Functions + Actions** on the ontology — publish rules, run in sandbox, observe executions |
 
 1. **Connectors** — Finish the loop: external sources → **reliable sync jobs** → ontology **datasets** (and downstream KB/wiki), not only credential storage and output wiring.
-2. **In-product agents** — **Domain experts and knowledge admins** get capable **maintenance** assistants inside openKMS (wiki Copilot, map designer, Deep Agents projects), not only [OpenCode skill](features/opencode-openkms-skill.md) in an external IDE. **Per-KB Q&A** remains a separate [delivery lane](#agent-lanes) (`qa-agent`), not part of this unification.
+2. **In-product agents** — **Domain experts and knowledge admins** get capable **maintenance** assistants inside openKMS (wiki Copilot, map designer, Deep Agents projects), not only [openkms-skill](features/openkms-skill.md) in an external IDE. **Per-KB Q&A** remains a separate [delivery lane](#agent-lanes) (`qa-agent`), not part of this unification.
 3. **Multimodal knowledge** — **Image and video** (and related assets) as managed evidence: model registry support, ingestion/derivatives, search/RAG — see [knowledge-types](features/knowledge-types.md#rich-media-and-3d).
 4. **Evaluation for quality** — Turn evaluations from pass/fail runs into **actionable improvement** for KBs, wiki, and corpora (gaps, suggested edits, regression tracking).
 5. **Policy & lifecycle impact** — When rules change, surface dependents and review queues for **knowledge administrators** and **legal/compliance / standards** roles (see [Policy & lifecycle](#policy--lifecycle-medium)).
@@ -120,7 +120,7 @@ Shipped surfaces: [Connectors](features/connectors.md), [API reference — Conne
 | Eval assist UI | user · org — Wire [eval agent conversations](features/evaluation.md) into evaluation pages (API shipped) |
 | Broader tool coverage | user · org — Read/write with ACL: documents, articles, glossary, search, ontology (within explore limits) |
 | Maintenance workflows | user · org — From eval failures → suggested wiki/KB fixes (quality loop, contribution feedback) |
-| Parity with external skill | user — [openkms-skill](features/opencode-openkms-skill.md) capabilities reachable in-app where permissions allow |
+| Parity with external skill | user — [openkms-skill](features/openkms-skill.md) capabilities reachable in-app where permissions allow |
 
 Existing surfaces: [Wiki spaces](features/wiki-spaces.md), [Knowledge bases](features/knowledge-bases.md), [Knowledge map](features/knowledge-map.md).
 
