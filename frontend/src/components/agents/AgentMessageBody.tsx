@@ -1,12 +1,7 @@
 import { memo, useMemo, type ReactNode } from 'react';
 import type { Components } from 'react-markdown';
-import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
-import {
-  richMarkdownPreComponent,
-  richMarkdownRemarkPlugins,
-  richMarkdownRehypePlugins,
-} from '../markdown/richMarkdown';
+import { RichMarkdown, richMarkdownPreComponent } from '../markdown/richMarkdown';
 import './AgentMessage.scss';
 
 export type AgentMessageBodyProps = {
@@ -85,13 +80,7 @@ export const AgentMessageBody = memo(function AgentMessageBody({ text, variant }
   }
   return (
     <div className={`agents-md agents-md--${variant}`} data-variant={variant}>
-      <ReactMarkdown
-        remarkPlugins={richMarkdownRemarkPlugins}
-        rehypePlugins={richMarkdownRehypePlugins}
-        components={components}
-      >
-        {text}
-      </ReactMarkdown>
+      <RichMarkdown components={components}>{text}</RichMarkdown>
     </div>
   );
 });

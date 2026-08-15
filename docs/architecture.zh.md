@@ -120,6 +120,7 @@ frontend/src/
 ├── components/
 │   ├── Layout/                 # 外壳：侧栏、顶栏、路由门控
 │   ├── markdown/, wiki/, agents/, knowledge-bases/, jobs/, ui/
+│   │   # markdown/：共享 **RichMarkdown**（GFM、KaTeX+mhchem、AI 公式定界符规范化、Mermaid）
 │   └── KnowledgeMapForceGraph*.tsx, ErrorBoundary, …
 ├── data/                       # 按后端领域划分的 *Api.ts（+ apiClient.ts）
 ├── hooks/                      # useIsMobile、useListFetch、useDebouncedValue 等

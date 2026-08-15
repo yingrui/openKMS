@@ -1,17 +1,36 @@
 /**
- * Shared Markdown stack: GFM, math (KaTeX), raw HTML (same as documents), Mermaid fenced blocks.
+ * Shared Markdown stack: GFM, math (KaTeX + mhchem), raw HTML, Mermaid fenced blocks.
+ * All agent / wiki / document / article markdown surfaces should use this module
+ * so AI-generated math and chemistry delimiters render consistently.
  */
-import { Children, isValidElement, useEffect, useId, useRef, type ReactNode } from 'react';
-import type { Components } from 'react-markdown';
+import { Children, isValidElement, useEffect, useId, useMemo, useRef, type ComponentProps, type ReactNode } from 'react';
+import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
+import type { PluggableList } from 'unified';
 import 'katex/dist/katex.min.css';
+// Registers \ce / \pu for chemistry (KaTeX mhchem).
+import 'katex/dist/contrib/mhchem.mjs';
+import { preprocessRichMarkdown } from './normalizeMarkdownMath';
 import './richMarkdown.scss';
 
-export const richMarkdownRemarkPlugins = [remarkGfm, remarkMath];
-export const richMarkdownRehypePlugins = [rehypeRaw, rehypeKatex];
+export { preprocessRichMarkdown, normalizeMarkdownMath } from './normalizeMarkdownMath';
+
+export const richMarkdownRemarkPlugins: PluggableList = [remarkGfm, remarkMath];
+
+/** KaTeX: soft failure so one bad formula does not blank the whole message. */
+export const richMarkdownRehypePlugins: PluggableList = [
+  rehypeRaw,
+  [
+    rehypeKatex,
+    {
+      throwOnError: false,
+      strict: 'ignore',
+    },
+  ],
+];
 
 function mermaidTheme(): 'default' | 'dark' {
   if (typeof document === 'undefined') return 'default';
@@ -82,4 +101,38 @@ export function richMarkdownPreComponent(preClassName?: string): NonNullable<Com
     }
     return <pre className={preClassName}>{children}</pre>;
   };
+}
+
+type RichMarkdownProps = {
+  children: string;
+  components?: Components;
+  className?: string;
+  /** Extra preprocess before math normalization (e.g. wiki wikilinks). */
+  preprocess?: (source: string) => string;
+  urlTransform?: ComponentProps<typeof ReactMarkdown>['urlTransform'];
+};
+
+/**
+ * Canonical markdown renderer for the SPA: GFM + KaTeX (mhchem) + raw HTML + Mermaid.
+ * Normalizes common AI math delimiters (`\[ \]`, `\( \)`, `[ \text{…} ]`) before parse.
+ */
+export function RichMarkdown({ children, components, className, preprocess, urlTransform }: RichMarkdownProps) {
+  const source = useMemo(() => {
+    const stepped = preprocess ? preprocess(children) : children;
+    return preprocessRichMarkdown(stepped);
+  }, [children, preprocess]);
+
+  const md = (
+    <ReactMarkdown
+      remarkPlugins={richMarkdownRemarkPlugins}
+      rehypePlugins={richMarkdownRehypePlugins}
+      components={components}
+      urlTransform={urlTransform}
+    >
+      {source}
+    </ReactMarkdown>
+  );
+
+  if (className) return <div className={className}>{md}</div>;
+  return md;
 }

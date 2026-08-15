@@ -1,11 +1,10 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight, FileText, Loader2, X as XIcon } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import {
-  richMarkdownRemarkPlugins,
-  richMarkdownRehypePlugins,
+  RichMarkdown,
 } from '../../components/markdown/richMarkdown';
+import type { Components } from 'react-markdown';
 import type { PageIndexNode } from '../../data/documentsApi';
 import type { ExampleDocumentConfig } from './DocumentDetail.types';
 
@@ -117,7 +116,7 @@ export function PageIndexTree({
   error: string | null;
   docConfig: ExampleDocumentConfig | null;
   markdown: string | null;
-  markdownComponents: React.ComponentProps<typeof ReactMarkdown>['components'];
+  markdownComponents: Components;
 }) {
   const { t } = useTranslation('documents');
   const [contentPopover, setContentPopover] = useState<{ content: string; title: string } | null>(null);
@@ -178,13 +177,9 @@ export function PageIndexTree({
               </button>
             </div>
             <div className="document-detail-pageindex-dialog-body">
-              <ReactMarkdown
-                remarkPlugins={richMarkdownRemarkPlugins}
-                rehypePlugins={richMarkdownRehypePlugins}
-                components={markdownComponents}
-              >
+              <RichMarkdown components={markdownComponents}>
                 {contentPopover.content || t('detail.popoverNoContent')}
-              </ReactMarkdown>
+              </RichMarkdown>
             </div>
           </div>
         </div>

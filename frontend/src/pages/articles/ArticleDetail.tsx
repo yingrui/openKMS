@@ -17,10 +17,8 @@ import {
   Upload,
   X as XIcon,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import {
-  richMarkdownRehypePlugins,
-  richMarkdownRemarkPlugins,
+  RichMarkdown,
 } from '../../components/markdown/richMarkdown';
 import { ContentCommentsShell } from '../../components/comments/ContentCommentsShell';
 import { PanelToolbar } from '../../styles/design-system';
@@ -444,13 +442,9 @@ export function ArticleDetail() {
                         />
                         <aside className="article-detail-markdown-preview-pane" aria-label="Markdown preview">
                           <div className="article-detail-markdown-preview-scroll article-detail-markdown-read">
-                            <ReactMarkdown
-                              remarkPlugins={richMarkdownRemarkPlugins}
-                              rehypePlugins={richMarkdownRehypePlugins}
-                              components={v.mdComponents}
-                            >
+                            <RichMarkdown components={v.mdComponents}>
                               {v.editMarkdown.trim() ? v.editMarkdown : ' '}
-                            </ReactMarkdown>
+                            </RichMarkdown>
                           </div>
                         </aside>
                       </>
@@ -464,13 +458,9 @@ export function ArticleDetail() {
                         <p className="document-detail-print-subtitle">{v.article.origin_article_id}</p>
                       ) : null}
                     </div>
-                    <ReactMarkdown
-                      remarkPlugins={richMarkdownRemarkPlugins}
-                      rehypePlugins={richMarkdownRehypePlugins}
-                      components={v.mdComponents}
-                    >
+                    <RichMarkdown components={v.mdComponents}>
                       {v.editMarkdown}
-                    </ReactMarkdown>
+                    </RichMarkdown>
                   </div>
                 ) : (
                   <p className="document-detail-muted">No content yet. Choose Edit to add Markdown.</p>

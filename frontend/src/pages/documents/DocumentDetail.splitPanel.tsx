@@ -15,11 +15,9 @@ import {
   Table,
   X as XIcon,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import {
-  richMarkdownRemarkPlugins,
-  richMarkdownRehypePlugins,
+  RichMarkdown,
 } from '../../components/markdown/richMarkdown';
 import { PanelToolbar } from '../../styles/design-system';
 import type { DocumentResponse, PageIndexNode } from '../../data/documentsApi';
@@ -473,13 +471,9 @@ export function DocumentDetailSplitPanel({
                 />
               ) : selectedBlock.parsingItem.content ? (
                 <div className="document-detail-block-content">
-                  <ReactMarkdown
-                    remarkPlugins={richMarkdownRemarkPlugins}
-                    rehypePlugins={richMarkdownRehypePlugins}
-                    components={markdownComponents}
-                  >
+                  <RichMarkdown components={markdownComponents}>
                     {selectedBlock.parsingItem.content}
-                  </ReactMarkdown>
+                  </RichMarkdown>
                 </div>
               ) : (
                 <p className="document-detail-muted">{t('detail.noBlockContent')}</p>
@@ -517,13 +511,9 @@ export function DocumentDetailSplitPanel({
                   </p>
                 </div>
               )}
-              <ReactMarkdown
-                remarkPlugins={richMarkdownRemarkPlugins}
-                rehypePlugins={richMarkdownRehypePlugins}
-                components={markdownComponents}
-              >
+              <RichMarkdown components={markdownComponents}>
                 {markdown}
-              </ReactMarkdown>
+              </RichMarkdown>
             </div>
           ) : (
             <p key="empty-view" className="document-detail-muted">{t('detail.noMarkdownContent')}</p>

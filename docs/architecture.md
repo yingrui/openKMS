@@ -120,6 +120,7 @@ frontend/src/
 ├── components/
 │   ├── Layout/                 # shell: sidebar, header, route gate
 │   ├── markdown/, wiki/, agents/, knowledge-bases/, jobs/, ui/
+│   │   # markdown/: shared **RichMarkdown** (GFM, KaTeX+mhchem, AI math normalize, Mermaid)
 │   └── KnowledgeMapForceGraph*.tsx, ErrorBoundary, …
 ├── data/                       # *Api.ts per backend domain (+ apiClient.ts)
 ├── hooks/                      # useIsMobile, useListFetch, useDebouncedValue, …

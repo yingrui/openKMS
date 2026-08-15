@@ -10,11 +10,9 @@ import {
 import type { Components } from 'react-markdown';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ReactMarkdown from 'react-markdown';
 import {
+  RichMarkdown,
   richMarkdownPreComponent,
-  richMarkdownRemarkPlugins,
-  richMarkdownRehypePlugins,
 } from '../../components/markdown/richMarkdown';
 import { toast } from 'sonner';
 import { config } from '../../config';
@@ -177,14 +175,12 @@ export const WikiPagePanel = forwardRef<WikiPagePanelHandle, WikiPagePanelProps>
             <div className="wiki-page-editor-preview">
               <div className="wiki-page-editor-preview-scroll">
                 <article className="wiki-page-editor-markdown">
-                  <ReactMarkdown
-                    remarkPlugins={richMarkdownRemarkPlugins}
-                    rehypePlugins={richMarkdownRehypePlugins}
+                  <RichMarkdown
                     urlTransform={previewUrlTransform}
                     components={markdownComponents}
                   >
                     {previewSource}
-                  </ReactMarkdown>
+                  </RichMarkdown>
                 </article>
               </div>
             </div>

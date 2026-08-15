@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { Loader2, X as XIcon } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import {
-  richMarkdownRemarkPlugins,
-  richMarkdownRehypePlugins,
+  RichMarkdown,
 } from '../../components/markdown/richMarkdown';
 import type { DocumentVersionDetail, DocumentVersionListItem } from '../../data/documentsApi';
 
@@ -257,13 +255,9 @@ export function DocumentDetailVersionModals({
                 <>
                   <h3 className="document-detail-version-preview-sub">{t('detail.previewMarkdownSub')}</h3>
                   <div className="document-detail-version-preview-md">
-                    <ReactMarkdown
-                      remarkPlugins={richMarkdownRemarkPlugins}
-                      rehypePlugins={richMarkdownRehypePlugins}
-                      components={markdownComponents}
-                    >
+                    <RichMarkdown components={markdownComponents}>
                       {versionPreview.markdown || ''}
-                    </ReactMarkdown>
+                    </RichMarkdown>
                   </div>
                   <h3 className="document-detail-version-preview-sub">{t('detail.previewMetadataSub')}</h3>
                   <pre className="document-detail-version-preview-json">
