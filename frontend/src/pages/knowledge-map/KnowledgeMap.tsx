@@ -24,10 +24,8 @@ import {
   deleteKnowledgeMapNode,
   fetchResourceLinks,
   fetchKnowledgeMapTree,
-  fetchKnowledgeMapHtmlStatus,
   updateKnowledgeMapNode,
   upsertResourceLink,
-  type KnowledgeMapHtmlStatus,
   type KnowledgeMapNode,
   type ResourceLink,
 } from '../../data/knowledgeMapApi';
@@ -35,7 +33,7 @@ import { fetchAllWikiSpaces } from '../../data/wikiSpacesApi';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { PanelToolbar } from '../../styles/design-system';
 import './KnowledgeMap.scss';
-import { KnowledgeMapHtmlCopilot } from './KnowledgeMapHtmlCopilot';
+import { KnowledgeMapOverview } from './KnowledgeMapOverview';
 import { KnowledgeMapForceGraph } from '../../components/KnowledgeMapForceGraph';
 
 const KnowledgeMapForceGraph3D = lazy(() =>
@@ -437,22 +435,7 @@ export function KnowledgeMap() {
   const [wikiOptions, setWikiOptions] = useState<{ id: string; label: string }[]>([]);
   const lastAppliedNodeParam = useRef<string | undefined>(undefined);
 
-  const [mapUiTab, setMapUiTab] = useState<'edit' | 'exploreGraph' | 'explore3d' | 'mapHtml'>('edit');
-
-  const [mapHtmlStatus, setMapHtmlStatus] = useState<KnowledgeMapHtmlStatus | null>(null);
-  const [mapHtmlStatusLoading, setMapHtmlStatusLoading] = useState(false);
-
-  const refreshMapHtmlStatus = useCallback(async () => {
-    if (!canRead) return;
-    setMapHtmlStatusLoading(true);
-    try {
-      setMapHtmlStatus(await fetchKnowledgeMapHtmlStatus());
-    } catch {
-      setMapHtmlStatus(null);
-    } finally {
-      setMapHtmlStatusLoading(false);
-    }
-  }, [canRead]);
+  const [mapUiTab, setMapUiTab] = useState<'edit' | 'exploreGraph' | 'explore3d' | 'overview'>('edit');
 
   const load = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -478,19 +461,14 @@ export function KnowledgeMap() {
         setLinks([]);
       } finally {
         if (!silent) setLoading(false);
-        void refreshMapHtmlStatus();
       }
     },
-    [canRead, t, refreshMapHtmlStatus],
+    [canRead, t],
   );
 
   useEffect(() => {
     void load();
   }, [load]);
-
-  useEffect(() => {
-    if (mapUiTab === 'mapHtml' && canRead) void refreshMapHtmlStatus();
-  }, [mapUiTab, canRead, refreshMapHtmlStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -680,7 +658,7 @@ export function KnowledgeMap() {
     <div
       className={[
         'knowledge-map-page',
-        mapUiTab === 'mapHtml' && !loading ? 'knowledge-map-page--map-html-wide knowledge-map-page--html-designer-full-height' : '',
+        mapUiTab === 'overview' && !loading ? 'knowledge-map-page--map-html-wide knowledge-map-page--html-designer-full-height' : '',
         (mapUiTab === 'exploreGraph' || mapUiTab === 'explore3d') && !loading ? 'knowledge-map-page--explore-view-fill' : '',
       ]
         .filter(Boolean)
@@ -742,11 +720,11 @@ export function KnowledgeMap() {
             <button
               type="button"
               role="tab"
-              aria-selected={mapUiTab === 'mapHtml'}
-              className={`knowledge-map-view-tab${mapUiTab === 'mapHtml' ? ' knowledge-map-view-tab--active' : ''}`}
-              onClick={() => setMapUiTab('mapHtml')}
+              aria-selected={mapUiTab === 'overview'}
+              className={`knowledge-map-view-tab${mapUiTab === 'overview' ? ' knowledge-map-view-tab--active' : ''}`}
+              onClick={() => setMapUiTab('overview')}
             >
-              {t('tabHtmlOverview')}
+              {t('tabOverview')}
             </button>
           </div>
 
@@ -985,14 +963,8 @@ export function KnowledgeMap() {
               )}
             </section>
           ) : (
-            <section className="knowledge-map-html-overview" aria-label={t('tabHtmlOverview')}>
-              <KnowledgeMapHtmlCopilot
-                status={mapHtmlStatus}
-                statusLoading={mapHtmlStatusLoading}
-                canRead={canRead}
-                canWrite={canWrite}
-                onRefreshStatus={refreshMapHtmlStatus}
-              />
+            <section className="knowledge-map-html-overview" aria-label={t('tabOverview')}>
+              <KnowledgeMapOverview canRead={canRead} canWrite={canWrite} />
             </section>
           )}
 

@@ -17,6 +17,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@a2ui/react": "^0.10.2",
+    "@a2ui/web_core": "^0.10.6",
     "@codemirror/lang-python": "^6.2.1",
     "@fontsource/dm-sans": "^5.2.8",
     "@fontsource/source-serif-4": "^5.2.9",

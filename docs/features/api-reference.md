@@ -82,7 +82,7 @@ Clients may send **`Accept-Language`** (the SPA sends `en` or `zh-CN`). Many aut
 
 ## Documents
 
-The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the same way as the document detail page: `documents lifecycle patch`, `documents relationships list|create|delete` (see `openkms-skill/reference.md`).
+The bundled **openkms-skill** CLI wraps **lifecycle** and **relationships** the same way as the document detail page: `documents lifecycle patch`, `documents relationships list|create|delete` (see `openkms-skill/references/REFERENCE.md`).
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -474,7 +474,7 @@ Each `agent_skill_versions` row includes `content_hash`, `uploaded_by`, `uploade
 
 ## Knowledge map
 
-The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowledge Map**: `knowledge-map nodes …` and `knowledge-map resource-links …` (see `openkms-skill/reference.md`).
+The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowledge Map**: `knowledge-map nodes …` and `knowledge-map resource-links …` (see `openkms-skill/references/REFERENCE.md`).
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -485,14 +485,18 @@ The bundled **openkms-skill** CLI exposes the same routes as the Console **Knowl
 | GET | `/api/knowledge-map/resource-links` | List all resource–node mappings (filter client-side if needed) |
 | PUT | `/api/knowledge-map/resource-links` | Replace the node mapping for a single resource (`resource_type`, `resource_id`, `knowledge_map_node_id`) |
 | DELETE | `/api/knowledge-map/resource-links?resource_type=&resource_id=` | Unmap a resource from any node |
-| GET | `/api/knowledge-map/map-html/status` | HTML overview snapshot: compares live semantic `content_hash` to stored artifact; `stale`, `has_artifact`, `nodes_modified_at` |
-| GET | `/api/knowledge-map/map-html` | Cached HTML document (`text/html`) when a snapshot exists (`404` otherwise). Response applies **`ensure_spa_link_targets`** so in-app anchors get **`target="_top"`** for sandboxed Home/designer iframes (does not rewrite the stored row) |
-| POST | `/api/knowledge-map/map-html/regenerate` | One-shot rebuild via LLM (`knowledge_map:write`); hydrates placeholders |
-| GET | `/api/knowledge-map/map-html/designer/conversations` | List designer chats for the signed-in user (`knowledge_map:read`): `{ conversations: [{ id, title, created_at, updated_at }] }` (newest first) |
-| POST | `/api/knowledge-map/map-html/designer/conversations` | Create an empty designer chat (`knowledge_map:write`; `201`, same object shape as list items) |
-| GET | `/api/knowledge-map/map-html/designer/session` | Messages for one chat: query **`conversation_id`** (optional; omit = most recently updated chat). Response `{ conversation_id, messages: [{ id, role, content, created_at }] }` (`knowledge_map:read`) |
-| DELETE | `/api/knowledge-map/map-html/designer/conversations/{conversation_id}` | Delete that designer chat and its messages (`knowledge_map:write`) |
-| POST | `/api/knowledge-map/map-html/designer/chat` | Body `{ messages, working_html?, stream?, conversation_id? }`. Optional **`conversation_id`** must belong to the user when set; otherwise the latest designer chat is used for persistence. **`stream: false`** (default): JSON `{ content }` (full assistant text). **`stream: true`**: `application/x-ndjson` — lines are JSON objects: **`delta`** (`t` text chunk), optional **`tool_start`** / **`tool_end`**, then **`done`** (`content` full text) or **`error`** (`detail`). Same context as non-streaming; model may use **`apply_html_patches`** and/or a fenced `html` artifact. Each successful turn appends the last **user** message and full **assistant** reply to the target conversation (server-side; no migration) |
-| POST | `/api/knowledge-map/map-html/preview` | Hydrate + sanitize a draft HTML string for iframe preview (`knowledge_map:write`) |
-| POST | `/api/knowledge-map/map-html/publish` | Save draft as the live snapshot (`knowledge_map:write`; same finalize rules as regenerate) |
-| DELETE | `/api/knowledge-map/map-html` | Remove saved map HTML row (`knowledge_map:write`) so the designer can start from scratch |
+| GET | `/api/knowledge-map/overview` | Overview view: A2UI messages (published or synthesized) + tree + labeled resources + stale/unresolved (`knowledge_map:read`) |
+| GET | `/api/knowledge-map/overview/status` | Stale vs live semantic `content_hash`; `has_composition`, `published_at` |
+| POST | `/api/knowledge-map/overview/publish` | Body `{ a2ui_messages }` — validate ids against live map and upsert singleton A2UI document (`knowledge_map:write`) |
+| DELETE | `/api/knowledge-map/overview` | Remove published A2UI document (`knowledge_map:write`); Browse falls back to synthesized default |
+| GET/POST | `/api/knowledge-map/overview/designer/conversations` | List / create Overview designer chats (`surface=knowledge_map_overview`) |
+| GET | `/api/knowledge-map/overview/designer/session` | Messages for one chat (`conversation_id` optional) |
+| DELETE | `/api/knowledge-map/overview/designer/conversations/{id}` | Delete designer chat |
+| POST | `/api/knowledge-map/overview/designer/chat` | Body `{ messages, working_a2ui_messages?, stream, conversation_id? }`; NDJSON stream (`delta` / `tool_*` / `done` / `error`), tool `set_a2ui_messages` (`knowledge_map:write`) |
+| GET | `/api/knowledge-map/map-html/status` | **Legacy** HTML overview snapshot status |
+| GET | `/api/knowledge-map/map-html` | **Legacy** cached HTML document |
+| POST | `/api/knowledge-map/map-html/regenerate` | **Legacy** one-shot HTML rebuild |
+| GET/POST/DELETE | `/api/knowledge-map/map-html/designer/*` | **Legacy** HTML designer chats / NDJSON chat |
+| POST | `/api/knowledge-map/map-html/preview` | **Legacy** hydrate + sanitize draft HTML |
+| POST | `/api/knowledge-map/map-html/publish` | **Legacy** save HTML snapshot |
+| DELETE | `/api/knowledge-map/map-html` | **Legacy** remove HTML artifact |

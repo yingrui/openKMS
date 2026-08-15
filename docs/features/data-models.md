@@ -285,7 +285,7 @@ Design and enforcement: [Data security](data-security.md).
 
 ### AgentConversation
 
-- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html` \| **`project`**), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "project_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads; **project** sessions may also store encrypted session API-key material and **`last_turn`** — `{ status, turn_id, started_at, …, interrupt? }` for durable interactive turns), `title`, `created_at`, `updated_at`
+- `id`, `user_sub` (owner; OIDC sub or local user id), **`surface`** (`wiki_space` \| `knowledge_base` \| `evaluation` \| `kb_faq` \| `knowledge_map_html` \| `knowledge_map_overview` \| **`project`**), **`context`** (JSONB; e.g. `{ "wiki_space_id" }`, `{ "knowledge_base_id" }`, `{ "project_id" }`, `{ "evaluation_id", "knowledge_base_id" }` for evaluation threads; **project** sessions may also store encrypted session API-key material and **`last_turn`** — `{ status, turn_id, started_at, …, interrupt? }` for durable interactive turns), `title`, `created_at`, `updated_at`
 
 ### AgentMessage
 
@@ -330,7 +330,11 @@ Design and enforcement: [Data security](data-security.md).
 
 ### KnowledgeMapHtmlArtifact (`knowledge_map_html_artifact`)
 
-- Singleton row (`id` = `default`): `html` (sanitized document), `content_hash` (SHA-256 of canonical map terms + links JSON), `generated_at` — LLM-built **HTML overview** of the Knowledge Map; `GET /api/knowledge-map/map-html/status` compares the live hash to `content_hash` to report **stale**.
+- Singleton row (`id` = `default`): `html` (sanitized document), `content_hash` (SHA-256 of canonical map terms + links JSON), `generated_at` — **legacy** LLM-built HTML overview. Prefer **`KnowledgeMapOverviewComposition`** (A2UI document) for the SPA Overview tab.
+
+### KnowledgeMapOverviewComposition (`knowledge_map_overview_composition`)
+
+- Singleton row (`id` = `default`): `composition` (JSONB — prefer `{ "format": "a2ui_v0_9", "messages": [ ... A2UI v0.9 ... ] }`; legacy OverviewComposition objects are still readable and fall back to server-synthesized A2UI on load), `content_hash` (same semantic hash as the map), `published_at`, `updated_at` — published Overview middle-pane document; stale when live hash ≠ `content_hash`.
 
 ## Provider details
 

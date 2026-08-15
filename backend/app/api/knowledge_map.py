@@ -660,3 +660,273 @@ async def map_html_publish(body: MapHtmlBodyHtml, db: AsyncSession = Depends(get
         )
     await db.flush()
     return KnowledgeMapHtmlRegenerateOut(content_hash=content_hash, generated_at=now)
+
+
+# --- Overview (A2UI canvas + NDJSON designer, same dialect as map-html) ---
+
+from app.services.knowledge_map.knowledge_map_overview import (
+    OverviewStatusOut,
+    OverviewViewOut,
+    delete_overview_composition,
+    load_overview_status,
+    load_overview_view,
+    load_resource_labels_with_media,
+    publish_overview_a2ui,
+)
+from app.services.knowledge_map.knowledge_map_overview_a2ui import (
+    validate_a2ui_messages_against_snapshot,
+)
+from app.services.knowledge_map.knowledge_map_overview_designer import (
+    iter_overview_designer_chat_ndjson,
+    last_user_content as overview_last_user_content,
+)
+from app.services.knowledge_map.knowledge_map_overview_session import (
+    create_overview_conversation,
+    delete_overview_conversation,
+    get_overview_conversation_owned,
+    get_overview_session_messages,
+    list_overview_conversations,
+    persist_overview_turn_safe,
+)
+
+
+class OverviewPublishIn(BaseModel):
+    a2ui_messages: list[dict] = Field(..., min_length=1)
+
+
+class OverviewPublishOut(BaseModel):
+    content_hash: str
+    published_at: datetime
+
+
+class OverviewDesignerConversationOut(BaseModel):
+    id: str
+    title: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class OverviewDesignerConversationListOut(BaseModel):
+    conversations: list[OverviewDesignerConversationOut] = Field(default_factory=list)
+
+
+class OverviewDesignerSessionMessageOut(BaseModel):
+    id: str
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+
+
+class OverviewDesignerSessionOut(BaseModel):
+    conversation_id: str | None = None
+    messages: list[OverviewDesignerSessionMessageOut] = Field(default_factory=list)
+
+
+@router.get(
+    "/overview",
+    response_model=OverviewViewOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def get_overview(db: AsyncSession = Depends(get_db)):
+    return await load_overview_view(db)
+
+
+@router.get(
+    "/overview/status",
+    response_model=OverviewStatusOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def get_overview_status_route(db: AsyncSession = Depends(get_db)):
+    return await load_overview_status(db)
+
+
+@router.post(
+    "/overview/publish",
+    response_model=OverviewPublishOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def publish_overview(body: OverviewPublishIn, db: AsyncSession = Depends(get_db)):
+    try:
+        row = await publish_overview_a2ui(db, body.a2ui_messages)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    return OverviewPublishOut(content_hash=row.content_hash, published_at=row.published_at)
+
+
+@router.delete(
+    "/overview",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def delete_overview(db: AsyncSession = Depends(get_db)):
+    await delete_overview_composition(db)
+    return None
+
+
+@router.get(
+    "/overview/designer/conversations",
+    response_model=OverviewDesignerConversationListOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def list_overview_designer_conversations(request: Request, db: AsyncSession = Depends(get_db)):
+    sub = _auth_sub(request)
+    rows = await list_overview_conversations(db, sub)
+    return OverviewDesignerConversationListOut(
+        conversations=[
+            OverviewDesignerConversationOut(
+                id=c.id,
+                title=c.title,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+            )
+            for c in rows
+        ]
+    )
+
+
+@router.post(
+    "/overview/designer/conversations",
+    response_model=OverviewDesignerConversationOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def create_overview_designer_conversation(request: Request, db: AsyncSession = Depends(get_db)):
+    sub = _auth_sub(request)
+    c = await create_overview_conversation(db, sub)
+    return OverviewDesignerConversationOut(
+        id=c.id,
+        title=c.title,
+        created_at=c.created_at,
+        updated_at=c.updated_at,
+    )
+
+
+@router.get(
+    "/overview/designer/session",
+    response_model=OverviewDesignerSessionOut,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_READ))],
+)
+async def get_overview_designer_session(
+    request: Request,
+    conversation_id: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+):
+    sub = _auth_sub(request)
+    cid, messages = await get_overview_session_messages(db, sub, conversation_id)
+    return OverviewDesignerSessionOut(
+        conversation_id=cid,
+        messages=[
+            OverviewDesignerSessionMessageOut(
+                id=m.id,
+                role=cast(Literal["user", "assistant"], m.role if m.role in ("user", "assistant") else "assistant"),
+                content=m.content or "",
+                created_at=m.created_at,
+            )
+            for m in messages
+            if m.role in ("user", "assistant")
+        ],
+    )
+
+
+@router.delete(
+    "/overview/designer/conversations/{conversation_id}",
+    status_code=204,
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def delete_overview_designer_conversation(
+    conversation_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    sub = _auth_sub(request)
+    ok = await delete_overview_conversation(db, sub, conversation_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Designer conversation not found")
+    return None
+
+
+class OverviewDesignerChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., min_length=1, max_length=120_000)
+
+
+class OverviewDesignerChatIn(BaseModel):
+    messages: list[OverviewDesignerChatMessage] = Field(..., min_length=1, max_length=40)
+    working_a2ui_messages: list[dict] | None = None
+    stream: bool = True
+    conversation_id: str | None = Field(None, max_length=64)
+
+
+@router.post(
+    "/overview/designer/chat",
+    dependencies=[Depends(require_permission(PERM_KNOWLEDGE_MAP_WRITE))],
+)
+async def overview_designer_chat(
+    request: Request,
+    body: OverviewDesignerChatIn,
+    db: AsyncSession = Depends(get_db),
+):
+    model_config = await resolve_agent_llm_config(db)
+    if not model_config:
+        raise HTTPException(
+            status_code=503,
+            detail="No LLM model configured. Add an LLM in Console > Models.",
+        )
+    snapshot = await load_semantic_snapshot(db)
+    links = await load_resource_links(db)
+    labels = await load_resource_labels_with_media(db, links)
+    conv = [{"role": m.role, "content": m.content} for m in body.messages]
+
+    working = body.working_a2ui_messages
+    if working is None:
+        view = await load_overview_view(db)
+        working = view.a2ui_messages
+    else:
+        try:
+            working = validate_a2ui_messages_against_snapshot(working, snapshot)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=f"invalid working_a2ui_messages: {e}") from e
+
+    sub = _auth_sub(request)
+    last_user = overview_last_user_content(conv)
+    persist_cid: str | None = None
+    if body.conversation_id and str(body.conversation_id).strip():
+        c = await get_overview_conversation_owned(db, sub, str(body.conversation_id).strip())
+        if not c:
+            raise HTTPException(status_code=404, detail="Designer conversation not found")
+        persist_cid = c.id
+
+    if not body.stream:
+        raise HTTPException(status_code=400, detail="Non-stream overview designer chat is not supported")
+
+    async def ndjson() -> AsyncIterator[bytes]:
+        try:
+            async for ev in iter_overview_designer_chat_ndjson(
+                conv,
+                snapshot,
+                labels,
+                model_config,
+                working_a2ui_messages=working,
+            ):
+                if ev.get("type") == "done" and last_user is not None:
+                    asst = ev.get("content")
+                    if isinstance(asst, str) and asst.strip():
+                        asyncio.create_task(
+                            persist_overview_turn_safe(sub, last_user, asst, persist_cid),
+                        )
+                yield (json.dumps(ev, ensure_ascii=False) + "\n").encode("utf-8")
+        except ValueError as e:
+            yield (json.dumps({"type": "error", "detail": str(e)}, ensure_ascii=False) + "\n").encode("utf-8")
+        except Exception as e:
+            yield (
+                json.dumps({"type": "error", "detail": f"Designer LLM failed: {e}"}, ensure_ascii=False) + "\n"
+            ).encode("utf-8")
+
+    return StreamingResponse(
+        ndjson(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

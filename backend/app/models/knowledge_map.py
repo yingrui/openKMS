@@ -6,6 +6,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -66,7 +67,11 @@ DEFAULT_KNOWLEDGE_MAP_HTML_ARTIFACT_ID = "default"
 
 
 class KnowledgeMapHtmlArtifact(Base):
-    """Cached LLM-generated HTML snapshot for the Knowledge Map (single logical row, pk id)."""
+    """Cached LLM-generated HTML snapshot for the Knowledge Map (single logical row, pk id).
+
+    Deprecated as the Overview presentational source of truth — prefer
+    ``KnowledgeMapOverviewComposition``. Kept for API compatibility during migration.
+    """
 
     __tablename__ = "knowledge_map_html_artifact"
 
@@ -74,3 +79,20 @@ class KnowledgeMapHtmlArtifact(Base):
     html: Mapped[str] = mapped_column(Text, nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+DEFAULT_KNOWLEDGE_MAP_OVERVIEW_COMPOSITION_ID = "default"
+
+
+class KnowledgeMapOverviewComposition(Base):
+    """Published Overview layout (typed JSON) for the Knowledge Map — React catalog, not HTML."""
+
+    __tablename__ = "knowledge_map_overview_composition"
+
+    id: Mapped[str] = mapped_column(String(16), primary_key=True)
+    composition: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

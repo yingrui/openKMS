@@ -11,7 +11,7 @@ flowchart TB
   end
 
   subgraph Backend["Backend (FastAPI)"]
-    API["knowledge-map (/api/knowledge-map, incl. overview composition + AG-UI; legacy map-html), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
+    API["knowledge-map (/api/knowledge-map, incl. overview A2UI + NDJSON designer; legacy map-html), home, document-channels, article-channels, articles, documents, knowledge-bases, wiki-spaces, glossaries, pipelines, jobs, models, object-types, link-types, data-sources, datasets, feature-toggles"]
   end
 
   subgraph Storage["Data & Processing"]

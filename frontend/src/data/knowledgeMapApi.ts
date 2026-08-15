@@ -252,3 +252,202 @@ export async function deleteResourceLink(resourceType: string, resourceId: strin
     query: { resource_type: resourceType, resource_id: resourceId },
   });
 }
+
+/* --- Overview (A2UI canvas + NDJSON designer) --- */
+
+
+export type OverviewComposition = {
+  version: 1;
+  meta: { title?: string | null; subtitle?: string | null };
+  sections: OverviewSection[];
+  featured?: OverviewFeaturedPin[];
+  hidden_node_ids?: string[];
+};
+
+export type OverviewFeaturedPin =
+  | { type: 'node'; node_id: string }
+  | { type: 'resource'; resource_type: string; resource_id: string };
+
+export type OverviewSection = {
+  id: string;
+  title: string;
+  blurb?: string | null;
+  source: { type: 'root_node'; node_id: string } | { type: 'manual' };
+  blocks: OverviewBlock[];
+};
+
+export type OverviewBlock =
+  | { type: 'node_tree'; root_node_id: string; depth?: number | null }
+  | { type: 'node_list'; node_ids: string[] }
+  | { type: 'resource_list'; refs: { resource_type: string; resource_id: string }[] }
+  | { type: 'rich_text'; markdown: string }
+  | { type: 'divider' };
+
+export type LabeledResourceLink = {
+  knowledge_map_node_id: string;
+  resource_type: string;
+  resource_id: string;
+  label: string;
+  href: string;
+};
+
+export type OverviewUnresolvedRef = {
+  kind: 'node' | 'resource';
+  node_id?: string | null;
+  resource_type?: string | null;
+  resource_id?: string | null;
+  where: string;
+};
+
+export type OverviewView = {
+  stale: boolean;
+  current_content_hash: string;
+  composition_content_hash: string | null;
+  has_composition: boolean;
+  synthesized: boolean;
+  published_at: string | null;
+  a2ui_messages: Record<string, unknown>[];
+  tree: KnowledgeMapNode[];
+  resources_by_node: Record<string, LabeledResourceLink[]>;
+  unresolved_refs: OverviewUnresolvedRef[];
+};
+
+export type OverviewStatus = {
+  current_content_hash: string;
+  composition_content_hash: string | null;
+  stale: boolean;
+  has_composition: boolean;
+  nodes_modified_at: string | null;
+  published_at: string | null;
+};
+
+export type OverviewDesignerConversation = {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type OverviewDesignerSessionMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+};
+
+export async function fetchKnowledgeMapOverview(): Promise<OverviewView> {
+  return request<OverviewView>('/api/knowledge-map/overview', { cache: 'no-store' });
+}
+
+export async function fetchKnowledgeMapOverviewStatus(): Promise<OverviewStatus> {
+  return request<OverviewStatus>('/api/knowledge-map/overview/status', { cache: 'no-store' });
+}
+
+export async function publishKnowledgeMapOverview(
+  a2uiMessages: Record<string, unknown>[],
+): Promise<{ content_hash: string; published_at: string }> {
+  return request<{ content_hash: string; published_at: string }>('/api/knowledge-map/overview/publish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ a2ui_messages: a2uiMessages }),
+  });
+}
+
+export async function deleteKnowledgeMapOverview(): Promise<void> {
+  return request<void>('/api/knowledge-map/overview', { method: 'DELETE' });
+}
+
+export async function fetchOverviewDesignerConversations(): Promise<OverviewDesignerConversation[]> {
+  const data = await request<{ conversations: OverviewDesignerConversation[] }>(
+    '/api/knowledge-map/overview/designer/conversations',
+    { cache: 'no-store' },
+  );
+  return data.conversations ?? [];
+}
+
+export async function createOverviewDesignerConversation(): Promise<OverviewDesignerConversation> {
+  return request<OverviewDesignerConversation>('/api/knowledge-map/overview/designer/conversations', {
+    method: 'POST',
+  });
+}
+
+export async function fetchOverviewDesignerSession(conversationId?: string | null): Promise<{
+  conversation_id: string | null;
+  messages: OverviewDesignerSessionMessage[];
+}> {
+  return request<{ conversation_id: string | null; messages: OverviewDesignerSessionMessage[] }>(
+    '/api/knowledge-map/overview/designer/session',
+    { query: { conversation_id: conversationId?.trim() || undefined }, cache: 'no-store' },
+  );
+}
+
+export async function deleteOverviewDesignerConversation(conversationId: string): Promise<void> {
+  return request<void>(
+    `/api/knowledge-map/overview/designer/conversations/${encodeURIComponent(conversationId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+export type OverviewDesignerStreamEvent =
+  | { type: 'delta'; t: string }
+  | { type: 'tool_start'; run_id: string; name: string; input?: string }
+  | { type: 'tool_end'; run_id: string; name: string; output?: string }
+  | { type: 'done'; content: string; a2ui_messages?: Record<string, unknown>[] }
+  | { type: 'error'; detail: string };
+
+/** NDJSON stream: ``delta`` / ``tool_*`` / ``done`` (may include ``a2ui_messages``) / ``error``. */
+export async function postOverviewDesignerChatStream(
+  messages: { role: string; content: string }[],
+  onEvent: (e: OverviewDesignerStreamEvent) => void,
+  options?: {
+    workingA2uiMessages?: Record<string, unknown>[] | null;
+    signal?: AbortSignal;
+    conversationId?: string | null;
+  },
+): Promise<void> {
+  const body: {
+    messages: { role: string; content: string }[];
+    working_a2ui_messages?: Record<string, unknown>[];
+    stream: boolean;
+    conversation_id?: string;
+  } = { messages, stream: true };
+  if (options?.workingA2uiMessages != null) {
+    body.working_a2ui_messages = options.workingA2uiMessages;
+  }
+  const cid = options?.conversationId;
+  if (cid != null && cid.trim()) {
+    body.conversation_id = cid.trim();
+  }
+  const res = await requestRaw('/api/knowledge-map/overview/designer/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: options?.signal,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(text || `Overview designer chat failed (${res.status})`);
+  }
+  if (!res.body) {
+    throw new Error('No response body');
+  }
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, idx);
+      buf = buf.slice(idx + 1);
+      if (!line.trim()) continue;
+      onEvent(JSON.parse(line) as OverviewDesignerStreamEvent);
+    }
+  }
+  const rest = buf.trim();
+  if (rest) {
+    onEvent(JSON.parse(rest) as OverviewDesignerStreamEvent);
+  }
+}
